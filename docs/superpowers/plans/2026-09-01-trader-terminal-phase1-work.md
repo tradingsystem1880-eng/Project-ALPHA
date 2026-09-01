@@ -63,7 +63,7 @@
       "expected": "`xrp-usdt`, `XRPUSDT`, `xrp/usdt` normalise to `XRP/USDT` for ccxt before the adapter is called and stored; equities upper-case only; garbage or unknown quote fails loud listing accepted forms; `--end` before `--start` and impossible calendar dates fail before any adapter call with a message naming the problem.",
       "rollback": "Revert data_cmds.py and the two test files.",
       "files": ["apps/alpha-cli/src/alpha_cli/data_cmds.py", "tests/unit/test_data_symbol_normalisation.py", "tests/integration/test_data_cli.py"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "W3 CCXTAdapter.first_bar, alpha data first-bar --json, and the pre-listing guard",

@@ -128,6 +128,38 @@ def _adapter(
     return factory(**kwargs)
 
 
+#: Quote assets a compact CCXT symbol (``XRPUSDT``) may end with; longest first so ``USDT``
+#: wins over ``USD``. Anything else must be written ``BASE/QUOTE`` -- never guessed.
+_CCXT_QUOTES = ("USDT", "USDC", "USD", "BTC", "ETH", "EUR")
+
+
+def normalize_symbol(symbol: str, source: str) -> str:
+    """Canonical vendor symbol for SOURCE: ``XRP/USDT`` for ccxt, upper-case for the rest."""
+    cleaned = symbol.strip().upper()
+    if source != "ccxt":
+        if not cleaned or " " in cleaned:
+            raise typer.BadParameter(f"symbol {symbol!r} must be a single ticker such as AAPL")
+        return cleaned
+    accepted = (
+        f"symbol {symbol!r} is not a CCXT pair; write BASE/QUOTE such as XRP/USDT "
+        f"(also accepted: xrp-usdt, xrp_usdt, or XRPUSDT when the quote is one of "
+        f"{', '.join(_CCXT_QUOTES)})"
+    )
+    cleaned = cleaned.replace("-", "/").replace("_", "/")
+    if "/" in cleaned:
+        base, sep, quote = cleaned.partition("/")
+        if not base or not quote or "/" in quote or not (base + quote).isalnum():
+            raise typer.BadParameter(accepted)
+        return f"{base}/{quote}"
+    for quote in _CCXT_QUOTES:
+        base = cleaned.removesuffix(quote)
+        # A compact base longer than six characters (XRPUSDT in "xrpusdtusd") is a typo, not a
+        # pair; explicit BASE/QUOTE above has no such limit.
+        if base != cleaned and base and base.isalnum() and len(base) <= 6:
+            return f"{base}/{quote}"
+    raise typer.BadParameter(accepted)
+
+
 @data_app.command()
 def pull(
     symbol: str,
@@ -149,10 +181,13 @@ def pull(
         calendar=calendar,
         currency=currency,
     )
+    symbol = normalize_symbol(symbol, source)
     try:
         start_date, end_date = date.fromisoformat(start), date.fromisoformat(end)
     except ValueError as exc:
         raise typer.BadParameter(f"--start/--end must be YYYY-MM-DD: {exc}") from exc
+    if end_date < start_date:
+        raise typer.BadParameter(f"--end {end_date} precedes --start {start_date}")
     try:
         result = adapter.fetch(symbol, start_date, end_date)
         store = _store()

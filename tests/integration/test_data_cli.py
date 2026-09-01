@@ -252,3 +252,91 @@ def test_snapshots_lists_manifest_summaries_deterministically(
     fallback = runner.invoke(app, ["data", "snapshots"])
     assert fallback.exit_code == 0
     assert "snap-a" in fallback.output and "snap-b" in fallback.output
+
+
+class _RecordingCrypto(_FakeCrypto):
+    seen: list[str] = []
+
+    def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
+        _RecordingCrypto.seen.append(symbol)
+        return super().fetch(symbol, start, end)
+
+
+def test_pull_normalises_symbol_before_fetch_and_store(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"ccxt": _RecordingCrypto})
+    _RecordingCrypto.seen.clear()
+    r = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "xrp-usdt",
+            "--source",
+            "ccxt",
+            "--exchange",
+            "binance",
+            "--start",
+            "2024-01-01",
+            "--end",
+            "2024-01-03",
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert _RecordingCrypto.seen == ["XRP/USDT"]
+    assert "pulled XRP/USDT" in r.output
+    assert data_cmds._store().list_symbols() == ["XRP/USDT"]
+
+
+def test_pull_rejects_end_before_start_without_calling_the_adapter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"ccxt": _RecordingCrypto})
+    _RecordingCrypto.seen.clear()
+    r = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "XRP/USDT",
+            "--source",
+            "ccxt",
+            "--exchange",
+            "binance",
+            "--start",
+            "2024-02-01",
+            "--end",
+            "2024-01-01",
+        ],
+    )
+    assert r.exit_code == 2
+    assert "2024-01-01" in r.output and "2024-02-01" in r.output and "Traceback" not in r.output
+    assert _RecordingCrypto.seen == []
+
+
+def test_pull_rejects_impossible_calendar_date_naming_the_problem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"ccxt": _RecordingCrypto})
+    r = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "XRP/USDT",
+            "--source",
+            "ccxt",
+            "--exchange",
+            "binance",
+            "--start",
+            "2015-01-01",
+            "--end",
+            "2026-06-31",
+        ],
+    )
+    assert r.exit_code == 2
+    assert "YYYY-MM-DD" in r.output and "out of range" in r.output
