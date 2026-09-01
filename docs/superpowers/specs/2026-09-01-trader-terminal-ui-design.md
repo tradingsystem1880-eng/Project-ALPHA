@@ -1,6 +1,6 @@
 # Trader Terminal UI — design spec
 
-Status: APPROVED by owner 2026-09-01 (design + palette + open items) · supersedes nothing (extends the Workstation program)
+Status: APPROVED by owner 2026-09-01 (design + palette + open items) · Phase 1 "Work" IMPLEMENTED 2026-09-02 (plan `docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md`; owner acceptance walkthrough and asset-master regeneration pending) · supersedes nothing (extends the Workstation program)
 Owner decisions and evidence: `docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md` (findings #1–#13, decisions D1–D7)
 Approved mockups: Claude Design canvas "ALPHA Crypto Terminal" (four artboards: Terminal, Strategy
 Performance Report, Maximised chart, Governance window)
@@ -198,6 +198,8 @@ datasets, reviewed assets recipe) · XRP/SOL reviewed natives + regenerated asse
 receipted).
 Acceptance: owner pulls XRP/USDT on Binance from the UI with no prior knowledge of formats or
 listing dates, sees a stored pair, and every failure message names the fix.
+**Status (2026-09-02): implemented (W1–W8, commits `ab2d55c`…`1097fc2`); the owner walkthrough of this
+acceptance and the receipted asset-master regeneration are still to be run by the owner.**
 
 **Phase 2 — Clean.** `display_name` for runs · Strategy Performance Report tree + summary table ·
 figure maximise + Save PNG/SVG/Copy · Governance window · status chip + Notes replace banners,

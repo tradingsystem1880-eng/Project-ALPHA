@@ -111,7 +111,7 @@
       "expected": ".claude/rules/alpha-cli.md (pull normalisation, first-bar), alpha-data.md (ccxt first_bar), alpha-web.md (DataManager, JobMonitor failure text) updated under gate.py ack; docs/BUILD-STATUS.md gains a dated Phase 1 record; the spec marks Phase 1 done; findings #1-#7 statuses updated with the fixing commit; this plan's slices marked done; full gate green including the 14-wheel smoke.",
       "rollback": "Docs-only; revert the doc commit.",
       "files": [".claude/rules/alpha-cli.md", ".claude/rules/alpha-data.md", ".claude/rules/alpha-web.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md", "docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md"],
-      "status": "pending"
+      "status": "done"
     }
   ],
   "tier_impact": ["protected", "dag", "determinism"],
@@ -231,6 +231,14 @@ Test-architect specification (2026-09-01), 31 tests; the numbers below are its i
   snapshots are CLI-only until the SPA's seven `=== 'reviewed-native-v1'` checks become
   "is-builtin" checks (Phase 2). Coin Metrics ids `xrp`/`sol` and the genesis `valid_from` dates
   are reviewed claims recorded in the code comment, not repo-evidenced fixtures.
+* **W8** — `alpha-data.md` gained a `crypto/asset_master.py` row (none existed) so the label-frozen
+  builtins are documented. The invariants-auditor's low finding (no `bias_guard` test for
+  `resolve_native`'s pre-genesis refusal) is owner-gated: `tests/bias_guards/` is protected and not
+  agent-ackable, so it is recorded in the findings log and BUILD-STATUS instead of added silently.
+  Process correction: the first pass rewrote the three rule files from a Python heredoc, which the
+  ack hooks do not see, and appended to v1 lines (breaking the relocation zero-loss test). The files
+  were restored from HEAD and re-edited through the Edit tool, one armed ack each, with every v1
+  line kept verbatim and the new facts on adjacent lines.
 
 ## DAG / look-ahead / determinism impact
 
