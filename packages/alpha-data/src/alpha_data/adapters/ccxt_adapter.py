@@ -17,6 +17,8 @@ _DAY_MS = 86_400_000
 _PAGE_LIMIT = 300  # coinbase caps fetch_ohlcv at 300 candles/call; page forward past it
 _TIMEFRAME_MS = {"1m": 60_000, "5m": 300_000, "1h": 3_600_000, "1d": _DAY_MS}
 SUPPORTED_CCXT_EXCHANGES = ("coinbase", "binance")
+# 2009-01-03 (Bitcoin genesis): no venue serves bars before it, so the listing scan starts here.
+_FIRST_BAR_FLOOR_MS = 1_230_940_800_000
 
 
 def _paginate_ohlcv(
@@ -200,3 +202,35 @@ class CCXTAdapter:
         if not clipped:
             raise DataError(f"ccxt returned no data for {symbol} {start}..{end}")
         return parse_ccxt_ohlcv(clipped, symbol)
+
+    def first_bar(self, symbol: str, *, timeframe: str = "1d") -> datetime:
+        """UTC open of the earliest daily bar the exchange serves for SYMBOL.
+
+        A listing-date probe, never a history read: page-sized windows are requested forward
+        from 2009 until the exchange yields a bar. Binance answers the first window with bars
+        from the listing date; Coinbase windows ``since`` and needs ~13 requests. ``since=0`` is
+        deliberately never sent -- it is falsy and some venues then return the *latest* bars.
+        Fails loud on an unknown pair, a bar earlier than requested, or no history; daily only
+        so the scan stays bounded (~22 requests).
+        """
+        import ccxt  # noqa: PLC0415
+
+        if timeframe != "1d":
+            raise DataError("first_bar supports only the 1d timeframe")
+        ex = getattr(ccxt, self._exchange)({"enableRateLimit": True})
+        if symbol not in ex.load_markets():
+            raise DataError(f"{self.name} lists no market {symbol}")
+        cursor = _FIRST_BAR_FLOOR_MS
+        now_ms = int(datetime.now(UTC).timestamp() * 1000)
+        while cursor <= now_ms:
+            rows = ex.fetch_ohlcv(symbol, timeframe=timeframe, since=cursor, limit=_PAGE_LIMIT)
+            if rows:
+                first_ms = int(rows[0][0])
+                if first_ms < cursor:
+                    raise DataError(
+                        f"{self.name} returned a {symbol} bar before the requested start; "
+                        "refusing to guess the listing date"
+                    )
+                return datetime.fromtimestamp(first_ms / 1000, tz=UTC)
+            cursor += _PAGE_LIMIT * _DAY_MS
+        raise DataError(f"{self.name} returned no history for {symbol}")

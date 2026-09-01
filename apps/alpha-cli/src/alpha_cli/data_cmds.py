@@ -160,6 +160,38 @@ def normalize_symbol(symbol: str, source: str) -> str:
     raise typer.BadParameter(accepted)
 
 
+@data_app.command("first-bar")
+def first_bar(
+    symbol: str,
+    source: str = "ccxt",
+    exchange: str = typer.Option(_DEFAULT_CCXT_EXCHANGE, help="CCXT exchange: coinbase or binance"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Report when SYMBOL was first listed on a CCXT exchange (read-only; needs network)."""
+    if source != "ccxt":
+        raise typer.BadParameter(
+            "first-bar is available only for --source ccxt", param_hint="--source"
+        )
+    symbol = normalize_symbol(symbol, source)
+    probe = getattr(_adapter(source, exchange), "first_bar", None)
+    if probe is None:
+        raise typer.BadParameter(f"the {source} adapter cannot report a first bar")
+    try:
+        first: datetime = probe(symbol)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_out:
+        payload = {
+            "symbol": symbol,
+            "exchange": exchange,
+            "first_bar_ts": first.isoformat(),
+            "timeframe": "1d",
+        }
+        typer.echo(json.dumps(payload, sort_keys=True))
+    else:
+        typer.echo(f"{symbol} on {exchange}: first daily bar {first.date()}")
+
+
 @data_app.command()
 def pull(
     symbol: str,
@@ -188,7 +220,15 @@ def pull(
         raise typer.BadParameter(f"--start/--end must be YYYY-MM-DD: {exc}") from exc
     if end_date < start_date:
         raise typer.BadParameter(f"--end {end_date} precedes --start {start_date}")
+    probe = getattr(adapter, "first_bar", None) if source == "ccxt" else None
     try:
+        if probe is not None:
+            first: datetime = probe(symbol)
+            if start_date < first.date():
+                raise DataError(
+                    f"No data for {symbol} on {exchange} before {first.date()} (first listed). "
+                    f"Start there? (--start {first.date()})"
+                )
         result = adapter.fetch(symbol, start_date, end_date)
         store = _store()
         if (

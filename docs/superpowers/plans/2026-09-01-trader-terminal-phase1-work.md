@@ -11,8 +11,8 @@
       "verified_by": "navigator read of .venv/lib/python3.12/site-packages/typer/core.py:26,203-208 and alpha_web/_catalog._cli_environment (allowlist, lines 30-31/60-77) on 2026-09-01; slice W1's env-scoping test pins it."
     },
     {
-      "statement": "ccxt `fetch_ohlcv(symbol, '1d', since=0, limit=1)` returns the earliest available daily bar on Binance and Coinbase, so the first-listed date needs no bar history download.",
-      "verified_by": "UNVERIFIED until slice W3's @pytest.mark.network live test passes for XRP/USDT (binance) and XRP/USD (coinbase); contingency in the prose if an exchange ignores since=0."
+      "statement": "A pair's first daily bar can be found without downloading history by requesting 300-bar windows forward from 2009-01-03: Binance answers the first window with bars from the listing date, Coinbase windows `since` and needs about 13 requests. `since=0` must never be sent (it is falsy; Coinbase then returns the latest bars).",
+      "verified_by": "W3 live @pytest.mark.network tests passed on 2026-09-01 for XRP/USDT (binance -> 2018-05-04) and XRP/USD (coinbase -> 2019-02-26); the original since=0 probe was tried first and returned 2025-09-17 on Coinbase, so it was removed."
     },
     {
       "statement": "All `alpha data *` commands except repair/rollback-promotion classify as `safe` for the web job launcher, so no launch allowlist changes are needed; the Estimate call is a synchronous `_run_json` projection like /api/symbols, not a job.",
@@ -71,7 +71,7 @@
       "expected": "`alpha data first-bar xrp-usdt --source ccxt --exchange binance --json` prints {symbol, exchange, first_bar_ts, timeframe} without downloading history; unknown pair or empty history fails loud; `data pull` with a start before the first bar exits 2 with `No data before <date> (first listed). Start there?` and writes nothing; a start exactly at the first bar succeeds; non-ccxt sources skip the probe; the live network test confirms Binance and Coinbase honour since=0.",
       "rollback": "Revert ccxt_adapter.py, data_cmds.py and the tests; the store format is untouched.",
       "files": ["packages/alpha-data/src/alpha_data/adapters/ccxt_adapter.py", "apps/alpha-cli/src/alpha_cli/data_cmds.py", "tests/unit/test_ccxt_first_bar.py", "tests/integration/test_data_cli.py", "tests/integration/test_ccxt_live.py"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "W4 web first-bar projection route and generated API types",
