@@ -58,4 +58,12 @@ describe('job progress model', () => {
     expect(view.etaLabel).toBe('complete')
     expect(view.fraction).toBe(1)
   })
+  it('shows the server failure message as the failed row detail', () => {
+    const message = 'Invalid value: --start/--end must be YYYY-MM-DD: day is out of range for month'
+    const view = jobProgressView(
+      job({ status: 'failed', progress_mode: 'terminal', finished_at: 1_083, current_step: message }),
+      1_100,
+    )
+    expect(view.currentStep).toBe(message)
+  })
 })

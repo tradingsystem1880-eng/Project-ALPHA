@@ -55,7 +55,7 @@
       "expected": "A failed `data pull` job's current_step, summary reason, and SSE failed payload equal the plain Typer message (e.g. `Invalid value: --start/--end must be YYYY-MM-DD: day is out of range for month`); no box-drawing glyphs; running jobs unchanged; one ANSI stripper shared by _invoke and _catalog.",
       "rollback": "Revert the two alpha_web modules and their tests; no data or contract change.",
       "files": ["apps/alpha-web/src/alpha_web/_invoke.py", "apps/alpha-web/src/alpha_web/_catalog.py", "tests/unit/test_web_invoke.py", "tests/integration/test_web_api_jobs.py", "apps/alpha-web/frontend/src/panels/jobProgress.ts", "apps/alpha-web/frontend/src/panels/jobProgress.test.ts"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "W2 CLI symbol normalisation and date-order validation in data pull",

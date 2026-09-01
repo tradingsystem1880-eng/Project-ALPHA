@@ -67,6 +67,9 @@ def _cli_environment(
     allowed = _PROCESS_ENV_NAMES | _DATA_ENV_NAMES | _credential_names_for_command(args)
     environment = {name: value for name, value in os.environ.items() if name in allowed}
     environment["ALPHA_DATA_DIR"] = str(data_dir)
+    # Plain Click errors (`Error: ...`), never Rich panels whose box borders would become the
+    # job's failure reason.
+    environment["TYPER_USE_RICH"] = "0"
     if run_context is not None:
         environment[RUN_CONTEXT_ENV] = json.dumps(
             run_context,
