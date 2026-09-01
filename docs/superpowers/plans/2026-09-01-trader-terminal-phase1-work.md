@@ -103,7 +103,7 @@
       "expected": "with_reviewed_native_assets() gains XRP (coingecko `ripple`) and SOL (coingecko `solana`) under a new `reviewed-native-v2` builtin; every fixture stamped reviewed-native-v1 still resolves and re-verifies byte-for-byte; `alpha crypto-data asset XRP --as-of ... --json` and `GET /api/crypto-data/assets/XRP` resolve (was 422); DOGE still fails with the reviewed-mapping message; the v2 master hash is pinned by a golden; the owner then regenerates the cross-provider asset master with the existing `asset-master-create` and records the receipt in the findings log.",
       "rollback": "Revert asset_master.py, crypto_data_cmds.py and tests; no immutable bytes are rewritten because v1 is never edited.",
       "files": ["packages/alpha-data/src/alpha_data/crypto/asset_master.py", "apps/alpha-cli/src/alpha_cli/crypto_data_cmds.py", "tests/unit/test_crypto_asset_master.py", "tests/integration/test_crypto_data_cli.py", "tests/integration/test_web_api_crypto_data.py", "tests/fixtures/crypto/**"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "W8 docs honesty, rule updates, full gate",
@@ -223,6 +223,14 @@ Test-architect specification (2026-09-01), 31 tests; the numbers below are its i
   `explore-screen` baselines were re-snapshotted with `--update-snapshots=all` (the tab-strip change
   sat under the 2 % pixel tolerance). Scratchpad-only design files (`$S/…`, `*.dc.html`) are not
   repo edits.
+* **W7** — `with_reviewed_native_assets(label)` keeps its v1 default so every existing caller
+  (research binding, crowding, hedged basis) is byte-identical; the v1 digest was pinned from the
+  committed tree *before* the change (`tests/fixtures/crypto/reviewed_native_asset_masters.json`).
+  `asset-master-create` now seeds from v2, so the next owner regeneration includes XRP/SOL. The web
+  `snapshot-create` request regex still accepts only `reviewed-native-v1|<hex>`; v2-stamped
+  snapshots are CLI-only until the SPA's seven `=== 'reviewed-native-v1'` checks become
+  "is-builtin" checks (Phase 2). Coin Metrics ids `xrp`/`sol` and the genesis `valid_from` dates
+  are reviewed claims recorded in the code comment, not repo-evidenced fixtures.
 
 ## DAG / look-ahead / determinism impact
 

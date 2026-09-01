@@ -64,7 +64,13 @@ from alpha_cli.research_crypto_strategy import load_hedged_basis_observations
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_data.adapters.ccxt_adapter import CCXTAdapter, parse_ccxt_ohlcv
-from alpha_data.crypto.asset_master import AssetMaster, build_cross_provider_asset_master
+from alpha_data.crypto.asset_master import (
+    REVIEWED_NATIVE_LABELS,
+    REVIEWED_NATIVE_V1,
+    REVIEWED_NATIVE_V2,
+    AssetMaster,
+    build_cross_provider_asset_master,
+)
 from alpha_data.crypto.capabilities import project_provider_capabilities
 from alpha_data.crypto.contracts import (
     FAMILY_AUTHORITIES,
@@ -193,7 +199,7 @@ _OBSERVATIONS_PER_DAY: Final = {
     "1m": 1_440,
     "tick": 100_000,
 }
-_NATIVE_NETWORKS: Final = {"BTC": "bitcoin", "ETH": "ethereum"}
+_NATIVE_NETWORKS: Final = {"BTC": "bitcoin", "ETH": "ethereum", "XRP": "xrp", "SOL": "solana"}
 _SHA256: Final = re.compile(r"^[0-9a-f]{64}$")
 _CASE_BOUND_EVENT_FAMILIES: Final = frozenset({"derivative_trades", "derivative_book_snapshots"})
 
@@ -511,7 +517,7 @@ def _verify_snapshot_members(
 ) -> tuple[CryptoSnapshotV1, dict[str, CryptoQualityReportV1], CryptoResearchEligibilityV1, bool]:
     """Reverify one snapshot's bytes, identity, and member scope; report scope eligibility."""
     snapshot = _read_snapshot(snapshot_id)
-    if snapshot.asset_master_version != "reviewed-native-v1":
+    if snapshot.asset_master_version not in REVIEWED_NATIVE_LABELS:
         master = _read_asset_master(snapshot.asset_master_version)
         if master.version != snapshot.asset_master_version:
             raise DataError("crypto snapshot asset-master identity is mismatched")
@@ -623,8 +629,8 @@ def _crypto_crowding_requirements(
 
 def _snapshot_asset_master(snapshot: CryptoSnapshotV1) -> AssetMaster:
     return (
-        AssetMaster.with_reviewed_native_assets()
-        if snapshot.asset_master_version == "reviewed-native-v1"
+        AssetMaster.with_reviewed_native_assets(snapshot.asset_master_version)
+        if snapshot.asset_master_version in REVIEWED_NATIVE_LABELS
         else _read_asset_master(snapshot.asset_master_version)
     )
 
@@ -1163,7 +1169,7 @@ def asset(
         )
     try:
         instant = datetime.fromisoformat(as_of.replace("Z", "+00:00"))
-        identity = AssetMaster.with_reviewed_native_assets().resolve_native(
+        identity = AssetMaster.with_reviewed_native_assets(REVIEWED_NATIVE_V2).resolve_native(
             network=network, as_of=instant
         )
     except (ValueError, DataError) as exc:
@@ -3771,12 +3777,13 @@ def asset_masters(json_out: bool = typer.Option(False, "--json", help="emit JSON
     try:
         items: list[dict[str, object]] = [
             {
-                "asset_master_version": "reviewed-native-v1",
-                "identity_count": 2,
+                "asset_master_version": label,
+                "identity_count": len(AssetMaster.with_reviewed_native_assets(label).identities),
                 "contract_identity_count": 0,
                 "builtin": True,
                 "state": "verified",
             }
+            for label in REVIEWED_NATIVE_LABELS
         ]
         if _asset_master_root().exists():
             for path in sorted(_asset_master_root().glob("*.json")):
@@ -3815,7 +3822,7 @@ def snapshot_create(
         list[str], typer.Option("--manifest-id", help="normalized manifest id")
     ],
     asset_master_version: str = typer.Option(
-        "reviewed-native-v1", help="exact frozen asset-master version"
+        REVIEWED_NATIVE_V1, help="exact frozen asset-master version"
     ),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
@@ -3824,7 +3831,7 @@ def snapshot_create(
         raise typer.BadParameter("--manifest-id must contain unique normalized manifests")
     try:
         store = _bulk_store()
-        if asset_master_version != "reviewed-native-v1":
+        if asset_master_version not in REVIEWED_NATIVE_LABELS:
             _read_asset_master(asset_master_version)
         resolved = tuple(_normalized_member(store, manifest_id) for manifest_id in manifest_ids)
         snapshot = CryptoSnapshotV1.create(

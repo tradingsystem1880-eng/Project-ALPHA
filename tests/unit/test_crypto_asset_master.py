@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import polars as pl
 import pytest
 
 from alpha_core import DataError
 from alpha_data.crypto.asset_master import (
+    REVIEWED_NATIVE_V1,
+    REVIEWED_NATIVE_V2,
     AssetMaster,
     build_cross_provider_asset_master,
     canonical_network,
@@ -85,6 +89,38 @@ def test_reviewed_native_mapping_resolves_btc_and_eth_explicitly() -> None:
     instant = datetime(2026, 1, 1, tzinfo=UTC)
     assert master.resolve_native(network="bitcoin", as_of=instant).coingecko_id == "bitcoin"
     assert master.resolve_native(network="ethereum", as_of=instant).coingecko_id == "ethereum"
+
+
+_GOLDEN_DIGESTS = json.loads(
+    (Path(__file__).parents[1] / "fixtures/crypto/reviewed_native_asset_masters.json").read_text()
+)
+
+
+def test_reviewed_native_v1_bytes_are_frozen() -> None:
+    master = AssetMaster.with_reviewed_native_assets()
+    assert master.version == _GOLDEN_DIGESTS[REVIEWED_NATIVE_V1]
+    assert [identity.coingecko_id for identity in master.identities] == ["bitcoin", "ethereum"]
+
+
+def test_reviewed_native_v2_adds_xrp_and_sol_without_touching_v1() -> None:
+    v1 = AssetMaster.with_reviewed_native_assets()
+    v2 = AssetMaster.with_reviewed_native_assets(REVIEWED_NATIVE_V2)
+    assert v2.version == _GOLDEN_DIGESTS[REVIEWED_NATIVE_V2]
+    instant = datetime(2024, 1, 1, tzinfo=UTC)
+    assert v2.resolve_native(network="xrp", as_of=instant).coingecko_id == "ripple"
+    assert v2.resolve_native(network="solana", as_of=instant).coingecko_id == "solana"
+    for network in ("bitcoin", "ethereum"):
+        assert v2.resolve_native(network=network, as_of=instant) == v1.resolve_native(
+            network=network, as_of=instant
+        )
+    # Point in time: Solana did not exist in 2019; the identity must not resolve early.
+    with pytest.raises(DataError, match="unavailable"):
+        v2.resolve_native(network="solana", as_of=datetime(2019, 1, 1, tzinfo=UTC))
+
+
+def test_unknown_reviewed_native_label_fails_loud() -> None:
+    with pytest.raises(DataError, match="reviewed native"):
+        AssetMaster.with_reviewed_native_assets("reviewed-native-v9")
 
 
 def test_provider_network_ids_are_explicitly_mapped_not_guessed() -> None:
