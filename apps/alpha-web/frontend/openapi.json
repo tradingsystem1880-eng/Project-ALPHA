@@ -6275,6 +6275,35 @@
         "title": "FigurePanelMeta",
         "type": "object"
       },
+      "FirstBar": {
+        "additionalProperties": false,
+        "properties": {
+          "exchange": {
+            "title": "Exchange",
+            "type": "string"
+          },
+          "first_bar_ts": {
+            "title": "First Bar Ts",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "timeframe": {
+            "title": "Timeframe",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "exchange",
+          "first_bar_ts",
+          "timeframe"
+        ],
+        "title": "FirstBar",
+        "type": "object"
+      },
       "ForecastHistoryBar": {
         "additionalProperties": false,
         "properties": {
@@ -20769,6 +20798,60 @@
         "summary": "Storage Verify",
         "tags": [
           "crypto-data"
+        ]
+      }
+    },
+    "/api/data/first-bar": {
+      "get": {
+        "description": "The venue's earliest daily bar for ``symbol`` (relays ``alpha data first-bar --json``).",
+        "operationId": "first_bar_api_data_first_bar_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exchange",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Exchange",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirstBar"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "First Bar",
+        "tags": [
+          "catalog"
         ]
       }
     },

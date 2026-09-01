@@ -797,6 +797,13 @@ class Symbols(StrictModel):
     symbols: list[str]
 
 
+class FirstBar(StrictModel):
+    symbol: str
+    exchange: str
+    first_bar_ts: str
+    timeframe: str
+
+
 class JobStatus(StrictModel):
     job_id: str
     status: str

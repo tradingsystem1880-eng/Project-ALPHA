@@ -68,18 +68,18 @@
     {
       "title": "W3 CCXTAdapter.first_bar, alpha data first-bar --json, and the pre-listing guard",
       "verify": "uv run pytest -q tests/unit/test_ccxt_first_bar.py tests/integration/test_data_cli.py -m \"not network\" && uv run pytest -q tests/integration/test_ccxt_live.py -m network -k first_bar && uv run python scripts/gate.py fast",
-      "expected": "`alpha data first-bar xrp-usdt --source ccxt --exchange binance --json` prints {symbol, exchange, first_bar_ts, timeframe} without downloading history; unknown pair or empty history fails loud; `data pull` with a start before the first bar exits 2 with `No data before <date> (first listed). Start there?` and writes nothing; a start exactly at the first bar succeeds; non-ccxt sources skip the probe; the live network test confirms Binance and Coinbase honour since=0.",
+      "expected": "`alpha data first-bar xrp-usdt --source ccxt --exchange binance --json` prints {symbol, exchange, first_bar_ts, timeframe} without downloading history; unknown pair or empty history fails loud; `data pull` with a start before the first bar exits 2 with `No data before <date> (first listed). Start there?` and writes nothing; a start exactly at the first bar succeeds; non-ccxt sources skip the probe; the live network test finds XRP's listing on Binance and Coinbase by the forward window scan (since=0 is never sent).",
       "rollback": "Revert ccxt_adapter.py, data_cmds.py and the tests; the store format is untouched.",
       "files": ["packages/alpha-data/src/alpha_data/adapters/ccxt_adapter.py", "apps/alpha-cli/src/alpha_cli/data_cmds.py", "tests/unit/test_ccxt_first_bar.py", "tests/integration/test_data_cli.py", "tests/integration/test_ccxt_live.py"],
       "status": "done"
     },
     {
       "title": "W4 web first-bar projection route and generated API types",
-      "verify": "uv run pytest -q tests/integration/test_web_api_catalog.py -m \"not network\" && uv run python scripts/generate_web_openapi.py --check && uv run python scripts/check_openapi_operations.py && cd apps/alpha-web/frontend && npm run generate:api && git diff --exit-code src/api/generated && cd ../../.. && uv run python scripts/gate.py fast",
-      "expected": "`GET /api/data/first-bar?symbol=XRP/USDT&source=ccxt&exchange=binance` relays `alpha data first-bar --json` through _run_json with a strict FirstBar response model; CLI errors map to the existing request_invalid envelope with the plain message; OpenAPI and generated TypeScript are regenerated and clean; alpha_web imports no ccxt.",
+      "verify": "uv run pytest -q tests/integration/test_web_api_catalog.py -m \"not network\" && uv run python scripts/generate_web_openapi.py --check && uv run python scripts/check_openapi_operations.py && cd apps/alpha-web/frontend && h=$(shasum src/api/generated.ts) && npm run generate:api && [ \"$h\" = \"$(shasum src/api/generated.ts)\" ] && npm run lint -- --deny-warnings && cd ../../.. && uv run python scripts/gate.py fast",
+      "expected": "`GET /api/data/first-bar?symbol=XRP/USDT&exchange=binance` relays `alpha data first-bar --source ccxt --json` (the route fixes the source; first-bar is ccxt-only) through _run_json with a strict FirstBar response model; CLI errors map to the existing request_invalid envelope with the plain message; OpenAPI and generated TypeScript are regenerated and clean; alpha_web imports no ccxt.",
       "rollback": "Revert the router, model, client method and regenerated contracts.",
-      "files": ["apps/alpha-web/src/alpha_web/api/catalog.py", "apps/alpha-web/src/alpha_web/api/models.py", "apps/alpha-web/src/alpha_web/_catalog.py", "apps/alpha-web/frontend/src/api/client.ts", "apps/alpha-web/frontend/src/api/generated/**", "tests/integration/test_web_api_catalog.py", "docs/openapi/**"],
-      "status": "pending"
+      "files": ["apps/alpha-web/src/alpha_web/api/catalog.py", "apps/alpha-web/src/alpha_web/api/models.py", "apps/alpha-web/src/alpha_web/_catalog.py", "apps/alpha-web/frontend/src/api/client.ts", "apps/alpha-web/frontend/src/api/types.ts", "apps/alpha-web/frontend/src/api/generated.ts", "apps/alpha-web/frontend/openapi.json", "tests/integration/test_web_api_catalog.py", "docs/governance/openapi-operation-classification.json", "docs/governance/capability-authority-matrix.md"],
+      "status": "in_progress"
     },
     {
       "title": "W5 profile setting and the pure Data Manager model",

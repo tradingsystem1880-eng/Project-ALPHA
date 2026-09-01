@@ -531,6 +531,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/data/first-bar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * First Bar
+         * @description The venue's earliest daily bar for ``symbol`` (relays ``alpha data first-bar --json``).
+         */
+        get: operations["first_bar_api_data_first_bar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/development/jobs": {
         parameters: {
             query?: never;
@@ -5831,6 +5851,17 @@ export interface components {
             y_label: string;
             /** Y Unit */
             y_unit: string;
+        };
+        /** FirstBar */
+        FirstBar: {
+            /** Exchange */
+            exchange: string;
+            /** First Bar Ts */
+            first_bar_ts: string;
+            /** Symbol */
+            symbol: string;
+            /** Timeframe */
+            timeframe: string;
         };
         /** ForecastHistoryBar */
         ForecastHistoryBar: {
@@ -11166,6 +11197,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CryptoStorageVerifyResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    first_bar_api_data_first_bar_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                exchange: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FirstBar"];
                 };
             };
             /** @description Stable, redacted Workstation error */
