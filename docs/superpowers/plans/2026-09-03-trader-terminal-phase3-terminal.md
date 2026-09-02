@@ -96,7 +96,7 @@
       "expected": "mdiModel (open/activate/close with stable insertion order, keyed documents such as report:<run_id>, closing the last leaves active null, unknown close throws, deterministic), menuModel (the eleven menus in spec order; every /api/commands entry assigned to exactly one menu, unmapped group throws; Window lists open documents; Governance under View), toolbarModel (M15 H1 H4 D1 W1 with disabled + reason for unavailable timeframes; windowTitle 'ALPHA Terminal — <Profile> — [<symbol · venue · tf>]'), statusBarModel (segments in spec order; injected clock; SSD segment from storageRow, never a cached ready; hovered bar null -> '—', NaN throws) — all in the vitest allow-list.",
       "rollback": "Delete the four model files and tests.",
       "files": ["apps/alpha-web/frontend/src/shell/mdiModel.ts", "apps/alpha-web/frontend/src/shell/mdiModel.test.ts", "apps/alpha-web/frontend/src/shell/menuModel.ts", "apps/alpha-web/frontend/src/shell/menuModel.test.ts", "apps/alpha-web/frontend/src/shell/toolbarModel.ts", "apps/alpha-web/frontend/src/shell/toolbarModel.test.ts", "apps/alpha-web/frontend/src/shell/statusBarModel.ts", "apps/alpha-web/frontend/src/shell/statusBarModel.test.ts", "apps/alpha-web/frontend/vitest.config.ts"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "T6 Market Watch and Navigator models and panels; Governance glossary filtered by profile tags",
@@ -236,3 +236,9 @@ rewrite under `gate.py ack`, docs, full gate.
   `initialFamily`), crowding opens the research cockpit, and the Governance document is the dialog's
   page tree without the modal (`GovernanceDocument`), which moved that Governance.tsx split from
   T7a into T4.
+* **T5** — a command's group is the first word of its catalog id (`backtest run` → `backtest`);
+  `GROUP_MENU` maps the twenty-three served groups and `tests/unit/test_web_menu_groups.py`
+  (added, not in the plan's file list) reads that table out of the TypeScript source and fails
+  when the served catalog gains or loses a group, so the runtime throw can never be reached by a
+  CLI change alone. The venue in the title bar comes from the profile manifest (`venueLabel`)
+  because the linked context carries symbol and timeframe but no venue.
