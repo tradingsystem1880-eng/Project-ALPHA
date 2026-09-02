@@ -1,3 +1,5 @@
+**Delivery state:** Completed (2026-09-02; C1–C8 committed on `feat/trader-terminal-phase1-work`).
+
 # Trader Terminal — Phase 2 "Clean": a report a trader can read, governance out of the way
 
 ```json
@@ -114,7 +116,7 @@
       "expected": ".claude/rules/alpha-web.md gains rows for display_name, the report tree, FigureOverlay, Governance pane, status chip and jobs table (Edit tool after gate.py ack, v1 lines verbatim); docs/BUILD-STATUS.md gains the dated Phase 2 record; the spec marks Phase 2 implemented; findings #8-#12 carry their fixing commits; every slice is done; the full gate is green including the 14-wheel smoke.",
       "rollback": "Docs-only; revert the doc commit.",
       "files": [".claude/rules/alpha-web.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md", "docs/superpowers/plans/2026-09-02-trader-terminal-phase2-clean.md"],
-      "status": "pending"
+      "status": "done"
     }
   ],
   "tier_impact": ["protected", "dag"],
@@ -206,6 +208,12 @@ Test-architect specification (2026-09-02, 40 items; the numbers below are its it
 
 ## Deviations recorded during /implement
 
+* **C2** — the Evidence Hub keeps a flat `RunFigures` list (the old self-fetching `FigureReport` rail is gone); the Summary rows are `not recorded` for win rate / profit factor / exposure / max-DD date because no manifest carries them.
+* **C3** — the model is `figureExport.ts` (names, copy capability, `notesVisible`), not a reducer; terse mode is toggled through the settings menu in the e2e because `preparePage` clears localStorage after any earlier init script.
+* **C4** — Governance is a shell-level `role=dialog` opened from the topbar ⚖ button (Esc closes, focus returns); the Operate Glossary foot is removed and the unchanged `Glossary` panel renders inside the dialog **unfiltered** (no `GLOSSARY` entry carries a profile tag; adding tags is out of scope). Only the four `.sandbox-banner` stripes, the Development Center `ResearchGateLockNotice` and the Glossary foot moved; the Strategy Lab and Pipeline lock notices (Build affordances) and contextual `role=note` notices that name a next action stay. Two cockpit e2e assertions on the research-sandbox sentence now look inside the dialog.
+* **C5** — the status chip is the deep link from a locked Development Center to the holding case (`Research gate open` → Governance → Open research case); `RESEARCH GATE OPEN` counts use `exact: true` because `getByText` is a case-insensitive substring match; at ≤1280px the brand sub-line and the Governance label hide so no topbar control is obscured (axe target-size).
+* **C6** — the model is `jobTableModel.ts` (`jobRows`), `jobProgress.ts` unchanged; the running/failed e2e use row/cell locators.
+* **C7** — the acceptance test also asserts no `.research-gate-lock` and no `.glossary` on any screen; `role=note` is not asserted (see C4). All twelve baselines were re-snapshotted byte-identical after C6.
 * **C1** — the rail filter matches `display_name` inline (no new model function; `runBrowserModel.test.ts` does not exist, the existing `RunBrowser.test.ts` covers the model). `v3Models.test.ts` builds typed `RunDetail` fixtures and gained the field.
 
 ## DAG / look-ahead / determinism impact

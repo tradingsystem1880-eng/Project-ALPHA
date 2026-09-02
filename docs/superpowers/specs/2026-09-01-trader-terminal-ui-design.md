@@ -1,6 +1,6 @@
 # Trader Terminal UI — design spec
 
-Status: APPROVED by owner 2026-09-01 (design + palette + open items) · Phase 1 "Work" IMPLEMENTED 2026-09-02 (plan `docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md`; owner acceptance walkthrough and asset-master regeneration pending) · supersedes nothing (extends the Workstation program)
+Status: APPROVED by owner 2026-09-01 (design + palette + open items) · Phase 1 "Work" IMPLEMENTED 2026-09-02 (plan `docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md`; owner acceptance walkthrough and asset-master regeneration pending) · Phase 2 "Clean" IMPLEMENTED 2026-09-02 (plan `docs/superpowers/plans/2026-09-02-trader-terminal-phase2-clean.md`; owner walkthrough pending) · supersedes nothing (extends the Workstation program)
 Owner decisions and evidence: `docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md` (findings #1–#13, decisions D1–D7)
 Approved mockups: Claude Design canvas "ALPHA Crypto Terminal" (four artboards: Terminal, Strategy
 Performance Report, Maximised chart, Governance window)
@@ -206,6 +206,10 @@ figure maximise + Save PNG/SVG/Copy · Governance window · status chip + Notes 
 band and glossary footer · Toolbox table for jobs.
 Acceptance: no hazard stripe or governance paragraph on a working screen; every figure opens
 full-screen; the run list reads as strategy · timeframe · symbol · dates.
+**Status (2026-09-02): implemented (C1–C8, commits `bfda12a`…`a2569a0`); the Governance window is a
+shell-level dialog reached from the topbar ⚖ button and the status chip rather than an Operate pane;
+the acceptance sentence is proven by the Playwright test "Phase 2 acceptance"; the owner walkthrough
+is still to be run.**
 
 **Phase 3 — Terminal.** `terminal_black.json` theme + fonts + bevels · title/menu/toolbar/status
 anatomy · Market Watch + Navigator + Toolbox + Data Manager docks · MDI documents + tabs · profile
