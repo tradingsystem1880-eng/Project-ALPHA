@@ -4281,7 +4281,16 @@ textarea.field:focus {
 .figure-rail a.active { color: var(--ink); border-left-color: var(--accent); background: var(--accent-soft); }
 .figure-rail a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .figure-rail-count { color: var(--muted); font-variant-numeric: tabular-nums; }
-.figure-rail-foot { margin-top: var(--pad); font-size: calc(var(--font-size) - 2px); }
+.report-tree ul[role='group'] { margin: 0 0 var(--pad-sm); }
+.report-tree .tree-group { display: block; padding: 6px var(--pad-sm) 2px; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.report-tree .tree-leaf { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 4px var(--pad-sm) 4px calc(var(--pad-sm) * 2); border-left: 2px solid transparent; color: var(--ink-dim); font-size: calc(var(--font-size) - 1px); cursor: pointer; }
+.report-tree .tree-leaf:hover { color: var(--ink); background: var(--panel-2); }
+.report-tree .tree-leaf.active { color: var(--ink); border-left-color: var(--accent); background: var(--accent-soft); }
+.report-tree .tree-leaf.empty { color: var(--muted); font-style: italic; }
+.report-tree .tree-leaf:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.summary-table { max-width: 640px; margin: var(--pad); }
+.summary-table caption { text-align: left; padding: 0 0 var(--pad-sm); font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.summary-table td.k { color: var(--muted); width: 40%; }
 
 .figure-scroll { overflow-y: auto; padding: var(--pad) var(--pad) 40vh; min-height: 0; }
 .figure-section { scroll-margin-top: var(--pad); }
@@ -4537,16 +4546,6 @@ html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
   border-left: 2px solid var(--gold); background: var(--panel);
   color: var(--gold); font-size: calc(var(--font-size) - 1px);
 }
-.run-outcome-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 1px;
-  margin: var(--pad);
-  border: 1px solid var(--line);
-  background: var(--line);
-}
-.run-outcome-summary > div { padding: var(--pad-sm); background: var(--panel); }
-.run-outcome-summary p { margin: 4px 0 0; }
 .compare-table td.best { color: var(--up); }
 .compare-figures { margin-top: var(--pad); }
 .compare-figure-pick { display: flex; align-items: center; gap: var(--pad-sm); margin-bottom: var(--pad); }

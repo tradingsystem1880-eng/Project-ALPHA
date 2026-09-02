@@ -66,7 +66,7 @@
       "expected": "The Results screen shows one report window titled by display_name with a left tree (Strategy Analysis: Summary · Ratios · Equity & drawdown; Trade Analysis: List of trades · P&L distribution · Run-up/drawdown; Periodical Analysis; Robustness: Walk-forward · Shuffled-return null · Deflated Sharpe · Monte Carlo paths; Settings & data) mapped 1:1 onto the existing figure sections, gates, trades and stress-test views by a pure reportModel (sections that have no artifacts are shown disabled with the reason, never hidden); Summary is a key/value table from the manifest (net profit, CAGR, Sharpe, deflated Sharpe when present, max drawdown, volatility, trades, win rate/profit factor from the native tearsheet when available, snapshot, period, verdict); the five-column outcome band is gone and both watermark banners collapse into one compact chip in the report title bar with the full text as its title; the results-screen baseline is re-snapshotted deliberately.",
       "rollback": "Restore rundetail/index.tsx, FigureReport.tsx and the previous baselines; the API is untouched by this slice.",
       "files": ["apps/alpha-web/frontend/src/panels/rundetail/**", "apps/alpha-web/frontend/src/panels/FigureReport.tsx", "apps/alpha-web/frontend/src/panels/reportModel.ts", "apps/alpha-web/frontend/src/panels/reportModel.test.ts", "apps/alpha-web/frontend/src/index.css", "apps/alpha-web/frontend/vitest.config.ts", "apps/alpha-web/frontend/e2e/**", "apps/alpha-web/src/alpha_web/static/app/**"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "C3 figure maximise with Save PNG / Save SVG / Copy, Esc restore, prose behind Notes",
@@ -162,8 +162,30 @@ one conventional commit.
 
 ## Test plan
 
-Test-architect specification (2026-09-02; numbering is its items — filled in when its report
-lands, see the "Test-architect items" subsection appended by /implement before C1 starts).
+Test-architect specification (2026-09-02, 40 items; the numbers below are its items).
+
+* C1 → #1–#9 (backend display_name, contracts, typed fixtures, rail). Deviation accepted: the
+  period comes from the equity curve's first/last bar (lazy min/max, mtime-cached) because
+  backtest manifests carry no dates; validate manifests' `metadata.first_ts/last_ts` are a
+  cheaper source to prefer when present (follow-up noted in C8).
+* C2 → #10–#15 (`reportModel.test.ts`: five spec groups in order, every catalogue figure in exactly
+  one leaf, empty leaves present and marked, Summary rows only from recorded manifest values —
+  win rate / profit factor / exposure / max-DD date are `not recorded`, never client arithmetic —
+  one watermark chip; Playwright tree + summary + no band/banner/tabs).
+* C3 → #16–#19 (`figureMaximiseModel.test.ts`: open/escape reducer, content-addressed export urls
+  and filenames, notes verbatim in both explain modes; Playwright dblclick → dialog → Copy stub →
+  Escape restores focus; prose attached before/after, visible only with Notes).
+* C4/C5 → #20–#32 (settings `notes` per panel; `statusChipModel`; `governanceModel` seven pages,
+  overrides verbatim, storage via storageRow, glossary profile tags, authority rows ⊆ projection
+  keys; `screens.test` no Glossary pane/foot; Playwright Governance dialog, no stripes/locks/footer
+  on working screens, watermark on three surfaces rewritten stronger (count 2 then 3, never
+  `.first()`), gate-lock test rewritten with the chip as the deep link, Notes persists).
+  Adjustment to the plan block: Governance is a shell-level role=dialog opened from the topbar
+  button (Esc closes), not an Operate pane; the Operate Glossary foot is removed.
+* C6 → #33–#36 (`jobTableModel.test.ts`: running-first ordering, exact relay of current_step;
+  running/failed e2e rewritten with row/cell locators, `getByTitle` + box-glyph checks kept).
+* C7 → #37 re-snapshot all twelve baselines once the shell chip lands; acceptance test.
+* Markers: **no `bias_guard`**, no `network` (#38); vitest allow-list gains the five models (#39).
 
 * C1 → Python: `tests/integration/test_web_api_runs.py` — display_name with curve, without curve,
   with `symbols` list, activity event carries it; contract test regenerated. TS: `runBrowserModel`

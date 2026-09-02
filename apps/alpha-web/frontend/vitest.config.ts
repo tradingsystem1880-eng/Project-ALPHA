@@ -23,6 +23,7 @@ export default defineConfig({
         'src/panels/mlTearsheetModel.ts',
         'src/panels/paperModel.ts',
         'src/panels/portfolioModels.ts',
+        'src/panels/reportModel.ts',
         'src/panels/researchBacklogModel.ts',
         'src/panels/researchCockpitModel.ts',
         'src/panels/researchDataModel.ts',

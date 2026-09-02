@@ -13,7 +13,7 @@ import { usePanelLinked } from '../context/usePanelLinked'
 import { stateChipClass } from './researchChipModel'
 import { headlineBoard } from './researchHeadlineModel'
 import { HypothesisCardView, ScorecardDetail, ScorecardStrip } from './researchViews'
-import { FigureReport } from './FigureReport'
+import { RunFigures } from './FigureReport'
 
 type SectionId = keyof ResearchEvidenceHubSections
 
@@ -345,7 +345,7 @@ function SectionBody({
       return (
         <div className="research-figure-runs">
           {[...new Set(runs)].map((runId) => (
-            <FigureReport key={runId} runId={runId} />
+            <RunFigures key={runId} runId={runId} />
           ))}
         </div>
       )

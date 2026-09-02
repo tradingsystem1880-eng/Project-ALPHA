@@ -2914,6 +2914,20 @@ test('legacy trace rerun opens the governed Development Center', async ({ page }
   await expect(page.getByText(/panel crashed/i)).toHaveCount(0)
 })
 
+test('the run report is a tree with a summary table and one watermark chip', async ({ page }) => {
+  await preparePage(page, { researchGateOverride: true })
+  await page.getByRole('navigation', { name: 'Library' }).locator('.library-row').first().click()
+  const tree = page.getByRole('tree', { name: 'Report sections' })
+  await expect(tree).toBeVisible()
+  await expect(tree.locator(':scope > li')).toHaveCount(5)
+  await expect(page.getByRole('table').filter({ hasText: 'Summary — what this run recorded' })).toBeVisible()
+  await expect(page.locator('.run-outcome-summary')).toHaveCount(0)
+  await expect(page.locator('.rg-watermark-banner')).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Stress test' })).toHaveCount(0)
+  await expect(page.locator('.rg-watermark-chip')).toHaveText(RESEARCH_GATE_WATERMARK)
+  await expectReleaseAccessibility(page)
+})
+
 test('research-gate override watermark reaches provider governance and run results', async ({ page }) => {
   await preparePage(page, { researchGateOverride: true })
 
