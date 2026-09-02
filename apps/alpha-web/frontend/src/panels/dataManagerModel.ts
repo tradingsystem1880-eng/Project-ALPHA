@@ -3,6 +3,7 @@
 // what a venue's first listed bar means for the requested window. No React, no fetch.
 
 import type { CryptoStorage, FirstBar } from '../api/types'
+import { profile as manifest } from '../shell/profiles'
 import type { Profile } from '../state/settings'
 
 export interface PullDefaults {
@@ -11,15 +12,19 @@ export interface PullDefaults {
   exchange: string
 }
 
+/** Read from the profile manifest; the CLI ignores `exchange` for non-ccxt sources. */
 export function pullDefaults(profile: Profile): PullDefaults {
-  return profile === 'crypto'
-    ? { symbol: 'XRP/USDT', source: 'ccxt', exchange: 'binance' }
-    : { symbol: 'AAPL', source: 'tiingo', exchange: 'binance' }
+  const found = manifest(profile)
+  return {
+    symbol: found.defaultSymbol,
+    source: found.defaultSource,
+    exchange: found.defaultVenue ?? 'binance',
+  }
 }
 
 /** The profile's starter watchlist, offered beside the stored pairs in the symbol combobox. */
 export function starterSymbols(profile: Profile): string[] {
-  return profile === 'crypto' ? ['BTC/USDT', 'ETH/USDT', 'XRP/USDT', 'SOL/USDT'] : ['SPY', 'AAPL']
+  return [...manifest(profile).starterWatchlist]
 }
 
 const RETRY_START = /\(--start (\d{4}-\d{2}-\d{2})\)/

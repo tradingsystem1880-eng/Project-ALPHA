@@ -72,7 +72,7 @@
       "expected": "shell/profiles.ts exports a deep-frozen PROFILES record (id, label, windows, docks, providers, defaultSource, defaultVenue, symbolStyle, starterWatchlist, paperVenues, glossaryTags) for crypto (ccxt + crypto-house families; hides options, screener, corporate actions, IBKR paper) and equities (tiingo default, yfinance, stooq, quantpad; hides funding/OI/on-chain/DEX, Binance sandbox, crowding); market-neutral windows (kronos, ml-lab, jobs, governance) in both; dataManagerModel.pullDefaults/starterSymbols read the manifest; the registry cross-check test is written red and turns green in T4.",
       "rollback": "Delete profiles.ts and restore dataManagerModel's inline defaults.",
       "files": ["apps/alpha-web/frontend/src/shell/profiles.ts", "apps/alpha-web/frontend/src/shell/profiles.test.ts", "apps/alpha-web/frontend/src/panels/dataManagerModel.ts", "apps/alpha-web/frontend/vitest.config.ts"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "T3 Option E theme document `terminal_classic.json` as default, generated `--canvas-*` CSS tokens, chrome token block with AA tests, RENDERER_VERSION 4 (quant tier)",
@@ -210,4 +210,9 @@ rewrite under `gate.py ack`, docs, full gate.
 
 ## Deviations recorded during /implement
 
-(none yet)
+* **T1** — `profile` on `/api/runs` is ignored (the response equals the unfiltered one) rather than
+  rejected with 422: FastAPI drops unknown query parameters and adding a rejection dependency for one
+  parameter is speculative; the openapi walk proves no route or schema names `profile`.
+  `ProjectSummary.market` is a defaulted field (`"unknown"`), so the relay does not touch CLI rows.
+* **T2** — the registry cross-check (architect #13) is written in T4, not T2: a test importing a
+  module that does not exist yet fails `tsc -b`, which every slice's build gate runs.
