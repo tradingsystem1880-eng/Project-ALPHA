@@ -12845,6 +12845,16 @@
             "title": "Hypothesis",
             "type": "string"
           },
+          "market": {
+            "default": "unknown",
+            "enum": [
+              "crypto",
+              "equities",
+              "unknown"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
           "monte_carlo_reviews": {
             "items": {
               "$ref": "#/components/schemas/MonteCarloReview"
@@ -13004,6 +13014,16 @@
           },
           "hypothesis": {
             "title": "Hypothesis",
+            "type": "string"
+          },
+          "market": {
+            "default": "unknown",
+            "enum": [
+              "crypto",
+              "equities",
+              "unknown"
+            ],
+            "title": "Market",
             "type": "string"
           },
           "name": {
@@ -17710,6 +17730,15 @@
             "title": "Manifest",
             "type": "object"
           },
+          "market": {
+            "enum": [
+              "crypto",
+              "equities",
+              "unknown"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
           "mtime": {
             "title": "Mtime",
             "type": "number"
@@ -17766,6 +17795,7 @@
           "kind",
           "mtime",
           "display_name",
+          "market",
           "manifest",
           "research_gate_watermark",
           "run_context_kind",
@@ -17839,6 +17869,15 @@
               }
             ],
             "title": "Label"
+          },
+          "market": {
+            "enum": [
+              "crypto",
+              "equities",
+              "unknown"
+            ],
+            "title": "Market",
+            "type": "string"
           },
           "mtime": {
             "title": "Mtime",
@@ -17966,6 +18005,7 @@
           "command",
           "label",
           "display_name",
+          "market",
           "symbol",
           "symbols",
           "snapshot_id",

@@ -413,6 +413,26 @@ def display_name(kind: str, run_id: str, manifest: dict[str, Any], rdir: Path) -
     return f"{strategy} D1 — {' · '.join([*parts, f'run {run_id[:8]}'])}"
 
 
+_CRYPTO_SOURCES = ("ccxt", "binance", "bybit", "coinbase")
+_EQUITY_SOURCES = ("tiingo", "yfinance", "stooq", "quantpad")
+
+
+def market_of(manifest: dict[str, Any]) -> str:
+    """Which market a run belongs to (spec 2026-09-01 §4.1): decided server-side from the
+    manifest's ``source`` first, then the ``BASE/QUOTE`` pair convention, else ``unknown`` —
+    never guessed, never derived in the browser."""
+    source = str(manifest.get("source") or "").lower()
+    if source.startswith(_CRYPTO_SOURCES):
+        return "crypto"
+    if source.startswith(_EQUITY_SOURCES):
+        return "equities"
+    symbols = manifest.get("symbols")
+    candidates = [manifest.get("symbol"), *(symbols if isinstance(symbols, list) else [])]
+    if any(isinstance(symbol, str) and "/" in symbol for symbol in candidates):
+        return "crypto"
+    return "unknown"
+
+
 def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
     """One run's browser record — THE shared shape of ``/api/runs`` index items and the activity
     stream's ``run_added``/``run_updated`` payloads (the SPA consumes both as ``RunListItem``).
@@ -439,6 +459,7 @@ def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
         or (", ".join(symbols) if symbols else None)
         or manifest.get("source"),
         "display_name": display_name(kind, run_id, manifest, mpath.parent),
+        "market": market_of(manifest),
         "symbol": manifest.get("symbol"),
         "symbols": symbols,
         "snapshot_id": manifest.get("snapshot_id"),
@@ -510,6 +531,7 @@ def run_detail(run_id: str, *, data_dir: Path) -> dict[str, Any]:
         "kind": kind,
         "mtime": mpath.stat().st_mtime,
         "display_name": display_name(kind, run_id, manifest, rdir),
+        "market": market_of(manifest),
         "manifest": manifest,
         "research_gate_watermark": research_gate_watermark(manifest),
         **run_context_projection(manifest),

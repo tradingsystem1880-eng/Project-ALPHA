@@ -64,7 +64,7 @@
       "expected": "RunListItem, RunDetail, the run_added/run_updated activity payload and ProjectSummary carry `market: 'crypto' | 'equities' | 'unknown'` derived in _runs.run_record (source wins; pair convention; else unknown; projects unknown until the CLI projection carries a source); a `profile` query parameter is rejected (422) and openapi.json contains no `profile` parameter or property; typed harness fixtures gain the field.",
       "rollback": "Remove the field from _runs.py, models.py and the fixtures; regenerate contracts.",
       "files": ["apps/alpha-web/src/alpha_web/_runs.py", "apps/alpha-web/src/alpha_web/api/models.py", "apps/alpha-web/src/alpha_web/api/runs.py", "apps/alpha-web/frontend/openapi.json", "apps/alpha-web/frontend/src/api/generated.ts", "apps/alpha-web/frontend/src/api/types.ts", "apps/alpha-web/frontend/e2e/support/workstationHarness.ts", "tests/integration/test_web_api_runs.py", "tests/integration/test_web_api_development.py", "tests/unit/test_web_contracts.py", "apps/alpha-web/src/alpha_web/static/app/**"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "T2 static profile manifests (crypto / equities) and Data Manager defaults derived from them",

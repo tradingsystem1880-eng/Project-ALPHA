@@ -26,3 +26,15 @@ def test_every_stable_json_route_has_a_response_model() -> None:
         if route.response_model is None:
             unmodeled.append(route.path)
     assert unmodeled == []
+
+
+def test_profile_is_never_an_api_parameter_or_field() -> None:
+    """Spec 2026-09-01 §4.1/§6: the crypto/equities profile is a display setting and never a
+    permission — no route parameter and no schema property may be called `profile`."""
+    document = create_app().openapi()
+    for path, operations in document["paths"].items():
+        for operation in operations.values():
+            for parameter in operation.get("parameters", []):
+                assert parameter["name"] != "profile", path
+    for name, schema in document["components"]["schemas"].items():
+        assert "profile" not in schema.get("properties", {}), name

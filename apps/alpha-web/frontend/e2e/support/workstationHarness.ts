@@ -1124,6 +1124,7 @@ const WATERMARKED_RUN_ITEM: components['schemas']['RunListItem'] = {
   command: 'backtest_portfolio',
   label: 'SPY, TLT',
   display_name: 'backtest_portfolio D1 — SPY, TLT · run fade0000',
+  market: 'unknown',
   symbol: null,
   symbols: ['SPY', 'TLT'],
   snapshot_id: null,
@@ -1142,6 +1143,7 @@ const WATERMARKED_RUN_DETAIL: components['schemas']['RunDetail'] = {
   kind: 'portfolio',
   mtime: 1,
   display_name: 'backtest_portfolio D1 — SPY, TLT · run fade0000',
+  market: 'unknown',
   manifest: {
     command: 'backtest_portfolio',
     symbols: ['SPY', 'TLT'],
@@ -1396,6 +1398,7 @@ const GATED_PROJECT = {
   created_at: '2026-08-09T00:00:00Z',
   updated_at: '2026-08-09T00:00:00Z',
   research_gate_state: 'open',
+  market: 'unknown',
 } satisfies components['schemas']['ProjectSummary']
 
 const UNGATED_PROJECT = {
@@ -1403,6 +1406,7 @@ const UNGATED_PROJECT = {
   project_id: 'project-grandfathered-2',
   name: 'Grandfathered momentum book',
   research_gate_state: 'not_required',
+  market: 'unknown',
 } satisfies components['schemas']['ProjectSummary']
 
 const CANDIDATE_VERSION_ID = 'strategy-version-hedged-basis'
@@ -1413,6 +1417,7 @@ const CANDIDATE_PROJECT = {
   name: 'BTCUSDT hedged basis candidate',
   current_version_id: CANDIDATE_VERSION_ID,
   current_experiment_id: CANDIDATE_EXPERIMENT_ID,
+  market: 'unknown',
 } satisfies components['schemas']['ProjectSummary']
 
 function projectDetail(
@@ -1529,6 +1534,7 @@ const CANDIDATE_DETAIL = {
       created_at: '2026-08-15T00:00:00Z',
     },
   ],
+  market: 'unknown',
 } satisfies components['schemas']['ProjectDetail']
 
 interface MockOptions {
@@ -1589,6 +1595,7 @@ const LIBRARY_RUN = {
   kind: 'runs',
   command: 'backtest run',
   display_name: 'ma_crossover D1 — SPY · 2020-01-01 → 2020-12-31 · run abcdef01',
+  market: 'unknown',
   label: 'SPY · ts_momentum',
   symbol: 'SPY',
   strategy: 'ts_momentum',
@@ -1603,6 +1610,7 @@ const HEAVY_LIBRARY_RUN: components['schemas']['RunListItem'] = {
   command: 'backtest_run',
   label: 'AAPL · causal trace fixture',
   display_name: 'ma_crossover D1 — AAPL · causal-fixture · run ' + HEAVY_RUN_ID.slice(0, 8),
+  market: 'unknown',
   symbol: 'AAPL',
   symbols: null,
   snapshot_id: 'causal-fixture',
@@ -2118,6 +2126,7 @@ function responseFor(route: Route, options: MockOptions): unknown {
       kind: 'runs',
       mtime: LIBRARY_RUN.mtime,
       display_name: LIBRARY_RUN.display_name,
+      market: LIBRARY_RUN.market,
       manifest: { command: 'backtest_run', symbol: 'SPY', schema_version: 3 },
       has_equity: false,
       has_trades: false,

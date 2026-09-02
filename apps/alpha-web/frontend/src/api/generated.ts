@@ -8072,6 +8072,12 @@ export interface components {
             holdouts: components["schemas"]["HoldoutState"][];
             /** Hypothesis */
             hypothesis: string;
+            /**
+             * Market
+             * @default unknown
+             * @enum {string}
+             */
+            market: "crypto" | "equities" | "unknown";
             /** Monte Carlo Reviews */
             monte_carlo_reviews: components["schemas"]["MonteCarloReview"][];
             /** Name */
@@ -8117,6 +8123,12 @@ export interface components {
             falsification_criterion: string;
             /** Hypothesis */
             hypothesis: string;
+            /**
+             * Market
+             * @default unknown
+             * @enum {string}
+             */
+            market: "crypto" | "equities" | "unknown";
             /** Name */
             name: string;
             /** Project Id */
@@ -9603,6 +9615,11 @@ export interface components {
             manifest: {
                 [key: string]: unknown;
             };
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "crypto" | "equities" | "unknown";
             /** Mtime */
             mtime: number;
             /** Research Gate Watermark */
@@ -9636,6 +9653,11 @@ export interface components {
             kind: string;
             /** Label */
             label: string | null;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "crypto" | "equities" | "unknown";
             /** Mtime */
             mtime: number;
             /** Passed */

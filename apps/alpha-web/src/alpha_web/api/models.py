@@ -191,6 +191,8 @@ class RunListItem(StrictModel):
     label: str | None
     # spec 2026-09-01 §4.4: `<strategy> D1 — <symbol> · <venue> · <start> → <end> · run <8 hex>`
     display_name: str
+    # spec 2026-09-01 §4.1: decided server-side from source, then the pair convention
+    market: Literal["crypto", "equities", "unknown"]
     symbol: str | None
     symbols: list[str] | None
     snapshot_id: str | None
@@ -215,6 +217,7 @@ class RunDetail(StrictModel):
     kind: str
     mtime: float
     display_name: str
+    market: Literal["crypto", "equities", "unknown"]
     manifest: dict[str, Any]
     # spec §15 / ADR-0026: EXPLORATORY marker for runs launched under a research-gate override
     research_gate_watermark: str | None
@@ -1435,6 +1438,9 @@ class ProjectSummary(StrictModel):
     created_at: str
     updated_at: str
     research_gate_state: ResearchGateStateValue
+    # spec 2026-09-01 §4.1: the CLI project projection carries no source yet, so every project
+    # is honestly `unknown`; never inferred from the name.
+    market: Literal["crypto", "equities", "unknown"] = "unknown"
 
 
 class ResearchGateOverride(StrictModel):
