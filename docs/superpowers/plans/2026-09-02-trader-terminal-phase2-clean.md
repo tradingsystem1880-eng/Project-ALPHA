@@ -106,7 +106,7 @@
       "expected": "One Playwright acceptance test proves the Phase 2 acceptance sentence: no `.sandbox-banner` and no `.workbench-notice[role=note]` on any of the six working screens, every figure card opens the overlay, and a library row reads strategy · D1 · symbol · dates; the full frontend gate (lint, coverage thresholds, generated contracts clean, build, every e2e across three viewports) passes and static/app is clean.",
       "rollback": "Remove the acceptance test; nothing else changes in this slice.",
       "files": ["apps/alpha-web/frontend/e2e/**", "apps/alpha-web/src/alpha_web/static/app/**"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "C8 docs honesty, rule update, full gate",

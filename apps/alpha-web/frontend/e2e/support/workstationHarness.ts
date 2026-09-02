@@ -3036,6 +3036,32 @@ test('a figure maximises into a dialog with Save PNG, Save SVG, Copy and Esc', a
   await expect(expand).toBeFocused()
 })
 
+test('Phase 2 acceptance: no hazard stripe on a working screen, figures maximise, runs read like a trader', async ({ page }) => {
+  await preparePage(page, { runs: [LIBRARY_RUN], figureCatalogue: true })
+  for (const item of SCREENS) {
+    await page.getByRole('tab', { name: item.label, exact: true }).click()
+    await expect(page.locator('.sandbox-banner')).toHaveCount(0)
+    await expect(page.locator('.research-gate-lock')).toHaveCount(0)
+    await expect(page.locator('.glossary')).toHaveCount(0)
+  }
+  // The run list reads strategy · D1 · symbol · dates, with the id only as a mono sub-line.
+  const row = page.getByRole('navigation', { name: 'Library' }).locator('.library-row').first()
+  await expect(row.locator('.library-row-name')).toHaveText(LIBRARY_RUN.display_name)
+  expect(LIBRARY_RUN.display_name).toMatch(/^ma_crossover D1 — SPY · \d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2} · run [0-9a-f]{8}$/)
+  // Every figure card opens the overlay.
+  await row.click()
+  await page.getByRole('button', { name: 'Ratios & performance' }).click()
+  const cards = page.locator('.figure-card')
+  await expect(cards).toHaveCount(1)
+  for (let index = 0; index < (await cards.count()); index += 1) {
+    await cards.nth(index).getByRole('button', { name: 'Expand' }).click()
+    await expect(page.getByRole('dialog', { name: 'Equity curve' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: 'Equity curve' })).toHaveCount(0)
+  }
+  await expectReleaseAccessibility(page)
+})
+
 test('the run report is a tree with a summary table and one watermark chip', async ({ page }) => {
   await preparePage(page, { researchGateOverride: true })
   await page.getByRole('navigation', { name: 'Library' }).locator('.library-row').first().click()
