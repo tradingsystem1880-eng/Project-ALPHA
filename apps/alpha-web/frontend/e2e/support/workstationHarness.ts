@@ -2825,9 +2825,11 @@ test('running jobs expose exact runtime, bounded ETA, progress, and live output'
   // Jobs sit under the Build screen, beside the lab that launches them.
   await page.getByRole('tab', { name: 'Build', exact: true }).click()
 
-  await expect(page.getByText(/Elapsed\s+2m 0\ds/)).toBeVisible()
-  await expect(page.getByText(/ETA\s+~3 min/)).toBeVisible()
-  await expect(page.getByText(/Evaluating rolling forecast origin 8 of 20/)).toBeVisible()
+  const row = page.getByRole('row').filter({ hasText: 'alpha forecast eval AMZN' })
+  const cells = row.getByRole('cell')
+  await expect(cells.nth(3)).toHaveText(/2m 0\ds/) // Elapsed
+  await expect(cells.nth(4)).toHaveText('~3 min') // ETA
+  await expect(cells.nth(6)).toHaveText('Evaluating rolling forecast origin 8 of 20') // Now
   const progress = page.getByRole('progressbar', { name: 'Job forecast eval progress' })
   await expect(progress).toHaveAttribute('aria-valuenow', /4\d/)
   await page.getByRole('button', { name: 'live log' }).click()
@@ -2862,6 +2864,8 @@ test('a failed job row shows the CLI error message, never a box border', async (
     ],
   })
   await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  const row = page.getByRole('row').filter({ hasText: 'data pull XRP/USDT' })
+  await expect(row.getByRole('cell').nth(6)).toHaveText(message)
   await expect(page.getByTitle(message)).toBeVisible()
   await expect(page.getByText(/[─│╭╮╰╯]/)).toHaveCount(0)
   await expectReleaseAccessibility(page)

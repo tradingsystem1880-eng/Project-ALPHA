@@ -1846,6 +1846,13 @@ textarea.field:focus {
   width: 32%;
   animation: job-progress-scan 1.6s ease-in-out infinite;
 }
+.jobs-table td.now { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jobs-table td.job-cmd { max-width: 320px; }
+.jobs-table td.actions { white-space: nowrap; }
+.jobs-table td.actions .btn { margin-right: 4px; }
+.jobs-table .job-progress-track { width: 90px; margin-left: 0; }
+.jobs-table tr.console-row td { padding: 0; }
+.jobs-table tbody tr { cursor: pointer; }
 @keyframes job-progress-scan {
   from { transform: translateX(-110%); }
   to { transform: translateX(340%); }

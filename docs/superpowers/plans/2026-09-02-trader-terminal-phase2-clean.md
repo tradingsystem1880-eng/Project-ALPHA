@@ -98,7 +98,7 @@
       "expected": "JobMonitor renders one `.blotter` table (status · command · started · elapsed · ETA · progress · now/failure · actions) with the failure message as the `now` cell text and `title`, the progressbar keeping its accessible name, live log and cancel as row actions, and the console expanding beneath the row; the running-job and failed-job e2e tests pass against the table; the build baseline is re-snapshotted deliberately.",
       "rollback": "Restore JobMonitor.tsx and the build baseline.",
       "files": ["apps/alpha-web/frontend/src/panels/JobMonitor.tsx", "apps/alpha-web/frontend/src/panels/jobProgress.ts", "apps/alpha-web/frontend/src/panels/jobProgress.test.ts", "apps/alpha-web/frontend/src/index.css", "apps/alpha-web/frontend/e2e/**", "apps/alpha-web/src/alpha_web/static/app/**"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "C7 full frontend gate and Phase 2 acceptance e2e",
