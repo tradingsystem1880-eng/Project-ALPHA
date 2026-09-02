@@ -80,7 +80,7 @@
       "expected": "themes/terminal_classic.json (black canvas: bg #000000, frame/line #e0e0e0, grid #2a2a2a, axis ink #c8c8c8, up #2fc36a, down #e5484d, accent #316ac5, a verified four-slot categorical ramp, DejaVu fonts) passes every existing palette test parametrised over both themes; load_theme() defaults to terminal-classic; RENDERER_VERSION == 4 with a changelog line; `alpha figures theme-css --out … [--check]` writes frontend/src/theme.generated.css (`--canvas-*` roles, `--r: 0`, `--r-lg: 0`, `--font-size: 11px`) from the importable `theme_css` function and --check is byte-exact; index.css gains the hand-written light chrome block (window #e6e6e6, panel #f2f2f2, title #dcdcdc, controls #e0e0e0, bevels #ffffff/#8a8a8a, ink #111111, secondary #555555, rule #d4d4d4, input #ffffff, selection #316ac5 on white, label/up/down darkened until AA) whose text×surface pairs test_theme_drift proves ≥ 4.5:1; tokens.ts FALLBACK mirrors the canvas roles with an 11px font; /verify-quant PASS and /review-gate APPROVE recorded.",
       "rollback": "Delete terminal_classic.json and the generated CSS, restore the default id, version 3 and index.css tokens.",
       "files": ["packages/alpha-research/src/alpha_research/figures/theme.py", "packages/alpha-research/src/alpha_research/figures/version.py", "packages/alpha-research/src/alpha_research/figures/render.py", "packages/alpha-research/src/alpha_research/figures/themes/terminal_classic.json", "apps/alpha-web/frontend/src/theme.generated.css", "apps/alpha-web/frontend/src/index.css", "apps/alpha-web/frontend/src/main.tsx", "apps/alpha-web/frontend/src/util/tokens.ts", "apps/alpha-web/frontend/src/util/theme.drift.test.ts", "tests/unit/test_figure_theme.py", "tests/unit/test_theme_drift.py", "tests/unit/test_figure_render.py", "tests/unit/test_figures_cli_commands.py", "apps/alpha-web/src/alpha_web/static/app/**"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "T4 document and dock registries replace screens.tsx",
@@ -221,5 +221,9 @@ rewrite under `gate.py ack`, docs, full gate.
   test now asserts four framed spines, a dotted grid and a framed legend); the `scripts/` shim was
   removed in favour of `alpha figures theme-css`; `.claude/rules/alpha-research.md` names both theme
   documents (one ack).
+  Committed as d8a04c5 with both attestations bound. Low review findings carried as follow-ups:
+  a transparent export keeps `legend.facecolor` at the theme background rather than mirroring
+  `face`; the frozen v1 alpha_dark row and the new terminal_classic row sit side by side in the
+  rule (the v1 line is verbatim by test, the new row states the current default).
 * **T2** — the registry cross-check (architect #13) is written in T4, not T2: a test importing a
   module that does not exist yet fails `tsc -b`, which every slice's build gate runs.
