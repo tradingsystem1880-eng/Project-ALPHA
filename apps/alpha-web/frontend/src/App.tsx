@@ -7,10 +7,11 @@
  * user has to arrange. Only the active screen mounts, so nothing polls behind a hidden tab.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
+import { Governance } from './panels/Governance'
 import { OwnerEnrollment } from './auth/OwnerEnrollment'
 import { setLinked, useLinked } from './context/linked'
 import { requestNewIdea } from './context/newIdea'
@@ -189,6 +190,12 @@ function WorkstationApp() {
     () => localStorage.getItem(RAIL_KEY) === 'collapsed',
   )
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [governanceOpen, setGovernanceOpen] = useState(false)
+  const governanceButton = useRef<HTMLButtonElement>(null)
+  const closeGovernance = useCallback(() => {
+    setGovernanceOpen(false)
+    governanceButton.current?.focus()
+  }, [])
   const [focus, setFocus] = useState<PaneFocus | null>(null)
 
   useEffect(() => {
@@ -310,6 +317,17 @@ function WorkstationApp() {
         <button className="kbd" onClick={() => setPaletteOpen(true)}>
           Search <kbd>⌘K</kbd>
         </button>
+        <button
+          ref={governanceButton}
+          className="kbd"
+          aria-haspopup="dialog"
+          aria-expanded={governanceOpen}
+          aria-label="Governance"
+          title="Authority, research gates, overrides, providers, storage and the glossary"
+          onClick={() => setGovernanceOpen(true)}
+        >
+          ⚖<span className="governance-label">Governance</span>
+        </button>
         <SettingsMenu />
         <StatusCluster />
       </header>
@@ -336,6 +354,7 @@ function WorkstationApp() {
       </div>
 
       <Toasts onOpenRun={openRun} />
+      {governanceOpen ? <Governance onClose={closeGovernance} /> : null}
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}

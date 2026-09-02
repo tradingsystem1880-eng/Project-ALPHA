@@ -37,7 +37,12 @@ test('real backend captures a case and renders all material questions without ve
   await expect(questions).toBeVisible({ timeout: 15_000 })
   await expect(questions.locator('.research-material-question')).toHaveCount(3)
   await expect(page.getByText('APPROVAL UNAVAILABLE', { exact: true })).toBeVisible()
-  await expect(page.getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/)).toBeVisible()
+  await expect(page.locator('.sandbox-banner')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Governance' }).click()
+  await expect(
+    page.getByRole('dialog', { name: 'Governance' }).getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
   expect(externalRequests).toEqual([])
 })
 

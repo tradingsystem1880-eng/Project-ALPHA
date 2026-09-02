@@ -2486,7 +2486,13 @@ test('Research Cockpit captures an idea through the bounded REST surface', async
   await expect(page.getByText(RESEARCH_QUESTIONS[2].prompt, { exact: true })).toBeVisible()
   await expect(page.getByText(/Uses equal 60-minute bars and a four-trading-hour pattern window/)).toBeVisible()
   await expect(page.getByText(/D2 SEALED: research confirmation remains governed/)).toBeVisible()
-  await expect(page.getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/)).toBeVisible()
+  // The research-sandbox sentence moved off the working screen into Governance.
+  await expect(page.locator('.sandbox-banner')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Governance' }).click()
+  await expect(
+    page.getByRole('dialog', { name: 'Governance' }).getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
   await expectReleaseAccessibility(page)
 })
 
@@ -3061,14 +3067,55 @@ test('research-gate override watermark reaches provider governance and run resul
   await expectReleaseAccessibility(page)
 })
 
+test('the Governance dialog holds the hazard sentences the working screens no longer shout', async ({ page }) => {
+  await preparePage(page)
+  for (const label of ['Research', 'Build', 'Operate']) {
+    await page.getByRole('tab', { name: label, exact: true }).click()
+    await expect(page.locator('.sandbox-banner')).toHaveCount(0)
+  }
+  await expect(page.getByRole('tab', { name: 'Glossary', exact: true })).toHaveCount(0)
+
+  const opener = page.getByRole('button', { name: 'Governance' })
+  await opener.click()
+  const dialog = page.getByRole('dialog', { name: 'Governance' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('tree', { name: 'Governance pages' }).getByRole('treeitem')).toHaveCount(7)
+  for (const sentence of [
+    'RESEARCH SANDBOX · SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE OR A TRADING SIGNAL',
+    'PAPER ONLY · BINANCE LOCAL SANDBOX + IBKR PAPER · LIVE-CAPITAL ROUTING ABSENT',
+    'STANDALONE_UNQUALIFIED · THESE RUNS CAN NEVER COUNT AS GOVERNED RESEARCH EVIDENCE',
+    'SANDBOX · PUBLIC BINANCE DATA · REAL EXECUTION IS NOT AVAILABLE',
+    'TOUCH ID REQUIRED · NO OVERRIDE · NO TRADING',
+  ]) {
+    await expect(dialog.getByText(sentence, { exact: true })).toBeVisible()
+  }
+  await dialog.getByRole('button', { name: 'Glossary' }).click()
+  await expect(dialog.getByLabel('Metric definitions')).toBeVisible()
+  await expectReleaseAccessibility(page)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', { name: 'Governance' })).toHaveCount(0)
+  await expect(opener).toBeFocused()
+})
+
 test('open research gates lock strategy affordances on Develop and link to the case', async ({ page }) => {
   await preparePage(page, { researchGateLock: true })
   await page.getByRole('tab', { name: 'Operate', exact: true }).click()
 
-  // Development Center auto-selects the research-required project and blocks versioning.
-  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(1)
+  // Development Center auto-selects the research-required project and blocks versioning; the
+  // explanation lives in Governance, which deep-links to the holding case.
+  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(0)
   await page.getByLabel('Clean source fingerprint').fill('git:0000000')
   await expect(page.getByRole('button', { name: 'Create immutable version' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Governance' }).click()
+  const governance = page.getByRole('dialog', { name: 'Governance' })
+  await governance.getByRole('button', { name: 'Research gates' }).click()
+  await expect(governance.getByText(/RESEARCH GATE OPEN/)).toBeVisible()
+  await governance.getByRole('button', { name: /Open research case/ }).click()
+  await expect(page.getByRole('dialog', { name: 'Governance' })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Research', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
 
   // Strategy Lab and Pipeline share the same backend gate and block strategy execution.
   await page.getByRole('tab', { name: 'Build', exact: true }).click()

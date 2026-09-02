@@ -4078,6 +4078,10 @@ textarea.field:focus {
 }
 
 @media (max-width: 1280px) {
+  /* The topbar is full at 1280px: the Governance button keeps its glyph and accessible name. */
+  .governance-label {
+    display: none;
+  }
   .kronos-main-grid,
   .development-grid {
     grid-template-columns: 1fr;
@@ -4358,6 +4362,32 @@ textarea.field:focus {
 .figure-overlay-title b { color: var(--ink); }
 .figure-overlay-image { display: block; width: 100%; height: auto; max-height: 78vh; object-fit: contain; background: #fff; border-radius: var(--r); }
 .figure-copy-error { margin: 0; color: var(--down); font-size: calc(var(--font-size) - 1px); }
+
+/* Shell-level modal (Governance): backdrop, box, head. */
+.shell-modal {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--pad);
+  background: rgba(4, 6, 10, 0.82);
+}
+.shell-modal-box {
+  display: flex; flex-direction: column;
+  width: min(96vw, 1100px); height: min(92vh, 720px);
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.shell-modal-head { display: flex; align-items: center; gap: var(--pad); padding: var(--pad-sm) var(--pad); border-bottom: 1px solid var(--line); }
+.shell-modal-head b { color: var(--ink); }
+.governance-body { display: grid; grid-template-columns: 200px 1fr; min-height: 0; flex: 1; }
+.governance-tree { border-right: 1px solid var(--line); padding: var(--pad-sm) 0; overflow: auto; }
+.governance-tree ul { list-style: none; margin: 0; padding: 0; }
+.governance-page { min-width: 0; overflow: auto; padding: var(--pad); display: flex; flex-direction: column; gap: var(--pad); }
+.governance-page h2 { margin: 0; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.governance-table td.k { color: var(--muted); white-space: nowrap; }
+.governance-table td.tone-ok { color: var(--up); }
+.governance-table td.tone-warn { color: var(--gold); }
+.governance-table td.tone-bad { color: var(--down); }
+.governance-page .glossary { padding: 0; }
 .figure-absent-reason { margin: 0; color: var(--muted); font-size: calc(var(--font-size) - 1px); }
 .figure-flag {
   padding: 1px 6px;

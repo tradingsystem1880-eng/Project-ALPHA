@@ -906,10 +906,6 @@ export function ResearchCockpit(props: PanelHandleProps) {
         <span className="chip fail">TOUCH ID REQUIRED · NO OVERRIDE · NO TRADING</span>
       </div>
       <div className="panel-body panel-pad workbench research-cockpit" tabIndex={0}>
-        <div className="sandbox-banner">
-          RESEARCH SANDBOX · SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE OR A TRADING SIGNAL
-        </div>
-
         {showCapture || !researchCase ? <div className="research-intake-grid">
           <form onSubmit={(event) => void capture(event)}>
             <span className="eyebrow">Capture a raw observation in your exact words</span>

@@ -76,6 +76,11 @@ describe('screen definitions', () => {
     expect(screen('build').panes.map((pane) => pane.name)).not.toContain('ResearchCockpit')
   })
 
+  it('keeps the glossary out of the Operate foot — it lives in the Governance dialog', () => {
+    expect(screen('operate').panes.map((pane) => pane.name)).not.toContain('Glossary')
+    expect(screen('operate').panes.some((pane) => pane.area === 'foot')).toBe(false)
+  })
+
   it('rejects an unknown screen instead of rendering an empty shell', () => {
     expect(() => screen('nope' as ScreenId)).toThrow(/unknown screen/)
   })

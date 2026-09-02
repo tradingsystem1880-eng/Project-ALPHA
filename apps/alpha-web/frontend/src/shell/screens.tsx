@@ -19,7 +19,6 @@ import { AiConsole } from '../panels/AiConsole'
 import { CodexBench } from '../panels/CodexBench'
 import { DataManager } from '../panels/DataManager'
 import { EvidenceHub } from '../panels/EvidenceHub'
-import { Glossary } from '../panels/Glossary'
 import { JobMonitor } from '../panels/JobMonitor'
 import { KronosStudio } from '../panels/KronosStudio'
 import { MlDiagnostics } from '../panels/MlDiagnostics'
@@ -136,7 +135,6 @@ export const SCREENS: ScreenDefinition[] = [
       { area: 'main', name: 'PaperMonitor', title: 'Paper sessions', component: PaperMonitor },
       { area: 'main', name: 'ProviderSystem', title: 'Providers & system', component: ProviderSystem },
       { area: 'side', name: 'ActivityFeed', title: 'Activity', component: ActivityFeed },
-      { area: 'foot', name: 'Glossary', title: 'Glossary', component: Glossary },
     ],
   },
 ]

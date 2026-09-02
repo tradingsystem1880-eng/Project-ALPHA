@@ -14,7 +14,6 @@ import type {
   StrategyProjectWorkspaceProjection,
 } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
-import { ResearchGateLockNotice } from '../components/ResearchGateLockNotice'
 import { setLinked, useLinked } from '../context/linked'
 import { fmtPct, shortId } from '../util/format'
 import { isActiveControlJob, refreshDurableJobs } from './durableJobs'
@@ -555,7 +554,6 @@ export function DevelopmentCenter() {
                 </div>
               </section>
             ) : null}
-            {gateLock ? <ResearchGateLockNotice lock={gateLock} projectId={detail.project_id} projectName={detail.name} /> : null}
             <div className="agent-brief-bar">
               <div><span className="eyebrow">Typed AgentBrief</span><span>Current hypothesis, allowed scope, cited evidence, stage state, warnings, and required tests.</span></div>
               {briefStatus ? <span className="mono pos">{briefStatus}</span> : null}
