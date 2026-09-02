@@ -1543,7 +1543,46 @@ interface MockOptions {
   runs?: unknown[]
   capturedOwnerAction?: (body: Record<string, unknown>) => void
   researchDataRefreshDelayMs?: number
+  /** Opt-in: LIBRARY_RUN carries one drawable figure (catalogue, metadata and an SVG image). */
+  figureCatalogue?: boolean
 }
+
+const FIGURE_ITEM = {
+  figure_id: 'equity_curve',
+  section: 'performance',
+  title: 'Equity curve',
+  summary: 'Equity over the backtest period.',
+  available: true,
+  unavailable_reason: null,
+  panel_count: 1,
+} satisfies components['schemas']['FigureCatalogueItem']
+
+const FIGURE_META = {
+  figure_id: 'equity_curve',
+  title: 'Equity curve',
+  subtitle: 'SPY · ts_momentum',
+  question: 'Did the equity grow, and how smoothly?',
+  plain_language_answer: 'Equity rose steadily.',
+  uncertainty: 'One path; no confidence band.',
+  caveat: 'In-sample only.',
+  caption: 'Equity curve of the run.',
+  alt_text: 'Line chart of equity rising from 100,000 to 112,000.',
+  x_label: 'Date',
+  panels: [{ panel_id: 'equity', y_label: 'Equity', y_unit: 'USD', legend: ['equity'], note: null }],
+  source_artifacts: ['equity_curve.parquet'],
+  truncation_note: null,
+  format: 'svg',
+  width_in: 11,
+  height_in: 5,
+  renderer_version: 1,
+  cache_key: 'figkey',
+  etag: 'etag-1',
+  image_url: '/api/runs/run-1/figures/equity_curve/image?fmt=svg&key=figkey',
+} satisfies components['schemas']['FigureMetadata']
+
+const FIGURE_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="440" height="200" viewBox="0 0 440 200">'
+  + '<rect width="440" height="200" fill="#fff"/><polyline points="10,180 200,120 430,20" fill="none" stroke="#1d4ed8" stroke-width="3"/></svg>'
 
 const LIBRARY_RUN = {
   run_id: 'abcdef0123456789',
@@ -2092,7 +2131,15 @@ function responseFor(route: Route, options: MockOptions): unknown {
     }
   }
   if (url.pathname === `/api/runs/${LIBRARY_RUN.run_id}/figures`) {
-    return { run_id: LIBRARY_RUN.run_id, kind: 'runs', figures: [] }
+    return {
+      run_id: LIBRARY_RUN.run_id,
+      kind: 'runs',
+      renderer_version: 1,
+      items: options.figureCatalogue ? [FIGURE_ITEM] : [],
+    }
+  }
+  if (url.pathname === `/api/runs/${LIBRARY_RUN.run_id}/figures/${FIGURE_ITEM.figure_id}`) {
+    return FIGURE_META
   }
   if (url.pathname === '/api/symbols') return { symbols: [] }
   if (url.pathname === '/api/strategies' || url.pathname === '/api/commands') return []
@@ -2323,6 +2370,14 @@ async function preparePage(page: Page, options: MockOptions = {}): Promise<void>
         status: 404,
         contentType: 'application/json',
         body: JSON.stringify({ detail: 'Research case not found' }),
+      })
+      return
+    }
+    if (url.pathname.endsWith(`/figures/${FIGURE_ITEM.figure_id}/image`)) {
+      await route.fulfill({
+        status: 200,
+        contentType: url.searchParams.get('fmt') === 'png' ? 'image/png' : 'image/svg+xml',
+        body: FIGURE_SVG,
       })
       return
     }
@@ -2912,6 +2967,63 @@ test('legacy trace rerun opens the governed Development Center', async ({ page }
   )
   await expect(page.getByText('Development Center', { exact: true }).first()).toBeVisible()
   await expect(page.getByText(/panel crashed/i)).toHaveCount(0)
+})
+
+test('a figure maximises into a dialog with Save PNG, Save SVG, Copy and Esc', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        write: async () => {
+          ;(window as unknown as { __copied: boolean }).__copied = true
+        },
+      },
+    })
+  })
+  await preparePage(page, { runs: [LIBRARY_RUN], figureCatalogue: true })
+  // Terse mode: the prose must still be in the DOM, only hidden from sight.
+  await page.getByTitle('View settings').click()
+  await page.getByRole('button', { name: /Explanations narrative/ }).click()
+  await page.keyboard.press('Escape')
+  await page.getByRole('navigation', { name: 'Library' }).locator('.library-row').first().click()
+  await page.getByRole('button', { name: 'Ratios & performance' }).click()
+  const card = page.locator('.figure-card')
+  await expect(card).toHaveCount(1)
+  await expect(card.locator('.figure-explain')).toHaveClass(/sr-only/)
+  await expect(card.locator('.figure-explain')).toContainText('In-sample only.')
+
+  const expand = card.getByRole('button', { name: 'Expand' })
+  await expand.click()
+  const dialog = page.getByRole('dialog', { name: 'Equity curve' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('link', { name: 'Save PNG' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(dialog.getByRole('link', { name: 'Save SVG' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(dialog.getByRole('button', { name: 'Copy' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(dialog.getByRole('link', { name: 'Save PNG' })).toBeFocused()
+  await expect(dialog.getByRole('link', { name: 'Save PNG' })).toHaveAttribute(
+    'download',
+    'abcdef01-equity_curve.png',
+  )
+  await dialog.getByRole('button', { name: 'Copy' }).click()
+  await expect(dialog.getByRole('button', { name: 'Copied' })).toBeVisible()
+  expect(await page.evaluate(() => (window as unknown as { __copied?: boolean }).__copied)).toBe(true)
+  await expectReleaseAccessibility(page)
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', { name: 'Equity curve' })).toHaveCount(0)
+  await expect(expand).toBeFocused()
+
+  // Double-clicking the image is the mouse route; Close is the other way out.
+  await card.locator('.figure-image').dblclick()
+  await expect(page.getByRole('dialog', { name: 'Equity curve' })).toBeVisible()
+  await page.getByRole('button', { name: 'Close' }).click()
+  await expect(page.getByRole('dialog', { name: 'Equity curve' })).toHaveCount(0)
+  await expect(expand).toBeFocused()
 })
 
 test('the run report is a tree with a summary table and one watermark chip', async ({ page }) => {

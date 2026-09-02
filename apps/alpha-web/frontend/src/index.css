@@ -4338,6 +4338,26 @@ textarea.field:focus {
 .figure-caption { margin: var(--pad-sm) 0 0; color: var(--muted); font-size: calc(var(--font-size) - 3px); }
 
 .figure-card--absent { border-style: dashed; }
+
+/* Maximised figure: a fixed overlay above the report, the image scaled to the viewport. */
+.figure-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--pad);
+  background: rgba(4, 6, 10, 0.82);
+}
+.figure-overlay-box {
+  display: flex; flex-direction: column; gap: var(--pad-sm);
+  width: min(96vw, 1600px); max-height: 96vh;
+  padding: var(--pad);
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: var(--r-lg);
+  overflow: auto;
+}
+.figure-overlay-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--pad); }
+.figure-overlay-title { display: grid; gap: 2px; }
+.figure-overlay-title b { color: var(--ink); }
+.figure-overlay-image { display: block; width: 100%; height: auto; max-height: 78vh; object-fit: contain; background: #fff; border-radius: var(--r); }
+.figure-copy-error { margin: 0; color: var(--down); font-size: calc(var(--font-size) - 1px); }
 .figure-absent-reason { margin: 0; color: var(--muted); font-size: calc(var(--font-size) - 1px); }
 .figure-flag {
   padding: 1px 6px;

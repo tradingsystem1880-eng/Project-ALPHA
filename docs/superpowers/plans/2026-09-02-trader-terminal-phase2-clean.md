@@ -74,7 +74,7 @@
       "expected": "Double-clicking a figure or pressing its expand button opens a role=dialog overlay with the figure at full size, buttons Save PNG (existing download URL), Save SVG, Copy (Clipboard API on the PNG blob; disabled with a reason when the API is unavailable) and Close; Esc and Close restore the report with focus returned to the card; the figure's question/uncertainty/caveat stay in the DOM in both modes and are visually shown only when explain=narrative (Notes); a Playwright test drives open → Tab through the buttons → Esc and asserts the axe gate; a pure figureExport model owns file names and the copy-capability decision.",
       "rollback": "Restore FigureCard.tsx and remove FigureOverlay.tsx and the model; the image endpoints are untouched.",
       "files": ["apps/alpha-web/frontend/src/components/FigureCard.tsx", "apps/alpha-web/frontend/src/components/FigureOverlay.tsx", "apps/alpha-web/frontend/src/components/figureExport.ts", "apps/alpha-web/frontend/src/components/figureExport.test.ts", "apps/alpha-web/frontend/src/index.css", "apps/alpha-web/frontend/vitest.config.ts", "apps/alpha-web/frontend/e2e/**", "apps/alpha-web/src/alpha_web/static/app/**"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "C4 Governance pane on Operate composed from existing projections; hazard banners and the glossary footer relocate into it",
