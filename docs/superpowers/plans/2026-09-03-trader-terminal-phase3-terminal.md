@@ -76,10 +76,10 @@
     },
     {
       "title": "T3 Option E theme document `terminal_classic.json` as default, generated `--canvas-*` CSS tokens, chrome token block with AA tests, RENDERER_VERSION 4 (quant tier)",
-      "verify": "uv run pytest -q tests/unit/test_figure_theme.py tests/unit/test_theme_drift.py tests/unit/test_figure_render.py tests/unit/test_figure_cache.py tests/unit/test_figures_cli_commands.py tests/integration/test_figure_determinism.py -m \"not network\" && uv run python scripts/generate_theme_css.py --check && uv run lint-imports && cd apps/alpha-web/frontend && npx vitest run src/util/theme.drift.test.ts && npm run lint -- --deny-warnings && npm run build && cd ../../.. && uv run python scripts/gate.py fast",
-      "expected": "themes/terminal_classic.json (black canvas: bg #000000, frame/line #e0e0e0, grid #2a2a2a, axis ink #c8c8c8, up #2fc36a, down #e5484d, accent #316ac5, a verified four-slot categorical ramp, DejaVu fonts) passes every existing palette test parametrised over both themes; load_theme() defaults to terminal-classic; RENDERER_VERSION == 4 with a changelog line; scripts/generate_theme_css.py writes frontend/src/theme.generated.css (`--canvas-*` roles, `--r: 0`, `--r-lg: 0`, `--font-size: 11px`) from an importable function and --check is byte-exact; index.css gains the hand-written light chrome block (window #e6e6e6, panel #f2f2f2, title #dcdcdc, controls #e0e0e0, bevels #ffffff/#8a8a8a, ink #111111, secondary #555555, rule #d4d4d4, input #ffffff, selection #316ac5 on white, label/up/down darkened until AA) whose text×surface pairs test_theme_drift proves ≥ 4.5:1; tokens.ts FALLBACK mirrors the canvas roles with an 11px font; /verify-quant PASS and /review-gate APPROVE recorded.",
+      "verify": "uv run pytest -q tests/unit/test_figure_theme.py tests/unit/test_theme_drift.py tests/unit/test_figure_render.py tests/unit/test_figure_cache.py tests/unit/test_figures_cli_commands.py tests/integration/test_figure_determinism.py -m \"not network\" && uv run alpha figures theme-css --out apps/alpha-web/frontend/src/theme.generated.css --check && uv run lint-imports && cd apps/alpha-web/frontend && npx vitest run src/util/theme.drift.test.ts && npm run lint -- --deny-warnings && npm run build && cd ../../.. && uv run python scripts/gate.py fast",
+      "expected": "themes/terminal_classic.json (black canvas: bg #000000, frame/line #e0e0e0, grid #2a2a2a, axis ink #c8c8c8, up #2fc36a, down #e5484d, accent #316ac5, a verified four-slot categorical ramp, DejaVu fonts) passes every existing palette test parametrised over both themes; load_theme() defaults to terminal-classic; RENDERER_VERSION == 4 with a changelog line; `alpha figures theme-css --out … [--check]` writes frontend/src/theme.generated.css (`--canvas-*` roles, `--r: 0`, `--r-lg: 0`, `--font-size: 11px`) from the importable `theme_css` function and --check is byte-exact; index.css gains the hand-written light chrome block (window #e6e6e6, panel #f2f2f2, title #dcdcdc, controls #e0e0e0, bevels #ffffff/#8a8a8a, ink #111111, secondary #555555, rule #d4d4d4, input #ffffff, selection #316ac5 on white, label/up/down darkened until AA) whose text×surface pairs test_theme_drift proves ≥ 4.5:1; tokens.ts FALLBACK mirrors the canvas roles with an 11px font; /verify-quant PASS and /review-gate APPROVE recorded.",
       "rollback": "Delete terminal_classic.json and the generated CSS, restore the default id, version 3 and index.css tokens.",
-      "files": ["packages/alpha-research/src/alpha_research/figures/theme.py", "packages/alpha-research/src/alpha_research/figures/version.py", "packages/alpha-research/src/alpha_research/figures/render.py", "packages/alpha-research/src/alpha_research/figures/themes/terminal_classic.json", "scripts/generate_theme_css.py", "apps/alpha-web/frontend/src/theme.generated.css", "apps/alpha-web/frontend/src/index.css", "apps/alpha-web/frontend/src/main.tsx", "apps/alpha-web/frontend/src/util/tokens.ts", "apps/alpha-web/frontend/src/util/theme.drift.test.ts", "tests/unit/test_figure_theme.py", "tests/unit/test_theme_drift.py", "tests/unit/test_figure_render.py", "tests/unit/test_figures_cli_commands.py", "apps/alpha-web/src/alpha_web/static/app/**"],
+      "files": ["packages/alpha-research/src/alpha_research/figures/theme.py", "packages/alpha-research/src/alpha_research/figures/version.py", "packages/alpha-research/src/alpha_research/figures/render.py", "packages/alpha-research/src/alpha_research/figures/themes/terminal_classic.json", "apps/alpha-web/frontend/src/theme.generated.css", "apps/alpha-web/frontend/src/index.css", "apps/alpha-web/frontend/src/main.tsx", "apps/alpha-web/frontend/src/util/tokens.ts", "apps/alpha-web/frontend/src/util/theme.drift.test.ts", "tests/unit/test_figure_theme.py", "tests/unit/test_theme_drift.py", "tests/unit/test_figure_render.py", "tests/unit/test_figures_cli_commands.py", "apps/alpha-web/src/alpha_web/static/app/**"],
       "status": "pending"
     },
     {
@@ -142,7 +142,7 @@
     "Mobile layouts; the three desktop viewports remain the gate.",
     "An Alerts tab (dropped by the owner; no alert engine exists)."
   ],
-  "files": ["apps/alpha-web/**", "packages/alpha-research/src/alpha_research/figures/**", "scripts/generate_theme_css.py", "tests/unit/**", "tests/integration/test_web_api_runs.py", "tests/integration/test_web_api_development.py", "tests/integration/test_figure_determinism.py", "docs/**", ".claude/rules/alpha-web.md", "CLAUDE.md"]
+  "files": ["apps/alpha-web/**", "packages/alpha-research/src/alpha_research/figures/**", "apps/alpha-cli/src/alpha_cli/figures_cmds.py", "tests/unit/**", "tests/integration/test_web_api_runs.py", "tests/integration/test_web_api_development.py", "tests/integration/test_figure_determinism.py", "docs/**", ".claude/rules/alpha-web.md", "CLAUDE.md"]
 }
 ```
 
@@ -214,5 +214,12 @@ rewrite under `gate.py ack`, docs, full gate.
   rejected with 422: FastAPI drops unknown query parameters and adding a rejection dependency for one
   parameter is speculative; the openapi walk proves no route or schema names `profile`.
   `ProjectSummary.market` is a defaulted field (`"unknown"`), so the relay does not touch CLI rows.
+* **T3** — figure titles stay above the frame (matplotlib figure chrome), not inside it; the
+  independent review found `faint` text illegible on black (raised to #767676, now AA-tested as
+  canvas text), the zero baseline repurposing the frame colour (now muted and dashed), heatmap
+  "absent" cells vanishing when panel == bg (panel #141414), and the rc changes untested (the render
+  test now asserts four framed spines, a dotted grid and a framed legend); the `scripts/` shim was
+  removed in favour of `alpha figures theme-css`; `.claude/rules/alpha-research.md` names both theme
+  documents (one ack).
 * **T2** — the registry cross-check (architect #13) is written in T4, not T2: a test importing a
   module that does not exist yet fails `tsc -b`, which every slice's build gate runs.

@@ -69,6 +69,15 @@ def _spec(panels: tuple[Panel, ...], **overrides: object) -> FigureSpec:
     return FigureSpec(**{**base, **overrides})  # type: ignore[arg-type]
 
 
+def _surface_fill(payload: bytes) -> str:
+    """The figure patch's fill; matplotlib omits the style for SVG's default black."""
+    match = re.search(
+        rb'id="patch_1">\s*<path d="[^"]*"(?: style="fill: (#[0-9a-f]{6})[^"]*")?/>', payload
+    )
+    assert match is not None, "no figure patch"
+    return match.group(1).decode() if match.group(1) else "#000000"
+
+
 def _line_panel(panel_id: str, label: str, unit: str = "sharpe") -> Panel:
     return Panel(
         panel_id=panel_id,
@@ -169,8 +178,35 @@ class TestStructure:
             _spec((_line_panel("a", "Sharpe"),)),
             RenderOptions(theme=load_theme(), size=default_size(1), text_as_paths=False),
         )
-        assert load_theme().bg.encode() in payload
+        assert _surface_fill(payload) == load_theme().bg
         assert b"#ffffff" not in payload.lower()
+
+    def test_the_canvas_is_black_with_a_light_frame(self) -> None:
+        """Option E: black canvas, light frame; two themes render different bytes."""
+        spec = _spec((_line_panel("a", "Sharpe"),))
+        classic = render_figure(
+            spec, RenderOptions(theme=load_theme(), size=default_size(1), text_as_paths=False)
+        )
+        assert _surface_fill(classic) == "#000000"
+        # Four framed spines, a dotted grid and a framed legend box are the renderer's part.
+        axes_group = classic[classic.index(b'id="axes_1"') :]
+        assert axes_group.count(b"stroke: #e0e0e0") >= 4
+        assert b"stroke-dasharray" in classic
+        legend = classic[classic.index(b'id="legend_1"') :]
+        assert b"stroke: #e0e0e0" in legend
+        dark = render_figure(
+            spec,
+            RenderOptions(
+                theme=load_theme("alpha-dark"), size=default_size(1), text_as_paths=False
+            ),
+        )
+        assert classic != dark
+
+    def test_renderer_version_is_4_with_a_changelog_line(self) -> None:
+        from alpha_research.figures import version
+
+        assert version.RENDERER_VERSION == 4
+        assert "#: 4 —" in Path(version.__file__).read_text(encoding="utf-8")
 
     def test_a_histogram_renders_from_pre_binned_counts(self) -> None:
         panel = Panel(

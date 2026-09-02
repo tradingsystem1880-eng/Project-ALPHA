@@ -94,19 +94,56 @@ def _delta_e(first: str, second: str, kind: str | None = None) -> float:
     return 100 * math.dist(left, right)
 
 
-@pytest.fixture(scope="module")
-def theme() -> Theme:
-    return load_theme()
+_THEME_IDS = ("alpha-dark", "terminal-classic")
+
+
+@pytest.fixture(scope="module", params=_THEME_IDS)
+def theme(request: pytest.FixtureRequest) -> Theme:
+    return load_theme(request.param)
 
 
 def test_theme_loads_with_every_declared_role(theme: Theme) -> None:
-    assert theme.theme_id == "alpha-dark"
+    assert theme.theme_id in _THEME_IDS
     assert theme.substrate and theme.substrate != theme.accent
     assert len(theme.categorical) == CATEGORICAL_SLOTS
 
 
+def test_default_theme_is_terminal_classic() -> None:
+    """Spec 2026-09-01 §4.6 (Option E): every figure draws on the black canvas by default."""
+    default = load_theme()
+    assert default.theme_id == "terminal-classic"
+    assert default.bg == "#000000"
+
+
+def test_figure_font_is_the_pinned_dejavu_face(theme: Theme) -> None:
+    """Verdana/Tahoma are CSS-only: the renderer fails loud on a font matplotlib cannot find,
+    and byte determinism needs the same face on every machine."""
+    assert theme.font_family == "DejaVu Sans"
+    assert theme.font_mono == "DejaVu Sans Mono"
+
+
+@pytest.mark.parametrize("role", ["ink", "ink_dim", "muted", "faint"])
+def test_canvas_text_clears_wcag_aa_on_the_canvas(theme: Theme, role: str) -> None:
+    """`faint` colours the provenance caption and table headers, so it is text too."""
+    if theme.theme_id == "alpha-dark" and role == "faint":
+        pytest.skip("alpha-dark predates the rule and is no longer the default")
+    assert _contrast(getattr(theme, role), theme.bg) >= 4.5
+
+
+@pytest.mark.parametrize("role", ["accent", "up", "down", "gold"])
+def test_canvas_marks_clear_non_text_contrast_on_the_canvas(theme: Theme, role: str) -> None:
+    """Semantic marks and the accent must read as marks (WCAG 1.4.11, 3:1)."""
+    assert _contrast(getattr(theme, role), theme.bg) >= 3.0
+
+
+def test_the_terminal_frame_reads_as_a_mark_on_the_canvas() -> None:
+    """Option E draws a full light frame; alpha-dark's `line` was a hairline and stays one."""
+    classic = load_theme("terminal-classic")
+    assert _contrast(classic.line, classic.bg) >= 3.0
+
+
 def test_theme_digest_is_stable_and_content_addressed(theme: Theme) -> None:
-    assert theme.digest() == load_theme().digest()
+    assert theme.digest() == load_theme(theme.theme_id).digest()
     assert len(theme.digest()) == 64
 
 
@@ -115,9 +152,11 @@ def test_theme_document_round_trips_through_json(theme: Theme) -> None:
     assert json.loads(json.dumps(document, sort_keys=True)) == document
 
 
-def test_committed_theme_json_is_canonically_formatted() -> None:
+@pytest.mark.parametrize("theme_id", _THEME_IDS)
+def test_committed_theme_json_is_canonically_formatted(theme_id: str) -> None:
     """The JSON is the authority the frontend generator reads; keep it diff-stable."""
-    raw = (files("alpha_research.figures") / "themes" / "alpha_dark.json").read_text("utf-8")
+    name = theme_id.replace("-", "_") + ".json"
+    raw = (files("alpha_research.figures") / "themes" / name).read_text("utf-8")
     parsed = json.loads(raw)
     assert raw == json.dumps(parsed, indent=2, sort_keys=True) + "\n"
 

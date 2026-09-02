@@ -20,7 +20,9 @@ from typing import Final
 #:     categorical ramp when several share a panel, and several axis labels shortened so
 #:     they fit rather than elide.
 #: 3 — adds the server-rendered D1 discovery trace and its immutable evidence table.
-RENDERER_VERSION: Final = 3
+#: 4 — the terminal-classic theme (spec 2026-09-01 §4.6, Option E): black canvas, a full
+#:     light frame on every panel, a dotted grid and a framed legend box.
+RENDERER_VERSION: Final = 4
 
 #: Bump only when the cache key composition, on-disk path, or file format changes.
 #:

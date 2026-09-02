@@ -7,68 +7,65 @@
    ========================================================================== */
 
 :root {
-  /* surfaces — deep cool slate, blue-tinted (never pure black) */
-  --bg: #090c12;
-  --panel: #10151e;
-  --panel-2: #0c1017;
-  --elevated: #171d29;
-  --line: #1d2431;
-  /* Chart gridlines. Previously existed only as a fallback inside tokens.ts, which
-     meant nothing defined it and the value silently diverged from the figure theme. */
-  --grid: #161d29;
-  --line-strong: #2a3242;
+  /* Option E chrome (spec 2026-09-01 §4.6): light grey window, off-white panels, black
+     canvases. Every text token below is AA-tested against every chrome surface in
+     tests/unit/test_theme_drift.py; canvas tokens are generated into theme.generated.css. */
+  --bg: #e6e6e6;
+  --panel: #f2f2f2;
+  --panel-2: #e0e0e0;
+  --elevated: #ffffff;
+  --title: #dcdcdc;
+  --line: #d4d4d4;
+  --line-strong: #8a8a8a;
+  --bevel-light: #ffffff;
+  --bevel-dark: #8a8a8a;
+  --selection: #316ac5;
+  --selection-ink: #ffffff;
 
   /* ink */
-  --ink: #e8ecf3;
-  --ink-dim: #aab3c4;
-  /* Secondary text. Must clear WCAG AA (4.5:1) against the *lightest* surface it can land
-     on, which is --elevated, not --bg: an expanded job row is elevated, and a value tuned
-     against the background alone fails there by a hair (4.48:1). Held by test. */
-  --muted: #7d879b;
-  /* Hairlines and rules only -- NEVER text. At 2.35:1 on the background it is a serious
-     WCAG failure wherever it colours a glyph, and it had quietly become the colour of
-     sequence numbers, timestamps and stage indices. Held by test. */
-  --faint: #495365;
+  --ink: #111111;
+  --ink-dim: #555555;
+  --muted: #5f5f5f;
+  /* Hairlines and rules only -- NEVER text (held by test). */
+  --faint: #b0b0b0;
 
-  /* signal blue — the single interaction accent */
-  --accent: #4f8dff;
-  --accent-strong: #6fa2ff;
-  --accent-soft: rgba(79, 141, 255, 0.14);
-  --accent-line: rgba(79, 141, 255, 0.4);
+  /* selection blue — the single interaction accent (darkened from #316ac5 for AA on chrome) */
+  --accent: #27549d;
+  --accent-strong: #27549d;
+  --accent-soft: rgba(39, 84, 157, 0.12);
+  --accent-line: rgba(39, 84, 157, 0.4);
 
-  /* semantics — P&L and verdicts */
-  --up: #2ea04a;
-  --up-soft: rgba(46, 160, 74, 0.14);
-  --down: #ef5350;
-  --down-soft: rgba(239, 83, 80, 0.14);
-  --gold: #d7a63b;
-  --gold-soft: rgba(215, 166, 59, 0.14);
+  /* semantics — P&L and verdicts, as text on light chrome */
+  --up: #126230;
+  --up-soft: rgba(18, 98, 48, 0.12);
+  --down: #982523;
+  --down-soft: rgba(152, 37, 35, 0.12);
+  --gold: #6a5300;
+  --gold-soft: rgba(106, 83, 0, 0.12);
 
   /* verdict scale — every grade gets its own hue (A confident green → F hard red) */
-  --verdict-a: #2ea04a;
-  --verdict-a-soft: rgba(46, 160, 74, 0.14);
-  --verdict-b: #7cb342;
-  --verdict-b-soft: rgba(124, 179, 66, 0.14);
-  --verdict-c: #d7a63b;
-  --verdict-c-soft: rgba(215, 166, 59, 0.14);
-  --verdict-d: #e07b39;
-  --verdict-d-soft: rgba(224, 123, 57, 0.14);
-  --verdict-f: #ef5350;
-  --verdict-f-soft: rgba(239, 83, 80, 0.14);
+  --verdict-a: #126230;
+  --verdict-a-soft: rgba(18, 98, 48, 0.12);
+  --verdict-b: #365c16;
+  --verdict-b-soft: rgba(54, 92, 22, 0.12);
+  --verdict-c: #6a5300;
+  --verdict-c-soft: rgba(106, 83, 0, 0.12);
+  --verdict-d: #84400f;
+  --verdict-d-soft: rgba(132, 64, 15, 0.12);
+  --verdict-f: #982523;
+  --verdict-f-soft: rgba(152, 37, 35, 0.12);
 
-  --r: 3px;
-  --r-lg: 5px;
+  /* --r, --r-lg and --font-size come from theme.generated.css (square corners, 11px) */
 
   /* density knobs — compact mode tightens these via html[data-density='compact'] */
   --pad: 12px;
   --pad-sm: 8px;
   --row-h: 26px;
-  --font-size: 13px;
 
-  --font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-sans: Verdana, Tahoma, 'DejaVu Sans', 'Inter Variable', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', 'SF Mono', 'Menlo', 'Cascadia Code', ui-monospace, monospace;
 
-  color-scheme: dark;
+  color-scheme: light;
   font-family: var(--font-sans);
   font-size: var(--font-size);
   line-height: 1.45;
@@ -85,8 +82,14 @@ html[data-density='compact'] {
   --pad: 8px;
   --pad-sm: 5px;
   --row-h: 21px;
-  --font-size: 12px;
 }
+
+/* 11px type would leave click targets under 24px (WCAG 2.5.8, axe target-size). */
+.btn, .kbd, .area-tab, .screen-tab, .tree-leaf, .settings-row, .context-chip, .status-chip { min-height: 24px; }
+
+/* Classic bevels: raised controls and sunken wells, drawn with the two bevel tokens. */
+.raised { border: 1px solid; border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light); }
+.sunken { border: 1px solid; border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark); }
 
 * {
   box-sizing: border-box;
@@ -2548,8 +2551,15 @@ textarea.field:focus {
   min-height: 0;
   overflow: hidden;
   border: 1px solid var(--line);
-  background: var(--panel-2);
+  /* a chart surface: black canvas, like every figure (canvas tokens) */
+  background: var(--canvas-bg);
+  color: var(--canvas-ink);
 }
+
+.price-chart-frame .muted,
+.price-chart-frame .chart-foot,
+.price-chart-frame .chart-crosshair-readout { color: var(--canvas-muted); }
+.price-chart-frame .mono { color: var(--canvas-ink); }
 
 .price-chart-canvas-wrap {
   position: relative;
@@ -4299,7 +4309,7 @@ textarea.field:focus {
 .figure-rail-count { color: var(--muted); font-variant-numeric: tabular-nums; }
 .report-tree ul[role='group'] { margin: 0 0 var(--pad-sm); }
 .report-tree .tree-group { display: block; padding: 6px var(--pad-sm) 2px; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-.report-tree .tree-leaf { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 4px var(--pad-sm) 4px calc(var(--pad-sm) * 2); border-left: 2px solid transparent; color: var(--ink-dim); font-size: calc(var(--font-size) - 1px); cursor: pointer; }
+.report-tree .tree-leaf { all: unset; box-sizing: border-box; display: block; width: 100%; min-height: 24px; padding: 5px var(--pad-sm) 5px calc(var(--pad-sm) * 2); border-left: 2px solid transparent; color: var(--ink-dim); font-size: calc(var(--font-size) - 1px); cursor: pointer; }
 .report-tree .tree-leaf:hover { color: var(--ink); background: var(--panel-2); }
 .report-tree .tree-leaf.active { color: var(--ink); border-left-color: var(--accent); background: var(--accent-soft); }
 .report-tree .tree-leaf.empty { color: var(--muted); font-style: italic; }
@@ -4372,7 +4382,7 @@ textarea.field:focus {
 .figure-overlay-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--pad); }
 .figure-overlay-title { display: grid; gap: 2px; }
 .figure-overlay-title b { color: var(--ink); }
-.figure-overlay-image { display: block; width: 100%; height: auto; max-height: 78vh; object-fit: contain; background: #fff; border-radius: var(--r); }
+.figure-overlay-image { display: block; width: 100%; height: auto; max-height: 78vh; object-fit: contain; background: var(--canvas-bg); border-radius: var(--r); }
 .figure-copy-error { margin: 0; color: var(--down); font-size: calc(var(--font-size) - 1px); }
 
 /* Shell-level modal (Governance): backdrop, box, head. */

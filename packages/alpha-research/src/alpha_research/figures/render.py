@@ -151,11 +151,14 @@ def _rc(options: RenderOptions) -> dict[str, Any]:
         "axes.edgecolor": theme.line,
         "axes.labelcolor": theme.ink_dim,
         "axes.linewidth": 0.8,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
+        # Option E (spec 2026-09-01 §4.6): every panel sits in a full light frame on the
+        # black canvas, with a dotted grey grid and a framed legend box.
+        "axes.spines.top": True,
+        "axes.spines.right": True,
         "axes.grid": True,
         "axes.axisbelow": True,
         "grid.color": theme.grid,
+        "grid.linestyle": ":",
         "grid.linewidth": 0.6,
         "grid.alpha": 1.0,
         "text.color": theme.ink,
@@ -171,7 +174,10 @@ def _rc(options: RenderOptions) -> dict[str, Any]:
         "font.sans-serif": [theme.font_family],
         "font.monospace": [theme.font_mono],
         "font.size": theme.base_font_pt,
-        "legend.frameon": False,
+        "legend.frameon": True,
+        "legend.facecolor": theme.bg,
+        "legend.edgecolor": theme.line,
+        "legend.framealpha": 1.0,
         "legend.handlelength": 1.6,
         "legend.handletextpad": 0.5,
         "legend.columnspacing": 1.2,
@@ -651,7 +657,8 @@ def _finish_panel(
 
         axes.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v * 100:.0f}%"))
     if panel.y_zero_rule:
-        axes.axhline(0.0, color=theme.line, linewidth=0.8, zorder=1)
+        # A baseline is muted and dashed; `line` is the frame under Option E.
+        axes.axhline(0.0, color=theme.muted, linewidth=0.8, linestyle=(0, (3, 2)), zorder=1)
     if panel.note is not None:
         # The note sits inside the axes, so it can land on the data -- and it did, straight
         # across the price line. A panel-coloured box behind it keeps both readable rather

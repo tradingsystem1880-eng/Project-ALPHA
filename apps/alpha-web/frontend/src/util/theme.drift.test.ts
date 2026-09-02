@@ -1,7 +1,7 @@
 /**
  * The canvas token mirror must not drift from the figure theme.
  *
- * Python renders figures from `alpha_dark.json`; the SPA styles the page from CSS custom
+ * Python renders figures from `terminal_classic.json`; the SPA styles the page from CSS custom
  * properties and mirrors them here for canvas-land, which cannot read CSS variables. Three
  * copies of one palette is two chances to disagree, and a disagreement shows up as a figure
  * that does not match the panel it sits in.
@@ -13,13 +13,13 @@
 
 import { describe, expect, it } from 'vitest'
 
-import themeDocument from '../../../../../packages/alpha-research/src/alpha_research/figures/themes/alpha_dark.json'
+import themeDocument from '../../../../../packages/alpha-research/src/alpha_research/figures/themes/terminal_classic.json'
 import { FALLBACK } from './tokens'
 
 const theme = themeDocument as unknown as Record<string, string>
 
 /** Only what canvas-land actually draws with; surfaces are CSS-only. */
-const MIRRORED = ['line', 'grid', 'ink', 'muted', 'accent', 'up', 'down', 'gold'] as const
+const MIRRORED = ['bg', 'line', 'grid', 'ink', 'muted', 'accent', 'up', 'down', 'gold'] as const
 
 describe('canvas tokens mirror the figure theme', () => {
   it.each(MIRRORED)('%s matches', (name) => {
@@ -29,6 +29,10 @@ describe('canvas tokens mirror the figure theme', () => {
 
   it('maps dim onto the theme ink_dim', () => {
     expect(FALLBACK.dim.toLowerCase()).toBe(theme.ink_dim)
+  })
+
+  it('draws canvas text at the terminal size', () => {
+    expect(FALLBACK.font.startsWith('11px')).toBe(true)
   })
 
   it('reserves the substrate colour for figures only', () => {

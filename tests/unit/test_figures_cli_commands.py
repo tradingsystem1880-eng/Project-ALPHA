@@ -160,8 +160,18 @@ class TestPathAndTheme:
 
     def test_theme_emits_the_shared_token_document(self, run: CliRunner, data_dir: Path) -> None:
         payload = _json(run.invoke(figures_app, ["theme", "--json"]))
-        assert payload["theme_id"] == "alpha-dark"
+        assert payload["theme_id"] == "terminal-classic"
         assert payload["substrate"] != payload["accent"]
+
+    def test_theme_css_writes_then_checks_the_generated_stylesheet(
+        self, run: CliRunner, tmp_path: Path
+    ) -> None:
+        out = tmp_path / "theme.generated.css"
+        stale = run.invoke(figures_app, ["theme-css", "--out", str(out), "--check"])
+        assert stale.exit_code != 0
+        assert run.invoke(figures_app, ["theme-css", "--out", str(out)]).exit_code == 0
+        assert "--canvas-bg: #000000;" in out.read_text("utf-8")
+        assert run.invoke(figures_app, ["theme-css", "--out", str(out), "--check"]).exit_code == 0
 
 
 class TestExportAndClean:
