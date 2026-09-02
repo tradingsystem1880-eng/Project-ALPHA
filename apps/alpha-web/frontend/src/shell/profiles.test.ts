@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { dockOf, documentOf } from './documents'
 import { MARKET_NEUTRAL_WINDOWS, PROFILES, profile, showsWindow } from './profiles'
 import { pullDefaults, starterSymbols } from '../panels/dataManagerModel'
 
@@ -65,6 +66,13 @@ describe('PROFILES', () => {
         exchange: manifest.defaultVenue ?? 'binance',
       })
       expect(starterSymbols(id)).toEqual([...manifest.starterWatchlist])
+    }
+  })
+
+  it('names only windows and docks the registries can open', () => {
+    for (const manifest of Object.values(PROFILES)) {
+      for (const window of manifest.windows) expect(documentOf(window).id).toBe(window)
+      for (const dock of manifest.docks) expect(dockOf(dock).id).toBe(dock)
     }
   })
 

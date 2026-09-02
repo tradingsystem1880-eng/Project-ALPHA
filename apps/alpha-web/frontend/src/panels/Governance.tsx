@@ -1,9 +1,10 @@
 /**
- * The Governance dialog: one place for what the working screens used to shout on every pane —
- * authority and status, Touch ID, research gates, overrides, providers, storage, glossary.
- * Opened from the topbar; Esc closes and focus returns to the opener. It renders existing client
- * reads only (system, providers, overrides, paper sessions, crypto storage, the linked project's
- * gate and the selected run's watermark) and derives no authority in the browser.
+ * Governance: one place for what the working screens used to shout on every pane — authority
+ * and status, Touch ID, research gates, overrides, providers, storage, glossary. `Governance` is
+ * the topbar dialog (Esc closes, focus returns to the opener); `GovernanceDocument` is the same
+ * pages as an MDI document (spec 2026-09-01 §4.5). Both render existing client reads only
+ * (system, providers, overrides, paper sessions, crypto storage, the linked project's gate and the
+ * selected run's watermark) and derive no authority in the browser.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -16,6 +17,7 @@ import type {
   ProviderDefinition,
   SystemStatus,
 } from '../api/types'
+import type { PanelHandleProps } from '../context/panelHandle'
 import { requestResearchCase } from '../context/researchCase'
 import { useActivityField } from '../state/activity'
 import { Glossary } from './Glossary'
@@ -41,7 +43,8 @@ function useRead<T>(read: () => Promise<T>): T | null {
   return value
 }
 
-export function Governance({ onClose }: Props) {
+/** The page tree and the current page; shared by the dialog and the document. */
+function GovernancePages({ beforeCaseLink }: { beforeCaseLink?: () => void }) {
   const gate = useLinkedProjectGate()
   const watermark = useSelectedRunWatermark()
   const connection = useActivityField('connection')
@@ -51,6 +54,86 @@ export function Governance({ onClose }: Props) {
   const sessions = useRead<PaperSession[]>(api.paperSessions)
   const storage = useRead<CryptoStorage>(api.cryptoStorage)
   const [pageId, setPageId] = useState('authority')
+
+  const pages = governancePages({
+    system,
+    providers,
+    overrides,
+    sessions,
+    storage,
+    gate,
+    watermark,
+    connection: String(connection),
+  })
+  const current = pages.find((item) => item.id === pageId) ?? pages[0]
+
+  return (
+    <div className="governance-body">
+      <nav className="report-tree governance-tree">
+        <ul role="tree" aria-label="Governance pages">
+          {pages.map((item) => (
+            <li key={item.id} role="treeitem" aria-selected={item.id === current.id}>
+              <button
+                type="button"
+                className={`tree-leaf${item.id === current.id ? ' active' : ''}`}
+                onClick={() => setPageId(item.id)}
+              >
+                {item.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <section className="governance-page" aria-label={current.label}>
+        <h2>{current.label}</h2>
+        {current.id === 'glossary' ? (
+          <Glossary />
+        ) : current.rows.length ? (
+          <table className="blotter governance-table">
+            <tbody>
+              {current.rows.map((row) => (
+                <tr key={`${row.label}:${row.value}`} data-tone={row.tone}>
+                  <td className="k">{row.label}</td>
+                  <td className={`tone-${row.tone}`}>{row.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted">{current.empty}</p>
+        )}
+        {current.caseLink ? (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              beforeCaseLink?.()
+              requestResearchCase(current.caseLink!.projectId)
+            }}
+          >
+            Open research case
+            {current.caseLink.projectName ? ` · ${current.caseLink.projectName}` : ''}
+          </button>
+        ) : null}
+      </section>
+    </div>
+  )
+}
+
+/** Governance as an MDI document: no modal, no focus trap, the MDI tab closes it. */
+export function GovernanceDocument(_props: PanelHandleProps) {
+  return (
+    <div className="panel governance-document">
+      <div className="panel-toolbar">
+        <span className="title">Governance</span>
+        <span className="muted">authority, gates, providers, storage — relayed, never derived</span>
+      </div>
+      <GovernancePages />
+    </div>
+  )
+}
+
+export function Governance({ onClose }: Props) {
   const box = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -83,18 +166,6 @@ export function Governance({ onClose }: Props) {
     return () => document.removeEventListener('keydown', onKey, true)
   }, [onClose])
 
-  const pages = governancePages({
-    system,
-    providers,
-    overrides,
-    sessions,
-    storage,
-    gate,
-    watermark,
-    connection: String(connection),
-  })
-  const current = pages.find((item) => item.id === pageId) ?? pages[0]
-
   return (
     <div className="shell-modal" role="presentation" onClick={onClose}>
       <div
@@ -113,55 +184,7 @@ export function Governance({ onClose }: Props) {
             Close
           </button>
         </div>
-        <div className="governance-body">
-          <nav className="report-tree governance-tree">
-            <ul role="tree" aria-label="Governance pages">
-              {pages.map((item) => (
-                <li key={item.id} role="treeitem" aria-selected={item.id === current.id}>
-                  <button
-                    type="button"
-                    className={`tree-leaf${item.id === current.id ? ' active' : ''}`}
-                    onClick={() => setPageId(item.id)}
-                  >
-                    {item.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          <section className="governance-page" aria-label={current.label}>
-            <h2>{current.label}</h2>
-            {current.id === 'glossary' ? (
-              <Glossary />
-            ) : current.rows.length ? (
-              <table className="blotter governance-table">
-                <tbody>
-                  {current.rows.map((row) => (
-                    <tr key={`${row.label}:${row.value}`} data-tone={row.tone}>
-                      <td className="k">{row.label}</td>
-                      <td className={`tone-${row.tone}`}>{row.value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p className="muted">{current.empty}</p>
-            )}
-            {current.caseLink ? (
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  onClose()
-                  requestResearchCase(current.caseLink!.projectId)
-                }}
-              >
-                Open research case
-                {current.caseLink.projectName ? ` · ${current.caseLink.projectName}` : ''}
-              </button>
-            ) : null}
-          </section>
-        </div>
+        <GovernancePages beforeCaseLink={onClose} />
       </div>
     </div>
   )

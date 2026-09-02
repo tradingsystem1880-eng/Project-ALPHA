@@ -29,6 +29,7 @@ export default defineConfig({
         'src/panels/governanceModel.ts',
         'src/shell/statusModel.ts',
         'src/shell/profiles.ts',
+        'src/shell/documents.ts',
         'src/panels/researchBacklogModel.ts',
         'src/panels/researchCockpitModel.ts',
         'src/panels/researchDataModel.ts',

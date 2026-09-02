@@ -103,12 +103,19 @@ export function CryptoDataCenter({
   projectId,
   caseRevision,
   onRegistered,
+  initialSection,
+  initialFamily,
 }: {
   projectId: string | null
   caseRevision: string | null
   onRegistered?: () => void
+  /** The section a document opens on; an unknown id falls back to Derivatives & Funding. */
+  initialSection?: CryptoDataSection
+  initialFamily?: CryptoFamily
 }) {
-  const [section, setSection] = useState<CryptoDataSection>('derivatives')
+  const [section, setSection] = useState<CryptoDataSection>(
+    SECTIONS.some((item) => item.id === initialSection) ? initialSection! : 'derivatives',
+  )
   const [catalog, setCatalog] = useState<CryptoCatalog | null>(null)
   const [capabilities, setCapabilities] = useState<CryptoCapabilities | null>(null)
   const [storage, setStorage] = useState<CryptoStorage | null>(null)
@@ -116,7 +123,7 @@ export function CryptoDataCenter({
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [family, setFamily] = useState<CryptoFamily>('funding')
+  const [family, setFamily] = useState<CryptoFamily>(initialFamily ?? 'funding')
   const [instrument, setInstrument] = useState('BTCUSDT')
   const [base, setBase] = useState('BTC')
   const [quote, setQuote] = useState('USDT')

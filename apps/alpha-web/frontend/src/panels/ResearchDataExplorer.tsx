@@ -6,13 +6,14 @@
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
-import type { ResearchDatasetRefRow } from '../api/types'
+import type { CryptoFamily, ResearchDatasetRefRow } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { stateChipClass } from './researchChipModel'
 import { CryptoDataCenter } from './CryptoDataCenter'
 import {
+  type CryptoDataSection,
   datasetAuditBadge,
   datasetOriginSummary,
   datasetRangeLabel,
@@ -33,6 +34,11 @@ export function ResearchDataExplorer(props: PanelHandleProps & { embedded?: bool
   const [caseRevision, setCaseRevision] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [datasetRevision, setDatasetRevision] = useState(0)
+  // A document (shell/documents.ts) may open the Crypto Data Center on one section/family.
+  const documentParams = (props.params ?? {}) as {
+    initialSection?: CryptoDataSection
+    initialFamily?: CryptoFamily
+  }
 
   useEffect(() => {
     let live = true
@@ -98,6 +104,8 @@ export function ResearchDataExplorer(props: PanelHandleProps & { embedded?: bool
           projectId={panelLink.linked.projectId}
           caseRevision={caseRevision}
           onRegistered={() => setDatasetRevision((value) => value + 1)}
+          initialSection={documentParams.initialSection}
+          initialFamily={documentParams.initialFamily}
         />
         <div className="rd-head">Research-case dataset bindings</div>
         <section aria-label="Dataset bound to current research contract">

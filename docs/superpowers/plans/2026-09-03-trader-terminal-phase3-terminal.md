@@ -88,7 +88,7 @@
       "expected": "shell/documents.ts exports DOCUMENTS (chart, report, compare, build, research, governance, forecast, ml, jobs kinds with title/component/params), REPORT_DOCUMENT, document(id) that throws on an unknown id, and DOCKS (left: MarketWatch, Navigator; right: DataManager + Research/Strategy tools; bottom: Toolbox with tabs Jobs · Trades · Backtests · Data pulls · Log); the carried-over invariants (Standalone Sandbox separate from ResearchCockpit, no Glossary pane, no hazard stripe) hold; screens.test.ts is deleted; every profile window/dock id resolves.",
       "rollback": "Restore screens.tsx and screens.test.ts; delete documents.ts.",
       "files": ["apps/alpha-web/frontend/src/shell/documents.ts", "apps/alpha-web/frontend/src/shell/documents.test.ts", "apps/alpha-web/frontend/src/shell/screens.tsx", "apps/alpha-web/frontend/src/shell/screens.test.ts", "apps/alpha-web/frontend/vitest.config.ts"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "T5 pure shell models: MDI reducer, menu assignment, toolbar/title bar, status bar",
@@ -227,3 +227,12 @@ rewrite under `gate.py ack`, docs, full gate.
   rule (the v1 line is verbatim by test, the new row states the current default).
 * **T2** — the registry cross-check (architect #13) is written in T4, not T2: a test importing a
   module that does not exist yet fails `tsc -b`, which every slice's build gate runs.
+* **T4** — the lookup is `documentOf(id)` / `dockOf(id)` rather than `document(id)`: a module
+  export named `document` shadows the DOM global that Governance.tsx already uses. `screens.tsx`
+  stays until T7a because App.tsx and the command palette still render it; only `screens.test.ts`
+  is replaced. Docks are declarative (id, side, title, tabs) — Market Watch and Navigator have no
+  component until T6. Every profile window id resolves: the crypto-only ids open the governed
+  Crypto Data Center on their section/family through document params (`initialSection`,
+  `initialFamily`), crowding opens the research cockpit, and the Governance document is the dialog's
+  page tree without the modal (`GovernanceDocument`), which moved that Governance.tsx split from
+  T7a into T4.
