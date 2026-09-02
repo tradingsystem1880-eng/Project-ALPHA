@@ -871,3 +871,39 @@ def test_origins_endpoint_404_when_absent(tmp_path: Path, monkeypatch: pytest.Mo
     client = _client(tmp_path, monkeypatch)
     assert client.get("/api/runs/aaaa000000000001").json()["has_origins"] is False
     assert client.get("/api/runs/aaaa000000000001/origins").status_code == 404
+
+
+def test_display_name_reads_like_a_trader_would(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Spec 2026-09-01 §4.4: `<strategy> D1 — <symbol> · <venue> · <start> → <end> · run <8 hex>`,
+    computed server-side from the manifest and the equity curve; the index and detail agree."""
+    client = _client(tmp_path, monkeypatch)
+    _write_run(
+        tmp_path,
+        "runs",
+        "cafe000000000008",
+        {
+            "command": "backtest_run",
+            "symbol": "XRP/USDT",
+            "source": "ccxt:binance",
+            "params": {"strategy_name": "ma_crossover", "fast": 10},
+        },
+        equity=[1.0, 1.1, 1.2],
+    )
+    expected = "ma_crossover D1 — XRP/USDT · ccxt:binance · 2020-01-01 → 2020-01-03 · run cafe0000"
+    items = client.get("/api/runs").json()["items"]
+    assert next(r for r in items if r["run_id"] == "cafe000000000008")["display_name"] == expected
+    assert client.get("/api/runs/cafe000000000008").json()["display_name"] == expected
+
+
+def test_display_name_omits_what_the_run_does_not_carry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    _write_run(
+        tmp_path, "optim", "cafe000000000009", {"command": "optim_grid", "symbols": ["SPY", "TLT"]}
+    )
+    items = client.get("/api/runs").json()["items"]
+    item = next(r for r in items if r["run_id"] == "cafe000000000009")
+    assert item["display_name"] == "optim_grid D1 — SPY, TLT · run cafe0000"

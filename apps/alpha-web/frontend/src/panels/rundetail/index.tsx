@@ -165,8 +165,7 @@ export function RunDetail(props: PanelHandleProps) {
   return (
     <div className="panel">
       <div className="panel-toolbar">
-        <span className="title">Run</span>
-        <span className="id mono">{runId}</span>
+        <span className="title">{detail.display_name}</span>
         <span className="chip kind">{kindLabel}</span>
         <nav className="rd-tabs" role="tablist" aria-label="Run views">
           {tabs.map((item) => (

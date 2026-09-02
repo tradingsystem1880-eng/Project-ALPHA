@@ -17657,6 +17657,10 @@
       "RunDetail": {
         "additionalProperties": false,
         "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
           "has_equity": {
             "title": "Has Equity",
             "type": "boolean"
@@ -17761,6 +17765,7 @@
           "run_id",
           "kind",
           "mtime",
+          "display_name",
           "manifest",
           "research_gate_watermark",
           "run_context_kind",
@@ -17815,6 +17820,10 @@
               }
             ],
             "title": "Command"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
           },
           "kind": {
             "title": "Kind",
@@ -17956,6 +17965,7 @@
           "kind",
           "command",
           "label",
+          "display_name",
           "symbol",
           "symbols",
           "snapshot_id",

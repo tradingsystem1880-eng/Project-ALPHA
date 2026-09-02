@@ -189,6 +189,8 @@ class RunListItem(StrictModel):
     kind: str
     command: str | None
     label: str | None
+    # spec 2026-09-01 §4.4: `<strategy> D1 — <symbol> · <venue> · <start> → <end> · run <8 hex>`
+    display_name: str
     symbol: str | None
     symbols: list[str] | None
     snapshot_id: str | None
@@ -212,6 +214,7 @@ class RunDetail(StrictModel):
     run_id: str
     kind: str
     mtime: float
+    display_name: str
     manifest: dict[str, Any]
     # spec §15 / ADR-0026: EXPLORATORY marker for runs launched under a research-gate override
     research_gate_watermark: str | None

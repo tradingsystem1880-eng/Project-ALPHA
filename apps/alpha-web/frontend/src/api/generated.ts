@@ -9575,6 +9575,8 @@ export interface components {
         RunContextV1: components["schemas"]["GovernedRunContextV1"] | components["schemas"]["StandaloneRunContextV1"];
         /** RunDetail */
         RunDetail: {
+            /** Display Name */
+            display_name: string;
             /** Has Equity */
             has_equity: boolean;
             /** Has Forecast */
@@ -9628,6 +9630,8 @@ export interface components {
         RunListItem: {
             /** Command */
             command: string | null;
+            /** Display Name */
+            display_name: string;
             /** Kind */
             kind: string;
             /** Label */

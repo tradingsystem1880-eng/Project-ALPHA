@@ -220,6 +220,7 @@ describe('run workspace capabilities', () => {
       run_id: '0123456789abcdef',
       kind,
       mtime: 0,
+      display_name: `${command} D1 — run 01234567`,
       manifest: { command },
       has_equity: hasEquity,
       has_trades: false,

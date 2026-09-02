@@ -105,6 +105,7 @@ export function LibraryRail({
             || (runScope === 'historical' && item.run_context_kind === 'legacy_context_unknown'))
           && (!needle ||
             item.run_id.includes(needle) ||
+            item.display_name.toLowerCase().includes(needle) ||
             (item.label ?? '').toLowerCase().includes(needle) ||
             (item.command ?? '').toLowerCase().includes(needle)),
       ),
@@ -211,8 +212,8 @@ export function LibraryRail({
                 title={`${item.command ?? item.kind} · ${item.run_id}`}
               >
                 <span className="library-row-main">
-                  <span className="mono">{shortId(item.run_id)}</span>
-                  <span className="library-row-sub">{item.label ?? item.command ?? item.kind}</span>
+                  <span className="library-row-name">{item.display_name}</span>
+                  <span className="library-row-sub mono">{shortId(item.run_id)}</span>
                 </span>
                 {item.run_context_kind === 'standalone_sandbox' ? (
                   <span className="chip warn">STANDALONE</span>

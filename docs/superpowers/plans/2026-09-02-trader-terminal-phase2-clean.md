@@ -54,11 +54,11 @@
   "slices": [
     {
       "title": "C1 server-side run display_name and the library rail that uses it",
-      "verify": "uv run pytest -q tests/integration/test_web_api_runs.py tests/unit/test_web_contracts.py -m \"not network\" && uv run python scripts/generate_web_openapi.py --check && uv run python scripts/check_openapi_operations.py && cd apps/alpha-web/frontend && npx vitest run src/panels/RunBrowser.test.ts src/panels/runBrowserModel.test.ts && npm run lint -- --deny-warnings && npm run build && cd ../../.. && git status --short apps/alpha-web/src/alpha_web/static/app && uv run python scripts/gate.py fast",
+      "verify": "uv run pytest -q tests/integration/test_web_api_runs.py tests/unit/test_web_contracts.py -m \"not network\" && uv run python scripts/generate_web_openapi.py --check && uv run python scripts/check_openapi_operations.py && cd apps/alpha-web/frontend && npx vitest run src/panels/RunBrowser.test.ts src/panels/v3Models.test.ts && npm run lint -- --deny-warnings && npm run build && cd ../../.. && git status --short apps/alpha-web/src/alpha_web/static/app && uv run python scripts/gate.py fast",
       "expected": "GET /api/runs items and GET /api/runs/{id} carry `display_name` = `<strategy> D1 — <symbol> · <venue> · <start> → <end> · run <8 hex>` built in _runs.run_record from manifest fields plus the equity curve's ts range (venue and range omitted when absent; symbols joined with ', '); the activity events reuse the same record; LibraryRail rows and the run-detail toolbar show display_name with the 8-hex id demoted to a mono suffix; filter matches display_name; OpenAPI + generated.ts regenerated; e2e fixtures typed as RunListItem gain the field.",
       "rollback": "Revert _runs.py, models.py, LibraryRail.tsx, rundetail/index.tsx, regenerated contracts and fixtures; run directories are untouched.",
-      "files": ["apps/alpha-web/src/alpha_web/_runs.py", "apps/alpha-web/src/alpha_web/api/models.py", "apps/alpha-web/frontend/src/shell/LibraryRail.tsx", "apps/alpha-web/frontend/src/panels/rundetail/index.tsx", "apps/alpha-web/frontend/src/panels/runBrowserModel.ts", "apps/alpha-web/frontend/src/panels/runBrowserModel.test.ts", "apps/alpha-web/frontend/src/api/types.ts", "apps/alpha-web/frontend/src/api/generated.ts", "apps/alpha-web/frontend/openapi.json", "apps/alpha-web/frontend/e2e/support/workstationHarness.ts", "tests/integration/test_web_api_runs.py", "docs/governance/openapi-operation-classification.json", "docs/governance/capability-authority-matrix.md", "apps/alpha-web/src/alpha_web/static/app/**"],
-      "status": "pending"
+      "files": ["apps/alpha-web/src/alpha_web/_runs.py", "apps/alpha-web/src/alpha_web/api/models.py", "apps/alpha-web/frontend/src/shell/LibraryRail.tsx", "apps/alpha-web/frontend/src/panels/rundetail/index.tsx", "apps/alpha-web/frontend/src/panels/runBrowserModel.ts", "apps/alpha-web/frontend/src/panels/runBrowserModel.test.ts", "apps/alpha-web/frontend/src/api/types.ts", "apps/alpha-web/frontend/src/api/generated.ts", "apps/alpha-web/frontend/openapi.json", "apps/alpha-web/frontend/e2e/support/workstationHarness.ts", "tests/integration/test_web_api_runs.py", "docs/governance/openapi-operation-classification.json", "docs/governance/capability-authority-matrix.md", "apps/alpha-web/src/alpha_web/static/app/**", "apps/alpha-web/frontend/src/panels/v3Models.test.ts"],
+      "status": "done"
     },
     {
       "title": "C2 Strategy Performance Report: Summary table and the left tree replace tabs, band and inner tree",
@@ -181,6 +181,10 @@ lands, see the "Test-architect items" subsection appended by /implement before C
   table.
 * C7 → Phase 2 acceptance test; full frontend gate.
 * Markers: none new; **no `bias_guard`** (no PIT reader in scope).
+
+## Deviations recorded during /implement
+
+* **C1** — the rail filter matches `display_name` inline (no new model function; `runBrowserModel.test.ts` does not exist, the existing `RunBrowser.test.ts` covers the model). `v3Models.test.ts` builds typed `RunDetail` fixtures and gained the field.
 
 ## DAG / look-ahead / determinism impact
 
