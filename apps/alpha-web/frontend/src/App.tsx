@@ -21,6 +21,9 @@ import { ContextBar } from './shell/ContextBar'
 import { LibraryRail } from './shell/LibraryRail'
 import { PanelHost } from './shell/PanelHost'
 import { areasOf, RESULTS_SCREEN, SCREENS, screen, type ScreenId } from './shell/screens'
+import { useLinkedProjectGate } from './panels/useLinkedProjectGate'
+import { useSelectedRunWatermark } from './panels/useSelectedRunWatermark'
+import { statusChip } from './shell/statusModel'
 import { initActivity, useActivityField } from './state/activity'
 import { setSettings, useSettings, workspaceModeFor } from './state/settings'
 
@@ -32,15 +35,26 @@ function runIdFromHash(): string | null {
   return match ? match[1] : null
 }
 
-function StatusCluster() {
+function StatusCluster({ onOpenGovernance }: { onOpenGovernance: () => void }) {
   const connection = useActivityField('connection')
   const runningJobs = useActivityField('runningJobs')
+  const gate = useLinkedProjectGate()
+  const watermark = useSelectedRunWatermark()
+  const chip = statusChip({ watermark, gateLock: gate.lock })
   const dotClass = connection === 'live' ? '' : connection === 'connecting' ? 'busy' : 'down'
   return (
     <div className="status" title={`activity stream: ${connection}`}>
       <span className={`dot ${dotClass}`} />
       {connection === 'live' ? 'live' : connection}
       {runningJobs > 0 ? <span className="chip kind">{runningJobs} running</span> : null}
+      <button
+        type="button"
+        className={`chip ${chip.tone} status-chip`}
+        title={chip.title}
+        onClick={onOpenGovernance}
+      >
+        {chip.text}
+      </button>
     </div>
   )
 }
@@ -329,7 +343,7 @@ function WorkstationApp() {
           ⚖<span className="governance-label">Governance</span>
         </button>
         <SettingsMenu />
-        <StatusCluster />
+        <StatusCluster onOpenGovernance={() => setGovernanceOpen(true)} />
       </header>
 
       <div className={`workspace${railCollapsed ? ' workspace--rail-collapsed' : ''}`}>

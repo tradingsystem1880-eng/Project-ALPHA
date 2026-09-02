@@ -90,7 +90,7 @@
       "expected": "The topbar gains one status chip (`Paper only` by default; the research-gate override watermark text when the selected run carries one) and a Governance button that opens the Operate Governance pane; the research-gate e2e test asserts the watermark on the report title-bar chip, the topbar status segment and the Governance pane (three surfaces) and still asserts the Providers override reason; a pure statusModel decides the chip text; all six screens keep clearing the accessibility gate.",
       "rollback": "Restore App.tsx and the e2e test; the chip and model are removed.",
       "files": ["apps/alpha-web/frontend/src/App.tsx", "apps/alpha-web/frontend/src/shell/statusModel.ts", "apps/alpha-web/frontend/src/shell/statusModel.test.ts", "apps/alpha-web/frontend/src/index.css", "apps/alpha-web/frontend/vitest.config.ts", "apps/alpha-web/frontend/e2e/**", "apps/alpha-web/src/alpha_web/static/app/**"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "C6 one dense jobs table replaces the JobMonitor cards",

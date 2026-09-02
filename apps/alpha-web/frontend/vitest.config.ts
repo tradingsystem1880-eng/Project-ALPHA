@@ -26,6 +26,7 @@ export default defineConfig({
         'src/panels/reportModel.ts',
         'src/components/figureExport.ts',
         'src/panels/governanceModel.ts',
+        'src/shell/statusModel.ts',
         'src/panels/researchBacklogModel.ts',
         'src/panels/researchCockpitModel.ts',
         'src/panels/researchDataModel.ts',

@@ -14,16 +14,14 @@ import type {
   CryptoStorage,
   PaperSession,
   ProviderDefinition,
-  RunDetail,
   SystemStatus,
 } from '../api/types'
-import { useLinked } from '../context/linked'
 import { requestResearchCase } from '../context/researchCase'
 import { useActivityField } from '../state/activity'
 import { Glossary } from './Glossary'
 import { governancePages } from './governanceModel'
-import { researchGateWatermark } from './researchGateModel'
 import { useLinkedProjectGate } from './useLinkedProjectGate'
+import { useSelectedRunWatermark } from './useSelectedRunWatermark'
 
 interface Props {
   onClose: () => void
@@ -44,33 +42,16 @@ function useRead<T>(read: () => Promise<T>): T | null {
 }
 
 export function Governance({ onClose }: Props) {
-  const linked = useLinked()
   const gate = useLinkedProjectGate()
+  const watermark = useSelectedRunWatermark()
   const connection = useActivityField('connection')
   const system = useRead<SystemStatus>(api.system)
   const providers = useRead<ProviderDefinition[]>(api.providers)
   const overrides = useRead<ActiveResearchGateOverride[]>(api.researchGateOverrides)
   const sessions = useRead<PaperSession[]>(api.paperSessions)
   const storage = useRead<CryptoStorage>(api.cryptoStorage)
-  const [run, setRun] = useState<RunDetail | null>(null)
   const [pageId, setPageId] = useState('authority')
   const box = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const runId = linked.runId
-    if (!runId) {
-      setRun(null)
-      return
-    }
-    let live = true
-    api
-      .run(runId)
-      .then((detail) => live && setRun(detail))
-      .catch(() => live && setRun(null))
-    return () => {
-      live = false
-    }
-  }, [linked.runId])
 
   useEffect(() => {
     const root = box.current
@@ -109,7 +90,7 @@ export function Governance({ onClose }: Props) {
     sessions,
     storage,
     gate,
-    watermark: researchGateWatermark(run),
+    watermark,
     connection: String(connection),
   })
   const current = pages.find((item) => item.id === pageId) ?? pages[0]

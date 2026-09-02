@@ -4078,9 +4078,14 @@ textarea.field:focus {
 }
 
 @media (max-width: 1280px) {
-  /* The topbar is full at 1280px: the Governance button keeps its glyph and accessible name. */
-  .governance-label {
+  /* The topbar is full at 1280px: the Governance button keeps its glyph and accessible name,
+     the brand drops its sub-line, and the status chip truncates rather than wrapping. */
+  .governance-label,
+  .brand .sub {
     display: none;
+  }
+  .status-chip {
+    max-width: 140px;
   }
   .kronos-main-grid,
   .development-grid {
@@ -4388,6 +4393,8 @@ textarea.field:focus {
 .governance-table td.tone-warn { color: var(--gold); }
 .governance-table td.tone-bad { color: var(--down); }
 .governance-page .glossary { padding: 0; }
+.status-chip { font: inherit; cursor: pointer; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status-chip:hover { filter: brightness(1.2); }
 .figure-absent-reason { margin: 0; color: var(--muted); font-size: calc(var(--font-size) - 1px); }
 .figure-flag {
   padding: 1px 6px;
@@ -4502,6 +4509,7 @@ textarea.field:focus {
   color: var(--ink); font: inherit; cursor: pointer;
 }
 .context-chip:hover { border-color: var(--accent); color: var(--ink); }
+.context-chip { white-space: nowrap; }
 .context-sep { color: var(--muted); }
 .context-symbol { color: var(--ink); }
 .context-pop {

@@ -3063,7 +3063,16 @@ test('research-gate override watermark reaches provider governance and run resul
     'aria-selected',
     'true',
   )
-  await expect(page.getByText(RESEARCH_GATE_WATERMARK).first()).toBeVisible()
+  // Three surfaces: the report title-bar chip, the topbar status chip, the Governance pane.
+  await expect(page.locator('.rg-watermark-chip')).toHaveText(RESEARCH_GATE_WATERMARK)
+  await expect(page.locator('.status-chip')).toHaveText(RESEARCH_GATE_WATERMARK)
+  await expect(page.getByText(RESEARCH_GATE_WATERMARK, { exact: true })).toHaveCount(2)
+  await page.locator('.status-chip').click()
+  const governance = page.getByRole('dialog', { name: 'Governance' })
+  await expect(governance.getByText(RESEARCH_GATE_WATERMARK, { exact: true })).toBeVisible()
+  await expect(page.getByText(RESEARCH_GATE_WATERMARK, { exact: true })).toHaveCount(3)
+  await expectReleaseAccessibility(page)
+  await page.keyboard.press('Escape')
   await expectReleaseAccessibility(page)
 })
 
@@ -3103,10 +3112,13 @@ test('open research gates lock strategy affordances on Develop and link to the c
 
   // Development Center auto-selects the research-required project and blocks versioning; the
   // explanation lives in Governance, which deep-links to the holding case.
-  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(0)
+  await expect(page.getByText('RESEARCH GATE OPEN', { exact: true })).toHaveCount(0)
   await page.getByLabel('Clean source fingerprint').fill('git:0000000')
   await expect(page.getByRole('button', { name: 'Create immutable version' })).toBeDisabled()
-  await page.getByRole('button', { name: 'Governance' }).click()
+  // The topbar status chip names the open gate and is the deep link into Governance.
+  const chip = page.locator('.status-chip')
+  await expect(chip).toHaveText('Research gate open')
+  await chip.click()
   const governance = page.getByRole('dialog', { name: 'Governance' })
   await governance.getByRole('button', { name: 'Research gates' }).click()
   await expect(governance.getByText(/RESEARCH GATE OPEN/)).toBeVisible()
@@ -3119,7 +3131,7 @@ test('open research gates lock strategy affordances on Develop and link to the c
 
   // Strategy Lab and Pipeline share the same backend gate and block strategy execution.
   await page.getByRole('tab', { name: 'Build', exact: true }).click()
-  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(2)
+  await expect(page.getByText('RESEARCH GATE OPEN', { exact: true })).toHaveCount(2)
   await expect(page.getByRole('button', { name: /Launch backtest run/ })).toBeDisabled()
   const preps = page.getByRole('button', { name: '▶ prep' })
   await expect(preps.first()).toBeEnabled() // 1 · Data — pulling history is not strategy work
@@ -3146,7 +3158,7 @@ test('open research gates lock strategy affordances on Develop and link to the c
   await page.getByLabel('Clean source fingerprint').fill('git:0000000')
   await expect(page.getByRole('button', { name: 'Create immutable version' })).toBeEnabled()
   await page.getByRole('tab', { name: 'Strategy Development', exact: true }).click()
-  await expect(page.getByText('RESEARCH GATE OPEN')).toHaveCount(0)
+  await expect(page.getByText('RESEARCH GATE OPEN', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: /Launch backtest run/ })).toBeEnabled()
   await page.getByRole('tab', { name: 'Development Next Step', exact: true }).click()
   await expect(preps.nth(1)).toBeEnabled()
