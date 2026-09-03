@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { openDocument } from './support/workstationHarness'
+
 test('real backend captures a case and renders all material questions without vendor network', async ({
   page,
   request,
@@ -40,9 +42,9 @@ test('real backend captures a case and renders all material questions without ve
   await expect(page.locator('.sandbox-banner')).toHaveCount(0)
   await page.getByRole('button', { name: 'Governance' }).click()
   await expect(
-    page.getByRole('dialog', { name: 'Governance' }).getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/),
+    page.getByRole('region', { name: 'Governance', exact: true }).getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/),
   ).toBeVisible()
-  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Close Governance' }).click()
   expect(externalRequests).toEqual([])
 })
 
@@ -61,7 +63,7 @@ test('generated project workspace is visible and refreshes without authority esc
   const project = (await created.json()) as { project_id: string }
 
   await page.goto('')
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await openDocument(page, 'Build')
   await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
   await page.getByLabel('Strategy project').selectOption(project.project_id)
 
@@ -102,7 +104,7 @@ test('late workspace refresh cannot overwrite a newly selected project', async (
   })
 
   await page.goto('')
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await openDocument(page, 'Build')
   await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
   const selector = page.getByLabel('Strategy project')
   const workspace = page.getByRole('region', { name: 'Project workspace' })

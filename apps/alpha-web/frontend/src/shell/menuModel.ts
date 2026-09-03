@@ -5,6 +5,7 @@
 
 import type { CommandDef } from '../api/types'
 import type { OpenDocument } from './mdiModel'
+import type { WindowId } from './profiles'
 
 export const MENUS = [
   'File',
@@ -51,7 +52,8 @@ export const GROUP_MENU: Readonly<Record<string, MenuName>> = Object.freeze({
 export type MenuItem =
   | { kind: 'command'; id: string; label: string }
   | { kind: 'document'; key: string; label: string; active: boolean }
-  | { kind: 'shell'; id: 'governance' | 'palette' | 'settings'; label: string }
+  | { kind: 'open'; window: WindowId; label: string }
+  | { kind: 'shell'; id: 'palette' | 'settings'; label: string }
 
 export function commandGroup(id: string): string {
   return id.split(' ', 1)[0]
@@ -72,14 +74,18 @@ export function assignCommands(catalog: readonly CommandDef[]): Record<MenuName,
   return menus
 }
 
-/** The full menu bar: catalog commands plus the shell's own entries and the open documents. */
+/**
+ * The full menu bar: catalog commands, the shell's own entries, the documents the profile can
+ * open (View, Governance among them) and the open documents (Window).
+ */
 export function menuBar(
   catalog: readonly CommandDef[],
   open: readonly OpenDocument[],
   active: string | null,
+  available: readonly { id: WindowId; title: string }[],
 ): Record<MenuName, MenuItem[]> {
   const menus = assignCommands(catalog)
-  menus.View.unshift({ kind: 'shell', id: 'governance', label: 'Governance' })
+  for (const item of available) menus.View.push({ kind: 'open', window: item.id, label: item.title })
   menus.View.push({ kind: 'shell', id: 'settings', label: 'Settings' })
   menus.Help.unshift({ kind: 'shell', id: 'palette', label: 'Search commands ⌘K' })
   for (const item of open) {

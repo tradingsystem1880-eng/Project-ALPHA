@@ -13,7 +13,7 @@ import { useSettings } from '../state/settings'
 import { storageRow } from './dataManagerModel'
 import { MARKET_UNKNOWN_LABEL, navigatorTree, type NavigatorLeaf } from './navigatorModel'
 
-export function Navigator({ onOpenRun }: { onOpenRun: (runId: string) => void }) {
+export function Navigator({ onOpenRun }: { onOpenRun: (runId: string, title: string) => void }) {
   const { profile } = useSettings()
   const [showAll, setShowAll] = useState(false)
   const [runs, setRuns] = useState<RunListItem[]>([])
@@ -59,7 +59,7 @@ export function Navigator({ onOpenRun }: { onOpenRun: (runId: string) => void })
   })
 
   const activate = (leaf: NavigatorLeaf) => {
-    if (leaf.action.kind === 'run') onOpenRun(leaf.action.runId)
+    if (leaf.action.kind === 'run') onOpenRun(leaf.action.runId, leaf.label)
     else if (leaf.action.kind === 'project') setLinked({ projectId: leaf.action.projectId })
     else if (leaf.action.kind === 'symbol') setLinked({ symbol: leaf.action.symbol })
   }
@@ -87,14 +87,16 @@ export function Navigator({ onOpenRun }: { onOpenRun: (runId: string) => void })
         </label>
       </div>
       {error ? <p className="muted">{error}</p> : null}
-      <nav className="report-tree navigator-tree">
+      <nav className="report-tree navigator-tree" tabIndex={0}>
         <ul role="tree" aria-label="Navigator">
           {groups.map((group) => (
             <li key={group.label} role="treeitem" aria-expanded="true" className="tree-group">
               <span className="tree-group-label">{group.label}</span>
               <ul role="group">
                 {group.leaves.length === 0 && group.unknown.length === 0 ? (
-                  <li className="tree-leaf empty">none</li>
+                  <li role="treeitem" aria-selected={false} className="tree-leaf empty">
+                    none
+                  </li>
                 ) : null}
                 {group.leaves.map(leafButton)}
                 {group.unknown.length ? (

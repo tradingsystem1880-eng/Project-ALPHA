@@ -76,12 +76,20 @@ describe('menuModel', () => {
         { key: 'report:aaaaaaaa', window: 'report', title: 'Run A' },
       ],
       'report:aaaaaaaa',
+      [
+        { id: 'chart', title: 'Chart' },
+        { id: 'governance', title: 'Governance' },
+      ],
     )
     expect(menus.Window).toEqual([
       { kind: 'document', key: 'chart', label: 'Chart', active: false },
       { kind: 'document', key: 'report:aaaaaaaa', label: 'Run A', active: true },
     ])
-    expect(menus.View[0]).toEqual({ kind: 'shell', id: 'governance', label: 'Governance' })
+    expect(menus.View).toEqual([
+      { kind: 'open', window: 'chart', label: 'Chart' },
+      { kind: 'open', window: 'governance', label: 'Governance' },
+      { kind: 'shell', id: 'settings', label: 'Settings' },
+    ])
     expect(menus.Backtest).toEqual([{ kind: 'command', id: 'backtest run', label: 'backtest run' }])
   })
 })

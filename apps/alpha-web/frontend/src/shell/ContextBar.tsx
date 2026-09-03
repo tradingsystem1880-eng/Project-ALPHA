@@ -14,10 +14,13 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { setLinked, useLinked } from '../context/linked'
+import { useSettings } from '../state/settings'
 import { shortId } from '../util/format'
+import { venueLabel } from './toolbarModel'
 
 export function ContextBar() {
   const linked = useLinked()
+  const { profile } = useSettings()
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
 
@@ -43,9 +46,18 @@ export function ContextBar() {
         className="context-chip"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        title="What every screen is currently showing"
+        aria-label="Symbol, venue and timeframe"
+        title="What every document is currently showing"
       >
         <span className="context-symbol mono">{linked.symbol ?? 'no symbol'}</span>
+        {venueLabel(profile) ? (
+          <>
+            <span className="context-sep">·</span>
+            <span className="context-venue">{venueLabel(profile)}</span>
+          </>
+        ) : null}
+        <span className="context-sep">·</span>
+        <span className="context-tf mono">D1</span>
         <span className="context-sep">·</span>
         <span className="context-window">{window_}</span>
         {linked.projectId ? (

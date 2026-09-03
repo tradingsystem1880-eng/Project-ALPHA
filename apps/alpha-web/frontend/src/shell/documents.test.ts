@@ -7,6 +7,7 @@ import {
   REPORT_DOCUMENT,
   dockOf,
   documentOf,
+  panesByArea,
 } from './documents'
 import { PROFILES } from './profiles'
 import type { DockId, WindowId } from './profiles'
@@ -56,6 +57,27 @@ describe('document registry', () => {
       expect(definition.panes.map((pane) => pane.name)).not.toContain('Glossary')
     }
     expect(documentOf('governance').panes.map((pane) => pane.name)).toEqual(['Governance'])
+  })
+
+  it('never titles a document the same as one of its pane tabs', () => {
+    // Both render as role=tab; an equal name would make the two indistinguishable.
+    for (const definition of DOCUMENTS) {
+      if (definition.panes.length < 2) continue
+      expect(definition.panes.map((pane) => pane.title)).not.toContain(definition.title)
+    }
+  })
+
+  it('keeps every document one column unless it declares side panes, always with a main pane', () => {
+    for (const definition of DOCUMENTS) {
+      const { main, side } = panesByArea(definition)
+      expect(main.length).toBeGreaterThan(0)
+      expect(main.length + side.length).toBe(definition.panes.length)
+    }
+    expect(panesByArea(documentOf('build')).side.map((pane) => pane.title)).toEqual([
+      'Development Next Step',
+      'Standalone Sandbox',
+    ])
+    expect(panesByArea(documentOf('report')).side).toEqual([])
   })
 
   it('rejects an unknown document instead of rendering an empty shell', () => {

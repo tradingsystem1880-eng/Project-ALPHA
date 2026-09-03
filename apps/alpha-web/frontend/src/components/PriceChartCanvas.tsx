@@ -15,6 +15,7 @@ import {
 } from 'lightweight-charts'
 import { useEffect, useRef } from 'react'
 
+import { setChartHover } from '../context/chartHover'
 import type { Candle, ChartAnnotation, ChartTraceEvent } from '../api/types'
 import type { EvidenceMarker } from '../panels/v3Models'
 import { CHART } from '../util/chartTheme'
@@ -162,8 +163,19 @@ export function PriceChartCanvas({
       const volumePoint = param.seriesData.get(volume)
       if (!candle || !('open' in candle) || typeof param.time !== 'number') {
         crosshair.textContent = 'CROSSHAIR —'
+        setChartHover({ bar: null })
         return
       }
+      setChartHover({
+        bar: {
+          t: param.time,
+          o: Number(candle.open),
+          h: Number(candle.high),
+          l: Number(candle.low),
+          c: Number(candle.close),
+          v: volumePoint && 'value' in volumePoint ? Number(volumePoint.value) : 0,
+        },
+      })
       const volumeValue = volumePoint && 'value' in volumePoint ? volumePoint.value : null
       crosshair.textContent =
         `${new Date(param.time * 1_000).toISOString()}  ` +

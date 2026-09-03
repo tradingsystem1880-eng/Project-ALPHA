@@ -112,7 +112,7 @@
       "expected": "App.tsx renders title bar, role=menubar (eleven menus, ArrowLeft/Right, Enter, Escape), toolbar (chart type, timeframes, Data/Research/Run/Stop/Report, Profile combo, symbol/venue/timeframe combo replacing ContextBar, search, status chip, Governance), left docks Market Watch + Navigator (replacing LibraryRail), the MDI document area with bottom tablist (only the active document mounts; #run= deep link opens a report document), bottom Toolbox tabs, right Data Manager dock, and the status bar; Governance opens as a document; the harness `SCREENS` loop becomes a `DOCUMENTS` loop with an openDocument(page, id) helper, dock locators replace every screen-tab/library-rail/Governance-dialog site, the watermark test asserts report chip → toolbar chip → Governance document (2 then 3, exact), the profile-switch test asserts no request carries `profile`, the inactive-document test asserts no polling, and the Phase 3 acceptance test walks every document at all viewports; chromium-minimum (no screenshots) is green.",
       "rollback": "Restore App.tsx, LibraryRail, ContextBar and the harness from the T6 commit.",
       "files": ["apps/alpha-web/frontend/src/App.tsx", "apps/alpha-web/frontend/src/shell/**", "apps/alpha-web/frontend/src/components/CommandPalette.tsx", "apps/alpha-web/frontend/src/panels/actions.ts", "apps/alpha-web/frontend/src/panels/Governance.tsx", "apps/alpha-web/frontend/src/panels/JobMonitor.tsx", "apps/alpha-web/frontend/src/panels/PriceChart.tsx", "apps/alpha-web/frontend/src/components/PriceChartCanvas.tsx", "apps/alpha-web/frontend/src/components/KronosKlineCanvas.tsx", "apps/alpha-web/frontend/src/index.css", "apps/alpha-web/frontend/e2e/**", "apps/alpha-web/src/alpha_web/static/app/**"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "T7b document screenshot baselines replace the screen baselines; full frontend gate",
@@ -250,3 +250,18 @@ rewrite under `gate.py ack`, docs, full gate.
   `governanceModel`; the Glossary panel reads it. `MarketWatch.tsx` and `Navigator.tsx` exist but
   are not mounted until T7a. The post-edit hook's ESLint lint of `.tsx` files reports a missing
   `eslint.config.*` (the frontend lints with oxlint, which passes) — noted for the retrospective.
+* **T7a** — the shell is `App.tsx` plus `shell/{MenuBar,Toolbar,SettingsMenu,DocumentArea,Toolbox,
+  StatusBar}.tsx`; `screens.tsx` and `LibraryRail.tsx` are deleted and the Governance modal became
+  the document only. Documents may declare `side` panes (Build keeps Strategy Development beside
+  Development Next Step / Standalone Sandbox; Research keeps Backlog, Literature and Codex beside the
+  cockpit) so the gate-lock count of two stays honest; document titles never equal a pane title
+  (`Research`, `Machine learning`). The MDI strip has one close button for the active document
+  (axe forbids non-tab children inside a tablist; Delete on a tab also closes it). The Toolbox is
+  collapsible and starts collapsed below an 800px-high window so the cockpit's material questions
+  stay in view at 1280×720; its Data pulls tab shows provider readiness. There is no Stop button:
+  the terminal owns no running process (jobs cancel from the Jobs table). The watermark's three
+  surfaces are proven sequentially (report chip + toolbar chip, then toolbar chip + Governance row,
+  then the report chip again) because Governance is a document and only the active document
+  mounts. A fresh terminal charts the profile's default symbol. Chromium-minimum: 42 green; the
+  screenshot projects are re-baselined in T7b (twenty `*-document-*.png`, ten documents × two
+  projects, rather than twelve). The commit is split in two under the 1000-line guard.

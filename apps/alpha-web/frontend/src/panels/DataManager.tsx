@@ -305,7 +305,7 @@ function PullAndStore({ profile }: { profile: Profile }) {
         coverage.items.length === 0 ? (
           <div className="muted">No qualified datasets yet.</div>
         ) : (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="blotter">
               <thead>
                 <tr>

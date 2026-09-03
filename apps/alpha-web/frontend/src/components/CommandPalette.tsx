@@ -1,6 +1,5 @@
-// ⌘K palette — screens, symbols, runs and view settings without the mouse.
-// Panels are no longer openable individually: every panel now lives on a screen laid out for
-// its job, so the palette navigates to screens rather than spawning windows.
+// ⌘K palette — documents, symbols, runs and view settings without the mouse. It opens the
+// documents the current profile shows; the shell decides what a document is.
 
 import { Command } from 'cmdk'
 import { useEffect, useState } from 'react'
@@ -8,14 +7,15 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { RunListItem } from '../api/types'
 import { setLinked } from '../context/linked'
-import { SCREENS, type ScreenId } from '../shell/screens'
+import type { WindowId } from '../shell/profiles'
 import { getSettings, setSettings } from '../state/settings'
 import { shortId } from '../util/format'
 
 interface Props {
   open: boolean
   onClose: () => void
-  onOpenScreen: (id: ScreenId) => void
+  documents: readonly { id: WindowId; title: string }[]
+  onOpenDocument: (id: WindowId) => void
   onOpenRun: (runId: string) => void
   onNewIdea: () => void
 }
@@ -23,12 +23,12 @@ interface Props {
 type Page = 'root' | 'symbols' | 'runs'
 
 const PLACEHOLDER: Record<Page, string> = {
-  root: 'Go to a screen, a run, or a symbol…',
+  root: 'Open a document, a run, or a symbol…',
   symbols: 'Set active symbol…',
   runs: 'Open run…',
 }
 
-export function CommandPalette({ open, onClose, onOpenScreen, onOpenRun, onNewIdea }: Props) {
+export function CommandPalette({ open, onClose, documents, onOpenDocument, onOpenRun, onNewIdea }: Props) {
   const [page, setPage] = useState<Page>('root')
   const [symbols, setSymbols] = useState<string[] | null>(null)
   const [runs, setRuns] = useState<RunListItem[] | null>(null)
@@ -111,18 +111,17 @@ export function CommandPalette({ open, onClose, onOpenScreen, onOpenRun, onNewId
                     Toggle explanations <span className="hint">narrative ↔ terse</span>
                   </Command.Item>
                 </Command.Group>
-                <Command.Group heading="Go to">
-                  {SCREENS.map((item) => (
+                <Command.Group heading="Open document">
+                  {documents.map((item) => (
                     <Command.Item
                       key={item.id}
-                      value={`screen ${item.label} ${item.purpose}`}
+                      value={`document ${item.title}`}
                       onSelect={() => {
-                        onOpenScreen(item.id)
+                        onOpenDocument(item.id)
                         close()
                       }}
                     >
-                      {item.label}
-                      <span className="hint">{item.purpose}</span>
+                      {item.title}
                     </Command.Item>
                   ))}
                 </Command.Group>

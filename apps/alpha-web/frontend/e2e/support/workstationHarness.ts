@@ -3,16 +3,41 @@ import { expect, test, type Page, type Route } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import type { components } from '../../src/api/generated'
 
-// The desk presets are gone: each of these is now a screen laid out for one job, reached
-// from the top-bar tabs rather than assembled by the user.
-const SCREENS = [
-  { label: 'Research', id: 'explore' },
-  { label: 'Build', id: 'build' },
-  { label: 'Results', id: 'results' },
-  { label: 'Compare', id: 'compare' },
-  { label: 'Studios', id: 'studios' },
-  { label: 'Operate', id: 'operate' },
+// The market-neutral documents every profile can open (shell/documents.ts), reached from the
+// View menu, the Navigator or the toolbar rather than from a fixed tab strip.
+const DOCUMENTS = [
+  { title: 'Chart', id: 'chart' },
+  { title: 'Research', id: 'research' },
+  { title: 'Build', id: 'build' },
+  { title: 'Strategy Performance Report', id: 'report' },
+  { title: 'Compare', id: 'compare' },
+  { title: 'Forecast', id: 'forecast' },
+  { title: 'Machine learning', id: 'ml-lab' },
+  { title: 'Jobs & providers', id: 'jobs' },
+  { title: 'Paper sessions', id: 'paper' },
+  { title: 'Governance', id: 'governance' },
 ] as const
+
+/** Open a document from the View menu and wait until its MDI tab is the active one. */
+export async function openDocument(page: Page, title: string): Promise<void> {
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'View', exact: true }).click()
+  await page.getByRole('menu', { name: 'View' }).getByRole('menuitem', { name: title, exact: true }).click()
+  await expect(documentTab(page, title)).toHaveAttribute('aria-selected', 'true')
+}
+
+function documentTab(page: Page, title: string) {
+  return page.getByRole('tablist', { name: 'Documents' }).getByRole('tab', { name: title, exact: true })
+}
+
+/** The Navigator leaf for a backtest, by its server display name. */
+function backtestLeaf(page: Page, displayName: string) {
+  return page.getByRole('tree', { name: 'Navigator' }).locator('.tree-leaf').filter({ hasText: displayName })
+}
+
+async function switchProfile(page: Page, profile: 'crypto' | 'equities'): Promise<void> {
+  await page.getByRole('toolbar', { name: 'Terminal toolbar' }).getByLabel('Profile').selectOption(profile)
+  await expect(page.locator('html')).toHaveAttribute('data-profile', profile)
+}
 
 const EMPTY_PAGE = { items: [], limit: 50, offset: 0, has_more: false }
 const SYSTEM_STATUS = {
@@ -1551,6 +1576,10 @@ interface MockOptions {
   researchDataRefreshDelayMs?: number
   /** Opt-in: LIBRARY_RUN carries one drawable figure (catalogue, metadata and an SVG image). */
   figureCatalogue?: boolean
+  /** Opt-in daily bars per symbol for the candles projection (Market Watch, Chart). */
+  candles?: Record<string, components['schemas']['Candle'][]>
+  /** Opt-in: the Expansion volume is not mounted. */
+  storageUnmounted?: boolean
 }
 
 const FIGURE_ITEM = {
@@ -1625,9 +1654,8 @@ const HEAVY_LIBRARY_RUN: components['schemas']['RunListItem'] = {
 }
 
 async function openHeavyPrice(page: Page): Promise<void> {
-  await page.getByRole('navigation', { name: 'Library' }).locator('.library-row').first().click()
-  await page.getByRole('tab', { name: 'Research', exact: true }).click()
-  await page.getByRole('tab', { name: 'Price', exact: true }).click()
+  await backtestLeaf(page, 'causal-fixture').click()
+  await openDocument(page, 'Chart')
 }
 
 function responseFor(route: Route, options: MockOptions): unknown {
@@ -1833,6 +1861,20 @@ function responseFor(route: Route, options: MockOptions): unknown {
     } satisfies components['schemas']['CryptoAssetIdentityResponse']
   }
   if (url.pathname === '/api/crypto-data/storage') {
+    if (options.storageUnmounted) {
+      return {
+        state: 'blocked',
+        blocker: 'bulk_volume_not_mounted',
+        bulk_root_label: 'crypto-data',
+        manifest_count: 0,
+        next_action: 'Reconnect the Expansion volume.',
+        free_bytes: null,
+        total_bytes: null,
+        reserve_fraction: 0.15,
+        minimum_free_bytes: 100_000_000_000,
+        cache_bytes: 0,
+      } satisfies components['schemas']['CryptoStorageResponse']
+    }
     return {
       state: 'ready',
       blocker: null,
@@ -2150,7 +2192,27 @@ function responseFor(route: Route, options: MockOptions): unknown {
   if (url.pathname === `/api/runs/${LIBRARY_RUN.run_id}/figures/${FIGURE_ITEM.figure_id}`) {
     return FIGURE_META
   }
-  if (url.pathname === '/api/symbols') return { symbols: [] }
+  if (url.pathname === '/api/symbols') return { symbols: Object.keys(options.candles ?? {}) }
+  if (url.pathname.startsWith('/api/candles/')) {
+    const symbol = decodeURIComponent(url.pathname.slice('/api/candles/'.length))
+    const bars = options.candles?.[symbol]
+    if (!bars) return undefined
+    return {
+      symbol,
+      snapshot_id: null,
+      bars,
+      paper_markers: [],
+      provenance: {
+        symbol,
+        source: 'ccxt:binance',
+        timeframe: '1D',
+        snapshot_id: null,
+        receipt_id: null,
+        knowledge_cutoff: null,
+        quality_status: 'qualified',
+      },
+    }
+  }
   if (url.pathname === '/api/strategies' || url.pathname === '/api/commands') return []
   if (url.pathname === '/api/providers') return []
   if (url.pathname === '/api/system') return SYSTEM_STATUS
@@ -2267,7 +2329,7 @@ function responseFor(route: Route, options: MockOptions): unknown {
   throw new Error(`unmocked API request: ${route.request().method()} ${url.pathname}`)
 }
 
-async function preparePage(page: Page, options: MockOptions = {}): Promise<void> {
+export async function preparePage(page: Page, options: MockOptions = {}): Promise<void> {
   await page.addInitScript(() => {
     localStorage.clear()
 
@@ -2399,7 +2461,7 @@ async function preparePage(page: Page, options: MockOptions = {}): Promise<void>
   })
 
   await page.goto('')
-  await expect(page.getByText('ALPHA', { exact: true })).toBeVisible()
+  await expect(page.locator('.titlebar-text')).toContainText('ALPHA Terminal')
 }
 
 async function expectReleaseAccessibility(page: Page): Promise<void> {
@@ -2413,15 +2475,12 @@ async function expectReleaseAccessibility(page: Page): Promise<void> {
 }
 
 export function registerWorkstationTests(): void {
-for (const item of SCREENS) {
-  test(`${item.label} screen renders and clears the accessibility release gate`, async ({
+for (const item of DOCUMENTS) {
+  test(`${item.title} document renders and clears the accessibility release gate`, async ({
     page,
   }) => {
     await preparePage(page)
-    const tab = page.getByRole('tab', { name: item.label, exact: true })
-    await tab.click()
-
-    await expect(tab).toHaveAttribute('aria-selected', 'true')
+    await openDocument(page, item.title)
     await expect(page.getByText(/panel crashed/i)).toHaveCount(0)
 
     const expectedViewport = PROJECT_VIEWPORTS[test.info().project.name]
@@ -2442,7 +2501,7 @@ for (const item of SCREENS) {
       test.info().project.name === 'chromium-wide'
     ) {
       await page.evaluate(() => document.fonts.ready)
-      await expect(page.locator('.shell')).toHaveScreenshot(`${item.id}-screen.png`, {
+      await expect(page.locator('.shell')).toHaveScreenshot(`${item.id}-document.png`, {
         animations: 'disabled',
         caret: 'hide',
         maxDiffPixelRatio: 0.02,
@@ -2451,32 +2510,94 @@ for (const item of SCREENS) {
   })
 }
 
-test('screen tabs are keyboard operable', async ({ page }) => {
+test('the menu bar and the MDI tabs are keyboard operable', async ({ page }) => {
   await preparePage(page)
-  const research = page.getByRole('tab', { name: 'Research', exact: true })
-  await research.focus()
-  await expect(research).toBeFocused()
-  await page.keyboard.press('Tab')
-  await expect(page.getByRole('tab', { name: 'Build', exact: true })).toBeFocused()
+  const menubar = page.getByRole('menubar')
+  const file = menubar.getByRole('menuitem', { name: 'File', exact: true })
+  await file.focus()
+  await expect(file).toBeFocused()
+  await page.keyboard.press('ArrowRight')
+  await expect(menubar.getByRole('menuitem', { name: 'Edit', exact: true })).toBeFocused()
+  await page.keyboard.press('ArrowRight')
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('tab', { name: 'Build', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  )
+  const view = page.getByRole('menu', { name: 'View' })
+  await expect(view).toBeVisible()
+  await expect(view.getByRole('menuitem').first()).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(view).toHaveCount(0)
+  await expect(menubar.getByRole('menuitem', { name: 'View', exact: true })).toBeFocused()
+
+  // Chart and Research open at boot with Research active; ArrowLeft activates the neighbour.
+  const research = documentTab(page, 'Research')
+  await expect(research).toHaveAttribute('aria-selected', 'true')
+  await research.focus()
+  await page.keyboard.press('ArrowLeft')
+  await expect(documentTab(page, 'Chart')).toHaveAttribute('aria-selected', 'true')
+  await expect(documentTab(page, 'Chart')).toBeFocused()
 })
 
-test('the library rail lists runs and opens one into the report', async ({ page }) => {
+test('the Navigator lists backtests by display name and opens a report document', async ({ page }) => {
   await preparePage(page, { runs: [LIBRARY_RUN] })
-  const rail = page.getByRole('navigation', { name: 'Library' })
-  await expect(rail).toBeVisible()
-  const firstRun = rail.locator('.library-row').first()
-  await expect(firstRun).toBeVisible()
-  await firstRun.click()
-  // Opening a run switches to Results rather than spawning a floating window.
-  await expect(page.getByRole('tab', { name: 'Results', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  )
+  const navigator = page.getByRole('tree', { name: 'Navigator' })
+  await expect(navigator).toBeVisible()
+  const leaf = backtestLeaf(page, LIBRARY_RUN.display_name)
+  await expect(leaf.locator('.tree-leaf-label')).toHaveText(LIBRARY_RUN.display_name)
+  await expect(leaf.locator('.tree-leaf-sub')).toHaveText(LIBRARY_RUN.run_id.slice(0, 8))
+  await leaf.click()
+  // Opening a run adds a report document keyed by the run and makes it active.
+  await expect(documentTab(page, LIBRARY_RUN.display_name)).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('.titlebar-text')).toContainText(`[${LIBRARY_RUN.display_name}]`)
+})
+
+test('both profiles gate windows, panels and providers without sending a profile', async ({ page }) => {
+  await preparePage(page)
+  const requests: string[] = []
+  page.on('request', (request) => {
+    requests.push(`${request.url()} ${request.postData() ?? ''} ${JSON.stringify(request.headers())}`)
+  })
+  await switchProfile(page, 'equities')
+  await openDocument(page, 'Options Calculator')
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'View', exact: true }).click()
+  const view = page.getByRole('menu', { name: 'View' })
+  await expect(view.getByRole('menuitem', { name: 'Funding', exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await switchProfile(page, 'crypto')
+  // The equities-only document closes with the profile; Funding is now offered.
+  await expect(documentTab(page, 'Options Calculator')).toHaveCount(0)
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'View', exact: true }).click()
+  await expect(view.getByRole('menuitem', { name: 'Funding', exact: true })).toBeVisible()
+  await expect(view.getByRole('menuitem', { name: 'Options Calculator', exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  expect(requests.filter((entry) => /profile/i.test(entry))).toEqual([])
+})
+
+test('the status bar tells the truth about the SSD and paper routing', async ({ page }) => {
+  await preparePage(page, { storageUnmounted: true })
+  const bar = page.getByRole('contentinfo', { name: 'Status bar' })
+  const ssd = bar.locator('.status-segment--ssd')
+  await expect(ssd).toHaveText('Expansion SSD not mounted')
+  await expect(ssd).toHaveClass(/tone-warn/)
+  await expect(bar.locator('.status-segment--paper')).toHaveText('Paper only · no live routing')
+  await expect(bar.locator('.status-segment--clock')).toHaveText(/\d{2}:\d{2}:\d{2} UTC/)
+  await expect(bar.locator('.status-segment--ohlc')).toHaveText('O — H — L — C —')
+})
+
+test('Market Watch reads red/green and never invents a price', async ({ page }) => {
+  const bar = (t: number, c: number) => ({ t, o: c, h: c, l: c, c, v: 1 })
+  await preparePage(page, {
+    candles: { 'BTC/USDT': [bar(1_700_000_000, 100), bar(1_700_086_400, 110)], 'ETH/USDT': [bar(1_700_000_000, 50), bar(1_700_086_400, 45)] },
+  })
+  const table = page.getByRole('table', { name: 'Market Watch' })
+  const btc = table.getByRole('row').filter({ hasText: 'BTC/USDT' })
+  await expect(btc.getByRole('cell').nth(2)).toHaveText('+10.00%')
+  await expect(btc).toHaveClass(/tone-up/)
+  const eth = table.getByRole('row').filter({ hasText: 'ETH/USDT' })
+  await expect(eth.getByRole('cell').nth(2)).toHaveText('-10.00%')
+  await expect(eth).toHaveClass(/tone-down/)
+  const sol = table.getByRole('row').filter({ hasText: 'SOL/USDT' })
+  await expect(sol.getByRole('cell').nth(1)).toHaveText('—')
+  await expect(sol.getByRole('cell').nth(2)).toHaveText('—')
+  await expect(sol).toHaveClass(/tone-none/)
 })
 
 test('Research Cockpit captures an idea through the bounded REST surface', async ({ page }) => {
@@ -2499,9 +2620,9 @@ test('Research Cockpit captures an idea through the bounded REST surface', async
   await expect(page.locator('.sandbox-banner')).toHaveCount(0)
   await page.getByRole('button', { name: 'Governance' }).click()
   await expect(
-    page.getByRole('dialog', { name: 'Governance' }).getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/),
+    page.getByRole('region', { name: 'Governance', exact: true }).getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/),
   ).toBeVisible()
-  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Close Governance' }).click()
   await expectReleaseAccessibility(page)
 })
 
@@ -2653,8 +2774,7 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
   await page.getByRole('button', { name: /cp_f+/ }).click()
   await expect(page.getByText('"packet_schema": "ResearchContextPacketV1"')).toBeVisible()
 
-  // The Research data panel serves registered refs with audit badges and the forever badge.
-  await page.getByRole('tab', { name: 'Data Manager', exact: true }).click()
+  // The Research data tab of the Data Manager dock serves registered refs with audit badges.
   await page.getByRole('tab', { name: 'Research Data', exact: true }).click()
   await expect(page.getByText('1 LIMITING', { exact: true })).toBeVisible()
   await expect(page.getByText('RESEARCH ONLY', { exact: true })).toBeVisible()
@@ -2667,8 +2787,7 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
 export async function cryptoDataCenterJourney(page: Page): Promise<void> {
   await preparePage(page, { researchDataRefreshDelayMs: 400 })
 
-  await page.getByRole('tab', { name: 'Data Manager', exact: true }).click()
-  await page.getByRole('tab', { name: 'Research Data', exact: true }).click()
+  await openDocument(page, 'Funding')
   const center = page.getByRole('region', { name: 'Crypto Data Center' })
   await expect(center.getByText('Select qualified datasets for one exact frozen snapshot.')).toBeVisible()
   await center.getByRole('tab', { name: 'Assets & Contracts', exact: true }).click()
@@ -2831,8 +2950,8 @@ test('running jobs expose exact runtime, bounded ETA, progress, and live output'
       },
     ],
   })
-  // Jobs sit under the Build screen, beside the lab that launches them.
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  // Jobs sit in the Toolbox under every document; its tab expands the collapsed strip.
+  await page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab', { name: 'Jobs' }).click()
 
   const row = page.getByRole('row').filter({ hasText: 'alpha forecast eval AMZN' })
   const cells = row.getByRole('cell')
@@ -2872,7 +2991,7 @@ test('a failed job row shows the CLI error message, never a box border', async (
       },
     ],
   })
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab', { name: 'Jobs' }).click()
   const row = page.getByRole('row').filter({ hasText: 'data pull XRP/USDT' })
   await expect(row.getByRole('cell').nth(6)).toHaveText(message)
   await expect(page.getByTitle(message)).toBeVisible()
@@ -2882,7 +3001,7 @@ test('a failed job row shows the CLI error message, never a box border', async (
 
 test('ML diagnostics render bounded Qlib evidence and the permanent authority warning', async ({ page }) => {
   await preparePage(page, { mlDiagnostics: true })
-  await page.getByRole('tab', { name: 'Studios', exact: true }).click()
+  await openDocument(page, 'Machine learning')
   await page.getByRole('tab', { name: 'ML diagnostics', exact: true }).click()
 
   await expect(page.locator('.rd-head').filter({ hasText: 'Score distribution' })).toBeVisible()
@@ -2902,7 +3021,8 @@ test('causal chart paginates evidence, selects an event, and exports exact OHLCV
   })
   await openHeavyPrice(page)
 
-  await expect(page.getByText('205 bars', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Price').getByText('205 bars', { exact: true })).toBeVisible()
+  await expect(page.locator('.status-segment--bars')).toHaveText('205 bars')
   await expect(page.getByText(/1–80 \/ 91 RETURNED EVENTS/)).toBeVisible()
   await expect(page.getByText(/BACKEND PROJECTION TRUNCATED · MORE TRACE EVENTS EXIST/)).toBeVisible()
   await page.getByRole('button', { name: 'Next trace page' }).click()
@@ -2956,21 +3076,26 @@ test('dense causal chart layers cap visuals without hiding returned evidence', a
   await expect(page.getByText(/1–80 \/ 180 RETURNED EVENTS/)).toBeVisible()
 })
 
-test('a screen mounts only what it shows', async ({ page }) => {
+test('only the active document mounts', async ({ page }) => {
   const requested: string[] = []
   page.on('request', (request) => requested.push(new URL(request.url()).pathname))
   await preparePage(page)
 
-  // Research is the opening screen. Hidden panes and other screens must not fetch.
+  // Research is the opening document. Closed documents and inactive tabs must not fetch.
   expect(requested).not.toContain('/api/screener/quote')
   expect(requested).not.toContain('/api/screener/news')
-  expect(requested).not.toContain('/api/paper/sessions')
+  expect(requested).not.toContain('/api/options/greeks')
 
-  await page.getByRole('tab', { name: 'Studios', exact: true }).click()
-  await page.getByRole('tab', { name: 'Market Overview', exact: true }).click()
+  await switchProfile(page, 'equities')
+  await openDocument(page, 'Market Overview')
   await expect
     .poll(() => requested.filter((path) => path === '/api/screener/quote').length)
     .toBeGreaterThan(0)
+  const quotes = requested.filter((path) => path === '/api/screener/quote').length
+  // Switching back to Research unmounts Market Overview: no further quote requests.
+  await documentTab(page, 'Research').click()
+  await page.waitForTimeout(1_200)
+  expect(requested.filter((path) => path === '/api/screener/quote').length).toBe(quotes)
 })
 
 test('legacy trace rerun opens the governed Development Center', async ({ page }) => {
@@ -3004,7 +3129,7 @@ test('a figure maximises into a dialog with Save PNG, Save SVG, Copy and Esc', a
   await page.getByTitle('View settings').click()
   await page.getByRole('button', { name: /Explanations narrative/ }).click()
   await page.keyboard.press('Escape')
-  await page.getByRole('navigation', { name: 'Library' }).locator('.library-row').first().click()
+  await backtestLeaf(page, LIBRARY_RUN.display_name).click()
   await page.getByRole('button', { name: 'Ratios & performance' }).click()
   const card = page.locator('.figure-card')
   await expect(card).toHaveCount(1)
@@ -3040,22 +3165,31 @@ test('a figure maximises into a dialog with Save PNG, Save SVG, Copy and Esc', a
   // Double-clicking the image is the mouse route; Close is the other way out.
   await card.locator('.figure-image').dblclick()
   await expect(page.getByRole('dialog', { name: 'Equity curve' })).toBeVisible()
-  await page.getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Equity curve' })).toHaveCount(0)
   await expect(expand).toBeFocused()
 })
 
-test('Phase 2 acceptance: no hazard stripe on a working screen, figures maximise, runs read like a trader', async ({ page }) => {
+test('Phase 3 acceptance: terminal chrome on every document, no hazard stripe, figures maximise, runs read like a trader', async ({ page }) => {
   await preparePage(page, { runs: [LIBRARY_RUN], figureCatalogue: true })
-  for (const item of SCREENS) {
-    await page.getByRole('tab', { name: item.label, exact: true }).click()
+  const toolbar = page.getByRole('toolbar', { name: 'Terminal toolbar' })
+  for (const item of DOCUMENTS) {
+    await openDocument(page, item.title)
+    if (item.id === 'governance') continue // the Governance document is where the glossary lives
     await expect(page.locator('.sandbox-banner')).toHaveCount(0)
     await expect(page.locator('.research-gate-lock')).toHaveCount(0)
     await expect(page.locator('.glossary')).toHaveCount(0)
+    await expect(toolbar.getByRole('button', { name: 'Symbol, venue and timeframe' })).toBeVisible()
+    await expect(toolbar.locator('.status-chip')).toHaveText('Paper only')
+    await expect(toolbar.getByRole('button', { name: 'Governance' })).toBeVisible()
+    await expect(page.getByRole('complementary', { name: 'Left docks' }).getByRole('region', { name: 'Market Watch' })).toBeVisible()
+    await expect(page.getByRole('tree', { name: 'Navigator' })).toBeVisible()
+    await expect(page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab')).toHaveText(['Jobs', 'Trades', 'Backtests', 'Data pulls', 'Log'])
+    await expect(page.getByRole('complementary', { name: 'Data Manager' })).toBeVisible()
   }
-  // The run list reads strategy · D1 · symbol · dates, with the id only as a mono sub-line.
-  const row = page.getByRole('navigation', { name: 'Library' }).locator('.library-row').first()
-  await expect(row.locator('.library-row-name')).toHaveText(LIBRARY_RUN.display_name)
+  // The run leaf reads strategy · D1 · symbol · dates, with the id only as a mono sub-line.
+  const row = backtestLeaf(page, LIBRARY_RUN.display_name)
+  await expect(row.locator('.tree-leaf-label')).toHaveText(LIBRARY_RUN.display_name)
   expect(LIBRARY_RUN.display_name).toMatch(/^ma_crossover D1 — SPY · \d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2} · run [0-9a-f]{8}$/)
   // Every figure card opens the overlay.
   await row.click()
@@ -3073,7 +3207,7 @@ test('Phase 2 acceptance: no hazard stripe on a working screen, figures maximise
 
 test('the run report is a tree with a summary table and one watermark chip', async ({ page }) => {
   await preparePage(page, { researchGateOverride: true })
-  await page.getByRole('navigation', { name: 'Library' }).locator('.library-row').first().click()
+  await backtestLeaf(page, WATERMARKED_RUN_ITEM.display_name).click()
   const tree = page.getByRole('tree', { name: 'Report sections' })
   await expect(tree).toBeVisible()
   await expect(tree.locator(':scope > li')).toHaveCount(5)
@@ -3089,44 +3223,47 @@ test('research-gate override watermark reaches provider governance and run resul
   await preparePage(page, { researchGateOverride: true })
 
   // Provider governance lists every active override with actor + recorded reason (spec §15).
-  await page.getByRole('tab', { name: 'Operate', exact: true }).click()
+  await openDocument(page, 'Jobs & providers')
   await page.getByRole('tab', { name: 'Providers & system', exact: true }).click()
   await expect(page.getByText('SPY exploratory probe')).toBeVisible()
   await expect(
     page.getByText('Owner accepted exploratory-only engine work before research completes.'),
   ).toBeVisible()
 
-  // Selecting the watermarked run from the persistent Library opens its immutable results.
-  await page.getByRole('navigation', { name: 'Library' }).locator('.library-row').first().click()
-  await expect(page.getByRole('tab', { name: 'Results', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  )
-  // Three surfaces: the report title-bar chip, the topbar status chip, the Governance pane.
+  // Selecting the watermarked run from the Navigator opens its immutable report document.
+  await backtestLeaf(page, WATERMARKED_RUN_ITEM.display_name).click()
+  await expect(documentTab(page, WATERMARKED_RUN_ITEM.display_name)).toHaveAttribute('aria-selected', 'true')
+  // Three surfaces: the report title-bar chip, the toolbar status chip, the Governance document.
   await expect(page.locator('.rg-watermark-chip')).toHaveText(RESEARCH_GATE_WATERMARK)
   await expect(page.locator('.status-chip')).toHaveText(RESEARCH_GATE_WATERMARK)
   await expect(page.getByText(RESEARCH_GATE_WATERMARK, { exact: true })).toHaveCount(2)
   await page.locator('.status-chip').click()
-  const governance = page.getByRole('dialog', { name: 'Governance' })
+  // Governance is a document, so the report unmounts behind it: the chip and the Governance row
+  // carry the watermark now; closing Governance brings the report chip back.
+  const governance = page.getByRole('region', { name: 'Governance', exact: true })
   await expect(governance.getByText(RESEARCH_GATE_WATERMARK, { exact: true })).toBeVisible()
-  await expect(page.getByText(RESEARCH_GATE_WATERMARK, { exact: true })).toHaveCount(3)
+  await expect(page.locator('.status-chip')).toHaveText(RESEARCH_GATE_WATERMARK)
+  await expect(page.getByText(RESEARCH_GATE_WATERMARK, { exact: true })).toHaveCount(2)
   await expectReleaseAccessibility(page)
-  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Close Governance' }).click()
+  await expect(page.locator('.rg-watermark-chip')).toHaveText(RESEARCH_GATE_WATERMARK)
+  await expect(page.getByText(RESEARCH_GATE_WATERMARK, { exact: true })).toHaveCount(2)
   await expectReleaseAccessibility(page)
 })
 
-test('the Governance dialog holds the hazard sentences the working screens no longer shout', async ({ page }) => {
+test('the Governance document holds the hazard sentences the working documents no longer shout', async ({ page }) => {
   await preparePage(page)
-  for (const label of ['Research', 'Build', 'Operate']) {
-    await page.getByRole('tab', { name: label, exact: true }).click()
+  for (const title of ['Research', 'Build', 'Jobs & providers']) {
+    await openDocument(page, title)
     await expect(page.locator('.sandbox-banner')).toHaveCount(0)
   }
   await expect(page.getByRole('tab', { name: 'Glossary', exact: true })).toHaveCount(0)
 
   const opener = page.getByRole('button', { name: 'Governance' })
   await opener.click()
-  const dialog = page.getByRole('dialog', { name: 'Governance' })
+  const dialog = page.getByRole('region', { name: 'Governance', exact: true })
   await expect(dialog).toBeVisible()
+  await expect(documentTab(page, 'Governance')).toHaveAttribute('aria-selected', 'true')
   await expect(dialog.getByRole('tree', { name: 'Governance pages' }).getByRole('treeitem')).toHaveCount(7)
   for (const sentence of [
     'RESEARCH SANDBOX · SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE OR A TRADING SIGNAL',
@@ -3139,15 +3276,20 @@ test('the Governance dialog holds the hazard sentences the working screens no lo
   }
   await dialog.getByRole('button', { name: 'Glossary' }).click()
   await expect(dialog.getByLabel('Metric definitions')).toBeVisible()
+  // The glossary follows the profile: crypto terms only, never the equities-only ones.
+  await expect(dialog.getByRole('heading', { name: 'Funding rate' })).toBeVisible()
+  await expect(dialog.getByRole('heading', { name: 'Ex-dividend date' })).toHaveCount(0)
   await expectReleaseAccessibility(page)
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog', { name: 'Governance' })).toHaveCount(0)
-  await expect(opener).toBeFocused()
+  // Closing the Governance tab activates its neighbour and moves focus onto that tab.
+  await page.getByRole('button', { name: 'Close Governance' }).click()
+  await expect(page.getByRole('region', { name: 'Governance', exact: true })).toHaveCount(0)
+  await expect(documentTab(page, 'Jobs & providers')).toHaveAttribute('aria-selected', 'true')
 })
 
 test('open research gates lock strategy affordances on Develop and link to the case', async ({ page }) => {
   await preparePage(page, { researchGateLock: true })
-  await page.getByRole('tab', { name: 'Operate', exact: true }).click()
+  await openDocument(page, 'Build')
+  await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
 
   // Development Center auto-selects the research-required project and blocks versioning; the
   // explanation lives in Governance, which deep-links to the holding case.
@@ -3158,18 +3300,15 @@ test('open research gates lock strategy affordances on Develop and link to the c
   const chip = page.locator('.status-chip')
   await expect(chip).toHaveText('Research gate open')
   await chip.click()
-  const governance = page.getByRole('dialog', { name: 'Governance' })
+  const governance = page.getByRole('region', { name: 'Governance', exact: true })
   await governance.getByRole('button', { name: 'Research gates' }).click()
   await expect(governance.getByText(/RESEARCH GATE OPEN/)).toBeVisible()
   await governance.getByRole('button', { name: /Open research case/ }).click()
-  await expect(page.getByRole('dialog', { name: 'Governance' })).toHaveCount(0)
-  await expect(page.getByRole('tab', { name: 'Research', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  )
+  await expect(documentTab(page, 'Research')).toHaveAttribute('aria-selected', 'true')
 
   // Strategy Lab and Pipeline share the same backend gate and block strategy execution.
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await documentTab(page, 'Build').click()
+  await page.getByRole('tab', { name: 'Strategy Development', exact: true }).click()
   await expect(page.getByText('RESEARCH GATE OPEN', { exact: true })).toHaveCount(2)
   await expect(page.getByRole('button', { name: /Launch backtest run/ })).toBeDisabled()
   const preps = page.getByRole('button', { name: '▶ prep' })
@@ -3191,7 +3330,7 @@ test('open research gates lock strategy affordances on Develop and link to the c
   await expect(page.getByText('Research Case', { exact: true }).first()).toBeVisible()
 
   // Non-research context — the grandfathered project re-enables every affordance.
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await documentTab(page, 'Build').click()
   await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
   await page.getByLabel('Strategy project').selectOption(UNGATED_PROJECT.project_id)
   await page.getByLabel('Clean source fingerprint').fill('git:0000000')
@@ -3207,7 +3346,8 @@ test('open research gates lock strategy affordances on Develop and link to the c
 
 export async function sandboxCandidateJourney(page: Page): Promise<void> {
   await preparePage(page, { candidateProject: true })
-  await page.getByRole('tab', { name: 'Operate', exact: true }).click()
+  await openDocument(page, 'Build')
+  await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
 
   const candidate = page.getByRole('region', { name: 'Sandbox hedged basis candidate' })
   await expect(candidate.getByText('Hedged basis candidate', { exact: true })).toBeVisible()
@@ -3232,26 +3372,26 @@ export async function sandboxCandidateJourney(page: Page): Promise<void> {
 }
 
 export function registerReferenceTests(): void {
-test('@reference-only cold shell and screen switch meet workstation latency budgets', async ({ page }) => {
+test('@reference-only cold shell and document switch meet workstation latency budgets', async ({ page }) => {
   await preparePage(page)
 
   const coldShellMs = await page.evaluate(() => performance.now())
   expect(coldShellMs).toBeLessThan(1_500)
 
   const switchMs = await page.evaluate(async () => {
-    const tab = [...document.querySelectorAll<HTMLButtonElement>('.screen-tab')].find(
-      (button) => button.textContent?.trim() === 'Operate',
+    const tab = [...document.querySelectorAll<HTMLButtonElement>('.mdi-tab')].find(
+      (button) => button.textContent?.trim() === 'Chart',
     )
-    if (!tab) throw new Error('the Operate screen tab is unavailable')
+    if (!tab) throw new Error('the Chart document tab is unavailable')
     const started = performance.now()
     tab.click()
     for (let frame = 0; frame < 12; frame += 1) {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-      if (document.body.textContent?.includes('Development Center')) {
+      if (document.querySelector('.price-chart-frame, .price-toolbar')) {
         return performance.now() - started
       }
     }
-    throw new Error('the Operate screen did not render within 12 animation frames')
+    throw new Error('the Chart document did not render within 12 animation frames')
   })
   expect(switchMs).toBeLessThan(100)
 })

@@ -82,10 +82,17 @@ export function MarketWatch() {
               <tr
                 key={row.symbol}
                 className={`watch-row tone-${row.tone}${linked.symbol === row.symbol ? ' active' : ''}`}
-                aria-selected={linked.symbol === row.symbol}
-                onClick={() => setLinked({ symbol: row.symbol })}
               >
-                <td className="mono">{row.symbol}</td>
+                <td className="mono">
+                  <button
+                    type="button"
+                    className="watch-select"
+                    aria-pressed={linked.symbol === row.symbol}
+                    onClick={() => setLinked({ symbol: row.symbol })}
+                  >
+                    {row.symbol}
+                  </button>
+                </td>
                 <td className="num mono">{row.last}</td>
                 <td className="num mono">{row.change}</td>
               </tr>

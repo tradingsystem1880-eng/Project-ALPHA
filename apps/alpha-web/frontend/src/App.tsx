@@ -1,282 +1,203 @@
 /**
- * The shell: a screen switcher, a persistent Library, and one shared context.
- *
- * This replaced a free-form docking desk. Docking is the right answer when nobody can
- * predict which panels a user needs beside which; here the workflow is known, so each
- * screen is laid out once for the job it serves and the 22 panels stop being furniture the
- * user has to arrange. Only the active screen mounts, so nothing polls behind a hidden tab.
+ * The terminal shell (spec 2026-09-01 §4.2): title bar, menu bar, toolbar, docked Market Watch
+ * and Navigator on the left, the MDI document area with its bottom tabs, the Toolbox under it,
+ * the Data Manager dock on the right and the status bar. Documents come from the registry in
+ * `shell/documents.ts`; which ones a profile may open is the manifest's decision. Only the active
+ * document mounts, so nothing polls behind a hidden tab.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
-import { Governance } from './panels/Governance'
 import { OwnerEnrollment } from './auth/OwnerEnrollment'
 import { setLinked, useLinked } from './context/linked'
 import { requestNewIdea } from './context/newIdea'
 import { onResearchCase } from './context/researchCase'
 import { registerNavigator } from './panels/actions'
-import { ContextBar } from './shell/ContextBar'
-import { LibraryRail } from './shell/LibraryRail'
+import { DataManager } from './panels/DataManager'
+import { MarketWatch } from './panels/MarketWatch'
+import { Navigator } from './panels/Navigator'
+import { DocumentArea, type PaneFocus } from './shell/DocumentArea'
+import { DOCUMENTS, documentOf } from './shell/documents'
+import { MenuBar } from './shell/MenuBar'
+import {
+  EMPTY_MDI,
+  activateDocument,
+  closeDocument,
+  openDocument,
+  windowOf,
+  type MdiState,
+} from './shell/mdiModel'
 import { PanelHost } from './shell/PanelHost'
-import { areasOf, RESULTS_SCREEN, SCREENS, screen, type ScreenId } from './shell/screens'
-import { useLinkedProjectGate } from './panels/useLinkedProjectGate'
-import { useSelectedRunWatermark } from './panels/useSelectedRunWatermark'
-import { statusChip } from './shell/statusModel'
-import { initActivity, useActivityField } from './state/activity'
-import { setSettings, useSettings, workspaceModeFor } from './state/settings'
+import { profile as manifest, showsWindow, type WindowId } from './shell/profiles'
+import { StatusBar } from './shell/StatusBar'
+import { Toolbar } from './shell/Toolbar'
+import { venueLabel, windowTitle } from './shell/toolbarModel'
+import { Toolbox } from './shell/Toolbox'
+import { initActivity } from './state/activity'
+import { setSettings, useSettings, type Profile } from './state/settings'
 
-const SCREEN_KEY = 'alpha.shell.screen'
-const RAIL_KEY = 'alpha.shell.rail'
+const MDI_KEY = 'alpha.shell.mdi'
+const RIGHT_DOCK_KEY = 'alpha.shell.right-dock'
 
 function runIdFromHash(): string | null {
   const match = /(?:^|[#&])run=([0-9a-f]{16})\b/.exec(window.location.hash)
   return match ? match[1] : null
 }
 
-function StatusCluster({ onOpenGovernance }: { onOpenGovernance: () => void }) {
-  const connection = useActivityField('connection')
-  const runningJobs = useActivityField('runningJobs')
-  const gate = useLinkedProjectGate()
-  const watermark = useSelectedRunWatermark()
-  const chip = statusChip({ watermark, gateLock: gate.lock })
-  const dotClass = connection === 'live' ? '' : connection === 'connecting' ? 'busy' : 'down'
-  return (
-    <div className="status" title={`activity stream: ${connection}`}>
-      <span className={`dot ${dotClass}`} />
-      {connection === 'live' ? 'live' : connection}
-      {runningJobs > 0 ? <span className="chip kind">{runningJobs} running</span> : null}
-      <button
-        type="button"
-        className={`chip ${chip.tone} status-chip`}
-        title={chip.title}
-        onClick={onOpenGovernance}
-      >
-        {chip.text}
-      </button>
-    </div>
-  )
+/** Documents the profile can open, in registry order. */
+function availableDocuments(profile: Profile): { id: WindowId; title: string }[] {
+  return DOCUMENTS.filter((item) => showsWindow(profile, item.id)).map((item) => ({
+    id: item.id,
+    title: item.title,
+  }))
 }
 
-function SettingsMenu() {
-  const { density, explain, profile } = useSettings()
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="settings-menu">
-      <button className="kbd" aria-expanded={open} onClick={() => setOpen((v) => !v)} title="View settings">
-        ⚙
-      </button>
-      {open ? (
-        <div className="settings-pop" role="dialog" aria-label="View settings">
-          <button
-            className="settings-row"
-            onClick={() => setSettings({ profile: profile === 'crypto' ? 'equities' : 'crypto' })}
-          >
-            <span>Profile</span>
-            <span className="mono">{profile}</span>
-          </button>
-          <button
-            className="settings-row"
-            onClick={() => setSettings({ density: density === 'compact' ? 'comfortable' : 'compact' })}
-          >
-            <span>Density</span>
-            <span className="mono">{density}</span>
-          </button>
-          <button
-            className="settings-row"
-            onClick={() => setSettings({ explain: explain === 'terse' ? 'narrative' : 'terse' })}
-          >
-            <span>Explanations</span>
-            <span className="mono">{explain}</span>
-          </button>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function WorkspaceModeControl() {
-  const linked = useLinked()
-  const settings = useSettings()
-  const mode = workspaceModeFor(settings, linked.projectId)
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-workspace-mode', mode)
-  }, [mode])
-
-  function choose(next: 'guided' | 'advanced'): void {
-    if (!linked.projectId || next === 'guided') {
-      if (linked.projectId) {
-        const projectModes = { ...settings.projectModes }
-        delete projectModes[linked.projectId]
-        setSettings({ projectModes })
+/** Restore the saved MDI state, dropping anything the current profile does not show. */
+function restoreMdi(profile: Profile): MdiState {
+  let state: MdiState = EMPTY_MDI
+  try {
+    const raw = localStorage.getItem(MDI_KEY)
+    const parsed = raw ? (JSON.parse(raw) as MdiState) : null
+    if (parsed && Array.isArray(parsed.documents)) {
+      for (const item of parsed.documents) {
+        const window = windowOf(item.key)
+        if (DOCUMENTS.some((doc) => doc.id === window) && showsWindow(profile, window)) {
+          state = openDocument(state, item.key, item.title)
+        }
       }
-      return
+      if (parsed.active && state.documents.some((item) => item.key === parsed.active)) {
+        state = activateDocument(state, parsed.active)
+      }
     }
-    setSettings({ projectModes: { ...settings.projectModes, [linked.projectId]: next } })
+  } catch {
+    state = EMPTY_MDI
   }
-
-  return (
-    <div className="workspace-mode" role="group" aria-label="Workspace detail mode">
-      <button
-        type="button"
-        className={`kbd${mode === 'guided' ? ' active' : ''}`}
-        aria-pressed={mode === 'guided'}
-        onClick={() => choose('guided')}
-        title="One next action with plain-language evidence and recovery"
-      >
-        Guided
-      </button>
-      <button
-        type="button"
-        className={`kbd${mode === 'advanced' ? ' active' : ''}`}
-        aria-pressed={mode === 'advanced'}
-        disabled={!linked.projectId}
-        onClick={() => choose('advanced')}
-        title="Show immutable contracts, hashes, receipts, and command previews; authority is unchanged"
-      >
-        Advanced
-      </button>
-    </div>
-  )
-}
-
-/** A request from the shell to bring one named pane to the front. */
-interface PaneFocus {
-  pane: string
-  /** Bumped on every request so asking twice for the same pane still focuses it. */
-  seq: number
-}
-
-/** One screen area, with tabs when several panes share it. */
-function Area({
-  areaName,
-  panes,
-  focus,
-  contextKey,
-}: {
-  areaName: string
-  panes: ReturnType<typeof areasOf>[number][1]
-  focus: PaneFocus | null
-  contextKey: string
-}) {
-  const [active, setActive] = useState(0)
-
-  useEffect(() => {
-    if (!focus) return
-    const index = panes.findIndex((item) => item.name === focus.pane)
-    if (index >= 0) setActive(index)
-  }, [focus, panes])
-
-  const pane = panes[Math.min(active, panes.length - 1)]
-  return (
-    <section className="area" style={{ gridArea: areaName }} aria-label={pane.title}>
-      {panes.length > 1 ? (
-        <nav className="area-tabs" role="tablist" aria-label={`${areaName} panes`}>
-          {panes.map((item, index) => (
-            <button
-              key={item.name}
-              role="tab"
-              aria-selected={index === active}
-              className={`area-tab${index === active ? ' active' : ''}`}
-              onClick={() => setActive(index)}
-            >
-              {item.title}
-            </button>
-          ))}
-        </nav>
-      ) : null}
-      <div className="area-body">
-        <PanelHost key={`${pane.name}:${contextKey}`} name={pane.name} component={pane.component} params={pane.params} />
-      </div>
-    </section>
-  )
+  if (state.documents.length === 0) {
+    state = openDocument(state, 'chart', documentOf('chart').title)
+    state = openDocument(state, 'research', documentOf('research').title)
+  }
+  return state
 }
 
 function WorkstationApp() {
   const linked = useLinked()
-  const [current, setCurrent] = useState<ScreenId>(() => {
-    const stored = localStorage.getItem(SCREEN_KEY)
-    return SCREENS.some((item) => item.id === stored) ? (stored as ScreenId) : 'explore'
-  })
-  const [railCollapsed, setRailCollapsed] = useState(
-    () => localStorage.getItem(RAIL_KEY) === 'collapsed',
-  )
-  const [paletteOpen, setPaletteOpen] = useState(false)
-  const [governanceOpen, setGovernanceOpen] = useState(false)
-  const governanceButton = useRef<HTMLButtonElement>(null)
-  const closeGovernance = useCallback(() => {
-    setGovernanceOpen(false)
-    governanceButton.current?.focus()
-  }, [])
+  const settings = useSettings()
+  const { profile } = settings
+  const [mdi, setMdi] = useState<MdiState>(() => restoreMdi(profile))
   const [focus, setFocus] = useState<PaneFocus | null>(null)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [rightDock, setRightDock] = useState(() => localStorage.getItem(RIGHT_DOCK_KEY) !== 'closed')
 
   useEffect(() => {
     initActivity()
   }, [])
-
+  // A fresh terminal charts the profile's default symbol instead of an empty frame; a symbol
+  // the trader already chose is never overridden.
   useEffect(() => {
-    localStorage.setItem(SCREEN_KEY, current)
-  }, [current])
+    if (!linked.symbol) setLinked({ symbol: manifest(profile).defaultSymbol })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- boot only
+  }, [])
   useEffect(() => {
-    localStorage.setItem(RAIL_KEY, railCollapsed ? 'collapsed' : 'open')
-  }, [railCollapsed])
+    localStorage.setItem(MDI_KEY, JSON.stringify(mdi))
+  }, [mdi])
+  useEffect(() => {
+    localStorage.setItem(RIGHT_DOCK_KEY, rightDock ? 'open' : 'closed')
+  }, [rightDock])
+  useEffect(() => {
+    document.documentElement.setAttribute('data-profile', profile)
+    // A profile switch closes the documents it does not show; nothing is sent to the server.
+    setMdi((current) => {
+      let next: MdiState = current
+      for (const item of current.documents) {
+        if (!showsWindow(profile, item.window)) next = closeDocument(next, item.key)
+      }
+      return next
+    })
+  }, [profile])
+  useEffect(() => {
+    document.title = windowTitle(profile, {
+      symbol: linked.symbol,
+      venue: venueLabel(profile),
+      timeframe: 'D1',
+    })
+  }, [profile, linked.symbol])
 
-  const openRun = useCallback((runId: string) => {
-    setLinked({ runId })
-    window.location.hash = `run=${runId}`
-    setCurrent(RESULTS_SCREEN)
+  const activate = useCallback((key: string) => {
+    setMdi((current) => activateDocument(current, key))
+    const [window, instance] = key.split(/:(.*)/s)
+    if (window === 'report' && instance) setLinked({ runId: instance })
   }, [])
 
-  const showPane = useCallback((screenId: ScreenId, pane: string) => {
-    setCurrent(screenId)
-    setFocus((previous) => ({ pane, seq: (previous?.seq ?? 0) + 1 }))
+  const openWindow = useCallback(
+    (id: WindowId, instance?: string, title?: string) => {
+      if (!showsWindow(profile, id)) {
+        setSettings({ profile: manifest(profile).id === 'crypto' ? 'equities' : 'crypto' })
+      }
+      const key = instance ? `${id}:${instance}` : id
+      setMdi((current) => openDocument(current, key, title ?? documentOf(id).title))
+      if (id === 'report' && instance) setLinked({ runId: instance })
+    },
+    [profile],
+  )
+
+  const close = useCallback((key: string) => {
+    setMdi((current) => closeDocument(current, key))
   }, [])
+
+  const openRun = useCallback(
+    (runId: string, title?: string) => {
+      window.location.hash = `run=${runId}`
+      openWindow('report', runId, title ?? `run ${runId.slice(0, 8)}`)
+    },
+    [openWindow],
+  )
+
+  const showPane = useCallback(
+    (id: WindowId, pane: string) => {
+      openWindow(id)
+      setFocus((previous) => ({ pane, seq: (previous?.seq ?? 0) + 1 }))
+    },
+    [openWindow],
+  )
 
   // Panels raise navigation intents ("show the lab with this command") rather than reaching
-  // into the shell. Without this registration those intents are silently dropped, which is
-  // exactly what happened when the docking container went away.
+  // into the shell; the shell decides which document and pane that lands on.
   useEffect(() => {
     registerNavigator({
       showRun: openRun,
       showStrategyLab: () => showPane('build', 'StrategyLab'),
       showProjects: () => showPane('build', 'DevelopmentCenter'),
-      showResearchSources: () => showPane('explore', 'Literature'),
-      showResearchData: () => showPane('explore', 'DataManager'),
-      showProviders: () => showPane('operate', 'ProviderSystem'),
+      showResearchSources: () => showPane('research', 'Literature'),
+      showResearchData: () => setRightDock(true),
+      showProviders: () => showPane('jobs', 'ProviderSystem'),
     })
   }, [openRun, showPane])
 
-  // `#run=<id>` still deep-links to a run's report, now by switching screens rather than
-  // spawning a floating panel.
+  // `#run=<id>` deep-links to a run's report document.
   useEffect(() => {
     const apply = () => {
       const runId = runIdFromHash()
-      if (runId) {
-        setLinked({ runId })
-        setCurrent(RESULTS_SCREEN)
-      }
+      if (runId) openWindow('report', runId, `run ${runId.slice(0, 8)}`)
     }
     apply()
     window.addEventListener('hashchange', apply)
     return () => window.removeEventListener('hashchange', apply)
-  }, [])
+  }, [openWindow])
 
-  // New Idea opens the research case pane and then asks the cockpit to focus its
-  // natural-language capture field. No strategy parameters are requested here.
+  // New Idea opens the research case pane and asks the cockpit to focus its capture field.
   const newIdea = useCallback(() => {
-    showPane('explore', 'ResearchCockpit')
+    showPane('research', 'ResearchCockpit')
     window.setTimeout(requestNewIdea, 50)
   }, [showPane])
 
-  // R6h (spec §15): a gated strategy surface's "open research case" link lands the owner on
-  // the case that is holding the gate — link the project, then focus the research desk.
+  // R6h (spec §15): a gated surface's "open research case" link lands on the holding case.
   useEffect(
     () =>
       onResearchCase((projectId) => {
         setLinked({ projectId })
-        showPane('explore', 'ResearchCockpit')
+        showPane('research', 'ResearchCockpit')
       }),
     [showPane],
   )
@@ -294,85 +215,72 @@ function WorkstationApp() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const definition = screen(current)
+  const active = mdi.documents.find((item) => item.key === mdi.active) ?? null
+  const available = availableDocuments(profile)
 
   return (
-    <div className="shell">
-      <header className="topbar">
-        <div className="brand">
-          <span className="mark">ALPHA</span>
-          <span className="sub">WORKSTATION</span>
-        </div>
-        <nav className="screen-tabs" role="tablist" aria-label="Screens">
-          {SCREENS.map((item) => (
-            <button
-              key={item.id}
-              role="tab"
-              aria-selected={item.id === current}
-              className={`screen-tab${item.id === current ? ' active' : ''}`}
-              title={item.purpose}
-              onClick={() => setCurrent(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        <button
-          className="kbd new-idea"
-          title="Capture a raw research observation in your own words — no trading rules asked"
-          onClick={newIdea}
-        >
+    <div className={`shell terminal${rightDock ? '' : ' terminal--no-right'}`}>
+      <header className="titlebar">
+        <span className="titlebar-text">
+          ALPHA Terminal — {manifest(profile).label}
+          {active ? ` — [${active.title}]` : ''}
+        </span>
+        <button type="button" className="btn ghost titlebar-idea" onClick={newIdea} title="Capture a raw research observation in your own words — no trading rules asked">
           ＋ New Idea
         </button>
-        <div className="spacer" />
-        <WorkspaceModeControl />
-        <ContextBar />
-        <button className="kbd" onClick={() => setPaletteOpen(true)}>
-          Search <kbd>⌘K</kbd>
-        </button>
-        <button
-          ref={governanceButton}
-          className="kbd"
-          aria-haspopup="dialog"
-          aria-expanded={governanceOpen}
-          aria-label="Governance"
-          title="Authority, research gates, overrides, providers, storage and the glossary"
-          onClick={() => setGovernanceOpen(true)}
-        >
-          ⚖<span className="governance-label">Governance</span>
-        </button>
-        <SettingsMenu />
-        <StatusCluster onOpenGovernance={() => setGovernanceOpen(true)} />
       </header>
-
-      <div className={`workspace${railCollapsed ? ' workspace--rail-collapsed' : ''}`}>
-        <LibraryRail
-          onOpenRun={openRun}
-          collapsed={railCollapsed}
-          onToggle={() => setRailCollapsed((value) => !value)}
-        />
-        <main className={`screen ${definition.layout}`} aria-label={definition.label}>
-          {areasOf(definition).map(([areaName, panes]) => (
-            // Keyed by screen as well as area: two screens both have a "main", and sharing a
-            // key would carry one screen's selected tab index over to the other's panes.
-            <Area
-              key={`${definition.id}:${areaName}`}
-              areaName={areaName}
-              panes={panes}
-              focus={focus}
-              contextKey={linked.projectId ?? 'no-project'}
-            />
-          ))}
+      <MenuBar
+        open={mdi.documents}
+        active={mdi.active}
+        available={available}
+        onOpenWindow={(id) => openWindow(id)}
+        onActivate={activate}
+        onPalette={() => setPaletteOpen(true)}
+        onSettings={() => document.querySelector<HTMLButtonElement>('.settings-toggle')?.click()}
+      />
+      <Toolbar
+        onData={() => setRightDock((value) => !value)}
+        onResearch={() => showPane('research', 'ResearchCockpit')}
+        onRun={() => showPane('build', 'StrategyLab')}
+        onReport={() => linked.runId && openRun(linked.runId)}
+        onSearch={() => setPaletteOpen(true)}
+        onGovernance={() => openWindow('governance')}
+      />
+      <div className="terminal-body">
+        <aside className="dock dock--left" aria-label="Left docks">
+          <section className="dock-section" aria-label="Market Watch">
+            <h2 className="dock-title">Market Watch</h2>
+            <MarketWatch />
+          </section>
+          <section className="dock-section dock-section--grow" aria-label="Navigator">
+            <h2 className="dock-title">Navigator</h2>
+            <Navigator onOpenRun={openRun} />
+          </section>
+        </aside>
+        <main className="terminal-centre" aria-label="Documents">
+          <DocumentArea
+            mdi={mdi}
+            focus={focus}
+            contextKey={linked.projectId ?? 'no-project'}
+            onActivate={activate}
+            onClose={close}
+          />
+          <Toolbox />
         </main>
+        {rightDock ? (
+          <aside className="dock dock--right" aria-label="Data Manager">
+            <PanelHost name="DataManager" component={DataManager} />
+          </aside>
+        ) : null}
       </div>
+      <StatusBar />
 
       <Toasts onOpenRun={openRun} />
-      {governanceOpen ? <Governance onClose={closeGovernance} /> : null}
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
-        onOpenScreen={(id) => setCurrent(id)}
+        documents={available}
+        onOpenDocument={(id) => openWindow(id)}
         onOpenRun={openRun}
         onNewIdea={newIdea}
       />

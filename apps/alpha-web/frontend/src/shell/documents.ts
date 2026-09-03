@@ -71,6 +71,8 @@ export interface DocumentPane {
   title: string
   component: FunctionComponent<PanelHandleProps>
   params?: Record<string, unknown>
+  /** `side` panes render in a narrower column beside the main panes; default `main`. */
+  area?: 'main' | 'side'
 }
 
 export interface DocumentDefinition {
@@ -108,25 +110,26 @@ export const DOCUMENTS: readonly DocumentDefinition[] = [
     panes: [
       { name: 'StrategyLab', title: 'Strategy Development', component: StrategyLab },
       { name: 'DevelopmentCenter', title: 'Development Center', component: DevelopmentCenter },
-      { name: 'Pipeline', title: 'Development Next Step', component: Pipeline },
-      { name: 'AiConsole', title: 'Standalone Sandbox', component: AiConsole },
+      { name: 'Pipeline', title: 'Development Next Step', component: Pipeline, area: 'side' },
+      { name: 'AiConsole', title: 'Standalone Sandbox', component: AiConsole, area: 'side' },
     ],
   },
   {
     id: 'research',
     kind: 'research',
-    title: 'Research Case',
+    title: 'Research',
     panes: [
       { name: 'ResearchCockpit', title: 'Research Case', component: ResearchCockpit },
       { name: 'EvidenceHub', title: 'Evidence', component: EvidenceHub },
-      { name: 'ResearchBacklog', title: 'Backlog', component: ResearchBacklog },
+      { name: 'ResearchBacklog', title: 'Backlog', component: ResearchBacklog, area: 'side' },
       {
         name: 'Literature',
         title: 'Literature',
         component: EvidenceHub,
         params: { initialSection: 'literature', compactLiterature: true },
+        area: 'side',
       },
-      { name: 'CodexBench', title: 'Codex Research', component: CodexBench },
+      { name: 'CodexBench', title: 'Codex Research', component: CodexBench, area: 'side' },
     ],
   },
   {
@@ -144,12 +147,12 @@ export const DOCUMENTS: readonly DocumentDefinition[] = [
   {
     id: 'ml-lab',
     kind: 'ml',
-    title: 'ML lab',
+    title: 'Machine learning',
     panes: [
       { name: 'MlResearch', title: 'ML lab', component: MlResearch },
       { name: 'MlDiagnostics', title: 'ML diagnostics', component: MlDiagnostics },
       { name: 'RiskMonitor', title: 'Risk', component: RiskMonitor },
-      { name: 'AssetMemory', title: 'Findings', component: AssetMemory },
+      { name: 'AssetMemory', title: 'Findings', component: AssetMemory, area: 'side' },
     ],
   },
   {
@@ -159,7 +162,7 @@ export const DOCUMENTS: readonly DocumentDefinition[] = [
     panes: [
       { name: 'JobMonitor', title: 'Jobs', component: JobMonitor },
       { name: 'ProviderSystem', title: 'Providers & system', component: ProviderSystem },
-      { name: 'ActivityFeed', title: 'Activity', component: ActivityFeed },
+      { name: 'ActivityFeed', title: 'Activity', component: ActivityFeed, area: 'side' },
     ],
   },
   {
@@ -287,4 +290,15 @@ export function dockOf(id: DockId): DockDefinition {
   const found = DOCKS.find((item) => item.id === id)
   if (!found) throw new Error(`unknown dock ${String(id)}`)
   return found
+}
+
+/** Main and side panes in declaration order; a document with no side panes is one column. */
+export function panesByArea(definition: DocumentDefinition): {
+  main: DocumentPane[]
+  side: DocumentPane[]
+} {
+  return {
+    main: definition.panes.filter((pane) => (pane.area ?? 'main') === 'main'),
+    side: definition.panes.filter((pane) => pane.area === 'side'),
+  }
 }
