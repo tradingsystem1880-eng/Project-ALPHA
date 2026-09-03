@@ -7,6 +7,7 @@ import type { PaperSession, ProjectSummary, RunListItem, StrategyDef } from '../
 import type { Profile } from '../state/settings'
 import { profile as manifest } from '../shell/profiles'
 import type { StorageRow } from './dataManagerModel'
+import { venueLabel as providerLabel } from './marketWatchModel'
 
 export const NAVIGATOR_GROUPS = [
   'Strategies',
@@ -47,6 +48,8 @@ export interface NavigatorInput {
   strategies: readonly StrategyDef[]
   sessions: readonly PaperSession[]
   storage: StorageRow
+  /** Venue display name → stored pairs on it (from the Market Watch provenance reads). */
+  pairsByVenue?: Readonly<Record<string, number>>
 }
 
 export const MARKET_UNKNOWN_LABEL = 'Market unknown'
@@ -94,18 +97,22 @@ export function navigatorTree(input: NavigatorInput): NavigatorGroup[] {
     input.profile,
     input.showAll,
   )
-  const { providers, defaultVenue } = manifest(input.profile)
-  const dataLeaves: NavigatorLeaf[] = providers.map((provider) => ({
-    id: `venue:${provider}`,
-    label: provider === defaultVenue ? `${provider} · default venue` : provider,
-    sub: null,
-    tone: 'none',
-    action: { kind: 'none' },
-  }))
+  const { providers } = manifest(input.profile)
+  const dataLeaves: NavigatorLeaf[] = providers.map((provider) => {
+    const name = providerLabel(provider) ?? provider
+    const pairs = input.pairsByVenue?.[name] ?? 0
+    return {
+      id: `venue:${provider}`,
+      label: pairs ? `${name} (${pairs} pair${pairs === 1 ? '' : 's'})` : name,
+      sub: null,
+      tone: 'none',
+      action: { kind: 'none' },
+    }
+  })
   dataLeaves.push({
     id: 'storage:expansion',
     label: input.storage.label,
-    sub: input.storage.detail,
+    sub: null,
     tone: input.storage.tone === 'ok' ? 'ok' : 'warn',
     action: { kind: 'none' },
   })

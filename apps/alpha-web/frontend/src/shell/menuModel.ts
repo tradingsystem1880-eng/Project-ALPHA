@@ -5,7 +5,7 @@
 
 import type { CommandDef } from '../api/types'
 import type { OpenDocument } from './mdiModel'
-import type { WindowId } from './profiles'
+import type { DockId, WindowId } from './profiles'
 
 export const MENUS = [
   'File',
@@ -53,7 +53,18 @@ export type MenuItem =
   | { kind: 'command'; id: string; label: string }
   | { kind: 'document'; key: string; label: string; active: boolean }
   | { kind: 'open'; window: WindowId; label: string }
-  | { kind: 'shell'; id: 'palette' | 'settings'; label: string }
+  | { kind: 'shell'; id: 'palette' | 'settings' | 'new-idea'; label: string }
+  | { kind: 'dock'; id: DockId; label: string; open: boolean }
+  | { kind: 'mode'; id: WorkspaceMode; label: string; active: boolean; disabled: boolean }
+
+export type WorkspaceMode = 'guided' | 'advanced'
+
+/** The shell state the View and Research menus reflect; both parts are optional. */
+export interface ShellMenuState {
+  docks?: readonly { id: DockId; label: string; open: boolean }[]
+  /** Current detail mode and whether Advanced can be chosen (it needs a linked project). */
+  mode?: { current: WorkspaceMode; advancedAvailable: boolean }
+}
 
 export function commandGroup(id: string): string {
   return id.split(' ', 1)[0]
@@ -75,19 +86,28 @@ export function assignCommands(catalog: readonly CommandDef[]): Record<MenuName,
 }
 
 /**
- * The full menu bar: catalog commands, the shell's own entries, the documents the profile can
- * open (View, Governance among them) and the open documents (Window).
+ * The full menu bar: catalog commands, the shell's own entries (New Idea under Research, the
+ * dock toggles, Guided/Advanced and Settings under View, the palette under Help), the documents
+ * the profile can open (View, Governance among them) and the open documents (Window).
  */
 export function menuBar(
   catalog: readonly CommandDef[],
   open: readonly OpenDocument[],
   active: string | null,
   available: readonly { id: WindowId; title: string }[],
+  shell: ShellMenuState = {},
 ): Record<MenuName, MenuItem[]> {
   const menus = assignCommands(catalog)
   for (const item of available) menus.View.push({ kind: 'open', window: item.id, label: item.title })
+  for (const dock of shell.docks ?? []) menus.View.push({ kind: 'dock', id: dock.id, label: dock.label, open: dock.open })
+  if (shell.mode) {
+    const { current, advancedAvailable } = shell.mode
+    menus.View.push({ kind: 'mode', id: 'guided', label: 'Guided', active: current === 'guided', disabled: false })
+    menus.View.push({ kind: 'mode', id: 'advanced', label: 'Advanced', active: current === 'advanced', disabled: !advancedAvailable })
+  }
   menus.View.push({ kind: 'shell', id: 'settings', label: 'Settings' })
-  menus.Help.unshift({ kind: 'shell', id: 'palette', label: 'Search commands ⌘K' })
+  menus.Research.unshift({ kind: 'shell', id: 'new-idea', label: 'New Idea…' })
+  menus.Help.unshift({ kind: 'shell', id: 'palette', label: 'Search commands  Ctrl+K' })
   for (const item of open) {
     menus.Window.push({ kind: 'document', key: item.key, label: item.title, active: item.key === active })
   }

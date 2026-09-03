@@ -57,6 +57,8 @@ export interface StorageRow {
   label: string
   tone: 'ok' | 'amber'
   detail: string
+  /** Free space as `1.95 TB` / `500 GB` when the mounted volume reports it; else null. */
+  free: string | null
 }
 
 type StorageStatus = Pick<
@@ -67,7 +69,7 @@ type StorageStatus = Pick<
 /** One honest row for the Expansion SSD: mounted with free space, a named blocker, or not loaded. */
 export function storageRow(storage: StorageStatus | null): StorageRow {
   if (storage === null) {
-    return { label: 'Expansion SSD', tone: 'amber', detail: 'Storage status not loaded' }
+    return { label: 'Expansion SSD', tone: 'amber', detail: 'Storage status not loaded', free: null }
   }
   if (storage.state === 'blocked') {
     return storage.blocker === 'bulk_volume_not_mounted'
@@ -75,19 +77,23 @@ export function storageRow(storage: StorageStatus | null): StorageRow {
           label: 'Expansion SSD not mounted',
           tone: 'amber',
           detail: 'Reconnect the Expansion volume, then refresh.',
+          free: null,
         }
-      : { label: 'Expansion SSD blocked', tone: 'amber', detail: storage.blocker ?? 'blocked' }
+      : { label: 'Expansion SSD blocked', tone: 'amber', detail: storage.blocker ?? 'blocked', free: null }
   }
   const { free_bytes: free, total_bytes: total } = storage
-  const detail =
-    typeof free === 'number' && typeof total === 'number'
-      ? `${gigabytes(free)} GB free of ${gigabytes(total)} GB`
-      : storage.bulk_root_label
-  return { label: 'Expansion SSD mounted', tone: 'ok', detail }
+  const sized = typeof free === 'number' && typeof total === 'number'
+  const detail = sized ? `${gigabytes(free)} GB free of ${gigabytes(total)} GB` : storage.bulk_root_label
+  return { label: 'Expansion SSD mounted', tone: 'ok', detail, free: sized ? freeSpace(free) : null }
 }
 
 function gigabytes(bytes: number): number {
   return Math.round(bytes / 1e9)
+}
+
+/** `1.95 TB` above a terabyte, else whole gigabytes — the status bar's free-space figure. */
+export function freeSpace(bytes: number): string {
+  return bytes >= 1e12 ? `${(bytes / 1e12).toFixed(2)} TB` : `${gigabytes(bytes)} GB`
 }
 
 export interface ListingHint {

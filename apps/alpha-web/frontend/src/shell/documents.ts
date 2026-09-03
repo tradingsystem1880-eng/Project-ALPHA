@@ -276,13 +276,13 @@ export interface DockDefinition {
 
 export const DOCKS: readonly DockDefinition[] = [
   { id: 'MarketWatch', side: 'left', title: 'Market Watch', tabs: ['Symbols', 'Details', 'Data'] },
-  { id: 'Navigator', side: 'left', title: 'Navigator', tabs: [] },
-  { id: 'DataManager', side: 'right', title: 'Data Manager', tabs: [] },
+  { id: 'Navigator', side: 'left', title: 'Navigator', tabs: ['Common', 'Favorites'] },
+  { id: 'DataManager', side: 'right', title: 'Data Manager', tabs: ['Pull', 'Snapshots', 'Quality', 'Storage'] },
   {
     id: 'Toolbox',
     side: 'bottom',
     title: 'Toolbox',
-    tabs: ['Jobs', 'Trades', 'Backtests', 'Data pulls', 'Log'],
+    tabs: ['Jobs', 'Trades', 'Backtests', 'Data pulls', 'Log', 'Alerts'],
   },
 ]
 

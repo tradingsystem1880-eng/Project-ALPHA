@@ -102,9 +102,11 @@ describe('dock registry', () => {
     }
   })
 
-  it('gives the Toolbox exactly the five spec tabs in order — no Alerts', () => {
-    expect(dockOf('Toolbox').tabs).toEqual(['Jobs', 'Trades', 'Backtests', 'Data pulls', 'Log'])
+  it('gives every dock the artboard tabs in order (Alerts, Favorites and Snapshots are shown disabled)', () => {
+    expect(dockOf('Toolbox').tabs).toEqual(['Jobs', 'Trades', 'Backtests', 'Data pulls', 'Log', 'Alerts'])
     expect(dockOf('MarketWatch').tabs).toEqual(['Symbols', 'Details', 'Data'])
+    expect(dockOf('Navigator').tabs).toEqual(['Common', 'Favorites'])
+    expect(dockOf('DataManager').tabs).toEqual(['Pull', 'Snapshots', 'Quality', 'Storage'])
   })
 
   it('resolves every dock a profile lists', () => {

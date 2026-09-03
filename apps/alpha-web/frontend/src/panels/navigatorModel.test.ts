@@ -67,17 +67,19 @@ describe('navigatorModel', () => {
     expect(groups[2].leaves[0]).toMatchObject({ id: 'project:p2', sub: 'research gate open', tone: 'warn' })
   })
 
-  it('lists the venues and the Expansion SSD, relaying the unmounted state', () => {
-    const data = tree()[3]
+  it('lists the venues by display name with their stored pair counts, and the Expansion SSD', () => {
+    const data = tree({ pairsByVenue: { Binance: 5, Coinbase: 2, Bybit: 1 } })[3]
     expect(data.leaves.map((leaf) => leaf.label)).toEqual([
-      'ccxt',
-      'binance · default venue',
-      'bybit',
-      'coingecko',
-      'geckoterminal',
-      'coinmetrics',
+      'CCXT',
+      'Binance (5 pairs)',
+      'Bybit (1 pair)',
+      'CoinGecko',
+      'GeckoTerminal',
+      'Coin Metrics',
       'Expansion SSD mounted',
     ])
+    expect(data.leaves.every((leaf) => leaf.sub === null)).toBe(true)
+    expect(tree()[3].leaves[1].label).toBe('Binance')
     const unmounted = storageRow({ state: 'blocked', blocker: 'bulk_volume_not_mounted', bulk_root_label: 'Expansion', free_bytes: null, total_bytes: null })
     const ssd = tree({ storage: unmounted })[3].leaves.at(-1)
     expect(ssd).toMatchObject({ label: 'Expansion SSD not mounted', tone: 'warn' })

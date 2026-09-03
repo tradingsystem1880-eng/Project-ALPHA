@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { Candle } from '../api/types'
 import {
   MARKET_WATCH_TABS,
+  ageText,
   applyTicker,
   baseAsset,
   displaySymbol,
@@ -41,6 +42,7 @@ describe('marketWatchModel', () => {
       change: '+1.00%',
       tone: 'up',
       asOf: '2023-11-14',
+      age: '1d',
       stale: false,
     })
     expect(watchRow('BTC/USDT', quote([bar(100), bar(98)]), NOW).tone).toBe('down')
@@ -57,6 +59,7 @@ describe('marketWatchModel', () => {
       change: '—',
       tone: 'none',
       asOf: null,
+      age: null,
       stale: false,
     })
     expect(watchRow('SOL/USDT', quote([]), NOW)).toMatchObject({ last: '—', tone: 'none', asOf: null })
@@ -70,9 +73,12 @@ describe('marketWatchModel', () => {
     const twoDaysAgo = NOW / 1000 - 2 * 86_400
     expect(isStale(twoDaysAgo + 1, NOW)).toBe(false)
     expect(isStale(twoDaysAgo - 1, NOW)).toBe(true)
+    expect(ageText(twoDaysAgo, NOW)).toBe('2d')
+    expect(ageText(NOW / 1000 + 60, NOW)).toBe('0d')
     expect(watchRow('BTC/USD', quote([bar(1), bar(2, 0)], 'ccxt:coinbase'), NOW)).toMatchObject({
       venue: 'Coinbase',
       asOf: '1970-01-01',
+      age: '19677d',
       stale: true,
     })
   })
@@ -120,7 +126,7 @@ describe('marketWatchModel', () => {
     expect(tickerExchange(watchRow('AAPL', quote([bar(1)], 'tiingo'), NOW))).toBeNull()
     expect(tickerExchange(watchRow('SOL/USDT', null, NOW))).toBeNull()
     const live = applyTicker(row, { symbol: 'BTC/USDT', exchange: 'binance', last: 112.5, ts: '2026-09-03T14:02:11+00:00' })
-    expect(live).toMatchObject({ last: '112.5', asOf: 'live', stale: false, change: '+10.00%' })
+    expect(live).toMatchObject({ last: '112.5', asOf: 'live', age: 'live', stale: false, change: '+10.00%' })
     // Another venue, another symbol, or a nonsense price leaves the stored close in place.
     expect(applyTicker(row, { symbol: 'BTC/USDT', exchange: 'coinbase', last: 1, ts: '' })).toBe(row)
     expect(applyTicker(row, { symbol: 'ETH/USDT', exchange: 'binance', last: 1, ts: '' })).toBe(row)

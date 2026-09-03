@@ -1,8 +1,10 @@
-// Toolbar and title bar (spec 2026-09-01 §4.2 items 1 and 3). The timeframe buttons are the
-// classic five; only what the data house actually serves is enabled, and a disabled button says
-// why. The title bar reads the profile and the active document's context — never a symbol the
-// browser made up.
+// Toolbar and title bar (spec 2026-09-01 §4.2 items 1 and 3; artboard 1-Terminal). The timeframe
+// buttons are the classic five; only what the data house actually serves is enabled, and a
+// disabled button says why. The title bar reads the profile and the active document — the
+// chart's symbol and timeframe spelled the artboard way (`[BTCUSDT,D1]`), any other document's
+// own title — never a symbol the browser made up.
 
+import { displaySymbol } from '../panels/marketWatchModel'
 import type { Profile } from '../state/settings'
 import { profile as manifest } from './profiles'
 
@@ -26,23 +28,38 @@ export function timeframeButtons(available: readonly TimeframeLabel[]): Timefram
 
 export interface ActiveContext {
   symbol: string | null
-  /** Venue label (e.g. Binance) or null where the source is not venue-qualified. */
-  venue: string | null
   timeframe: TimeframeLabel
 }
 
-/** `ALPHA Terminal — Crypto — [BTC/USDT · Binance · D1]`; no bracket when nothing is open. */
-export function windowTitle(profileId: Profile, active: ActiveContext | null): string {
+/**
+ * `ALPHA Terminal — Crypto — [BTCUSDT,D1]` for the chart; `— [<document title>]` for any other
+ * document; no bracket when nothing is open or the chart has no symbol.
+ */
+export function windowTitle(
+  profileId: Profile,
+  active: ActiveContext | null,
+  documentTitle: string | null = null,
+): string {
   const base = `ALPHA Terminal — ${manifest(profileId).label}`
+  if (documentTitle) return `${base} — [${documentTitle}]`
   if (!active || !active.symbol) return base
-  const parts = [active.symbol, active.venue, active.timeframe].filter(
-    (part): part is string => part !== null,
-  )
-  return `${base} — [${parts.join(' · ')}]`
+  return `${base} — [${displaySymbol(active.symbol)},${active.timeframe}]`
 }
 
-/** The venue the profile pulls from, capitalised for the title bar; null for equities. */
+/** The venue the profile pulls from, capitalised for the chrome; null for equities. */
 export function venueLabel(profileId: Profile): string | null {
   const venue = manifest(profileId).defaultVenue
   return venue ? venue.charAt(0).toUpperCase() + venue.slice(1) : null
+}
+
+/** The document header line for the chart: `BTCUSDT,D1 · Binance · 2019-01-01 → latest`. */
+export function chartHeader(
+  symbol: string | null,
+  venue: string | null,
+  start: string | null,
+  end: string | null,
+): string {
+  if (!symbol) return 'No symbol'
+  const parts = [`${displaySymbol(symbol)},D1`, venue, `${start ?? 'start'} → ${end ?? 'latest'}`]
+  return parts.filter((part): part is string => part !== null).join(' · ')
 }

@@ -91,5 +91,24 @@ describe('menuModel', () => {
       { kind: 'shell', id: 'settings', label: 'Settings' },
     ])
     expect(menus.Backtest).toEqual([{ kind: 'command', id: 'backtest run', label: 'backtest run' }])
+    expect(menus.Research[0]).toEqual({ kind: 'shell', id: 'new-idea', label: 'New Idea…' })
+    expect(menus.Help[0]).toEqual({ kind: 'shell', id: 'palette', label: 'Search commands  Ctrl+K' })
+  })
+
+  it('reflects the dock toggles and the detail mode under View', () => {
+    const menus = menuBar([], [], null, [], {
+      docks: [
+        { id: 'MarketWatch', label: 'Market Watch', open: true },
+        { id: 'DataManager', label: 'Data Manager', open: false },
+      ],
+      mode: { current: 'guided', advancedAvailable: false },
+    })
+    expect(menus.View).toEqual([
+      { kind: 'dock', id: 'MarketWatch', label: 'Market Watch', open: true },
+      { kind: 'dock', id: 'DataManager', label: 'Data Manager', open: false },
+      { kind: 'mode', id: 'guided', label: 'Guided', active: true, disabled: false },
+      { kind: 'mode', id: 'advanced', label: 'Advanced', active: false, disabled: true },
+      { kind: 'shell', id: 'settings', label: 'Settings' },
+    ])
   })
 })

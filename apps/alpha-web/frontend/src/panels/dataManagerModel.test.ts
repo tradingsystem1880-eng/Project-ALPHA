@@ -71,6 +71,7 @@ describe('storage row', () => {
       label: 'Expansion SSD not mounted',
       tone: 'amber',
       detail: 'Reconnect the Expansion volume, then refresh.',
+      free: null,
     })
   })
 
@@ -83,7 +84,7 @@ describe('storage row', () => {
         free_bytes: 1_200_000_000_000,
         total_bytes: 2_000_000_000_000,
       }),
-    ).toEqual({ label: 'Expansion SSD mounted', tone: 'ok', detail: '1200 GB free of 2000 GB' })
+    ).toEqual({ label: 'Expansion SSD mounted', tone: 'ok', detail: '1200 GB free of 2000 GB', free: '1.20 TB' })
   })
 
   it('keeps other blockers visible without inventing a cause', () => {
@@ -95,7 +96,7 @@ describe('storage row', () => {
         free_bytes: null,
         total_bytes: null,
       }),
-    ).toEqual({ label: 'Expansion SSD blocked', tone: 'amber', detail: 'reserve_exceeded' })
+    ).toEqual({ label: 'Expansion SSD blocked', tone: 'amber', detail: 'reserve_exceeded', free: null })
   })
 
   it('is amber until the storage status has loaded', () => {
@@ -103,6 +104,7 @@ describe('storage row', () => {
       label: 'Expansion SSD',
       tone: 'amber',
       detail: 'Storage status not loaded',
+      free: null,
     })
   })
 })

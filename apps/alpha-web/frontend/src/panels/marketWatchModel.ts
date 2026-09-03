@@ -30,6 +30,8 @@ export interface WatchRow {
   tone: WatchTone
   /** UTC date of the last stored bar the price comes from; null when there is none. */
   asOf: string | null
+  /** Compact age for the narrow dock: `live`, `0d`…`65d`, or null with no bar. */
+  age: string | null
   /** The last bar is older than `STALE_AFTER_DAYS`; the price is history, not a quote. */
   stale: boolean
 }
@@ -46,6 +48,10 @@ const VENUE_NAMES: Readonly<Record<string, string>> = {
   yfinance: 'Yahoo',
   stooq: 'Stooq',
   quantpad: 'QuantPad',
+  ccxt: 'CCXT',
+  coingecko: 'CoinGecko',
+  geckoterminal: 'GeckoTerminal',
+  coinmetrics: 'Coin Metrics',
 }
 
 /** `ccxt:binance` → `Binance`; a bare provider id → its display name; unknown → as given. */
@@ -86,6 +92,11 @@ export function isStale(barTs: number, nowMs: number): boolean {
   return nowMs - barTs * 1000 > STALE_AFTER_DAYS * 86_400_000
 }
 
+/** Whole days between the bar and now, floored at zero: `65d`. */
+export function ageText(barTs: number, nowMs: number): string {
+  return `${Math.max(0, Math.floor((nowMs - barTs * 1000) / 86_400_000))}d`
+}
+
 /** One row from the last two daily bars; anything missing is shown as missing. */
 export function watchRow(
   symbol: string,
@@ -101,6 +112,7 @@ export function watchRow(
     change: '—',
     tone: 'none',
     asOf: null,
+    age: null,
     stale: false,
   }
   const bars = quote?.bars
@@ -108,7 +120,7 @@ export function watchRow(
   const lastBar = bars[bars.length - 1]
   const last = lastBar.c
   if (!Number.isFinite(last) || !Number.isFinite(lastBar.t)) return none
-  const dated = { ...none, asOf: fmtUtcDate(lastBar.t), stale: isStale(lastBar.t, nowMs) }
+  const dated = { ...none, asOf: fmtUtcDate(lastBar.t), age: ageText(lastBar.t, nowMs), stale: isStale(lastBar.t, nowMs) }
   const previous = bars.length > 1 ? bars[bars.length - 2].c : Number.NaN
   if (!Number.isFinite(previous) || previous === 0) {
     return { ...dated, last: priceText(last) }
@@ -165,6 +177,6 @@ export interface LiveQuote {
 export function applyTicker(row: WatchRow, quote: LiveQuote | null | undefined): WatchRow {
   if (!quote || quote.symbol !== row.symbol || quote.exchange !== tickerExchange(row)) return row
   if (!Number.isFinite(quote.last) || quote.last <= 0) return row
-  return { ...row, last: priceText(quote.last), asOf: 'live', stale: false }
+  return { ...row, last: priceText(quote.last), asOf: 'live', age: 'live', stale: false }
 }
 
