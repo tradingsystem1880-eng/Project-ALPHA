@@ -42,6 +42,8 @@ export interface GovernancePage {
   empty: string | null
   /** The research case holding an open gate, when there is one. */
   caseLink: { projectId: string; projectName: string | null } | null
+  /** A plain link the page offers (the Touch ID enrolment page). */
+  link?: { label: string; href: string }
 }
 
 export interface GovernanceInput {
@@ -146,14 +148,23 @@ export function governancePages(input: GovernanceInput): GovernancePage[] {
   const ssd = storageRow(input.storage)
   return [
     page('authority', 'Authority & status', authority(input)),
-    page('touchid', 'Touch ID', [
-      { label: 'Owner actions', value: GOVERNANCE_SENTENCES.touchId, tone: 'warn' },
-      {
-        label: 'Research decisions',
-        value: 'Every research decision, semantic freeze and paper acceptance is a Touch ID owner action recorded with a receipt; the browser never derives or caches presence.',
-        tone: 'ok',
-      },
-    ]),
+    {
+      ...page('touchid', 'Touch ID', [
+        { label: 'Owner actions', value: GOVERNANCE_SENTENCES.touchId, tone: 'warn' },
+        {
+          label: 'Research decisions',
+          value: 'Every research decision, semantic freeze and paper acceptance is a Touch ID owner action recorded with a receipt; the browser never derives or caches presence.',
+          tone: 'ok',
+        },
+        {
+          label: 'Enrolment',
+          value: 'one platform credential',
+          tone: 'ok',
+          detail: 'Enrol or re-enrol Touch ID on this machine at /owner-auth/enroll; recovery stays a trusted CLI act (ADR-0030).',
+        },
+      ]),
+      link: { label: 'Enroll Touch ID', href: '/owner-auth/enroll' },
+    },
     gates(input),
     overrides(input.overrides),
     providers(input.providers),

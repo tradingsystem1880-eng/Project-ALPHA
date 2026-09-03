@@ -4726,6 +4726,17 @@ html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
 .menu-mark { display: inline-block; width: 12px; }
 .menu-item:disabled { color: var(--muted); cursor: default; }
 .settings-menu .settings-toggle { min-width: 26px; }
+/* Owner steps (Phase 4 P4): completable where they are announced. */
+.owner-action { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pad-sm); margin-top: var(--pad-sm); }
+.owner-action-reason { flex: 1 1 220px; min-height: 24px; }
+.owner-action-blocked { flex: 1 0 100%; }
+.owner-action .workbench-notice { flex: 1 0 100%; }
+.copy-command { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pad-sm); margin-top: var(--pad-sm); }
+.copy-command-text { flex: 1 1 260px; overflow-wrap: anywhere; user-select: all; }
+.copy-command-why { flex: 1 0 100%; }
+.research-choice-card label { display: flex; gap: 6px; align-items: flex-start; cursor: pointer; }
+.owner-decision-form { display: flex; flex-wrap: wrap; gap: var(--pad-sm); align-items: flex-end; }
+.owner-decision-form label { display: grid; gap: 2px; }
 /* Report (artboard 2) and Governance (artboard 4) documents. */
 .report-toolbar { gap: 4px; }
 .report-toolbar .btn.active { background: var(--panel-2); box-shadow: inset 1px 1px 0 var(--bevel-dark), inset -1px -1px 0 var(--bevel-light); }

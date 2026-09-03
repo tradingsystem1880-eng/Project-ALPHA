@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import { api, type OwnerActionType } from '../api/client'
+import { CopyCommand } from '../components/CopyCommand'
+import { OwnerActionButton } from '../components/OwnerActionButton'
 import {
   contentAddressHash,
   performOwnerAction,
@@ -30,6 +32,10 @@ import {
   researchPhaseLabel,
   researchPilotEligibility,
   researchProposalAvailable,
+  CLI_ONLY,
+  RESEARCH_DISPOSITIONS,
+  RESEARCH_OUTCOMES,
+  ownerStep,
 } from './researchCockpitModel'
 import { HypothesisCardView, ScorecardDetail, ScorecardStrip } from './researchViews'
 
@@ -235,11 +241,16 @@ export function StudyStatusSection({
   status,
   semanticRead,
   semanticError,
+  researchCase,
+  onRefresh,
 }: {
   status: ResearchStudyStatusV1 | null
   semanticRead: VerifiedBlindSemanticReadV1 | null
   semanticError: string | null
+  researchCase: ResearchCase
+  onRefresh: () => void
 }) {
+  const step = ownerStep(researchCase)
   if (!status) {
     return (
       <Placeholder big="STUDY STATUS UNAVAILABLE">
@@ -322,7 +333,7 @@ export function StudyStatusSection({
       <div className="development-spec">
         <div><span className="eyebrow">Active contract</span><code>{status.active_contract_id}</code></div>
         <div><span className="eyebrow">D1 state</span><strong>{status.d1.status.replaceAll('_', ' ').toUpperCase()}</strong></div>
-        <div><span className="eyebrow">D1 launch</span><strong>OWNER CLI ONLY</strong></div>
+        <div><span className="eyebrow">D1 launch</span><strong>{step.kind === 'action' && step.actionType === 'launch_d1' ? 'OWNER · TOUCH ID BELOW' : 'OWNER ONLY'}</strong></div>
         <div><span className="eyebrow">Promotion dossier</span><code>{status.promotion.packet_id ?? 'none'}</code></div>
         <div><span className="eyebrow">Promotion readiness</span><strong>{status.promotion.readiness.state.toUpperCase()}</strong></div>
       </div>
@@ -337,6 +348,16 @@ export function StudyStatusSection({
       <div className="workbench-notice">
         <strong>NEXT · {status.responsibility.toUpperCase()}</strong><span>{status.next_action}</span>
       </div>
+      {step.kind === 'action' && step.actionType === 'launch_d1' ? (
+        <OwnerActionButton
+          researchCase={researchCase}
+          actionType={step.actionType}
+          label={step.label}
+          consequence={step.consequence}
+          payload={step.payload}
+          onComplete={onRefresh}
+        />
+      ) : null}
     </section>
   )
 }
@@ -429,9 +450,9 @@ function ApprovalBoundary({
         </button>
       </div>
       {error ? <div className="workbench-notice" role="alert"><strong>ACTION BLOCKED</strong><span>{error}</span></div> : null}
-      <code className="mono advanced-only">
-        Trusted recovery: alpha owner-auth recover --reason &quot;&lt;credential recovery reason&gt;&quot;
-      </code>
+      <div className="advanced-only">
+        <CopyCommand command={CLI_ONLY.recovery.command} why={CLI_ONLY.recovery.why} />
+      </div>
     </section>
   )
 }
@@ -452,19 +473,89 @@ function CaseHeader({ researchCase }: { researchCase: ResearchCase }) {
   )
 }
 
-function CanonicalNextAction({ researchCase }: { researchCase: ResearchCase }) {
+function CanonicalNextAction({ researchCase, onRefresh }: { researchCase: ResearchCase; onRefresh: () => void }) {
+  const step = ownerStep(researchCase)
   return (
     <section className="research-next-action" aria-label="Canonical next action">
       <span className="eyebrow">Do this next</span>
       <strong>{researchCase.next_action}</strong>
       {researchCase.recovery ? <span>{researchCase.recovery}</span> : null}
+      {step.kind === 'action' ? (
+        <OwnerActionButton
+          researchCase={researchCase}
+          actionType={step.actionType}
+          label={step.label}
+          consequence={step.consequence}
+          payload={step.payload}
+          onComplete={onRefresh}
+        />
+      ) : step.kind === 'decide' ? (
+        <span className="muted">Record the final disposition on the Decision tab.</span>
+      ) : step.kind === 'waiting' ? (
+        <span className="muted">{step.text}</span>
+      ) : null}
     </section>
   )
 }
 
-function MaterialQuestions({ researchCase }: { researchCase: ResearchCase }) {
+/** The owner's closing decision (alpha research decide): outcome + disposition, then Touch ID. */
+function OwnerDecisionForm({ researchCase, onRefresh }: { researchCase: ResearchCase; onRefresh: () => void }) {
+  const [outcome, setOutcome] = useState<string>('')
+  const [disposition, setDisposition] = useState<string>('')
+  const step = ownerStep(researchCase)
+  if (step.kind !== 'decide') {
+    return (
+      <span className="muted">
+        {researchCase.phase === 'closed'
+          ? 'This case is closed; its decision is in the history above.'
+          : 'The final disposition opens in the research_decision phase, after D2.'}
+      </span>
+    )
+  }
+  const ready = outcome !== '' && disposition !== ''
+  return (
+    <div className="owner-decision-form" aria-label="Final disposition">
+      <label>
+        <span className="eyebrow">Outcome</span>
+        <select className="field" value={outcome} onChange={(event) => setOutcome(event.target.value)}>
+          <option value="">choose…</option>
+          {RESEARCH_OUTCOMES.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+      </label>
+      <label>
+        <span className="eyebrow">Disposition</span>
+        <select className="field" value={disposition} onChange={(event) => setDisposition(event.target.value)}>
+          <option value="">choose…</option>
+          {RESEARCH_DISPOSITIONS.map((item) => <option key={item} value={item}>{item.replaceAll('_', ' ')}</option>)}
+        </select>
+      </label>
+      <OwnerActionButton
+        researchCase={researchCase}
+        actionType="record_final_disposition"
+        label="record decision"
+        consequence={`Record the final disposition ${outcome || '…'} · ${disposition || '…'} for this case; advance_to_strategy writes the promotion dossier.`}
+        payload={{ outcome, disposition }}
+        disabledReason={ready ? null : 'choose an outcome and a disposition first'}
+        onComplete={onRefresh}
+      />
+    </div>
+  )
+}
+
+function MaterialQuestions({ researchCase, onRefresh }: { researchCase: ResearchCase; onRefresh: () => void }) {
   const contract = researchContractView(researchCase)
+  const [answers, setAnswers] = useState<Record<string, string>>({})
   if (!contract.blocking_questions.length) return null
+  const step = ownerStep(researchCase)
+  const answered = contract.blocking_questions.every((question) => answers[question.id])
+  const blocked =
+    step.kind !== 'revise'
+      ? 'the case is not waiting for revised answers'
+      : step.sourcePackId === null
+        ? 'freeze a source pack first (Evidence tab) — revision binds to it'
+        : answered
+          ? null
+          : 'answer every question first'
   return (
     <section className="research-material-questions" aria-label="Material research questions">
       <div className="rd-head">Three decisions needed before this idea can be tested</div>
@@ -473,13 +564,25 @@ function MaterialQuestions({ researchCase }: { researchCase: ResearchCase }) {
           <li key={question.id} className="research-material-question">
             <strong>{question.prompt}</strong>
             <p>{question.blocking_reason}</p>
-            <div className="research-choice-cards">
+            <div className="research-choice-cards" role="radiogroup" aria-label={question.prompt}>
               {question.choices.map((choice) => (
                 <div className="research-choice-card" key={choice.id}>
-                  <strong>{choice.label}</strong>
+                  <label>
+                    <input
+                      type="radio"
+                      name={`answer-${question.id}`}
+                      value={choice.id}
+                      checked={answers[question.id] === choice.id}
+                      disabled={choice.availability === 'unavailable'}
+                      onChange={() => setAnswers((current) => ({ ...current, [question.id]: choice.id }))}
+                    />
+                    <strong>{choice.label}</strong>
+                  </label>
                   <span>{choice.consequence}</span>
                   {choice.availability === 'unavailable' ? (
-                    <span className="chip fail">UNAVAILABLE · {choice.blocked_reason}</span>
+                    <span className="chip fail" title="Choose another answer; this operator does not exist in the CLI yet">
+                      UNAVAILABLE · {choice.blocked_reason}
+                    </span>
                   ) : null}
                 </div>
               ))}
@@ -487,6 +590,17 @@ function MaterialQuestions({ researchCase }: { researchCase: ResearchCase }) {
           </li>
         ))}
       </ol>
+      <OwnerActionButton
+        researchCase={researchCase}
+        actionType="revise_exploration"
+        label="revise with these answers"
+        consequence="Revise the exploration contract with these material answers (alpha research revise); Codex re-proposes, nothing launches."
+        payload={{ source_pack_id: step.kind === 'revise' ? step.sourcePackId : null, answers }}
+        artifactId={researchCase.active_contract_id}
+        disabledReason={blocked}
+        primary={false}
+        onComplete={onRefresh}
+      />
     </section>
   )
 }
@@ -954,9 +1068,9 @@ export function ResearchCockpit(props: PanelHandleProps) {
 
         {researchCase ? (
           <>
-            <MaterialQuestions researchCase={researchCase} />
+            <MaterialQuestions researchCase={researchCase} onRefresh={() => void loadCase(researchCase.project_id, 'status')} />
             <CaseHeader researchCase={researchCase} />
-            <CanonicalNextAction researchCase={researchCase} />
+            <CanonicalNextAction researchCase={researchCase} onRefresh={() => void loadCase(researchCase.project_id, 'status')} />
             <div className="research-view-tabs" role="tablist" aria-label="Cockpit views">
               <button
                 className={view === 'overview' ? 'btn primary' : 'btn'}
@@ -987,10 +1101,18 @@ export function ResearchCockpit(props: PanelHandleProps) {
               </button>
             </div>
             {view === 'decision' ? (
-              <DecisionViewSection view={decisionView} busy={busy} />
+              <>
+                <DecisionViewSection view={decisionView} busy={busy} />
+                <section className="research-decision-form" aria-label="Owner final disposition">
+                  <div className="rd-head">Final disposition · owner Touch ID</div>
+                  <OwnerDecisionForm researchCase={researchCase} onRefresh={() => void loadCase(researchCase.project_id, 'status')} />
+                </section>
+              </>
             ) : view === 'study' ? (
               <StudyStatusSection
                 status={researchCase.study_status ?? null}
+                researchCase={researchCase}
+                onRefresh={() => void loadCase(researchCase.project_id, 'status')}
                 semanticRead={semanticRead}
                 semanticError={semanticError}
               />

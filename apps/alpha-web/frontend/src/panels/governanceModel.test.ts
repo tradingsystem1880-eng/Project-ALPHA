@@ -141,6 +141,11 @@ describe('governancePages', () => {
     ])
   })
 
+  it('offers Touch ID enrolment from the Touch ID page', () => {
+    expect(page(governancePages(EMPTY), 'touchid').link).toEqual({ label: 'Enroll Touch ID', href: '/owner-auth/enroll' })
+    expect(page(governancePages(EMPTY), 'authority').link).toBeUndefined()
+  })
+
   it('counts open gates, overrides and glossary entries in the page labels (artboard 4)', () => {
     const pages = governancePages({
       ...EMPTY,

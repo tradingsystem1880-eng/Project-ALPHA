@@ -1569,6 +1569,8 @@ interface MockOptions {
   jobs?: unknown[]
   researchGateOverride?: boolean
   researchGateLock?: boolean
+  /** Fields laid over the RESEARCH_CASE fixture wherever the harness serves it. */
+  researchCaseOverride?: Partial<components['schemas']['ResearchCase']>
   candidateProject?: boolean
   /** Opt-in so the screenshot baselines keep an empty, deterministic Library rail. */
   runs?: unknown[]
@@ -1683,7 +1685,7 @@ function responseFor(route: Route, options: MockOptions): unknown {
     return {
       project: { project_id: RESEARCH_CASE.project_id },
       contract: RESEARCH_CASE.active_contract,
-      case: RESEARCH_CASE,
+      case: { ...RESEARCH_CASE, ...options.researchCaseOverride },
     }
   }
   if (
@@ -1695,7 +1697,7 @@ function responseFor(route: Route, options: MockOptions): unknown {
     && route.request().method() === 'GET'
   ) return RESEARCH_CLOSED_CASE
   if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/status`) {
-    return RESEARCH_CASE
+    return { ...RESEARCH_CASE, ...options.researchCaseOverride }
   }
   if (url.pathname === `/api/research/cases/${RESEARCH_CASE.project_id}/semantic-projection`) {
     return RESEARCH_SEMANTIC_READ
@@ -2437,7 +2439,7 @@ export async function preparePage(page: Page, options: MockOptions = {}): Promis
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(RESEARCH_CASE),
+        body: JSON.stringify({ ...RESEARCH_CASE, ...options.researchCaseOverride }),
       })
       return
     }
@@ -2800,7 +2802,8 @@ test('Research Cockpit Study tab preserves masking and owner-only D1 authority',
   await expect(page.getByText('visible-1', { exact: true })).toBeVisible()
   await expect(page.getByText('8', { exact: true })).toBeVisible()
   await expect(page.getByText('bounded reversal', { exact: true })).toBeVisible()
-  await expect(page.getByText('OWNER CLI ONLY', { exact: true })).toBeVisible()
+  // A triage case offers no launch: the D1 row says owner-only and no Touch ID button exists.
+  await expect(page.getByText('OWNER ONLY', { exact: true })).toBeVisible()
   await expect(page.getByText(/Freeze the approved semantic definition with fresh Touch ID/)).toBeVisible()
   await expect(page.getByRole('button', { name: /launch.*D1/i })).toHaveCount(0)
   await expectReleaseAccessibility(page)
@@ -3550,3 +3553,125 @@ test('@reference-only 25k bars and 200 annotations remain interactively responsi
   expect(cadence.interactive.p99FrameMs).toBeLessThanOrEqual(34)
 })
 }
+
+// ---- Phase 4 P4: every owner step is one Touch ID away ------------------------------------------
+
+const APPROVED = { state: 'approved', event: null } as components['schemas']['ResearchReviewSummary']
+
+async function captureCase(page: Page) {
+  await page.getByLabel('Raw research idea').fill(RESEARCH_RAW_IDEA)
+  await page.getByRole('button', { name: 'capture · no compute' }).click()
+}
+
+test('a case waiting for D1 offers Touch ID · launch D1 where the next action is printed', async ({ page }) => {
+  let challenge: Record<string, unknown> | null = null
+  await preparePage(page, {
+    capturedOwnerAction: (body) => { challenge = body },
+    researchCaseOverride: {
+      phase: 'pilot',
+      execution_state: 'idle',
+      responsibility: 'owner',
+      exploration_review: APPROVED,
+      next_action: 'Owner launches the frozen D1 analysis plan.',
+    },
+  })
+  await captureCase(page)
+  const next = page.getByRole('region', { name: 'Canonical next action' })
+  await expect(next).toContainText('Owner launches the frozen D1 analysis plan.')
+  const button = next.getByRole('button', { name: 'Touch ID · launch D1' })
+  await expect(button).toBeDisabled() // a reason is part of the receipt
+  await next.getByLabel('Reason for launch D1').fill('Exploration approved; run the frozen plan.')
+  await button.click()
+  await expect.poll(() => challenge).not.toBeNull()
+  expect(challenge).toMatchObject({
+    action_type: 'launch_d1',
+    project_id: RESEARCH_CASE.project_id,
+    reason: 'Exploration approved; run the frozen plan.',
+    payload: {},
+  })
+  expect(challenge).not.toHaveProperty('actor')
+  await expectReleaseAccessibility(page)
+})
+
+test('material questions are answered in place and revised with Touch ID', async ({ page }) => {
+  let challenge: Record<string, unknown> | null = null
+  await preparePage(page, {
+    capturedOwnerAction: (body) => { challenge = body },
+    researchCaseOverride: { source_pack_id: 'sp_frozen_1' },
+  })
+  await captureCase(page)
+  const questions = page.getByLabel('Material research questions')
+  const revise = questions.getByRole('button', { name: 'Touch ID · revise with these answers' })
+  await expect(revise).toBeDisabled()
+  for (const question of RESEARCH_QUESTIONS) {
+    const group = questions.getByRole('radiogroup', { name: question.prompt })
+    await expect(group.getByRole('radio', { disabled: true })).toHaveCount(
+      question.choices.filter((choice) => choice.availability === 'unavailable').length,
+    )
+    await group.getByRole('radio', { disabled: false }).first().check()
+  }
+  await questions.getByLabel('Reason for revise with these answers').fill('Answers chosen from the available operators.')
+  await expect(revise).toBeEnabled()
+  await revise.click()
+  await expect.poll(() => challenge).not.toBeNull()
+  expect(challenge).toMatchObject({ action_type: 'revise_exploration', payload: { source_pack_id: 'sp_frozen_1' } })
+  const answers = (challenge as unknown as { payload: { answers: Record<string, string> } }).payload.answers
+  expect(Object.keys(answers).sort()).toEqual(RESEARCH_QUESTIONS.map((question) => question.id).sort())
+})
+
+test('the Decision tab records the final disposition with Touch ID once the case reaches research_decision', async ({ page }) => {
+  let challenge: Record<string, unknown> | null = null
+  await preparePage(page, {
+    capturedOwnerAction: (body) => { challenge = body },
+    researchCaseOverride: {
+      phase: 'research_decision',
+      execution_state: 'idle',
+      responsibility: 'owner',
+      exploration_review: APPROVED,
+      confirmation_review: APPROVED,
+      next_action: 'Owner records the final disposition.',
+    },
+  })
+  await captureCase(page)
+  await page.getByRole('tab', { name: 'Decision', exact: true }).click()
+  const form = page.getByRole('region', { name: 'Owner final disposition' })
+  const record = form.getByRole('button', { name: 'Touch ID · record decision' })
+  await expect(record).toBeDisabled()
+  await expect(form).toContainText('choose an outcome and a disposition first')
+  await form.locator('select').nth(0).selectOption('SUPPORTED')
+  await form.locator('select').nth(1).selectOption('park')
+  await form.getByLabel('Reason for record decision').fill('Supported but parked pending capacity.')
+  await record.click()
+  await expect.poll(() => challenge).not.toBeNull()
+  expect(challenge).toMatchObject({
+    action_type: 'record_final_disposition',
+    payload: { outcome: 'SUPPORTED', disposition: 'park' },
+  })
+  await expectReleaseAccessibility(page)
+})
+
+test('CLI-only steps hand over the exact command with the ADR that keeps them on the CLI', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          ;(window as unknown as { __copiedText: string }).__copiedText = text
+        },
+      },
+    })
+  })
+  await preparePage(page)
+  // The Data Manager's reviewed-asset recipe is a receipted CLI regeneration (ADR-0032).
+  await page.getByRole('tablist', { name: 'Data Manager sections' }).getByRole('tab', { name: 'Storage' }).click()
+  await page.getByText('Add a reviewed asset — CLI recipe (nothing is changed here)').click()
+  const step = page.getByRole('group', { name: 'Trusted CLI step' }).first()
+  await expect(step).toContainText('ADR-0032')
+  await step.getByRole('button', { name: 'Copy command' }).click()
+  await expect(step.getByRole('button', { name: 'Copied' })).toBeVisible()
+  expect(await page.evaluate(() => (window as unknown as { __copiedText?: string }).__copiedText)).toContain('alpha crypto-data asset-master-create')
+  // Governance › Touch ID offers enrolment instead of a dead end.
+  await page.getByRole('button', { name: 'Governance' }).click()
+  await page.getByRole('region', { name: 'Governance' }).getByRole('button', { name: 'Touch ID' }).click()
+  await expect(page.getByRole('link', { name: 'Enroll Touch ID' })).toHaveAttribute('href', '/owner-auth/enroll')
+})

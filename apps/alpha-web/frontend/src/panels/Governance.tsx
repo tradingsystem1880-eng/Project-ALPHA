@@ -122,6 +122,11 @@ function GovernancePages() {
         ) : (
           <p className="muted">{current.empty}</p>
         )}
+        {current.link ? (
+          <a className="btn" href={current.link.href}>
+            {current.link.label}
+          </a>
+        ) : null}
         {current.caseLink ? (
           <button
             type="button"

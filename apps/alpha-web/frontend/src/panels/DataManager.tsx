@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import type { CryptoCoverage, CryptoStorage, ProviderDefinition } from '../api/types'
+import { CopyCommand } from '../components/CopyCommand'
 import { JobConsole } from '../components/JobConsole'
 import { Placeholder } from '../components/Placeholder'
 import { setLinked } from '../context/linked'
@@ -25,6 +26,7 @@ import {
   storageRow,
   validateDates,
 } from './dataManagerModel'
+import { CLI_ONLY } from './researchCockpitModel'
 import { ResearchDataExplorer } from './ResearchDataExplorer'
 
 type Tab = 'Pull' | 'Snapshots' | 'Quality' | 'Storage'
@@ -365,6 +367,7 @@ function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' 
       <details>
         <summary className="muted">Add a reviewed asset — CLI recipe (nothing is changed here)</summary>
         <pre className="mono">{ASSET_MASTER_RECIPE}</pre>
+        <CopyCommand command={ASSET_MASTER_RECIPE.split('\n').filter((line) => !line.startsWith('#')).join(' ')} why={CLI_ONLY.assetMaster.why} />
       </details>
         </>
       )}
