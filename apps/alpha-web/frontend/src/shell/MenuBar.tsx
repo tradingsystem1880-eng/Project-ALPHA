@@ -9,20 +9,36 @@ import { api } from '../api/client'
 import type { CommandDef } from '../api/types'
 import { openStrategyLab } from '../panels/actions'
 import type { OpenDocument } from './mdiModel'
-import { MENUS, menuBar, type MenuItem, type MenuName } from './menuModel'
-import type { WindowId } from './profiles'
+import { MENUS, menuBar, type MenuItem, type MenuName, type ShellMenuState, type WorkspaceMode } from './menuModel'
+import type { DockId, WindowId } from './profiles'
 
 interface Props {
   open: readonly OpenDocument[]
   active: string | null
   available: readonly { id: WindowId; title: string }[]
+  shell: ShellMenuState
   onOpenWindow: (id: WindowId) => void
   onActivate: (key: string) => void
   onPalette: () => void
   onSettings: () => void
+  onNewIdea: () => void
+  onToggleDock: (id: DockId) => void
+  onMode: (mode: WorkspaceMode) => void
 }
 
-export function MenuBar({ open, active, available, onOpenWindow, onActivate, onPalette, onSettings }: Props) {
+export function MenuBar({
+  open,
+  active,
+  available,
+  shell,
+  onOpenWindow,
+  onActivate,
+  onPalette,
+  onSettings,
+  onNewIdea,
+  onToggleDock,
+  onMode,
+}: Props) {
   const [catalog, setCatalog] = useState<CommandDef[]>([])
   const [openMenu, setOpenMenu] = useState<MenuName | null>(null)
   const bar = useRef<HTMLDivElement>(null)
@@ -47,7 +63,7 @@ export function MenuBar({ open, active, available, onOpenWindow, onActivate, onP
     return () => document.removeEventListener('mousedown', onDown)
   }, [openMenu])
 
-  const menus = menuBar(catalog, open, active, available)
+  const menus = menuBar(catalog, open, active, available, shell)
 
   const focusMenu = useCallback((name: MenuName) => {
     bar.current?.querySelector<HTMLButtonElement>(`[data-menu="${name}"]`)?.focus()
@@ -58,7 +74,10 @@ export function MenuBar({ open, active, available, onOpenWindow, onActivate, onP
     if (item.kind === 'command') openStrategyLab({ command: item.id, args: '' })
     else if (item.kind === 'document') onActivate(item.key)
     else if (item.kind === 'open') onOpenWindow(item.window)
+    else if (item.kind === 'dock') onToggleDock(item.id)
+    else if (item.kind === 'mode') onMode(item.id)
     else if (item.id === 'palette') onPalette()
+    else if (item.id === 'new-idea') onNewIdea()
     else onSettings()
   }
 
@@ -73,7 +92,7 @@ export function MenuBar({ open, active, available, onOpenWindow, onActivate, onP
       event.preventDefault()
       setOpenMenu(name)
       window.setTimeout(() => {
-        bar.current?.querySelector<HTMLButtonElement>(`[data-menu-of="${name}"] [role="menuitem"]`)?.focus()
+        bar.current?.querySelector<HTMLButtonElement>(`[data-menu-of="${name}"] .menu-item`)?.focus()
       }, 0)
     } else if (event.key === 'Escape') {
       setOpenMenu(null)
@@ -82,7 +101,7 @@ export function MenuBar({ open, active, available, onOpenWindow, onActivate, onP
 
   const onItemKey = (name: MenuName) => (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const items = [
-      ...(bar.current?.querySelectorAll<HTMLButtonElement>(`[data-menu-of="${name}"] [role="menuitem"]`) ?? []),
+      ...(bar.current?.querySelectorAll<HTMLButtonElement>(`[data-menu-of="${name}"] .menu-item`) ?? []),
     ]
     const index = items.indexOf(event.currentTarget)
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -128,11 +147,19 @@ export function MenuBar({ open, active, available, onOpenWindow, onActivate, onP
                   <button
                     key={`${item.kind}:${'id' in item ? item.id : 'key' in item ? item.key : item.window}`}
                     type="button"
-                    role="menuitem"
-                    className={`menu-item${item.kind === 'document' && item.active ? ' active' : ''}`}
+                    role={item.kind === 'dock' || item.kind === 'mode' ? 'menuitemcheckbox' : 'menuitem'}
+                    aria-checked={item.kind === 'dock' ? item.open : item.kind === 'mode' ? item.active : undefined}
+                    disabled={item.kind === 'mode' && item.disabled}
+                    title={item.kind === 'mode' && item.disabled ? 'Advanced needs a linked project' : undefined}
+                    className={`menu-item${(item.kind === 'document' && item.active) || (item.kind === 'mode' && item.active) ? ' active' : ''}${item.kind === 'dock' || item.kind === 'mode' ? ' menu-check' : ''}`}
                     onClick={() => select(item)}
                     onKeyDown={onItemKey(name)}
                   >
+                    {item.kind === 'dock' || item.kind === 'mode' ? (
+                      <span className="menu-mark" aria-hidden="true">
+                        {(item.kind === 'dock' ? item.open : item.active) ? '✓' : ''}
+                      </span>
+                    ) : null}
                     {item.kind === 'command' ? <span className="mono">alpha {item.label}</span> : item.label}
                   </button>
                 ))

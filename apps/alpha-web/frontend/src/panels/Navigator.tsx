@@ -8,6 +8,9 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { CryptoStorage, PaperSession, ProjectSummary, RunListItem, StrategyDef } from '../api/types'
 import { setLinked } from '../context/linked'
+import { pairsByVenue, useStoredVenues } from '../context/storedQuotes'
+import { dockOf } from '../shell/documents'
+import { Icon } from '../shell/icons'
 import { useActivityField } from '../state/activity'
 import { useSettings } from '../state/settings'
 import { storageRow } from './dataManagerModel'
@@ -15,7 +18,9 @@ import { MARKET_UNKNOWN_LABEL, navigatorTree, type NavigatorLeaf } from './navig
 
 export function Navigator({ onOpenRun }: { onOpenRun: (runId: string, title: string) => void }) {
   const { profile } = useSettings()
+  const venues = useStoredVenues()
   const [showAll, setShowAll] = useState(false)
+  const [tab, setTab] = useState<string>('Common')
   const [runs, setRuns] = useState<RunListItem[]>([])
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [strategies, setStrategies] = useState<StrategyDef[]>([])
@@ -56,6 +61,7 @@ export function Navigator({ onOpenRun }: { onOpenRun: (runId: string, title: str
     strategies,
     sessions,
     storage: storageRow(storage),
+    pairsByVenue: pairsByVenue(venues),
   })
 
   const activate = (leaf: NavigatorLeaf) => {
@@ -71,7 +77,9 @@ export function Navigator({ onOpenRun }: { onOpenRun: (runId: string, title: str
         className="tree-leaf"
         onClick={() => activate(leaf)}
         disabled={leaf.action.kind === 'none'}
+        title={leaf.sub ? `${leaf.label} · ${leaf.sub}` : leaf.label}
       >
+        <Icon name="doc" size={12} />
         <span className="tree-leaf-label">{leaf.label}</span>
         {leaf.sub ? <span className="tree-leaf-sub mono">{leaf.sub}</span> : null}
       </button>
@@ -91,7 +99,11 @@ export function Navigator({ onOpenRun }: { onOpenRun: (runId: string, title: str
         <ul role="tree" aria-label="Navigator">
           {groups.map((group) => (
             <li key={group.label} role="treeitem" aria-expanded="true" className="tree-group">
-              <span className="tree-group-label">{group.label}</span>
+              <span className="tree-group-label">
+                <span className="tree-caret" aria-hidden="true">▾</span>
+                <Icon name="folder" size={12} />
+                {group.label}
+              </span>
               <ul role="group">
                 {group.leaves.length === 0 && group.unknown.length === 0 ? (
                   <li role="treeitem" aria-selected={false} className="tree-leaf empty">
@@ -101,7 +113,11 @@ export function Navigator({ onOpenRun }: { onOpenRun: (runId: string, title: str
                 {group.leaves.map(leafButton)}
                 {group.unknown.length ? (
                   <li role="treeitem" aria-expanded="true" className="tree-group">
-                    <span className="tree-group-label">{MARKET_UNKNOWN_LABEL}</span>
+                    <span className="tree-group-label">
+                      <span className="tree-caret" aria-hidden="true">▾</span>
+                      <Icon name="folder" size={12} />
+                      {MARKET_UNKNOWN_LABEL}
+                    </span>
                     <ul role="group">{group.unknown.map(leafButton)}</ul>
                   </li>
                 ) : null}
@@ -109,6 +125,22 @@ export function Navigator({ onOpenRun }: { onOpenRun: (runId: string, title: str
             </li>
           ))}
         </ul>
+      </nav>
+      <nav className="rd-tabs dock-tabs" role="tablist" aria-label="Navigator tabs">
+        {dockOf('Navigator').tabs.map((item) => (
+          <button
+            key={item}
+            type="button"
+            role="tab"
+            aria-selected={tab === item}
+            className={`rd-tab${tab === item ? ' active' : ''}`}
+            disabled={item === 'Favorites'}
+            title={item === 'Favorites' ? 'Favorites are not stored anywhere yet' : 'Everything the store holds, filed by market'}
+            onClick={() => setTab(item)}
+          >
+            {item}
+          </button>
+        ))}
       </nav>
     </div>
   )

@@ -62,7 +62,8 @@
   --pad-sm: 8px;
   --row-h: 26px;
 
-  --font-sans: Verdana, Tahoma, 'DejaVu Sans', 'Inter Variable', system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, Verdana, 'Inter Variable', system-ui, sans-serif;
+  --chrome-font-size: 12px;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', 'SF Mono', 'Menlo', 'Cascadia Code', ui-monospace, monospace;
 
   color-scheme: light;
@@ -4491,8 +4492,6 @@ textarea.field:focus {
 .area-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
 .area-body { flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
 
-.workspace-mode { display: inline-flex; gap: 1px; }
-.workspace-mode .kbd.active { color: var(--ink); border-color: var(--accent); }
 html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
 
 .research-next-action {
@@ -4545,7 +4544,6 @@ html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
   font-weight: 600; letter-spacing: 0.04em; color: var(--ink);
 }
 .titlebar-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.titlebar-idea { min-height: 20px; padding: 0 8px; }
 .menubar { display: flex; align-items: stretch; gap: 2px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .menu { position: relative; display: flex; }
 .menu-title {
@@ -4587,9 +4585,6 @@ html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
 .dock--right .panel-toolbar { flex-wrap: wrap; row-gap: 2px; min-height: 0; padding-top: 2px; padding-bottom: 2px; }
 .dock--right .table-scroll { overflow-x: auto; }
 .dock--right .panel-body { overflow-x: hidden; }
-.dock-section { display: flex; flex-direction: column; min-height: 0; border-bottom: 1px solid var(--line); }
-.dock-section:first-child { flex: 0 0 auto; max-height: 45%; }
-.dock-section--grow { flex: 1 1 auto; border-bottom: 0; }
 .dock-title {
   margin: 0; padding: 2px var(--pad-sm); font-size: inherit; font-weight: 600; letter-spacing: 0.04em;
   background: var(--panel-2); border-bottom: 1px solid var(--line); color: var(--ink);
@@ -4599,7 +4594,7 @@ html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
 .market-watch-table th { text-align: left; }
 .market-watch-table .num { text-align: right; }
 .watch-row { cursor: pointer; }
-.watch-row.active { background: var(--selection); color: var(--selection-ink); }
+.watch-row.active, .terminal .watch-row.active td { background: var(--selection); color: var(--selection-ink); }
 .watch-row.active td, .watch-row.active .watch-select, .watch-row.active .num, .watch-row.active .watch-venue, .watch-row.active .watch-age, .watch-row.active .watch-glyph { color: var(--selection-ink); }
 .watch-row .watch-select { all: unset; cursor: pointer; display: block; width: 100%; min-height: 24px; box-sizing: border-box; padding: 2px 0; }
 .watch-glyph { display: inline-block; width: 1.1em; font-size: 9px; }
@@ -4635,12 +4630,9 @@ html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
 .mdi-tabs > div { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; }
 .mdi-tab { all: unset; cursor: pointer; flex: 0 0 auto; padding: 0 12px; min-height: 24px; min-width: 48px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; color: var(--ink-dim); font: inherit; white-space: nowrap; border-right: 1px solid var(--line); background: var(--panel-2); }
 .mdi-tab.active { background: var(--bg); color: var(--ink); box-shadow: inset 0 2px 0 var(--accent); }
-.mdi-tab:focus-visible, .mdi-tab-close:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.mdi-tab-close { all: unset; cursor: pointer; min-width: 28px; min-height: 24px; margin-left: 4px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); font: inherit; border-left: 1px solid var(--line); }
-.mdi-tab-close:hover { color: var(--down); }
+.mdi-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .toolbox { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--bg); }
 .toolbox--open { height: 190px; }
-.toolbox-strip { flex: 0 0 auto; align-items: stretch; }
 .toolbox-tabs { display: flex; gap: 1px; }
 .toolbox-toggle { min-width: 28px; }
 .statusbar {
@@ -4654,11 +4646,120 @@ html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
 .status-segment--clock { font-family: var(--font-mono); margin-left: auto; }
 .status-segment--paper { color: var(--ink); font-weight: 600; }
 
+/* ---- Phase 4 artboard chrome (1-Terminal): system UI 12px, tabular numbers, dock frames with
+   pin/close glyphs and bottom tabs, a document header bar, icon toolbar, black active document
+   tab. Chrome only — the canvas tokens stay generated. ---- */
+.shell.terminal { font-size: var(--chrome-font-size); grid-template-rows: 26px 24px 34px minmax(0, 1fr) 22px; }
+.terminal .num, .terminal .mono, .terminal .status-segment, .terminal .blotter td { font-variant-numeric: tabular-nums; }
+.terminal .blotter thead th { text-transform: none; letter-spacing: 0; font-size: inherit; font-weight: 600; }
+.terminal .dock-title, .terminal .doc-head-title { font-size: inherit; }
+/* The artboard's labels are bold sentence case, never spaced capitals. */
+.terminal .rd-head, .terminal .field-label, .terminal .panel-toolbar .title, .terminal .eyebrow, .terminal .placeholder .big,
+.terminal .lab-advanced > summary, .terminal .immutable-setup > summary, .terminal .chart-data-alternative > summary {
+  text-transform: none; letter-spacing: 0; font-size: inherit;
+}
+.terminal .placeholder .big { font-family: inherit; font-size: 14px; font-weight: 600; }
+.terminal .status-chip, .terminal .chip.status-chip { text-transform: none; }
+.terminal-body { grid-template-columns: 300px minmax(0, 1fr) 345px; }
+.terminal--no-right .terminal-body { grid-template-columns: 300px minmax(0, 1fr); }
+.terminal--no-left .terminal-body { grid-template-columns: minmax(0, 1fr) 345px; }
+.market-watch-head { white-space: nowrap; }
+.terminal .market-watch-table th, .terminal .market-watch-table td { padding: 1px 4px; line-height: 1.3; height: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.market-watch-table { table-layout: fixed; width: 100%; font-size: 11px; }
+.market-watch-table th:nth-child(1) { width: 70px; }
+.market-watch-table th:nth-child(2) { width: 60px; }
+.market-watch-table th:nth-child(4) { width: 52px; }
+.market-watch-table th:nth-child(5) { width: 36px; }
+.market-watch-table tr { height: auto; }
+.watch-row .watch-select { min-height: 24px; padding: 1px 0; }
+.navigator .settings-row { justify-content: flex-start; gap: 6px; }
+.toolbox .jobs-panel > .panel-toolbar { display: none; }
+.toolbar .btn.tf { min-width: 0; padding: 0 9px; }
+.navigator-tree .tree-group { text-transform: none; letter-spacing: 0; font-size: inherit; padding: 2px 0 0; color: var(--ink); }
+.titlebar { justify-content: center; position: relative; letter-spacing: 0; }
+.titlebar-text { flex: 0 1 auto; text-align: center; }
+.titlebar-glyphs { position: absolute; right: 4px; top: 0; bottom: 0; display: inline-flex; align-items: center; gap: 2px; }
+.dock-glyph { all: unset; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; box-sizing: border-box; color: var(--ink-dim); }
+.dock-glyph:hover:not(:disabled) { background: var(--panel); color: var(--ink); }
+.dock-glyph:disabled { color: var(--muted); opacity: 0.6; cursor: default; }
+.dock-glyph:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.toolbar .btn.glyph { min-width: 26px; padding: 0 4px; }
+.toolbar .btn.glyph.active { background: var(--panel-2); box-shadow: inset 1px 1px 0 var(--bevel-dark), inset -1px -1px 0 var(--bevel-light); }
+.toolbar-sep { width: 1px; align-self: stretch; margin: 6px 2px; background: var(--line-strong); opacity: 0.5; }
+.toolbar-label { color: var(--ink-dim); }
+.toolbar-search { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; background: var(--elevated); border: 1px solid var(--line-strong); min-height: 24px; box-sizing: border-box; color: var(--muted); }
+.toolbar-search-field { all: unset; width: 150px; font: inherit; color: var(--ink); cursor: pointer; }
+.toolbar-search-field::placeholder { color: var(--muted); }
+.toolbar .status-chip, .toolbar .governance-btn { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.toolbar .toolbar-search { flex-shrink: 1; min-width: 60px; }
+.toolbar .context-chip { background: var(--elevated); border: 1px solid var(--line-strong); }
+.context-caret { color: var(--muted); margin-left: 4px; }
+.dock-frame { display: flex; flex-direction: column; min-height: 0; border-bottom: 1px solid var(--line-strong); }
+.dock--left .dock-frame:first-child:not(:last-child) { flex: 0 0 auto; max-height: 45%; }
+.dock--left .dock-frame:last-child, .dock--right .dock-frame { flex: 1 1 auto; border-bottom: 0; }
+.dock-head { display: flex; align-items: center; gap: 2px; background: var(--panel-2); border-bottom: 1px solid var(--line); padding-left: var(--pad-sm); }
+.dock-head .dock-title { background: none; border: 0; padding: 0; letter-spacing: 0; }
+.dock-clock { font-variant-numeric: tabular-nums; }
+.dock-frame-body { display: flex; flex-direction: column; min-height: 0; flex: 1; overflow: hidden; }
+.dock-frame-body > * { min-height: 0; flex: 1; }
+.dock-tabs { margin: auto 0 0; padding: 0 2px; border-top: 1px solid var(--line); background: var(--panel); flex: 0 0 auto; }
+.dock-tabs .rd-tab { min-height: 22px; border-radius: 0; font-size: inherit; padding: 2px 8px; }
+.dock-tabs .rd-tab.active { background: var(--elevated); color: var(--ink); box-shadow: inset 0 -2px 0 var(--selection); }
+.dock-tabs .rd-tab:disabled { color: var(--muted); cursor: not-allowed; opacity: 0.7; }
+.tab-count { margin-left: 4px; padding: 0 5px; border-radius: 8px; background: var(--selection); color: var(--selection-ink); font-size: 10px; }
+.data-manager { display: flex; flex-direction: column; min-height: 0; }
+.data-manager > .panel-body { flex: 1; min-height: 0; overflow: auto; }
+.doc-head { display: flex; align-items: center; gap: 2px; padding-left: var(--pad-sm); background: var(--panel-2); border-bottom: 1px solid var(--line); min-height: 24px; }
+.doc-head-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.mdi-tab.active { background: var(--canvas-bg, #000); color: #ffffff; box-shadow: none; }
+.toolbox-strip { display: flex; align-items: stretch; margin-top: 0; border-top: 1px solid var(--line-strong); }
+.terminal--no-left .terminal-body { grid-template-columns: minmax(0, 1fr) 300px; }
+.terminal--no-left.terminal--no-right .terminal-body { grid-template-columns: minmax(0, 1fr); }
+.navigator-tree .tree-group-label { display: flex; align-items: center; gap: 4px; letter-spacing: 0; text-transform: none; font-size: inherit; color: var(--ink); }
+.tree-caret { width: 10px; color: var(--muted); font-size: 10px; }
+.navigator-tree .tree-leaf { flex-direction: row; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; padding-top: 2px; padding-bottom: 2px; font-size: inherit; }
+.navigator-tree .tree-leaf .icon { flex: 0 0 auto; color: var(--muted); }
+.navigator-tree .tree-leaf-label { overflow: hidden; text-overflow: ellipsis; }
+.navigator-tree .tree-leaf-sub { flex: 0 0 auto; font-size: inherit; }
+.job-done { color: var(--up); font-weight: 700; margin-right: 4px; }
+.menu-check { display: flex; gap: 6px; }
+.menu-mark { display: inline-block; width: 12px; }
+.menu-item:disabled { color: var(--muted); cursor: default; }
+.settings-menu .settings-toggle { min-width: 26px; }
+/* Report (artboard 2) and Governance (artboard 4) documents. */
+.report-toolbar { gap: 4px; }
+.report-toolbar .btn.active { background: var(--panel-2); box-shadow: inset 1px 1px 0 var(--bevel-dark), inset -1px -1px 0 var(--bevel-light); }
+.report-hint { margin: var(--pad-sm) 0 0; font-size: calc(var(--chrome-font-size) - 1px); }
+.terminal .report-tree span.tree-group { display: flex; align-items: center; gap: 4px; text-transform: none; letter-spacing: 0; font-size: inherit; color: var(--ink); padding: 4px var(--pad-sm) 2px; }
+.terminal .navigator-tree li.tree-group { display: block; padding: 2px 0 0; }
+.terminal .report-tree .tree-leaf { display: flex; align-items: center; gap: 4px; font-size: inherit; padding-top: 3px; padding-bottom: 3px; }
+.terminal .report-tree .tree-leaf .icon { flex: 0 0 auto; color: var(--muted); }
+.terminal .report-tree .tree-leaf.active { background: var(--selection); color: var(--selection-ink); border-left-color: var(--selection); }
+.terminal .report-tree .tree-leaf.active .icon { color: var(--selection-ink); }
+.governance-table { width: 100%; table-layout: auto; }
+.governance-table thead th { text-align: left; }
+.governance-table td { white-space: normal; }
+.governance-table td.k { white-space: nowrap; }
+.governance-page h2 { text-transform: none; letter-spacing: 0; font-size: inherit; font-weight: 600; }
+/* Figure maximised (artboard 3): the overlay is the whole window under the chrome. */
+.terminal .figure-overlay { padding: 0; }
+.terminal .figure-overlay-box { width: 100vw; max-width: none; height: 100vh; max-height: none; border-radius: 0; padding: 0; gap: 0; display: flex; flex-direction: column; overflow: hidden; }
+.figure-overlay-head.doc-head { flex: 0 0 auto; justify-content: flex-start; align-items: center; gap: 2px; padding-right: var(--pad-sm); }
+.figure-overlay-bar { display: flex; align-items: center; gap: 4px; padding: 2px var(--pad-sm); background: var(--panel); border-bottom: 1px solid var(--line-strong); flex: 0 0 auto; }
+.figure-overlay-scroll { flex: 1; min-height: 0; overflow: auto; background: var(--canvas-bg); }
+.figure-overlay-image { max-height: 100%; border-radius: 0; }
+.figure-overlay-sub, .figure-overlay-context { font-size: calc(var(--chrome-font-size) - 1px); white-space: nowrap; }
+.figure-overlay-box .figure-explain { padding: var(--pad-sm) var(--pad); flex: 0 0 auto; }
+
 /* The terminal at the 1280px minimum: narrower docks, tighter toolbar buttons, and the context
    combo drops its date window (still in its editor) so no control is pushed out of view. */
 @media (max-width: 1280px) {
+  :root { --chrome-font-size: 11px; }
   .terminal-body { grid-template-columns: 208px minmax(0, 1fr) 256px; }
   .terminal--no-right .terminal-body { grid-template-columns: 208px minmax(0, 1fr); }
+  .terminal--no-left .terminal-body { grid-template-columns: minmax(0, 1fr) 256px; }
+  .terminal--no-left.terminal--no-right .terminal-body { grid-template-columns: minmax(0, 1fr); }
   .toolbar .btn { padding-left: 6px; padding-right: 6px; }
-  .toolbar .context-window, .toolbar .context-window + .context-sep { display: none; }
+  .toolbar-search-field { width: 80px; }
+  .governance-label { display: none; }
 }

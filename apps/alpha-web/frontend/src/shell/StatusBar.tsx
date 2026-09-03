@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { CryptoStorage, ProviderDefinition } from '../api/types'
 import { useChartHover } from '../context/chartHover'
+import { useNow } from '../context/clock'
 import { storageRow } from '../panels/dataManagerModel'
 import { useSettings } from '../state/settings'
 import { statusSegments } from './statusBarModel'
@@ -16,7 +17,7 @@ export function StatusBar() {
   const hover = useChartHover()
   const [providers, setProviders] = useState<ProviderDefinition[]>([])
   const [storage, setStorage] = useState<CryptoStorage | null>(null)
-  const [now, setNow] = useState(() => Date.now())
+  const now = useNow()
 
   useEffect(() => {
     let live = true
@@ -31,11 +32,6 @@ export function StatusBar() {
     return () => {
       live = false
     }
-  }, [])
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1_000)
-    return () => window.clearInterval(timer)
   }, [])
 
   const segments = statusSegments({

@@ -1,6 +1,7 @@
-// Job Monitor — every job this server session has run, one dense table, live-updating; expand a
-// row to attach its streaming console beneath it (consoles are global, not trapped in the
-// launching panel).
+// Job Monitor — every job this server session has run, one dense table (artboard 1-Terminal:
+// Time · Job · Status · Detail · ✓), live-updating; expand a row to attach its streaming console
+// beneath it (consoles are global, not trapped in the launching panel). Detail carries the
+// progress bar, elapsed and ETA for a running job and the CLI's own message for a failed one.
 
 import { useCallback, useEffect, useState } from 'react'
 
@@ -57,7 +58,7 @@ export function JobMonitor(_props: PanelHandleProps) {
   const toggle = (jobId: string) => setOpen((current) => (current === jobId ? null : jobId))
 
   return (
-    <div className="panel">
+    <div className="panel jobs-panel">
       <div className="panel-toolbar">
         <span className="title">Jobs</span>
         {runningJobs > 0 ? <span className="chip kind">{runningJobs} running</span> : null}
@@ -74,14 +75,14 @@ export function JobMonitor(_props: PanelHandleProps) {
           <table className="blotter jobs-table">
             <thead>
               <tr>
+                <th scope="col">Time</th>
+                <th scope="col">Job</th>
                 <th scope="col">Status</th>
-                <th scope="col">Command</th>
-                <th scope="col">Started</th>
                 <th scope="col" className="r">Elapsed</th>
                 <th scope="col" className="r">ETA</th>
                 <th scope="col">Progress</th>
-                <th scope="col">Now</th>
-                <th scope="col">Actions</th>
+                <th scope="col">Detail</th>
+                <th scope="col" aria-label="Done">✓</th>
               </tr>
             </thead>
             <tbody>
@@ -89,13 +90,15 @@ export function JobMonitor(_props: PanelHandleProps) {
                 const isOpen = open === row.jobId
                 const rows = [
                   <tr key={row.jobId} className={isOpen ? 'sel' : undefined} onClick={() => toggle(row.jobId)}>
+                    <td className="num muted" title={row.started}>
+                      {row.time}
+                    </td>
+                    <td className="mono job-cmd" title={row.command}>
+                      {row.job}
+                    </td>
                     <td>
                       <span className={`chip ${row.statusTone}`}>{row.status}</span>
                     </td>
-                    <td className="mono job-cmd" title={row.command}>
-                      {row.command}
-                    </td>
-                    <td className="num muted">{row.started}</td>
                     <td className="num">{row.elapsed}</td>
                     <td className="num" title={row.etaBasis}>
                       {row.eta}
@@ -117,6 +120,7 @@ export function JobMonitor(_props: PanelHandleProps) {
                       {row.now}
                     </td>
                     <td className="actions">
+                      {row.done ? <span className="job-done" title="finished">✓</span> : null}
                       {row.runId ? (
                         <button
                           className="btn primary"

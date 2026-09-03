@@ -1,12 +1,15 @@
-// The MDI document area (spec 2026-09-01 §4.2 item 5): bottom document tabs, and the active
-// document's panes — main panes as tabs, side panes as a narrower tabbed column. Only the active
-// document mounts, so nothing polls behind a hidden tab. ArrowLeft/Right on a document tab moves
-// and activates; each tab carries its own close button.
+// The MDI document area (spec 2026-09-01 §4.2 item 5; artboard 1-Terminal): a document header
+// bar (its context line and the minimise · maximise · close glyphs), the active document's
+// panes — main panes as tabs, side panes as a narrower tabbed column — and the bottom document
+// tabs. Only the active document mounts, so nothing polls behind a hidden tab. ArrowLeft/Right on
+// a document tab moves and activates; Delete closes. Maximise hides the docks; minimise is
+// disabled because a document lives in its tab, never on a desktop.
 
 import { useEffect, useState, type FunctionComponent } from 'react'
 
 import type { PanelHandleProps } from '../context/panelHandle'
 import { documentOf, panesByArea, type DocumentPane } from './documents'
+import { Icon } from './icons'
 import type { MdiState } from './mdiModel'
 import { windowOf } from './mdiModel'
 import { PanelHost } from './PanelHost'
@@ -70,14 +73,21 @@ export function DocumentArea({
   mdi,
   focus,
   contextKey,
+  header,
+  maximised,
   onActivate,
   onClose,
+  onToggleMaximise,
 }: {
   mdi: MdiState
   focus: PaneFocus | null
   contextKey: string
+  /** The header line for the active document (the chart's context, else its title). */
+  header: string
+  maximised: boolean
   onActivate: (key: string) => void
   onClose: (key: string) => void
+  onToggleMaximise: () => void
 }) {
   const active = mdi.documents.find((item) => item.key === mdi.active) ?? null
   const definition = active ? documentOf(windowOf(active.key)) : null
@@ -102,6 +112,42 @@ export function DocumentArea({
 
   return (
     <div className="mdi">
+      {active ? (
+        <div className="doc-head">
+          <span className="doc-head-title" title={header}>
+            {header}
+          </span>
+          <span className="spacer" />
+          <button
+            type="button"
+            className="dock-glyph"
+            disabled
+            aria-label={`Minimise ${active.title}`}
+            title="A document lives in its tab below; there is no desktop to minimise to"
+          >
+            <Icon name="minimise" size={12} />
+          </button>
+          <button
+            type="button"
+            className="dock-glyph"
+            aria-label={maximised ? `Restore ${active.title}` : `Maximise ${active.title}`}
+            aria-pressed={maximised}
+            title={maximised ? 'Restore the docks' : 'Maximise — hide the docks'}
+            onClick={onToggleMaximise}
+          >
+            <Icon name={maximised ? 'restore' : 'maximise'} size={12} />
+          </button>
+          <button
+            type="button"
+            className="dock-glyph"
+            aria-label={`Close ${active.title}`}
+            title={`Close ${active.title}`}
+            onClick={() => onClose(active.key)}
+          >
+            <Icon name="close" size={12} />
+          </button>
+        </div>
+      ) : null}
       <div className={`mdi-body${areas && areas.side.length ? ' mdi-body--split' : ''}`}>
         {active && areas ? (
           <>
@@ -146,17 +192,6 @@ export function DocumentArea({
             </button>
           ))}
         </div>
-        {active ? (
-          <button
-            type="button"
-            className="mdi-tab-close"
-            aria-label={`Close ${active.title}`}
-            title={`Close ${active.title}`}
-            onClick={() => onClose(active.key)}
-          >
-            ×
-          </button>
-        ) : null}
       </nav>
     </div>
   )

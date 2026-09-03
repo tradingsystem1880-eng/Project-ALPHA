@@ -8,7 +8,9 @@
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
+import { useNow } from '../context/clock'
 import { setLinked, useLinked } from '../context/linked'
+import { setStoredVenue } from '../context/storedQuotes'
 import { setSettings, useSettings } from '../state/settings'
 import { openDataSymbol } from './actions'
 import {
@@ -18,16 +20,13 @@ import {
   relatedRows,
   shouldPoll,
   tickerExchange,
+  venueLabel,
   watchRows,
   watchSymbols,
   type LiveQuote,
   type WatchQuote,
   type WatchRow,
 } from './marketWatchModel'
-
-function clockText(now: number): string {
-  return new Date(now).toISOString().slice(11, 19)
-}
 
 const TONE_GLYPH: Record<WatchRow['tone'], string> = { up: '▲', down: '▼', flat: '•', none: '' }
 
@@ -38,13 +37,8 @@ export function MarketWatch() {
   const [stored, setStored] = useState<string[]>([])
   const [quotes, setQuotes] = useState<Record<string, WatchQuote | null>>({})
   const [live, setLive] = useState<Record<string, LiveQuote | null>>({})
-  const [now, setNow] = useState(() => Date.now())
+  const now = useNow()
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1_000)
-    return () => window.clearInterval(timer)
-  }, [])
 
   useEffect(() => {
     let live = true
@@ -79,6 +73,10 @@ export function MarketWatch() {
   }, [symbolKey])
 
   const storedRows = watchRows(profile, stored, quotes, now)
+  // The Navigator counts stored pairs per venue from these same reads.
+  useEffect(() => {
+    for (const [symbol, quote] of Object.entries(quotes)) setStoredVenue(symbol, venueLabel(quote?.provenance?.source))
+  }, [quotes])
   // Public tickers: one read per quotable row every TICKER_POLL_MS, only while the toggle is on
   // and the tab is visible; a failed read leaves the stored close and its date in place.
   const tickerKey = storedRows
@@ -117,7 +115,7 @@ export function MarketWatch() {
   return (
     <div className="dock-panel market-watch">
       <div className="dock-toolbar market-watch-head">
-        <span className="mono market-watch-clock" aria-label="UTC clock">{clockText(now)} UTC</span>
+        <span className="muted">{rows.length} pair{rows.length === 1 ? '' : 's'}</span>
         <span className="spacer" />
         <label className="settings-row" title="Poll each venue's public last-trade price every 10 s while this tab is visible. Display only: nothing is stored and nothing else reads it.">
           <input
@@ -153,7 +151,7 @@ export function MarketWatch() {
                       : `${row.symbol} · no stored bars`
                 }
               >
-                <td className="mono">
+                <td>
                   <button
                     type="button"
                     className="watch-select"
@@ -166,9 +164,14 @@ export function MarketWatch() {
                   </button>
                 </td>
                 <td className="watch-venue">{row.venue ?? '—'}</td>
-                <td className="num mono">{row.last}</td>
-                <td className="num mono">{row.change}</td>
-                <td className={`num mono watch-age${row.asOf === 'live' ? ' live' : ''}`}>{row.asOf ?? '—'}</td>
+                <td className="num">{row.last}</td>
+                <td className="num">{row.change}</td>
+                <td
+                  className={`num watch-age${row.asOf === 'live' ? ' live' : ''}`}
+                  title={row.asOf === 'live' ? 'public last trade, refreshed every 10 s' : row.asOf ? `last stored bar ${row.asOf}` : 'no stored bars'}
+                >
+                  {row.age ?? '—'}
+                </td>
               </tr>
             ))}
             <tr className="watch-row watch-add">

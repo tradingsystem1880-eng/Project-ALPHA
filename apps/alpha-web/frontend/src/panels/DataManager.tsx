@@ -12,6 +12,7 @@ import { JobConsole } from '../components/JobConsole'
 import { Placeholder } from '../components/Placeholder'
 import { setLinked } from '../context/linked'
 import type { PanelHandleProps } from '../context/panelHandle'
+import { dockOf } from '../shell/documents'
 import type { Profile } from '../state/settings'
 import { useSettings } from '../state/settings'
 import { buildDataPullArgs, historicalProviders, providerOptionDefault } from './controlPlane'
@@ -26,11 +27,13 @@ import {
 } from './dataManagerModel'
 import { ResearchDataExplorer } from './ResearchDataExplorer'
 
-type Tab = 'pull' | 'research'
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'pull', label: 'Pull & Store' },
-  { id: 'research', label: 'Research Data' },
-]
+type Tab = 'Pull' | 'Snapshots' | 'Quality' | 'Storage'
+const TAB_HELP: Readonly<Record<Tab, string>> = {
+  Pull: 'Pull OHLC into the store and see the stored pairs',
+  Snapshots: 'Immutable snapshots are registered from the Quality tab (Crypto Data Center); there is no separate list yet',
+  Quality: 'The governed Research Data explorer: datasets, quality checks, snapshots',
+  Storage: 'Expansion SSD research datasets and the reviewed crypto assets',
+}
 const REVIEWED_ASSETS = ['BTC', 'ETH', 'XRP', 'SOL']
 const ASSET_MASTER_RECIPE = [
   '# 1. Extend with_reviewed_native_assets() in alpha_data.crypto.asset_master (ADR-0032 review).',
@@ -46,34 +49,37 @@ function today(): string {
 
 export function DataManager(props: PanelHandleProps) {
   const { profile } = useSettings()
-  const [tab, setTab] = useState<Tab>('pull')
+  const [tab, setTab] = useState<Tab>('Pull')
+  // Read inside the component: this module is itself imported by the registry.
+  const tabs = dockOf('DataManager').tabs as readonly Tab[]
   return (
-    <div className="panel">
-      <div className="panel-toolbar">
-        <span className="title">Data Manager</span>
-        <span className="chip kind">{profile}</span>
-        <nav className="rd-tabs" role="tablist" aria-label="Data Manager sections">
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.id}
-              className={`rd-tab${tab === item.id ? ' active' : ''}`}
-              onClick={() => setTab(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <div className="spacer" />
-      </div>
-      {tab === 'pull' ? <PullAndStore profile={profile} /> : <ResearchDataExplorer {...props} embedded />}
+    <div className="panel data-manager">
+      {tab === 'Quality' ? (
+        <ResearchDataExplorer {...props} embedded />
+      ) : (
+        <PullAndStore profile={profile} section={tab === 'Storage' ? 'storage' : 'pull'} />
+      )}
+      <nav className="rd-tabs dock-tabs" role="tablist" aria-label="Data Manager sections">
+        {tabs.map((item) => (
+          <button
+            key={item}
+            type="button"
+            role="tab"
+            aria-selected={tab === item}
+            className={`rd-tab${tab === item ? ' active' : ''}`}
+            disabled={item === 'Snapshots'}
+            title={TAB_HELP[item]}
+            onClick={() => setTab(item)}
+          >
+            {item}
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }
 
-function PullAndStore({ profile }: { profile: Profile }) {
+function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' | 'storage' }) {
   const defaults = pullDefaults(profile)
   const [symbols, setSymbols] = useState<string[] | null>(null)
   const [providers, setProviders] = useState<ProviderDefinition[] | null>(null)
@@ -190,7 +196,8 @@ function PullAndStore({ profile }: { profile: Profile }) {
   return (
     <div className="panel-body panel-pad de">
       {error ? <div className="leak">⚠ {error}</div> : null}
-
+      {section === 'pull' ? (
+        <>
       <div className="rd-head">Pull OHLC (backtest data)</div>
       <div className="lab-row">
         <label className="field-row">
@@ -294,6 +301,9 @@ function PullAndStore({ profile }: { profile: Profile }) {
         </div>
       )}
 
+        </>
+      ) : (
+        <>
       <div className="rd-head de-pull">Expansion SSD — research datasets</div>
       <div className="lab-row">
         <span className={`chip ${ssd.tone === 'ok' ? 'pass' : 'warn'}`}>{ssd.label}</span>
@@ -356,6 +366,8 @@ function PullAndStore({ profile }: { profile: Profile }) {
         <summary className="muted">Add a reviewed asset — CLI recipe (nothing is changed here)</summary>
         <pre className="mono">{ASSET_MASTER_RECIPE}</pre>
       </details>
+        </>
+      )}
     </div>
   )
 }

@@ -1,16 +1,19 @@
-// Toolbar (spec 2026-09-01 §4.2 item 3): timeframes (only what the data house serves is enabled),
-// Data / Research / Run / Report, the Profile combo, the symbol · venue · timeframe combo, search,
-// the one status chip and the Governance button. Every button opens a real surface; there is no
-// Stop because the terminal owns no running process to stop (jobs cancel from the Jobs table).
+// Toolbar (spec 2026-09-01 §4.2 item 3; artboard 1-Terminal): chart-type, crosshair, grid and
+// zoom glyphs that drive the price chart through `chartControls`; timeframes (only what the data
+// house serves is enabled); Data / Research / Run / Stop / Report glyphs; the Profile combo; the
+// symbol · venue · timeframe combo; the `Search Ctrl+K` field; the lock `Paper only` status chip
+// and the shield Governance button. Every enabled button opens a real surface; Stop is disabled
+// because the terminal owns no running process (jobs cancel from the Jobs table).
 
 import { useEffect } from 'react'
 
+import { setChartControls, useChartControls, zoomStep, type ChartType } from '../context/chartControls'
 import { useLinked } from '../context/linked'
 import { useLinkedProjectGate } from '../panels/useLinkedProjectGate'
 import { useSelectedRunWatermark } from '../panels/useSelectedRunWatermark'
 import { setSettings, useSettings, workspaceModeFor, type Profile } from '../state/settings'
-import { useActivityField } from '../state/activity'
 import { ContextBar } from './ContextBar'
+import { Icon, type IconName } from './icons'
 import { PROFILES } from './profiles'
 import { SettingsMenu } from './SettingsMenu'
 import { statusChip } from './statusModel'
@@ -25,73 +28,98 @@ interface Props {
   onGovernance: () => void
 }
 
-function StatusCluster({ onOpenGovernance }: { onOpenGovernance: () => void }) {
-  const connection = useActivityField('connection')
-  const runningJobs = useActivityField('runningJobs')
-  const gate = useLinkedProjectGate()
-  const watermark = useSelectedRunWatermark()
-  const chip = statusChip({ watermark, gateLock: gate.lock })
-  const dotClass = connection === 'live' ? '' : connection === 'connecting' ? 'busy' : 'down'
+const CHART_TYPES: { id: ChartType; icon: IconName; label: string }[] = [
+  { id: 'bars', icon: 'bars', label: 'OHLC bars' },
+  { id: 'candles', icon: 'candles', label: 'Candlesticks' },
+  { id: 'line', icon: 'line', label: 'Line (closes)' },
+]
+
+function ChartControls() {
+  const controls = useChartControls()
   return (
-    <div className="status" title={`activity stream: ${connection}`}>
-      <span className={`dot ${dotClass}`} />
-      {runningJobs > 0 ? <span className="chip kind">{runningJobs} running</span> : null}
+    <div className="toolbar-group" role="group" aria-label="Chart">
+      {CHART_TYPES.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          className={`btn glyph${controls.type === item.id ? ' active' : ''}`}
+          aria-label={item.label}
+          aria-pressed={controls.type === item.id}
+          title={item.label}
+          onClick={() => setChartControls({ type: item.id })}
+        >
+          <Icon name={item.icon} />
+        </button>
+      ))}
+      <span className="toolbar-sep" />
       <button
         type="button"
-        className={`chip ${chip.tone} status-chip`}
-        title={chip.title}
-        onClick={onOpenGovernance}
+        className={`btn glyph${controls.crosshair ? ' active' : ''}`}
+        aria-label="Crosshair"
+        aria-pressed={controls.crosshair}
+        title="Crosshair"
+        onClick={() => setChartControls({ crosshair: !controls.crosshair })}
       >
-        {chip.text}
+        <Icon name="crosshair" />
+      </button>
+      <button
+        type="button"
+        className={`btn glyph${controls.grid ? ' active' : ''}`}
+        aria-label="Grid"
+        aria-pressed={controls.grid}
+        title="Grid"
+        onClick={() => setChartControls({ grid: !controls.grid })}
+      >
+        <Icon name="grid" />
+      </button>
+      <button
+        type="button"
+        className="btn glyph"
+        aria-label="Zoom in"
+        title="Zoom in"
+        onClick={() => setChartControls({ zoom: zoomStep(controls.zoom, 1) })}
+      >
+        <Icon name="zoom-in" />
+      </button>
+      <button
+        type="button"
+        className="btn glyph"
+        aria-label="Zoom out"
+        title="Zoom out"
+        onClick={() => setChartControls({ zoom: zoomStep(controls.zoom, -1) })}
+      >
+        <Icon name="zoom-out" />
       </button>
     </div>
   )
 }
 
-function WorkspaceModeControl() {
+function StatusChip({ onOpenGovernance }: { onOpenGovernance: () => void }) {
+  const gate = useLinkedProjectGate()
+  const watermark = useSelectedRunWatermark()
+  const chip = statusChip({ watermark, gateLock: gate.lock })
+  return (
+    <button
+      type="button"
+      className={`chip ${chip.tone} status-chip`}
+      title={chip.title}
+      onClick={onOpenGovernance}
+    >
+      <Icon name="lock" size={12} />
+      {chip.text}
+    </button>
+  )
+}
+
+/** Mirrors the detail mode onto the document so `.advanced-only` rules can read it. */
+function WorkspaceModeAttribute() {
   const linked = useLinked()
   const settings = useSettings()
   const mode = workspaceModeFor(settings, linked.projectId)
-
   useEffect(() => {
     document.documentElement.setAttribute('data-workspace-mode', mode)
   }, [mode])
-
-  function choose(next: 'guided' | 'advanced'): void {
-    if (!linked.projectId || next === 'guided') {
-      if (linked.projectId) {
-        const projectModes = { ...settings.projectModes }
-        delete projectModes[linked.projectId]
-        setSettings({ projectModes })
-      }
-      return
-    }
-    setSettings({ projectModes: { ...settings.projectModes, [linked.projectId]: next } })
-  }
-
-  return (
-    <div className="workspace-mode" role="group" aria-label="Workspace detail mode">
-      <button
-        type="button"
-        className={`btn${mode === 'guided' ? ' active' : ''}`}
-        aria-pressed={mode === 'guided'}
-        onClick={() => choose('guided')}
-        title="One next action with plain-language evidence and recovery"
-      >
-        Guided
-      </button>
-      <button
-        type="button"
-        className={`btn${mode === 'advanced' ? ' active' : ''}`}
-        aria-pressed={mode === 'advanced'}
-        disabled={!linked.projectId}
-        onClick={() => choose('advanced')}
-        title="Show immutable contracts, hashes, receipts, and command previews; authority is unchanged"
-      >
-        Advanced
-      </button>
-    </div>
-  )
+  return null
 }
 
 export function Toolbar({ onData, onResearch, onRun, onReport, onSearch, onGovernance }: Props) {
@@ -99,6 +127,9 @@ export function Toolbar({ onData, onResearch, onRun, onReport, onSearch, onGover
   const linked = useLinked()
   return (
     <div className="toolbar" role="toolbar" aria-label="Terminal toolbar">
+      <WorkspaceModeAttribute />
+      <ChartControls />
+      <span className="toolbar-sep" />
       <div className="toolbar-group" role="group" aria-label="Timeframe">
         {timeframeButtons(['D1']).map((item) => (
           <button
@@ -113,28 +144,34 @@ export function Toolbar({ onData, onResearch, onRun, onReport, onSearch, onGover
           </button>
         ))}
       </div>
+      <span className="toolbar-sep" />
       <div className="toolbar-group" role="group" aria-label="Actions">
-        <button type="button" className="btn" onClick={onData} title="Show or hide the Data Manager dock">
-          Data
+        <button type="button" className="btn glyph" onClick={onData} aria-label="Data" title="Data — show or hide the Data Manager dock">
+          <Icon name="data" />
         </button>
-        <button type="button" className="btn" onClick={onResearch} title="Open the research case document">
-          Research
+        <button type="button" className="btn glyph" onClick={onResearch} aria-label="Research" title="Research — open the research case document">
+          <Icon name="research" />
         </button>
-        <button type="button" className="btn" onClick={onRun} title="Open Strategy Development to launch a run">
-          Run
+        <button type="button" className="btn glyph" onClick={onRun} aria-label="Run" title="Run — open Strategy Development to launch a run">
+          <Icon name="run" />
+        </button>
+        <button type="button" className="btn glyph" disabled aria-label="Stop" title="Stop — the terminal owns no running process; cancel a job from the Jobs table">
+          <Icon name="stop" />
         </button>
         <button
           type="button"
-          className="btn"
+          className="btn glyph"
           onClick={onReport}
           disabled={!linked.runId}
-          title={linked.runId ? 'Open the selected run’s performance report' : 'Select a run first'}
+          aria-label="Report"
+          title={linked.runId ? 'Report — open the selected run’s performance report' : 'Report — select a run first'}
         >
-          Report
+          <Icon name="report" />
         </button>
       </div>
+      <span className="toolbar-sep" />
       <label className="toolbar-profile">
-        <span className="sr-only">Profile</span>
+        <span className="toolbar-label">Profile</span>
         <select
           className="field"
           aria-label="Profile"
@@ -150,19 +187,30 @@ export function Toolbar({ onData, onResearch, onRun, onReport, onSearch, onGover
       </label>
       <ContextBar />
       <div className="spacer" />
-      <WorkspaceModeControl />
-      <button type="button" className="btn" onClick={onSearch} aria-label="Search commands" title="Search commands, runs and symbols (⌘K)">
-        <kbd>⌘K</kbd>
-      </button>
-      <StatusCluster onOpenGovernance={onGovernance} />
+      <div className="toolbar-search">
+        <Icon name="search" size={12} />
+        <input
+          className="toolbar-search-field"
+          type="text"
+          readOnly
+          value=""
+          placeholder="Search  Ctrl+K"
+          aria-label="Search commands"
+          title="Search commands, runs and symbols (Ctrl+K / ⌘K)"
+          onClick={onSearch}
+          onKeyDown={(event) => event.key === 'Enter' && onSearch()}
+        />
+      </div>
+      <StatusChip onOpenGovernance={onGovernance} />
       <button
         type="button"
-        className="btn"
+        className="btn governance-btn"
         aria-label="Governance"
         title="Authority, research gates, overrides, providers, storage and the glossary"
         onClick={onGovernance}
       >
-        ⚖<span className="governance-label">Governance</span>
+        <Icon name="shield" />
+        <span className="governance-label">Governance</span>
       </button>
       <SettingsMenu />
     </div>
