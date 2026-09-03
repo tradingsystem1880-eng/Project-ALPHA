@@ -86,6 +86,36 @@ menu + MDI tabs. `.claude/rules/alpha-web.md` line "six fixed screens" is rewrit
 document/dock model (control-plane edit → `gate.py ack`). The Playwright harness's `SCREENS` loop
 becomes a documents loop with the same axe/keyboard/viewport coverage.
 
+#### Phase 4 "Pixel" addendum (2026-09-04)
+
+The owner's 2026-09-03 review of the Phase 3 build added three requirements, all delivered
+(`docs/superpowers/plans/2026-09-04-trader-terminal-phase4-pixel.md`):
+
+- **Market Watch is honest per pair.** One row per stored pair on one venue (`BTCUSDT · Binance`,
+  `BTCUSD · Coinbase` — USD and USDT are never merged), an **Age** column dating every price
+  (`64d` = the last stored daily bar is 64 days old; rows older than two days are dimmed as
+  history; `—` when nothing is stored), and an opt-in **Live** toggle that polls each ccxt venue's
+  public last trade every 10 s while the tab is visible (`alpha data ticker`,
+  `GET /api/data/ticker`; display only, never stored, never a data authority). A legacy dataset
+  whose provenance reads `unknown` shows no venue rather than a made-up one.
+- **Artboard-exact chrome.** The shell reproduces every element of `1-Terminal.png`,
+  `2-Strategy-Performance-Report.png`, `3-Chart-maximised.png` and `4-Governance-window.png`:
+  window glyphs, icon toolbar with chart type/crosshair/grid/zoom, `Search Ctrl+K`, the
+  `🔒 Paper only` chip and shield Governance button, dock frames with pin/close and **bottom**
+  tabs, a document header bar with minimise/maximise/close, the black active MDI tab, the
+  `Time | Job | Status | Detail | ✓` Toolbox table, the artboard status-bar wording, the report
+  toolbar (`Export CSV · Save PNG · Compare… · Run again · Notes`) and tree counts, the
+  Governance `Item | State | Detail` table and the full-window figure overlay. Elements no
+  capability backs (pin, Favorites, Alerts, Stop, window controls) render disabled with the
+  reason in their tooltip.
+- **No dead ends.** Wherever the UI says an owner step is needed, a `Touch ID · <verb>` button
+  completes it through the existing owner-auth challenge/perform routes (`launch_d1`, `launch_d2`,
+  `revise_exploration` with the material questions answered inline, `record_final_disposition`
+  with outcome/disposition pickers); steps an ADR keeps CLI-only (holdout reveal, reviewed asset
+  master, owner-auth recovery) show the exact command with a Copy button and the ADR that says why.
+  The SPA still derives no authority; `tests/unit/test_web_owner_actions_drift.py` pins the SPA's
+  action vocabulary to the server literal.
+
 ### 4.3 Data Manager (Phase 1 — "Work")
 
 One panel replaces the two data tabs (`DataExplorer` + `ResearchDataExplorer` entry points):

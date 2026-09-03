@@ -1,4 +1,4 @@
-**Delivery state:** In progress (2026-09-03; P1–P5 on `feat/trader-terminal-phase1-work`, PR #47).
+**Delivery state:** Completed (2026-09-04; P1–P5 on `feat/trader-terminal-phase1-work`, PR #47; the owner runs one real Touch ID step and the artboard side-by-side review).
 
 # Trader Terminal — Phase 4 "Pixel": artboard-exact chrome, honest live Market Watch, one-click owner actions
 
@@ -87,7 +87,7 @@
       "expected": "Every gate green; the scripted real-backend walkthrough (both profiles, every document and dock tab, Market Watch venue/age/live, an XRP/USDT Binance pull landing in the Toolbox, a validate run opening its report) exits 0 with its screenshots beside the artboards; rule rows, BUILD-STATUS, spec addendum and findings #14–#16 updated; PR #47 CI green and merged with a merge commit; the terminal launched for the owner.",
       "rollback": "Docs-only revert; the merge is the owner's decision.",
       "files": [".claude/rules/alpha-web.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md", "docs/superpowers/plans/2026-09-04-trader-terminal-phase4-pixel.md"],
-      "status": "pending"
+      "status": "done"
     }
   ],
   "tier_impact": ["protected", "dag"],
