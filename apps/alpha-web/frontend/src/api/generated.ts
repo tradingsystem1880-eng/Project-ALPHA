@@ -56,6 +56,10 @@ export interface paths {
         /**
          * Candles
          * @description Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works).
+         *
+         *     ``tail`` trims the response to the last N bars of the window. It is a payload trim only:
+         *     the reader still loads the whole window once and caches it on the parquet mtime, so Market
+         *     Watch's ``tail=2`` reads are cheap after the first.
          */
         get: operations["candles_api_candles__symbol__get"];
         put?: never;
@@ -525,6 +529,49 @@ export interface paths {
         put?: never;
         /** Storage Verify */
         post: operations["storage_verify_api_crypto_data_storage_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/data/first-bar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * First Bar
+         * @description The venue's earliest daily bar for ``symbol`` (relays ``alpha data first-bar --json``).
+         */
+        get: operations["first_bar_api_data_first_bar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/data/ticker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ticker
+         * @description SYMBOL's current last-trade price on EXCHANGE (relays ``alpha data ticker --json``).
+         *
+         *     A displayed quote for Market Watch only: the web never stores it and it is never a
+         *     point-in-time series or research evidence.
+         */
+        get: operations["ticker_api_data_ticker_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5832,6 +5879,17 @@ export interface components {
             /** Y Unit */
             y_unit: string;
         };
+        /** FirstBar */
+        FirstBar: {
+            /** Exchange */
+            exchange: string;
+            /** First Bar Ts */
+            first_bar_ts: string;
+            /** Symbol */
+            symbol: string;
+            /** Timeframe */
+            timeframe: string;
+        };
         /** ForecastHistoryBar */
         ForecastHistoryBar: {
             /** C */
@@ -8041,6 +8099,12 @@ export interface components {
             holdouts: components["schemas"]["HoldoutState"][];
             /** Hypothesis */
             hypothesis: string;
+            /**
+             * Market
+             * @default unknown
+             * @enum {string}
+             */
+            market: "crypto" | "equities" | "unknown";
             /** Monte Carlo Reviews */
             monte_carlo_reviews: components["schemas"]["MonteCarloReview"][];
             /** Name */
@@ -8086,6 +8150,12 @@ export interface components {
             falsification_criterion: string;
             /** Hypothesis */
             hypothesis: string;
+            /**
+             * Market
+             * @default unknown
+             * @enum {string}
+             */
+            market: "crypto" | "equities" | "unknown";
             /** Name */
             name: string;
             /** Project Id */
@@ -9544,6 +9614,8 @@ export interface components {
         RunContextV1: components["schemas"]["GovernedRunContextV1"] | components["schemas"]["StandaloneRunContextV1"];
         /** RunDetail */
         RunDetail: {
+            /** Display Name */
+            display_name: string;
             /** Has Equity */
             has_equity: boolean;
             /** Has Forecast */
@@ -9570,6 +9642,11 @@ export interface components {
             manifest: {
                 [key: string]: unknown;
             };
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "crypto" | "equities" | "unknown";
             /** Mtime */
             mtime: number;
             /** Research Gate Watermark */
@@ -9597,10 +9674,17 @@ export interface components {
         RunListItem: {
             /** Command */
             command: string | null;
+            /** Display Name */
+            display_name: string;
             /** Kind */
             kind: string;
             /** Label */
             label: string | null;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "crypto" | "equities" | "unknown";
             /** Mtime */
             mtime: number;
             /** Passed */
@@ -9968,6 +10052,20 @@ export interface components {
             /** Paper Enabled */
             paper_enabled: boolean;
         };
+        /**
+         * Ticker
+         * @description A displayed public last-trade quote; never stored, never a data authority.
+         */
+        Ticker: {
+            /** Exchange */
+            exchange: string;
+            /** Last */
+            last: number;
+            /** Symbol */
+            symbol: string;
+            /** Ts */
+            ts: string;
+        };
         /** VerifiedBlindSemanticReadV1 */
         VerifiedBlindSemanticReadV1: {
             /**
@@ -10190,6 +10288,7 @@ export interface operations {
                 start?: string | null;
                 end?: string | null;
                 snapshot?: string | null;
+                tail?: number | null;
             };
             header?: never;
             path: {
@@ -11166,6 +11265,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CryptoStorageVerifyResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    first_bar_api_data_first_bar_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                exchange: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FirstBar"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    ticker_api_data_ticker_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                exchange: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ticker"];
                 };
             };
             /** @description Stable, redacted Workstation error */

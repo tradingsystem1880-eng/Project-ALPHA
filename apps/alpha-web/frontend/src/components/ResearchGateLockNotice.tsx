@@ -18,7 +18,8 @@ export function ResearchGateLockNotice({
     <div className="workbench-notice research-gate-lock" role="status">
       <strong>RESEARCH GATE OPEN</strong>
       <span>{lock.reason}</span>
-      <button className="btn" onClick={() => requestResearchCase(projectId)}>
+      <span className="muted">The case's next owner step is one Touch ID away in its cockpit.</span>
+      <button className="btn primary" onClick={() => requestResearchCase(projectId)}>
         Open research case{projectName ? ` · ${projectName}` : ''}
       </button>
     </div>

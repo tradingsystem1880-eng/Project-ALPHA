@@ -1,9 +1,16 @@
 import { expect, test } from '@playwright/test'
 
+import { openDocument } from './support/workstationHarness'
+
+// Every step here is a cold `alpha …` subprocess on the real backend; a CI runner can take
+// well over the default 5 s expect / 30 s test budget for capture and workspace sync.
+const SLOW_BACKEND_MS = 60_000
+
 test('real backend captures a case and renders all material questions without vendor network', async ({
   page,
   request,
 }) => {
+  test.setTimeout(SLOW_BACKEND_MS * 2)
   const externalRequests: string[] = []
   page.on('request', (outbound) => {
     const url = new URL(outbound.url())
@@ -26,7 +33,9 @@ test('real backend captures a case and renders all material questions without ve
   })
 
   await page.goto('')
-  await page.getByRole('button', { name: 'New Idea' }).click()
+  // New Idea lives at the top of the Research menu (artboard: no titlebar button).
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'Research', exact: true }).click()
+  await page.getByRole('menu', { name: 'Research' }).getByRole('menuitem', { name: 'New Idea…' }).click()
   await page
     .getByLabel('Raw research idea')
     .fill('SPY may bounce after a point-in-time double bottom on equal daily sessions.')
@@ -34,10 +43,15 @@ test('real backend captures a case and renders all material questions without ve
   await page.getByRole('button', { name: 'capture · no compute' }).click()
 
   const questions = page.getByLabel('Material research questions')
-  await expect(questions).toBeVisible({ timeout: 15_000 })
+  await expect(questions).toBeVisible({ timeout: SLOW_BACKEND_MS })
   await expect(questions.locator('.research-material-question')).toHaveCount(3)
   await expect(page.getByText('APPROVAL UNAVAILABLE', { exact: true })).toBeVisible()
-  await expect(page.getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/)).toBeVisible()
+  await expect(page.locator('.sandbox-banner')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Governance' }).click()
+  await expect(
+    page.getByRole('region', { name: 'Governance', exact: true }).getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Close Governance' }).click()
   expect(externalRequests).toEqual([])
 })
 
@@ -45,6 +59,7 @@ test('generated project workspace is visible and refreshes without authority esc
   page,
   request,
 }) => {
+  test.setTimeout(SLOW_BACKEND_MS * 2)
   const created = await request.post('/api/projects', {
     data: {
       name: `Workspace walkthrough ${test.info().project.name}`,
@@ -56,19 +71,22 @@ test('generated project workspace is visible and refreshes without authority esc
   const project = (await created.json()) as { project_id: string }
 
   await page.goto('')
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await openDocument(page, 'Build')
   await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
   await page.getByLabel('Strategy project').selectOption(project.project_id)
 
   const workspace = page.getByRole('region', { name: 'Project workspace' })
-  await expect(workspace).toBeVisible({ timeout: 15_000 })
+  await expect(workspace).toBeVisible({ timeout: SLOW_BACKEND_MS })
   await expect(workspace.getByText('VERIFIED', { exact: true })).toBeVisible()
   await expect(workspace.getByText('NONE · REFERENCE PROJECTION', { exact: true })).toBeVisible()
   await expect(workspace.getByText('NON TRANSMITTING SANDBOX ONLY', { exact: true })).toBeVisible()
   await expect(workspace.getByText('NO BROKER OR ORDER AUTHORITY', { exact: true })).toBeVisible()
   await expect(workspace.getByLabel('Workspace reference indexes').locator('.chip')).toHaveCount(12)
   await workspace.getByRole('button', { name: 'Refresh generated references' }).click()
-  await expect(workspace.getByRole('button', { name: 'Refresh generated references' })).toBeEnabled()
+  // The button reads `Refreshing…` while `alpha project workspace sync` runs.
+  await expect(workspace.getByRole('button', { name: 'Refresh generated references' })).toBeEnabled({
+    timeout: SLOW_BACKEND_MS,
+  })
 })
 
 test('late workspace refresh cannot overwrite a newly selected project', async ({ page, request }) => {
@@ -97,7 +115,7 @@ test('late workspace refresh cannot overwrite a newly selected project', async (
   })
 
   await page.goto('')
-  await page.getByRole('tab', { name: 'Build', exact: true }).click()
+  await openDocument(page, 'Build')
   await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
   const selector = page.getByLabel('Strategy project')
   const workspace = page.getByRole('region', { name: 'Project workspace' })

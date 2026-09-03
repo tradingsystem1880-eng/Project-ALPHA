@@ -385,6 +385,54 @@ def run_artifacts_readable(kind: str, run_id: str, *, data_dir: Path) -> bool:
     return readable
 
 
+def _curve_period(rdir: Path) -> str | None:
+    """`YYYY-MM-DD → YYYY-MM-DD` from the equity curve's first/last bar; None without a curve."""
+    path = rdir / "equity_curve.parquet"
+    if not path.exists():
+        return None
+    bounds = (
+        pl.scan_parquet(path)
+        .select(pl.col("ts").min().alias("first"), pl.col("ts").max().alias("last"))
+        .collect()
+    )
+    first, last = bounds.row(0)
+    return f"{first:%Y-%m-%d} → {last:%Y-%m-%d}"
+
+
+def display_name(kind: str, run_id: str, manifest: dict[str, Any], rdir: Path) -> str:
+    """The run's name as a trader reads it (spec 2026-09-01 §4.4):
+    `<strategy> D1 — <symbol> · <venue> · <start> → <end> · run <8 hex>`; every engine run is
+    daily, so the timeframe is the constant D1; parts the manifest does not carry are omitted."""
+    params = manifest.get("params")
+    strategy = (params.get("strategy_name") if isinstance(params, dict) else None) or (
+        manifest.get("command") or kind
+    )
+    symbols = manifest.get("symbols")
+    symbol = manifest.get("symbol") or (", ".join(symbols) if symbols else None)
+    parts = [part for part in (symbol, manifest.get("source"), _curve_period(rdir)) if part]
+    return f"{strategy} D1 — {' · '.join([*parts, f'run {run_id[:8]}'])}"
+
+
+_CRYPTO_SOURCES = ("ccxt", "binance", "bybit", "coinbase")
+_EQUITY_SOURCES = ("tiingo", "yfinance", "stooq", "quantpad")
+
+
+def market_of(manifest: dict[str, Any]) -> str:
+    """Which market a run belongs to (spec 2026-09-01 §4.1): decided server-side from the
+    manifest's ``source`` first, then the ``BASE/QUOTE`` pair convention, else ``unknown`` —
+    never guessed, never derived in the browser."""
+    source = str(manifest.get("source") or "").lower()
+    if source.startswith(_CRYPTO_SOURCES):
+        return "crypto"
+    if source.startswith(_EQUITY_SOURCES):
+        return "equities"
+    symbols = manifest.get("symbols")
+    candidates = [manifest.get("symbol"), *(symbols if isinstance(symbols, list) else [])]
+    if any(isinstance(symbol, str) and "/" in symbol for symbol in candidates):
+        return "crypto"
+    return "unknown"
+
+
 def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
     """One run's browser record — THE shared shape of ``/api/runs`` index items and the activity
     stream's ``run_added``/``run_updated`` payloads (the SPA consumes both as ``RunListItem``).
@@ -410,6 +458,8 @@ def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
         "label": manifest.get("symbol")
         or (", ".join(symbols) if symbols else None)
         or manifest.get("source"),
+        "display_name": display_name(kind, run_id, manifest, mpath.parent),
+        "market": market_of(manifest),
         "symbol": manifest.get("symbol"),
         "symbols": symbols,
         "snapshot_id": manifest.get("snapshot_id"),
@@ -480,6 +530,8 @@ def run_detail(run_id: str, *, data_dir: Path) -> dict[str, Any]:
         "run_id": run_id,
         "kind": kind,
         "mtime": mpath.stat().st_mtime,
+        "display_name": display_name(kind, run_id, manifest, rdir),
+        "market": market_of(manifest),
         "manifest": manifest,
         "research_gate_watermark": research_gate_watermark(manifest),
         **run_context_projection(manifest),

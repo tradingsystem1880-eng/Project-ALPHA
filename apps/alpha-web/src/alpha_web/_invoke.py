@@ -33,7 +33,7 @@ from alpha_cli.durable_lease import (
     terminate_and_reap,
 )
 from alpha_cli.job_capacity import heavyweight_job_kind_for_command
-from alpha_web._catalog import _cli_environment, _run_json
+from alpha_web._catalog import _cli_environment, _run_json, _strip_ansi
 
 _ALPHA_BIN = "alpha"  # console script on the venv PATH
 _RUN_ID_RE = re.compile(r"->\s+run\s+([0-9a-f]{16})\b")
@@ -46,7 +46,8 @@ _SESSION_ID_RE = re.compile(
 RUN_TYPE = COMMAND_RUN_TYPES
 _DURABLE_HEARTBEAT_INTERVAL_S = DEFAULT_HEARTBEAT_INTERVAL_SECONDS
 _DURABLE_HEARTBEAT_TIMEOUT_S = 5.0
-_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+_BOX_GLYPHS = frozenset("─│╭╮╰╯┌┐└┘├┤┬┴┼═║╔╗╚╝ ")
+_ERROR_PREFIX = "Error: "
 _UI_HEAVYWEIGHT_NICE = 10
 
 
@@ -128,10 +129,21 @@ class Job:
         with self._lock:
             lines = list(reversed(self.lines))
         for raw in lines:
-            line = _ANSI_ESCAPE_RE.sub("", raw).strip()
-            if line:
-                return line[:160]
+            line = _strip_ansi(raw).strip()
+            if not line or set(line) <= _BOX_GLYPHS:
+                continue
+            return line.removeprefix(_ERROR_PREFIX)[:160]
         return f"Running alpha {self.command_path}"
+
+    def failure_reason(self, returncode: int | None) -> str:
+        """The CLI's own `Error: ...` line when it printed one, else the exit code."""
+        with self._lock:
+            lines = list(reversed(self.lines))
+        for raw in lines:
+            line = _strip_ansi(raw).strip()
+            if line.startswith(_ERROR_PREFIX):
+                return line.removeprefix(_ERROR_PREFIX)[:4096]
+        return f"alpha process exited {returncode}"
 
     def summary(self, *, now: float | None = None) -> dict[str, Any]:
         """A compact status record for the job list / detail endpoints."""
@@ -459,7 +471,9 @@ def _pump(job: Job, proc: subprocess.Popen[str], data_dir: Path) -> None:
         terminal = (
             "cancelled" if job.cancelled else ("succeeded" if proc.returncode == 0 else "failed")
         )
-        terminal_error = None if terminal != "failed" else f"alpha process exited {proc.returncode}"
+        terminal_error = None if terminal != "failed" else job.failure_reason(proc.returncode)
+        if terminal_error is not None:
+            job.terminal_error = terminal_error
         try:
             _set_durable_status(
                 job,

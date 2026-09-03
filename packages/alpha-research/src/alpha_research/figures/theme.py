@@ -116,7 +116,7 @@ def theme_document(theme: Theme) -> dict[str, object]:
 
 
 @lru_cache(maxsize=4)
-def load_theme(theme_id: str = "alpha-dark") -> Theme:
+def load_theme(theme_id: str = "terminal-classic") -> Theme:
     """Load a committed theme document by id."""
     if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", theme_id):
         raise DataError(f"unsupported theme id {theme_id!r}")

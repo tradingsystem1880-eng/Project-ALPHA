@@ -159,11 +159,6 @@ export function StrategyLab(_props: PanelHandleProps) {
         <span className="title">Strategy Lab</span>
       </div>
       <div className="panel-body panel-pad lab">
-        {isPaper ? (
-          <div className="sandbox-banner">
-            SANDBOX · PUBLIC BINANCE DATA · REAL EXECUTION IS NOT AVAILABLE
-          </div>
-        ) : null}
         {gate.lock && gate.projectId ? (
           <ResearchGateLockNotice
             lock={gate.lock}

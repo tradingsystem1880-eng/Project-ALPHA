@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { CopyCommand } from '../components/CopyCommand'
+import { CLI_ONLY } from './researchCockpitModel'
 
 import { api } from '../api/client'
 import type {
@@ -14,7 +16,6 @@ import type {
   StrategyProjectWorkspaceProjection,
 } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
-import { ResearchGateLockNotice } from '../components/ResearchGateLockNotice'
 import { setLinked, useLinked } from '../context/linked'
 import { fmtPct, shortId } from '../util/format'
 import { isActiveControlJob, refreshDurableJobs } from './durableJobs'
@@ -555,7 +556,6 @@ export function DevelopmentCenter() {
                 </div>
               </section>
             ) : null}
-            {gateLock ? <ResearchGateLockNotice lock={gateLock} projectId={detail.project_id} projectName={detail.name} /> : null}
             <div className="agent-brief-bar">
               <div><span className="eyebrow">Typed AgentBrief</span><span>Current hypothesis, allowed scope, cited evidence, stage state, warnings, and required tests.</span></div>
               {briefStatus ? <span className="mono pos">{briefStatus}</span> : null}
@@ -608,7 +608,7 @@ export function DevelopmentCenter() {
                     <ol className="suite-command-list">
                       {selectedPlan.steps.map((step) => <li key={step.index}><span>{step.label}</span><code>{step.command.join(' ')}</code><small>{step.evidence_role.replaceAll('_', ' ')}</small></li>)}
                     </ol>
-                    {selectedAction === 'holdout_reveal' ? <div className="workbench-notice"><strong>TRUSTED CLI OWNER CHECKPOINT</strong><span>The browser cannot assert an owner name or reveal the sealed holdout. Run the previewed <code>alpha suite run</code> command in the local terminal with a fresh reason.</span></div> : null}
+                    {selectedAction === 'holdout_reveal' ? <div className="workbench-notice"><strong>TRUSTED CLI OWNER CHECKPOINT</strong><span>The browser cannot assert an owner name or reveal the sealed holdout. Run the previewed <code>alpha suite run</code> command in the local terminal with a fresh reason.</span><CopyCommand command={selectedPlan.steps.map((step) => step.command.join(' ')).join(' && ')} why={CLI_ONLY.holdoutReveal.why} /></div> : null}
                     <button className="btn primary" disabled={Boolean(gateLock) || !selectedPlan.ready || launching || !jobsReady || selectedAction === 'holdout_reveal'} title={selectedAction === 'holdout_reveal' ? 'Trusted local CLI ceremony required' : gateLock?.reason} onClick={launchSelected}>{selectedAction === 'holdout_reveal' ? 'Trusted CLI required' : !jobsReady ? 'Recovering jobs…' : launching ? 'Running…' : `Launch ${selectedPlan.steps.length} step${selectedPlan.steps.length === 1 ? '' : 's'}`}</button>
                   </div>
                 ) : null}

@@ -374,3 +374,38 @@ def test_direct_kronos_launches_share_durable_atomic_capacity(
     released_job_id = released.json()["job_id"]
     assert client.delete(f"/api/jobs/{released_job_id}").status_code == 200
     assert _wait_status(client, released_job_id, "cancelled") == "cancelled"
+
+
+_CLICK_ERROR_MESSAGE = (
+    "Invalid value: --start/--end must be YYYY-MM-DD: day is out of range for month"
+)
+_CLICK_ERROR_SCRIPT = (
+    "import sys\n"
+    "print('Usage: alpha data pull [OPTIONS] SYMBOL')\n"
+    "print(\"Try 'alpha data pull --help' for help.\")\n"
+    "print('')\n"
+    f"print('Error: {_CLICK_ERROR_MESSAGE}')\n"
+    "sys.exit(2)\n"
+)
+
+
+def test_failed_job_api_and_sse_carry_the_cli_error_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _fake(monkeypatch, _CLICK_ERROR_SCRIPT)
+    client = TestClient(create_app())
+    job_id = client.post("/api/jobs", json={"args": "data pull xrp-usd"}).json()["job_id"]
+    assert _wait_status(client, job_id, "failed") == "failed"
+    assert client.get(f"/api/jobs/{job_id}").json()["current_step"] == _CLICK_ERROR_MESSAGE
+    with client.stream("GET", f"/api/jobs/{job_id}/stream", headers={"Last-Event-ID": "0"}) as r:
+        body = "".join(r.iter_text())
+    assert "failed" in body and _CLICK_ERROR_MESSAGE in body
+
+
+def test_current_step_never_returns_a_box_drawing_border(monkeypatch: pytest.MonkeyPatch) -> None:
+    job = _invoke.Job(["data", "pull", "xrp-usd"], None)
+    for line in ("╭─ Error ─────────╮", "│ Invalid value: x │", "╰─────────────────╯"):
+        job._append(line)
+    monkeypatch.setattr(_invoke, "JOBS", {job.job_id: job})
+    step = job.summary()["current_step"]
+    assert step and not any(glyph in step for glyph in "╭╮╰╯")

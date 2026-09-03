@@ -40,6 +40,8 @@ import type {
   EvidencePage,
   EquitySeries,
   ExperimentSpec,
+  FirstBar,
+  Ticker,
   ForecastOrigins,
   ForecastPaths,
   ForecastSeries,
@@ -324,6 +326,14 @@ export const api = {
   strategies: (): Promise<StrategyDef[]> => getJSON('/api/strategies'),
   commands: (): Promise<CommandDef[]> => getJSON('/api/commands'),
   symbols: (): Promise<{ symbols: string[] }> => getJSON('/api/symbols'),
+  firstBar: (symbol: string, exchange: string): Promise<FirstBar> =>
+    getJSON(
+      `/api/data/first-bar?symbol=${encodeURIComponent(symbol)}&exchange=${encodeURIComponent(exchange)}`,
+    ),
+  ticker: (symbol: string, exchange: string): Promise<Ticker> =>
+    getJSON(
+      `/api/data/ticker?symbol=${encodeURIComponent(symbol)}&exchange=${encodeURIComponent(exchange)}`,
+    ),
   providers: (): Promise<ProviderDefinition[]> => getJSON('/api/providers'),
   cryptoCatalog: (): Promise<CryptoCatalog> => getJSON('/api/crypto-data/catalog'),
   cryptoCapabilities: (): Promise<CryptoCapabilities> =>

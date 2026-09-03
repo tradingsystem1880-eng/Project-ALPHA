@@ -6275,6 +6275,35 @@
         "title": "FigurePanelMeta",
         "type": "object"
       },
+      "FirstBar": {
+        "additionalProperties": false,
+        "properties": {
+          "exchange": {
+            "title": "Exchange",
+            "type": "string"
+          },
+          "first_bar_ts": {
+            "title": "First Bar Ts",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "timeframe": {
+            "title": "Timeframe",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "exchange",
+          "first_bar_ts",
+          "timeframe"
+        ],
+        "title": "FirstBar",
+        "type": "object"
+      },
       "ForecastHistoryBar": {
         "additionalProperties": false,
         "properties": {
@@ -12816,6 +12845,16 @@
             "title": "Hypothesis",
             "type": "string"
           },
+          "market": {
+            "default": "unknown",
+            "enum": [
+              "crypto",
+              "equities",
+              "unknown"
+            ],
+            "title": "Market",
+            "type": "string"
+          },
           "monte_carlo_reviews": {
             "items": {
               "$ref": "#/components/schemas/MonteCarloReview"
@@ -12975,6 +13014,16 @@
           },
           "hypothesis": {
             "title": "Hypothesis",
+            "type": "string"
+          },
+          "market": {
+            "default": "unknown",
+            "enum": [
+              "crypto",
+              "equities",
+              "unknown"
+            ],
+            "title": "Market",
             "type": "string"
           },
           "name": {
@@ -17628,6 +17677,10 @@
       "RunDetail": {
         "additionalProperties": false,
         "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
           "has_equity": {
             "title": "Has Equity",
             "type": "boolean"
@@ -17676,6 +17729,15 @@
             "additionalProperties": true,
             "title": "Manifest",
             "type": "object"
+          },
+          "market": {
+            "enum": [
+              "crypto",
+              "equities",
+              "unknown"
+            ],
+            "title": "Market",
+            "type": "string"
           },
           "mtime": {
             "title": "Mtime",
@@ -17732,6 +17794,8 @@
           "run_id",
           "kind",
           "mtime",
+          "display_name",
+          "market",
           "manifest",
           "research_gate_watermark",
           "run_context_kind",
@@ -17787,6 +17851,10 @@
             ],
             "title": "Command"
           },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -17801,6 +17869,15 @@
               }
             ],
             "title": "Label"
+          },
+          "market": {
+            "enum": [
+              "crypto",
+              "equities",
+              "unknown"
+            ],
+            "title": "Market",
+            "type": "string"
           },
           "mtime": {
             "title": "Mtime",
@@ -17927,6 +18004,8 @@
           "kind",
           "command",
           "label",
+          "display_name",
+          "market",
           "symbol",
           "symbols",
           "snapshot_id",
@@ -18839,6 +18918,36 @@
         "title": "SystemStatus",
         "type": "object"
       },
+      "Ticker": {
+        "additionalProperties": false,
+        "description": "A displayed public last-trade quote; never stored, never a data authority.",
+        "properties": {
+          "exchange": {
+            "title": "Exchange",
+            "type": "string"
+          },
+          "last": {
+            "title": "Last",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "exchange",
+          "last",
+          "ts"
+        ],
+        "title": "Ticker",
+        "type": "object"
+      },
       "VerifiedBlindSemanticReadV1": {
         "additionalProperties": false,
         "properties": {
@@ -19347,7 +19456,7 @@
     },
     "/api/candles/{symbol}": {
       "get": {
-        "description": "Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works).",
+        "description": "Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works).\n\n``tail`` trims the response to the last N bars of the window. It is a payload trim only:\nthe reader still loads the whole window once and caches it on the parquet mtime, so Market\nWatch's ``tail=2`` reads are cheap after the first.",
         "operationId": "candles_api_candles__symbol__get",
         "parameters": [
           {
@@ -19405,6 +19514,23 @@
                 }
               ],
               "title": "Snapshot"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tail",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tail"
             }
           }
         ],
@@ -20769,6 +20895,114 @@
         "summary": "Storage Verify",
         "tags": [
           "crypto-data"
+        ]
+      }
+    },
+    "/api/data/first-bar": {
+      "get": {
+        "description": "The venue's earliest daily bar for ``symbol`` (relays ``alpha data first-bar --json``).",
+        "operationId": "first_bar_api_data_first_bar_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exchange",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Exchange",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirstBar"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "First Bar",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/data/ticker": {
+      "get": {
+        "description": "SYMBOL's current last-trade price on EXCHANGE (relays ``alpha data ticker --json``).\n\nA displayed quote for Market Watch only: the web never stores it and it is never a\npoint-in-time series or research evidence.",
+        "operationId": "ticker_api_data_ticker_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exchange",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Exchange",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ticker"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Ticker",
+        "tags": [
+          "catalog"
         ]
       }
     },

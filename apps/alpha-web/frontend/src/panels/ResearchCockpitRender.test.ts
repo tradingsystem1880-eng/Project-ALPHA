@@ -2,10 +2,23 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
-import type { ResearchStudyStatusV1, VerifiedBlindSemanticReadV1 } from '../api/types'
+import type { ResearchCase, ResearchStudyStatusV1, VerifiedBlindSemanticReadV1 } from '../api/types'
 import { StudyStatusSection } from './ResearchCockpit'
 
 const hash = 'a'.repeat(64)
+// A closed case: the study status renders with no owner step to offer.
+const closedCase = {
+  project_id: 'project-1',
+  active_contract_id: `rc_${hash}`,
+  phase: 'closed',
+  execution_state: 'idle',
+  responsibility: 'owner',
+  exploration_review: { state: 'approved', event: null },
+  confirmation_review: { state: 'approved', event: null },
+  source_pack_id: null,
+  next_action: 'Research Case is closed.',
+} as unknown as ResearchCase
+const noop = () => undefined
 
 describe('Research Cockpit study status', () => {
   it('renders only the server-masked points and preserves owner-only D1 authority', () => {
@@ -86,13 +99,16 @@ describe('Research Cockpit study status', () => {
       status,
       semanticRead,
       semanticError: null,
+      researchCase: closedCase,
+      onRefresh: noop,
     }))
 
     expect(html).toContain('aria-label="Verified semantic study status"')
     expect(html).toContain('visible-1')
     expect(html).toContain('Masked future points')
     expect(html).toContain('>7<')
-    expect(html).toContain('OWNER CLI ONLY')
+    expect(html).toContain('OWNER ONLY')
+    expect(html).not.toContain('Touch ID · launch D1')
     expect(html).toContain('bounded reversal')
     expect(html).toContain('Describe only the visible pre-cutoff structure.')
     expect(html).toContain('Touch ID receipt receipt-1')
@@ -114,6 +130,8 @@ describe('Research Cockpit study status', () => {
       },
       semanticRead,
       semanticError: null,
+      researchCase: closedCase,
+      onRefresh: noop,
     }))
     expect(staleHtml).toContain('STALE')
     expect(staleHtml).toContain('MASKED D0 PROJECTION UNAVAILABLE')

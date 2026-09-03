@@ -1,24 +1,25 @@
-// Run Detail — the run story.
-//
-// Report is the surface for every run kind: the server-rendered figure pack, each figure
-// carrying the question it answers and what this run's numbers say. The kind-specific
-// chart views that used to live here are gone, because every one of them is now a figure
-// drawn at full size with an explanation attached.
-//
-// What survives beside Report is what a figure cannot carry: the gate narrative, a sortable
-// trade blotter, an interactive stress test, and artifact provenance.
+// Strategy Performance Report — the run story, read the way a trader reads a report window
+// (spec 2026-09-01 §4.4): a left tree (Strategy Analysis · Trade Analysis · Periodical Analysis ·
+// Robustness · Settings & data) selects one view; Summary is a key/value table of what the
+// manifest recorded; figure views are the server-rendered figure pack, each figure carrying the
+// question it answers; the gate narrative, the trade blotter, the stress test and artifact
+// provenance keep their views under the same tree. Governance watermarks are one chip in the
+// title bar whose title carries the full sentences.
 
 import { useEffect, useMemo, useState } from 'react'
 
 import { api } from '../../api/client'
-import type { RunDetail as RunDetailData, TradeRow } from '../../api/types'
+import type { FigureCatalogue, RunDetail as RunDetailData, TradeRow } from '../../api/types'
 import type { PanelHandleProps } from '../../context/panelHandle'
 import type { ValidateManifest } from '../../explain/types'
 import { Placeholder } from '../../components/Placeholder'
 import { usePanelLinked } from '../../context/usePanelLinked'
-import { openStrategyLab } from '../actions'
 import { researchGateWatermark } from '../researchGateModel'
-import { FigureReport } from '../FigureReport'
+import { FigureSection } from '../FigureReport'
+import { reportTree, summaryRows, tradesCsv, watermarkChip } from '../reportModel'
+import { Icon } from '../../shell/icons'
+import { setSettings, useSettings } from '../../state/settings'
+import { openCompare, openStrategyLab } from '../actions'
 import { asStr } from './commonUtils'
 import { Artifacts } from './Artifacts'
 import { Gates } from './Gates'
@@ -26,30 +27,25 @@ import { rerunCommand } from './rerun'
 import { Risk } from './Risk'
 import { TradesTab } from './TradesTab'
 
-type TabId = 'report' | 'gates' | 'trades' | 'risk' | 'artifacts'
-
-interface Tab {
-  id: TabId
-  label: string
-}
-
-/** Every run kind gets Report; the rest depend on what the run actually recorded. */
-function tabsFor(kind: string, isValidate: boolean, hasTrades: boolean): Tab[] {
-  const tabs: Tab[] = [{ id: 'report', label: 'Report' }]
-  if (isValidate) tabs.push({ id: 'gates', label: 'Gates' })
-  if (hasTrades) tabs.push({ id: 'trades', label: 'Trades' })
-  if (kind === 'runs') tabs.push({ id: 'risk', label: 'Stress test' })
-  tabs.push({ id: 'artifacts', label: 'Artifacts' })
-  return tabs
+/** Hand the browser a CSV file; the rows are the trades projection exactly. */
+function downloadCsv(name: string, text: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 export function RunDetail(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
+  const { explain } = useSettings()
   const runId = panelLink.linked.runId ?? ''
   const [detail, setDetail] = useState<RunDetailData | null>(null)
   const [trades, setTrades] = useState<TradeRow[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<TabId>('report')
+  const [catalogue, setCatalogue] = useState<FigureCatalogue | null>(null)
+  const [view, setView] = useState('summary')
 
   useEffect(() => {
     if (!runId) {
@@ -59,7 +55,12 @@ export function RunDetail(props: PanelHandleProps) {
     let live = true
     setDetail(null)
     setError(null)
-    setTab('report')
+    setView('summary')
+    setCatalogue(null)
+    api
+      .figures(runId)
+      .then((value) => live && setCatalogue(value))
+      .catch(() => live && setCatalogue(null))
     api
       .run(runId)
       .then((value) => {
@@ -102,51 +103,45 @@ export function RunDetail(props: PanelHandleProps) {
   const kindLabel =
     command ?? (detail.kind === 'runs' ? (isValidate ? 'validate' : 'backtest') : detail.kind)
   const leak = asStr(manifest.leakage_warning)
-  const tabs = tabsFor(detail.kind, isValidate, Boolean(detail.has_trades))
+  const tree = reportTree({
+    kind: detail.kind,
+    isValidate,
+    hasTrades: Boolean(detail.has_trades),
+    tradeCount: detail.has_trades ? trades.length : null,
+    items: catalogue?.items ?? [],
+  })
+  const leaves = tree.flatMap((group) => group.leaves)
+  const leaf = leaves.find((item) => item.id === view) ?? leaves[0]
+  const chip = watermarkChip(gateWatermark, detail.run_context_watermark)
   const rerun = rerunCommand(command, detail.kind, isValidate)
   // Identity lives at the top level on some manifests and under `metadata` on others.
   const metadata = (manifest.metadata ?? {}) as Record<string, unknown>
   const symbol = asStr(manifest.symbol) ?? asStr(metadata.symbol) ?? ''
-  const typedVerdict = asStr(manifest.verdict)
-    ?? asStr((manifest.verdict as Record<string, unknown> | undefined)?.overall)
-  const resultContext = detail.run_context_kind
-
-  const outcomeSummary = (
-    <section className="run-outcome-summary" aria-label="Run outcome summary">
-      <div>
-        <span className="eyebrow">What changed</span>
-        <p>This run recorded {detail.has_trades ? 'trades and ' : ''}new immutable analysis artifacts. It did not change research or execution authority.</p>
-      </div>
-      <div>
-        <span className="eyebrow">Evidence supporting the result</span>
-        <p>{typedVerdict ?? (manifest.passed === true ? 'The recorded validation checks passed.' : 'No typed validation verdict was recorded; inspect the figures before drawing a conclusion.')}</p>
-      </div>
-      <div>
-        <span className="eyebrow">Contradictory evidence</span>
-        <p>{leak ?? 'No contradiction summary was recorded. Failed gates and adverse figures remain visible in this report.'}</p>
-      </div>
-      <div>
-        <span className="eyebrow">Uncertainty</span>
-        <p>A single run cannot establish a durable edge. Snapshot choice, sampling error, costs, and untested regimes still matter.</p>
-      </div>
-      <div>
-        <span className="eyebrow">Valid next action</span>
-        <p>{resultContext === 'standalone_sandbox'
-          ? 'Keep this result outside governed evidence; start or return to a Research Case if the observation is worth testing.'
-          : resultContext === 'legacy_context_unknown'
-            ? 'Rerun with an explicit governed-project or standalone context before relying on the result.'
-            : 'Review the evidence and gates; continue only through the selected project’s governed next action.'}</p>
-      </div>
-    </section>
-  )
+  // Save PNG hands over the first drawable figure of the current view; nothing is drawn here.
+  const firstFigure = (catalogue?.items ?? []).find((item) => leaf.figureIds.includes(item.figure_id) && item.available) ?? null
+  const notes = explain === 'narrative'
 
   const body = (() => {
-    switch (tab) {
+    switch (leaf.id) {
+      case 'summary':
+        return (
+          <table className="blotter summary-table">
+            <caption>Summary — what this run recorded</caption>
+            <tbody>
+              {summaryRows(manifest as Record<string, unknown>).map((row) => (
+                <tr key={row.label}>
+                  <td className="k">{row.label}</td>
+                  <td className="mono">{row.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
       case 'gates':
         return <Gates manifest={manifest as ValidateManifest} />
       case 'trades':
         return <TradesTab trades={trades} runId={runId} />
-      case 'risk':
+      case 'stress':
         return <Risk manifest={manifest as ValidateManifest} runId={runId} />
       case 'artifacts':
         return (
@@ -157,50 +152,113 @@ export function RunDetail(props: PanelHandleProps) {
             hasTearsheet={detail.has_tearsheet}
           />
         )
-      default:
-        return <FigureReport runId={runId} />
+      default: {
+        if (leaf.empty) return <Placeholder big={leaf.label}>{leaf.reason}</Placeholder>
+        const wanted = new Set(leaf.figureIds)
+        const items = (catalogue?.items ?? []).filter((item) => wanted.has(item.figure_id))
+        return <FigureSection runId={runId} runName={detail.display_name} title={leaf.label} items={items} reason={leaf.reason} />
+      }
     }
   })()
 
   return (
-    <div className="panel">
-      <div className="panel-toolbar">
-        <span className="title">Run</span>
-        <span className="id mono">{runId}</span>
-        <span className="chip kind">{kindLabel}</span>
-        <nav className="rd-tabs" role="tablist" aria-label="Run views">
-          {tabs.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.id}
-              className={`rd-tab${tab === item.id ? ' active' : ''}${item.id === 'artifacts' ? ' advanced-only' : ''}`}
-              onClick={() => setTab(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <span className="spacer" />
+    <div className="panel report-document">
+      <div className="panel-toolbar report-toolbar" role="toolbar" aria-label="Report toolbar">
+        <button type="button" className="btn glyph" disabled aria-label="Save report" title="The report is its run directory on disk — already saved, immutable">
+          <Icon name="report" />
+        </button>
+        <button type="button" className="btn glyph" aria-label="Print" title="Print this report view" onClick={() => window.print()}>
+          <Icon name="doc" />
+        </button>
+        <span className="toolbar-sep" />
+        <button
+          type="button"
+          className="btn"
+          disabled={!trades.length}
+          title={trades.length ? 'Download the trades projection as CSV, exactly as served' : 'No trades to export'}
+          onClick={() => downloadCsv(`${runId.slice(0, 8)}-trades.csv`, tradesCsv(trades))}
+        >
+          Export CSV
+        </button>
+        {firstFigure ? (
+          <a
+            className="btn"
+            href={`/api/runs/${runId}/figures/${firstFigure.figure_id}/image?fmt=png`}
+            download={`${runId.slice(0, 8)}-${firstFigure.figure_id}.png`}
+            title={`Save ${firstFigure.figure_id} as PNG`}
+          >
+            Save PNG
+          </a>
+        ) : (
+          <button type="button" className="btn" disabled title="This view has no figure to save">
+            Save PNG
+          </button>
+        )}
+        <button type="button" className="btn" onClick={openCompare} title="Open the Compare document and tick this run there">
+          Compare…
+        </button>
         {rerun ? (
-          <button className="btn ghost" onClick={() => onLaunch(rerun, symbol)}>
+          <button className="btn" onClick={() => onLaunch(rerun, symbol)} title="Prefill Strategy Development with this run's command">
             Run again
           </button>
         ) : null}
+        <span className="chip kind">{kindLabel}</span>
+        {chip ? (
+          <span className="chip warn rg-watermark-chip" title={chip.title}>
+            {chip.text}
+          </span>
+        ) : null}
+        <span className="spacer" />
+        <button
+          type="button"
+          className={`btn${notes ? ' active' : ''}`}
+          aria-pressed={notes}
+          title="Show each figure's question, uncertainty and caveat beside it"
+          onClick={() => setSettings({ explain: notes ? 'terse' : 'narrative' })}
+        >
+          Notes
+        </button>
       </div>
-      {gateWatermark ? (
-        <div className="leak rg-watermark-banner">
-          ▲ {gateWatermark} — launched under an owner research-gate override
-        </div>
-      ) : null}
-      {detail.run_context_watermark ? (
-        <div className="leak rg-watermark-banner">
-          ▲ {detail.run_context_watermark} — this run is not governed research evidence
-        </div>
-      ) : null}
       {leak ? <p className="leak-warning">{leak}</p> : null}
-      <div className="panel-body rd-body">{tab === 'report' ? outcomeSummary : null}{body}</div>
+      <div className="panel-body rd-body figure-report">
+        <nav className="figure-rail report-tree">
+          <ul role="tree" aria-label="Report sections">
+            {tree.map((group) => (
+              <li key={group.label} role="treeitem" aria-expanded="true">
+                <span className="tree-group">
+                  <span className="tree-caret" aria-hidden="true">▾</span>
+                  <Icon name="folder" size={12} />
+                  {group.label}
+                </span>
+                <ul role="group">
+                  {group.leaves.map((item) => (
+                    <li
+                      key={item.id}
+                      role="treeitem"
+                      aria-selected={leaf.id === item.id}
+                      className={item.id === 'artifacts' ? 'advanced-only' : undefined}
+                    >
+                      <button
+                        type="button"
+                        className={`tree-leaf${leaf.id === item.id ? ' active' : ''}${item.empty ? ' empty' : ''}`}
+                        title={item.reason ?? undefined}
+                        onClick={() => setView(item.id)}
+                      >
+                        <Icon name="doc" size={12} />
+                        {item.label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="figure-scroll">
+          {body}
+          <p className="report-hint muted">Double-click any chart to open it full-screen · Save PNG / SVG / Copy from there</p>
+        </div>
+      </div>
     </div>
   )
 }

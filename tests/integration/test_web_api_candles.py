@@ -25,6 +25,17 @@ def test_candles_endpoint_returns_ohlcv(tmp_path: Path, monkeypatch: pytest.Monk
     assert set(body["bars"][0]) == {"t", "o", "h", "l", "c", "v"}
 
 
+def test_candles_tail_returns_the_last_bars_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    full = client.get("/api/candles/SPY").json()["bars"]
+    tail = client.get("/api/candles/SPY", params={"tail": 2}).json()["bars"]
+    assert tail == full[-2:]
+    assert len(client.get("/api/candles/SPY").json()["bars"]) == len(full)
+    assert client.get("/api/candles/SPY", params={"tail": 0}).status_code == 422
+
+
 def test_candles_endpoint_unknown_symbol_404(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

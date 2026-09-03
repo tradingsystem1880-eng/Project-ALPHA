@@ -189,6 +189,27 @@ def test_crypto_data_asset_identity_uses_reviewed_native_mapping_not_ticker_join
     assert "reviewed native mapping" in unknown.output
 
 
+def test_crypto_data_asset_identity_resolves_reviewed_xrp_and_sol() -> None:
+    for symbol, coingecko_id in (("XRP", "ripple"), ("SOL", "solana")):
+        result = runner.invoke(
+            app, ["crypto-data", "asset", symbol, "--as-of", "2024-01-01T00:00:00Z", "--json"]
+        )
+        assert result.exit_code == 0, result.output
+        identity = json.loads(result.stdout)
+        assert identity["coingecko_id"] == coingecko_id
+        assert identity["native_asset"] is True
+        assert ["binance", symbol] in identity["provider_symbols"]
+
+    listing = runner.invoke(app, ["crypto-data", "asset-masters", "--json"])
+    assert listing.exit_code == 0, listing.output
+    builtins = {
+        item["asset_master_version"]: item["identity_count"]
+        for item in json.loads(listing.stdout)["items"]
+        if item["builtin"]
+    }
+    assert builtins == {"reviewed-native-v1": 2, "reviewed-native-v2": 4}
+
+
 def test_cross_provider_asset_master_freezes_verifies_and_binds_snapshot(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -349,7 +370,8 @@ def test_cross_provider_asset_master_freezes_verifies_and_binds_snapshot(
     assert integrity_eligible is True
     listed_masters = runner.invoke(app, ["crypto-data", "asset-masters", "--json"])
     assert listed_masters.exit_code == 0, listed_masters.output
-    assert json.loads(listed_masters.stdout)["count"] == 2
+    # the two reviewed-native builtins plus the frozen cross-provider master
+    assert json.loads(listed_masters.stdout)["count"] == 3
     contract = runner.invoke(
         app,
         [

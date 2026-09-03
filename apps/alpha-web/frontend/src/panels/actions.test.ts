@@ -27,6 +27,8 @@ function stub() {
     showProjects: vi.fn(),
     showResearchSources: vi.fn(),
     showResearchData: vi.fn(),
+    showDataSymbol: vi.fn(),
+    showCompare: vi.fn(),
     showProviders: vi.fn(),
   }
   registerNavigator(navigator)

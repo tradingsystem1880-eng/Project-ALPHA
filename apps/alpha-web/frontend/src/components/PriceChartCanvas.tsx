@@ -1,6 +1,7 @@
 // TradingView Lightweight Charts candlestick + volume canvas, themed to the workstation palette.
 
 import {
+  BarSeries,
   CandlestickSeries,
   ColorType,
   CrosshairMode,
@@ -15,6 +16,8 @@ import {
 } from 'lightweight-charts'
 import { useEffect, useRef } from 'react'
 
+import { barSpacingFor, useChartControls } from '../context/chartControls'
+import { setChartHover } from '../context/chartHover'
 import type { Candle, ChartAnnotation, ChartTraceEvent } from '../api/types'
 import type { EvidenceMarker } from '../panels/v3Models'
 import { CHART } from '../util/chartTheme'
@@ -66,6 +69,7 @@ export function PriceChartCanvas({
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const crosshairRef = useRef<HTMLDivElement>(null)
+  const controls = useChartControls()
 
   useEffect(() => {
     const host = hostRef.current
@@ -80,21 +84,30 @@ export function PriceChartCanvas({
         fontFamily: 'JetBrains Mono Variable, JetBrains Mono, ui-monospace, monospace',
         fontSize: 11,
       },
-      grid: { vertLines: { color: CHART.grid }, horzLines: { color: CHART.grid } },
+      grid: {
+        vertLines: { color: CHART.grid, visible: controls.grid },
+        horzLines: { color: CHART.grid, visible: controls.grid },
+      },
       rightPriceScale: { borderColor: CHART.line },
       timeScale: { borderColor: CHART.line },
-      crosshair: { mode: CrosshairMode.Normal },
+      crosshair: { mode: controls.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden },
     })
-    const series = chart.addSeries(CandlestickSeries, {
-      upColor: CHART.up,
-      downColor: CHART.down,
-      borderVisible: false,
-      wickUpColor: CHART.up,
-      wickDownColor: CHART.down,
-    })
-    series.setData(
-      bars.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c })),
-    )
+    const ohlc = bars.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }))
+    const series =
+      controls.type === 'line'
+        ? chart.addSeries(LineSeries, { color: CHART.accent, lineWidth: 2, priceLineVisible: false })
+        : controls.type === 'bars'
+          ? chart.addSeries(BarSeries, { upColor: CHART.up, downColor: CHART.down, thinBars: false })
+          : chart.addSeries(CandlestickSeries, {
+              upColor: CHART.up,
+              downColor: CHART.down,
+              borderVisible: false,
+              wickUpColor: CHART.up,
+              wickDownColor: CHART.down,
+            })
+    if (controls.type === 'line') series.setData(ohlc.map((b) => ({ time: b.time, value: b.close })))
+    else series.setData(ohlc)
+    const byTime = new Map(bars.map((b) => [b.t, b]))
     // volume underlay on its own scale, bottom 18% of the pane
     const volume = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
@@ -158,18 +171,18 @@ export function PriceChartCanvas({
     }
     chart.subscribeClick(handleClick)
     const handleCrosshair = (param: MouseEventParams) => {
-      const candle = param.seriesData.get(series)
-      const volumePoint = param.seriesData.get(volume)
-      if (!candle || !('open' in candle) || typeof param.time !== 'number') {
+      const candle = typeof param.time === 'number' ? byTime.get(param.time) : undefined
+      if (!candle) {
         crosshair.textContent = 'CROSSHAIR —'
+        setChartHover({ bar: null })
         return
       }
-      const volumeValue = volumePoint && 'value' in volumePoint ? volumePoint.value : null
+      setChartHover({ bar: candle })
       crosshair.textContent =
-        `${new Date(param.time * 1_000).toISOString()}  ` +
-        `O ${Number(candle.open).toFixed(4)}  H ${Number(candle.high).toFixed(4)}  ` +
-        `L ${Number(candle.low).toFixed(4)}  C ${Number(candle.close).toFixed(4)}  ` +
-        `V ${volumeValue === null ? '—' : Number(volumeValue).toFixed(0)}`
+        `${new Date(candle.t * 1_000).toISOString()}  ` +
+        `O ${candle.o.toFixed(4)}  H ${candle.h.toFixed(4)}  ` +
+        `L ${candle.l.toFixed(4)}  C ${candle.c.toFixed(4)}  ` +
+        `V ${candle.v.toFixed(0)}`
     }
     chart.subscribeCrosshairMove(handleCrosshair)
 
@@ -192,6 +205,10 @@ export function PriceChartCanvas({
     } else {
       chart.timeScale().fitContent()
     }
+    if (controls.zoom !== 0) {
+      const base = chart.timeScale().options().barSpacing
+      chart.timeScale().applyOptions({ barSpacing: barSpacingFor(base, controls.zoom) })
+    }
     const ro = new ResizeObserver(() =>
       chart.applyOptions({ width: host.clientWidth, height: host.clientHeight }),
     )
@@ -204,7 +221,7 @@ export function PriceChartCanvas({
       markerPlugin.detach()
       chart.remove()
     }
-  }, [annotations, bars, evidence, onSelectEvidence, selectedSequenceId, selectedTrade])
+  }, [annotations, bars, controls, evidence, onSelectEvidence, selectedSequenceId, selectedTrade])
 
   return (
     <>

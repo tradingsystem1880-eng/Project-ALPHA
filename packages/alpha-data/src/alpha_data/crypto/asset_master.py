@@ -3,12 +3,77 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Final
 
 import polars as pl
 
 from alpha_core import DataError
 
 from .contracts import CryptoAssetIdentityV1, content_digest, normalize_crypto_address
+
+# Builtin reviewed native-asset masters. Each label's bytes are frozen (ADR-0032): stored
+# snapshots embed the label in their identity, so v1 must never change — v2 only adds.
+REVIEWED_NATIVE_V1: Final = "reviewed-native-v1"
+REVIEWED_NATIVE_V2: Final = "reviewed-native-v2"
+REVIEWED_NATIVE_LABELS: Final = (REVIEWED_NATIVE_V1, REVIEWED_NATIVE_V2)
+
+
+def _native_identity(
+    coingecko_id: str, network: str, *, coinmetrics: str, ticker: str, valid_from: datetime
+) -> CryptoAssetIdentityV1:
+    return CryptoAssetIdentityV1(
+        coingecko_id=coingecko_id,
+        network=network,
+        contract_address=None,
+        native_asset=True,
+        provider_symbols=(
+            ("coingecko", coingecko_id),
+            ("coinmetrics", coinmetrics),
+            ("binance", ticker),
+            ("bybit", ticker),
+        ),
+        valid_from=valid_from,
+        valid_to=None,
+        migration_lineage=(),
+    )
+
+
+_REVIEWED_NATIVES_V1: Final = (
+    _native_identity(
+        "bitcoin",
+        "bitcoin",
+        coinmetrics="btc",
+        ticker="BTC",
+        valid_from=datetime(2009, 1, 3, tzinfo=UTC),
+    ),
+    _native_identity(
+        "ethereum",
+        "ethereum",
+        coinmetrics="eth",
+        ticker="ETH",
+        valid_from=datetime(2015, 7, 30, tzinfo=UTC),
+    ),
+)
+# Reviewed 2026-09-02 for the owner's crypto watchlist: CoinGecko ids `ripple`/`solana`, Coin
+# Metrics community asset ids `xrp`/`sol`, Binance/Bybit tickers XRP/SOL; valid_from is the XRP
+# Ledger genesis (2012-06-02) and Solana mainnet-beta genesis (2020-03-16).
+_REVIEWED_NATIVES_V2: Final = (
+    *_REVIEWED_NATIVES_V1,
+    _native_identity(
+        "ripple",
+        "xrp",
+        coinmetrics="xrp",
+        ticker="XRP",
+        valid_from=datetime(2012, 6, 2, tzinfo=UTC),
+    ),
+    _native_identity(
+        "solana",
+        "solana",
+        coinmetrics="sol",
+        ticker="SOL",
+        valid_from=datetime(2020, 3, 16, tzinfo=UTC),
+    ),
+)
 
 _NETWORKS = {
     ("coingecko", "ethereum"): "ethereum",
@@ -170,41 +235,13 @@ class AssetMaster:
         )
 
     @classmethod
-    def with_reviewed_native_assets(cls) -> AssetMaster:
-        return cls(
-            (
-                CryptoAssetIdentityV1(
-                    coingecko_id="bitcoin",
-                    network="bitcoin",
-                    contract_address=None,
-                    native_asset=True,
-                    provider_symbols=(
-                        ("coingecko", "bitcoin"),
-                        ("coinmetrics", "btc"),
-                        ("binance", "BTC"),
-                        ("bybit", "BTC"),
-                    ),
-                    valid_from=datetime(2009, 1, 3, tzinfo=UTC),
-                    valid_to=None,
-                    migration_lineage=(),
-                ),
-                CryptoAssetIdentityV1(
-                    coingecko_id="ethereum",
-                    network="ethereum",
-                    contract_address=None,
-                    native_asset=True,
-                    provider_symbols=(
-                        ("coingecko", "ethereum"),
-                        ("coinmetrics", "eth"),
-                        ("binance", "ETH"),
-                        ("bybit", "ETH"),
-                    ),
-                    valid_from=datetime(2015, 7, 30, tzinfo=UTC),
-                    valid_to=None,
-                    migration_lineage=(),
-                ),
-            )
-        )
+    def with_reviewed_native_assets(cls, label: str = REVIEWED_NATIVE_V1) -> AssetMaster:
+        """The builtin reviewed native identities behind LABEL (v1: BTC ETH; v2 adds XRP SOL)."""
+        if label == REVIEWED_NATIVE_V1:
+            return cls(_REVIEWED_NATIVES_V1)
+        if label == REVIEWED_NATIVE_V2:
+            return cls(_REVIEWED_NATIVES_V2)
+        raise DataError(f"unknown reviewed native asset-master label {label!r}")
 
     def _one(self, matches: list[CryptoAssetIdentityV1]) -> CryptoAssetIdentityV1:
         if not matches:
@@ -281,7 +318,7 @@ def build_cross_provider_asset_master(
         key = (coingecko_network, contract)
         if key in tracked:
             matches.setdefault(key, []).append(str(row["coingecko_id"]))
-    identities = list(AssetMaster.with_reviewed_native_assets().identities)
+    identities = list(AssetMaster.with_reviewed_native_assets(REVIEWED_NATIVE_V2).identities)
     for (network, contract), coin_ids in sorted(matches.items()):
         unique_ids = sorted(set(coin_ids))
         if len(unique_ids) != 1:

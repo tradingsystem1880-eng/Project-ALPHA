@@ -1,36 +1,48 @@
-// Global UI settings (display density + explanation mode) as a tiny external store.
+// Global UI settings (display density + explanation mode + market profile) as a tiny external store.
 //
 // Mirrors context/linked.ts: a module-level store (not React context) so it works across
-// Dockview's separate panel roots. Persisted to localStorage; density is also mirrored onto
-// <html> so pure CSS can react (html[data-density='compact'] tightens the density knobs) —
-// explain mode has no CSS consumers and is read through useSettings() only.
+// Dockview's separate panel roots. Persisted to localStorage; density and profile are also
+// mirrored onto <html> so pure CSS can react (html[data-density='compact'] tightens the density
+// knobs; html[data-profile] has no CSS consumer yet) — explain mode is read through useSettings().
 
 import { useSyncExternalStore } from 'react'
 
 export type Density = 'comfortable' | 'compact'
 export type ExplainMode = 'narrative' | 'terse'
 export type WorkspaceMode = 'guided' | 'advanced'
+export type Profile = 'crypto' | 'equities'
 
 export interface Settings {
   density: Density
   explain: ExplainMode
+  profile: Profile
   projectModes: Record<string, WorkspaceMode>
+  /** Market Watch polls public venue tickers (display only) while true; off by default. */
+  liveTicker: boolean
 }
 
 const STORAGE_KEY = 'alpha.settings'
-const DEFAULTS: Settings = { density: 'comfortable', explain: 'narrative', projectModes: {} }
+const DEFAULTS: Settings = {
+  density: 'comfortable',
+  explain: 'narrative',
+  profile: 'crypto',
+  projectModes: {},
+  liveTicker: false,
+}
 
 let state: Settings = DEFAULTS
 const listeners = new Set<() => void>()
 
-function load(): Settings {
+/** Persisted settings from their JSON, every unknown or garbage field falling back to its default. */
+export function parseSettings(raw: string | null): Settings {
+  if (!raw) return DEFAULTS
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return DEFAULTS
     const parsed = JSON.parse(raw) as Partial<Settings>
     return {
       density: parsed.density === 'compact' ? 'compact' : 'comfortable',
       explain: parsed.explain === 'terse' ? 'terse' : 'narrative',
+      profile: parsed.profile === 'equities' ? 'equities' : 'crypto',
+      liveTicker: parsed.liveTicker === true,
       projectModes: Object.fromEntries(
         Object.entries(parsed.projectModes ?? {}).filter(
           (entry): entry is [string, WorkspaceMode] =>
@@ -43,12 +55,21 @@ function load(): Settings {
   }
 }
 
+function load(): Settings {
+  try {
+    return parseSettings(localStorage.getItem(STORAGE_KEY))
+  } catch {
+    return DEFAULTS
+  }
+}
+
 export function workspaceModeFor(settings: Settings, projectId: string | null): WorkspaceMode {
   return projectId ? (settings.projectModes[projectId] ?? 'guided') : 'guided'
 }
 
 function applyAttrs(): void {
   document.documentElement.setAttribute('data-density', state.density)
+  document.documentElement.setAttribute('data-profile', state.profile)
 }
 
 /** Load persisted settings and stamp the <html> data attributes. Call once at boot. */

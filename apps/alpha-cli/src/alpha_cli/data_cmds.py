@@ -128,6 +128,97 @@ def _adapter(
     return factory(**kwargs)
 
 
+#: Quote assets a compact CCXT symbol (``XRPUSDT``) may end with; longest first so ``USDT``
+#: wins over ``USD``. Anything else must be written ``BASE/QUOTE`` -- never guessed.
+_CCXT_QUOTES = ("USDT", "USDC", "USD", "BTC", "ETH", "EUR")
+
+
+def normalize_symbol(symbol: str, source: str) -> str:
+    """Canonical vendor symbol for SOURCE: ``XRP/USDT`` for ccxt, upper-case for the rest."""
+    cleaned = symbol.strip().upper()
+    if source != "ccxt":
+        if not cleaned or " " in cleaned:
+            raise typer.BadParameter(f"symbol {symbol!r} must be a single ticker such as AAPL")
+        return cleaned
+    accepted = (
+        f"symbol {symbol!r} is not a CCXT pair; write BASE/QUOTE such as XRP/USDT "
+        f"(also accepted: xrp-usdt, xrp_usdt, or XRPUSDT when the quote is one of "
+        f"{', '.join(_CCXT_QUOTES)})"
+    )
+    cleaned = cleaned.replace("-", "/").replace("_", "/")
+    if "/" in cleaned:
+        base, sep, quote = cleaned.partition("/")
+        if not base or not quote or "/" in quote or not (base + quote).isalnum():
+            raise typer.BadParameter(accepted)
+        return f"{base}/{quote}"
+    for quote in _CCXT_QUOTES:
+        base = cleaned.removesuffix(quote)
+        # A compact base longer than six characters (XRPUSDT in "xrpusdtusd") is a typo, not a
+        # pair; explicit BASE/QUOTE above has no such limit.
+        if base != cleaned and base and base.isalnum() and len(base) <= 6:
+            return f"{base}/{quote}"
+    raise typer.BadParameter(accepted)
+
+
+@data_app.command("first-bar")
+def first_bar(
+    symbol: str,
+    source: str = "ccxt",
+    exchange: str = typer.Option(_DEFAULT_CCXT_EXCHANGE, help="CCXT exchange: coinbase or binance"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Report when SYMBOL was first listed on a CCXT exchange (read-only; needs network)."""
+    if source != "ccxt":
+        raise typer.BadParameter(
+            "first-bar is available only for --source ccxt", param_hint="--source"
+        )
+    symbol = normalize_symbol(symbol, source)
+    probe = getattr(_adapter(source, exchange), "first_bar", None)
+    if probe is None:
+        raise typer.BadParameter(f"the {source} adapter cannot report a first bar")
+    try:
+        first: datetime = probe(symbol)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_out:
+        payload = {
+            "symbol": symbol,
+            "exchange": exchange,
+            "first_bar_ts": first.isoformat(),
+            "timeframe": "1d",
+        }
+        typer.echo(json.dumps(payload, sort_keys=True))
+    else:
+        typer.echo(f"{symbol} on {exchange}: first daily bar {first.date()}")
+
+
+@data_app.command("ticker")
+def ticker(
+    symbol: str,
+    source: str = "ccxt",
+    exchange: str = typer.Option(_DEFAULT_CCXT_EXCHANGE, help="CCXT exchange: coinbase or binance"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Report SYMBOL's current last-trade price on a CCXT venue (read-only; needs network)."""
+    if source != "ccxt":
+        raise typer.BadParameter(
+            "ticker is available only for --source ccxt", param_hint="--source"
+        )
+    symbol = normalize_symbol(symbol, source)
+    probe = getattr(_adapter(source, exchange), "ticker", None)
+    if probe is None:
+        raise typer.BadParameter(f"the {source} adapter cannot report a ticker")
+    try:
+        last, stamp = probe(symbol)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_out:
+        payload = {"symbol": symbol, "exchange": exchange, "last": last, "ts": stamp.isoformat()}
+        typer.echo(json.dumps(payload, sort_keys=True))
+    else:
+        typer.echo(f"{symbol} on {exchange}: last {last} at {stamp.isoformat()}")
+
+
 @data_app.command()
 def pull(
     symbol: str,
@@ -149,11 +240,22 @@ def pull(
         calendar=calendar,
         currency=currency,
     )
+    symbol = normalize_symbol(symbol, source)
     try:
         start_date, end_date = date.fromisoformat(start), date.fromisoformat(end)
     except ValueError as exc:
         raise typer.BadParameter(f"--start/--end must be YYYY-MM-DD: {exc}") from exc
+    if end_date < start_date:
+        raise typer.BadParameter(f"--end {end_date} precedes --start {start_date}")
+    probe = getattr(adapter, "first_bar", None) if source == "ccxt" else None
     try:
+        if probe is not None:
+            first: datetime = probe(symbol)
+            if start_date < first.date():
+                raise DataError(
+                    f"No data for {symbol} on {exchange} before {first.date()} (first listed). "
+                    f"Start there? (--start {first.date()})"
+                )
         result = adapter.fetch(symbol, start_date, end_date)
         store = _store()
         if (

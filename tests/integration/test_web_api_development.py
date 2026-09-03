@@ -551,3 +551,18 @@ def test_research_gate_state_and_active_overrides_projection(
     legacy = _legacy_project(tmp_path, name="Grandfathered momentum")
     legacy_detail = client.get(f"/api/projects/{legacy['project_id']}").json()
     assert legacy_detail["research_gate_state"] == "not_required"
+
+
+def test_project_summary_market_is_unknown_until_the_cli_projection_carries_a_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Spec 2026-09-01 §4.1: `market` is never inferred from a project name in the browser or
+    the relay; the CLI projection carries no source today, so every project is honestly
+    `unknown` on create, list and show."""
+    client = _client(tmp_path, monkeypatch)
+    project = _project(client, "BTC funding carry")
+    assert project["market"] == "unknown"
+    listed = client.get("/api/projects").json()["items"]
+    assert all(row["market"] == "unknown" for row in listed)
+    shown = client.get(f"/api/projects/{project['project_id']}").json()
+    assert shown["market"] == "unknown"

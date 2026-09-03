@@ -6,13 +6,14 @@
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
-import type { ResearchDatasetRefRow } from '../api/types'
+import type { CryptoFamily, ResearchDatasetRefRow } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { stateChipClass } from './researchChipModel'
 import { CryptoDataCenter } from './CryptoDataCenter'
 import {
+  type CryptoDataSection,
   datasetAuditBadge,
   datasetOriginSummary,
   datasetRangeLabel,
@@ -25,7 +26,7 @@ const BADGE_CHIP: Record<string, string> = {
   blocking: 'chip fail',
 }
 
-export function ResearchDataExplorer(props: PanelHandleProps) {
+export function ResearchDataExplorer(props: PanelHandleProps & { embedded?: boolean }) {
   const panelLink = usePanelLinked(props)
   const [datasets, setDatasets] = useState<ResearchDatasetRefRow[] | null>(null)
   const [symbols, setSymbols] = useState<string[] | null>(null)
@@ -33,6 +34,11 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
   const [caseRevision, setCaseRevision] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [datasetRevision, setDatasetRevision] = useState(0)
+  // A document (shell/documents.ts) may open the Crypto Data Center on one section/family.
+  const documentParams = (props.params ?? {}) as {
+    initialSection?: CryptoDataSection
+    initialFamily?: CryptoFamily
+  }
 
   useEffect(() => {
     let live = true
@@ -86,13 +92,7 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
     )
   }
 
-  return (
-    <div className="panel">
-      <div className="panel-toolbar">
-        <span className="title">Research Data</span>
-        <span className="chip kind">GOVERNED DATA · NO EXECUTION AUTHORITY</span>
-        <span className="muted">crypto acquisition · qualified snapshots · registered research refs</span>
-      </div>
+  const body = (
       <div className="panel-body panel-pad workbench research-data-explorer" tabIndex={0}>
         {error ? (
           <div className="workbench-notice" role="alert">
@@ -104,6 +104,8 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
           projectId={panelLink.linked.projectId}
           caseRevision={caseRevision}
           onRegistered={() => setDatasetRevision((value) => value + 1)}
+          initialSection={documentParams.initialSection}
+          initialFamily={documentParams.initialFamily}
         />
         <div className="rd-head">Research-case dataset bindings</div>
         <section aria-label="Dataset bound to current research contract">
@@ -160,6 +162,16 @@ export function ResearchDataExplorer(props: PanelHandleProps) {
           </div>
         </section>
       </div>
+  )
+  if (props.embedded) return body
+  return (
+    <div className="panel">
+      <div className="panel-toolbar">
+        <span className="title">Research Data</span>
+        <span className="chip kind">GOVERNED DATA · NO EXECUTION AUTHORITY</span>
+        <span className="muted">crypto acquisition · qualified snapshots · registered research refs</span>
+      </div>
+      {body}
     </div>
   )
 }

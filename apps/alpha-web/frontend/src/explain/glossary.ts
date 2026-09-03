@@ -6,6 +6,8 @@ export interface GlossaryEntry {
   name: string
   short: string
   long: string
+  /** Profile tags (`crypto`, `equities`); an entry without tags belongs to every profile. */
+  tags?: readonly string[]
 }
 
 export const GLOSSARY: Record<string, GlossaryEntry> = {
@@ -163,6 +165,24 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     name: 'Pass probability',
     short: 'Share of Monte-Carlo paths clearing the prop-firm evaluation.',
     long: 'Fraction of bootstrapped equity paths that reach the profit target without breaching drawdown/daily-loss rules within the horizon. Read together with bust probability (breach during eval OR after funding) and expected payout (mean net dollars across ALL paths including busts and fees).',
+  },
+  funding_rate: {
+    name: 'Funding rate',
+    short: 'Periodic payment between perpetual longs and shorts that pins the perp to its index.',
+    long: 'Perpetual swaps have no expiry, so venues charge the crowded side a funding payment (typically every eight hours on Binance and Bybit) proportional to the mark-minus-index premium. Persistent positive funding means longs pay shorts — a crowding signal, not a return. ALPHA stores native funding per venue and contract; it is never merged across venues or converted to a daily rate silently.',
+    tags: ['crypto'],
+  },
+  open_interest: {
+    name: 'Open interest',
+    short: 'Total outstanding derivative contracts at a venue, in contract units.',
+    long: 'The number of open perpetual or futures positions (each long has a matching short). Rising OI with rising price means new money entering; rising OI with falling price is new shorts. Units are venue- and contract-specific (linear USDT vs inverse coin-margined), so ALPHA keeps OI per family and never sums across venues.',
+    tags: ['crypto'],
+  },
+  ex_dividend: {
+    name: 'Ex-dividend date',
+    short: 'First session on which a buyer no longer receives the declared dividend.',
+    long: 'Corporate actions run on two clocks: knowledge time (announcement) gates when a backtest may know about the dividend, and the ex-date gates when it applies. ALPHA credits cash dividends at the pay date against the pre-ex holding and never folds them into prices; splits, by contrast, rescale the price series from the ex-date.',
+    tags: ['equities'],
   },
 }
 

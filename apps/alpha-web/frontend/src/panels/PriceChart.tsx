@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { setChartHover } from '../context/chartHover'
 import { api } from '../api/client'
 import type { Candle, CandleProvenance, ChartBundle, PaperCandleMarker } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
@@ -36,6 +37,11 @@ export function PriceChart(props: PanelHandleProps) {
   const [evidenceLayer, setEvidenceLayer] = useState<EvidenceLayer>('executions')
   const chartSelection = useChartSelection()
 
+  // The status bar reads the loaded bar count and the hovered bar from the chart hover store.
+  useEffect(() => {
+    setChartHover({ barsLoaded: bars?.length ?? 0 })
+    return () => setChartHover({ bar: null, barsLoaded: 0 })
+  }, [bars])
   useEffect(() => {
     setSymbol(linked.symbol ?? '')
   }, [linked.symbol])
@@ -183,7 +189,7 @@ export function PriceChart(props: PanelHandleProps) {
         {error ? (
           <Placeholder big="no data">{error}</Placeholder>
         ) : !symbol ? (
-          <Placeholder big="no symbol">Pick one in Data Explorer or a run, or type it above</Placeholder>
+          <Placeholder big="no symbol">Pick one in Data Manager or a run, or type it above</Placeholder>
         ) : !bars ? (
           <Placeholder>loading…</Placeholder>
         ) : bars.length === 0 ? (

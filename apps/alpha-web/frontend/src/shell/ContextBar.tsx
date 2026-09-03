@@ -3,8 +3,8 @@
  *
  * The old top bar carried DESK, LINK, SYM, ASOF and a six-field PRJ/VER/UNI/TF/SNAP/RUN
  * strip, each its own popover. That is a lot of chrome for state that is really one thing:
- * *what am I looking at*. It reads as one sentence here — symbol, window, project — and
- * opens a single editor.
+ * *what am I looking at*. The chip reads the artboard way — `BTCUSDT · Binance · D1` — and
+ * opens a single editor for the symbol, the window, the project and the run.
  *
  * The A/B/C/D link groups are gone. They let panels follow different contexts inside one
  * desk, which only made sense when you could tile arbitrary panels; with one context per
@@ -14,10 +14,12 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { setLinked, useLinked } from '../context/linked'
-import { shortId } from '../util/format'
+import { displaySymbol } from '../panels/marketWatchModel'
+import { useSymbolVenue } from './useSymbolVenue'
 
 export function ContextBar() {
   const linked = useLinked()
+  const venue = useSymbolVenue(linked.symbol)
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
 
@@ -35,31 +37,25 @@ export function ContextBar() {
     }
   }, [open])
 
-  const window_ = `${linked.start ?? 'start'} → ${linked.end ?? 'latest'}`
-
   return (
     <div className="context" ref={wrap}>
       <button
         className="context-chip"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        title="What every screen is currently showing"
+        aria-label="Symbol, venue and timeframe"
+        title={`What every document is showing · ${linked.start ?? 'start'} → ${linked.end ?? 'latest'}${linked.runId ? ` · run ${linked.runId.slice(0, 8)}` : ''}`}
       >
-        <span className="context-symbol mono">{linked.symbol ?? 'no symbol'}</span>
+        <span className="context-symbol">{linked.symbol ? displaySymbol(linked.symbol) : 'no symbol'}</span>
+        {venue ? (
+          <>
+            <span className="context-sep">·</span>
+            <span className="context-venue">{venue}</span>
+          </>
+        ) : null}
         <span className="context-sep">·</span>
-        <span className="context-window">{window_}</span>
-        {linked.projectId ? (
-          <>
-            <span className="context-sep">·</span>
-            <span className="context-project">{shortId(linked.projectId)}</span>
-          </>
-        ) : null}
-        {linked.runId ? (
-          <>
-            <span className="context-sep">·</span>
-            <span className="context-run mono">{shortId(linked.runId)}</span>
-          </>
-        ) : null}
+        <span className="context-tf">D1</span>
+        <span className="context-caret" aria-hidden="true">▾</span>
       </button>
 
       {open ? (
@@ -124,8 +120,8 @@ export function ContextBar() {
             />
           </label>
           {/* The run is part of what you are looking at -- the price chart overlays its
-              causal trace -- and the chip already shows it, so this is where you set or
-              clear one without going back to the Library. */}
+              causal trace -- so this is where you set or clear one without going back to the
+              Navigator. */}
           <label className="advanced-only">
             <span className="eyebrow">Run</span>
             <input

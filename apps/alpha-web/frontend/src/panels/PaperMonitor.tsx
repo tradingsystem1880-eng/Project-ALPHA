@@ -255,9 +255,6 @@ export function PaperMonitor() {
           refresh
         </button>
       </div>
-      <div className="sandbox-banner" role="status">
-        PAPER ONLY · BINANCE LOCAL SANDBOX + IBKR PAPER · LIVE-CAPITAL ROUTING ABSENT
-      </div>
       <div
         className="panel-body paper-monitor"
         data-state={overviewState}

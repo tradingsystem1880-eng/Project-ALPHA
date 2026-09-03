@@ -1,5 +1,7 @@
-// Job Monitor — every job this server session has run, live-updating; expand a row to attach
-// its streaming console (consoles are global now, not trapped in the launching panel).
+// Job Monitor — every job this server session has run, one dense table (artboard 1-Terminal:
+// Time · Job · Status · Detail · ✓), live-updating; expand a row to attach its streaming console
+// beneath it (consoles are global, not trapped in the launching panel). Detail carries the
+// progress bar, elapsed and ETA for a running job and the CLI's own message for a failed one.
 
 import { useCallback, useEffect, useState } from 'react'
 
@@ -8,9 +10,9 @@ import type { JobSummary } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
 import { Placeholder } from '../components/Placeholder'
 import { useActivityField } from '../state/activity'
-import { fmtTime, shortId } from '../util/format'
+import { shortId } from '../util/format'
 import { openRunDetail } from './actions'
-import { jobProgressView } from './jobProgress'
+import { jobRows } from './jobTableModel'
 import type { PanelHandleProps } from '../context/panelHandle'
 
 export function JobMonitor(_props: PanelHandleProps) {
@@ -53,16 +55,10 @@ export function JobMonitor(_props: PanelHandleProps) {
     }
   }, [jobs, loadJobs])
 
-  const orderedJobs = jobs
-    ? [...jobs].sort(
-        (left, right) =>
-          Number(right.status === 'running') - Number(left.status === 'running') ||
-          right.created_at - left.created_at,
-      )
-    : null
+  const toggle = (jobId: string) => setOpen((current) => (current === jobId ? null : jobId))
 
   return (
-    <div className="panel">
+    <div className="panel jobs-panel">
       <div className="panel-toolbar">
         <span className="title">Jobs</span>
         {runningJobs > 0 ? <span className="chip kind">{runningJobs} running</span> : null}
@@ -76,86 +72,103 @@ export function JobMonitor(_props: PanelHandleProps) {
         ) : jobs.length === 0 ? (
           <Placeholder big="no jobs yet">Anything launched from the UI lands here.</Placeholder>
         ) : (
-          <div className="jobs">
-            {orderedJobs!.map((j) => {
-              const progress = jobProgressView(j, nowSeconds)
-              return (
-                <div key={j.job_id} className="job-row-wrap">
-                <div
-                  className={`job-row ${open === j.job_id ? 'open' : ''}`}
-                  onClick={() => setOpen(open === j.job_id ? null : j.job_id)}
-                >
-                  <div className="job-primary">
-                    <span
-                      className={`dot ${j.status === 'running' ? 'busy' : j.status === 'done' ? '' : 'down'}`}
-                    />
-                    <span className={`chip ${j.status === 'done' ? 'pass' : j.status === 'running' ? 'kind' : 'fail'}`}>
-                      {j.status}
-                    </span>
-                    <span className="mono job-cmd">alpha {j.command}</span>
-                    <span className="num muted job-started">{fmtTime(j.created_at)}</span>
-                    {j.run_id ? (
-                      <button
-                        className="btn primary"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openRunDetail(j.run_id!)
-                        }}
+          <table className="blotter jobs-table">
+            <thead>
+              <tr>
+                <th scope="col">Time</th>
+                <th scope="col">Job</th>
+                <th scope="col">Status</th>
+                <th scope="col" className="r">Elapsed</th>
+                <th scope="col" className="r">ETA</th>
+                <th scope="col">Progress</th>
+                <th scope="col">Detail</th>
+                <th scope="col" aria-label="Done">✓</th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobRows(jobs, nowSeconds).flatMap((row) => {
+                const isOpen = open === row.jobId
+                const rows = [
+                  <tr key={row.jobId} className={isOpen ? 'sel' : undefined} onClick={() => toggle(row.jobId)}>
+                    <td className="num muted" title={row.started}>
+                      {row.time}
+                    </td>
+                    <td className="mono job-cmd" title={row.command}>
+                      {row.job}
+                    </td>
+                    <td>
+                      <span className={`chip ${row.statusTone}`}>{row.status}</span>
+                    </td>
+                    <td className="num">{row.elapsed}</td>
+                    <td className="num" title={row.etaBasis}>
+                      {row.eta}
+                    </td>
+                    <td>
+                      <div
+                        className={`job-progress-track ${row.fraction === null ? 'indeterminate' : ''} status-${row.status}`}
+                        role="progressbar"
+                        aria-label={row.progressName}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={row.fraction === null ? undefined : Math.round(row.fraction * 100)}
+                        aria-valuetext={row.fraction === null ? `Elapsed ${row.elapsed}; ETA estimating` : `Elapsed ${row.elapsed}; ETA ${row.eta}`}
                       >
-                        run {shortId(j.run_id)}
-                      </button>
-                    ) : null}
-                    <button
-                      className="btn job-expand"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        setOpen(open === j.job_id ? null : j.job_id)
-                      }}
-                      aria-expanded={open === j.job_id}
-                    >
-                      {open === j.job_id ? 'hide log' : 'live log'}
-                    </button>
-                    {j.status === 'running' ? (
+                        <span style={row.fraction === null ? undefined : { width: `${row.fraction * 100}%` }} />
+                      </div>
+                    </td>
+                    <td className={`now${row.statusTone === 'fail' ? ' neg' : ''}`} title={row.now}>
+                      {row.now}
+                    </td>
+                    <td className="actions">
+                      {row.done ? <span className="job-done" title="finished">✓</span> : null}
+                      {row.runId ? (
+                        <button
+                          className="btn primary"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openRunDetail(row.runId!)
+                          }}
+                        >
+                          run {shortId(row.runId)}
+                        </button>
+                      ) : null}
                       <button
-                        className="btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          void api.cancel(j.job_id)
+                        className="btn job-expand"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          toggle(row.jobId)
                         }}
+                        aria-expanded={isOpen}
                       >
-                        cancel
+                        {isOpen ? 'hide log' : 'live log'}
                       </button>
-                    ) : null}
-                  </div>
-                  <div className="job-progress-meta">
-                    <span><b>Elapsed</b> <span className="num">{progress.elapsedLabel}</span></span>
-                    <span title={progress.estimateBasis}><b>ETA</b> <span className="num">{progress.etaLabel}</span></span>
-                    <span><b>Output</b> <span className="num">{j.n_lines} lines</span></span>
-                    <span className="job-current-step" title={progress.currentStep}><b>Now</b> {progress.currentStep}</span>
-                  </div>
-                  <div
-                    className={`job-progress-track ${progress.fraction === null ? 'indeterminate' : ''} status-${j.status}`}
-                    role="progressbar"
-                    aria-label={`Job ${progress.commandPath} progress`}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={progress.fraction === null ? undefined : Math.round(progress.fraction * 100)}
-                    aria-valuetext={progress.fraction === null ? `Elapsed ${progress.elapsedLabel}; ETA estimating` : `Elapsed ${progress.elapsedLabel}; ETA ${progress.etaLabel}`}
-                  >
-                    <span style={progress.fraction === null ? undefined : { width: `${progress.fraction * 100}%` }} />
-                  </div>
-                </div>
-                {open === j.job_id ? (
-                  <JobConsole
-                    jobId={j.job_id}
-                    onRun={(rid) => openRunDetail(rid)}
-                    embedded
-                  />
-                ) : null}
-                </div>
-              )
-            })}
-          </div>
+                      {row.cancellable ? (
+                        <button
+                          className="btn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void api.cancel(row.jobId)
+                          }}
+                        >
+                          cancel
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>,
+                ]
+                if (isOpen) {
+                  rows.push(
+                    <tr key={`${row.jobId}:console`} className="console-row">
+                      <td colSpan={8}>
+                        <JobConsole jobId={row.jobId} onRun={(rid) => openRunDetail(rid)} embedded />
+                      </td>
+                    </tr>,
+                  )
+                }
+                return rows
+              })}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

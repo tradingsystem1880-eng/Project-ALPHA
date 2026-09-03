@@ -140,7 +140,7 @@ export function DataTable<T>({
   const padTop = items.length ? items[0].start : 0
   const padBottom = items.length ? virtualizer.getTotalSize() - items[items.length - 1].end : 0
   return (
-    <div ref={scrollRef} className="table-scroll">
+    <div ref={scrollRef} className="table-scroll" tabIndex={0}>
       <table className="blotter">
         {header}
         <tbody>

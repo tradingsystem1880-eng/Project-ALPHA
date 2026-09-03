@@ -18,6 +18,8 @@ import {
   sortResearchCases,
   type ResearchCaseSummary,
   type ResearchChartSummary,
+  CLI_ONLY,
+  ownerStep,
 } from './researchCockpitModel'
 
 describe('Research Cockpit contract mirrors', () => {
@@ -308,5 +310,52 @@ describe('Research Cockpit REST projection helpers', () => {
     })
     expect(researchEvidenceFirewall(pilot)).toContain('D2 SEALED')
     expect(researchEvidenceFirewall(pilot)).toContain('D3 NOT SEALED')
+  })
+})
+
+describe('ownerStep', () => {
+  const approved = { state: 'approved', event: null } as ResearchCase['exploration_review']
+  const pending = { state: 'pending', event: null } as ResearchCase['exploration_review']
+
+  it('waits while a bounded attempt runs or Codex holds the step, and stops on a closed case', () => {
+    expect(ownerStep(projectedCase({ execution_state: 'running' })).kind).toBe('waiting')
+    expect(ownerStep(projectedCase({ responsibility: 'codex', execution_state: 'idle' })).kind).toBe('waiting')
+    expect(ownerStep(projectedCase({ phase: 'closed' }))).toEqual({ kind: 'none', text: 'This case is closed.' })
+  })
+
+  it('hands a pending exploration review to the approve/reject boundary unless answers are still owed', () => {
+    const noQuestions = projectedCase({ responsibility: 'owner', exploration_review: pending })
+    if (researchContractView(noQuestions).blocking_questions.length) {
+      expect(ownerStep(noQuestions)).toMatchObject({ kind: 'revise' })
+    } else {
+      expect(ownerStep(noQuestions)).toEqual({ kind: 'review', scope: 'exploration' })
+    }
+    expect(ownerStep(projectedCase({ responsibility: 'owner', exploration_review: { state: 'rejected', event: null } as ResearchCase['exploration_review'], source_pack_id: 'sp_1' }))).toEqual({ kind: 'revise', sourcePackId: 'sp_1' })
+  })
+
+  it('offers launch D1 in the pilot and deep research phases once exploration is approved', () => {
+    for (const phase of ['pilot', 'deep_research'] as const) {
+      const step = ownerStep(projectedCase({ responsibility: 'owner', phase, exploration_review: approved, execution_state: 'idle' }))
+      expect(step).toMatchObject({ kind: 'action', actionType: 'launch_d1', label: 'launch D1', payload: {} })
+    }
+  })
+
+  it('routes confirmation review to the boundary and offers launch D2 only for an approved sealed confirmation', () => {
+    expect(ownerStep(projectedCase({ responsibility: 'owner', phase: 'confirmation_review', exploration_review: approved, confirmation_review: pending }))).toEqual({ kind: 'review', scope: 'confirmation' })
+    // A sealed confirmation whose contract is still pending goes back to the approve/reject boundary.
+    expect(ownerStep(projectedCase({ responsibility: 'owner', phase: 'sealed_confirmation', exploration_review: approved, confirmation_review: pending }))).toEqual({ kind: 'review', scope: 'confirmation' })
+    expect(ownerStep(projectedCase({ responsibility: 'owner', phase: 'sealed_confirmation', exploration_review: approved, confirmation_review: { state: 'rejected', event: null } as ResearchCase['confirmation_review'] })).kind).toBe('waiting')
+    expect(ownerStep(projectedCase({ responsibility: 'owner', phase: 'sealed_confirmation', exploration_review: approved, confirmation_review: approved }))).toMatchObject({ kind: 'action', actionType: 'launch_d2' })
+  })
+
+  it('opens the final disposition in the research_decision phase', () => {
+    expect(ownerStep(projectedCase({ responsibility: 'owner', phase: 'research_decision', exploration_review: approved, confirmation_review: approved }))).toEqual({ kind: 'decide' })
+  })
+
+  it('names the ADR that keeps each CLI-only step on the trusted CLI', () => {
+    expect(CLI_ONLY.recovery.command).toContain('alpha owner-auth recover')
+    expect(CLI_ONLY.recovery.why).toMatch(/ADR-0030/)
+    expect(CLI_ONLY.assetMaster.why).toMatch(/ADR-0032/)
+    expect(CLI_ONLY.holdoutReveal.why).toMatch(/ADR-0014/)
   })
 })

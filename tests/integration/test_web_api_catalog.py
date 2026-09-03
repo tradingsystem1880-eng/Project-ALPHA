@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from alpha_web import _catalog
 from alpha_web.app import create_app
 from tests.fixtures.cli_fixtures import seed_store
 
@@ -39,3 +40,89 @@ def test_commands_endpoint_annotates_run_type(
 def test_symbols_endpoint_reads_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     seed_store(tmp_path, symbol="QQQ")
     assert _client(tmp_path, monkeypatch).get("/api/symbols").json() == {"symbols": ["QQQ"]}
+
+
+_FIRST_BAR = {
+    "exchange": "binance",
+    "first_bar_ts": "2018-05-04T00:00:00+00:00",
+    "symbol": "XRP/USDT",
+    "timeframe": "1d",
+}
+
+
+def test_first_bar_endpoint_relays_the_cli_projection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[list[str]] = []
+
+    def project(args: list[str], **_: object) -> dict[str, object]:
+        calls.append(args)
+        return dict(_FIRST_BAR)
+
+    monkeypatch.setattr(_catalog, "_run_json", project)
+    response = _client(tmp_path, monkeypatch).get(
+        "/api/data/first-bar", params={"symbol": "XRP/USDT", "exchange": "binance"}
+    )
+    assert response.status_code == 200
+    assert response.json() == _FIRST_BAR
+    assert calls == [
+        ["data", "first-bar", "XRP/USDT", "--source", "ccxt", "--exchange", "binance", "--json"]
+    ]
+
+
+def test_first_bar_endpoint_relays_the_cli_error_line_as_request_invalid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Real binary: a malformed pair is rejected before any venue call. The owner sees the
+    # CLI's own error line, never Click's usage banner.
+    response = _client(tmp_path, monkeypatch).get(
+        "/api/data/first-bar", params={"symbol": "xrp usdt", "exchange": "binance"}
+    )
+    assert response.status_code == 422
+    body = response.json()
+    assert body["code"] == "request_invalid"
+    assert body["message"].startswith("Invalid value")
+    assert "BASE/QUOTE" in body["message"]
+    assert "Usage" not in body["message"]
+
+
+_TICKER = {
+    "symbol": "XRP/USDT",
+    "exchange": "binance",
+    "last": 2.914,
+    "ts": "2026-09-03T14:02:11+00:00",
+}
+
+
+def test_ticker_endpoint_relays_the_cli_quote(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[list[str]] = []
+
+    def project(args: list[str], **_: object) -> dict[str, object]:
+        calls.append(args)
+        return dict(_TICKER)
+
+    monkeypatch.setattr(_catalog, "_run_json", project)
+    response = _client(tmp_path, monkeypatch).get(
+        "/api/data/ticker", params={"symbol": "XRP/USDT", "exchange": "binance"}
+    )
+    assert response.status_code == 200
+    assert response.json() == _TICKER
+    assert calls == [
+        ["data", "ticker", "XRP/USDT", "--source", "ccxt", "--exchange", "binance", "--json"]
+    ]
+
+
+def test_ticker_endpoint_relays_the_cli_error_line_as_request_invalid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def project(args: list[str], **_: object) -> dict[str, object]:
+        raise RuntimeError("ccxt:binance lists no market NOPE/USDT")
+
+    monkeypatch.setattr(_catalog, "_run_json", project)
+    response = _client(tmp_path, monkeypatch).get(
+        "/api/data/ticker", params={"symbol": "NOPE/USDT", "exchange": "binance"}
+    )
+    assert response.status_code == 422
+    assert response.json()["message"] == "ccxt:binance lists no market NOPE/USDT"

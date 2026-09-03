@@ -61,9 +61,6 @@ export function AiConsole() {
         <span className="chip fail">STANDALONE_UNQUALIFIED</span>
       </div>
       <div className="panel-body panel-pad ai">
-        <div className="sandbox-banner" role="note">
-          STANDALONE_UNQUALIFIED · THESE RUNS CAN NEVER COUNT AS GOVERNED RESEARCH EVIDENCE
-        </div>
         <div className="rd-head">Strategy comparison</div>
         <div className="ai-input">
           <input

@@ -849,3 +849,19 @@ def test_crypto_storage_actions_use_closed_commands_and_confirm_cleanup(
         ["crypto-data", "storage-verify", "--json"],
         ["crypto-data", "cache-clean", "--confirm", "--json"],
     ]
+
+
+def test_crypto_asset_route_resolves_reviewed_xrp_and_rejects_unreviewed_doge(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Real alpha subprocess: the reviewed native mapping is the CLI's, never the browser's.
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    client = TestClient(create_app())
+    xrp = client.get("/api/crypto-data/assets/XRP", params={"as_of": "2024-01-01T00:00:00Z"})
+    assert xrp.status_code == 200, xrp.text
+    assert xrp.json()["coingecko_id"] == "ripple"
+
+    doge = client.get("/api/crypto-data/assets/DOGE", params={"as_of": "2024-01-01T00:00:00Z"})
+    assert doge.status_code == 422
+    assert doge.json()["code"] == "request_invalid"
+    assert "reviewed native mapping" in doge.json()["message"]

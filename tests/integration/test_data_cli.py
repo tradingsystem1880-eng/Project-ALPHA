@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -252,3 +252,195 @@ def test_snapshots_lists_manifest_summaries_deterministically(
     fallback = runner.invoke(app, ["data", "snapshots"])
     assert fallback.exit_code == 0
     assert "snap-a" in fallback.output and "snap-b" in fallback.output
+
+
+class _RecordingCrypto(_FakeCrypto):
+    seen: list[str] = []
+
+    def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
+        _RecordingCrypto.seen.append(symbol)
+        return super().fetch(symbol, start, end)
+
+
+def test_pull_normalises_symbol_before_fetch_and_store(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"ccxt": _RecordingCrypto})
+    _RecordingCrypto.seen.clear()
+    r = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "xrp-usdt",
+            "--source",
+            "ccxt",
+            "--exchange",
+            "binance",
+            "--start",
+            "2024-01-01",
+            "--end",
+            "2024-01-03",
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert _RecordingCrypto.seen == ["XRP/USDT"]
+    assert "pulled XRP/USDT" in r.output
+    assert data_cmds._store().list_symbols() == ["XRP/USDT"]
+
+
+def test_pull_rejects_end_before_start_without_calling_the_adapter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"ccxt": _RecordingCrypto})
+    _RecordingCrypto.seen.clear()
+    r = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "XRP/USDT",
+            "--source",
+            "ccxt",
+            "--exchange",
+            "binance",
+            "--start",
+            "2024-02-01",
+            "--end",
+            "2024-01-01",
+        ],
+    )
+    assert r.exit_code == 2
+    assert "2024-01-01" in r.output and "2024-02-01" in r.output and "Traceback" not in r.output
+    assert _RecordingCrypto.seen == []
+
+
+def test_pull_rejects_impossible_calendar_date_naming_the_problem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"ccxt": _RecordingCrypto})
+    r = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "XRP/USDT",
+            "--source",
+            "ccxt",
+            "--exchange",
+            "binance",
+            "--start",
+            "2015-01-01",
+            "--end",
+            "2026-06-31",
+        ],
+    )
+    assert r.exit_code == 2
+    assert "YYYY-MM-DD" in r.output and "out of range" in r.output
+
+
+class _ListedCrypto(_RecordingCrypto):
+    """A ccxt-like adapter whose pair was first listed on 2019-04-30."""
+
+    probed: list[str] = []
+
+    def first_bar(self, symbol: str, *, timeframe: str = "1d") -> datetime:
+        _ListedCrypto.probed.append(symbol)
+        return datetime(2019, 4, 30, tzinfo=UTC)
+
+
+def test_first_bar_json_projection(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"ccxt": _ListedCrypto})
+    r = runner.invoke(
+        app,
+        ["data", "first-bar", "xrp-usdt", "--source", "ccxt", "--exchange", "binance", "--json"],
+    )
+    assert r.exit_code == 0, r.output
+    assert json.loads(r.output) == {
+        "symbol": "XRP/USDT",
+        "exchange": "binance",
+        "first_bar_ts": "2019-04-30T00:00:00+00:00",
+        "timeframe": "1d",
+    }
+    other = runner.invoke(app, ["data", "first-bar", "AAPL", "--source", "yfinance"])
+    assert other.exit_code == 2 and "ccxt" in other.output
+
+
+def test_pull_before_first_bar_fails_with_first_listed_date_and_start_there(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"ccxt": _ListedCrypto})
+    _ListedCrypto.seen.clear()
+    r = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "XRP/USDT",
+            "--source",
+            "ccxt",
+            "--exchange",
+            "binance",
+            "--start",
+            "2015-01-01",
+            "--end",
+            "2020-01-01",
+        ],
+    )
+    assert r.exit_code == 2
+    assert "2019-04-30" in r.output and "Start there" in r.output
+    assert _ListedCrypto.seen == []
+    assert data_cmds._store().list_symbols() == []
+
+
+def test_pull_starting_exactly_at_first_bar_succeeds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"ccxt": _ListedCrypto})
+    _ListedCrypto.seen.clear()
+    r = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "XRP/USDT",
+            "--source",
+            "ccxt",
+            "--exchange",
+            "binance",
+            "--start",
+            "2019-04-30",
+            "--end",
+            "2019-05-02",
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert _ListedCrypto.seen == ["XRP/USDT"]
+
+
+def test_pull_non_ccxt_source_skips_the_first_bar_probe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.data_cmds._ADAPTERS", {"fake": _FakeAdapter})
+    r = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "AAPL",
+            "--source",
+            "fake",
+            "--start",
+            "2015-01-01",
+            "--end",
+            "2020-01-01",
+        ],
+    )
+    assert r.exit_code == 0, r.output

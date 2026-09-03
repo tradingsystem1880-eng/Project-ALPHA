@@ -450,3 +450,42 @@ def test_durable_startup_cleanup_failure_retains_capacity_and_live_handle(
             process.wait(timeout=1)
         if process is not None and process.stdout is not None:
             process.stdout.close()
+
+
+_CLICK_ERROR_MESSAGE = (
+    "Invalid value: --start/--end must be YYYY-MM-DD: day is out of range for month"
+)
+_CLICK_ERROR_SCRIPT = (
+    "import sys\n"
+    "print('Usage: alpha data pull [OPTIONS] SYMBOL')\n"
+    "print(\"Try 'alpha data pull --help' for help.\")\n"
+    "print('')\n"
+    f"print('Error: {_CLICK_ERROR_MESSAGE}')\n"
+    "sys.exit(2)\n"
+)
+
+
+def test_web_cli_environment_disables_rich_error_boxes(tmp_path: Path) -> None:
+    env = _catalog._cli_environment(tmp_path, ["data", "pull", "XRP/USDT"])
+    assert env["TYPER_USE_RICH"] == "0"
+
+
+def test_launch_failure_reason_is_the_cli_error_message(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _fake(monkeypatch, _CLICK_ERROR_SCRIPT)
+    job = _invoke.launch(["data", "pull", "xrp-usd"], data_dir=tmp_path, run_type=None)
+    _wait(job)
+    assert job.status == "failed" and job.returncode == 2
+    assert job.terminal_error == _CLICK_ERROR_MESSAGE
+    assert job.summary()["current_step"] == _CLICK_ERROR_MESSAGE
+
+
+def test_launch_failure_without_error_line_keeps_exit_code_reason(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _fake(monkeypatch, "import sys; print('boom'); sys.exit(3)")
+    job = _invoke.launch(["validate", "X"], data_dir=tmp_path, run_type="runs")
+    _wait(job)
+    assert job.terminal_error == "alpha process exited 3"
+    assert job.summary()["current_step"] == "boom"

@@ -119,6 +119,18 @@ describe('provider-driven Data Explorer', () => {
     ).toBe('SPY --source yfinance --start 2025-01-01 --end 2025-06-01')
   })
 
+  it('refuses to build a pull for dates the CLI would reject', () => {
+    expect(() =>
+      buildDataPullArgs({
+        symbol: 'XRP/USDT',
+        source: 'ccxt',
+        start: '2015-01-01',
+        end: '2026-06-31',
+        exchange: 'coinbase',
+      }),
+    ).toThrow('end 2026-06-31 is not a real calendar date')
+  })
+
   it('keeps unsupported model strategies out of the live-paper launcher', () => {
     const strategies = [
       { name: 'ts_momentum', supports_live_paper: true },

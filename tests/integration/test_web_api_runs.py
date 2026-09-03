@@ -871,3 +871,110 @@ def test_origins_endpoint_404_when_absent(tmp_path: Path, monkeypatch: pytest.Mo
     client = _client(tmp_path, monkeypatch)
     assert client.get("/api/runs/aaaa000000000001").json()["has_origins"] is False
     assert client.get("/api/runs/aaaa000000000001/origins").status_code == 404
+
+
+def test_display_name_reads_like_a_trader_would(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Spec 2026-09-01 §4.4: `<strategy> D1 — <symbol> · <venue> · <start> → <end> · run <8 hex>`,
+    computed server-side from the manifest and the equity curve; the index and detail agree."""
+    client = _client(tmp_path, monkeypatch)
+    _write_run(
+        tmp_path,
+        "runs",
+        "cafe000000000008",
+        {
+            "command": "backtest_run",
+            "symbol": "XRP/USDT",
+            "source": "ccxt:binance",
+            "params": {"strategy_name": "ma_crossover", "fast": 10},
+        },
+        equity=[1.0, 1.1, 1.2],
+    )
+    expected = "ma_crossover D1 — XRP/USDT · ccxt:binance · 2020-01-01 → 2020-01-03 · run cafe0000"
+    items = client.get("/api/runs").json()["items"]
+    assert next(r for r in items if r["run_id"] == "cafe000000000008")["display_name"] == expected
+    assert client.get("/api/runs/cafe000000000008").json()["display_name"] == expected
+
+
+def test_display_name_omits_what_the_run_does_not_carry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    _write_run(
+        tmp_path, "optim", "cafe000000000009", {"command": "optim_grid", "symbols": ["SPY", "TLT"]}
+    )
+    items = client.get("/api/runs").json()["items"]
+    item = next(r for r in items if r["run_id"] == "cafe000000000009")
+    assert item["display_name"] == "optim_grid D1 — SPY, TLT · run cafe0000"
+
+
+def test_market_is_derived_from_source_before_symbol(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Spec 2026-09-01 §4.1: `market` is a server projection of the manifest — the source decides
+    (ccxt/binance/bybit/coinbase → crypto; tiingo/yfinance/stooq/quantpad → equities); the index,
+    the detail and the activity payload agree."""
+    client = _client(tmp_path, monkeypatch)
+    _write_run(
+        tmp_path,
+        "runs",
+        "cafe000000000011",
+        {"command": "backtest_run", "symbol": "XRP/USDT", "source": "ccxt:binance"},
+    )
+    _write_run(
+        tmp_path,
+        "runs",
+        "cafe000000000012",
+        {"command": "backtest_run", "symbol": "AAPL", "source": "tiingo"},
+    )
+    items = {r["run_id"]: r for r in client.get("/api/runs").json()["items"]}
+    assert items["cafe000000000011"]["market"] == "crypto"
+    assert items["cafe000000000012"]["market"] == "equities"
+    assert client.get("/api/runs/cafe000000000011").json()["market"] == "crypto"
+    from alpha_web import _runs
+
+    assert _runs.run_record("runs", "cafe000000000012", data_dir=tmp_path)["market"] == "equities"
+
+
+def test_market_falls_back_to_pair_convention_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    _write_run(
+        tmp_path, "runs", "cafe000000000013", {"command": "backtest_run", "symbol": "BTC/USDT"}
+    )
+    _write_run(tmp_path, "runs", "cafe000000000014", {"command": "backtest_run", "symbol": "SPY"})
+    _write_run(
+        tmp_path, "optim", "cafe000000000015", {"command": "optim_grid", "symbols": ["SPY", "TLT"]}
+    )
+    items = {r["run_id"]: r for r in client.get("/api/runs").json()["items"]}
+    assert items["cafe000000000013"]["market"] == "crypto"
+    assert items["cafe000000000014"]["market"] == "unknown"
+    assert items["cafe000000000015"]["market"] == "unknown"
+
+
+def test_market_never_defaults_and_profile_is_never_a_filter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    _write_run(tmp_path, "runs", "cafe000000000016", {"command": "backtest_run"})
+    plain = client.get("/api/runs").json()
+    item = next(r for r in plain["items"] if r["run_id"] == "cafe000000000016")
+    assert item["market"] == "unknown"
+    # `profile` is a display setting: the server neither reads nor filters on it.
+    assert client.get("/api/runs?profile=crypto").json() == plain
+
+
+def test_market_conflict_is_decided_by_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    _write_run(
+        tmp_path,
+        "runs",
+        "cafe000000000017",
+        {"command": "backtest_run", "symbol": "AAPL", "source": "ccxt:binance"},
+    )
+    items = {r["run_id"]: r for r in client.get("/api/runs").json()["items"]}
+    assert items["cafe000000000017"]["market"] == "crypto"

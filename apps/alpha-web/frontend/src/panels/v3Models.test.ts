@@ -220,6 +220,8 @@ describe('run workspace capabilities', () => {
       run_id: '0123456789abcdef',
       kind,
       mtime: 0,
+      display_name: `${command} D1 — run 01234567`,
+      market: 'unknown',
       manifest: { command },
       has_equity: hasEquity,
       has_trades: false,
@@ -361,6 +363,7 @@ describe('development lifecycle projection', () => {
         monte_carlo_reviews: false,
         research_gate_overrides: false,
       },
+      market: 'unknown',
     } satisfies ProjectDetail
 
     const stages = projectStageRows(project)
@@ -394,6 +397,7 @@ describe('development lifecycle projection', () => {
         parameter_space: {},
         created_at: '2026-01-01T00:00:00+00:00',
       }],
+      market: 'unknown',
     } satisfies ProjectDetail
     expect(sandboxCandidateSummary(candidate)).toMatchObject({
       perpLeg: 'SHORT BYBIT LINEAR PERPETUAL',

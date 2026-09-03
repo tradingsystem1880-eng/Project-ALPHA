@@ -9,14 +9,17 @@
  * between a chart you can act on and a chart you have to guess at.
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { api } from '../api/client'
 import type { FigureCatalogueItem, FigureMetadata } from '../api/types'
 import { useSettings } from '../state/settings'
+import { FigureOverlay } from './FigureOverlay'
+import { notesVisible } from './figureExport'
 
 interface Props {
   runId: string
+  runName?: string
   item: FigureCatalogueItem
 }
 
@@ -35,11 +38,17 @@ function explainUnavailable(reason: string | null): string {
   return reason
 }
 
-export function FigureCard({ runId, item }: Props) {
+export function FigureCard({ runId, runName, item }: Props) {
   const { explain } = useSettings()
   const [meta, setMeta] = useState<FigureMetadata | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showData, setShowData] = useState(false)
+  const [maximised, setMaximised] = useState(false)
+  const expandButton = useRef<HTMLButtonElement>(null)
+  const restore = useCallback(() => {
+    setMaximised(false)
+    expandButton.current?.focus()
+  }, [])
 
   useEffect(() => {
     if (!item.available) return
@@ -104,6 +113,16 @@ export function FigureCard({ runId, item }: Props) {
           {meta.title} — {meta.subtitle}
         </h3>
         <div className="figure-actions">
+          <button
+            ref={expandButton}
+            type="button"
+            className="btn ghost"
+            aria-haspopup="dialog"
+            aria-expanded={maximised}
+            onClick={() => setMaximised(true)}
+          >
+            Expand
+          </button>
           <a className="btn ghost" href={svg} download={`${meta.figure_id}.svg`}>
             SVG
           </a>
@@ -121,25 +140,31 @@ export function FigureCard({ runId, item }: Props) {
         </div>
       </figcaption>
 
-      <img className="figure-image" src={svg} alt={meta.alt_text} loading="lazy" />
+      {/* Double-click maximises, like a chart window in a terminal; the Expand button is the
+          keyboard route. */}
+      <img
+        className="figure-image"
+        src={svg}
+        alt={meta.alt_text}
+        loading="lazy"
+        onDoubleClick={() => setMaximised(true)}
+      />
 
-      <div className="figure-explain">
+      {/* Question, uncertainty and caveat are the only accessible copy of the figure's meaning,
+          so they stay in the DOM in both modes and are merely hidden from sight outside Notes. */}
+      <div className={notesVisible(explain) ? 'figure-explain' : 'figure-explain sr-only'}>
         <p className="figure-question">
           <span className="eyebrow">What this answers</span>
           {meta.question}
         </p>
-        {explain === 'narrative' ? (
-          <>
-            <p className="figure-caveat">
-              <span className="eyebrow">How sure</span>
-              {meta.uncertainty}
-            </p>
-            <p className="figure-caveat">
-              <span className="eyebrow">Read with care</span>
-              {meta.caveat}
-            </p>
-          </>
-        ) : null}
+        <p className="figure-caveat">
+          <span className="eyebrow">How sure</span>
+          {meta.uncertainty}
+        </p>
+        <p className="figure-caveat">
+          <span className="eyebrow">Read with care</span>
+          {meta.caveat}
+        </p>
       </div>
 
       {showData ? (
@@ -177,6 +202,7 @@ export function FigureCard({ runId, item }: Props) {
         </div>
       ) : null}
 
+      {maximised ? <FigureOverlay runId={runId} runName={runName} meta={meta} onClose={restore} /> : null}
     </figure>
   )
 }

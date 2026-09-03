@@ -233,6 +233,20 @@
     },
     {
       "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "first_bar_api_data_first_bar_get",
+      "path": "/api/data/first-bar",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "ticker_api_data_ticker_get",
+      "path": "/api/data/ticker",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
       "mode": "automatic",
       "operation_id": "list_development_jobs_api_development_jobs_get",
       "path": "/api/development/jobs",

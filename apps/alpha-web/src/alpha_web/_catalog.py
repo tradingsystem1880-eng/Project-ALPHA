@@ -67,6 +67,9 @@ def _cli_environment(
     allowed = _PROCESS_ENV_NAMES | _DATA_ENV_NAMES | _credential_names_for_command(args)
     environment = {name: value for name, value in os.environ.items() if name in allowed}
     environment["ALPHA_DATA_DIR"] = str(data_dir)
+    # Plain Click errors (`Error: ...`), never Rich panels whose box borders would become the
+    # job's failure reason.
+    environment["TYPER_USE_RICH"] = "0"
     if run_context is not None:
         environment[RUN_CONTEXT_ENV] = json.dumps(
             run_context,
@@ -110,7 +113,10 @@ def _run_json(
     if proc.returncode != 0:
         stderr = _strip_ansi(proc.stderr).strip()
         stdout = _strip_ansi(proc.stdout).strip()
-        raise RuntimeError(stderr or stdout or f"alpha {args} failed")
+        message = stderr or stdout or f"alpha {args} failed"
+        # The CLI's own `Error: ...` line, never the usage banner Click prints above it.
+        error_line = next((ln for ln in message.splitlines() if ln.startswith("Error: ")), None)
+        raise RuntimeError(error_line.removeprefix("Error: ") if error_line else message)
     try:
         return json.loads(proc.stdout)
     except json.JSONDecodeError as exc:
@@ -142,6 +148,25 @@ def commands(*, data_dir: Path) -> list[dict[str, Any]]:
 def symbols(*, data_dir: Path) -> dict[str, list[str]]:
     """Every symbol with stored bars (read fresh — it changes as data is pulled)."""
     result: dict[str, list[str]] = _run_json(["data", "symbols", "--json"], data_dir=data_dir)
+    return result
+
+
+def first_bar(*, data_dir: Path, symbol: str, exchange: str) -> dict[str, str]:
+    """The earliest daily bar EXCHANGE lists for SYMBOL (one ccxt probe; no history stored)."""
+    result: dict[str, str] = _run_json(
+        ["data", "first-bar", symbol, "--source", "ccxt", "--exchange", exchange, "--json"],
+        data_dir=data_dir,
+    )
+    return result
+
+
+def ticker(*, data_dir: Path, symbol: str, exchange: str) -> dict[str, object]:
+    """SYMBOL's current last-trade price on EXCHANGE (one public ccxt read; never stored)."""
+    result: dict[str, object] = _run_json(
+        ["data", "ticker", symbol, "--source", "ccxt", "--exchange", exchange, "--json"],
+        data_dir=data_dir,
+        timeout_seconds=20.0,
+    )
     return result
 
 
