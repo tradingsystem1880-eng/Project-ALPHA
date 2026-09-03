@@ -120,7 +120,7 @@
       "expected": "The twelve `*-screen-{chromium-reference,chromium-wide}.png` baselines are deleted and twelve `*-document-*.png` baselines committed; a second run without the flag is green on all four projects; static/app clean.",
       "rollback": "Restore the previous baselines.",
       "files": ["apps/alpha-web/frontend/e2e/workstation.spec.ts-snapshots/**", "apps/alpha-web/src/alpha_web/static/app/**"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "T8 rule rewrite under ack, docs honesty, full gate",
@@ -264,4 +264,12 @@ rewrite under `gate.py ack`, docs, full gate.
   then the report chip again) because Governance is a document and only the active document
   mounts. A fresh terminal charts the profile's default symbol. Chromium-minimum: 42 green; the
   screenshot projects are re-baselined in T7b (twenty `*-document-*.png`, ten documents × two
-  projects, rather than twelve). The commit is split in two under the 1000-line guard.
+  projects, rather than twelve). The intended two-part commit landed as one (5771447, 1421
+  changed lines; the guard did not block) because zsh does not word-split an unquoted variable of
+  paths — the "part 2" in its subject is a misnomer.
+* **T7b** — `--update-snapshots=all` wrote the twenty `*-document-*.png` baselines; the `25k bars`
+  budget test then failed once because the status bar repeats the bar count, so the harness scopes
+  both bar-count assertions to the Price pane. The unflagged `npm run test:e2e` is green on all
+  four projects (128 passed) and `static/app` is clean. Two pre-existing
+  `research-desk-chromium-{reference,wide}.png` files are referenced by no test and are left in
+  place (not this slice's mess).

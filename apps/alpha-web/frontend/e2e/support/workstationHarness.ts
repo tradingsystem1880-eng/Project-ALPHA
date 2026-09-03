@@ -3404,7 +3404,7 @@ test('@reference-only 25k bars and 200 annotations remain interactively responsi
   const renderStarted = Date.now()
   await openHeavyPrice(page)
 
-  await expect(page.getByText(`${HEAVY_BAR_COUNT} bars`, { exact: true })).toBeVisible({
+  await expect(page.getByLabel('Price').getByText(`${HEAVY_BAR_COUNT} bars`, { exact: true })).toBeVisible({
     timeout: 12_000,
   })
   const chart = page.locator('.price-chart-canvas-wrap')
