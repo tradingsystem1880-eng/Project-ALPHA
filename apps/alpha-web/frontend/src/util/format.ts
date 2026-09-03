@@ -14,6 +14,11 @@ export function asStr(v: unknown): string | null {
   return typeof v === 'string' ? v : null
 }
 
+/** UTC calendar date of an epoch-seconds bar stamp (`YYYY-MM-DD`). */
+export function fmtUtcDate(epochSeconds: number): string {
+  return new Date(epochSeconds * 1000).toISOString().slice(0, 10)
+}
+
 export function fmtTime(epochSeconds: number): string {
   const d = new Date(epochSeconds * 1000)
   const p = (n: number): string => String(n).padStart(2, '0')

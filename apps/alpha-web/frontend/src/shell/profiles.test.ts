@@ -90,4 +90,3 @@ describe('symbolFitsProfile', () => {
     expect(symbolFitsProfile('equities', 'XRP/USDT')).toBe(false)
   })
 })
-

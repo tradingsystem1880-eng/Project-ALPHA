@@ -19426,7 +19426,7 @@
     },
     "/api/candles/{symbol}": {
       "get": {
-        "description": "Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works).\n\n``tail`` keeps only the last N bars of the window (Market Watch reads the last two stored\nbars without pulling the whole series).",
+        "description": "Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works).\n\n``tail`` trims the response to the last N bars of the window. It is a payload trim only:\nthe reader still loads the whole window once and caches it on the parquet mtime, so Market\nWatch's ``tail=2`` reads are cheap after the first.",
         "operationId": "candles_api_candles__symbol__get",
         "parameters": [
           {

@@ -7,6 +7,7 @@ import type { Candle } from '../api/types'
 import type { Profile } from '../state/settings'
 import { dockOf } from '../shell/documents'
 import { profile as manifest, symbolFitsProfile } from '../shell/profiles'
+import { fmtUtcDate } from '../util/format'
 
 export type WatchTone = 'up' | 'down' | 'flat' | 'none'
 
@@ -44,7 +45,7 @@ export function watchRow(symbol: string, bars: readonly Candle[] | null | undefi
   const lastBar = bars[bars.length - 1]
   const last = lastBar.c
   if (!Number.isFinite(last)) return none
-  const asOf = new Date(lastBar.t * 1000).toISOString().slice(0, 10)
+  const asOf = fmtUtcDate(lastBar.t)
   const previous = bars.length > 1 ? bars[bars.length - 2].c : Number.NaN
   if (!Number.isFinite(previous) || previous === 0) {
     return { symbol, last: priceText(last), change: '—', tone: 'none', asOf }

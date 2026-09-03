@@ -6,12 +6,12 @@
  * document mounts, so nothing polls behind a hidden tab.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
 import { OwnerEnrollment } from './auth/OwnerEnrollment'
-import { setLinked, useLinked } from './context/linked'
+import { getLinked, setLinked, useLinked } from './context/linked'
 import { requestNewIdea } from './context/newIdea'
 import { onResearchCase } from './context/researchCase'
 import { registerNavigator } from './panels/actions'
@@ -89,17 +89,9 @@ function WorkstationApp() {
   const [focus, setFocus] = useState<PaneFocus | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [rightDock, setRightDock] = useState(() => localStorage.getItem(RIGHT_DOCK_KEY) !== 'closed')
-  const symbolRef = useRef(linked.symbol)
-  symbolRef.current = linked.symbol
 
   useEffect(() => {
     initActivity()
-  }, [])
-  // A fresh terminal charts the profile's default symbol instead of an empty frame; a symbol
-  // the trader already chose is never overridden.
-  useEffect(() => {
-    if (!linked.symbol) setLinked({ symbol: manifest(profile).defaultSymbol })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- boot only
   }, [])
   useEffect(() => {
     localStorage.setItem(MDI_KEY, JSON.stringify(mdi))
@@ -109,11 +101,13 @@ function WorkstationApp() {
   }, [rightDock])
   useEffect(() => {
     document.documentElement.setAttribute('data-profile', profile)
-    // A profile switch closes the documents it does not show and drops a symbol of the other
-    // market for the profile's default (an equities screener asked about XRP/USDT fails loud);
-    // nothing is sent to the server.
-    const symbol = symbolRef.current
-    if (symbol && !symbolFitsProfile(profile, symbol)) {
+    // The linked symbol must fit the active profile: a fresh terminal charts the profile's
+    // default instead of an empty frame, and a switch drops a symbol of the other market (an
+    // equities screener asked about XRP/USDT fails loud). A symbol set later by a run is never
+    // fought, which is why this reads the store once here rather than depending on it. A profile
+    // switch also closes the documents it does not show; nothing is sent to the server.
+    const { symbol } = getLinked()
+    if (!symbol || !symbolFitsProfile(profile, symbol)) {
       setLinked({ symbol: manifest(profile).defaultSymbol })
     }
     setMdi((current) => {

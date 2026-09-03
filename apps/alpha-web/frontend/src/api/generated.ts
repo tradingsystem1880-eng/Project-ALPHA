@@ -57,8 +57,9 @@ export interface paths {
          * Candles
          * @description Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works).
          *
-         *     ``tail`` keeps only the last N bars of the window (Market Watch reads the last two stored
-         *     bars without pulling the whole series).
+         *     ``tail`` trims the response to the last N bars of the window. It is a payload trim only:
+         *     the reader still loads the whole window once and caches it on the parquet mtime, so Market
+         *     Watch's ``tail=2`` reads are cheap after the first.
          */
         get: operations["candles_api_candles__symbol__get"];
         put?: never;
