@@ -1,6 +1,6 @@
 # Trader Terminal UI — design spec
 
-Status: APPROVED by owner 2026-09-01 (design + palette + open items) · Phase 1 "Work" IMPLEMENTED 2026-09-02 (plan `docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md`; owner acceptance walkthrough and asset-master regeneration pending) · Phase 2 "Clean" IMPLEMENTED 2026-09-02 (plan `docs/superpowers/plans/2026-09-02-trader-terminal-phase2-clean.md`; owner walkthrough pending) · supersedes nothing (extends the Workstation program)
+Status: APPROVED by owner 2026-09-01 (design + palette + open items) · Phase 1 "Work" IMPLEMENTED 2026-09-02 (plan `docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md`; owner acceptance walkthrough and asset-master regeneration pending) · Phase 2 "Clean" IMPLEMENTED 2026-09-02 (plan `docs/superpowers/plans/2026-09-02-trader-terminal-phase2-clean.md`; owner walkthrough pending) · Phase 3 "Terminal" IMPLEMENTED 2026-09-03 (plan `docs/superpowers/plans/2026-09-03-trader-terminal-phase3-terminal.md`; owner walkthrough in both profiles pending) · supersedes nothing (extends the Workstation program)
 Owner decisions and evidence: `docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md` (findings #1–#13, decisions D1–D7)
 Approved mockups: Claude Design canvas "ALPHA Crypto Terminal" (four artboards: Terminal, Strategy
 Performance Report, Maximised chart, Governance window)
@@ -216,6 +216,11 @@ anatomy · Market Watch + Navigator + Toolbox + Data Manager docks · MDI docume
 manifests gating windows/panels/providers · Equities profile · rule + e2e + screenshot rebaselines.
 Acceptance: the app matches the approved artboards at 1440×900 within the theme's tokens; all
 gates green; owner walkthrough in both profiles.
+**Status (2026-09-03): implemented (T1–T8, commits `8d49fc9`…`f109f90` plus the docs commit; plan
+`docs/superpowers/plans/2026-09-03-trader-terminal-phase3-terminal.md`); the theme document is
+`terminal_classic.json` (Option E) with the SPA tokens generated from it; `screens.tsx`, the Library
+rail and the Governance dialog are gone; the Playwright harness runs on documents and docks with
+twenty document baselines; the owner walkthrough in both profiles is still to be run.**
 
 ## 8. Risks
 

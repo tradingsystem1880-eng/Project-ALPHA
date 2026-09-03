@@ -1,3 +1,5 @@
+**Delivery state:** Completed (2026-09-03; T1–T8 committed on `feat/trader-terminal-phase1-work`; owner walkthrough in both profiles pending).
+
 # Trader Terminal — Phase 3 "Terminal": Option E theme, terminal shell, profiles
 
 ```json
@@ -128,7 +130,7 @@
       "expected": "The six-fixed-screens row of .claude/rules/alpha-web.md is moved verbatim into the dated docs/BUILD-STATUS.md record and replaced by the document/dock registry row (Edit tool after gate.py ack); CLAUDE.md 'New Workstation panel' pointer names documents.ts; docs/BUILD-STATUS.md gains the Phase 3 record; the spec marks Phase 3 implemented; finding #12 carries its fixing commits; every slice is done; the full gate is green including the 14-wheel smoke.",
       "rollback": "Docs-only; revert the doc commit.",
       "files": [".claude/rules/alpha-web.md", "CLAUDE.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md", "docs/superpowers/plans/2026-09-03-trader-terminal-phase3-terminal.md"],
-      "status": "pending"
+      "status": "done"
     }
   ],
   "tier_impact": ["quant", "risk", "protected", "dag", "determinism"],
@@ -273,3 +275,10 @@ rewrite under `gate.py ack`, docs, full gate.
   four projects (128 passed) and `static/app` is clean. Two pre-existing
   `research-desk-chromium-{reference,wide}.png` files are referenced by no test and are left in
   place (not this slice's mess).
+* **T8** — both retired manual lines (the `.claude/rules/alpha-web.md` six-fixed-screens row and
+  the CLAUDE.md "New Workstation panel" pointer) are v1 lines, so both are kept verbatim in the
+  dated `docs/BUILD-STATUS.md` record and rewritten in place under `gate.py ack` (four acks: the
+  shell row, CLAUDE.md, and two edits for the three Phase 2 rows that still named `LibraryRail`,
+  the dialog and `App.tsx`'s `StatusCluster`). README and `docs/ARCHITECTURE.md` no longer say "six-screen". The plan's
+  `tier_impact` lists `quant` and `risk` because of T3 only; the attestations for that slice are
+  bound to `d8a04c5`.

@@ -400,7 +400,7 @@ interface — a focused owner workstation over the same governed CLI contracts.
   operation, output activity, accessible progress, live logs, and cancellation. ETA remains visibly
   indeterminate until a comparable successful command provides a same-session median; UI-launched
   Kronos/Qlib children use reduced scheduling priority to keep the desk responsive.
-- **Command palette + savable workspaces** over the fixed six-screen information architecture.
+- **Command palette + savable workspaces** over the terminal shell (2026-09-03): a menu bar, toolbar, Market Watch and Navigator docks, MDI documents with bottom tabs, a Toolbox and a Data Manager dock, gated per crypto/equities profile in the browser only.
 
 Built as a Vite/React/TypeScript SPA (Lightweight Charts + TanStack Table/Virtual + cmdk) over a
 thin FastAPI **JSON + SSE** backend. Stable, bounded JSON responses are strict Pydantic
