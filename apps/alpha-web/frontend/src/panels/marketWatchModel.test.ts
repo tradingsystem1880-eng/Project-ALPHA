@@ -66,6 +66,10 @@ describe('marketWatchModel', () => {
     expect(watchRow('SOL/USDT', quote([bar(Number.NaN)]), NOW)).toMatchObject({ last: '—', tone: 'none' })
     // One bar: a last price but no daily change to report.
     expect(watchRow('SOL/USDT', quote([bar(12.5)]), NOW)).toMatchObject({ last: '12.5', change: '—', tone: 'none', asOf: '1970-01-01' })
+    // float32 closes from legacy parquet must not read as 62.029999
+    expect(watchRow('KO', quote([bar(62.029998779296875)], 'yfinance'), NOW).last).toBe('62.03')
+    expect(watchRow('AAPL', quote([bar(252.1999969482422)], 'yfinance'), NOW).last).toBe('252.2')
+    expect(watchRow('BTC/USDT', quote([bar(93354.22)]), NOW).last).toBe('93,354.22')
     expect(watchRow('SOL/USDT', quote([bar(0), bar(1)]), NOW).change).toBe('—')
   })
 
@@ -91,6 +95,7 @@ describe('marketWatchModel', () => {
     expect(venueLabel('ccxt:okx')).toBe('Okx')
     expect(venueLabel(null)).toBeNull()
     expect(venueLabel('')).toBeNull()
+    expect(venueLabel('unknown')).toBeNull()
   })
 
   it('spells symbols the artboard way and groups related quotes by base asset', () => {

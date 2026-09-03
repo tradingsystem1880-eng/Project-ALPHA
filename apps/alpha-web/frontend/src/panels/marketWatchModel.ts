@@ -54,12 +54,15 @@ const VENUE_NAMES: Readonly<Record<string, string>> = {
   coinmetrics: 'Coin Metrics',
 }
 
-/** `ccxt:binance` → `Binance`; a bare provider id → its display name; unknown → as given. */
+/**
+ * `ccxt:binance` → `Binance`; a bare provider id → its display name; an unlisted id → as given.
+ * Legacy datasets whose provenance says `unknown` get no venue (rendered `—`), never a name.
+ */
 export function venueLabel(source: string | null | undefined): string | null {
   if (!source) return null
   const id = source.includes(':') ? source.slice(source.indexOf(':') + 1) : source
   const key = id.trim().toLowerCase()
-  if (!key) return null
+  if (!key || key === 'unknown') return null
   return VENUE_NAMES[key] ?? key.charAt(0).toUpperCase() + key.slice(1)
 }
 
@@ -84,8 +87,11 @@ export function watchSymbols(profileId: Profile, stored: readonly string[]): str
   return rows
 }
 
+// Stored closes are float32 in some legacy parquet (62.029998779296875): round to seven
+// significant digits first so the noise never reads as a price.
 function priceText(value: number): string {
-  return value.toLocaleString('en-US', { maximumFractionDigits: value >= 100 ? 2 : 6 })
+  const rounded = Number(value.toPrecision(7))
+  return rounded.toLocaleString('en-US', { maximumFractionDigits: rounded >= 100 ? 2 : 6 })
 }
 
 export function isStale(barTs: number, nowMs: number): boolean {
