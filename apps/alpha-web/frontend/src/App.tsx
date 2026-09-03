@@ -173,6 +173,10 @@ function WorkstationApp() {
       showProjects: () => showPane('build', 'DevelopmentCenter'),
       showResearchSources: () => showPane('research', 'Literature'),
       showResearchData: () => setRightDock(true),
+      showDataSymbol: () => {
+        setRightDock(true)
+        window.setTimeout(() => document.getElementById('data-manager-symbol')?.focus(), 50)
+      },
       showProviders: () => showPane('jobs', 'ProviderSystem'),
     })
   }, [openRun, showPane])

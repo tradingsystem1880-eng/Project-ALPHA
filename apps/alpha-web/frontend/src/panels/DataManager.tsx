@@ -196,6 +196,7 @@ function PullAndStore({ profile }: { profile: Profile }) {
         <label className="field-row">
           <span className="field-label">Symbol</span>
           <input
+            id="data-manager-symbol"
             className="field"
             list="data-manager-symbols"
             value={sym}

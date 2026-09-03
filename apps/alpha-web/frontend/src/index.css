@@ -4599,10 +4599,20 @@ html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
 .market-watch-table th { text-align: left; }
 .market-watch-table .num { text-align: right; }
 .watch-row { cursor: pointer; }
-.watch-row.active { background: var(--accent-soft); }
+.watch-row.active { background: var(--selection); color: var(--selection-ink); }
+.watch-row.active td, .watch-row.active .watch-select, .watch-row.active .num, .watch-row.active .watch-venue, .watch-row.active .watch-age, .watch-row.active .watch-glyph { color: var(--selection-ink); }
 .watch-row .watch-select { all: unset; cursor: pointer; display: block; width: 100%; min-height: 24px; box-sizing: border-box; padding: 2px 0; }
-.watch-row.tone-up .num { color: var(--up); }
-.watch-row.tone-down .num { color: var(--down); }
+.watch-glyph { display: inline-block; width: 1.1em; font-size: 9px; }
+.watch-row.tone-up .num, .watch-row.tone-up .watch-glyph { color: var(--up); }
+.watch-row.tone-down .num, .watch-row.tone-down .watch-glyph { color: var(--down); }
+.watch-venue, .watch-age { color: var(--muted); }
+.watch-row.stale .num { opacity: 0.7; }
+.watch-add .watch-select { color: var(--muted); }
+.watch-age.live { color: var(--up); }
+.market-watch-head { font-size: calc(var(--font-size) - 1px); }
+.market-watch-clock { color: var(--ink-dim); }
+.market-watch-details-wrap { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.market-watch .dock-tabs { margin-top: auto; border-top: 1px solid var(--line); }
 .market-watch-details { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--pad-sm); margin: 0; padding: var(--pad-sm); }
 .market-watch-details dt { color: var(--muted); }
 .market-watch-details dd { margin: 0; }

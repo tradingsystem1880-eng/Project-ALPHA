@@ -18,6 +18,8 @@ export interface Navigator {
   showProjects(): void
   showResearchSources(): void
   showResearchData(): void
+  /** Open the Data Manager and put the cursor in its symbol field. */
+  showDataSymbol(): void
   showProviders(): void
 }
 
@@ -28,6 +30,7 @@ let active: Navigator = {
   showProjects: () => undefined,
   showResearchSources: () => undefined,
   showResearchData: () => undefined,
+  showDataSymbol: () => undefined,
   showProviders: () => undefined,
 }
 
@@ -98,6 +101,10 @@ export function openResearchSources(): void {
 
 export function openResearchData(): void {
   active.showResearchData()
+}
+
+export function openDataSymbol(): void {
+  active.showDataSymbol()
 }
 
 export function openProviderCenter(): void {
