@@ -3,7 +3,7 @@
 // existing figure sections and manifest fields only and never computes a statistic: a value the
 // manifest did not record is shown as `not recorded`.
 
-import type { FigureCatalogueItem } from '../api/types'
+import type { FigureCatalogueItem, TradeRow } from '../api/types'
 import { asNum, asStr, isFiniteNum } from '../util/format'
 
 export interface ReportLeaf {
@@ -23,6 +23,8 @@ export interface ReportTreeInput {
   kind: string
   isValidate: boolean
   hasTrades: boolean
+  /** Rows the trades projection returned; shown as `List of trades (N)` once loaded. */
+  tradeCount?: number | null
   items: FigureCatalogueItem[]
 }
 
@@ -64,7 +66,12 @@ export function reportTree(input: ReportTreeInput): ReportGroup[] {
     sectionLeaf('signals', 'Signals', 'signals'),
   ]
   const trade = [
-    fixed('trades', 'List of trades', input.hasTrades, 'no trades recorded'),
+    fixed(
+      'trades',
+      typeof input.tradeCount === 'number' && input.hasTrades ? `List of trades (${input.tradeCount})` : 'List of trades',
+      input.hasTrades,
+      'no trades recorded',
+    ),
     sectionLeaf('pnl', 'P&L distribution', 'trades'),
   ]
   const periodical = [sectionLeaf('periodical', 'Calendar & yearly returns', 'periodical')]
@@ -155,4 +162,17 @@ export function watermarkChip(gate: string | null, context: string | null): Wate
   }
   if (!sentences.length) return null
   return { text: gate ?? (context as string), title: sentences.join(' ') }
+}
+
+function csvCell(value: string | number | null): string {
+  if (value === null) return ''
+  const text = String(value)
+  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+}
+
+/** The trades projection as CSV, column order from the first row, nothing computed. */
+export function tradesCsv(rows: readonly TradeRow[]): string {
+  if (!rows.length) return ''
+  const columns = Object.keys(rows[0])
+  return [columns.join(','), ...rows.map((row) => columns.map((column) => csvCell(row[column] ?? null)).join(','))].join('\n')
 }

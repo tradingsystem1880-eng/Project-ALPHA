@@ -21,6 +21,8 @@ export interface Navigator {
   /** Open the Data Manager and put the cursor in its symbol field. */
   showDataSymbol(): void
   showProviders(): void
+  /** Open the Compare document (the selected run is ticked there). */
+  showCompare(): void
 }
 
 /** Until the shell registers, intents are no-ops rather than crashes. */
@@ -32,6 +34,7 @@ let active: Navigator = {
   showResearchData: () => undefined,
   showDataSymbol: () => undefined,
   showProviders: () => undefined,
+  showCompare: () => undefined,
 }
 
 let pendingPrefill: LabPrefill | null = null
@@ -105,6 +108,10 @@ export function openResearchData(): void {
 
 export function openDataSymbol(): void {
   active.showDataSymbol()
+}
+
+export function openCompare(): void {
+  active.showCompare()
 }
 
 export function openProviderCenter(): void {

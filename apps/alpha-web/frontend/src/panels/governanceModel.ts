@@ -30,6 +30,8 @@ export interface GovernanceRow {
   label: string
   value: string
   tone: Tone
+  /** The artboard's Detail column; omitted where the value is the whole statement. */
+  detail?: string
 }
 
 export interface GovernancePage {
@@ -51,6 +53,8 @@ export interface GovernanceInput {
   gate: { lock: StrategyGateLock | null; projectId: string | null; projectName: string | null }
   watermark: string | null
   connection: string
+  /** Names the glossary page's profile and counts its entries; omitted → no count. */
+  profile?: Profile
 }
 
 const page = (
@@ -100,7 +104,7 @@ function gates(input: GovernanceInput): GovernancePage {
   if (lock) {
     return page(
       'gates',
-      'Research gates',
+      'Research gates (1 open)',
       [{ label: name, value: `RESEARCH GATE OPEN — ${lock.reason}`, tone: 'bad' }],
       null,
       { projectId, projectName },
@@ -113,7 +117,7 @@ function overrides(list: ActiveResearchGateOverride[] | null): GovernancePage {
   if (list === null) return page('overrides', 'Overrides', [], 'Overrides not loaded')
   return page(
     'overrides',
-    'Overrides',
+    `Overrides (${list.length})`,
     list.map((item) => ({
       label: `${item.project_name} · ${item.actor} · ${item.recorded_at}`,
       value: item.reason,
@@ -130,8 +134,9 @@ function providers(list: ProviderDefinition[] | null): GovernancePage {
     'Providers',
     list.map((item) => ({
       label: item.label,
-      value: item.configuration_state.replaceAll('_', ' '),
+      value: item.configured ? 'configured' : 'not configured',
       tone: item.configured ? ('ok' as const) : ('warn' as const),
+      detail: item.configuration_state.replaceAll('_', ' '),
     })),
     'No providers registered',
   )
@@ -153,9 +158,9 @@ export function governancePages(input: GovernanceInput): GovernancePage[] {
     overrides(input.overrides),
     providers(input.providers),
     page('storage', 'Storage', [
-      { label: ssd.label, value: ssd.detail, tone: ssd.tone === 'amber' ? 'warn' : 'ok' },
+      { label: 'Expansion SSD', value: ssd.label, tone: ssd.tone === 'amber' ? 'warn' : 'ok', detail: ssd.detail },
     ]),
-    page('glossary', 'Glossary', []),
+    page('glossary', input.profile ? `Glossary (${glossaryEntries(input.profile).length})` : 'Glossary', []),
   ]
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { FigureCatalogueItem } from '../api/types'
-import { reportTree, summaryRows, watermarkChip } from './reportModel'
+import { reportTree, summaryRows, tradesCsv, watermarkChip } from './reportModel'
 
 function figure(id: string, section: string, available = true): FigureCatalogueItem {
   return {
@@ -130,5 +130,28 @@ describe('watermark chip', () => {
       title: 'STANDALONE_UNQUALIFIED — this run is not governed research evidence.',
     })
     expect(watermarkChip(null, null)).toBeNull()
+  })
+})
+
+describe('trade count and CSV', () => {
+  it('names the trade count on the leaf once the rows are loaded', () => {
+    const leaf = (count: number | null | undefined, hasTrades = true) =>
+      reportTree({ kind: 'runs', isValidate: true, hasTrades, tradeCount: count, items: [] })
+        .flatMap((group) => group.leaves)
+        .find((item) => item.id === 'trades')!.label
+    expect(leaf(143)).toBe('List of trades (143)')
+    expect(leaf(null)).toBe('List of trades')
+    expect(leaf(undefined)).toBe('List of trades')
+    expect(leaf(0, false)).toBe('List of trades')
+  })
+
+  it('exports the trade rows exactly, escaping only what CSV requires', () => {
+    expect(tradesCsv([])).toBe('')
+    expect(
+      tradesCsv([
+        { entry_ts: '2024-01-02', pnl: 1.5, note: 'a, "quoted"', empty: null },
+        { entry_ts: '2024-01-03', pnl: -2, note: 'plain', empty: null },
+      ]),
+    ).toBe('entry_ts,pnl,note,empty\n2024-01-02,1.5,"a, ""quoted""",\n2024-01-03,-2,plain,')
   })
 })

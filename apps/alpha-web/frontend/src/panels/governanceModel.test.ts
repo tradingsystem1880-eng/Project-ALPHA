@@ -123,8 +123,8 @@ describe('governancePages', () => {
       ] as unknown as NonNullable<GovernanceInput['providers']>,
     })
     expect(page(pages, 'providers').rows).toEqual([
-      { label: 'CCXT', value: 'available without credentials', tone: 'ok' },
-      { label: 'Tiingo', value: 'not installed', tone: 'warn' },
+      { label: 'CCXT', value: 'configured', tone: 'ok', detail: 'available without credentials' },
+      { label: 'Tiingo', value: 'not configured', tone: 'warn', detail: 'not installed' },
     ])
   })
 
@@ -137,8 +137,22 @@ describe('governancePages', () => {
       'storage',
     ).rows
     expect(rows).toEqual([
-      { label: 'Expansion SSD not mounted', value: 'Reconnect the Expansion volume, then refresh.', tone: 'warn' },
+      { label: 'Expansion SSD', value: 'Expansion SSD not mounted', tone: 'warn', detail: 'Reconnect the Expansion volume, then refresh.' },
     ])
+  })
+
+  it('counts open gates, overrides and glossary entries in the page labels (artboard 4)', () => {
+    const pages = governancePages({
+      ...EMPTY,
+      gate: { lock: { reason: 'gate reason' }, projectId: 'p1', projectName: 'Momentum' },
+      overrides: [],
+      profile: 'crypto',
+    })
+    expect(page(pages, 'gates').label).toBe('Research gates (1 open)')
+    expect(page(pages, 'overrides').label).toBe('Overrides (0)')
+    expect(page(pages, 'glossary').label).toMatch(/^Glossary \(\d+\)$/)
+    expect(page(governancePages(EMPTY), 'gates').label).toBe('Research gates')
+    expect(page(governancePages(EMPTY), 'glossary').label).toBe('Glossary')
   })
 })
 

@@ -19,6 +19,7 @@ import { notesVisible } from './figureExport'
 
 interface Props {
   runId: string
+  runName?: string
   item: FigureCatalogueItem
 }
 
@@ -37,7 +38,7 @@ function explainUnavailable(reason: string | null): string {
   return reason
 }
 
-export function FigureCard({ runId, item }: Props) {
+export function FigureCard({ runId, runName, item }: Props) {
   const { explain } = useSettings()
   const [meta, setMeta] = useState<FigureMetadata | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -201,7 +202,7 @@ export function FigureCard({ runId, item }: Props) {
         </div>
       ) : null}
 
-      {maximised ? <FigureOverlay runId={runId} meta={meta} onClose={restore} /> : null}
+      {maximised ? <FigureOverlay runId={runId} runName={runName} meta={meta} onClose={restore} /> : null}
     </figure>
   )
 }

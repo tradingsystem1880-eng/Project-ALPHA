@@ -19,7 +19,10 @@ import type {
 } from '../api/types'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { requestResearchCase } from '../context/researchCase'
+import { Icon, type IconName } from '../shell/icons'
+import { profile as manifest } from '../shell/profiles'
 import { useActivityField } from '../state/activity'
+import { useSettings } from '../state/settings'
 import { Glossary } from './Glossary'
 import { governancePages } from './governanceModel'
 import { useLinkedProjectGate } from './useLinkedProjectGate'
@@ -39,8 +42,19 @@ function useRead<T>(read: () => Promise<T>): T | null {
   return value
 }
 
+const PAGE_ICON: Readonly<Record<string, IconName>> = {
+  authority: 'shield',
+  touchid: 'lock',
+  gates: 'report',
+  overrides: 'report',
+  providers: 'data',
+  storage: 'data',
+  glossary: 'doc',
+}
+
 /** The page tree and the current page. */
 function GovernancePages() {
+  const { profile } = useSettings()
   const gate = useLinkedProjectGate()
   const watermark = useSelectedRunWatermark()
   const connection = useActivityField('connection')
@@ -60,6 +74,7 @@ function GovernancePages() {
     gate,
     watermark,
     connection: String(connection),
+    profile,
   })
   const current = pages.find((item) => item.id === pageId) ?? pages[0]
 
@@ -74,6 +89,7 @@ function GovernancePages() {
                 className={`tree-leaf${item.id === current.id ? ' active' : ''}`}
                 onClick={() => setPageId(item.id)}
               >
+                <Icon name={PAGE_ICON[item.id] ?? 'doc'} size={12} />
                 {item.label}
               </button>
             </li>
@@ -81,16 +97,24 @@ function GovernancePages() {
         </ul>
       </nav>
       <section className="governance-page" aria-label={current.label} tabIndex={0}>
-        <h2>{current.label}</h2>
+        <h2>{current.id === 'glossary' ? `Glossary — ${manifest(profile).label} profile` : current.label}</h2>
         {current.id === 'glossary' ? (
           <Glossary />
         ) : current.rows.length ? (
           <table className="blotter governance-table">
+            <thead>
+              <tr>
+                <th scope="col">Item</th>
+                <th scope="col">State</th>
+                <th scope="col">Detail</th>
+              </tr>
+            </thead>
             <tbody>
               {current.rows.map((row) => (
                 <tr key={`${row.label}:${row.value}`} data-tone={row.tone}>
                   <td className="k">{row.label}</td>
                   <td className={`tone-${row.tone}`}>{row.value}</td>
+                  <td className="muted">{row.detail ?? ''}</td>
                 </tr>
               ))}
             </tbody>
@@ -119,10 +143,6 @@ function GovernancePages() {
 export function GovernanceDocument(_props: PanelHandleProps) {
   return (
     <div className="panel governance-document">
-      <div className="panel-toolbar">
-        <span className="title">Governance</span>
-        <span className="muted">authority, gates, providers, storage — relayed, never derived</span>
-      </div>
       <GovernancePages />
     </div>
   )

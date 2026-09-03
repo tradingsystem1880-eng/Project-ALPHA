@@ -28,7 +28,9 @@ test('real backend captures a case and renders all material questions without ve
   })
 
   await page.goto('')
-  await page.getByRole('button', { name: 'New Idea' }).click()
+  // New Idea lives at the top of the Research menu (artboard: no titlebar button).
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'Research', exact: true }).click()
+  await page.getByRole('menu', { name: 'Research' }).getByRole('menuitem', { name: 'New Idea…' }).click()
   await page
     .getByLabel('Raw research idea')
     .fill('SPY may bounce after a point-in-time double bottom on equal daily sessions.')

@@ -2565,11 +2565,12 @@ test('both profiles gate windows, panels and providers without sending a profile
     requests.push(`${request.url()} ${request.postData() ?? ''} ${JSON.stringify(request.headers())}`)
   })
   const chip = page.getByRole('toolbar', { name: 'Terminal toolbar' }).getByLabel('Symbol, venue and timeframe')
-  await expect(chip).toContainText('XRP/USDT')
+  // The chip spells the pair the artboard way, with its venue and the timeframe.
+  await expect(chip).toHaveText(/XRPUSDT.*Binance.*D1/)
   await switchProfile(page, 'equities')
   // A crypto pair does not survive the switch: the equities default takes its place.
   await expect(chip).toContainText('AAPL')
-  await expect(chip).not.toContainText('XRP/USDT')
+  await expect(chip).not.toContainText('XRPUSDT')
   await openDocument(page, 'Options Calculator')
   await page.getByRole('menubar').getByRole('menuitem', { name: 'View', exact: true }).click()
   const view = page.getByRole('menu', { name: 'View' })
@@ -2592,8 +2593,11 @@ test('the status bar tells the truth about the SSD and paper routing', async ({ 
   await expect(ssd).toHaveText('Expansion SSD not mounted')
   await expect(ssd).toHaveClass(/tone-warn/)
   await expect(bar.locator('.status-segment--paper')).toHaveText('Paper only · no live routing')
-  await expect(bar.locator('.status-segment--clock')).toHaveText(/\d{2}:\d{2}:\d{2} UTC/)
-  await expect(bar.locator('.status-segment--ohlc')).toHaveText('O — H — L — C —')
+  await expect(bar.locator('.status-segment--help')).toHaveText('For Help, press F1')
+  await expect(bar.locator('.status-segment--profile')).toHaveText('Profile: Crypto')
+  await expect(bar.locator('.status-segment--clock')).toHaveText(/\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/)
+  await expect(bar.locator('.status-segment--ohlc')).toHaveText('O: — H: — L: — C: — V: —')
+  await expect(bar.locator('.status-segment--bars')).toHaveText(/\d+ \/ \d+ bars/)
 })
 
 test('Market Watch reads red/green and never invents a price', async ({ page }) => {
@@ -2606,7 +2610,7 @@ test('Market Watch reads red/green and never invents a price', async ({ page }) 
   const btc = table.getByRole('row').filter({ hasText: 'BTCUSDT' })
   await expect(btc.getByRole('cell').nth(1)).toHaveText('Binance')
   await expect(btc.getByRole('cell').nth(3)).toHaveText('+10.00%')
-  await expect(btc.getByRole('cell').nth(4)).toHaveText('2023-11-15')
+  await expect(btc.getByRole('cell').nth(4)).toHaveAttribute('title', 'last stored bar 2023-11-15')
   await expect(btc).toHaveClass(/tone-up/)
   await expect(btc).toHaveClass(/stale/)
   const eth = table.getByRole('row').filter({ hasText: 'ETHUSDT' })
@@ -2640,7 +2644,7 @@ test('Market Watch Live is opt-in, quotes each pair from its own venue, and fall
   })
   const table = page.getByRole('table', { name: 'Market Watch' })
   const btc = table.getByRole('row').filter({ hasText: 'BTCUSDT' })
-  await expect(btc.getByRole('cell').nth(4)).toHaveText('2023-11-15')
+  await expect(btc.getByRole('cell').nth(4)).toHaveAttribute('title', 'last stored bar 2023-11-15')
   expect(tickerRequests).toEqual([])
   await page.getByRole('checkbox', { name: 'Live' }).check()
   await expect(btc.getByRole('cell').nth(2)).toHaveText('112.5')
@@ -2649,11 +2653,11 @@ test('Market Watch Live is opt-in, quotes each pair from its own venue, and fall
   // ETH's venue answered nothing: the stored close and its date stay, dated.
   const eth = table.getByRole('row').filter({ hasText: 'ETHUSDT' })
   await expect(eth.getByRole('cell').nth(2)).toHaveText('45')
-  await expect(eth.getByRole('cell').nth(4)).toHaveText('2023-11-15')
+  await expect(eth.getByRole('cell').nth(4)).toHaveAttribute('title', 'last stored bar 2023-11-15')
   expect(tickerRequests.every((url) => url.includes('exchange=binance'))).toBe(true)
   expect(tickerRequests.some((url) => url.includes('symbol=BTC%2FUSDT'))).toBe(true)
   await page.getByRole('checkbox', { name: 'Live' }).uncheck()
-  await expect(btc.getByRole('cell').nth(4)).toHaveText('2023-11-15')
+  await expect(btc.getByRole('cell').nth(4)).toHaveAttribute('title', 'last stored bar 2023-11-15')
 })
 
 test('Research Cockpit captures an idea through the bounded REST surface', async ({ page }) => {
@@ -2715,29 +2719,36 @@ test('a research decision requires fresh Touch ID and sends no caller actor', as
   expect(challenge).not.toHaveProperty('actor')
 })
 
+/** The View menu's Guided/Advanced check items (artboard: no toolbar toggle). */
+async function openViewMenu(page: Page) {
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'View', exact: true }).click()
+  return page.getByRole('menu', { name: 'View' })
+}
+
 test('guided mode defaults and advanced detail is remembered only for its project', async ({ page }) => {
   await preparePage(page)
   await page.getByRole('tab', { name: 'Backlog', exact: true }).click()
   await page.getByRole('button', { name: new RegExp(RESEARCH_CASE.project_name) }).click()
-  const guided = page.getByRole('button', { name: 'Guided', exact: true })
-  const advanced = page.getByRole('button', { name: 'Advanced', exact: true })
-  await expect(guided).toHaveAttribute('aria-pressed', 'true')
-  await advanced.click()
-  await expect(advanced).toHaveAttribute('aria-pressed', 'true')
+  let view = await openViewMenu(page)
+  await expect(view.getByRole('menuitemcheckbox', { name: 'Guided', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await view.getByRole('menuitemcheckbox', { name: 'Advanced', exact: true }).click()
+  view = await openViewMenu(page)
+  await expect(view.getByRole('menuitemcheckbox', { name: 'Advanced', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await page.keyboard.press('Escape')
 
   await page.locator('.context-chip').click()
   await page.getByPlaceholder('project id').fill('')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Guided', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  )
+  view = await openViewMenu(page)
+  await expect(view.getByRole('menuitemcheckbox', { name: 'Guided', exact: true })).toHaveAttribute('aria-checked', 'true')
+  // Advanced needs a linked project: without one it is offered disabled, never silently applied.
+  await expect(view.getByRole('menuitemcheckbox', { name: 'Advanced', exact: true })).toBeDisabled()
+  await page.keyboard.press('Escape')
   await page.getByRole('tab', { name: 'Backlog', exact: true }).click()
   await page.getByRole('button', { name: new RegExp(RESEARCH_CASE.project_name) }).click()
-  await expect(page.getByRole('button', { name: 'Advanced', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  )
+  view = await openViewMenu(page)
+  await expect(view.getByRole('menuitemcheckbox', { name: 'Advanced', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await page.keyboard.press('Escape')
 })
 
 test('Research Cockpit teaches the bounded terminal Gate Packet without upgrading evidence', async ({ page }) => {
@@ -2830,8 +2841,8 @@ test('research workflow links the backlog, cockpit, evidence, and Codex panels',
   await page.getByRole('button', { name: /cp_f+/ }).click()
   await expect(page.getByText('"packet_schema": "ResearchContextPacketV1"')).toBeVisible()
 
-  // The Research data tab of the Data Manager dock serves registered refs with audit badges.
-  await page.getByRole('tab', { name: 'Research Data', exact: true }).click()
+  // The Quality tab of the Data Manager dock serves registered refs with audit badges.
+  await page.getByRole('tab', { name: 'Quality', exact: true }).click()
   await expect(page.getByText('1 LIMITING', { exact: true })).toBeVisible()
   await expect(page.getByText('RESEARCH ONLY', { exact: true })).toBeVisible()
   await expect(page.getByText(/snapshot snap1 · manifest/)).toBeVisible()
@@ -2950,7 +2961,9 @@ export function registerWorkstationFeatureTests(): void {
 test('New Idea opens natural-language capture with zero trading-rule inputs', async ({ page }) => {
   await preparePage(page)
 
-  await page.getByRole('button', { name: 'New Idea' }).click()
+  // New Idea lives at the top of the Research menu (artboard: no titlebar button).
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'Research', exact: true }).click()
+  await page.getByRole('menu', { name: 'Research' }).getByRole('menuitem', { name: 'New Idea…' }).click()
   await expect(page.getByRole('tab', { name: 'Research', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
@@ -3009,7 +3022,7 @@ test('running jobs expose exact runtime, bounded ETA, progress, and live output'
   // Jobs sit in the Toolbox under every document; its tab expands the collapsed strip.
   await page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab', { name: 'Jobs' }).click()
 
-  const row = page.getByRole('row').filter({ hasText: 'alpha forecast eval AMZN' })
+  const row = page.getByRole('row').filter({ hasText: 'forecast eval AMZN' })
   const cells = row.getByRole('cell')
   await expect(cells.nth(3)).toHaveText(/2m 0\ds/) // Elapsed
   await expect(cells.nth(4)).toHaveText('~3 min') // ETA
@@ -3078,7 +3091,7 @@ test('causal chart paginates evidence, selects an event, and exports exact OHLCV
   await openHeavyPrice(page)
 
   await expect(page.getByLabel('Price').getByText('205 bars', { exact: true })).toBeVisible()
-  await expect(page.locator('.status-segment--bars')).toHaveText('205 bars')
+  await expect(page.locator('.status-segment--bars')).toHaveText('205 / 205 bars')
   await expect(page.getByText(/1–80 \/ 91 RETURNED EVENTS/)).toBeVisible()
   await expect(page.getByText(/BACKEND PROJECTION TRUNCATED · MORE TRACE EVENTS EXIST/)).toBeVisible()
   await page.getByRole('button', { name: 'Next trace page' }).click()
@@ -3204,7 +3217,12 @@ test('a figure maximises into a dialog with Save PNG, Save SVG, Copy and Esc', a
   await page.keyboard.press('Tab')
   await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused()
   await page.keyboard.press('Tab')
+  // Artboard 3: zoom follows Close; out/fit are disabled until zoomed, so the trap skips them.
+  await expect(dialog.getByRole('button', { name: 'Zoom in' })).toBeFocused()
+  await page.keyboard.press('Tab')
   await expect(dialog.getByRole('link', { name: 'Save PNG' })).toBeFocused()
+  await expect(dialog).toContainText('(maximised)')
+  await expect(dialog).toContainText(`Esc restores · run ${LIBRARY_RUN.run_id.slice(0, 8)} · UTC`)
   await expect(dialog.getByRole('link', { name: 'Save PNG' })).toHaveAttribute(
     'download',
     'abcdef01-equity_curve.png',
@@ -3240,8 +3258,13 @@ test('Phase 3 acceptance: terminal chrome on every document, no hazard stripe, f
     await expect(toolbar.getByRole('button', { name: 'Governance' })).toBeVisible()
     await expect(page.getByRole('complementary', { name: 'Left docks' }).getByRole('region', { name: 'Market Watch' })).toBeVisible()
     await expect(page.getByRole('tree', { name: 'Navigator' })).toBeVisible()
-    await expect(page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab')).toHaveText(['Jobs', 'Trades', 'Backtests', 'Data pulls', 'Log'])
+    await expect(page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab')).toHaveText([/^Jobs/, 'Trades', 'Backtests', 'Data pulls', 'Log', 'Alerts'])
+    await expect(page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab', { name: 'Alerts' })).toBeDisabled()
     await expect(page.getByRole('complementary', { name: 'Data Manager' })).toBeVisible()
+    // Artboard chrome: window glyphs, dock pin/close, the document header's own close.
+    await expect(page.getByRole('group', { name: 'Window controls' }).getByRole('button')).toHaveCount(3)
+    await expect(page.getByRole('button', { name: 'Pin Market Watch' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: `Close ${item.title}` })).toBeVisible()
   }
   // The run leaf reads strategy · D1 · symbol · dates, with the id only as a mono sub-line.
   const row = backtestLeaf(page, LIBRARY_RUN.display_name)

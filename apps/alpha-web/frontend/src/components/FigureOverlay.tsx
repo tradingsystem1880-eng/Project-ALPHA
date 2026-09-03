@@ -1,23 +1,30 @@
 /**
- * A figure at full size, with the four things a trader does with it: Save PNG, Save SVG, Copy,
- * Close. A fixed overlay with role=dialog and a focus trap on its controls, following the
+ * A figure maximised (artboard 3-Chart-maximised): a header line `<figure> — <run> (maximised)`,
+ * a toolbar with Save PNG, Save SVG, Copy, Close and zoom, and `Esc restores · run … · UTC` on
+ * the right. A fixed overlay with role=dialog and a focus trap on its controls, following the
  * App.tsx palette precedent — the SPA has no dialog dependency. The image bytes are the
- * existing server-rendered ones; Copy fetches the PNG endpoint and hands the blob to the
- * Clipboard API, and says why when that API is not available.
+ * existing server-rendered ones (zoom scales the SVG in the browser, it draws nothing); Copy
+ * fetches the PNG endpoint and hands the blob to the Clipboard API, and says why when that API
+ * is not available.
  */
 
 import { useEffect, useRef, useState } from 'react'
 
 import { api } from '../api/client'
 import type { FigureMetadata } from '../api/types'
+import { Icon } from '../shell/icons'
 import { useSettings } from '../state/settings'
 import { copyCapability, exportNames, notesVisible } from './figureExport'
 
 interface Props {
   runId: string
+  /** The run's display name; the header falls back to the short id. */
+  runName?: string
   meta: FigureMetadata
   onClose: () => void
 }
+
+const ZOOMS = [1, 1.25, 1.5, 2, 3] as const
 
 function clipboardEnvironment() {
   const nav = typeof navigator === 'undefined' ? undefined : navigator
@@ -30,9 +37,10 @@ function clipboardEnvironment() {
 
 type CopyState = 'idle' | 'copying' | 'copied' | 'failed'
 
-export function FigureOverlay({ runId, meta, onClose }: Props) {
+export function FigureOverlay({ runId, runName, meta, onClose }: Props) {
   const { explain } = useSettings()
   const box = useRef<HTMLDivElement>(null)
+  const [zoom, setZoom] = useState(0)
   const [copy, setCopy] = useState<CopyState>('idle')
   const [copyError, setCopyError] = useState<string | null>(null)
   const capability = copyCapability(clipboardEnvironment())
@@ -98,34 +106,56 @@ export function FigureOverlay({ runId, meta, onClose }: Props) {
         aria-label={meta.title}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="figure-overlay-head">
-          <div className="figure-overlay-title">
-            <b>{meta.title}</b>
-            <span className="muted">{meta.subtitle}</span>
-          </div>
+        <div className="figure-overlay-head doc-head">
+          <span className="doc-head-title">
+            {meta.title} — {runName ?? `run ${runId.slice(0, 8)}`} (maximised)
+          </span>
+          <span className="spacer" />
+          <span className="muted figure-overlay-sub">{meta.subtitle}</span>
+        </div>
+        <div className="figure-overlay-bar" role="toolbar" aria-label="Figure toolbar">
           <div className="figure-actions">
-            <a className="btn ghost" href={png} download={names.png}>
+            <a className="btn" href={png} download={names.png}>
               Save PNG
             </a>
-            <a className="btn ghost" href={svg} download={names.svg}>
+            <a className="btn" href={svg} download={names.svg}>
               Save SVG
             </a>
             <button
               type="button"
-              className="btn ghost"
+              className="btn"
               disabled={!capability.enabled || copy === 'copying'}
               title={copyTitle}
               onClick={() => void doCopy()}
             >
               {copyLabel}
             </button>
-            <button type="button" className="btn ghost" onClick={onClose}>
+            <button type="button" className="btn" onClick={onClose}>
               Close
             </button>
+            <span className="toolbar-sep" />
+            <button type="button" className="btn glyph" aria-label="Zoom in" disabled={zoom >= ZOOMS.length - 1} onClick={() => setZoom((value) => Math.min(ZOOMS.length - 1, value + 1))}>
+              <Icon name="zoom-in" />
+            </button>
+            <button type="button" className="btn glyph" aria-label="Zoom out" disabled={zoom === 0} onClick={() => setZoom((value) => Math.max(0, value - 1))}>
+              <Icon name="zoom-out" />
+            </button>
+            <button type="button" className="btn glyph" aria-label="Fit" title="Fit the figure to the window" disabled={zoom === 0} onClick={() => setZoom(0)}>
+              <Icon name="crosshair" />
+            </button>
           </div>
+          <span className="spacer" />
+          <span className="muted figure-overlay-context">Esc restores · run {runId.slice(0, 8)} · UTC</span>
         </div>
         {copy === 'failed' && copyError ? <p className="figure-copy-error">{copyError}</p> : null}
-        <img className="figure-overlay-image" src={svg} alt={meta.alt_text} />
+        <div className="figure-overlay-scroll">
+          <img
+            className="figure-overlay-image"
+            src={svg}
+            alt={meta.alt_text}
+            style={zoom ? { width: `${ZOOMS[zoom] * 100}%`, maxHeight: 'none' } : undefined}
+          />
+        </div>
         <div className={notesVisible(explain) ? 'figure-explain' : 'figure-explain sr-only'}>
           <p className="figure-question">
             <span className="eyebrow">What this answers</span>

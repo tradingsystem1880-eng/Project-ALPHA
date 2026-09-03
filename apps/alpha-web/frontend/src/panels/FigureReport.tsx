@@ -10,11 +10,14 @@ import type { FigureCatalogue, FigureCatalogueItem } from '../api/types'
 
 export function FigureSection({
   runId,
+  runName,
   title,
   items,
   reason,
 }: {
   runId: string
+  /** The run's display name for the maximised header; the id when unknown. */
+  runName?: string
   title: string
   items: FigureCatalogueItem[]
   reason: string | null
@@ -24,7 +27,7 @@ export function FigureSection({
     <section className="figure-section" aria-label={title}>
       <h2>{title}</h2>
       {items.map((item) => (
-        <FigureCard key={item.figure_id} runId={runId} item={item} />
+        <FigureCard key={item.figure_id} runId={runId} runName={runName} item={item} />
       ))}
     </section>
   )
