@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from alpha_cli import paper_store
 from alpha_web import _candles
@@ -21,14 +21,22 @@ def candles(
     start: str | None = None,
     end: str | None = None,
     snapshot: str | None = None,
+    tail: int | None = Query(default=None, ge=1),
 ) -> dict[str, Any]:
-    """Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works)."""
+    """Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works).
+
+    ``tail`` keeps only the last N bars of the window (Market Watch reads the last two stored
+    bars without pulling the whole series).
+    """
     try:
         result = _candles.candles(
             symbol, data_dir=data_dir(), start=start, end=end, snapshot=snapshot
         )
         bars = result.get("bars")
         rows = bars if isinstance(bars, list) else []
+        if tail is not None:
+            rows = rows[-tail:]
+            result = {**result, "bars": rows}
         bar_times = sorted(
             int(row["t"])
             for row in rows

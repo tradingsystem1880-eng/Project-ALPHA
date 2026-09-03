@@ -282,3 +282,17 @@ rewrite under `gate.py ack`, docs, full gate.
   the dialog and `App.tsx`'s `StatusCluster`). README and `docs/ARCHITECTURE.md` no longer say "six-screen". The plan's
   `tier_impact` lists `quant` and `risk` because of T3 only; the attestations for that slice are
   bound to `d8a04c5`.
+* **Post-delivery real-backend smoke (2026-09-03)** — a scripted walk of every document in both
+  profiles against the owner's real store (not the mocked harness) found four defects the mocks
+  could not show, fixed in one follow-up commit outside the slice list: (1) Market Watch asked for
+  the last ten days of candles, so a pair whose stored history ends earlier (XRP/USDT ends
+  2026-06-30) read `—`; it now asks the new additive `GET /api/candles/{symbol}?tail=N` for the
+  last two stored bars and names that bar's date in the row title; (2) a crypto pair survived the
+  switch to the Equities profile, so the screener document asked finnhub about XRP/USDT — the
+  switch now drops a symbol of the other market for the profile's default (`symbolFitsProfile`,
+  shared with Market Watch); (3) MDI document tabs shrank and overlapped once ten documents were
+  open — they no longer shrink, the strip scrolls; (4) `openapi.json`/`generated.ts` regenerated
+  for the `tail` parameter. Cold candle reads cost ~1s per symbol (CLI subprocess, then cached on
+  parquet mtime), which is why a fresh terminal's chart reads `loading…` for a few seconds; not
+  changed.
+

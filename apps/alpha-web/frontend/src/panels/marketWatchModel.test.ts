@@ -18,11 +18,12 @@ describe('marketWatchModel', () => {
   })
 
   it('reads red/green from the last two bars', () => {
-    expect(watchRow('BTC/USDT', [bar(100), bar(101)])).toEqual({
+    expect(watchRow('BTC/USDT', [bar(100), bar(101, 1_700_000_000)])).toEqual({
       symbol: 'BTC/USDT',
       last: '101',
       change: '+1.00%',
       tone: 'up',
+      asOf: '2023-11-14',
     })
     expect(watchRow('BTC/USDT', [bar(100), bar(98)]).tone).toBe('down')
     expect(watchRow('BTC/USDT', [bar(100), bar(98)]).change).toBe('-2.00%')
@@ -30,11 +31,11 @@ describe('marketWatchModel', () => {
   })
 
   it('never invents a price', () => {
-    expect(watchRow('SOL/USDT', null)).toEqual({ symbol: 'SOL/USDT', last: '—', change: '—', tone: 'none' })
+    expect(watchRow('SOL/USDT', null)).toEqual({ symbol: 'SOL/USDT', last: '—', change: '—', tone: 'none', asOf: null })
     expect(watchRow('SOL/USDT', [])).toMatchObject({ last: '—', tone: 'none' })
     expect(watchRow('SOL/USDT', [bar(Number.NaN)])).toMatchObject({ last: '—', tone: 'none' })
     // One bar: a last price but no daily change to report.
-    expect(watchRow('SOL/USDT', [bar(12.5)])).toEqual({ symbol: 'SOL/USDT', last: '12.5', change: '—', tone: 'none' })
+    expect(watchRow('SOL/USDT', [bar(12.5)])).toEqual({ symbol: 'SOL/USDT', last: '12.5', change: '—', tone: 'none', asOf: '1970-01-01' })
     expect(watchRow('SOL/USDT', [bar(0), bar(1)]).change).toBe('—')
   })
 

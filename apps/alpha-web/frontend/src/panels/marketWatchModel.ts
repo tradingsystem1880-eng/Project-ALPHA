@@ -6,7 +6,7 @@
 import type { Candle } from '../api/types'
 import type { Profile } from '../state/settings'
 import { dockOf } from '../shell/documents'
-import { profile as manifest } from '../shell/profiles'
+import { profile as manifest, symbolFitsProfile } from '../shell/profiles'
 
 export type WatchTone = 'up' | 'down' | 'flat' | 'none'
 
@@ -15,21 +15,18 @@ export interface WatchRow {
   last: string
   change: string
   tone: WatchTone
+  /** UTC date of the last stored bar the price comes from; null when there is none. */
+  asOf: string | null
 }
 
 export const MARKET_WATCH_TABS = dockOf('MarketWatch').tabs
 
-/** Stored symbols carry no server `market`; the profile's symbol style is the only honest filter. */
-function matchesStyle(symbol: string, style: 'pair' | 'ticker'): boolean {
-  return style === 'pair' ? symbol.includes('/') : !symbol.includes('/')
-}
-
 export function watchSymbols(profileId: Profile, stored: readonly string[]): string[] {
-  const { starterWatchlist, symbolStyle } = manifest(profileId)
+  const { starterWatchlist } = manifest(profileId)
   const seen = new Set<string>()
   const rows: string[] = []
   for (const symbol of [...starterWatchlist, ...stored]) {
-    if (seen.has(symbol) || !matchesStyle(symbol, symbolStyle)) continue
+    if (seen.has(symbol) || !symbolFitsProfile(profileId, symbol)) continue
     seen.add(symbol)
     rows.push(symbol)
   }
@@ -42,18 +39,20 @@ function priceText(value: number): string {
 
 /** One row from the last two daily bars; anything missing is shown as missing. */
 export function watchRow(symbol: string, bars: readonly Candle[] | null | undefined): WatchRow {
-  const none: WatchRow = { symbol, last: '—', change: '—', tone: 'none' }
+  const none: WatchRow = { symbol, last: '—', change: '—', tone: 'none', asOf: null }
   if (!bars || bars.length === 0) return none
-  const last = bars[bars.length - 1].c
+  const lastBar = bars[bars.length - 1]
+  const last = lastBar.c
   if (!Number.isFinite(last)) return none
+  const asOf = new Date(lastBar.t * 1000).toISOString().slice(0, 10)
   const previous = bars.length > 1 ? bars[bars.length - 2].c : Number.NaN
   if (!Number.isFinite(previous) || previous === 0) {
-    return { symbol, last: priceText(last), change: '—', tone: 'none' }
+    return { symbol, last: priceText(last), change: '—', tone: 'none', asOf }
   }
   const pct = (last / previous - 1) * 100
   const tone: WatchTone = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat'
   const sign = pct > 0 ? '+' : ''
-  return { symbol, last: priceText(last), change: `${sign}${pct.toFixed(2)}%`, tone }
+  return { symbol, last: priceText(last), change: `${sign}${pct.toFixed(2)}%`, tone, asOf }
 }
 
 export function watchRows(

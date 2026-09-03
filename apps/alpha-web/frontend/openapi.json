@@ -19426,7 +19426,7 @@
     },
     "/api/candles/{symbol}": {
       "get": {
-        "description": "Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works).",
+        "description": "Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works).\n\n``tail`` keeps only the last N bars of the window (Market Watch reads the last two stored\nbars without pulling the whole series).",
         "operationId": "candles_api_candles__symbol__get",
         "parameters": [
           {
@@ -19484,6 +19484,23 @@
                 }
               ],
               "title": "Snapshot"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tail",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tail"
             }
           }
         ],

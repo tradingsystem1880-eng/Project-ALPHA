@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { dockOf, documentOf } from './documents'
-import { MARKET_NEUTRAL_WINDOWS, PROFILES, profile, showsWindow } from './profiles'
+import { MARKET_NEUTRAL_WINDOWS, PROFILES, profile, showsWindow, symbolFitsProfile } from './profiles'
 import { pullDefaults, starterSymbols } from '../panels/dataManagerModel'
 
 function deepFrozen(value: unknown): boolean {
@@ -80,3 +80,14 @@ describe('PROFILES', () => {
     expect(() => profile('futures' as 'crypto')).toThrow(/unknown profile/)
   })
 })
+
+describe('symbolFitsProfile', () => {
+  it('reads the fit from the symbol style alone', () => {
+    expect(symbolFitsProfile('crypto', 'XRP/USDT')).toBe(true)
+    expect(symbolFitsProfile('crypto', 'AAPL')).toBe(false)
+    expect(symbolFitsProfile('equities', 'AAPL')).toBe(true)
+    expect(symbolFitsProfile('equities', 'BTC-USD')).toBe(true)
+    expect(symbolFitsProfile('equities', 'XRP/USDT')).toBe(false)
+  })
+})
+

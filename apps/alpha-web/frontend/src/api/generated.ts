@@ -56,6 +56,9 @@ export interface paths {
         /**
          * Candles
          * @description Point-in-time candles for ``symbol`` (``{symbol:path}`` so ``BTC/USD`` works).
+         *
+         *     ``tail`` keeps only the last N bars of the window (Market Watch reads the last two stored
+         *     bars without pulling the whole series).
          */
         get: operations["candles_api_candles__symbol__get"];
         put?: never;
@@ -10247,6 +10250,7 @@ export interface operations {
                 start?: string | null;
                 end?: string | null;
                 snapshot?: string | null;
+                tail?: number | null;
             };
             header?: never;
             path: {

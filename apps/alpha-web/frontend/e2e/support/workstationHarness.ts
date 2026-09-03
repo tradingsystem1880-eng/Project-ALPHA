@@ -2555,7 +2555,12 @@ test('both profiles gate windows, panels and providers without sending a profile
   page.on('request', (request) => {
     requests.push(`${request.url()} ${request.postData() ?? ''} ${JSON.stringify(request.headers())}`)
   })
+  const chip = page.getByRole('toolbar', { name: 'Terminal toolbar' }).getByLabel('Symbol, venue and timeframe')
+  await expect(chip).toContainText('XRP/USDT')
   await switchProfile(page, 'equities')
+  // A crypto pair does not survive the switch: the equities default takes its place.
+  await expect(chip).toContainText('AAPL')
+  await expect(chip).not.toContainText('XRP/USDT')
   await openDocument(page, 'Options Calculator')
   await page.getByRole('menubar').getByRole('menuitem', { name: 'View', exact: true }).click()
   const view = page.getByRole('menu', { name: 'View' })

@@ -6,7 +6,7 @@
  * document mounts, so nothing polls behind a hidden tab.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { CommandPalette } from './components/CommandPalette'
 import { Toasts } from './components/Toasts'
@@ -30,7 +30,7 @@ import {
   type MdiState,
 } from './shell/mdiModel'
 import { PanelHost } from './shell/PanelHost'
-import { profile as manifest, showsWindow, type WindowId } from './shell/profiles'
+import { profile as manifest, showsWindow, symbolFitsProfile, type WindowId } from './shell/profiles'
 import { StatusBar } from './shell/StatusBar'
 import { Toolbar } from './shell/Toolbar'
 import { venueLabel, windowTitle } from './shell/toolbarModel'
@@ -89,6 +89,8 @@ function WorkstationApp() {
   const [focus, setFocus] = useState<PaneFocus | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [rightDock, setRightDock] = useState(() => localStorage.getItem(RIGHT_DOCK_KEY) !== 'closed')
+  const symbolRef = useRef(linked.symbol)
+  symbolRef.current = linked.symbol
 
   useEffect(() => {
     initActivity()
@@ -107,7 +109,13 @@ function WorkstationApp() {
   }, [rightDock])
   useEffect(() => {
     document.documentElement.setAttribute('data-profile', profile)
-    // A profile switch closes the documents it does not show; nothing is sent to the server.
+    // A profile switch closes the documents it does not show and drops a symbol of the other
+    // market for the profile's default (an equities screener asked about XRP/USDT fails loud);
+    // nothing is sent to the server.
+    const symbol = symbolRef.current
+    if (symbol && !symbolFitsProfile(profile, symbol)) {
+      setLinked({ symbol: manifest(profile).defaultSymbol })
+    }
     setMdi((current) => {
       let next: MdiState = current
       for (const item of current.documents) {

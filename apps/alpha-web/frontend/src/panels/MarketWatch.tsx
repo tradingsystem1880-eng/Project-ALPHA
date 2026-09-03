@@ -1,6 +1,8 @@
 // Market Watch dock (spec 2026-09-01 §4.2 item 4): symbol · last · daily %, red/green, for the
 // profile's watchlist and stored pairs. Prices are the last two daily bars of the candles
-// projection; a symbol with no stored bars shows `—`. Clicking a row sets the linked symbol.
+// projection (`?tail=2`, so a pair whose history ends months ago still reads its last close);
+// the row's title names that bar's date. A symbol with no stored bars shows `—`. Clicking a row
+// sets the linked symbol.
 
 import { useEffect, useState } from 'react'
 
@@ -9,12 +11,6 @@ import type { Candle } from '../api/types'
 import { setLinked, useLinked } from '../context/linked'
 import { useSettings } from '../state/settings'
 import { MARKET_WATCH_TABS, watchRows, watchSymbols } from './marketWatchModel'
-
-const RECENT_DAYS = 10
-
-function recentStart(): string {
-  return new Date(Date.now() - RECENT_DAYS * 86_400_000).toISOString().slice(0, 10)
-}
 
 export function MarketWatch() {
   const { profile } = useSettings()
@@ -38,10 +34,9 @@ export function MarketWatch() {
   const symbolKey = watchSymbols(profile, stored).join(' ')
   useEffect(() => {
     let live = true
-    const start = recentStart()
     for (const symbol of symbolKey.split(' ').filter(Boolean)) {
       api
-        .candles(symbol, `?start=${start}`)
+        .candles(symbol, '?tail=2')
         .then((result) => live && setQuotes((current) => ({ ...current, [symbol]: result.bars })))
         .catch(() => live && setQuotes((current) => ({ ...current, [symbol]: null })))
     }
@@ -82,6 +77,7 @@ export function MarketWatch() {
               <tr
                 key={row.symbol}
                 className={`watch-row tone-${row.tone}${linked.symbol === row.symbol ? ' active' : ''}`}
+                title={row.asOf ? `last stored bar ${row.asOf}` : 'no stored bars'}
               >
                 <td className="mono">
                   <button

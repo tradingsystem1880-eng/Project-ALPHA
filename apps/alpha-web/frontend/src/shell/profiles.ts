@@ -108,3 +108,8 @@ export function profile(id: Profile): ProfileManifest {
 export function showsWindow(id: Profile, window: WindowId): boolean {
   return profile(id).windows.includes(window)
 }
+
+/** Stored symbols carry no server `market`; a profile's symbol style is the only honest fit test. */
+export function symbolFitsProfile(id: Profile, symbol: string): boolean {
+  return profile(id).symbolStyle === 'pair' ? symbol.includes('/') : !symbol.includes('/')
+}
