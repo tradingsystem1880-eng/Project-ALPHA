@@ -11,6 +11,9 @@ import type {
 } from '../api/types'
 import { storageRow } from './dataManagerModel'
 import type { StrategyGateLock } from './researchGateModel'
+import { GLOSSARY, type GlossaryEntry } from '../explain/glossary'
+import type { Profile } from '../state/settings'
+import { profile as manifest } from '../shell/profiles'
 
 /** The sentences that were hazard stripes on Research, Build and Operate — verbatim. */
 export const GOVERNANCE_SENTENCES = {
@@ -154,4 +157,12 @@ export function governancePages(input: GovernanceInput): GovernancePage[] {
     ]),
     page('glossary', 'Glossary', []),
   ]
+}
+
+/** Glossary entries for a profile: its tagged terms plus every untagged term, sorted by name. */
+export function glossaryEntries(profile: Profile): [string, GlossaryEntry][] {
+  const tags = new Set(manifest(profile).glossaryTags)
+  return Object.entries(GLOSSARY)
+    .filter(([, entry]) => !entry.tags || entry.tags.some((tag) => tags.has(tag)))
+    .sort((a, b) => a[1].name.localeCompare(b[1].name))
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { GOVERNANCE_SENTENCES, governancePages, type GovernanceInput } from './governanceModel'
+import { GOVERNANCE_SENTENCES, glossaryEntries, governancePages, type GovernanceInput } from './governanceModel'
 
 const EMPTY: GovernanceInput = {
   system: null,
@@ -139,5 +139,22 @@ describe('governancePages', () => {
     expect(rows).toEqual([
       { label: 'Expansion SSD not mounted', value: 'Reconnect the Expansion volume, then refresh.', tone: 'warn' },
     ])
+  })
+})
+
+describe('glossaryEntries', () => {
+  it('filters the glossary by the profile tags and keeps untagged terms in both', () => {
+    const crypto = glossaryEntries('crypto').map(([key]) => key)
+    const equities = glossaryEntries('equities').map(([key]) => key)
+    expect(crypto).toContain('funding_rate')
+    expect(crypto).not.toContain('ex_dividend')
+    expect(equities).toContain('ex_dividend')
+    expect(equities).not.toContain('funding_rate')
+    for (const key of ['sharpe', 'max_drawdown', 'pbo']) {
+      expect(crypto).toContain(key)
+      expect(equities).toContain(key)
+    }
+    const names = glossaryEntries('crypto').map(([, entry]) => entry.name)
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
   })
 })

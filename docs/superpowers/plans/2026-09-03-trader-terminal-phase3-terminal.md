@@ -104,7 +104,7 @@
       "expected": "marketWatchModel rows = profile watchlist ∪ stored pairs (de-duplicated, watchlist first) with last/daily% from the candles projection (up/down/flat tones; missing or non-finite -> '—', never 0.00), tabs Symbols · Details · Data; navigatorModel builds the six groups (Strategies · Backtests · Research cases · Data · Scripts · Paper sandbox), files runs by the server `market` field only, always shows `unknown` under a labelled leaf, honours showAll, lists venues + Expansion SSD from storageRow; governanceModel's Glossary page filters by PROFILES[profile].glossaryTags with untagged entries in both; MarketWatch.tsx and Navigator.tsx render them.",
       "rollback": "Delete the two models/panels and restore the Glossary page.",
       "files": ["apps/alpha-web/frontend/src/panels/marketWatchModel.ts", "apps/alpha-web/frontend/src/panels/marketWatchModel.test.ts", "apps/alpha-web/frontend/src/panels/MarketWatch.tsx", "apps/alpha-web/frontend/src/panels/navigatorModel.ts", "apps/alpha-web/frontend/src/panels/navigatorModel.test.ts", "apps/alpha-web/frontend/src/panels/Navigator.tsx", "apps/alpha-web/frontend/src/panels/governanceModel.ts", "apps/alpha-web/frontend/src/panels/governanceModel.test.ts", "apps/alpha-web/frontend/src/explain/glossary.ts", "apps/alpha-web/frontend/vitest.config.ts"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "T7a terminal shell in App.tsx + Playwright harness rewritten to documents and docks",
@@ -242,3 +242,11 @@ rewrite under `gate.py ack`, docs, full gate.
   when the served catalog gains or loses a group, so the runtime throw can never be reached by a
   CLI change alone. The venue in the title bar comes from the profile manifest (`venueLabel`)
   because the linked context carries symbol and timeframe but no venue.
+* **T6** — stored symbols (`/api/symbols`) carry no server `market`, so Market Watch keeps the
+  other market out by the profile's symbol style (pair vs ticker), the same pair convention the
+  server's own fallback uses; runs and projects are still filed by the server field only. The
+  glossary had no market-specific term to filter, so three tagged entries were added (funding rate,
+  open interest — crypto; ex-dividend date — equities) and `glossaryEntries(profile)` lives in
+  `governanceModel`; the Glossary panel reads it. `MarketWatch.tsx` and `Navigator.tsx` exist but
+  are not mounted until T7a. The post-edit hook's ESLint lint of `.tsx` files reports a missing
+  `eslint.config.*` (the frontend lints with oxlint, which passes) — noted for the retrospective.

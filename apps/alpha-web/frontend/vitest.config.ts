@@ -27,6 +27,8 @@ export default defineConfig({
         'src/panels/reportModel.ts',
         'src/components/figureExport.ts',
         'src/panels/governanceModel.ts',
+        'src/panels/marketWatchModel.ts',
+        'src/panels/navigatorModel.ts',
         'src/shell/statusModel.ts',
         'src/shell/profiles.ts',
         'src/shell/documents.ts',

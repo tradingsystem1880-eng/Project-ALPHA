@@ -2,19 +2,21 @@
 
 import { useMemo, useState } from 'react'
 
-import { GLOSSARY } from '../explain/glossary'
+import { useSettings } from '../state/settings'
+import { glossaryEntries } from './governanceModel'
 
 export function Glossary() {
+  const { profile } = useSettings()
   const [query, setQuery] = useState('')
   const entries = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const all = Object.entries(GLOSSARY).sort((a, b) => a[1].name.localeCompare(b[1].name))
+    const all = glossaryEntries(profile)
     if (!q) return all
     return all.filter(
       ([key, e]) =>
         key.includes(q) || e.name.toLowerCase().includes(q) || e.long.toLowerCase().includes(q),
     )
-  }, [query])
+  }, [profile, query])
 
   return (
     <div className="panel-pad glossary">
