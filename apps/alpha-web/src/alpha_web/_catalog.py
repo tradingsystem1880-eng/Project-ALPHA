@@ -160,6 +160,16 @@ def first_bar(*, data_dir: Path, symbol: str, exchange: str) -> dict[str, str]:
     return result
 
 
+def ticker(*, data_dir: Path, symbol: str, exchange: str) -> dict[str, object]:
+    """SYMBOL's current last-trade price on EXCHANGE (one public ccxt read; never stored)."""
+    result: dict[str, object] = _run_json(
+        ["data", "ticker", symbol, "--source", "ccxt", "--exchange", exchange, "--json"],
+        data_dir=data_dir,
+        timeout_seconds=20.0,
+    )
+    return result
+
+
 def providers(*, data_dir: Path) -> list[dict[str, Any]]:
     """Provider capability/configuration registry (fresh so credential presence can change)."""
     result: list[dict[str, Any]] = _run_json(["info", "providers", "--json"], data_dir=data_dir)

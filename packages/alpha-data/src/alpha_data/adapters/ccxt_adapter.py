@@ -203,6 +203,27 @@ class CCXTAdapter:
             raise DataError(f"ccxt returned no data for {symbol} {start}..{end}")
         return parse_ccxt_ohlcv(clipped, symbol)
 
+    def ticker(self, symbol: str) -> tuple[float, datetime]:
+        """The venue's current last-trade price for SYMBOL and its UTC timestamp.
+
+        A public, key-free quote read for display only: it is never stored and never becomes
+        a data authority. Fails loud on an unknown pair, a missing price, or a missing
+        timestamp rather than inventing either.
+        """
+        import ccxt  # noqa: PLC0415
+
+        ex = getattr(ccxt, self._exchange)({"enableRateLimit": True})
+        if symbol not in ex.load_markets():
+            raise DataError(f"{self.name} lists no market {symbol}")
+        record = ex.fetch_ticker(symbol)
+        last = record.get("last") if isinstance(record, dict) else None
+        stamp = record.get("timestamp") if isinstance(record, dict) else None
+        if not isinstance(last, (int, float)) or isinstance(last, bool) or last <= 0:
+            raise DataError(f"{self.name} returned no last price for {symbol}")
+        if not isinstance(stamp, (int, float)) or isinstance(stamp, bool) or stamp <= 0:
+            raise DataError(f"{self.name} returned no timestamp for {symbol}")
+        return float(last), datetime.fromtimestamp(stamp / 1000, tz=UTC)
+
     def first_bar(self, symbol: str, *, timeframe: str = "1d") -> datetime:
         """UTC open of the earliest daily bar the exchange serves for SYMBOL.
 

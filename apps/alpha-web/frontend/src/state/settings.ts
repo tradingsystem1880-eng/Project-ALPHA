@@ -17,6 +17,8 @@ export interface Settings {
   explain: ExplainMode
   profile: Profile
   projectModes: Record<string, WorkspaceMode>
+  /** Market Watch polls public venue tickers (display only) while true; off by default. */
+  liveTicker: boolean
 }
 
 const STORAGE_KEY = 'alpha.settings'
@@ -25,6 +27,7 @@ const DEFAULTS: Settings = {
   explain: 'narrative',
   profile: 'crypto',
   projectModes: {},
+  liveTicker: false,
 }
 
 let state: Settings = DEFAULTS
@@ -39,6 +42,7 @@ export function parseSettings(raw: string | null): Settings {
       density: parsed.density === 'compact' ? 'compact' : 'comfortable',
       explain: parsed.explain === 'terse' ? 'terse' : 'narrative',
       profile: parsed.profile === 'equities' ? 'equities' : 'crypto',
+      liveTicker: parsed.liveTicker === true,
       projectModes: Object.fromEntries(
         Object.entries(parsed.projectModes ?? {}).filter(
           (entry): entry is [string, WorkspaceMode] =>

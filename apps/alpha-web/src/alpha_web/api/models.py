@@ -810,6 +810,15 @@ class FirstBar(StrictModel):
     timeframe: str
 
 
+class Ticker(StrictModel):
+    """A displayed public last-trade quote; never stored, never a data authority."""
+
+    symbol: str
+    exchange: str
+    last: float
+    ts: str
+
+
 class JobStatus(StrictModel):
     job_id: str
     status: str

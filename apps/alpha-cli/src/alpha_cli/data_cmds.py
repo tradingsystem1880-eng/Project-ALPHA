@@ -192,6 +192,33 @@ def first_bar(
         typer.echo(f"{symbol} on {exchange}: first daily bar {first.date()}")
 
 
+@data_app.command("ticker")
+def ticker(
+    symbol: str,
+    source: str = "ccxt",
+    exchange: str = typer.Option(_DEFAULT_CCXT_EXCHANGE, help="CCXT exchange: coinbase or binance"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Report SYMBOL's current last-trade price on a CCXT venue (read-only; needs network)."""
+    if source != "ccxt":
+        raise typer.BadParameter(
+            "ticker is available only for --source ccxt", param_hint="--source"
+        )
+    symbol = normalize_symbol(symbol, source)
+    probe = getattr(_adapter(source, exchange), "ticker", None)
+    if probe is None:
+        raise typer.BadParameter(f"the {source} adapter cannot report a ticker")
+    try:
+        last, stamp = probe(symbol)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_out:
+        payload = {"symbol": symbol, "exchange": exchange, "last": last, "ts": stamp.isoformat()}
+        typer.echo(json.dumps(payload, sort_keys=True))
+    else:
+        typer.echo(f"{symbol} on {exchange}: last {last} at {stamp.isoformat()}")
+
+
 @data_app.command()
 def pull(
     symbol: str,

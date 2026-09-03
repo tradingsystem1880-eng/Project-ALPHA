@@ -18918,6 +18918,36 @@
         "title": "SystemStatus",
         "type": "object"
       },
+      "Ticker": {
+        "additionalProperties": false,
+        "description": "A displayed public last-trade quote; never stored, never a data authority.",
+        "properties": {
+          "exchange": {
+            "title": "Exchange",
+            "type": "string"
+          },
+          "last": {
+            "title": "Last",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "exchange",
+          "last",
+          "ts"
+        ],
+        "title": "Ticker",
+        "type": "object"
+      },
       "VerifiedBlindSemanticReadV1": {
         "additionalProperties": false,
         "properties": {
@@ -20917,6 +20947,60 @@
           }
         },
         "summary": "First Bar",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/data/ticker": {
+      "get": {
+        "description": "SYMBOL's current last-trade price on EXCHANGE (relays ``alpha data ticker --json``).\n\nA displayed quote for Market Watch only: the web never stores it and it is never a\npoint-in-time series or research evidence.",
+        "operationId": "ticker_api_data_ticker_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exchange",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Exchange",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ticker"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Ticker",
         "tags": [
           "catalog"
         ]

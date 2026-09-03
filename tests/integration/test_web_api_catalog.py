@@ -84,3 +84,45 @@ def test_first_bar_endpoint_relays_the_cli_error_line_as_request_invalid(
     assert body["message"].startswith("Invalid value")
     assert "BASE/QUOTE" in body["message"]
     assert "Usage" not in body["message"]
+
+
+_TICKER = {
+    "symbol": "XRP/USDT",
+    "exchange": "binance",
+    "last": 2.914,
+    "ts": "2026-09-03T14:02:11+00:00",
+}
+
+
+def test_ticker_endpoint_relays_the_cli_quote(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[list[str]] = []
+
+    def project(args: list[str], **_: object) -> dict[str, object]:
+        calls.append(args)
+        return dict(_TICKER)
+
+    monkeypatch.setattr(_catalog, "_run_json", project)
+    response = _client(tmp_path, monkeypatch).get(
+        "/api/data/ticker", params={"symbol": "XRP/USDT", "exchange": "binance"}
+    )
+    assert response.status_code == 200
+    assert response.json() == _TICKER
+    assert calls == [
+        ["data", "ticker", "XRP/USDT", "--source", "ccxt", "--exchange", "binance", "--json"]
+    ]
+
+
+def test_ticker_endpoint_relays_the_cli_error_line_as_request_invalid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def project(args: list[str], **_: object) -> dict[str, object]:
+        raise RuntimeError("ccxt:binance lists no market NOPE/USDT")
+
+    monkeypatch.setattr(_catalog, "_run_json", project)
+    response = _client(tmp_path, monkeypatch).get(
+        "/api/data/ticker", params={"symbol": "NOPE/USDT", "exchange": "binance"}
+    )
+    assert response.status_code == 422
+    assert response.json()["message"] == "ccxt:binance lists no market NOPE/USDT"

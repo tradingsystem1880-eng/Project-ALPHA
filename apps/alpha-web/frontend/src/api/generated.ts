@@ -555,6 +555,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/data/ticker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ticker
+         * @description SYMBOL's current last-trade price on EXCHANGE (relays ``alpha data ticker --json``).
+         *
+         *     A displayed quote for Market Watch only: the web never stores it and it is never a
+         *     point-in-time series or research evidence.
+         */
+        get: operations["ticker_api_data_ticker_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/development/jobs": {
         parameters: {
             query?: never;
@@ -10029,6 +10052,20 @@ export interface components {
             /** Paper Enabled */
             paper_enabled: boolean;
         };
+        /**
+         * Ticker
+         * @description A displayed public last-trade quote; never stored, never a data authority.
+         */
+        Ticker: {
+            /** Exchange */
+            exchange: string;
+            /** Last */
+            last: number;
+            /** Symbol */
+            symbol: string;
+            /** Ts */
+            ts: string;
+        };
         /** VerifiedBlindSemanticReadV1 */
         VerifiedBlindSemanticReadV1: {
             /**
@@ -11260,6 +11297,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FirstBar"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    ticker_api_data_ticker_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                exchange: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ticker"];
                 };
             };
             /** @description Stable, redacted Workstation error */

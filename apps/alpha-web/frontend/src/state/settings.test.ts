@@ -8,6 +8,7 @@ const settings: Settings = {
   explain: 'narrative',
   profile: 'crypto',
   projectModes: { advanced_project: 'advanced' },
+  liveTicker: false,
 }
 
 describe('workspace detail mode', () => {
@@ -30,6 +31,8 @@ describe('profile setting', () => {
   it('defaults to crypto and falls back to it on garbage', () => {
     expect(parseSettings(null).profile).toBe('crypto')
     expect(parseSettings('{"profile":"equities"}').profile).toBe('equities')
+    expect(parseSettings('{"liveTicker":true}').liveTicker).toBe(true)
+    expect(parseSettings('{"liveTicker":"yes"}').liveTicker).toBe(false)
     expect(parseSettings('{"profile":"forex"}').profile).toBe('crypto')
     expect(parseSettings('not json').profile).toBe('crypto')
   })

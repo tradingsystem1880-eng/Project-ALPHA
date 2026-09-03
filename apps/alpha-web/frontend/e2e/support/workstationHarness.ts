@@ -1578,6 +1578,8 @@ interface MockOptions {
   figureCatalogue?: boolean
   /** Opt-in daily bars per symbol for the candles projection (Market Watch, Chart). */
   candles?: Record<string, components['schemas']['Candle'][]>
+  /** Opt-in public tickers keyed `SYMBOL@exchange`; a missing key answers 422 like the CLI. */
+  tickers?: Record<string, { last: number; ts: string }>
   /** Opt-in: the Expansion volume is not mounted. */
   storageUnmounted?: boolean
 }
@@ -2193,6 +2195,13 @@ function responseFor(route: Route, options: MockOptions): unknown {
     return FIGURE_META
   }
   if (url.pathname === '/api/symbols') return { symbols: Object.keys(options.candles ?? {}) }
+  if (url.pathname === '/api/data/ticker') {
+    const symbol = url.searchParams.get('symbol') ?? ''
+    const exchange = url.searchParams.get('exchange') ?? ''
+    const quote = options.tickers?.[`${symbol}@${exchange}`]
+    if (!quote) return undefined
+    return { symbol, exchange, last: quote.last, ts: quote.ts }
+  }
   if (url.pathname.startsWith('/api/candles/')) {
     const symbol = decodeURIComponent(url.pathname.slice('/api/candles/'.length))
     const bars = options.candles?.[symbol]
@@ -2593,16 +2602,58 @@ test('Market Watch reads red/green and never invents a price', async ({ page }) 
     candles: { 'BTC/USDT': [bar(1_700_000_000, 100), bar(1_700_086_400, 110)], 'ETH/USDT': [bar(1_700_000_000, 50), bar(1_700_086_400, 45)] },
   })
   const table = page.getByRole('table', { name: 'Market Watch' })
-  const btc = table.getByRole('row').filter({ hasText: 'BTC/USDT' })
-  await expect(btc.getByRole('cell').nth(2)).toHaveText('+10.00%')
+  // One row per stored pair on one venue, spelled the artboard way, dated by its last bar.
+  const btc = table.getByRole('row').filter({ hasText: 'BTCUSDT' })
+  await expect(btc.getByRole('cell').nth(1)).toHaveText('Binance')
+  await expect(btc.getByRole('cell').nth(3)).toHaveText('+10.00%')
+  await expect(btc.getByRole('cell').nth(4)).toHaveText('2023-11-15')
   await expect(btc).toHaveClass(/tone-up/)
-  const eth = table.getByRole('row').filter({ hasText: 'ETH/USDT' })
-  await expect(eth.getByRole('cell').nth(2)).toHaveText('-10.00%')
+  await expect(btc).toHaveClass(/stale/)
+  const eth = table.getByRole('row').filter({ hasText: 'ETHUSDT' })
+  await expect(eth.getByRole('cell').nth(3)).toHaveText('-10.00%')
   await expect(eth).toHaveClass(/tone-down/)
-  const sol = table.getByRole('row').filter({ hasText: 'SOL/USDT' })
+  const sol = table.getByRole('row').filter({ hasText: 'SOLUSDT' })
   await expect(sol.getByRole('cell').nth(1)).toHaveText('—')
   await expect(sol.getByRole('cell').nth(2)).toHaveText('—')
+  await expect(sol.getByRole('cell').nth(4)).toHaveText('—')
   await expect(sol).toHaveClass(/tone-none/)
+  // Details lists every stored quote of the selected base asset with its venue.
+  await btc.getByRole('button', { name: 'BTC/USDT' }).click()
+  await page.getByRole('tab', { name: 'Details', exact: true }).click()
+  const related = page.getByRole('table', { name: 'Stored quotes for the selected asset' })
+  await expect(related.getByRole('row').filter({ hasText: 'BTCUSDT' }).getByRole('cell').nth(1)).toHaveText('Binance')
+  await page.getByRole('tab', { name: 'Symbols', exact: true }).click()
+  // The add row opens the Data Manager on its symbol field.
+  await table.getByRole('button', { name: '+ click to add…' }).click()
+  await expect(page.locator('#data-manager-symbol')).toBeFocused()
+})
+
+test('Market Watch Live is opt-in, quotes each pair from its own venue, and falls back honestly', async ({ page }) => {
+  const bar = (t: number, c: number) => ({ t, o: c, h: c, l: c, c, v: 1 })
+  const tickerRequests: string[] = []
+  page.on('request', (request) => {
+    if (request.url().includes('/api/data/ticker')) tickerRequests.push(request.url())
+  })
+  await preparePage(page, {
+    candles: { 'BTC/USDT': [bar(1_700_000_000, 100), bar(1_700_086_400, 110)], 'ETH/USDT': [bar(1_700_000_000, 50), bar(1_700_086_400, 45)] },
+    tickers: { 'BTC/USDT@binance': { last: 112.5, ts: '2026-09-03T14:02:11+00:00' } },
+  })
+  const table = page.getByRole('table', { name: 'Market Watch' })
+  const btc = table.getByRole('row').filter({ hasText: 'BTCUSDT' })
+  await expect(btc.getByRole('cell').nth(4)).toHaveText('2023-11-15')
+  expect(tickerRequests).toEqual([])
+  await page.getByRole('checkbox', { name: 'Live' }).check()
+  await expect(btc.getByRole('cell').nth(2)).toHaveText('112.5')
+  await expect(btc.getByRole('cell').nth(4)).toHaveText('live')
+  await expect(btc).not.toHaveClass(/stale/)
+  // ETH's venue answered nothing: the stored close and its date stay, dated.
+  const eth = table.getByRole('row').filter({ hasText: 'ETHUSDT' })
+  await expect(eth.getByRole('cell').nth(2)).toHaveText('45')
+  await expect(eth.getByRole('cell').nth(4)).toHaveText('2023-11-15')
+  expect(tickerRequests.every((url) => url.includes('exchange=binance'))).toBe(true)
+  expect(tickerRequests.some((url) => url.includes('symbol=BTC%2FUSDT'))).toBe(true)
+  await page.getByRole('checkbox', { name: 'Live' }).uncheck()
+  await expect(btc.getByRole('cell').nth(4)).toHaveText('2023-11-15')
 })
 
 test('Research Cockpit captures an idea through the bounded REST surface', async ({ page }) => {
