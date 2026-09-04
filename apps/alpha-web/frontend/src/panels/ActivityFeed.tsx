@@ -3,7 +3,7 @@
 
 
 import { Placeholder } from '../components/Placeholder'
-import { useActivity, type ActivityEvent } from '../state/activity'
+import { AREA_TEXT, useActivity, type ActivityEvent } from '../state/activity'
 import { fmtTime, shortId } from '../util/format'
 import { openRunDetail } from './actions'
 import type { PanelHandleProps } from '../context/panelHandle'
@@ -15,6 +15,7 @@ const EVENT_LABEL: Record<ActivityEvent['type'], string> = {
   job_done: 'END',
   job_failed: 'ERR',
   job_cancelled: 'CXL',
+  store_changed: 'DSK',
 }
 
 function eventTone(t: ActivityEvent['type']): string {
@@ -65,6 +66,8 @@ export function ActivityFeed(_props: PanelHandleProps) {
                   </>
                 ) : e.job ? (
                   <span className="mono feed-cmd">{e.job.command}</span>
+                ) : e.area ? (
+                  <span className="mono feed-cmd">{AREA_TEXT[e.area]}</span>
                 ) : null}
               </button>
             ))}

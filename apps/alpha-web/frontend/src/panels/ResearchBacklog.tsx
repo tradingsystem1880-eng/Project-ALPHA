@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
+import { useAreaVersion } from '../state/activity'
 import { Placeholder } from '../components/Placeholder'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
@@ -28,6 +29,7 @@ function progressLabel(row: ResearchCaseSummary): string {
 export function ResearchBacklog(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const [rows, setRows] = useState<ResearchCaseSummary[] | null>(null)
+  const researchVersion = useAreaVersion('research')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -51,7 +53,8 @@ export function ResearchBacklog(props: PanelHandleProps) {
       live = false
       window.clearTimeout(timer)
     }
-  }, [])
+    // A case the CLI or the AI over MCP touches on disk re-lists here without a click.
+  }, [researchVersion])
 
   const groups = groupResearchBacklog(rows ?? [])
   const selected = panelLink.linked.projectId

@@ -3,6 +3,7 @@ import { CopyCommand } from '../components/CopyCommand'
 import { CLI_ONLY } from './researchCockpitModel'
 
 import { api } from '../api/client'
+import { useAreaVersion } from '../state/activity'
 import type {
   ControlJob,
   EvidencePage,
@@ -280,11 +281,13 @@ export function DevelopmentCenter() {
     }).catch((reason: unknown) => setError(String(reason)))
   }
 
+  // Projects, versions, experiments, evidence and attempts the CLI or MCP write land in the
+  // control plane; its on-disk change re-lists them here.
+  const controlVersion = useAreaVersion('control')
   useEffect(() => {
     refreshProjects()
-    // Initial bounded projections; user mutations refresh explicitly.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [controlVersion])
 
   useEffect(() => {
     setSelectedId(linked.projectId ?? '')

@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
+import { useAreaVersion } from '../state/activity'
 import type {
   ResearchContextPacket,
   ResearchNote,
@@ -29,6 +30,7 @@ export function CodexBench(props: PanelHandleProps) {
   const projectId = panelLink.linked.projectId
   const [protocols, setProtocols] = useState<ResearchProtocolEntry[] | null>(null)
   const [packets, setPackets] = useState<ResearchContextPacket[] | null>(null)
+  const researchVersion = useAreaVersion('research')
   const [notes, setNotes] = useState<ResearchNote[] | null>(null)
   const [kind, setKind] = useState<PacketKind>('research_case')
   const [protocolId, setProtocolId] = useState<string>('new-idea-intake')
@@ -73,7 +75,7 @@ export function CodexBench(props: PanelHandleProps) {
     return () => {
       live = false
     }
-  }, [projectId])
+  }, [projectId, researchVersion])
 
   const command = projectId
     ? packetBuildCommand(projectId, kind, protocolId || null, panelLink.linked.symbol)

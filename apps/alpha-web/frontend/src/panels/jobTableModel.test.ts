@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { JobSummary } from '../api/types'
-import { jobRows } from './jobTableModel'
+import { isDataJob, jobRows } from './jobTableModel'
 
 const job = (overrides: Partial<JobSummary> = {}): JobSummary => ({
   job_id: 'job-1',
@@ -62,5 +62,15 @@ describe('jobRows', () => {
     expect(row.time).toBe('00:16:40')
     expect(row.done).toBe(false)
     expect(jobRows([job({ status: 'done' })], 1_120)[0].done).toBe(true)
+  })
+})
+
+describe('isDataJob', () => {
+  it('counts data, crypto-data and quantpad-data commands and nothing else', () => {
+    expect(isDataJob('data pull XRP/USDT --source ccxt')).toBe(true)
+    expect(isDataJob('  crypto-data acquire …')).toBe(true)
+    expect(isDataJob('quantpad-data verify')).toBe(true)
+    expect(isDataJob('backtest run SPY')).toBe(false)
+    expect(isDataJob('')).toBe(false)
   })
 })

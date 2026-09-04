@@ -12,10 +12,14 @@ import { Placeholder } from '../components/Placeholder'
 import { useActivityField } from '../state/activity'
 import { shortId } from '../util/format'
 import { openRunDetail } from './actions'
-import { jobRows } from './jobTableModel'
+import { isDataJob, jobRows } from './jobTableModel'
 import type { PanelHandleProps } from '../context/panelHandle'
 
-export function JobMonitor(_props: PanelHandleProps) {
+export function DataPulls(props: PanelHandleProps) {
+  return <JobMonitor {...props} only="data" />
+}
+
+export function JobMonitor({ only }: PanelHandleProps & { only?: 'data' }) {
   const jobsVersion = useActivityField('jobsVersion')
   const runningJobs = useActivityField('runningJobs')
   const [jobs, setJobs] = useState<JobSummary[] | null>(null)
@@ -86,7 +90,7 @@ export function JobMonitor(_props: PanelHandleProps) {
               </tr>
             </thead>
             <tbody>
-              {jobRows(jobs, nowSeconds).flatMap((row) => {
+              {jobRows(only === 'data' ? jobs.filter((job) => isDataJob(job.command)) : jobs, nowSeconds).flatMap((row) => {
                 const isOpen = open === row.jobId
                 const rows = [
                   <tr key={row.jobId} className={isOpen ? 'sel' : undefined} onClick={() => toggle(row.jobId)}>

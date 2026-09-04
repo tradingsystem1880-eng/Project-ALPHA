@@ -58,3 +58,11 @@ export function jobRows(jobs: JobSummary[], nowSeconds: number): JobRow[] {
       }
     })
 }
+
+/** Command roots that count as data work for the Toolbox `Data pulls` tab. */
+export const DATA_JOB_ROOTS = ['data', 'crypto-data', 'quantpad-data'] as const
+
+export function isDataJob(command: string): boolean {
+  const root = command.trim().split(/\s+/)[0] ?? ''
+  return (DATA_JOB_ROOTS as readonly string[]).includes(root)
+}

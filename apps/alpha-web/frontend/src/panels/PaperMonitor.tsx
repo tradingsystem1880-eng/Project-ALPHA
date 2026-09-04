@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { api } from '../api/client'
+import { useAreaVersion } from '../state/activity'
 import type {
   JsonScalar,
   PaperEvent,
@@ -178,11 +179,12 @@ export function PaperMonitor() {
       .catch((reason: unknown) => setOverviewError(String(reason)))
   }, [])
 
+  const paperVersion = useAreaVersion('paper')
   useEffect(() => {
     loadOverview()
     const timer = window.setInterval(loadOverview, OVERVIEW_POLL_MS)
     return () => window.clearInterval(timer)
-  }, [loadOverview])
+  }, [loadOverview, paperVersion])
 
   useEffect(() => {
     eventCursor.current = 0

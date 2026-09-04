@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import { api, type OwnerActionType } from '../api/client'
+import { useAreaVersion } from '../state/activity'
 import { CopyCommand } from '../components/CopyCommand'
 import { OwnerActionButton } from '../components/OwnerActionButton'
 import {
@@ -886,6 +887,13 @@ export function ResearchCockpit(props: PanelHandleProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedProjectId])
+
+  // The AI (CLI/MCP) advancing this case on disk re-projects it here.
+  const researchVersion = useAreaVersion('research')
+  useEffect(() => {
+    if (researchVersion > 0 && researchCase) void loadCase(researchCase.project_id, 'status')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [researchVersion])
 
   // The shell's New Idea action focuses the capture form; it never creates anything.
   useEffect(

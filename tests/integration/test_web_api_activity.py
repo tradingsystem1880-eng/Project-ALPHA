@@ -150,3 +150,58 @@ def test_poll_clamped() -> None:
     assert _activity.clamp_poll(0.0) == 0.05
     assert _activity.clamp_poll(99.0) == 10.0
     assert _activity.clamp_poll(1.5) == 1.5
+
+
+def _touch(path: Path, text: str = "x") -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    # a coarse filesystem clock must still see the change: push the mtime forward explicitly
+    bump = time.time() + 5
+    os.utime(path, (bump, bump))
+    os.utime(path.parent, (bump, bump))
+
+
+@pytest.mark.parametrize(
+    ("area", "relative"),
+    [
+        ("research", "research/projects/p1/status.json"),
+        ("control", "control/workstation.sqlite3-wal"),
+        ("bars", "store/bars/BTC/USDT.parquet"),
+        ("paper", "paper/s1/journal.jsonl"),
+        ("workspaces", "web/workspaces/idea.json"),
+        ("alerts", "scans/alerts.jsonl"),
+    ],
+)
+def test_store_changed_per_area(tmp_path: Path, area: str, relative: str) -> None:
+    """Whatever produces bytes in a governed area (CLI, MCP, another terminal) surfaces as one
+    ``store_changed`` event naming the area — the web never reads the bytes to notice."""
+
+    async def scenario() -> None:
+        gen = _activity.activity_events(tmp_path, poll=0.02)
+        await _collect(gen, 1)  # snapshot
+        _touch(tmp_path / relative)
+        (changed,) = await _collect(gen, 1)
+        assert changed["event"] == "store_changed"
+        payload = json.loads(changed["data"])
+        assert payload["area"] == area
+        assert isinstance(payload["at"], float)
+        await gen.aclose()
+
+    anyio.run(scenario)
+
+
+def test_store_changed_coalesces_one_event_per_area_per_tick(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        gen = _activity.activity_events(tmp_path, poll=0.02)
+        await _collect(gen, 1)
+        _touch(tmp_path / "store/bars/A.parquet")
+        _touch(tmp_path / "store/bars/B.parquet")
+        _touch(tmp_path / "research/projects/p1/a.json")
+        events = await _collect(gen, 2)
+        assert sorted(json.loads(e["data"])["area"] for e in events) == ["bars", "research"]
+        # quiet afterwards: nothing else is emitted for the same mtimes
+        with pytest.raises(TimeoutError):
+            await _collect(gen, 1, timeout=0.2)
+        await gen.aclose()
+
+    anyio.run(scenario)

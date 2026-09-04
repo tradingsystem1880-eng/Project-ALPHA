@@ -2361,6 +2361,8 @@ export async function preparePage(page: Page, options: MockOptions = {}): Promis
       constructor(url: string | URL) {
         super()
         this.url = String(url)
+        // Tests push server events through this handle (`window.__alphaStream`).
+        ;(window as unknown as { __alphaStream: EventTarget }).__alphaStream = this
         queueMicrotask(() => {
           this.dispatchEvent(new MessageEvent('snapshot', { data: '{"jobs_running":0}' }))
         })
@@ -3674,4 +3676,75 @@ test('CLI-only steps hand over the exact command with the ADR that keeps them on
   await page.getByRole('button', { name: 'Governance' }).click()
   await page.getByRole('region', { name: 'Governance' }).getByRole('button', { name: 'Touch ID' }).click()
   await expect(page.getByRole('link', { name: 'Enroll Touch ID' })).toHaveAttribute('href', '/owner-auth/enroll')
+})
+
+test('a store change outside the browser refreshes the panel watching its area', async ({ page }) => {
+  await preparePage(page, {
+    jobs: [
+      {
+        job_id: 'job-pull-1',
+        run_type: null,
+        command: 'data pull XRP/USDT --source ccxt --exchange binance --start 2019-01-01',
+        command_path: 'data pull',
+        kind: 'data',
+        status: 'done',
+        created_at: Date.now() / 1_000 - 60,
+        finished_at: Date.now() / 1_000 - 52,
+        elapsed_seconds: 8,
+        current_step: 'complete',
+        progress_mode: 'exact',
+        progress_fraction: 1,
+        eta_seconds: null,
+        eta_sample_count: 0,
+        run_id: null,
+        session_id: null,
+        returncode: 0,
+        n_lines: 3,
+      },
+      {
+        job_id: 'job-bt-1',
+        run_type: 'runs',
+        command: 'backtest run SPY --strategy ma_crossover',
+        command_path: 'backtest run',
+        kind: 'backtest',
+        status: 'done',
+        created_at: Date.now() / 1_000 - 30,
+        finished_at: Date.now() / 1_000 - 20,
+        elapsed_seconds: 10,
+        current_step: 'complete',
+        progress_mode: 'exact',
+        progress_fraction: 1,
+        eta_seconds: null,
+        eta_sample_count: 0,
+        run_id: 'abcdefabcdefabcd',
+        session_id: null,
+        returncode: 0,
+        n_lines: 3,
+      },
+    ],
+  })
+  const tabs = page.getByRole('tablist', { name: 'Toolbox tabs' })
+  // Data pulls is the jobs table filtered to data work.
+  await tabs.getByRole('tab', { name: 'Data pulls' }).click()
+  await expect(page.getByRole('row').filter({ hasText: 'data pull XRP/USDT' })).toHaveCount(1)
+  await expect(page.getByRole('row').filter({ hasText: 'backtest run SPY' })).toHaveCount(0)
+
+  // Trades mounts the paper monitor; a paper journal change on disk makes it refetch.
+  let sessionReads = 0
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/paper/sessions') sessionReads += 1
+  })
+  await tabs.getByRole('tab', { name: 'Trades' }).click()
+  await expect.poll(() => sessionReads).toBeGreaterThanOrEqual(1)
+  const before = sessionReads
+  await page.evaluate(() => {
+    ;(window as unknown as { __alphaStream: EventTarget }).__alphaStream.dispatchEvent(
+      new MessageEvent('store_changed', { data: '{"area":"paper","at":1}' }),
+    )
+  })
+  await expect.poll(() => sessionReads).toBeGreaterThan(before)
+
+  // The Log names what changed.
+  await tabs.getByRole('tab', { name: 'Log' }).click()
+  await expect(page.getByText('paper journal changed')).toBeVisible()
 })

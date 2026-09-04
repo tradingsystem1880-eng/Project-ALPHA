@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { api } from '../api/client'
+import { useAreaVersion } from '../state/activity'
 import type { CryptoCoverage, CryptoStorage, ProviderDefinition } from '../api/types'
 import { CopyCommand } from '../components/CopyCommand'
 import { JobConsole } from '../components/JobConsole'
@@ -115,9 +116,10 @@ function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' 
       .catch((reason: unknown) => setError(String(reason)))
   }, [])
 
+  const barsVersion = useAreaVersion('bars')
   useEffect(() => {
     load()
-  }, [load])
+  }, [load, barsVersion])
 
   // Switching profile re-seeds the form; the provider list then re-validates the source.
   useEffect(() => {

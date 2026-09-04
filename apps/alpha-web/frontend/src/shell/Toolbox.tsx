@@ -1,8 +1,8 @@
 // Toolbox dock (spec 2026-09-01 §4.2 item 6; artboard 1-Terminal): Jobs N · Trades · Backtests ·
 // Data pulls · Log · Alerts as one tab strip under the documents, tabs at the bottom. Only the
 // active tab mounts. Jobs is the dense job table with the real failure text; Trades the paper
-// sessions; Backtests the run comparison; Data pulls the provider readiness that every pull
-// depends on; Log the activity feed. Alerts is disabled: there is no alert engine to relay.
+// sessions; Backtests the run comparison; Data pulls the same jobs table filtered to data work
+// (pulls, snapshots, crypto acquisitions); Log the activity feed. Alerts is disabled: there is no alert engine to relay.
 
 import type { FunctionComponent } from 'react'
 import { useState } from 'react'
@@ -10,9 +10,8 @@ import { useState } from 'react'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { ActivityFeed } from '../panels/ActivityFeed'
 import { CompareRuns } from '../panels/CompareRuns'
-import { JobMonitor } from '../panels/JobMonitor'
+import { DataPulls, JobMonitor } from '../panels/JobMonitor'
 import { PaperMonitor } from '../panels/PaperMonitor'
-import { ProviderSystem } from '../panels/ProviderSystem'
 import { useActivityField } from '../state/activity'
 import { dockOf } from './documents'
 import { PanelHost } from './PanelHost'
@@ -23,7 +22,7 @@ const PANELS: Record<string, { name: string; component: FunctionComponent<PanelH
   Jobs: { name: 'JobMonitor', component: JobMonitor },
   Trades: { name: 'PaperMonitor', component: PaperMonitor },
   Backtests: { name: 'CompareRuns', component: CompareRuns },
-  'Data pulls': { name: 'ProviderSystem', component: ProviderSystem },
+  'Data pulls': { name: 'DataPulls', component: DataPulls },
   Log: { name: 'ActivityFeed', component: ActivityFeed },
 }
 
