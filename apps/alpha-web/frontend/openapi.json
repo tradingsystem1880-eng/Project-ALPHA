@@ -18890,6 +18890,499 @@
         "title": "RunMetric",
         "type": "object"
       },
+      "ScanAlert": {
+        "additionalProperties": false,
+        "properties": {
+          "bar_date": {
+            "title": "Bar Date",
+            "type": "string"
+          },
+          "close": {
+            "title": "Close",
+            "type": "number"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous"
+          },
+          "scan": {
+            "title": "Scan",
+            "type": "string"
+          },
+          "signal": {
+            "title": "Signal",
+            "type": "integer"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ts",
+          "scan",
+          "symbol",
+          "previous",
+          "signal",
+          "bar_date",
+          "close"
+        ],
+        "title": "ScanAlert",
+        "type": "object"
+      },
+      "ScanAlerts": {
+        "additionalProperties": false,
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/ScanAlert"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alerts",
+          "authority"
+        ],
+        "title": "ScanAlerts",
+        "type": "object"
+      },
+      "ScanCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/ScanAlert"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "checked_at": {
+            "title": "Checked At",
+            "type": "string"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "scan": {
+            "title": "Scan",
+            "type": "string"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scan",
+          "checked_at",
+          "rows",
+          "skipped",
+          "alerts",
+          "authority"
+        ],
+        "title": "ScanCheck",
+        "type": "object"
+      },
+      "ScanCheckResult": {
+        "additionalProperties": false,
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/ScanAlert"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/ScanCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "checks",
+          "alerts",
+          "authority"
+        ],
+        "title": "ScanCheckResult",
+        "type": "object"
+      },
+      "ScanDeleted": {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "deleted"
+        ],
+        "title": "ScanDeleted",
+        "type": "object"
+      },
+      "ScanList": {
+        "additionalProperties": false,
+        "properties": {
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "scans": {
+            "items": {
+              "$ref": "#/components/schemas/ScanSummary"
+            },
+            "title": "Scans",
+            "type": "array"
+          }
+        },
+        "required": [
+          "scans",
+          "authority"
+        ],
+        "title": "ScanList",
+        "type": "object"
+      },
+      "ScanRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rules": {
+            "title": "Rules",
+            "type": "string"
+          },
+          "universe": {
+            "$ref": "#/components/schemas/ScanUniverse"
+          }
+        },
+        "required": [
+          "name",
+          "rules",
+          "universe",
+          "checked_at"
+        ],
+        "title": "ScanRecord",
+        "type": "object"
+      },
+      "ScanRow": {
+        "additionalProperties": false,
+        "properties": {
+          "bar_date": {
+            "title": "Bar Date",
+            "type": "string"
+          },
+          "bar_ts": {
+            "title": "Bar Ts",
+            "type": "number"
+          },
+          "close": {
+            "title": "Close",
+            "type": "number"
+          },
+          "signal": {
+            "title": "Signal",
+            "type": "integer"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "values": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "symbol",
+          "signal",
+          "bar_ts",
+          "bar_date",
+          "close",
+          "values"
+        ],
+        "title": "ScanRow",
+        "type": "object"
+      },
+      "ScanRunRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          }
+        },
+        "title": "ScanRunRequest",
+        "type": "object"
+      },
+      "ScanRunResult": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ScanRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "rules": {
+            "title": "Rules",
+            "type": "string"
+          },
+          "rules_sha256": {
+            "title": "Rules Sha256",
+            "type": "string"
+          },
+          "scan": {
+            "title": "Scan",
+            "type": "string"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/ScanSkipped"
+            },
+            "title": "Skipped",
+            "type": "array"
+          },
+          "universe": {
+            "$ref": "#/components/schemas/ScanUniverse"
+          },
+          "universe_as_of": {
+            "title": "Universe As Of",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scan",
+          "rules",
+          "rules_sha256",
+          "as_of",
+          "universe_as_of",
+          "universe",
+          "rows",
+          "skipped",
+          "authority"
+        ],
+        "title": "ScanRunResult",
+        "type": "object"
+      },
+      "ScanSaveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rules": {
+            "title": "Rules",
+            "type": "string"
+          },
+          "symbols": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbols"
+          }
+        },
+        "required": [
+          "name",
+          "rules"
+        ],
+        "title": "ScanSaveRequest",
+        "type": "object"
+      },
+      "ScanSkipped": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "reason"
+        ],
+        "title": "ScanSkipped",
+        "type": "object"
+      },
+      "ScanSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rules": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rules"
+          },
+          "universe": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanUniverse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ScanSummary",
+        "type": "object"
+      },
+      "ScanUniverse": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "stored",
+              "list"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "symbols": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbols"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ScanUniverse",
+        "type": "object"
+      },
       "ScreenerNews": {
         "additionalProperties": false,
         "properties": {
@@ -20285,6 +20778,52 @@
         "summary": "Stream Activity",
         "tags": [
           "activity"
+        ]
+      }
+    },
+    "/api/alerts": {
+      "get": {
+        "description": "The newest scan alerts, oldest first within the tail.",
+        "operationId": "alerts_api_alerts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanAlerts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Alerts",
+        "tags": [
+          "scans"
         ]
       }
     },
@@ -28056,6 +28595,293 @@
         "summary": "Run Trials",
         "tags": [
           "runs"
+        ]
+      }
+    },
+    "/api/scans": {
+      "get": {
+        "operationId": "list_scans_api_scans_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "List Scans",
+        "tags": [
+          "scans"
+        ]
+      },
+      "post": {
+        "description": "Save (or overwrite) a scan naming a saved rule set and a universe.",
+        "operationId": "save_scan_api_scans_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Save Scan",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/check": {
+      "post": {
+        "description": "Check every saved scan; only changed signals become alerts (the live desk's `alerts`).",
+        "operationId": "check_all_api_scans_check_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanCheckResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Check All",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{name}": {
+      "delete": {
+        "operationId": "delete_scan_api_scans__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanDeleted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Delete Scan",
+        "tags": [
+          "scans"
+        ]
+      },
+      "get": {
+        "operationId": "show_scan_api_scans__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Show Scan",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{name}/check": {
+      "post": {
+        "operationId": "check_scan_api_scans__name__check_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanCheckResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Check Scan",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{name}/run": {
+      "post": {
+        "description": "Evaluate the scan on point-in-time bars (optionally as of a date); writes nothing.",
+        "operationId": "run_scan_api_scans__name__run_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ScanRunRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanRunResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Run Scan",
+        "tags": [
+          "scans"
         ]
       }
     },
