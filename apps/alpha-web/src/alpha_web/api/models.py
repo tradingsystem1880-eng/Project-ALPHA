@@ -651,6 +651,25 @@ class Candles(StrictModel):
     paper_markers: list[PaperCandleMarker]
 
 
+class OverlaySeries(StrictModel):
+    id: str
+    name: str
+    pane: Literal["price", "rsi", "atr", "macd"]
+    style: Literal["line", "histogram"]
+    values: list[float | None]
+    warmup: int
+
+
+class ChartOverlays(StrictModel):
+    symbol: str
+    snapshot_id: str | None
+    provenance: CandleProvenance
+    authority: Literal["none"]
+    t: list[float]
+    indicators: list[OverlaySeries]
+    annotations: list[ChartAnnotation]
+
+
 class ParamDefinition(StrictModel):
     name: str
     type: str

@@ -526,6 +526,13 @@
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
     },
     {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "overlays_api_overlays__symbol__get",
+      "path": "/api/overlays/{symbol}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
       "method": "POST",
       "mode": "fixture_backed",
       "operation_id": "start_action_api_owner_auth_actions_challenge_post",

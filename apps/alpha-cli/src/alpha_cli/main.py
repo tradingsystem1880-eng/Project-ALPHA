@@ -5,6 +5,7 @@ from __future__ import annotations
 import typer
 
 from alpha_cli.backtest_cmds import backtest_app
+from alpha_cli.chart_cmds import chart_app
 from alpha_cli.crypto_data_cmds import crypto_data_app
 from alpha_cli.data_cmds import data_app
 from alpha_cli.evidence_cmds import evidence_app
@@ -50,6 +51,7 @@ app.add_typer(project_app, name="project")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(ml_app, name="ml")
 app.add_typer(monte_carlo_app, name="monte-carlo")
+app.add_typer(chart_app, name="chart")
 app.add_typer(suite_app, name="suite")
 app.add_typer(strategy_candidate_app, name="strategy-candidate")
 app.command(name="validate")(_validate)

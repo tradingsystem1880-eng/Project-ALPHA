@@ -1112,6 +1112,66 @@
         "title": "ChartIndicator",
         "type": "object"
       },
+      "ChartOverlays": {
+        "additionalProperties": false,
+        "properties": {
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/ChartAnnotation"
+            },
+            "title": "Annotations",
+            "type": "array"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/OverlaySeries"
+            },
+            "title": "Indicators",
+            "type": "array"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/CandleProvenance"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "t": {
+            "items": {
+              "type": "number"
+            },
+            "title": "T",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbol",
+          "snapshot_id",
+          "provenance",
+          "authority",
+          "t",
+          "indicators",
+          "annotations"
+        ],
+        "title": "ChartOverlays",
+        "type": "object"
+      },
       "ChartProvenance": {
         "additionalProperties": false,
         "properties": {
@@ -11778,6 +11838,65 @@
           "rho"
         ],
         "title": "OptionGreeks",
+        "type": "object"
+      },
+      "OverlaySeries": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "pane": {
+            "enum": [
+              "price",
+              "rsi",
+              "atr",
+              "macd"
+            ],
+            "title": "Pane",
+            "type": "string"
+          },
+          "style": {
+            "enum": [
+              "line",
+              "histogram"
+            ],
+            "title": "Style",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Values",
+            "type": "array"
+          },
+          "warmup": {
+            "title": "Warmup",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "pane",
+          "style",
+          "values",
+          "warmup"
+        ],
+        "title": "OverlaySeries",
         "type": "object"
       },
       "OwnerActionChallengeRequest": {
@@ -23546,6 +23665,119 @@
         "summary": "Options Iv",
         "tags": [
           "options"
+        ]
+      }
+    },
+    "/api/overlays/{symbol}": {
+      "get": {
+        "description": "Indicator series and pattern annotations computed by ``alpha chart overlays`` over the\nsame point-in-time window as ``/api/candles``; the browser draws, it never computes.\n\nLives under ``/api/overlays`` because ``/candles/{symbol:path}`` swallows any suffix.",
+        "operationId": "overlays_api_overlays__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "indicator",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Indicator"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pattern",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pattern"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "snapshot",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Snapshot"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChartOverlays"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Overlays",
+        "tags": [
+          "candles"
         ]
       }
     },

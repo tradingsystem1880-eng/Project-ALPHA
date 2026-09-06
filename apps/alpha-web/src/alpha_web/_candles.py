@@ -39,3 +39,32 @@ def candles(
     result: dict[str, Any] = _run_json(args, data_dir=data_dir)
     _CACHE[key] = result
     return result
+
+
+def overlays(
+    symbol: str,
+    *,
+    data_dir: Path,
+    indicators: tuple[str, ...] = (),
+    patterns: tuple[str, ...] = (),
+    end: str | None = None,
+    snapshot: str | None = None,
+) -> dict[str, Any]:
+    """``alpha chart overlays --json`` over the same PIT window, cached like :func:`candles`."""
+    safe = ".." not in symbol and "\\" not in symbol and not symbol.startswith("/")
+    parquet = data_dir / "store" / "bars" / f"{symbol}.parquet"
+    mtime = parquet.stat().st_mtime if (safe and parquet.exists()) else None
+    key = ("overlays", str(data_dir), symbol, indicators, patterns, end, snapshot, mtime)
+    if key in _CACHE:
+        return _CACHE[key]
+    args = ["chart", "overlays", symbol, "--json"]
+    for spec in indicators:
+        args += ["--indicator", spec]
+    for spec in patterns:
+        args += ["--pattern", spec]
+    for flag, value in (("--end", end), ("--snapshot", snapshot)):
+        if value:
+            args += [flag, value]
+    result: dict[str, Any] = _run_json(args, data_dir=data_dir)
+    _CACHE[key] = result
+    return result

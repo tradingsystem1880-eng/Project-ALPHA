@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from alpha_cli import paper_store
 from alpha_web import _candles
 from alpha_web.api._common import data_dir
-from alpha_web.api.models import Candles
+from alpha_web.api.models import Candles, ChartOverlays
 
 router = APIRouter(prefix="/api", tags=["candles"])
 
@@ -104,3 +104,29 @@ def candles(
         return {**result, "paper_markers": markers}
     except RuntimeError as exc:  # CLI failed (unknown symbol / empty window) — surface as 404
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/overlays/{symbol:path}", response_model=ChartOverlays)
+def overlays(
+    symbol: str,
+    indicator: Annotated[list[str] | None, Query()] = None,
+    pattern: Annotated[list[str] | None, Query()] = None,
+    end: str | None = None,
+    snapshot: str | None = None,
+) -> dict[str, Any]:
+    """Indicator series and pattern annotations computed by ``alpha chart overlays`` over the
+    same point-in-time window as ``/api/candles``; the browser draws, it never computes.
+
+    Lives under ``/api/overlays`` because ``/candles/{symbol:path}`` swallows any suffix.
+    """
+    try:
+        return _candles.overlays(
+            symbol,
+            data_dir=data_dir(),
+            indicators=tuple(indicator or ()),
+            patterns=tuple(pattern or ()),
+            end=end,
+            snapshot=snapshot,
+        )
+    except RuntimeError as exc:  # bad spec / unknown symbol / short window — the CLI's own text
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

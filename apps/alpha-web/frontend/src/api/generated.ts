@@ -1255,6 +1255,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/overlays/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Overlays
+         * @description Indicator series and pattern annotations computed by ``alpha chart overlays`` over the
+         *     same point-in-time window as ``/api/candles``; the browser draws, it never computes.
+         *
+         *     Lives under ``/api/overlays`` because ``/candles/{symbol:path}`` swallows any suffix.
+         */
+        get: operations["overlays_api_overlays__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/owner-auth/actions/challenge": {
         parameters: {
             query?: never;
@@ -4255,6 +4278,25 @@ export interface components {
             unit: string;
             /** Value */
             value: number;
+        };
+        /** ChartOverlays */
+        ChartOverlays: {
+            /** Annotations */
+            annotations: components["schemas"]["ChartAnnotation"][];
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Indicators */
+            indicators: components["schemas"]["OverlaySeries"][];
+            provenance: components["schemas"]["CandleProvenance"];
+            /** Snapshot Id */
+            snapshot_id: string | null;
+            /** Symbol */
+            symbol: string;
+            /** T */
+            t: number[];
         };
         /** ChartProvenance */
         ChartProvenance: {
@@ -7765,6 +7807,27 @@ export interface components {
             vega: number;
             /** Vol */
             vol: number;
+        };
+        /** OverlaySeries */
+        OverlaySeries: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Pane
+             * @enum {string}
+             */
+            pane: "price" | "rsi" | "atr" | "macd";
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "line" | "histogram";
+            /** Values */
+            values: (number | null)[];
+            /** Warmup */
+            warmup: number;
         };
         /** OwnerActionChallengeRequest */
         OwnerActionChallengeRequest: {
@@ -12825,6 +12888,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OptionGreeks"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    overlays_api_overlays__symbol__get: {
+        parameters: {
+            query?: {
+                indicator?: string[] | null;
+                pattern?: string[] | null;
+                end?: string | null;
+                snapshot?: string | null;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartOverlays"];
                 };
             };
             /** @description Stable, redacted Workstation error */
