@@ -183,7 +183,7 @@
         "tests/integration/test_web_api_rules.py",
         "pyproject.toml"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S5 scanner + alerts: alpha scan run|save|list|delete|check|alerts (classified safe; authority none; universe_as_of) over PIT reads and evaluate_rules, /api/scans + /api/alerts relays, Scanner document, Toolbox Alerts tab, scan check after each pull",
@@ -307,3 +307,27 @@ The test-architect specification (2026-09-04, 50 tests) is the ordered list the 
   `Chart` keeps following the linked symbol.
 - The twenty document baselines did not need re-taking: all four Playwright projects passed
   against the existing screenshots after S3.
+
+## Deviations recorded during S4
+
+- Rules describe **state, not events**: a side is a conjunction of `left op right` comparisons
+  (`> < >= <=`) that must hold on the decision bar; there is no "crosses" or order state. This
+  keeps the engine, the Tier-1 surrogate and a future scanner on one stateless function and makes
+  every decision depend on exactly `history` trailing bars (fixed window = point-in-time by
+  construction). Both sides true is a conflict and means flat.
+- The `RunSpec` carries the canonical spec JSON (`rules_spec`), not only its sha256: `vars(spec)`
+  is already the identity payload and the manifest `params`, so the exact rules travel with every
+  run and the report can show them. As with `forecast_cache`, adding the field shifts run ids for
+  runs created after it landed (no pinned ids exist).
+- The nautilus class lives in `rule_strategy.py` so `rules.py` stays nautilus-free for the
+  surrogate; `_STRATEGY_MODULES["rules"]` therefore names both files and the fingerprint helper
+  accepts a tuple.
+- Operand sources are `high`/`low`/`close` only (the history the vol-target base keeps); the
+  Tier-1 surrogate feeds closes as highs and lows, matching the breakout surrogate's convention.
+- `alpha rules validate` is a report through REST: the web relay maps the CLI's exit-2 defect to
+  `{valid:false, error}` so the builder shows the exact message live; the CLI itself exits 2.
+- `alpha rules delete` was added (the owner's own file; runs keep their manifest copy).
+- The builder tests in the standalone sandbox with `--account-type MARGIN` on the crypto profile so
+  short rules can fill; the equities profile keeps the CASH default.
+- Two new document baselines (`builder-document-chromium-{reference,wide}.png`); every other
+  baseline was unchanged.
