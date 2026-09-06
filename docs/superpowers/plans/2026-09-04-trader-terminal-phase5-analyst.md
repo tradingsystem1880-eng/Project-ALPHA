@@ -80,7 +80,7 @@
         "tests/unit/test_web_activity_areas.py",
         "tests/integration/test_web_api_activity.py"
       ],
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "title": "S2 owner completes everything: approve/reject buttons, pause/resume/cancel owner actions (CLI verbs gain --actor; OWNER_ACTION_TYPES extended), evidence + development + ML + data + sources + notes affordances over existing or thin new routes, precise classification of the crypto-data/quantpad-data/provider/strategy-candidate roots, menu items open documents, sandbox test from the Lab, CopyCommand for ADR-bound CLI steps incl. override-research-gate",
@@ -112,9 +112,19 @@
         "apps/alpha-cli/src/alpha_cli/research_cmds.py",
         "apps/alpha-cli/src/alpha_cli/control_store.py",
         "tests/unit/test_web_owner_action_argv.py",
-        "tests/unit/test_generic_command_catalog.py"
+        "tests/unit/test_generic_command_catalog.py",
+        "apps/alpha-web/frontend/src/components/ResearchGateLockNotice.tsx",
+        "apps/alpha-web/frontend/src/api/types.ts",
+        "apps/alpha-web/frontend/src/shell/menuModel.test.ts",
+        "apps/alpha-web/frontend/src/panels/researchCockpitModel.test.ts",
+        "tests/integration/test_web_api_data_relays.py",
+        "tests/integration/test_web_api_research.py",
+        "docs/governance/openapi-operation-classification.json",
+        "docs/governance/capability-authority-matrix.md",
+        "apps/alpha-web/frontend/openapi.json",
+        "apps/alpha-web/frontend/src/api/generated.ts"
       ],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "title": "S3 chart-first analysis: alpha chart overlays --json over alpha_patterns (lazy import; no contract change), GET /api/candles/{symbol}/overlays (argv-hashed cache), known-by pattern anchors, indicator/pattern overlays with panes and legend, Insert > Indicators dialog, tiled chart windows",
@@ -241,7 +251,9 @@
     "New statistics or validation gates",
     "Any MCP tool change (pinned at 62)",
     "Dark TrendSpider-style chrome",
-    "Drawing tools persisted as data authority (chart drawings are UI state only if added later)"
+    "Drawing tools persisted as data authority (chart drawings are UI state only if added later)",
+    "Browser buttons for seal-holdout and freeze-decision (the SPA client pin `does not expose caller-asserted owner actions` keeps them CLI; CopyCommand shows the argv)",
+    "Raw ML exchange steps (prepare/train/import/evaluate/replay) as separate buttons: the orchestrated preflighted experiment already composes them; the raw routes stay agent-level"
   ],
   "files": []
 }
@@ -264,3 +276,10 @@ The test-architect specification (2026-09-04, 50 tests) is the ordered list the 
 - DAG: no contract forbids `alpha_cli → alpha_patterns` (alpha_web/alpha_mcp stay forbidden); S4 drops the `alpha_strategies → alpha_patterns` forbidden contract (patterns → core only, no cycle) and adds `alpha_patterns` to the execution fingerprint packages. All web additions are subprocess relays.
 - Look-ahead: overlays and scans read through `_runner.load_bars(as_of)`; series values at t use bars ≤ t; pattern anchors ts ≤ as_of; swings use `confirmed_index`.
 - Determinism: rule spec canonical bytes enter `RunSpec`, the identity payload and the strategy fingerprint; manifests record the spec verbatim; no new seeds.
+
+## Deviations recorded during S2
+
+- `override_research_gate` is not a Touch ID action (ADR-0030 grants no override path); the gate lock notice shows the exact CLI with a Copy button.
+- Seal holdout / freeze decision stay CLI: `src/api/controlPlane.test.ts` pins that the client exposes no caller-asserted owner action; the Development Center shows both argv with Copy buttons and wires only link-run and record-attempt.
+- The ML raw lifecycle routes are covered by the existing orchestrated experiment; no separate buttons.
+- The Toolbox already had Trades/Backtests/Log panels; S1 only replaced Data pulls (jobs filtered to data work) and added the Log's area lines.
