@@ -9,6 +9,7 @@ const settings: Settings = {
   profile: 'crypto',
   projectModes: { advanced_project: 'advanced' },
   liveTicker: false,
+  overlays: { crypto: { indicators: [], patterns: [] }, equities: { indicators: [], patterns: [] } },
 }
 
 describe('workspace detail mode', () => {
@@ -50,5 +51,18 @@ describe('profile setting', () => {
     setSettings({ profile: 'crypto' })
     expect(setAttribute).toHaveBeenLastCalledWith('data-profile', 'crypto')
     expect(JSON.parse(store.get('alpha.settings') ?? '{}').profile).toBe('crypto')
+  })
+})
+
+describe('chart overlays setting', () => {
+  it('keeps one overlay selection per profile and drops garbage specs', () => {
+    const parsed = parseSettings(
+      JSON.stringify({
+        overlays: { crypto: { indicators: ['sma:20', 'nope'], patterns: ['swings'] }, equities: 'junk' },
+      }),
+    )
+    expect(parsed.overlays.crypto).toEqual({ indicators: ['sma:20'], patterns: ['swings'] })
+    expect(parsed.overlays.equities).toEqual({ indicators: [], patterns: [] })
+    expect(parseSettings(null).overlays.crypto).toEqual({ indicators: [], patterns: [] })
   })
 })

@@ -5,13 +5,13 @@
 // a document tab moves and activates; Delete closes. Maximise hides the docks; minimise is
 // disabled because a document lives in its tab, never on a desktop.
 
-import { useEffect, useState, type FunctionComponent } from 'react'
+import { useEffect, useMemo, useState, type FunctionComponent } from 'react'
 
 import type { PanelHandleProps } from '../context/panelHandle'
 import { documentOf, panesByArea, type DocumentPane } from './documents'
 import { Icon } from './icons'
-import type { MdiState } from './mdiModel'
-import { windowOf } from './mdiModel'
+import type { MdiState, OpenDocument } from './mdiModel'
+import { instanceOf, windowOf } from './mdiModel'
 import { PanelHost } from './PanelHost'
 
 /** A request from the shell to bring one named pane to the front. */
@@ -21,16 +21,21 @@ export interface PaneFocus {
   seq: number
 }
 
+export const MAX_TILES = 4
+
 function PaneColumn({
   area,
   panes,
   focus,
   contextKey,
+  instance,
 }: {
   area: 'main' | 'side'
   panes: DocumentPane[]
   focus: PaneFocus | null
   contextKey: string
+  /** The document key's instance part (`chart:BTC/USDT` → `BTC/USDT`), handed to the panes. */
+  instance: string | null
 }) {
   const [active, setActive] = useState(0)
   useEffect(() => {
@@ -39,6 +44,10 @@ function PaneColumn({
     if (index >= 0) setActive(index)
   }, [focus, panes])
   const pane = panes[Math.min(active, panes.length - 1)]
+  const params = useMemo(
+    () => (instance ? { ...pane.params, instance } : pane.params),
+    [instance, pane.params],
+  )
   return (
     <section className={`area area--${area}`} aria-label={pane.title}>
       {panes.length > 1 ? (
@@ -62,7 +71,7 @@ function PaneColumn({
           key={`${pane.name}:${contextKey}`}
           name={pane.name}
           component={pane.component as FunctionComponent<PanelHandleProps>}
-          params={pane.params}
+          params={params}
         />
       </div>
     </section>
@@ -75,6 +84,7 @@ export function DocumentArea({
   contextKey,
   header,
   maximised,
+  tiled,
   onActivate,
   onClose,
   onToggleMaximise,
@@ -85,6 +95,8 @@ export function DocumentArea({
   /** The header line for the active document (the chart's context, else its title). */
   header: string
   maximised: boolean
+  /** Window › Tile charts: every open chart document side by side instead of one at a time. */
+  tiled: boolean
   onActivate: (key: string) => void
   onClose: (key: string) => void
   onToggleMaximise: () => void
@@ -92,6 +104,8 @@ export function DocumentArea({
   const active = mdi.documents.find((item) => item.key === mdi.active) ?? null
   const definition = active ? documentOf(windowOf(active.key)) : null
   const areas = definition ? panesByArea(definition) : null
+  const charts: OpenDocument[] = mdi.documents.filter((item) => item.window === 'chart')
+  const showTiles = tiled && active?.window === 'chart' && charts.length > 1
 
   const onTabKey = (index: number) => (event: React.KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === 'Delete') {
@@ -149,7 +163,28 @@ export function DocumentArea({
         </div>
       ) : null}
       <div className={`mdi-body${areas && areas.side.length ? ' mdi-body--split' : ''}`}>
-        {active && areas ? (
+        {active && areas && showTiles ? (
+          <div className="mdi-tiles" aria-label="Tiled charts">
+            {charts.slice(0, MAX_TILES).map((item) => (
+              <section
+                key={item.key}
+                className={`mdi-tile${item.key === mdi.active ? ' active' : ''}`}
+                aria-label={item.title}
+                onFocusCapture={() => item.key !== mdi.active && onActivate(item.key)}
+              >
+                <div className="mdi-tile-head mono">{item.title}</div>
+                <PaneColumn
+                  key={`${item.key}:main`}
+                  area="main"
+                  panes={areas.main}
+                  focus={null}
+                  contextKey={contextKey}
+                  instance={instanceOf(item.key)}
+                />
+              </section>
+            ))}
+          </div>
+        ) : active && areas ? (
           <>
             <PaneColumn
               key={`${active.key}:main`}
@@ -157,6 +192,7 @@ export function DocumentArea({
               panes={areas.main}
               focus={focus}
               contextKey={contextKey}
+              instance={instanceOf(active.key)}
             />
             {areas.side.length ? (
               <PaneColumn
@@ -165,6 +201,7 @@ export function DocumentArea({
                 panes={areas.side}
                 focus={focus}
                 contextKey={contextKey}
+                instance={instanceOf(active.key)}
               />
             ) : null}
           </>

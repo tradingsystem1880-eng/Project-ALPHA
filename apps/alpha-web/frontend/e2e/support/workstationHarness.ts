@@ -1584,6 +1584,8 @@ interface MockOptions {
   figureCatalogue?: boolean
   /** Opt-in daily bars per symbol for the candles projection (Market Watch, Chart). */
   candles?: Record<string, components['schemas']['Candle'][]>
+  /** Receives the query string of every `/api/overlays/{symbol}` request the chart makes. */
+  capturedOverlays?: (query: string) => void
   /** Opt-in public tickers keyed `SYMBOL@exchange`; a missing key answers 422 like the CLI. */
   tickers?: Record<string, { last: number; ts: string }>
   /** Opt-in: the Expansion volume is not mounted. */
@@ -2235,6 +2237,54 @@ function responseFor(route: Route, options: MockOptions): unknown {
       },
     }
   }
+  if (url.pathname.startsWith('/api/overlays/')) {
+    // A deterministic stand-in for `alpha chart overlays`: one line per requested indicator with
+    // the first bar as warm-up, one confirmed swing low when swings are asked for.
+    const symbol = decodeURIComponent(url.pathname.slice('/api/overlays/'.length))
+    const bars = options.candles?.[symbol]
+    if (!bars) return undefined
+    options.capturedOverlays?.(url.search)
+    const t = bars.map((row) => row.t)
+    const indicators = url.searchParams.getAll('indicator').map((id) => ({
+      id,
+      name: id.toUpperCase().replace(':', ' '),
+      pane: id.startsWith('rsi') ? 'rsi' : 'price',
+      style: 'line',
+      values: bars.map((row, index) => (index === 0 ? null : row.c)),
+      warmup: 1,
+    }))
+    const annotations = url.searchParams.getAll('pattern').includes('swings')
+      ? [
+          {
+            annotation_id: 1,
+            decision_sequence_id: null,
+            kind: 'line',
+            label: 'Swing low',
+            unit: 'price',
+            reason: 'fractal L=5; knowable from bar 1',
+            anchors: [{ anchor_index: 0, ts: t[0], value: bars[0].l }],
+          },
+        ]
+      : []
+    return {
+      symbol,
+      snapshot_id: null,
+      authority: 'none',
+      provenance: {
+        source: 'ccxt:binance',
+        venue: 'binance',
+        timeframe: '1D',
+        snapshot_id: null,
+        provenance_sha256: null,
+        receipt_id: null,
+        knowledge_cutoff: null,
+        quality_status: 'qualified',
+      },
+      t,
+      indicators,
+      annotations,
+    }
+  }
   if (url.pathname === '/api/strategies' || url.pathname === '/api/commands') return []
   if (url.pathname === '/api/providers') return []
   if (url.pathname === '/api/system') return SYSTEM_STATUS
@@ -2613,6 +2663,50 @@ test('the status bar tells the truth about the SSD and paper routing', async ({ 
   await expect(bar.locator('.status-segment--clock')).toHaveText(/\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/)
   await expect(bar.locator('.status-segment--ohlc')).toHaveText('O: — H: — L: — C: — V: —')
   await expect(bar.locator('.status-segment--bars')).toHaveText(/\d+ \/ \d+ bars/)
+})
+
+test('Insert › Indicators draws CLI-computed overlays and chart windows tile', async ({ page }) => {
+  const bar = (t: number, c: number) => ({ t, o: c, h: c + 1, l: c - 1, c, v: 1 })
+  const overlayQueries: string[] = []
+  await preparePage(page, {
+    candles: {
+      'XRP/USDT': [bar(1_700_000_000, 100), bar(1_700_086_400, 110), bar(1_700_172_800, 105)],
+    },
+    capturedOverlays: (query) => overlayQueries.push(query),
+  })
+  await openDocument(page, 'Chart')
+  const price = page.getByRole('region', { name: 'Price' })
+  await expect(price.locator('.count')).toHaveText('3 bars')
+  // Nothing selected: the chart asks the CLI for nothing.
+  await expect(price.getByRole('button', { name: 'Indicators…', exact: true })).toBeVisible()
+  expect(overlayQueries).toEqual([])
+  // Insert › Indicators… opens the dialog; a typo never reaches the CLI.
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'Insert', exact: true }).click()
+  await page.getByRole('menu', { name: 'Insert' }).getByRole('menuitem', { name: 'Indicators…', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Indicators' })
+  await dialog.getByLabel('Custom indicator spec').fill('foo:1')
+  await dialog.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toContainText('unknown indicator "foo"')
+  await dialog.getByRole('checkbox', { name: 'SMA 20 sma:20', exact: true }).check()
+  await dialog.getByRole('checkbox', { name: /Swing highs/ }).check()
+  await dialog.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  // The chart re-requested overlays for exactly that selection and draws what came back.
+  await expect(price.getByRole('button', { name: 'Indicators… (2)', exact: true })).toBeVisible()
+  await expect(price.locator('.overlay-legend')).toHaveText(
+    'OVERLAYS · SMA 20 · 1 swings · computed by alpha chart overlays',
+  )
+  expect(overlayQueries.at(-1)).toBe('?indicator=sma%3A20&pattern=swings')
+  // A second chart window pins the linked symbol; Tile charts shows both at once.
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'Window', exact: true }).click()
+  await page.getByRole('menu', { name: 'Window' }).getByRole('menuitem', { name: 'New chart window', exact: true }).click()
+  await expect(documentTab(page, 'XRP/USDT')).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'Window', exact: true }).click()
+  await page.getByRole('menu', { name: 'Window' }).getByRole('menuitemcheckbox', { name: 'Tile charts', exact: true }).click()
+  const tiles = page.getByLabel('Tiled charts').locator('.mdi-tile')
+  await expect(tiles).toHaveCount(2)
+  await expect(tiles.nth(1).locator('.mdi-tile-head')).toHaveText('XRP/USDT')
+  await expect(page.getByRole('region', { name: 'Price' })).toHaveCount(2)
 })
 
 test('Market Watch reads red/green and never invents a price', async ({ page }) => {

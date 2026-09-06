@@ -25,6 +25,12 @@ export function windowOf(key: DocumentKey): WindowId {
   return key.split(':', 1)[0] as WindowId
 }
 
+/** The instance part of a key (`chart:BTC/USDT` → `BTC/USDT`), or null for a plain document. */
+export function instanceOf(key: DocumentKey): string | null {
+  const index = key.indexOf(':')
+  return index < 0 ? null : key.slice(index + 1) || null
+}
+
 /** Open (or re-activate) a document; opening an open key never duplicates it. */
 export function openDocument(state: MdiState, key: DocumentKey, title: string): MdiState {
   if (state.documents.some((item) => item.key === key)) return { ...state, active: key }

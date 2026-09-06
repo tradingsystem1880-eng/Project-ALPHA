@@ -8,6 +8,7 @@ import type {
   ActiveResearchGateOverride,
   AgentBrief,
   Candles,
+  ChartOverlays,
   ChartBundle,
   CommandDef,
   ControlJob,
@@ -336,6 +337,8 @@ export const api = {
   tearsheetUrl: (id: string): string => `/api/runs/${id}/tearsheet`,
   candles: (symbol: string, query = ''): Promise<Candles> =>
     getJSON(`/api/candles/${encodeURIComponent(symbol)}${query}`),
+  overlays: (symbol: string, query = ''): Promise<ChartOverlays> =>
+    getJSON(`/api/overlays/${encodeURIComponent(symbol)}${query}`),
   strategies: (): Promise<StrategyDef[]> => getJSON('/api/strategies'),
   commands: (): Promise<CommandDef[]> => getJSON('/api/commands'),
   symbols: (): Promise<{ symbols: string[] }> => getJSON('/api/symbols'),

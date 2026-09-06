@@ -53,17 +53,20 @@ export type MenuItem =
   | { kind: 'command'; id: string; label: string }
   | { kind: 'document'; key: string; label: string; active: boolean }
   | { kind: 'open'; window: WindowId; label: string }
-  | { kind: 'shell'; id: 'palette' | 'settings' | 'new-idea'; label: string }
+  | { kind: 'shell'; id: ShellItemId; label: string; checked?: boolean }
   | { kind: 'dock'; id: DockId; label: string; open: boolean }
   | { kind: 'mode'; id: WorkspaceMode; label: string; active: boolean; disabled: boolean }
 
 export type WorkspaceMode = 'guided' | 'advanced'
+export type ShellItemId = 'palette' | 'settings' | 'new-idea' | 'indicators' | 'new-chart' | 'tile'
 
 /** The shell state the View and Research menus reflect; both parts are optional. */
 export interface ShellMenuState {
   docks?: readonly { id: DockId; label: string; open: boolean }[]
   /** Current detail mode and whether Advanced can be chosen (it needs a linked project). */
   mode?: { current: WorkspaceMode; advancedAvailable: boolean }
+  /** Whether the chart documents are tiled side by side (Window › Tile charts). */
+  tiled?: boolean
 }
 
 export function commandGroup(id: string): string {
@@ -128,8 +131,13 @@ export function menuBar(
     menus.View.push({ kind: 'mode', id: 'advanced', label: 'Advanced', active: current === 'advanced', disabled: !advancedAvailable })
   }
   menus.View.push({ kind: 'shell', id: 'settings', label: 'Settings' })
+  menus.Insert.unshift({ kind: 'shell', id: 'indicators', label: 'Indicators…' })
   menus.Research.unshift({ kind: 'shell', id: 'new-idea', label: 'New Idea…' })
   menus.Help.unshift({ kind: 'shell', id: 'palette', label: 'Search commands  Ctrl+K' })
+  menus.Window.push({ kind: 'shell', id: 'new-chart', label: 'New chart window' })
+  if (shell.tiled !== undefined) {
+    menus.Window.push({ kind: 'shell', id: 'tile', label: 'Tile charts', checked: shell.tiled })
+  }
   for (const item of open) {
     menus.Window.push({ kind: 'document', key: item.key, label: item.title, active: item.key === active })
   }

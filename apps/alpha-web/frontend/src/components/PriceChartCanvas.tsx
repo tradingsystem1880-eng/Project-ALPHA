@@ -18,7 +18,8 @@ import { useEffect, useRef } from 'react'
 
 import { barSpacingFor, useChartControls } from '../context/chartControls'
 import { setChartHover } from '../context/chartHover'
-import type { Candle, ChartAnnotation, ChartTraceEvent } from '../api/types'
+import type { Candle, ChartAnnotation, ChartOverlays, ChartTraceEvent } from '../api/types'
+import { drawableAnnotations, lineData, splitPanes, swingMarkers } from '../panels/chartOverlaysModel'
 import type { EvidenceMarker } from '../panels/v3Models'
 import { CHART } from '../util/chartTheme'
 import { createChartAnnotationPrimitive } from './ChartAnnotationPrimitive'
@@ -30,7 +31,12 @@ interface Props {
   selectedSequenceId?: number | null
   selectedTrade?: ChartTraceEvent | null
   onSelectEvidence?: (sequenceId: number) => void
+  /** `alpha chart overlays` for the same window: drawn as-is, never recomputed here. */
+  overlays?: ChartOverlays | null
 }
+
+const OVERLAY_COLORS = [CHART.accent, CHART.gold, CHART.up, CHART.down, CHART.muted]
+const SUB_PANE_HEIGHT = 90
 
 function markerColor(marker: EvidenceMarker): string {
   if (marker.tone === 'selection') return CHART.accent
@@ -66,6 +72,7 @@ export function PriceChartCanvas({
   selectedSequenceId = null,
   selectedTrade = null,
   onSelectEvidence,
+  overlays = null,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const crosshairRef = useRef<HTMLDivElement>(null)
@@ -123,7 +130,43 @@ export function PriceChartCanvas({
         color: b.c >= b.o ? 'rgba(46, 160, 74, 0.35)' : 'rgba(239, 83, 80, 0.35)',
       })),
     )
-    const annotationPrimitive = createChartAnnotationPrimitive(annotations)
+    // Overlays: price-pane lines share the candle scale; each oscillator gets its own pane below.
+    // Points before the first candle (the CLI serves the whole as-of window, the chart may start
+    // later) are dropped so the time scale does not stretch left of the visible history.
+    const firstBar = bars[0]?.t ?? Number.NEGATIVE_INFINITY
+    const overlayPoints = (values: readonly (number | null)[]) =>
+      lineData(overlays?.t ?? [], values)
+        .filter((point) => point.time >= firstBar)
+        .map((point) => ({ ...point, time: point.time as UTCTimestamp }))
+    if (overlays) {
+      const { price, panes } = splitPanes(overlays.indicators)
+      price.forEach((row, index) => {
+        const line = chart.addSeries(LineSeries, {
+          color: OVERLAY_COLORS[index % OVERLAY_COLORS.length],
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          title: row.name,
+        })
+        line.setData(overlayPoints(row.values))
+      })
+      panes.forEach((group, paneOffset) => {
+        const paneIndex = paneOffset + 1
+        group.series.forEach((row, index) => {
+          const color = OVERLAY_COLORS[index % OVERLAY_COLORS.length]
+          const sub =
+            row.style === 'histogram'
+              ? chart.addSeries(HistogramSeries, { color, priceLineVisible: false, lastValueVisible: false, title: row.name }, paneIndex)
+              : chart.addSeries(LineSeries, { color, lineWidth: 1, priceLineVisible: false, lastValueVisible: true, title: row.name }, paneIndex)
+          sub.setData(overlayPoints(row.values))
+        })
+        chart.panes()[paneIndex]?.setHeight(SUB_PANE_HEIGHT)
+      })
+    }
+    const annotationPrimitive = createChartAnnotationPrimitive([
+      ...annotations,
+      ...drawableAnnotations(overlays?.annotations ?? []),
+    ])
     series.attachPrimitive(annotationPrimitive)
     if (
       selectedTrade?.event_type === 'trade' &&
@@ -158,9 +201,20 @@ export function PriceChartCanvas({
       ])
     }
     const markerRows = evidence.map((marker) => ({ marker, id: marker.id }))
+    const swings: SeriesMarker<UTCTimestamp>[] = swingMarkers(overlays?.annotations ?? [])
+      .filter((marker) => marker.time >= firstBar)
+      .map((marker) => ({
+        id: marker.id,
+        time: marker.time as UTCTimestamp,
+        position: marker.position,
+        shape: 'circle',
+        color: CHART.gold,
+        size: 0.6,
+        text: marker.text,
+      }))
     const markerPlugin = createSeriesMarkers(
       series,
-      evidence.map((marker) => seriesMarker(marker, marker.sequenceId === selectedSequenceId)),
+      [...swings, ...evidence.map((marker) => seriesMarker(marker, marker.sequenceId === selectedSequenceId))],
       { zOrder: 'top' },
     )
     const handleClick = (param: MouseEventParams) => {
@@ -221,7 +275,7 @@ export function PriceChartCanvas({
       markerPlugin.detach()
       chart.remove()
     }
-  }, [annotations, bars, controls, evidence, onSelectEvidence, selectedSequenceId, selectedTrade])
+  }, [annotations, bars, controls, evidence, onSelectEvidence, overlays, selectedSequenceId, selectedTrade])
 
   return (
     <>

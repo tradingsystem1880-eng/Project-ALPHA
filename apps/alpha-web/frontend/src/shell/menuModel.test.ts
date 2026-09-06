@@ -82,9 +82,11 @@ describe('menuModel', () => {
       ],
     )
     expect(menus.Window).toEqual([
+      { kind: 'shell', id: 'new-chart', label: 'New chart window' },
       { kind: 'document', key: 'chart', label: 'Chart', active: false },
       { kind: 'document', key: 'report:aaaaaaaa', label: 'Run A', active: true },
     ])
+    expect(menus.Insert[0]).toEqual({ kind: 'shell', id: 'indicators', label: 'Indicators…' })
     expect(menus.View).toEqual([
       { kind: 'open', window: 'chart', label: 'Chart' },
       { kind: 'open', window: 'governance', label: 'Governance' },
@@ -127,5 +129,20 @@ describe('commandHome', () => {
     expect(commandHome('backtest run')).toBeNull()
     expect(commandHome('validate')).toBeNull()
     expect(commandHome('')).toBeNull()
+  })
+})
+
+describe('chart windows', () => {
+  it('offers Tile charts as a checkbox only when the shell reports the tiling state', () => {
+    const plain = menuBar([], [], null, [])
+    expect(plain.Window.some((item) => item.kind === 'shell' && item.id === 'tile')).toBe(false)
+    const tiled = menuBar([], [], null, [], { tiled: true })
+    expect(tiled.Window[1]).toEqual({ kind: 'shell', id: 'tile', label: 'Tile charts', checked: true })
+    expect(menuBar([], [], null, [], { tiled: false }).Window[1]).toEqual({
+      kind: 'shell',
+      id: 'tile',
+      label: 'Tile charts',
+      checked: false,
+    })
   })
 })

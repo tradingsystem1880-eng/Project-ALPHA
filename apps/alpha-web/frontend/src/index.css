@@ -4774,3 +4774,21 @@ html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
   .toolbar-search-field { width: 80px; }
   .governance-label { display: none; }
 }
+
+/* Phase 5 S3 — Insert › Indicators dialog and tiled chart windows */
+.indicators-box { width: min(560px, 92vw); max-height: 88vh; display: flex; flex-direction: column; }
+.indicators-body { padding: var(--pad); display: grid; gap: var(--pad); overflow: auto; }
+.indicators-group { border: 1px solid var(--line); padding: 4px 8px 8px; margin: 0; display: grid; gap: 2px; }
+.indicators-group legend { padding: 0 4px; color: var(--ink-dim); }
+.indicators-row { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+.indicators-row .muted { margin-left: auto; }
+.indicators-custom { display: flex; gap: 4px; margin-top: 4px; }
+.indicators-custom .field { flex: 1; }
+.indicators-error { margin: 2px 0 0; color: var(--down); }
+.indicators-note { margin: 0; }
+.overlay-legend { color: var(--gold); }
+.mdi-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 1px; background: var(--line); min-height: 0; min-width: 0; }
+.mdi-tile { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--bg); }
+.mdi-tile.active { box-shadow: inset 0 0 0 1px var(--accent); }
+.mdi-tile-head { flex: 0 0 auto; padding: 1px var(--pad-sm); background: var(--panel); border-bottom: 1px solid var(--line); color: var(--ink-dim); }
+.mdi-tile .area { flex: 1; min-height: 0; }

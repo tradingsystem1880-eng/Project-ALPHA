@@ -30,6 +30,7 @@ function stub() {
     showDataSymbol: vi.fn(),
     showCompare: vi.fn(),
     showProviders: vi.fn(),
+    showIndicators: vi.fn(),
   }
   registerNavigator(navigator)
   return navigator

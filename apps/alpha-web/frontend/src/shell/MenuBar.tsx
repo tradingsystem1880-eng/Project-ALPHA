@@ -22,8 +22,16 @@ interface Props {
   onPalette: () => void
   onSettings: () => void
   onNewIdea: () => void
+  onIndicators: () => void
+  onNewChart: () => void
+  onTile: () => void
   onToggleDock: (id: DockId) => void
   onMode: (mode: WorkspaceMode) => void
+}
+
+/** A shell item with a `checked` flag renders as a checkbox (Window › Tile charts). */
+function checkedOf(item: MenuItem): boolean | undefined {
+  return item.kind === 'shell' ? item.checked : undefined
 }
 
 export function MenuBar({
@@ -36,6 +44,9 @@ export function MenuBar({
   onPalette,
   onSettings,
   onNewIdea,
+  onIndicators,
+  onNewChart,
+  onTile,
   onToggleDock,
   onMode,
 }: Props) {
@@ -83,6 +94,9 @@ export function MenuBar({
     else if (item.kind === 'mode') onMode(item.id)
     else if (item.id === 'palette') onPalette()
     else if (item.id === 'new-idea') onNewIdea()
+    else if (item.id === 'indicators') onIndicators()
+    else if (item.id === 'new-chart') onNewChart()
+    else if (item.id === 'tile') onTile()
     else onSettings()
   }
 
@@ -152,17 +166,17 @@ export function MenuBar({
                   <button
                     key={`${item.kind}:${'id' in item ? item.id : 'key' in item ? item.key : item.window}`}
                     type="button"
-                    role={item.kind === 'dock' || item.kind === 'mode' ? 'menuitemcheckbox' : 'menuitem'}
-                    aria-checked={item.kind === 'dock' ? item.open : item.kind === 'mode' ? item.active : undefined}
+                    role={item.kind === 'dock' || item.kind === 'mode' || checkedOf(item) !== undefined ? 'menuitemcheckbox' : 'menuitem'}
+                    aria-checked={item.kind === 'dock' ? item.open : item.kind === 'mode' ? item.active : checkedOf(item)}
                     disabled={item.kind === 'mode' && item.disabled}
                     title={item.kind === 'mode' && item.disabled ? 'Advanced needs a linked project' : undefined}
-                    className={`menu-item${(item.kind === 'document' && item.active) || (item.kind === 'mode' && item.active) ? ' active' : ''}${item.kind === 'dock' || item.kind === 'mode' ? ' menu-check' : ''}`}
+                    className={`menu-item${(item.kind === 'document' && item.active) || (item.kind === 'mode' && item.active) ? ' active' : ''}${item.kind === 'dock' || item.kind === 'mode' || checkedOf(item) !== undefined ? ' menu-check' : ''}`}
                     onClick={() => select(item)}
                     onKeyDown={onItemKey(name)}
                   >
-                    {item.kind === 'dock' || item.kind === 'mode' ? (
+                    {item.kind === 'dock' || item.kind === 'mode' || checkedOf(item) !== undefined ? (
                       <span className="menu-mark" aria-hidden="true">
-                        {(item.kind === 'dock' ? item.open : item.active) ? '✓' : ''}
+                        {(item.kind === 'dock' ? item.open : item.kind === 'mode' ? item.active : checkedOf(item)) ? '✓' : ''}
                       </span>
                     ) : null}
                     {item.kind === 'command' ? <span className="mono">alpha {item.label}</span> : item.label}

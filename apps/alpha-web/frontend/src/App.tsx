@@ -20,6 +20,7 @@ import { DataManager } from './panels/DataManager'
 import { MarketWatch } from './panels/MarketWatch'
 import { Navigator } from './panels/Navigator'
 import { DockFrame } from './shell/DockFrame'
+import { IndicatorsDialog } from './components/IndicatorsDialog'
 import { DocumentArea, type PaneFocus } from './shell/DocumentArea'
 import { DOCKS, DOCUMENTS, documentOf } from './shell/documents'
 import { Icon } from './shell/icons'
@@ -115,6 +116,8 @@ function WorkstationApp() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [docks, setDocks] = useState<DockState>(restoreDocks)
   const [maximised, setMaximised] = useState(false)
+  const [tiled, setTiled] = useState(false)
+  const [indicatorsOpen, setIndicatorsOpen] = useState(false)
   const now = useNow()
   const venue = useSymbolVenue(linked.symbol)
 
@@ -215,8 +218,17 @@ function WorkstationApp() {
       },
       showProviders: () => showPane('jobs', 'ProviderSystem'),
       showCompare: () => openWindow('compare'),
+      showIndicators: () => setIndicatorsOpen(true),
     })
   }, [openRun, openWindow, setDock, showPane])
+
+  // Window › New chart window: a second chart pinned to the linked symbol (`chart:<symbol>`), so
+  // Market Watch can move the plain Chart while the pinned ones stay put; Tile charts lays every
+  // open chart out side by side (at most four).
+  const newChart = useCallback(() => {
+    if (!linked.symbol) return
+    openWindow('chart', linked.symbol, linked.symbol)
+  }, [linked.symbol, openWindow])
 
   // `#run=<id>` deep-links to a run's report document.
   useEffect(() => {
@@ -305,12 +317,16 @@ function WorkstationApp() {
         shell={{
           docks: DOCKS.map((dock) => ({ id: dock.id, label: dock.title, open: docks[dock.id] })),
           mode: { current: mode, advancedAvailable: linked.projectId !== null },
+          tiled,
         }}
         onOpenWindow={(id) => openWindow(id)}
         onActivate={activate}
         onPalette={() => setPaletteOpen(true)}
         onSettings={() => document.querySelector<HTMLButtonElement>('.settings-toggle')?.click()}
         onNewIdea={newIdea}
+        onIndicators={() => setIndicatorsOpen(true)}
+        onNewChart={newChart}
+        onTile={() => setTiled((value) => !value)}
         onToggleDock={toggleDock}
         onMode={chooseMode}
       />
@@ -352,10 +368,12 @@ function WorkstationApp() {
             contextKey={linked.projectId ?? 'no-project'}
             header={header}
             maximised={maximised}
+            tiled={tiled}
             onActivate={activate}
             onClose={close}
             onToggleMaximise={() => setMaximised((value) => !value)}
           />
+          {indicatorsOpen ? <IndicatorsDialog onClose={() => setIndicatorsOpen(false)} /> : null}
           {maximised ? null : <Toolbox open={docks.Toolbox} onOpenChange={(open) => setDock('Toolbox', open)} />}
         </main>
         {rightOpen ? (

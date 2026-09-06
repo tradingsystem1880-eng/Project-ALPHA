@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { setChartHover } from '../context/chartHover'
 import { api } from '../api/client'
-import type { Candle, CandleProvenance, ChartBundle, PaperCandleMarker } from '../api/types'
+import type { Candle, CandleProvenance, ChartBundle, ChartOverlays, PaperCandleMarker } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import { PriceChartCanvas } from '../components/PriceChartCanvas'
 import { usePanelLinked } from '../context/usePanelLinked'
@@ -15,8 +15,10 @@ import {
   selectTraceEvent,
   useChartSelection,
 } from '../state/chartSelection'
-import { openDevelopmentCenter } from './actions'
+import { useSettings } from '../state/settings'
+import { openDevelopmentCenter, openIndicators } from './actions'
 import { ChartDataAlternative } from './ChartDataAlternative'
+import { hasOverlays, overlayLegend, overlayQuery } from './chartOverlaysModel'
 import { TraceEvidencePanel } from './TraceEvidencePanel'
 import {
   buildEvidenceMarkers,
@@ -28,7 +30,15 @@ import type { PanelHandleProps } from '../context/panelHandle'
 export function PriceChart(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const { linked, setLinked: setPanelLinked } = panelLink
-  const [symbol, setSymbol] = useState(linked.symbol ?? '')
+  // A tiled chart window (`chart:<symbol>`) is pinned to its own symbol; the plain Chart follows
+  // the linked symbol like every other panel.
+  const instance = (props.params as { instance?: unknown } | undefined)?.instance
+  const pinned = typeof instance === 'string' && instance ? instance : null
+  const [symbol, setSymbol] = useState(pinned ?? linked.symbol ?? '')
+  const { profile, overlays: overlaySettings } = useSettings()
+  const overlayConfig = overlaySettings[profile]
+  const [overlays, setOverlays] = useState<ChartOverlays | null>(null)
+  const [overlayError, setOverlayError] = useState<string | null>(null)
   const [bars, setBars] = useState<Candle[] | null>(null)
   const [bundle, setBundle] = useState<ChartBundle | null>(null)
   const [paperMarkers, setPaperMarkers] = useState<PaperCandleMarker[]>([])
@@ -43,8 +53,37 @@ export function PriceChart(props: PanelHandleProps) {
     return () => setChartHover({ bar: null, barsLoaded: 0 })
   }, [bars])
   useEffect(() => {
-    setSymbol(linked.symbol ?? '')
-  }, [linked.symbol])
+    if (!pinned) setSymbol(linked.symbol ?? '')
+  }, [linked.symbol, pinned])
+
+  // Overlays come from `alpha chart overlays` over the same as-of window as the candles; a
+  // failure keeps the candles and says why the overlay is missing. Run documents draw the run's
+  // own annotations instead.
+  const overlayQueryText = overlayQuery(overlayConfig, { end: linked.end ?? null, snapshotId: linked.snapshotId ?? null })
+  const wantOverlays = !linked.runId && Boolean(symbol) && hasOverlays(overlayConfig)
+  useEffect(() => {
+    if (!wantOverlays) {
+      setOverlays(null)
+      setOverlayError(null)
+      return
+    }
+    let live = true
+    api
+      .overlays(symbol, overlayQueryText)
+      .then((result) => {
+        if (!live) return
+        setOverlays(result)
+        setOverlayError(null)
+      })
+      .catch((cause: unknown) => {
+        if (!live) return
+        setOverlays(null)
+        setOverlayError(String(cause))
+      })
+    return () => {
+      live = false
+    }
+  }, [wantOverlays, symbol, overlayQueryText])
 
   useEffect(() => {
     if (linked.runId) return
@@ -164,6 +203,21 @@ export function PriceChart(props: PanelHandleProps) {
           spellCheck={false}
         />
         {bars ? <span className="count">{bars.length} bars</span> : null}
+        {!linked.runId ? (
+          <button
+            type="button"
+            className="btn"
+            onClick={openIndicators}
+            title="Choose the indicator series and pattern layers alpha chart overlays computes for this chart"
+          >
+            Indicators…{hasOverlays(overlayConfig) ? ` (${overlayConfig.indicators.length + overlayConfig.patterns.length})` : ''}
+          </button>
+        ) : null}
+        {overlayError ? (
+          <span className="chip fail" role="status" title={overlayError}>
+            overlays unavailable · {overlayError}
+          </span>
+        ) : null}
         {bundle ? (
           <span className={`chip chart-trace-count ${bundle.trace_status === 'available' ? 'kind' : ''}`}>
             {bundle.trace_status === 'available' ? `${bundle.trace.length} returned causal events` : 'trace unavailable'}
@@ -204,6 +258,7 @@ export function PriceChart(props: PanelHandleProps) {
                 selectedSequenceId={selectedSequenceId}
                 selectedTrade={selectedTrade}
                 onSelectEvidence={selectEvidence}
+                overlays={overlays}
               />
             </div>
             <div className="chart-foot mono">
@@ -212,6 +267,7 @@ export function PriceChart(props: PanelHandleProps) {
               <span>AS OF {linked.end ?? new Date((bundle?.provenance.as_of ?? bars.at(-1)!.t) * 1_000).toISOString().slice(0, 10)}</span>
               <span>SNAPSHOT · {linked.snapshotId ?? 'CURRENT STORE'}</span>
               <span>D decision · F fill · P paper journal event</span>
+              {overlays ? <span className="overlay-legend">{overlayLegend(overlays.indicators, overlays.annotations)}</span> : null}
             </div>
           </div>
         )}
