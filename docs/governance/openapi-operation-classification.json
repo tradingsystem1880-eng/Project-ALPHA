@@ -240,6 +240,20 @@
     },
     {
       "method": "GET",
+      "mode": "automatic",
+      "operation_id": "data_snapshots_api_data_snapshots_get",
+      "path": "/api/data/snapshots",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "data_source_status_api_data_source_status_get",
+      "path": "/api/data/source-status",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
       "mode": "fixture_backed",
       "operation_id": "ticker_api_data_ticker_get",
       "path": "/api/data/ticker",
@@ -729,6 +743,13 @@
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
     },
     {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "research_claim_add_api_research_cases__project_id__claims_post",
+      "path": "/api/research/cases/{project_id}/claims",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
       "method": "GET",
       "mode": "fixture_backed",
       "operation_id": "research_context_packets_api_research_cases__project_id__context_packets_get",
@@ -780,6 +801,13 @@
     {
       "method": "POST",
       "mode": "fixture_backed",
+      "operation_id": "research_note_add_api_research_cases__project_id__notes_post",
+      "path": "/api/research/cases/{project_id}/notes",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
       "operation_id": "research_propose_api_research_cases__project_id__proposal_post",
       "path": "/api/research/cases/{project_id}/proposal",
       "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
@@ -811,6 +839,13 @@
       "operation_id": "research_semantic_projection_api_research_cases__project_id__semantic_projection_get",
       "path": "/api/research/cases/{project_id}/semantic-projection",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "research_source_add_api_research_cases__project_id__sources_post",
+      "path": "/api/research/cases/{project_id}/sources",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
     },
     {
       "method": "GET",

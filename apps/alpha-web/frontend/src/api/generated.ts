@@ -555,6 +555,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/data/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Data Snapshots
+         * @description Every immutable data snapshot (relays ``alpha data snapshots --json``).
+         */
+        get: operations["data_snapshots_api_data_snapshots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/data/source-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Data Source Status
+         * @description SYMBOL's canonical provenance and pending receipts (``alpha data source-status``).
+         */
+        get: operations["data_source_status_api_data_source_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/data/ticker": {
         parameters: {
             query?: never;
@@ -1794,6 +1834,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research/cases/{project_id}/claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Research Claim Add
+         * @description Draft one claim; screening or rejecting it stays a Touch ID owner action.
+         */
+        post: operations["research_claim_add_api_research_cases__project_id__claims_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases/{project_id}/context-packets": {
         parameters: {
             query?: never;
@@ -1927,7 +1987,11 @@ export interface paths {
          */
         get: operations["research_notes_api_research_cases__project_id__notes_get"];
         put?: never;
-        post?: never;
+        /**
+         * Research Note Add
+         * @description Append an owner note beside Codex's commentary — commentary, never evidence.
+         */
+        post: operations["research_note_add_api_research_cases__project_id__notes_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2028,6 +2092,26 @@ export interface paths {
         get: operations["research_semantic_projection_api_research_cases__project_id__semantic_projection_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Research Source Add
+         * @description Register an owner-provided source; it is untrusted until an owner screens its claims.
+         */
+        post: operations["research_source_add_api_research_cases__project_id__sources_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5454,6 +5538,43 @@ export interface components {
              */
             state: "verified";
         };
+        /** DataSnapshotRow */
+        DataSnapshotRow: {
+            /** Adapter Version */
+            adapter_version: string | null;
+            /** Created At */
+            created_at: string | null;
+            /** Manifest Sha256 */
+            manifest_sha256: string;
+            /** Parser Version */
+            parser_version: string | null;
+            /** Snapshot Id */
+            snapshot_id: string | null;
+            /** Source */
+            source: string | null;
+            /** Symbols */
+            symbols: string[];
+        };
+        /** DataSnapshots */
+        DataSnapshots: {
+            /** Snapshots */
+            snapshots: components["schemas"]["DataSnapshotRow"][];
+        };
+        /** DataSourceStatus */
+        DataSourceStatus: {
+            /** Candidates */
+            candidates: string[];
+            /** Promotion Pending */
+            promotion_pending: boolean;
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            } | null;
+            /** Quarantined */
+            quarantined: string[];
+            /** Symbol */
+            symbol: string;
+        };
         /** DecisionPacket */
         DecisionPacket: {
             /** Actor */
@@ -7651,7 +7772,7 @@ export interface components {
              * Action Type
              * @enum {string}
              */
-            action_type: "screen_source_claim" | "reject_source_claim" | "revise_source_claim" | "freeze_source_pack" | "approve_exploration" | "reject_exploration" | "revise_exploration" | "launch_d1" | "approve_confirmation" | "reject_confirmation" | "launch_d2" | "record_final_disposition" | "record_semantic_event";
+            action_type: "screen_source_claim" | "reject_source_claim" | "revise_source_claim" | "freeze_source_pack" | "approve_exploration" | "reject_exploration" | "revise_exploration" | "launch_d1" | "approve_confirmation" | "reject_confirmation" | "launch_d2" | "record_final_disposition" | "record_semantic_event" | "pause_research" | "resume_research" | "cancel_research";
             /** Artifact Hash */
             artifact_hash: string;
             /** Consequence Summary */
@@ -8510,6 +8631,36 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** ResearchClaimAddRequest */
+        ResearchClaimAddRequest: {
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "supports" | "contradicts" | "contextualizes" | "method";
+            /** Limitations */
+            limitations: string;
+            /**
+             * Markets
+             * @default []
+             */
+            markets: string[];
+            /** Method */
+            method: string;
+            /** Sample */
+            sample: string;
+            /** Source Id */
+            source_id: string;
+            /**
+             * Strength
+             * @enum {string}
+             */
+            strength: "weak" | "moderate" | "strong";
+            /** Text */
+            text: string;
+        };
         /** ResearchContextPacket */
         ResearchContextPacket: {
             /** Created At */
@@ -9153,6 +9304,18 @@ export interface components {
             /** Sequence */
             sequence: number;
         };
+        /** ResearchNoteAddRequest */
+        ResearchNoteAddRequest: {
+            /** Body */
+            body: string;
+            /** Context Packet Id */
+            context_packet_id?: string | null;
+            /**
+             * Note Kind
+             * @enum {string}
+             */
+            note_kind: "critique" | "confounder_review" | "test_design" | "completeness_review" | "synthesis";
+        };
         /** ResearchNotePage */
         ResearchNotePage: {
             /** Items */
@@ -9465,6 +9628,29 @@ export interface components {
             state: "definition_required" | "review_required" | "freeze_required" | "frozen" | "stale";
             /** Verified Read Sha256 */
             verified_read_sha256?: string | null;
+        };
+        /** ResearchSourceAddRequest */
+        ResearchSourceAddRequest: {
+            /**
+             * Access Mode
+             * @enum {string}
+             */
+            access_mode: "metadata_only" | "open_access" | "owner_provided";
+            /**
+             * Authors
+             * @default []
+             */
+            authors: string[];
+            /** Doi */
+            doi?: string | null;
+            /** Locator */
+            locator: string;
+            /** Provider */
+            provider: string;
+            /** Title */
+            title: string;
+            /** Year */
+            year?: number | null;
         };
         /** ResearchSourcePackOptionV1 */
         ResearchSourcePackOptionV1: {
@@ -11297,6 +11483,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FirstBar"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    data_snapshots_api_data_snapshots_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataSnapshots"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    data_source_status_api_data_source_status_get: {
+        parameters: {
+            query: {
+                symbol: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataSourceStatus"];
                 };
             };
             /** @description Stable, redacted Workstation error */
@@ -13618,6 +13864,43 @@ export interface operations {
             };
         };
     };
+    research_claim_add_api_research_cases__project_id__claims_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResearchClaimAddRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     research_context_packets_api_research_cases__project_id__context_packets_get: {
         parameters: {
             query?: {
@@ -13857,6 +14140,41 @@ export interface operations {
             };
         };
     };
+    research_note_add_api_research_cases__project_id__notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResearchNoteAddRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchNote"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     research_propose_api_research_cases__project_id__proposal_post: {
         parameters: {
             query?: never;
@@ -14003,6 +14321,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VerifiedBlindSemanticReadV1"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    research_source_add_api_research_cases__project_id__sources_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResearchSourceAddRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Stable, redacted Workstation error */

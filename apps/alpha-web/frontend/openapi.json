@@ -4853,6 +4853,154 @@
         "title": "CryptoStorageVerifyResponse",
         "type": "object"
       },
+      "DataSnapshotRow": {
+        "additionalProperties": false,
+        "properties": {
+          "adapter_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Version"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "manifest_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Sha256",
+            "type": "string"
+          },
+          "parser_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parser Version"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symbols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "created_at",
+          "source",
+          "adapter_version",
+          "parser_version",
+          "symbols",
+          "manifest_sha256"
+        ],
+        "title": "DataSnapshotRow",
+        "type": "object"
+      },
+      "DataSnapshots": {
+        "additionalProperties": false,
+        "properties": {
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/DataSnapshotRow"
+            },
+            "title": "Snapshots",
+            "type": "array"
+          }
+        },
+        "required": [
+          "snapshots"
+        ],
+        "title": "DataSnapshots",
+        "type": "object"
+      },
+      "DataSourceStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "promotion_pending": {
+            "title": "Promotion Pending",
+            "type": "boolean"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "quarantined": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Quarantined",
+            "type": "array"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "provenance",
+          "promotion_pending",
+          "candidates",
+          "quarantined"
+        ],
+        "title": "DataSourceStatus",
+        "type": "object"
+      },
       "DecisionPacket": {
         "additionalProperties": false,
         "properties": {
@@ -11649,7 +11797,10 @@
               "reject_confirmation",
               "launch_d2",
               "record_final_disposition",
-              "record_semantic_event"
+              "record_semantic_event",
+              "pause_research",
+              "resume_research",
+              "cancel_research"
             ],
             "title": "Action Type",
             "type": "string"
@@ -14281,6 +14432,86 @@
         "title": "ResearchChecklistQuestion",
         "type": "object"
       },
+      "ResearchClaimAddRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "contract_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "supports",
+              "contradicts",
+              "contextualizes",
+              "method"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "limitations": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Limitations",
+            "type": "string"
+          },
+          "markets": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Markets",
+            "type": "array"
+          },
+          "method": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Method",
+            "type": "string"
+          },
+          "sample": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Sample",
+            "type": "string"
+          },
+          "source_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Source Id",
+            "type": "string"
+          },
+          "strength": {
+            "enum": [
+              "weak",
+              "moderate",
+              "strong"
+            ],
+            "title": "Strength",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "contract_id",
+          "text",
+          "direction",
+          "strength",
+          "method",
+          "sample",
+          "limitations"
+        ],
+        "title": "ResearchClaimAddRequest",
+        "type": "object"
+      },
       "ResearchContextPacket": {
         "additionalProperties": false,
         "properties": {
@@ -16196,6 +16427,45 @@
         "title": "ResearchNote",
         "type": "object"
       },
+      "ResearchNoteAddRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "context_packet_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Packet Id"
+          },
+          "note_kind": {
+            "enum": [
+              "critique",
+              "confounder_review",
+              "test_design",
+              "completeness_review",
+              "synthesis"
+            ],
+            "title": "Note Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note_kind",
+          "body"
+        ],
+        "title": "ResearchNoteAddRequest",
+        "type": "object"
+      },
       "ResearchNotePage": {
         "additionalProperties": false,
         "properties": {
@@ -17206,6 +17476,78 @@
           "next_owner_action"
         ],
         "title": "ResearchSemanticStateV1",
+        "type": "object"
+      },
+      "ResearchSourceAddRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "access_mode": {
+            "enum": [
+              "metadata_only",
+              "open_access",
+              "owner_provided"
+            ],
+            "title": "Access Mode",
+            "type": "string"
+          },
+          "authors": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Authors",
+            "type": "array"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "locator": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Locator",
+            "type": "string"
+          },
+          "provider": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Provider",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "maximum": 2100.0,
+                "minimum": 1800.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "required": [
+          "title",
+          "locator",
+          "provider",
+          "access_mode"
+        ],
+        "title": "ResearchSourceAddRequest",
         "type": "object"
       },
       "ResearchSourcePackOptionV1": {
@@ -20947,6 +21289,82 @@
           }
         },
         "summary": "First Bar",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/data/snapshots": {
+      "get": {
+        "description": "Every immutable data snapshot (relays ``alpha data snapshots --json``).",
+        "operationId": "data_snapshots_api_data_snapshots_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSnapshots"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Data Snapshots",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/data/source-status": {
+      "get": {
+        "description": "SYMBOL's canonical provenance and pending receipts (``alpha data source-status``).",
+        "operationId": "data_source_status_api_data_source_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSourceStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Data Source Status",
         "tags": [
           "catalog"
         ]
@@ -24739,6 +25157,61 @@
         ]
       }
     },
+    "/api/research/cases/{project_id}/claims": {
+      "post": {
+        "description": "Draft one claim; screening or rejecting it stays a Touch ID owner action.",
+        "operationId": "research_claim_add_api_research_cases__project_id__claims_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchClaimAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Research Claim Add Api Research Cases  Project Id  Claims Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Claim Add",
+        "tags": [
+          "research"
+        ]
+      }
+    },
     "/api/research/cases/{project_id}/context-packets": {
       "get": {
         "description": "Read this case's recorded Codex context packets \u2014 every byte Codex saw.",
@@ -25118,6 +25591,57 @@
         "tags": [
           "research"
         ]
+      },
+      "post": {
+        "description": "Append an owner note beside Codex's commentary \u2014 commentary, never evidence.",
+        "operationId": "research_note_add_api_research_cases__project_id__notes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchNoteAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchNote"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Note Add",
+        "tags": [
+          "research"
+        ]
       }
     },
     "/api/research/cases/{project_id}/proposal": {
@@ -25340,6 +25864,61 @@
           }
         },
         "summary": "Research Semantic Projection",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/sources": {
+      "post": {
+        "description": "Register an owner-provided source; it is untrusted until an owner screens its claims.",
+        "operationId": "research_source_add_api_research_cases__project_id__sources_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchSourceAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Research Source Add Api Research Cases  Project Id  Sources Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Source Add",
         "tags": [
           "research"
         ]
