@@ -49,6 +49,9 @@ class OwnerActionChallengeRequest(StrictModel):
         "launch_d2",
         "record_final_disposition",
         "record_semantic_event",
+        "pause_research",
+        "resume_research",
+        "cancel_research",
     ]
     project_id: str
     artifact_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -199,6 +202,10 @@ def _action_argv(
             reason,
             "--json",
         ]
+    if action_type in {"pause_research", "resume_research", "cancel_research"}:
+        # The browser never asserts the out-of-band orphaned-process fact; resume without it.
+        verb = action_type.removesuffix("_research")
+        return ["research", verb, project_id, "--actor", actor, "--reason", reason, "--json"]
     raise DataError(f"unsupported owner action type {action_type!r}")
 
 

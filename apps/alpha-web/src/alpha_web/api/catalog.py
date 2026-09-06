@@ -8,7 +8,15 @@ from fastapi import APIRouter, HTTPException, Query
 
 from alpha_web import _catalog, _invoke
 from alpha_web.api._common import data_dir
-from alpha_web.api.models import CommandDefinition, FirstBar, StrategyDefinition, Symbols, Ticker
+from alpha_web.api.models import (
+    CommandDefinition,
+    DataSnapshots,
+    DataSourceStatus,
+    FirstBar,
+    StrategyDefinition,
+    Symbols,
+    Ticker,
+)
 
 router = APIRouter(prefix="/api", tags=["catalog"])
 
@@ -41,6 +49,24 @@ def first_bar(
     """The venue's earliest daily bar for ``symbol`` (relays ``alpha data first-bar --json``)."""
     try:
         return _catalog.first_bar(data_dir=data_dir(), symbol=symbol, exchange=exchange)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/data/snapshots", response_model=DataSnapshots)
+def data_snapshots() -> dict[str, object]:
+    """Every immutable data snapshot (relays ``alpha data snapshots --json``)."""
+    try:
+        return _catalog.snapshots(data_dir=data_dir())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/data/source-status", response_model=DataSourceStatus)
+def data_source_status(symbol: Annotated[str, Query(min_length=1)]) -> dict[str, object]:
+    """SYMBOL's canonical provenance and pending receipts (``alpha data source-status``)."""
+    try:
+        return _catalog.source_status(data_dir=data_dir(), symbol=symbol)
     except RuntimeError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

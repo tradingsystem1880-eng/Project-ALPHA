@@ -88,6 +88,9 @@ type OwnerActionType = Literal[
     "launch_d2",
     "record_final_disposition",
     "record_semantic_event",
+    "pause_research",
+    "resume_research",
+    "cancel_research",
 ]
 
 LEGACY_SCHEMA_VERSION: Final = 1
@@ -418,6 +421,9 @@ OWNER_ACTION_TYPES: Final = frozenset(
         "launch_d2",
         "record_final_disposition",
         "record_semantic_event",
+        "pause_research",
+        "resume_research",
+        "cancel_research",
     }
 )
 _RESEARCH_GATE_EVIDENCE_ARTIFACT: Final = "research_gate_evidence.json"

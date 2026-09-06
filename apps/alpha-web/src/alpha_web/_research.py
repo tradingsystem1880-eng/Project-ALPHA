@@ -258,6 +258,112 @@ def notes(project_id: str, *, data_dir: Path, limit: int = 100, offset: int = 0)
     )
 
 
+def note_add(
+    project_id: str,
+    *,
+    data_dir: Path,
+    note_kind: str,
+    body: str,
+    context_packet_id: str | None = None,
+) -> dict[str, Any]:
+    """Append one owner note to this case's commentary stream (never evidence)."""
+    argv = [
+        "research",
+        "note",
+        "add",
+        project_id,
+        "--kind",
+        note_kind,
+        "--body",
+        body,
+        "--author",
+        "owner",
+        "--author-kind",
+        "owner",
+    ]
+    if context_packet_id:
+        argv += ["--packet", context_packet_id]
+    return _object(_run_json([*argv, "--json"], data_dir=data_dir), "research note")
+
+
+def source_add(
+    project_id: str,
+    *,
+    data_dir: Path,
+    title: str,
+    locator: str,
+    provider: str,
+    access_mode: str,
+    doi: str | None = None,
+    year: int | None = None,
+    authors: list[str] | None = None,
+) -> dict[str, Any]:
+    """Register one owner-provided literature source (untrusted until screened)."""
+    argv = [
+        "research",
+        "sources",
+        "add",
+        project_id,
+        "--title",
+        title,
+        "--locator",
+        locator,
+        "--provider",
+        provider,
+        "--access-mode",
+        access_mode,
+    ]
+    if doi:
+        argv += ["--doi", doi]
+    if year is not None:
+        argv += ["--year", str(year)]
+    for author in authors or []:
+        argv += ["--author", author]
+    return _object(_run_json([*argv, "--json"], data_dir=data_dir), "research source")
+
+
+def claim_add(
+    project_id: str,
+    *,
+    data_dir: Path,
+    source_id: str,
+    contract_id: str,
+    text: str,
+    direction: str,
+    strength: str,
+    method: str,
+    sample: str,
+    markets: list[str] | None = None,
+    limitations: str,
+) -> dict[str, Any]:
+    """Draft one owner-authored claim; screening stays a separate Touch ID step."""
+    argv = [
+        "research",
+        "sources",
+        "claim",
+        "add",
+        project_id,
+        "--source-id",
+        source_id,
+        "--contract-id",
+        contract_id,
+        "--text",
+        text,
+        "--direction",
+        direction,
+        "--strength",
+        strength,
+        "--method",
+        method,
+        "--sample",
+        sample,
+    ]
+    for market in markets or []:
+        argv += ["--market", market]
+    argv += ["--limitations", limitations, "--author", "owner", "--author-kind", "owner"]
+    return _object(_run_json([*argv, "--json"], data_dir=data_dir), "research claim")
+
+
 def datasets(
     *, data_dir: Path, symbol: str | None = None, limit: int = 100, offset: int = 0
 ) -> dict[str, Any]:

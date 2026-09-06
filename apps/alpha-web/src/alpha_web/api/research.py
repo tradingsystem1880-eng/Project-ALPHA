@@ -17,6 +17,7 @@ from alpha_web.api.models import (
     ResearchCase,
     ResearchCasePage,
     ResearchCaseReport,
+    ResearchClaimAddRequest,
     ResearchContextPacket,
     ResearchContextPacketPage,
     ResearchDatasetPage,
@@ -24,6 +25,8 @@ from alpha_web.api.models import (
     ResearchEvidenceHub,
     ResearchLaunchRequest,
     ResearchLaunchResponse,
+    ResearchNote,
+    ResearchNoteAddRequest,
     ResearchNotePage,
     ResearchProposalOptionsV1,
     ResearchProposalRequest,
@@ -31,6 +34,7 @@ from alpha_web.api.models import (
     ResearchProtocolLibrary,
     ResearchReport,
     ResearchScorecard,
+    ResearchSourceAddRequest,
     VerifiedBlindSemanticReadV1,
 )
 from alpha_web.run_authority import RunContextDenied, resolve_run_context
@@ -198,6 +202,61 @@ def research_notes(
         return _research.notes(project_id, data_dir=data_dir(), limit=limit, offset=offset)
     except RuntimeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/research/cases/{project_id}/notes", response_model=ResearchNote)
+def research_note_add(project_id: str, body: ResearchNoteAddRequest) -> dict[str, Any]:
+    """Append an owner note beside Codex's commentary — commentary, never evidence."""
+    try:
+        return _research.note_add(
+            project_id,
+            data_dir=data_dir(),
+            note_kind=body.note_kind,
+            body=body.body,
+            context_packet_id=body.context_packet_id,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/research/cases/{project_id}/sources")
+def research_source_add(project_id: str, body: ResearchSourceAddRequest) -> dict[str, Any]:
+    """Register an owner-provided source; it is untrusted until an owner screens its claims."""
+    try:
+        return _research.source_add(
+            project_id,
+            data_dir=data_dir(),
+            title=body.title,
+            locator=body.locator,
+            provider=body.provider,
+            access_mode=body.access_mode,
+            doi=body.doi,
+            year=body.year,
+            authors=body.authors,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/research/cases/{project_id}/claims")
+def research_claim_add(project_id: str, body: ResearchClaimAddRequest) -> dict[str, Any]:
+    """Draft one claim; screening or rejecting it stays a Touch ID owner action."""
+    try:
+        return _research.claim_add(
+            project_id,
+            data_dir=data_dir(),
+            source_id=body.source_id,
+            contract_id=body.contract_id,
+            text=body.text,
+            direction=body.direction,
+            strength=body.strength,
+            method=body.method,
+            sample=body.sample,
+            markets=body.markets,
+            limitations=body.limitations,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/research/datasets", response_model=ResearchDatasetPage)

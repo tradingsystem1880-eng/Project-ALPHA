@@ -803,6 +803,28 @@ class Symbols(StrictModel):
     symbols: list[str]
 
 
+class DataSnapshotRow(StrictModel):
+    snapshot_id: str | None
+    created_at: str | None
+    source: str | None
+    adapter_version: str | None
+    parser_version: str | None
+    symbols: list[str]
+    manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class DataSnapshots(StrictModel):
+    snapshots: list[DataSnapshotRow]
+
+
+class DataSourceStatus(StrictModel):
+    symbol: str
+    provenance: dict[str, Any] | None
+    promotion_pending: bool
+    candidates: list[str]
+    quarantined: list[str]
+
+
 class FirstBar(StrictModel):
     symbol: str
     exchange: str
@@ -2442,6 +2464,36 @@ class ResearchNote(StrictModel):
     author_kind: Literal["owner", "agent"]
     context_packet_id: str | None
     created_at: str
+
+
+class ResearchSourceAddRequest(StrictModel):
+    title: str = Field(min_length=1, max_length=512)
+    locator: str = Field(min_length=1, max_length=2_048)
+    provider: str = Field(min_length=1, max_length=80)
+    access_mode: Literal["metadata_only", "open_access", "owner_provided"]
+    doi: str | None = None
+    year: int | None = Field(default=None, ge=1800, le=2100)
+    authors: list[str] = []
+
+
+class ResearchClaimAddRequest(StrictModel):
+    source_id: str = Field(min_length=1, max_length=120)
+    contract_id: str = Field(min_length=1, max_length=120)
+    text: str = Field(min_length=1, max_length=4_096)
+    direction: Literal["supports", "contradicts", "contextualizes", "method"]
+    strength: Literal["weak", "moderate", "strong"]
+    method: str = Field(min_length=1, max_length=2_048)
+    sample: str = Field(min_length=1, max_length=2_048)
+    markets: list[str] = []
+    limitations: str = Field(min_length=1, max_length=2_048)
+
+
+class ResearchNoteAddRequest(StrictModel):
+    note_kind: Literal[
+        "critique", "confounder_review", "test_design", "completeness_review", "synthesis"
+    ]
+    body: str = Field(min_length=1, max_length=8_192)
+    context_packet_id: str | None = None
 
 
 class ResearchNotePage(StrictModel):

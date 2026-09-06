@@ -7,7 +7,7 @@ import sqlite3
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException
@@ -707,9 +707,11 @@ def test_research_router_exposes_no_new_mutation_verbs() -> None:
         for path, operations in paths.items()
         if path.startswith("/api/research")
     }
-    # ADR-0021: the read plane grows, mutation authority does not. Exactly the three
-    # bounded Gate-1 POSTs (capture, proposal, pilot launch) may write; everything else
-    # on the research router is GET-only.
+    # ADR-0021: the read plane grows, mutation authority does not. Exactly the bounded
+    # Gate-1 POSTs (capture, proposal, pilot launch), the two literature relays and the
+    # owner commentary note, owner-provided source and owner-drafted claim (all
+    # untrusted until screened by Touch ID; Phase 5 S2) may write; everything else on
+    # the research router is GET-only.
     mutating = {
         path: methods - {"GET", "HEAD"}
         for path, methods in research_routes.items()
@@ -721,6 +723,9 @@ def test_research_router_exposes_no_new_mutation_verbs() -> None:
         "/api/research/cases/{project_id}/launch": {"POST"},
         "/api/research/cases/{project_id}/literature/discover": {"POST"},
         "/api/research/cases/{project_id}/literature/acquire": {"POST"},
+        "/api/research/cases/{project_id}/notes": {"POST"},
+        "/api/research/cases/{project_id}/sources": {"POST"},
+        "/api/research/cases/{project_id}/claims": {"POST"},
     }
     read_only_paths = {
         "/api/research/cases/{project_id}/evidence-hub",
@@ -840,3 +845,144 @@ def test_dataset_read_plane_serves_registered_refs(
     assert filtered.status_code == 200
     assert filtered.json()["items"] == []
     assert client.get("/api/research/datasets", params={"limit": 0}).status_code == 422
+
+
+def test_note_add_relays_to_research_note_add(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+    note = {
+        "note_id": "rn_" + "1" * 64,
+        "project_id": "p1",
+        "sequence": 1,
+        "note_kind": "critique",
+        "body": "owner reply",
+        "author": "owner",
+        "author_kind": "owner",
+        "context_packet_id": None,
+        "created_at": "2026-09-04T00:00:00+00:00",
+    }
+
+    def fake(argv: list[str], **_kwargs: Any) -> object:
+        calls.append(argv)
+        return note
+
+    monkeypatch.setattr(_research, "_run_json", fake)
+    client = TestClient(create_app())
+    response = client.post(
+        "/api/research/cases/p1/notes", json={"note_kind": "critique", "body": "owner reply"}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json() == note
+    assert calls == [
+        [
+            "research",
+            "note",
+            "add",
+            "p1",
+            "--kind",
+            "critique",
+            "--body",
+            "owner reply",
+            "--author",
+            "owner",
+            "--author-kind",
+            "owner",
+            "--json",
+        ]
+    ]
+    assert (
+        client.post(
+            "/api/research/cases/p1/notes", json={"note_kind": "critique", "body": ""}
+        ).status_code
+        == 422
+    )
+
+
+def test_source_and_claim_add_relay_owner_authored_drafts(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake(argv: list[str], **_kwargs: Any) -> object:
+        calls.append(argv)
+        return {"ok": True}
+
+    monkeypatch.setattr(_research, "_run_json", fake)
+    client = TestClient(create_app())
+    source = client.post(
+        "/api/research/cases/p1/sources",
+        json={
+            "title": "T",
+            "locator": "https://x",
+            "provider": "owner",
+            "access_mode": "owner_provided",
+            "year": 2020,
+            "authors": ["A", "B"],
+        },
+    )
+    assert source.status_code == 200, source.text
+    assert calls[-1] == [
+        "research",
+        "sources",
+        "add",
+        "p1",
+        "--title",
+        "T",
+        "--locator",
+        "https://x",
+        "--provider",
+        "owner",
+        "--access-mode",
+        "owner_provided",
+        "--year",
+        "2020",
+        "--author",
+        "A",
+        "--author",
+        "B",
+        "--json",
+    ]
+    claim = client.post(
+        "/api/research/cases/p1/claims",
+        json={
+            "source_id": "s1",
+            "contract_id": "c1",
+            "text": "x",
+            "direction": "supports",
+            "strength": "weak",
+            "method": "m",
+            "sample": "s",
+            "markets": ["crypto"],
+            "limitations": "l",
+        },
+    )
+    assert claim.status_code == 200, claim.text
+    assert calls[-1] == [
+        "research",
+        "sources",
+        "claim",
+        "add",
+        "p1",
+        "--source-id",
+        "s1",
+        "--contract-id",
+        "c1",
+        "--text",
+        "x",
+        "--direction",
+        "supports",
+        "--strength",
+        "weak",
+        "--method",
+        "m",
+        "--sample",
+        "s",
+        "--market",
+        "crypto",
+        "--limitations",
+        "l",
+        "--author",
+        "owner",
+        "--author-kind",
+        "owner",
+        "--json",
+    ]
+    bad = client.post("/api/research/cases/p1/claims", json={"source_id": "s1"})
+    assert bad.status_code == 422
