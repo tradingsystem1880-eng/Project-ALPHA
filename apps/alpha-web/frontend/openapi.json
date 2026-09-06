@@ -17964,6 +17964,379 @@
         "title": "RiskScenario",
         "type": "object"
       },
+      "RuleDeleted": {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "deleted"
+        ],
+        "title": "RuleDeleted",
+        "type": "object"
+      },
+      "RuleList": {
+        "additionalProperties": false,
+        "properties": {
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleSummary"
+            },
+            "title": "Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rules",
+          "authority"
+        ],
+        "title": "RuleList",
+        "type": "object"
+      },
+      "RuleRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "history": {
+            "title": "History",
+            "type": "integer"
+          },
+          "long_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Long Conditions",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "short_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Short Conditions",
+            "type": "array"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "title": "Spec",
+            "type": "object"
+          },
+          "spec_name": {
+            "title": "Spec Name",
+            "type": "string"
+          },
+          "warmup": {
+            "title": "Warmup",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "sha256",
+          "path",
+          "spec_name",
+          "history",
+          "warmup",
+          "long_conditions",
+          "short_conditions",
+          "spec"
+        ],
+        "title": "RuleRecord",
+        "type": "object"
+      },
+      "RuleSaveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "title": "Spec",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "spec"
+        ],
+        "title": "RuleSaveRequest",
+        "type": "object"
+      },
+      "RuleSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "history": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History"
+          },
+          "long_conditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Long Conditions"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "short_conditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Conditions"
+          },
+          "spec": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec"
+          },
+          "spec_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec Name"
+          },
+          "warmup": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warmup"
+          }
+        },
+        "required": [
+          "name",
+          "path"
+        ],
+        "title": "RuleSummary",
+        "type": "object"
+      },
+      "RuleValidateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "spec": {
+            "additionalProperties": true,
+            "title": "Spec",
+            "type": "object"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "title": "RuleValidateRequest",
+        "type": "object"
+      },
+      "RuleValidation": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "history": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History"
+          },
+          "long_conditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Long Conditions"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "short_conditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Conditions"
+          },
+          "spec": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec"
+          },
+          "spec_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec Name"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          },
+          "warmup": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warmup"
+          }
+        },
+        "required": [
+          "valid",
+          "error"
+        ],
+        "title": "RuleValidation",
+        "type": "object"
+      },
       "RunComparisonRequest": {
         "additionalProperties": false,
         "properties": {
@@ -26488,6 +26861,202 @@
         "summary": "Risk Scenario",
         "tags": [
           "risk"
+        ]
+      }
+    },
+    "/api/rules": {
+      "get": {
+        "description": "Every saved rule set (a hand-edited invalid file is listed with its error, never hidden).",
+        "operationId": "list_rules_api_rules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "List Rules",
+        "tags": [
+          "rules"
+        ]
+      },
+      "post": {
+        "description": "Validate and save (or overwrite) ``data_dir/rules/<name>.json`` through the CLI.",
+        "operationId": "save_rule_api_rules_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Save Rule",
+        "tags": [
+          "rules"
+        ]
+      }
+    },
+    "/api/rules/validate": {
+      "post": {
+        "description": "Strict parse without saving \u2014 the builder's live check; invalid is a report, not a 4xx.",
+        "operationId": "validate_rule_api_rules_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleValidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleValidation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Validate Rule",
+        "tags": [
+          "rules"
+        ]
+      }
+    },
+    "/api/rules/{name}": {
+      "delete": {
+        "operationId": "delete_rule_api_rules__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleDeleted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Delete Rule",
+        "tags": [
+          "rules"
+        ]
+      },
+      "get": {
+        "operationId": "show_rule_api_rules__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Show Rule",
+        "tags": [
+          "rules"
         ]
       }
     },

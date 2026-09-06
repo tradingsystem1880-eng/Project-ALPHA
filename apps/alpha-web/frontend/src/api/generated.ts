@@ -2261,6 +2261,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Rules
+         * @description Every saved rule set (a hand-edited invalid file is listed with its error, never hidden).
+         */
+        get: operations["list_rules_api_rules_get"];
+        put?: never;
+        /**
+         * Save Rule
+         * @description Validate and save (or overwrite) ``data_dir/rules/<name>.json`` through the CLI.
+         */
+        post: operations["save_rule_api_rules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Rule
+         * @description Strict parse without saving — the builder's live check; invalid is a report, not a 4xx.
+         */
+        post: operations["validate_rule_api_rules_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Show Rule */
+        get: operations["show_rule_api_rules__name__get"];
+        put?: never;
+        post?: never;
+        /** Delete Rule */
+        delete: operations["delete_rule_api_rules__name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs": {
         parameters: {
             query?: never;
@@ -9827,6 +9889,112 @@ export interface components {
             /** Value At Risk */
             value_at_risk: number;
         };
+        /** RuleDeleted */
+        RuleDeleted: {
+            /** Deleted */
+            deleted: boolean;
+            /** Name */
+            name: string;
+        };
+        /** RuleList */
+        RuleList: {
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Rules */
+            rules: components["schemas"]["RuleSummary"][];
+        };
+        /** RuleRecord */
+        RuleRecord: {
+            /** History */
+            history: number;
+            /** Long Conditions */
+            long_conditions: string[];
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256: string;
+            /** Short Conditions */
+            short_conditions: string[];
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+            /** Spec Name */
+            spec_name: string;
+            /** Warmup */
+            warmup: number;
+        };
+        /** RuleSaveRequest */
+        RuleSaveRequest: {
+            /** Name */
+            name: string;
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuleSummary */
+        RuleSummary: {
+            /** Error */
+            error?: string | null;
+            /** History */
+            history?: number | null;
+            /** Long Conditions */
+            long_conditions?: string[] | null;
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256?: string | null;
+            /** Short Conditions */
+            short_conditions?: string[] | null;
+            /** Spec */
+            spec?: {
+                [key: string]: unknown;
+            } | null;
+            /** Spec Name */
+            spec_name?: string | null;
+            /** Warmup */
+            warmup?: number | null;
+        };
+        /** RuleValidateRequest */
+        RuleValidateRequest: {
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuleValidation */
+        RuleValidation: {
+            /** Error */
+            error: string | null;
+            /** History */
+            history?: number | null;
+            /** Long Conditions */
+            long_conditions?: string[] | null;
+            /** Name */
+            name?: string | null;
+            /** Sha256 */
+            sha256?: string | null;
+            /** Short Conditions */
+            short_conditions?: string[] | null;
+            /** Spec */
+            spec?: {
+                [key: string]: unknown;
+            } | null;
+            /** Spec Name */
+            spec_name?: string | null;
+            /** Valid */
+            valid: boolean;
+            /** Warmup */
+            warmup?: number | null;
+        };
         /** RunComparisonRequest */
         RunComparisonRequest: {
             /** Run Ids */
@@ -14647,6 +14815,163 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RiskReport"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    list_rules_api_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleList"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    save_rule_api_rules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleSaveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleRecord"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    validate_rule_api_rules_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleValidation"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    show_rule_api_rules__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleRecord"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    delete_rule_api_rules__name__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleDeleted"];
                 };
             };
             /** @description Stable, redacted Workstation error */
