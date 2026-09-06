@@ -20,6 +20,8 @@ import {
   type ResearchChartSummary,
   CLI_ONLY,
   ownerStep,
+  lifecycleActions,
+  overrideGateCommand,
 } from './researchCockpitModel'
 
 describe('Research Cockpit contract mirrors', () => {
@@ -357,5 +359,24 @@ describe('ownerStep', () => {
     expect(CLI_ONLY.recovery.why).toMatch(/ADR-0030/)
     expect(CLI_ONLY.assetMaster.why).toMatch(/ADR-0032/)
     expect(CLI_ONLY.holdoutReveal.why).toMatch(/ADR-0014/)
+  })
+})
+
+describe('lifecycleActions', () => {
+  it('offers pause + cancel while executing, resume + cancel when stopped, nothing when idle or closed', () => {
+    const running = projectedCase({ execution_state: 'running' })
+    expect(lifecycleActions(running).map((a) => a.actionType)).toEqual(['pause_research', 'cancel_research'])
+    expect(lifecycleActions(projectedCase({ execution_state: 'queued' })).map((a) => a.actionType)).toEqual(['pause_research', 'cancel_research'])
+    for (const state of ['paused', 'failed', 'blocked'] as const) {
+      expect(lifecycleActions(projectedCase({ execution_state: state })).map((a) => a.actionType)).toEqual(['resume_research', 'cancel_research'])
+    }
+    expect(lifecycleActions(projectedCase({ execution_state: 'idle' }))).toEqual([])
+    expect(lifecycleActions(projectedCase({ execution_state: 'running', phase: 'closed' }))).toEqual([])
+  })
+
+  it('never offers the research-gate override as a web action', () => {
+    expect(overrideGateCommand('proj_1')).toBe(
+      'uv run alpha project override-research-gate proj_1 --actor owner --reason "<why the gate is bypassed>"',
+    )
   })
 })

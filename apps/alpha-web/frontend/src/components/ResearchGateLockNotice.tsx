@@ -3,7 +3,9 @@
 // straight to the research case holding the gate; it never derives gate state itself.
 
 import { requestResearchCase } from '../context/researchCase'
+import { CLI_ONLY, overrideGateCommand } from '../panels/researchCockpitModel'
 import type { StrategyGateLock } from '../panels/researchGateModel'
+import { CopyCommand } from './CopyCommand'
 
 export function ResearchGateLockNotice({
   lock,
@@ -22,6 +24,9 @@ export function ResearchGateLockNotice({
       <button className="btn primary" onClick={() => requestResearchCase(projectId)}>
         Open research case{projectName ? ` · ${projectName}` : ''}
       </button>
+      <div className="advanced-only">
+        <CopyCommand command={overrideGateCommand(projectId)} why={CLI_ONLY.researchGateOverride.why} />
+      </div>
     </div>
   )
 }

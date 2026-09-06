@@ -1,5 +1,9 @@
 // Thin typed client over the FastAPI JSON layer. Same-origin (loopback), so no base URL.
 
+import type { components } from './generated'
+
+type Schema = components['schemas']
+
 import type {
   ActiveResearchGateOverride,
   AgentBrief,
@@ -79,8 +83,14 @@ import type {
   ResearchDatasetPage,
   ResearchDecisionView,
   ResearchEvidenceHub,
+  ResearchNote,
+  ResearchNoteAddRequest,
   ResearchNotePage,
   ResearchProtocolLibrary,
+  ResearchSourceAddRequest,
+  ResearchClaimAddRequest,
+  DataSnapshots,
+  DataSourceStatus,
   ResearchScorecard,
   ResearchLaunchResponse,
   ResearchProposalRequest,
@@ -193,6 +203,9 @@ export type OwnerActionType =
   | 'reject_confirmation'
   | 'launch_d2'
   | 'record_final_disposition'
+  | 'pause_research'
+  | 'resume_research'
+  | 'cancel_research'
 
 export interface OwnerCredentialOptions {
   challenge_id: string
@@ -558,6 +571,15 @@ export const api = {
     ),
   researchContextPacket: (packetId: string): Promise<ResearchContextPacket> =>
     getJSON(`/api/research/context-packets/${encodeURIComponent(packetId)}`),
+  researchNoteAdd: (projectId: string, body: ResearchNoteAddRequest): Promise<ResearchNote> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/notes`, body),
+  researchSourceAdd: (projectId: string, body: ResearchSourceAddRequest): Promise<Record<string, unknown>> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/sources`, body),
+  researchClaimAdd: (projectId: string, body: ResearchClaimAddRequest): Promise<Record<string, unknown>> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/claims`, body),
+  dataSnapshots: (): Promise<DataSnapshots> => getJSON('/api/data/snapshots'),
+  dataSourceStatus: (symbol: string): Promise<DataSourceStatus> =>
+    getJSON(`/api/data/source-status?symbol=${encodeURIComponent(symbol)}`),
   researchNotes: (
     projectId: string,
     query: { limit?: number; offset?: number } = {},
@@ -601,6 +623,12 @@ export const api = {
       parameter_space: Record<string, unknown>
     },
   ): Promise<StrategyVersion> => postJSON(`/api/projects/${encodeURIComponent(projectId)}/versions`, body),
+  linkStageRun: (projectId: string, body: Schema['StageLinkCreateRequest']): Promise<Schema['StageRunLink']> =>
+    postJSON(`/api/projects/${encodeURIComponent(projectId)}/stage-links`, body),
+  updateStageState: (linkId: string, body: Schema['StageStateRequest']): Promise<Schema['StageRunLink']> =>
+    postJSON(`/api/stage-links/${encodeURIComponent(linkId)}/state`, body),
+  recordAttempt: (projectId: string, body: Schema['AttemptCreateRequest']): Promise<Schema['AttemptRecord']> =>
+    postJSON(`/api/projects/${encodeURIComponent(projectId)}/attempts`, body),
   createExperiment: (
     projectId: string,
     body: {

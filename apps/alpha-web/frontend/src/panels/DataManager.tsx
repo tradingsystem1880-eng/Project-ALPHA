@@ -8,11 +8,11 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import { useAreaVersion } from '../state/activity'
-import type { CryptoCoverage, CryptoStorage, ProviderDefinition } from '../api/types'
+import type { CryptoCoverage, CryptoStorage, DataSnapshots, DataSourceStatus, ProviderDefinition } from '../api/types'
 import { CopyCommand } from '../components/CopyCommand'
 import { JobConsole } from '../components/JobConsole'
 import { Placeholder } from '../components/Placeholder'
-import { setLinked } from '../context/linked'
+import { setLinked, useLinked } from '../context/linked'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { dockOf } from '../shell/documents'
 import type { Profile } from '../state/settings'
@@ -33,7 +33,7 @@ import { ResearchDataExplorer } from './ResearchDataExplorer'
 type Tab = 'Pull' | 'Snapshots' | 'Quality' | 'Storage'
 const TAB_HELP: Readonly<Record<Tab, string>> = {
   Pull: 'Pull OHLC into the store and see the stored pairs',
-  Snapshots: 'Immutable snapshots are registered from the Quality tab (Crypto Data Center); there is no separate list yet',
+  Snapshots: 'Every immutable data snapshot (alpha data snapshots), verify one, or freeze a new one',
   Quality: 'The governed Research Data explorer: datasets, quality checks, snapshots',
   Storage: 'Expansion SSD research datasets and the reviewed crypto assets',
 }
@@ -58,7 +58,12 @@ export function DataManager(props: PanelHandleProps) {
   return (
     <div className="panel data-manager">
       {tab === 'Quality' ? (
-        <ResearchDataExplorer {...props} embedded />
+        <>
+          <SourceStatusCard />
+          <ResearchDataExplorer {...props} embedded />
+        </>
+      ) : tab === 'Snapshots' ? (
+        <SnapshotsTab profile={profile} />
       ) : (
         <PullAndStore profile={profile} section={tab === 'Storage' ? 'storage' : 'pull'} />
       )}
@@ -70,7 +75,6 @@ export function DataManager(props: PanelHandleProps) {
             role="tab"
             aria-selected={tab === item}
             className={`rd-tab${tab === item ? ' active' : ''}`}
-            disabled={item === 'Snapshots'}
             title={TAB_HELP[item]}
             onClick={() => setTab(item)}
           >
@@ -373,6 +377,124 @@ function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' 
       </details>
         </>
       )}
+    </div>
+  )
+}
+
+/** Canonical provenance and pending candidate/quarantine receipts for the linked symbol, with
+ *  the audit of each receipt one click away (`alpha data audit PROVIDER RECEIPT`, a safe job). */
+function SourceStatusCard() {
+  const linked = useLinked()
+  const barsVersion = useAreaVersion('bars')
+  const [status, setStatus] = useState<DataSourceStatus | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [jobId, setJobId] = useState<string | null>(null)
+  const symbol = linked.symbol
+  useEffect(() => {
+    if (!symbol) return
+    let live = true
+    setError(null)
+    api
+      .dataSourceStatus(symbol)
+      .then((next) => live && setStatus(next))
+      .catch((reason: unknown) => live && setError(reason instanceof Error ? reason.message : String(reason)))
+    return () => {
+      live = false
+    }
+  }, [symbol, barsVersion])
+  if (!symbol) return null
+  const audit = (receipt: string) => {
+    const [provider, receiptId] = receipt.split(':', 2)
+    api
+      .launch('data', `audit ${provider} ${receiptId}`)
+      .then((job) => setJobId(job.job_id))
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+  return (
+    <section className="source-status" aria-label="Source status">
+      <div className="rd-head">Source status · {symbol}</div>
+      {error ? <span className="leak">⚠ {error}</span> : null}
+      {status ? (
+        <dl className="market-watch-details">
+          <dt>Provenance</dt>
+          <dd className="mono">{status.provenance ? JSON.stringify(status.provenance) : 'none recorded'}</dd>
+          <dt>Promotion</dt>
+          <dd className="mono">{status.promotion_pending ? 'PENDING' : 'settled'}</dd>
+          <dt>Candidates</dt>
+          <dd>{status.candidates.length ? status.candidates.map((receipt) => <button key={receipt} className="btn" type="button" onClick={() => audit(receipt)}>Audit {receipt}</button>) : <span className="muted">none</span>}</dd>
+          <dt>Quarantined</dt>
+          <dd>{status.quarantined.length ? status.quarantined.map((receipt) => <button key={receipt} className="btn" type="button" onClick={() => audit(receipt)}>Audit {receipt}</button>) : <span className="muted">none</span>}</dd>
+        </dl>
+      ) : null}
+      {jobId ? <span className="muted">audit job {jobId} started — see the Toolbox Data pulls tab</span> : null}
+    </section>
+  )
+}
+
+/** Every immutable snapshot, verified or frozen on demand — each is a safe `alpha data` job. */
+function SnapshotsTab({ profile }: { profile: Profile }) {
+  const linked = useLinked()
+  const barsVersion = useAreaVersion('bars')
+  const [list, setList] = useState<DataSnapshots | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const defaults = pullDefaults(profile)
+  const [snapshotId, setSnapshotId] = useState(() => `snap-${today().replaceAll('-', '')}`)
+  const [symbols, setSymbols] = useState(linked.symbol ?? defaults.symbol)
+  useEffect(() => {
+    let live = true
+    api
+      .dataSnapshots()
+      .then((next) => live && setList(next))
+      .catch((reason: unknown) => live && setError(reason instanceof Error ? reason.message : String(reason)))
+    return () => {
+      live = false
+    }
+  }, [barsVersion])
+  const run = (args: string, label: string) => {
+    setError(null)
+    api
+      .launch('data', args)
+      .then((job) => setNotice(`${label} started as job ${job.job_id} — see the Toolbox Data pulls tab`))
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+  return (
+    <div className="dock-panel snapshots-tab">
+      <div className="rd-head">Immutable snapshots</div>
+      {error ? <span className="leak">⚠ {error}</span> : null}
+      {notice ? <span className="muted">{notice}</span> : null}
+      {list === null ? null : list.snapshots.length === 0 ? (
+        <p className="muted">No snapshots yet. A snapshot freezes exactly the stored bars a run reads.</p>
+      ) : (
+        <table className="blotter" aria-label="Snapshots">
+          <thead><tr><th>Snapshot</th><th>Source</th><th>Symbols</th><th>Created</th><th /></tr></thead>
+          <tbody>
+            {list.snapshots.map((row) => (
+              <tr key={row.snapshot_id ?? row.manifest_sha256}>
+                <td className="mono">{row.snapshot_id ?? '—'}</td>
+                <td>{row.source ?? '—'}</td>
+                <td className="mono">{row.symbols.join(' ')}</td>
+                <td className="mono">{row.created_at ?? '—'}</td>
+                <td><button className="btn" type="button" onClick={() => run(`verify ${row.snapshot_id ?? ''}`, `verify ${row.snapshot_id ?? ''}`)} disabled={!row.snapshot_id}>Verify</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <form
+        className="snapshot-form"
+        aria-label="Freeze snapshot"
+        onSubmit={(event) => {
+          event.preventDefault()
+          const source = defaults.source
+          const exchange = defaults.exchange ? ` --exchange ${defaults.exchange}` : ''
+          run(`snapshot ${snapshotId.trim()} ${symbols.trim()} --source ${source}${exchange}`, `snapshot ${snapshotId.trim()}`)
+        }}
+      >
+        <label className="field-row"><span className="field-label">Snapshot id</span><input className="field" value={snapshotId} onChange={(e) => setSnapshotId(e.target.value)} /></label>
+        <label className="field-row"><span className="field-label">Symbols (space-separated)</span><input className="field" value={symbols} onChange={(e) => setSymbols(e.target.value)} /></label>
+        <button className="btn primary" type="submit" disabled={!snapshotId.trim() || !symbols.trim()}>Freeze snapshot · {defaults.source}{defaults.exchange ? ` · ${defaults.exchange}` : ''}</button>
+      </form>
     </div>
   )
 }

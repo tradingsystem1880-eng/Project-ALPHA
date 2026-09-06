@@ -90,6 +90,28 @@ export function assignCommands(catalog: readonly CommandDef[]): Record<MenuName,
  * dock toggles, Guided/Advanced and Settings under View, the palette under Help), the documents
  * the profile can open (View, Governance among them) and the open documents (Window).
  */
+export type CommandHome = { kind: 'window'; id: WindowId } | { kind: 'dock'; id: 'DataManager' }
+
+const COMMAND_HOMES: Readonly<Record<string, CommandHome>> = {
+  project: { kind: 'window', id: 'build' },
+  suite: { kind: 'window', id: 'build' },
+  evidence: { kind: 'window', id: 'build' },
+  research: { kind: 'window', id: 'research' },
+  paper: { kind: 'window', id: 'paper' },
+  provider: { kind: 'window', id: 'jobs' },
+  ml: { kind: 'window', id: 'ml-lab' },
+  data: { kind: 'dock', id: 'DataManager' },
+  'crypto-data': { kind: 'dock', id: 'DataManager' },
+  'quantpad-data': { kind: 'dock', id: 'DataManager' },
+}
+
+/** Where a menu command is actually performed: the document (or dock) that owns its group,
+ *  or null when the generic Strategy Lab launcher is the right place (backtest, validate…). */
+export function commandHome(commandId: string): CommandHome | null {
+  const root = commandId.trim().split(/\s+/)[0] ?? ''
+  return COMMAND_HOMES[root] ?? null
+}
+
 export function menuBar(
   catalog: readonly CommandDef[],
   open: readonly OpenDocument[],

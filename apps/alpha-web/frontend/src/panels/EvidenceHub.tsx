@@ -124,7 +124,7 @@ function LiteratureSection({
     }
   }
 
-  async function ownerAction(action: 'screen_source_claim' | 'reject_source_claim', claimId: string) {
+  async function ownerAction(action: 'screen_source_claim' | 'reject_source_claim' | 'revise_source_claim', claimId: string) {
     setBusy(`${action}:${claimId}`)
     setError(null)
     try {
@@ -136,9 +136,11 @@ function LiteratureSection({
         expected_case_revision: await researchCaseRevision(current),
         consequence_summary: action === 'screen_source_claim'
           ? 'Elevate this exact anchored draft into owner-screened literature evidence.'
-          : 'Reject this draft claim while preserving its immutable history.',
+          : action === 'revise_source_claim'
+            ? 'Record an owner revision direction; a later draft stays a separate immutable record.'
+            : 'Reject this draft claim while preserving its immutable history.',
         reason,
-        payload: { claim_id: claimId },
+        payload: action === 'revise_source_claim' ? { claim_id: claimId, revision: { direction: reason } } : { claim_id: claimId },
       })
       onRefresh()
     } catch (failure) {
@@ -217,6 +219,7 @@ function LiteratureSection({
         </div>
       ) : null}
 
+      <OwnerDrafts projectId={projectId} sources={(literature.sources ?? []) as Array<Record<string, unknown>>} contractId={String((literature as Record<string, unknown>)['contract_id'] ?? '')} onDone={onRefresh} />
       <label className="literature-owner-reason"><span className="eyebrow">Reason bound to each Touch ID action</span><textarea className="field" value={reason} onChange={(event) => setReason(event.target.value)} /></label>
       {claims.length === 0 ? (
         <Placeholder big="NO CLAIMS RECORDED">Drafts require method, sample, markets, limitations, and a verified text anchor for full-text sources.</Placeholder>
@@ -238,7 +241,7 @@ function LiteratureSection({
                   <dt>Limitations</dt><dd>{String(claim['limitations'] ?? 'Not recorded.')}</dd>
                 </dl>
                 <blockquote>{anchor ? `p. ${String(anchor['page'])}: ${String(anchor['excerpt'] ?? '')}` : String(claim['anchor_state'] ?? 'LEGACY — NO TEXT ANCHOR')}</blockquote>
-                {status === 'draft' ? <div className="literature-claim-actions"><button className="btn primary" type="button" disabled={!reason.trim() || busy !== null || !anchor} onClick={() => void ownerAction('screen_source_claim', claimId)}>Touch ID · screen anchored claim</button><button className="btn" type="button" disabled={!reason.trim() || busy !== null} onClick={() => void ownerAction('reject_source_claim', claimId)}>Touch ID · reject</button></div> : null}
+                {status === 'draft' ? <div className="literature-claim-actions"><button className="btn primary" type="button" disabled={!reason.trim() || busy !== null || !anchor} onClick={() => void ownerAction('screen_source_claim', claimId)}>Touch ID · screen anchored claim</button><button className="btn" type="button" disabled={!reason.trim() || busy !== null} onClick={() => void ownerAction('reject_source_claim', claimId)}>Touch ID · reject</button><button className="btn" type="button" disabled={!reason.trim() || busy !== null} onClick={() => void ownerAction('revise_source_claim', claimId)}>Touch ID · ask for revision</button></div> : null}
               </article>
             )
           })}
@@ -546,6 +549,72 @@ export function EvidenceHub(props: PanelHandleProps) {
           </>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+/** Owner-provided sources and owner-drafted claims: recorded as drafts, untrusted until an owner
+ *  screens them with Touch ID (the same bar Codex's drafts meet). */
+function OwnerDrafts({ projectId, sources, contractId, onDone }: {
+  projectId: string
+  sources: Array<Record<string, unknown>>
+  contractId: string
+  onDone: () => void
+}) {
+  const [open, setOpen] = useState<'source' | 'claim' | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [source, setSource] = useState({ title: '', locator: '', provider: 'owner', access_mode: 'owner_provided' as const, authors: [] as string[] })
+  const [claim, setClaim] = useState({ source_id: String(sources[0]?.['source_id'] ?? ''), contract_id: contractId, text: '', direction: 'supports' as const, strength: 'moderate' as const, method: '', sample: '', markets: '', limitations: '' })
+  const submit = (work: () => Promise<unknown>) => {
+    setBusy(true)
+    setError(null)
+    work()
+      .then(() => {
+        setOpen(null)
+        onDone()
+      })
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+      .finally(() => setBusy(false))
+  }
+  const field = (label: string, value: string, set: (v: string) => void, multiline = false) => (
+    <label className="field-row"><span className="field-label">{label}</span>{multiline ? <textarea className="field" value={value} onChange={(e) => set(e.target.value)} /> : <input className="field" value={value} onChange={(e) => set(e.target.value)} />}</label>
+  )
+  return (
+    <div className="owner-drafts" aria-label="Owner drafts">
+      <div className="lab-actions">
+        <button className="btn" type="button" onClick={() => setOpen(open === 'source' ? null : 'source')}>Add a source</button>
+        <button className="btn" type="button" onClick={() => setOpen(open === 'claim' ? null : 'claim')} disabled={!contractId} title={contractId ? undefined : 'No active contract to bear on yet'}>Draft a claim</button>
+        <span className="muted">Drafts only — screening stays a Touch ID step.</span>
+      </div>
+      {open === 'source' ? (
+        <form aria-label="Add source" onSubmit={(e) => { e.preventDefault(); submit(() => api.researchSourceAdd(projectId, source)) }}>
+          {field('Title', source.title, (v) => setSource({ ...source, title: v }))}
+          {field('DOI or stable URL', source.locator, (v) => setSource({ ...source, locator: v }))}
+          {field('Provider', source.provider, (v) => setSource({ ...source, provider: v }))}
+          <button className="btn primary" type="submit" disabled={busy || !source.title.trim() || !source.locator.trim() || !source.provider.trim()}>{busy ? 'Adding…' : 'Add source'}</button>
+        </form>
+      ) : null}
+      {open === 'claim' ? (
+        <form aria-label="Draft claim" onSubmit={(e) => { e.preventDefault(); submit(() => api.researchClaimAdd(projectId, { ...claim, markets: claim.markets.split(',').map((m) => m.trim()).filter(Boolean) })) }}>
+          <label className="field-row"><span className="field-label">Source</span>
+            {sources.length ? (
+              <select className="field" value={claim.source_id} onChange={(e) => setClaim({ ...claim, source_id: e.target.value })}>
+                {sources.map((item) => <option key={String(item['source_id'])} value={String(item['source_id'])}>{String(item['title'] ?? item['source_id'])}</option>)}
+              </select>
+            ) : <input className="field" value={claim.source_id} onChange={(e) => setClaim({ ...claim, source_id: e.target.value })} placeholder="source id" />}
+          </label>
+          {field('Claim', claim.text, (v) => setClaim({ ...claim, text: v }), true)}
+          <label className="field-row"><span className="field-label">Direction</span><select className="field" value={claim.direction} onChange={(e) => setClaim({ ...claim, direction: e.target.value as typeof claim.direction })}>{['supports', 'contradicts', 'contextualizes', 'method'].map((d) => <option key={d} value={d}>{d}</option>)}</select></label>
+          <label className="field-row"><span className="field-label">Strength</span><select className="field" value={claim.strength} onChange={(e) => setClaim({ ...claim, strength: e.target.value as typeof claim.strength })}>{['weak', 'moderate', 'strong'].map((d) => <option key={d} value={d}>{d}</option>)}</select></label>
+          {field('Method', claim.method, (v) => setClaim({ ...claim, method: v }))}
+          {field('Sample / period', claim.sample, (v) => setClaim({ ...claim, sample: v }))}
+          {field('Markets (comma-separated)', claim.markets, (v) => setClaim({ ...claim, markets: v }))}
+          {field('Limitations', claim.limitations, (v) => setClaim({ ...claim, limitations: v }), true)}
+          <button className="btn primary" type="submit" disabled={busy || !claim.source_id || !claim.text.trim() || !claim.method.trim() || !claim.sample.trim() || !claim.limitations.trim()}>{busy ? 'Drafting…' : 'Draft claim'}</button>
+        </form>
+      ) : null}
+      {error ? <div className="workbench-notice" role="alert"><strong>DRAFT FAILED</strong><span>{error}</span></div> : null}
     </div>
   )
 }

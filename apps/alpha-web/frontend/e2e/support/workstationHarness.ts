@@ -1575,6 +1575,10 @@ interface MockOptions {
   /** Opt-in so the screenshot baselines keep an empty, deterministic Library rail. */
   runs?: unknown[]
   capturedOwnerAction?: (body: Record<string, unknown>) => void
+  /** Extra GET fixtures keyed by pathname, served before the built-in table. */
+  extraGet?: Record<string, unknown>
+  /** Sees every POST (pathname, body); a non-undefined return is served as the 200 JSON reply. */
+  capturedPost?: (pathname: string, body: Record<string, unknown>) => unknown
   researchDataRefreshDelayMs?: number
   /** Opt-in: LIBRARY_RUN carries one drawable figure (catalogue, metadata and an SVG image). */
   figureCatalogue?: boolean
@@ -1664,6 +1668,13 @@ async function openHeavyPrice(page: Page): Promise<void> {
 
 function responseFor(route: Route, options: MockOptions): unknown {
   const url = new URL(route.request().url())
+  if (options.extraGet && route.request().method() === 'GET' && url.pathname in options.extraGet) {
+    return options.extraGet[url.pathname]
+  }
+  if (options.capturedPost && route.request().method() === 'POST') {
+    const served = options.capturedPost(url.pathname, (route.request().postDataJSON() ?? {}) as Record<string, unknown>)
+    if (served !== undefined) return served
+  }
   if (url.pathname === '/api/owner-auth/actions/challenge') {
     options.capturedOwnerAction?.(route.request().postDataJSON() as Record<string, unknown>)
     return {
@@ -3747,4 +3758,136 @@ test('a store change outside the browser refreshes the panel watching its area',
   // The Log names what changed.
   await tabs.getByRole('tab', { name: 'Log' }).click()
   await expect(page.getByText('paper journal changed')).toBeVisible()
+})
+
+test('a running case offers Touch ID pause and cancel where the next action is printed', async ({ page }) => {
+  let challenge: Record<string, unknown> | null = null
+  await preparePage(page, {
+    capturedOwnerAction: (body) => { challenge = body },
+    researchCaseOverride: {
+      phase: 'deep_research',
+      execution_state: 'running',
+      responsibility: 'codex',
+      exploration_review: APPROVED,
+      next_action: 'Codex runs the frozen D1 plan.',
+    },
+  })
+  await captureCase(page)
+  const next = page.getByRole('region', { name: 'Canonical next action' })
+  await expect(next.getByRole('button', { name: 'Touch ID · cancel active work' })).toBeVisible()
+  const pause = next.getByRole('button', { name: 'Touch ID · pause' })
+  await expect(pause).toBeDisabled()
+  await next.getByLabel('Reason for pause').fill('Owner wants to review the checkpoint first.')
+  await pause.click()
+  await expect.poll(() => challenge).not.toBeNull()
+  expect(challenge).toMatchObject({ action_type: 'pause_research', project_id: RESEARCH_CASE.project_id })
+  expect(challenge).not.toHaveProperty('actor')
+})
+
+test('Data Manager Snapshots tab lists snapshots and Verify runs a data job', async ({ page }) => {
+  const posts: Array<{ path: string; body: Record<string, unknown> }> = []
+  await preparePage(page, {
+    extraGet: {
+      '/api/data/snapshots': {
+        snapshots: [
+          {
+            snapshot_id: 'snap1',
+            created_at: '2026-01-01T00:00:00+00:00',
+            source: 'tiingo',
+            adapter_version: '1',
+            parser_version: '1',
+            symbols: ['AAPL'],
+            manifest_sha256: 'a'.repeat(64),
+          },
+        ],
+      },
+    },
+    capturedPost: (path, body) => {
+      posts.push({ path, body })
+      if (path === '/api/jobs') return { job_id: 'job-verify-1', status: 'running' }
+      return undefined
+    },
+  })
+  const dock = page.locator('aside.dock--right')
+  await dock.getByRole('tablist', { name: 'Data Manager sections' }).getByRole('tab', { name: 'Snapshots' }).click()
+  const row = page.getByRole('table', { name: 'Snapshots' }).getByRole('row').filter({ hasText: 'snap1' })
+  await expect(row).toContainText('tiingo')
+  await row.getByRole('button', { name: 'Verify' }).click()
+  await expect(page.getByText(/verify snap1 started as job job-verify-1/)).toBeVisible()
+  expect(posts).toEqual([{ path: '/api/jobs', body: { command: 'data', args: 'verify snap1' } }])
+})
+
+test('the owner answers Codex in the notes stream through the notes route', async ({ page }) => {
+  const posts: Array<{ path: string; body: Record<string, unknown> }> = []
+  await preparePage(page, {
+    capturedPost: (path, body) => {
+      posts.push({ path, body })
+      if (path.endsWith('/notes')) {
+        return {
+          note_id: `rn_${'1'.repeat(64)}`,
+          project_id: RESEARCH_CASE.project_id,
+          sequence: 9,
+          note_kind: body['note_kind'],
+          body: body['body'],
+          author: 'owner',
+          author_kind: 'owner',
+          context_packet_id: null,
+          created_at: '2026-09-04T00:00:00+00:00',
+        }
+      }
+      return undefined
+    },
+  })
+  await page.getByRole('tab', { name: 'Research Case', exact: true }).click()
+  await page.getByLabel('Research Case project ID').fill(RESEARCH_CASE.project_id)
+  await page.getByRole('button', { name: 'open case' }).click()
+  await page.getByRole('tab', { name: 'Codex Research', exact: true }).click()
+  const composer = page.getByRole('form', { name: 'Add owner note' })
+  await composer.getByLabel('Owner note').fill('Check the funding regime before D1.')
+  await composer.getByRole('button', { name: 'Add note' }).click()
+  await expect.poll(() => posts.length).toBe(1)
+  expect(posts[0]).toEqual({
+    path: `/api/research/cases/${RESEARCH_CASE.project_id}/notes`,
+    body: { note_kind: 'critique', body: 'Check the funding regime before D1.' },
+  })
+})
+
+test('the Development Center links a run to a stage and keeps seal/decide as CLI copy commands', async ({ page }) => {
+  const posts: Array<{ path: string; body: Record<string, unknown> }> = []
+  await preparePage(page, {
+    candidateProject: true,
+    capturedPost: (path, body) => {
+      posts.push({ path, body })
+      if (path.endsWith('/stage-links')) {
+        return {
+          link_id: 'link-1',
+          project_id: CANDIDATE_PROJECT.project_id,
+          experiment_id: CANDIDATE_EXPERIMENT_ID,
+          stage: body['stage'],
+          run_id: body['run_id'],
+          state: 'ready',
+          created_at: '2026-09-04T00:00:00+00:00',
+          updated_at: '2026-09-04T00:00:00+00:00',
+          history: [],
+        }
+      }
+      return undefined
+    },
+  })
+  await openDocument(page, 'Build')
+  await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
+  await page.getByLabel('Strategy project').selectOption(CANDIDATE_PROJECT.project_id)
+  const rail = page.getByRole('region', { name: 'Development ledger actions' })
+  await rail.getByRole('button', { name: 'Link a run to a stage' }).click()
+  await rail.getByLabel('Run id (16 hex)').fill('abcdefabcdefabcd')
+  await rail.getByRole('button', { name: 'Link run' }).click()
+  await expect.poll(() => posts.length).toBeGreaterThanOrEqual(1)
+  expect(posts[0]).toEqual({
+    path: `/api/projects/${CANDIDATE_PROJECT.project_id}/stage-links`,
+    body: { experiment_id: CANDIDATE_EXPERIMENT_ID, run_id: 'abcdefabcdefabcd', stage: 'baseline', state: 'ready' },
+  })
+  // Advanced-only detail: present in the DOM (hidden in Guided mode) and CLI-shaped, never a button.
+  await expect(rail.locator('details.advanced-only')).toContainText('alpha project seal-holdout')
+  await expect(rail.locator('details.advanced-only')).toContainText('alpha project decide')
+  await expect(page.getByRole('button', { name: /Touch ID · seal/ })).toHaveCount(0)
 })

@@ -535,6 +535,7 @@ export function DevelopmentCenter() {
         {!selectedId ? <Placeholder big="NO PROJECT">Create or select a project to inspect immutable strategy-development lineage.</Placeholder> : !detail ? <div className="skeleton" style={{ height: 300 }} /> : (
           <>
             <ExperimentSummary project={detail} />
+            <DevelopmentActions project={detail} onDone={reloadDetail} />
             <ProjectWorkspaceCard
               workspace={workspace}
               busy={workspaceBusy}
@@ -910,5 +911,60 @@ export function AssetMemory() {
         )}
       </div>
     </div>
+  )
+}
+
+const STAGES = ['hypothesis', 'data', 'strategy', 'baseline', 'oos', 'robustness', 'monte_carlo', 'optimization', 'portfolio', 'candidate', 'holdout', 'paper', 'decision', 'kronos', 'ml'] as const
+const OWNER_CLI_WHY = 'ADR-0014: sealing a holdout and freezing a decision packet assert an owner name; the browser cannot, so these stay trusted local CLI acts.'
+
+/** The development ledger actions the browser may perform (none asserts an actor): link a run
+ *  to a stage, move a stage, record a negative attempt. Seal/decide stay CLI with the argv shown. */
+function DevelopmentActions({ project, onDone }: { project: ProjectDetail; onDone: () => Promise<void> | void }) {
+  const experimentId = project.current_experiment_id ?? ''
+  const [open, setOpen] = useState<'link' | 'attempt' | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [link, setLink] = useState({ run_id: '', stage: 'baseline' as (typeof STAGES)[number], state: 'ready' as const })
+  const [attempt, setAttempt] = useState({ stage: 'baseline' as (typeof STAGES)[number], status: 'failed' as const, config_fingerprint: '', error: '' })
+  const submit = (work: () => Promise<unknown>) => {
+    setBusy(true)
+    setError(null)
+    work()
+      .then(() => {
+        setOpen(null)
+        return onDone()
+      })
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+      .finally(() => setBusy(false))
+  }
+  if (!experimentId) return null
+  return (
+    <section className="development-actions" aria-label="Development ledger actions">
+      <div className="lab-actions">
+        <button className="btn" type="button" onClick={() => setOpen(open === 'link' ? null : 'link')}>Link a run to a stage</button>
+        <button className="btn" type="button" onClick={() => setOpen(open === 'attempt' ? null : 'attempt')}>Record a negative attempt</button>
+      </div>
+      {open === 'link' ? (
+        <form aria-label="Link run" onSubmit={(e) => { e.preventDefault(); submit(() => api.linkStageRun(project.project_id, { experiment_id: experimentId, ...link })) }}>
+          <label className="field-row"><span className="field-label">Run id (16 hex)</span><input className="field mono" value={link.run_id} onChange={(e) => setLink({ ...link, run_id: e.target.value.trim() })} /></label>
+          <label className="field-row"><span className="field-label">Stage</span><select className="field" value={link.stage} onChange={(e) => setLink({ ...link, stage: e.target.value as (typeof STAGES)[number] })}>{STAGES.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+          <button className="btn primary" type="submit" disabled={busy || !/^[0-9a-f]{16}$/.test(link.run_id)}>{busy ? 'Linking…' : 'Link run'}</button>
+        </form>
+      ) : null}
+      {open === 'attempt' ? (
+        <form aria-label="Record attempt" onSubmit={(e) => { e.preventDefault(); submit(() => api.recordAttempt(project.project_id, { experiment_id: experimentId, stage: attempt.stage, status: attempt.status, config_fingerprint: attempt.config_fingerprint.trim(), error: attempt.error.trim() || null, details: {} })) }}>
+          <label className="field-row"><span className="field-label">Stage</span><select className="field" value={attempt.stage} onChange={(e) => setAttempt({ ...attempt, stage: e.target.value as (typeof STAGES)[number] })}>{STAGES.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+          <label className="field-row"><span className="field-label">What was tried (config fingerprint)</span><input className="field" value={attempt.config_fingerprint} onChange={(e) => setAttempt({ ...attempt, config_fingerprint: e.target.value })} /></label>
+          <label className="field-row"><span className="field-label">Why it failed</span><textarea className="field" value={attempt.error} onChange={(e) => setAttempt({ ...attempt, error: e.target.value })} /></label>
+          <button className="btn primary" type="submit" disabled={busy || !attempt.config_fingerprint.trim()}>{busy ? 'Recording…' : 'Record failed attempt'}</button>
+        </form>
+      ) : null}
+      {error ? <div className="workbench-notice" role="alert"><strong>LEDGER ACTION FAILED</strong><span>{error}</span></div> : null}
+      <details className="advanced-only">
+        <summary className="muted">Seal the holdout or freeze the decision packet (trusted CLI)</summary>
+        <CopyCommand command={`uv run alpha project seal-holdout ${project.project_id} ${experimentId} --actor owner --reason "<why>" --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD>`} why={OWNER_CLI_WHY} />
+        <CopyCommand command={`uv run alpha project decide ${project.project_id} ${experimentId} --verdict <accept|reject|revise> --actor owner --reason "<why>" --acknowledge-negative-results`} why={OWNER_CLI_WHY} />
+      </details>
+    </section>
   )
 }

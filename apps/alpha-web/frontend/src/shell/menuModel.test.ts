@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { CommandDef } from '../api/types'
-import { GROUP_MENU, MENUS, assignCommands, commandGroup, menuBar } from './menuModel'
+import { GROUP_MENU, MENUS, assignCommands, commandGroup, commandHome, menuBar } from './menuModel'
 
 const command = (id: string): CommandDef => ({ id, args: [], options: [], run_type: null })
 
@@ -110,5 +110,22 @@ describe('menuModel', () => {
       { kind: 'mode', id: 'advanced', label: 'Advanced', active: false, disabled: true },
       { kind: 'shell', id: 'settings', label: 'Settings' },
     ])
+  })
+})
+
+describe('commandHome', () => {
+  it('sends owner-authority groups to the document that performs them and data groups to the dock', () => {
+    expect(commandHome('project create')).toEqual({ kind: 'window', id: 'build' })
+    expect(commandHome('research capture')).toEqual({ kind: 'window', id: 'research' })
+    expect(commandHome('paper run')).toEqual({ kind: 'window', id: 'paper' })
+    expect(commandHome('provider check')).toEqual({ kind: 'window', id: 'jobs' })
+    expect(commandHome('crypto-data acquire')).toEqual({ kind: 'dock', id: 'DataManager' })
+    expect(commandHome('data pull')).toEqual({ kind: 'dock', id: 'DataManager' })
+  })
+
+  it('leaves empirical launchers to the Strategy Lab', () => {
+    expect(commandHome('backtest run')).toBeNull()
+    expect(commandHome('validate')).toBeNull()
+    expect(commandHome('')).toBeNull()
   })
 })

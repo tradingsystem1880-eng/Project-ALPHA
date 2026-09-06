@@ -9,7 +9,7 @@ import { api } from '../api/client'
 import type { CommandDef } from '../api/types'
 import { openStrategyLab } from '../panels/actions'
 import type { OpenDocument } from './mdiModel'
-import { MENUS, menuBar, type MenuItem, type MenuName, type ShellMenuState, type WorkspaceMode } from './menuModel'
+import { MENUS, commandHome, menuBar, type MenuItem, type MenuName, type ShellMenuState, type WorkspaceMode } from './menuModel'
 import type { DockId, WindowId } from './profiles'
 
 interface Props {
@@ -71,7 +71,12 @@ export function MenuBar({
 
   const select = (item: MenuItem) => {
     setOpenMenu(null)
-    if (item.kind === 'command') openStrategyLab({ command: item.id, args: '' })
+    if (item.kind === 'command') {
+      const home = commandHome(item.id)
+      if (home?.kind === 'window') onOpenWindow(home.id)
+      else if (home?.kind === 'dock') onToggleDock(home.id)
+      else openStrategyLab({ command: item.id, args: '' })
+    }
     else if (item.kind === 'document') onActivate(item.key)
     else if (item.kind === 'open') onOpenWindow(item.window)
     else if (item.kind === 'dock') onToggleDock(item.id)

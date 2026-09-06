@@ -36,6 +36,7 @@ import {
   CLI_ONLY,
   RESEARCH_DISPOSITIONS,
   RESEARCH_OUTCOMES,
+  lifecycleActions,
   ownerStep,
 } from './researchCockpitModel'
 import { HypothesisCardView, ScorecardDetail, ScorecardStrip } from './researchViews'
@@ -492,9 +493,22 @@ function CanonicalNextAction({ researchCase, onRefresh }: { researchCase: Resear
         />
       ) : step.kind === 'decide' ? (
         <span className="muted">Record the final disposition on the Decision tab.</span>
+      ) : step.kind === 'review' ? (
+        <span className="muted">Approve or reject the {step.scope} contract with Touch ID in the review panel below.</span>
       ) : step.kind === 'waiting' ? (
         <span className="muted">{step.text}</span>
       ) : null}
+      {lifecycleActions(researchCase).map((action) => (
+        <OwnerActionButton
+          key={action.actionType}
+          researchCase={researchCase}
+          actionType={action.actionType}
+          label={action.label}
+          consequence={action.consequence}
+          payload={{}}
+          onComplete={onRefresh}
+        />
+      ))}
     </section>
   )
 }
