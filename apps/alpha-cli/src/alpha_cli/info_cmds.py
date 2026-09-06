@@ -92,7 +92,7 @@ def _walk_commands(group: Any, prefix: str) -> Iterator[tuple[str, Any]]:
 #: `figures` renders a derived cache from a run that already exists, so surfacing it as a
 #: launchable command would invite the user to "run" something that cannot start; `chart`
 #: overlays are a read-only projection the price chart requests directly.
-_NON_RUN_COMMAND_PREFIXES: Final = ("figures", "chart")
+_NON_RUN_COMMAND_PREFIXES: Final = ("figures", "chart", "scan")
 
 
 def _launchable(path: str) -> bool:
