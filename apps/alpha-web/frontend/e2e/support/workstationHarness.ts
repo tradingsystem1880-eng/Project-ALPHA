@@ -10,6 +10,7 @@ const DOCUMENTS = [
   { title: 'Research', id: 'research' },
   { title: 'Build', id: 'build' },
   { title: 'Strategy Builder', id: 'builder' },
+  { title: 'Scanner', id: 'scanner' },
   { title: 'Strategy Performance Report', id: 'report' },
   { title: 'Compare', id: 'compare' },
   { title: 'Forecast', id: 'forecast' },
@@ -1587,6 +1588,10 @@ interface MockOptions {
   candles?: Record<string, components['schemas']['Candle'][]>
   /** Saved rule sets served by GET /api/rules. */
   rules?: components['schemas']['RuleSummary'][]
+  /** Saved scans served by GET /api/scans. */
+  scans?: components['schemas']['ScanSummary'][]
+  /** Scan alerts served by GET /api/alerts (oldest first, as the CLI tails them). */
+  alerts?: components['schemas']['ScanAlert'][]
   /** Receives the query string of every `/api/overlays/{symbol}` request the chart makes. */
   capturedOverlays?: (query: string) => void
   /** Opt-in public tickers keyed `SYMBOL@exchange`; a missing key answers 422 like the CLI. */
@@ -2290,6 +2295,12 @@ function responseFor(route: Route, options: MockOptions): unknown {
   }
   if (url.pathname === '/api/rules' && route.request().method() === 'GET') {
     return { rules: options.rules ?? [], authority: 'none' }
+  }
+  if (url.pathname === '/api/scans' && route.request().method() === 'GET') {
+    return { scans: options.scans ?? [], authority: 'none' }
+  }
+  if (url.pathname === '/api/alerts') {
+    return { alerts: options.alerts ?? [], authority: 'none' }
   }
   if (url.pathname === '/api/rules/validate') {
     const spec = (route.request().postDataJSON() as { spec: { long_when?: unknown[]; short_when?: unknown[] } }).spec
@@ -3429,7 +3440,6 @@ test('Phase 3 acceptance: terminal chrome on every document, no hazard stripe, f
     await expect(page.getByRole('complementary', { name: 'Left docks' }).getByRole('region', { name: 'Market Watch' })).toBeVisible()
     await expect(page.getByRole('tree', { name: 'Navigator' })).toBeVisible()
     await expect(page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab')).toHaveText([/^Jobs/, 'Trades', 'Backtests', 'Data pulls', 'Log', 'Alerts'])
-    await expect(page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab', { name: 'Alerts' })).toBeDisabled()
     await expect(page.getByRole('complementary', { name: 'Data Manager' })).toBeVisible()
     // Artboard chrome: window glyphs, dock pin/close, the document header's own close.
     await expect(page.getByRole('group', { name: 'Window controls' }).getByRole('button')).toHaveCount(3)
@@ -4044,4 +4054,66 @@ test('the Development Center links a run to a stage and keeps seal/decide as CLI
   await expect(rail.locator('details.advanced-only')).toContainText('alpha project seal-holdout')
   await expect(rail.locator('details.advanced-only')).toContainText('alpha project decide')
   await expect(page.getByRole('button', { name: /Touch ID · seal/ })).toHaveCount(0)
+})
+
+test('Scanner saves a scan, runs it through the CLI, and Alerts relays checked signal changes', async ({ page }) => {
+  const posts: { path: string; body: Record<string, unknown> }[] = []
+  const rule = { name: 'trend', path: '/data/rules/trend.json', sha256: 'a'.repeat(64), spec_name: 'Trend', history: 60, warmup: 20, long_conditions: ['sma:5 > sma:20'], short_conditions: [], spec: {}, error: null }
+  await preparePage(page, {
+    rules: [rule],
+    scans: [{ name: 'trend-crypto', rules: 'trend', universe: { kind: 'list', symbols: ['XRP/USDT', 'BTC/USDT'] }, checked_at: null, error: null }],
+    alerts: [{ ts: '2026-09-04T10:00:00+00:00', scan: 'trend-crypto', symbol: 'BTC/USDT', previous: null, signal: 1, bar_date: '2026-06-30', close: 93354.22 }],
+    capturedPost: (path, body) => {
+      posts.push({ path, body })
+      if (path === '/api/scans') return { name: body.name, path: `/data/scans/${String(body.name)}.json`, rules: body.rules, universe: { kind: body.symbols ? 'list' : 'stored', symbols: body.symbols }, checked_at: null }
+      if (path === '/api/scans/trend-crypto/run') {
+        return {
+          scan: 'trend-crypto', rules: 'trend', rules_sha256: 'a'.repeat(64), as_of: null, universe_as_of: '2026-09-04T10:00:00+00:00', universe: ['XRP/USDT', 'BTC/USDT'],
+          rows: [
+            { symbol: 'XRP/USDT', signal: 0, bar_ts: 1, bar_date: '2026-06-30', close: 2.12, values: { 'sma:5': 2.1, 'sma:20': 2.2 } },
+            { symbol: 'BTC/USDT', signal: 1, bar_ts: 1, bar_date: '2026-06-30', close: 93354.22, values: { 'sma:5': 93000, 'sma:20': 90000 } },
+          ],
+          skipped: [{ symbol: 'ETH/USDT', reason: 'only 10 bars, rule set needs 60' }],
+          authority: 'none',
+        }
+      }
+      if (path === '/api/scans/trend-crypto/check' || path === '/api/scans/check') {
+        return { checks: [{ scan: 'trend-crypto', checked_at: '2026-09-04T10:05:00+00:00', evaluated: 2, skipped: 0, changed: 1 }], alerts: [{ ts: '2026-09-04T10:05:00+00:00', scan: 'trend-crypto', symbol: 'XRP/USDT', previous: 0, signal: -1, bar_date: '2026-06-30', close: 2.12 }], authority: 'none' }
+      }
+      return undefined
+    },
+  })
+  await openDocument(page, 'Scanner')
+  const side = page.getByRole('region', { name: 'Saved scans' })
+  await expect(side).toContainText('trend-crypto')
+  await expect(side).toContainText('XRP/USDT, BTC/USDT')
+  // Save a new scan over every stored symbol.
+  const form = page.getByRole('form', { name: 'New scan' })
+  await expect(form.getByRole('button', { name: 'Save scan' })).toBeDisabled()
+  await form.getByLabel('Scan name').fill('all-trend')
+  await form.getByRole('button', { name: 'Save scan' }).click()
+  expect(posts.find((entry) => entry.path === '/api/scans')?.body).toEqual({ name: 'all-trend', rules: 'trend', symbols: null })
+  // Run: matches lead, the operand values the rule compared are columns, skipped symbols say why.
+  await side.getByRole('button', { name: 'Run' }).first().click()
+  const results = page.getByRole('table', { name: 'Scan results' })
+  await expect(results.locator('tbody tr')).toHaveCount(2)
+  await expect(results.locator('tbody tr').first()).toContainText('BTC/USDT')
+  await expect(results.locator('tbody tr').first()).toContainText('LONG')
+  await expect(results.locator('thead')).toContainText('sma:5')
+  await expect(page.getByRole('region', { name: 'Scan results' })).toContainText('2 evaluated, 1 skipped')
+  expect(posts.find((entry) => entry.path === '/api/scans/trend-crypto/run')?.body).toEqual({ as_of: null })
+  // Check appends changed signals; the notice repeats the CLI's count.
+  await side.getByRole('button', { name: 'Check' }).first().click()
+  await expect(page.getByRole('region', { name: 'Scan results' }).getByRole('status')).toContainText('trend-crypto: 1 new alert')
+  // Toolbox › Alerts is live: it tails the log and offers a check of every scan.
+  await page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab', { name: 'Alerts' }).click()
+  const alerts = page.getByRole('table', { name: 'Scan alerts' })
+  await expect(alerts.locator('tbody tr')).toHaveCount(1)
+  await expect(alerts).toContainText('→ LONG')
+  await expect(alerts).toContainText('BTC/USDT')
+  // Mounting the tab checked every scan once; the button checks again.
+  await expect.poll(() => posts.filter((entry) => entry.path === '/api/scans/check').length).toBe(1)
+  await page.getByRole('button', { name: 'Check all scans' }).click()
+  await expect.poll(() => posts.filter((entry) => entry.path === '/api/scans/check').length).toBe(2)
+  await expect(page.getByRole('region', { name: 'Toolbox' })).toContainText('last check 2026-09-04 10:05 UTC')
 })

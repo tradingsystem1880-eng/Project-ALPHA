@@ -196,19 +196,17 @@
         "apps/alpha-web/src/alpha_web/_scans.py",
         "apps/alpha-web/src/alpha_web/api/scans.py",
         "apps/alpha-web/src/alpha_web/app.py",
-        "apps/alpha-web/src/alpha_web/_activity.py",
         "apps/alpha-web/frontend/src/panels/scannerModel.ts",
         "apps/alpha-web/frontend/src/panels/Scanner.tsx",
         "apps/alpha-web/frontend/src/panels/Alerts.tsx",
         "apps/alpha-web/frontend/src/shell/Toolbox.tsx",
         "apps/alpha-web/frontend/src/shell/documents.ts",
-        "apps/alpha-web/frontend/src/panels/DataManager.tsx",
         "tests/unit/test_scan_engine.py",
         "tests/unit/test_scan_bias_guard.py",
         "tests/integration/test_cli_scan.py",
         "tests/integration/test_web_api_scans.py"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S6 prove and ship: full gates, real-backend acceptance (both profiles, overlays, builder sandbox run to report, scan + alert), rule rows via ack, spec addendum, BUILD-STATUS, CLAUDE.md MCP/DAG lines if the contract changes, PR, CI, merge",
@@ -331,3 +329,20 @@ The test-architect specification (2026-09-04, 50 tests) is the ordered list the 
   short rules can fill; the equities profile keeps the CASH default.
 - Two new document baselines (`builder-document-chromium-{reference,wide}.png`); every other
   baseline was unchanged.
+
+## Deviations recorded during S5
+
+- The scan engine reuses `rule_signal` on each symbol's trailing `history` window read through
+  `load_bars(..., as_of=)`; there is no second evaluator. `run` reports the last-bar signal and the
+  operand values compared, plus `skipped` symbols with the reason (too few bars, unstored).
+- `check` state lives at `scans/state/<name>.json` and only *changed* signals append to
+  `scans/alerts.jsonl` (the live desk's existing `alerts` area — `_activity.py` needed no change).
+- "Scan check after each pull" is done from the Toolbox › Alerts tab: mounting it and every `bars`
+  store change check every saved scan once, then re-read the log. Nothing checks while the tab is
+  closed; `alpha scan check` and the Scanner's per-scan `Check` cover that.
+- `DataManager.tsx` was not touched (no pull-side hook was needed).
+- The bias guard's future poison is a hand-built descending series (the shared `linear_bars`
+  fixture rises and its first bar's low is 0, which the store's `Bar` model rejects).
+- Two new document baselines (`scanner-document-chromium-{reference,wide}.png`); every other
+  baseline was unchanged. The Toolbox `Alerts` tab is enabled (its disabled pin was removed).
+

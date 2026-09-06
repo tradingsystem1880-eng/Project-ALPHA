@@ -4809,3 +4809,24 @@ html[data-workspace-mode='guided'] .advanced-only { display: none !important; }
 .builder-list li.active { background: var(--selection); color: var(--selection-ink); }
 .builder-list .watch-select { flex: 1; display: flex; justify-content: space-between; gap: 8px; text-align: left; }
 @media (max-width: 1100px) { .builder-layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* Scanner document + Toolbox › Alerts (Phase 5 S5) */
+.scanner-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: var(--pad); align-items: start; }
+.scanner-side { display: grid; gap: 6px; }
+.scanner-new { border: 1px solid var(--line); padding: 8px; display: grid; gap: 4px; }
+.scanner-side h3 { margin: 4px 0 0; font-size: inherit; color: var(--ink-dim); }
+.scanner-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.scanner-list li { display: grid; gap: 2px; padding: 2px 4px; }
+.scanner-list li.active { background: var(--selection); color: var(--selection-ink); }
+.scanner-item { display: flex; justify-content: space-between; gap: 8px; }
+.scanner-item-actions { display: flex; gap: 4px; }
+.scanner-results { min-width: 0; overflow-x: auto; }
+.scanner-meta { margin: 0 0 4px; }
+.scanner-skipped { margin-top: 6px; }
+.scan-signal { font-variant-numeric: tabular-nums; }
+.scan-signal--up { color: var(--up); }
+.scan-signal--down { color: var(--down); }
+.scan-signal--flat { color: var(--ink-dim); }
+.alerts-panel { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+.alerts-empty { margin: 8px; }
+@media (max-width: 1100px) { .scanner-layout { grid-template-columns: minmax(0, 1fr); } }

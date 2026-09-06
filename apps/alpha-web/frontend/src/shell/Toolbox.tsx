@@ -2,13 +2,14 @@
 // Data pulls · Log · Alerts as one tab strip under the documents, tabs at the bottom. Only the
 // active tab mounts. Jobs is the dense job table with the real failure text; Trades the paper
 // sessions; Backtests the run comparison; Data pulls the same jobs table filtered to data work
-// (pulls, snapshots, crypto acquisitions); Log the activity feed. Alerts is disabled: there is no alert engine to relay.
+// (pulls, snapshots, crypto acquisitions); Log the activity feed; Alerts the scan alert log (`alpha scan check`).
 
 import type { FunctionComponent } from 'react'
 import { useState } from 'react'
 
 import type { PanelHandleProps } from '../context/panelHandle'
 import { ActivityFeed } from '../panels/ActivityFeed'
+import { Alerts } from '../panels/Alerts'
 import { CompareRuns } from '../panels/CompareRuns'
 import { DataPulls, JobMonitor } from '../panels/JobMonitor'
 import { PaperMonitor } from '../panels/PaperMonitor'
@@ -24,10 +25,7 @@ const PANELS: Record<string, { name: string; component: FunctionComponent<PanelH
   Backtests: { name: 'CompareRuns', component: CompareRuns },
   'Data pulls': { name: 'DataPulls', component: DataPulls },
   Log: { name: 'ActivityFeed', component: ActivityFeed },
-}
-
-const DISABLED: Readonly<Record<string, string>> = {
-  Alerts: 'No alert engine exists to relay; nothing here would be real',
+  Alerts: { name: 'Alerts', component: Alerts },
 }
 
 export function Toolbox({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -51,8 +49,6 @@ export function Toolbox({ open, onOpenChange }: { open: boolean; onOpenChange: (
               role="tab"
               aria-selected={tab === item}
               className={`rd-tab${tab === item ? ' active' : ''}`}
-              disabled={item in DISABLED}
-              title={DISABLED[item]}
               onClick={() => {
                 setTab(item)
                 onOpenChange(true)

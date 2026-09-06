@@ -32,6 +32,7 @@ import { ResearchCockpit } from '../panels/ResearchCockpit'
 import { ResearchDataExplorer } from '../panels/ResearchDataExplorer'
 import { RiskMonitor } from '../panels/RiskMonitor'
 import { Screener } from '../panels/Screener'
+import { Scanner } from '../panels/Scanner'
 import { StrategyBuilder } from '../panels/StrategyBuilder'
 import { StrategyLab } from '../panels/StrategyLab'
 import { AssetMemory, DevelopmentCenter, MlResearch } from '../panels/V3Workbenches'
@@ -43,6 +44,7 @@ export type DocumentKind =
   | 'report'
   | 'compare'
   | 'builder'
+  | 'scanner'
   | 'build'
   | 'research'
   | 'governance'
@@ -59,6 +61,7 @@ export const DOCUMENT_KINDS: readonly DocumentKind[] = Object.freeze([
   'compare',
   'build',
   'builder',
+  'scanner',
   'research',
   'governance',
   'forecast',
@@ -111,6 +114,12 @@ export const DOCUMENTS: readonly DocumentDefinition[] = [
     kind: 'builder',
     title: 'Strategy Builder',
     panes: [{ name: 'StrategyBuilder', title: 'Builder', component: StrategyBuilder }],
+  },
+  {
+    id: 'scanner',
+    kind: 'scanner',
+    title: 'Scanner',
+    panes: [{ name: 'Scanner', title: 'Scanner', component: Scanner }],
   },
   {
     id: 'build',
