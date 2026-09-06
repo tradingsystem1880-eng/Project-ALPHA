@@ -9,6 +9,9 @@ import type {
   AgentBrief,
   Candles,
   ChartOverlays,
+  RuleList,
+  RuleRecord,
+  RuleValidation,
   ChartBundle,
   CommandDef,
   ControlJob,
@@ -339,6 +342,17 @@ export const api = {
     getJSON(`/api/candles/${encodeURIComponent(symbol)}${query}`),
   overlays: (symbol: string, query = ''): Promise<ChartOverlays> =>
     getJSON(`/api/overlays/${encodeURIComponent(symbol)}${query}`),
+  rules: (): Promise<RuleList> => getJSON('/api/rules'),
+  rule: (name: string): Promise<RuleRecord> => getJSON(`/api/rules/${encodeURIComponent(name)}`),
+  ruleSave: (name: string, spec: Record<string, unknown>): Promise<RuleRecord> =>
+    postJSON('/api/rules', { name, spec }),
+  ruleValidate: (spec: Record<string, unknown>): Promise<RuleValidation> =>
+    postJSON('/api/rules/validate', { spec }),
+  ruleDelete: async (name: string): Promise<{ name: string; deleted: boolean }> => {
+    const res = await fetch(`/api/rules/${encodeURIComponent(name)}`, { method: 'DELETE' })
+    if (!res.ok) throw await responseError(res)
+    return (await res.json()) as { name: string; deleted: boolean }
+  },
   strategies: (): Promise<StrategyDef[]> => getJSON('/api/strategies'),
   commands: (): Promise<CommandDef[]> => getJSON('/api/commands'),
   symbols: (): Promise<{ symbols: string[] }> => getJSON('/api/symbols'),

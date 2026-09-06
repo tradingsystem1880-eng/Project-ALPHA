@@ -9,6 +9,7 @@ const DOCUMENTS = [
   { title: 'Chart', id: 'chart' },
   { title: 'Research', id: 'research' },
   { title: 'Build', id: 'build' },
+  { title: 'Strategy Builder', id: 'builder' },
   { title: 'Strategy Performance Report', id: 'report' },
   { title: 'Compare', id: 'compare' },
   { title: 'Forecast', id: 'forecast' },
@@ -1584,6 +1585,8 @@ interface MockOptions {
   figureCatalogue?: boolean
   /** Opt-in daily bars per symbol for the candles projection (Market Watch, Chart). */
   candles?: Record<string, components['schemas']['Candle'][]>
+  /** Saved rule sets served by GET /api/rules. */
+  rules?: components['schemas']['RuleSummary'][]
   /** Receives the query string of every `/api/overlays/{symbol}` request the chart makes. */
   capturedOverlays?: (query: string) => void
   /** Opt-in public tickers keyed `SYMBOL@exchange`; a missing key answers 422 like the CLI. */
@@ -2285,6 +2288,16 @@ function responseFor(route: Route, options: MockOptions): unknown {
       annotations,
     }
   }
+  if (url.pathname === '/api/rules' && route.request().method() === 'GET') {
+    return { rules: options.rules ?? [], authority: 'none' }
+  }
+  if (url.pathname === '/api/rules/validate') {
+    const spec = (route.request().postDataJSON() as { spec: { long_when?: unknown[]; short_when?: unknown[] } }).spec
+    const conditions = (spec.long_when?.length ?? 0) + (spec.short_when?.length ?? 0)
+    return conditions
+      ? { valid: true, error: null, name: '(unsaved)', sha256: 'f'.repeat(64), spec_name: 'x', history: 80, warmup: 20, long_conditions: [], short_conditions: [], spec }
+      : { valid: false, error: 'rule spec needs at least one condition in long_when or short_when' }
+  }
   if (url.pathname === '/api/strategies' || url.pathname === '/api/commands') return []
   if (url.pathname === '/api/providers') return []
   if (url.pathname === '/api/system') return SYSTEM_STATUS
@@ -2663,6 +2676,53 @@ test('the status bar tells the truth about the SSD and paper routing', async ({ 
   await expect(bar.locator('.status-segment--clock')).toHaveText(/\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/)
   await expect(bar.locator('.status-segment--ohlc')).toHaveText('O: — H: — L: — C: — V: —')
   await expect(bar.locator('.status-segment--bars')).toHaveText(/\d+ \/ \d+ bars/)
+})
+
+test('Strategy Builder validates through the CLI, saves, and tests in the sandbox', async ({ page }) => {
+  const posts: { path: string; body: Record<string, unknown> }[] = []
+  await preparePage(page, {
+    rules: [{ name: 'old-one', path: '/data/rules/old-one.json', sha256: 'a'.repeat(64), spec_name: 'Old one', history: 60, warmup: 20, long_conditions: ['sma:5 > sma:20'], short_conditions: [], spec: {}, error: null }],
+    capturedPost: (path, body) => {
+      posts.push({ path, body })
+      if (path === '/api/rules') {
+        return { name: body.name, sha256: 'b'.repeat(64), path: `/data/rules/${String(body.name)}.json`, spec_name: 'Trend', history: 80, warmup: 20, long_conditions: ['sma:5 > sma:20'], short_conditions: [], spec: body.spec }
+      }
+      if (path === '/api/jobs') return { job_id: 'job-rules-1', status: 'running' }
+      return undefined
+    },
+  })
+  await openDocument(page, 'Strategy Builder')
+  const editor = page.getByRole('region', { name: 'Rule editor' })
+  await expect(page.getByRole('complementary', { name: 'Saved rule sets' })).toContainText('old-one')
+  // A typo is caught before the CLI; a real spec is validated by the CLI.
+  await editor.getByLabel('long condition 1 left').fill('vwap:20')
+  await editor.getByLabel('long condition 1 right').fill('sma:20')
+  await expect(editor.getByRole('status')).toContainText('"vwap" is not a source')
+  await editor.getByLabel('long condition 1 left').fill('sma:5')
+  await expect(editor.getByRole('status')).toContainText('valid · warm-up 20 bars · history 80')
+  const save = editor.getByRole('button', { name: 'Save rule set' })
+  await expect(save).toBeDisabled()
+  await editor.getByLabel('File name').fill('trend')
+  await save.click()
+  await expect(editor.getByRole('button', { name: 'Test in sandbox' })).toBeEnabled()
+  expect(posts.filter((entry) => entry.path === '/api/rules')).toEqual([
+    {
+      path: '/api/rules',
+      body: {
+        name: 'trend',
+        spec: {
+          name: 'trend',
+          long_when: [{ left: { indicator: 'sma', params: [5] }, op: '>', right: { indicator: 'sma', params: [20] } }],
+          short_when: [],
+        },
+      },
+    },
+  ])
+  await editor.getByLabel('Test symbol').fill('XRP/USDT')
+  await editor.getByRole('button', { name: 'Test in sandbox' }).click()
+  const job = posts.find((entry) => entry.path === '/api/jobs')
+  expect(job?.body).toMatchObject({ command: 'backtest run', args: 'XRP/USDT --strategy rules --rules trend --account-type MARGIN' })
+  expect((job?.body.run_context as { kind?: string } | undefined)?.kind ?? 'standalone_sandbox').toBeTruthy()
 })
 
 test('Insert › Indicators draws CLI-computed overlays and chart windows tile', async ({ page }) => {
