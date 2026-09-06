@@ -670,6 +670,63 @@ class ChartOverlays(StrictModel):
     annotations: list[ChartAnnotation]
 
 
+class RuleSummary(StrictModel):
+    name: str
+    path: str
+    sha256: str | None = None
+    spec_name: str | None = None
+    history: int | None = None
+    warmup: int | None = None
+    long_conditions: list[str] | None = None
+    short_conditions: list[str] | None = None
+    spec: dict[str, Any] | None = None
+    error: str | None = None
+
+
+class RuleList(StrictModel):
+    rules: list[RuleSummary]
+    authority: Literal["none"]
+
+
+class RuleRecord(StrictModel):
+    name: str
+    sha256: str
+    path: str
+    spec_name: str
+    history: int
+    warmup: int
+    long_conditions: list[str]
+    short_conditions: list[str]
+    spec: dict[str, Any]
+
+
+class RuleSaveRequest(StrictModel):
+    name: str
+    spec: dict[str, Any]
+
+
+class RuleValidateRequest(StrictModel):
+    spec: dict[str, Any]
+
+
+class RuleValidation(StrictModel):
+    valid: bool
+    error: str | None
+    name: str | None = None
+    sha256: str | None = None
+    spec_name: str | None = None
+    history: int | None = None
+    warmup: int | None = None
+    long_conditions: list[str] | None = None
+    short_conditions: list[str] | None = None
+    spec: dict[str, Any] | None = None
+
+
+class RuleDeleted(StrictModel):
+    name: str
+    deleted: bool
+
+
 class ParamDefinition(StrictModel):
     name: str
     type: str
