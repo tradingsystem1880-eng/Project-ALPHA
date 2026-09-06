@@ -124,7 +124,7 @@
         "apps/alpha-web/frontend/openapi.json",
         "apps/alpha-web/frontend/src/api/generated.ts"
       ],
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "title": "S3 chart-first analysis: alpha chart overlays --json over alpha_patterns (lazy import; no contract change), GET /api/candles/{symbol}/overlays (argv-hashed cache), known-by pattern anchors, indicator/pattern overlays with panes and legend, Insert > Indicators dialog, tiled chart windows",
@@ -150,7 +150,7 @@
         "tests/integration/test_web_api_overlays.py",
         "tests/unit/test_public_seams.py"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "S4 rule strategies: drop the alpha_strategies->alpha_patterns forbidden contract (ack), alpha_strategies/rules.py (strict RuleSpec, canonical bytes, evaluate_rules over a fixed trailing history K reusing alpha_patterns, RuleStrategy) with future-poison guards, registry entry + --rules flag + rules_spec_sha256 in RunSpec/identity payload/strategy fingerprint + alpha_patterns in _EXECUTION_PACKAGES, alpha rules save|list|show|validate, GET/POST /api/rules, Strategy Builder document",
@@ -283,3 +283,27 @@ The test-architect specification (2026-09-04, 50 tests) is the ordered list the 
 - Seal holdout / freeze decision stay CLI: `src/api/controlPlane.test.ts` pins that the client exposes no caller-asserted owner action; the Development Center shows both argv with Copy buttons and wires only link-run and record-attempt.
 - The ML raw lifecycle routes are covered by the existing orchestrated experiment; no separate buttons.
 - The Toolbox already had Trades/Backtests/Log panels; S1 only replaced Data pulls (jobs filtered to data work) and added the Log's area lines.
+
+## Deviations recorded during S3
+
+- The overlays route is `GET /api/overlays/{symbol:path}` rather than the planned
+  `/api/candles/{symbol}/overlays`: the candles route's `{symbol:path}` parameter swallows any
+  suffix, so a sibling prefix is the only unambiguous shape. The cache key is the argv tuple plus
+  the parquet mtime, matching the candles reader.
+- `chart` joins `figures` in `info_cmds._NON_RUN_COMMAND_PREFIXES`: overlays are a read-only
+  projection the chart requests directly, never a launchable run, so the menu-group guard and the
+  new-run form do not see it.
+- Warm-up handling lives in the CLI, not `alpha_patterns`: `rolling_mean`/`atr` partial averages,
+  the RSI's 50-seed and the EMA's `values[0]` seed are nulled for the head `window-1` (RSI:
+  `window`; MACD signal/histogram: `slow+signal-2`) bars and never elsewhere. A non-finite value
+  anywhere else is a `DataError`.
+- Swings are single-anchor `ChartAnnotation` rows (the SPA draws them as bar markers); trendlines
+  carry three anchors (both confirmed anchors plus the line's value at `min(retire_at, last)`);
+  Fibonacci levels span `known_at → last`. The bias guard is `tests/unit/test_chart_overlays_bias_guard.py`
+  (future poison after `--end` changes nothing; a swing confirmed only by bars past the window is
+  never drawn).
+- Multi-chart is `Window › New chart window` (a `chart:<symbol>` document pinned to the linked
+  symbol at the time) plus `Window › Tile charts` (up to four open charts side by side). The plain
+  `Chart` keeps following the linked symbol.
+- The twenty document baselines did not need re-taking: all four Playwright projects passed
+  against the existing screenshots after S3.
