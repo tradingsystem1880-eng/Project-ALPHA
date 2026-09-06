@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 
     from alpha_cli._runner import RunSpec
     from alpha_cli._surrogate import Surrogate
+    from alpha_strategies.rules import RuleSpec
 
 
 @dataclass(frozen=True)
@@ -329,6 +330,65 @@ def _kronos_surrogate(spec: RunSpec) -> Surrogate:
     )
 
 
+# --- rules (owner-authored, alpha rules save) ---------------------------------------------------
+
+
+def _rules_spec(spec: RunSpec) -> RuleSpec:
+    from alpha_strategies.rules import rule_spec_from_json
+
+    if spec.rules_spec is None:
+        raise DataError("--strategy rules needs --rules NAME (a spec saved by `alpha rules save`)")
+    return rule_spec_from_json(spec.rules_spec)
+
+
+def _rules_warmup(spec: RunSpec) -> int:
+    return max(_rules_spec(spec).history, spec.vol_window + 1)
+
+
+def _rules_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarType) -> Strategy:
+    from alpha_strategies.rule_strategy import RuleStrategy
+
+    return RuleStrategy(
+        instrument_id=instrument_id,
+        bar_type=bar_type,
+        spec=_rules_spec(spec),
+        vol_window=spec.vol_window,
+        target_vol=spec.target_vol,
+        capital=_sizing_capital(spec),
+        max_leverage=spec.max_leverage,
+        rebalance_every=spec.rebalance_every,
+        periods_per_year=spec.periods_per_year,
+        allow_short=spec.allow_short,
+        size_on_equity=spec.size_on_equity,
+        halt_drawdown=spec.halt_drawdown,
+    )
+
+
+def _rules_surrogate(spec: RunSpec) -> Surrogate:
+    from alpha_cli._surrogate import make_surrogate
+    from alpha_strategies.rules import rule_signal
+
+    rules = _rules_spec(spec)
+
+    def signal_fn(closes_prefix: FloatArray) -> int:
+        # Tier-1 has no synthetic intrabar range: highs and lows are the closes (same convention
+        # as the breakout surrogate); the Tier-2 full-engine null reads the real OHLC.
+        prices = closes_prefix[-rules.history :].tolist()
+        return rule_signal(rules, prices, prices, prices)
+
+    return make_surrogate(
+        signal_fn=signal_fn,
+        warmup=_rules_warmup(spec) - 1,
+        vol_window=spec.vol_window,
+        target_vol=spec.target_vol,
+        rebalance_every=spec.rebalance_every,
+        periods_per_year=spec.periods_per_year,
+        max_leverage=spec.max_leverage,
+        allow_short=spec.allow_short,
+        cost_bps=spec.fee_bps + spec.slippage_bps,
+    )
+
+
 STRATEGIES: dict[str, StrategyDef] = {
     "ts_momentum": StrategyDef(
         warmup=_ts_momentum_warmup,
@@ -357,6 +417,13 @@ STRATEGIES: dict[str, StrategyDef] = {
         surrogate=_breakout_surrogate,
         params=frozenset({"window"}),
         supports_live_paper=True,
+    ),
+    "rules": StrategyDef(
+        warmup=_rules_warmup,
+        build=_rules_build,
+        surrogate=_rules_surrogate,
+        params=frozenset(),  # the rule set itself is selected with --rules NAME
+        supports_live_paper=False,
     ),
     "kronos": StrategyDef(
         warmup=_kronos_warmup,

@@ -18,17 +18,19 @@ _EXECUTION_PACKAGES = (
     "alpha_data",
     "alpha_backtest",
     "alpha_strategies",
+    "alpha_patterns",
     "alpha_validation",
     "alpha_forecast",
     "alpha_cli",
 )
-_STRATEGY_MODULES = {
+_STRATEGY_MODULES: dict[str, str | tuple[str, ...]] = {
     "ts_momentum": "ts_momentum.py",
     "ma_crossover": "ma_crossover.py",
     "mean_reversion": "mean_reversion.py",
     "breakout": "breakout.py",
     "kronos": "signal_replay.py",
     "hedged_basis_crowding_v1": "hedged_basis.py",
+    "rules": ("rules.py", "rule_strategy.py"),
 }
 
 
@@ -101,7 +103,7 @@ def strategy_fingerprint(strategy_name: str | None) -> str | None:
     selected = _STRATEGY_MODULES.get(strategy_name)
     filenames = ["base.py", "signals.py", "sizing.py"]
     if selected is not None:
-        filenames.append(selected)
+        filenames.extend([selected] if isinstance(selected, str) else selected)
     files = [(f"alpha_strategies/{name}", root / name) for name in filenames]
     digest = hashlib.sha256()
     digest.update(b"project-alpha-strategy-source-v1\0")

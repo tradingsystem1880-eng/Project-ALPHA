@@ -3718,10 +3718,11 @@ def compare(
 
     names = [s.strip() for s in strategies.split(",") if s.strip()] or [
         # kronos needs a precomputed forecast cache (built by backtest/validate/optim, not this
-        # lightweight comparison spec), so exclude it from the default all-strategies sweep.
+        # lightweight comparison spec) and rules needs an owner-saved rule set (--rules), so
+        # exclude both from the default all-strategies sweep.
         n
         for n in _strategies.known_strategies()
-        if n != "kronos"
+        if n not in {"kronos", "rules"}
     ]
     settings = AlphaSettings()
     try:
