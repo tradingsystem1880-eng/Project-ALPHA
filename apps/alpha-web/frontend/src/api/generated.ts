@@ -46,6 +46,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Alerts
+         * @description The newest scan alerts, oldest first within the tail.
+         */
+        get: operations["alerts_api_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/candles/{symbol}": {
         parameters: {
             query?: never;
@@ -2666,6 +2686,102 @@ export interface paths {
         get: operations["run_trials_api_runs__run_id__trials_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Scans */
+        get: operations["list_scans_api_scans_get"];
+        put?: never;
+        /**
+         * Save Scan
+         * @description Save (or overwrite) a scan naming a saved rule set and a universe.
+         */
+        post: operations["save_scan_api_scans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scans/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check All
+         * @description Check every saved scan; only changed signals become alerts (the live desk's `alerts`).
+         */
+        post: operations["check_all_api_scans_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scans/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Show Scan */
+        get: operations["show_scan_api_scans__name__get"];
+        put?: never;
+        post?: never;
+        /** Delete Scan */
+        delete: operations["delete_scan_api_scans__name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scans/{name}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check Scan */
+        post: operations["check_scan_api_scans__name__check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scans/{name}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Scan
+         * @description Evaluate the scan on point-in-time bars (optionally as of a date); writes nothing.
+         */
+        post: operations["run_scan_api_scans__name__run_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10146,6 +10262,173 @@ export interface components {
             /** Value */
             value: number;
         };
+        /** ScanAlert */
+        ScanAlert: {
+            /** Bar Date */
+            bar_date: string;
+            /** Close */
+            close: number;
+            /** Previous */
+            previous: number | null;
+            /** Scan */
+            scan: string;
+            /** Signal */
+            signal: number;
+            /** Symbol */
+            symbol: string;
+            /** Ts */
+            ts: string;
+        };
+        /** ScanAlerts */
+        ScanAlerts: {
+            /** Alerts */
+            alerts: components["schemas"]["ScanAlert"][];
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+        };
+        /** ScanCheck */
+        ScanCheck: {
+            /** Alerts */
+            alerts: components["schemas"]["ScanAlert"][];
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Checked At */
+            checked_at: string;
+            /** Rows */
+            rows: number;
+            /** Scan */
+            scan: string;
+            /** Skipped */
+            skipped: number;
+        };
+        /** ScanCheckResult */
+        ScanCheckResult: {
+            /** Alerts */
+            alerts: components["schemas"]["ScanAlert"][];
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Checks */
+            checks: components["schemas"]["ScanCheck"][];
+        };
+        /** ScanDeleted */
+        ScanDeleted: {
+            /** Deleted */
+            deleted: boolean;
+            /** Name */
+            name: string;
+        };
+        /** ScanList */
+        ScanList: {
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Scans */
+            scans: components["schemas"]["ScanSummary"][];
+        };
+        /** ScanRecord */
+        ScanRecord: {
+            /** Checked At */
+            checked_at: string | null;
+            /** Name */
+            name: string;
+            /** Rules */
+            rules: string;
+            universe: components["schemas"]["ScanUniverse"];
+        };
+        /** ScanRow */
+        ScanRow: {
+            /** Bar Date */
+            bar_date: string;
+            /** Bar Ts */
+            bar_ts: number;
+            /** Close */
+            close: number;
+            /** Signal */
+            signal: number;
+            /** Symbol */
+            symbol: string;
+            /** Values */
+            values: {
+                [key: string]: number;
+            };
+        };
+        /** ScanRunRequest */
+        ScanRunRequest: {
+            /** As Of */
+            as_of?: string | null;
+        };
+        /** ScanRunResult */
+        ScanRunResult: {
+            /** As Of */
+            as_of: string | null;
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Rows */
+            rows: components["schemas"]["ScanRow"][];
+            /** Rules */
+            rules: string;
+            /** Rules Sha256 */
+            rules_sha256: string;
+            /** Scan */
+            scan: string;
+            /** Skipped */
+            skipped: components["schemas"]["ScanSkipped"][];
+            universe: components["schemas"]["ScanUniverse"];
+            /** Universe As Of */
+            universe_as_of: string;
+        };
+        /** ScanSaveRequest */
+        ScanSaveRequest: {
+            /** Name */
+            name: string;
+            /** Rules */
+            rules: string;
+            /** Symbols */
+            symbols?: string[] | null;
+        };
+        /** ScanSkipped */
+        ScanSkipped: {
+            /** Reason */
+            reason: string;
+            /** Symbol */
+            symbol: string;
+        };
+        /** ScanSummary */
+        ScanSummary: {
+            /** Checked At */
+            checked_at?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Name */
+            name: string;
+            /** Rules */
+            rules?: string | null;
+            universe?: components["schemas"]["ScanUniverse"] | null;
+        };
+        /** ScanUniverse */
+        ScanUniverse: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "stored" | "list";
+            /** Symbols */
+            symbols?: string[] | null;
+        };
         /** ScreenerNews */
         ScreenerNews: {
             /** Items */
@@ -10686,6 +10969,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    alerts_api_alerts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanAlerts"];
                 };
             };
             /** @description Stable, redacted Workstation error */
@@ -15530,6 +15844,225 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OptimTrials"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    list_scans_api_scans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanList"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    save_scan_api_scans_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanSaveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanRecord"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    check_all_api_scans_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanCheckResult"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    show_scan_api_scans__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanRecord"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    delete_scan_api_scans__name__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanDeleted"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    check_scan_api_scans__name__check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanCheckResult"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    run_scan_api_scans__name__run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ScanRunRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanRunResult"];
                 };
             };
             /** @description Stable, redacted Workstation error */
