@@ -16,6 +16,13 @@
     },
     {
       "method": "GET",
+      "mode": "automatic",
+      "operation_id": "alerts_api_alerts_get",
+      "path": "/api/alerts",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
       "mode": "fixture_backed",
       "operation_id": "candles_api_candles__symbol__get",
       "path": "/api/candles/{symbol}",
@@ -1049,6 +1056,55 @@
       "operation_id": "run_trials_api_runs__run_id__trials_get",
       "path": "/api/runs/{run_id}/trials",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "list_scans_api_scans_get",
+      "path": "/api/scans",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "save_scan_api_scans_post",
+      "path": "/api/scans",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "check_all_api_scans_check_post",
+      "path": "/api/scans/check",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "DELETE",
+      "mode": "fixture_backed",
+      "operation_id": "delete_scan_api_scans__name__delete",
+      "path": "/api/scans/{name}",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "show_scan_api_scans__name__get",
+      "path": "/api/scans/{name}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "check_scan_api_scans__name__check_post",
+      "path": "/api/scans/{name}/check",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "run_scan_api_scans__name__run_post",
+      "path": "/api/scans/{name}/run",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
     },
     {
       "method": "GET",
