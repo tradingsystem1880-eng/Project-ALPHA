@@ -96,7 +96,7 @@ function rowsToJson(rows: readonly Row[]): { left: OperandJson; op: Op; right: O
 /** The spec object for `POST /api/rules/validate` and `/api/rules`; row typos throw here first. */
 export function formToSpec(form: BuilderForm): Record<string, unknown> {
   const spec: Record<string, unknown> = {
-    name: form.name.trim() || form.id.trim(),
+    name: form.name.trim() || form.id.trim() || 'unsaved',
     long_when: rowsToJson(form.longRows),
     short_when: rowsToJson(form.shortRows),
   }

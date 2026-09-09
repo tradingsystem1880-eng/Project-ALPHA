@@ -53,6 +53,9 @@ describe('form <-> spec', () => {
       short_when: [{ left: { indicator: 'sma', params: [5] }, op: '<', right: { indicator: 'sma', params: [20] } }],
     },
   }
+  it('validates with a placeholder spec name until the file name is typed', () => {
+    expect(formToSpec({ ...EMPTY_FORM, longRows: [{ left: 'sma:5', op: '>', right: 'sma:20' }] }).name).toBe('unsaved')
+  })
   it('builds the CLI spec from rows, skipping blank rows and defaulting history', () => {
     const spec = formToSpec({
       id: 'trend',

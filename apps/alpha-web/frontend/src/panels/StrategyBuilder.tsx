@@ -222,7 +222,9 @@ export function StrategyBuilder(_props: PanelHandleProps) {
           <RowEditor side="shortRows" rows={form.shortRows} onChange={(rows) => setForm({ ...form, shortRows: rows })} />
           <p className="muted builder-help">
             Each side is <span className="mono">{OPERAND_EXAMPLES.join(' · ')}</span>. Indicators are the ones the chart
-            draws; a value still warming up on the decision bar is an error, never a guess.
+            draws; a value still warming up on the decision bar is an error, never a guess. Rules on{' '}
+            <span className="mono">high</span>, <span className="mono">low</span> or <span className="mono">atr</span> get a
+            closes-only Tier-1 null in the gauntlet (the surrogate feeds closes as highs and lows).
           </p>
           <div className="builder-check" role="status" aria-live="polite">
             {check === null ? (
