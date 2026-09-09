@@ -124,8 +124,27 @@ class _EquityRecorder(Actor):  # type: ignore[misc]  # nautilus Actor is untyped
 
 
 def _closed_trades(engine: BacktestEngine) -> list[Trade]:
+    """Every closed round trip, chronological.
+
+    A NETTING venue keeps one position id per instrument and strategy: every reopen (a fresh entry
+    after a flat, or a flip long → short in one fill) moves the finished leg into a position
+    *snapshot*, and ``positions_closed`` holds only the final leg. Reading the snapshots too is
+    what makes the trade log carry every round trip — the equity curve always did.
+    """
+    closed = list(engine.cache.positions_closed()) + list(engine.cache.position_snapshots())
+    closed.sort(
+        key=lambda p: (
+            int(p.ts_opened),
+            int(p.ts_closed),
+            str(p.instrument_id),
+            p.entry == OrderSide.BUY,
+            float(p.peak_qty),
+            float(p.avg_px_open),
+            float(p.avg_px_close),
+        )
+    )
     trades: list[Trade] = []
-    for p in engine.cache.positions_closed():
+    for p in closed:
         trades.append(
             Trade(
                 instrument_id=str(p.instrument_id),

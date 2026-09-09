@@ -355,9 +355,12 @@ The test-architect specification (2026-09-04, 50 tests) is the ordered list the 
   APPROVE attested; every new run id changes because `alpha_backtest` is in the execution
   fingerprint), and the builder validated with an empty spec name before a file name was typed.
 - `menuModel.GROUP_MENU` must not name `scan` (a non-run prefix outside the served catalog).
-- The independent reviewer noted, outside this diff, that `_closed_trades` reads only closed
-  positions so a netting flip's closed leg is missing from `trades.parquet` although the equity
-  curve carries its PnL — recorded here as a follow-up, not fixed in Phase 5.
+- The independent reviewer noted, outside the currency diff, that `_closed_trades` read only
+  `positions_closed`. Fixed in the follow-up commit on `fix/flip-trades-in-trade-log`: a NETTING
+  venue snapshots the finished leg on *every* reopen (not only a flip), so the trade log and
+  native tear-sheet trade statistics previously held at most one round trip per run; the engine
+  now reads the snapshots too and sorts by projected fields (no uuid entropy). Every
+  multi-round-trip run's `trades.parquet` changes; the equity curve is unchanged.
 - CLAUDE.md's DAG line now reads `alpha_strategies` → core + patterns; the retired v1 line is kept
   verbatim in `docs/BUILD-STATUS.md`.
 
