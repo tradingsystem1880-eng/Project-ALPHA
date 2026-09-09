@@ -18,7 +18,6 @@ from nautilus_trader.backtest.engine import BacktestEngine, BacktestEngineConfig
 from nautilus_trader.common.actor import Actor
 from nautilus_trader.config import LoggingConfig
 from nautilus_trader.core.data import Data
-from nautilus_trader.model.currencies import USD
 from nautilus_trader.model.data import QuoteTick
 from nautilus_trader.model.enums import AccountType, OmsType, OrderSide
 from nautilus_trader.model.events import OrderFilled
@@ -281,7 +280,7 @@ def run_backtest(
     strategy: Strategy,
     *,
     starting_cash: float = 1_000_000.0,
-    currency: Currency = USD,
+    currency: Currency | None = None,
     account_type: AccountType = AccountType.CASH,
     leverage: float = 1.0,
     fee_bps: float = 0.0,
@@ -293,12 +292,19 @@ def run_backtest(
     bars). The venue uses a NETTING OMS with ``bar_execution=False`` so only the quotes fill orders
     — a market order decided on the close of t fills at the open of t+1. The account defaults to
     CASH (no shorting; equities are long-flat per spec §7); pass ``AccountType.MARGIN`` (where
-    ``leverage`` applies) for the long-short crypto/FX path. ``dividends`` are DIVIDEND
+    ``leverage`` applies) for the long-short crypto/FX path. ``currency`` defaults to the
+    instrument's quote currency. ``dividends`` are DIVIDEND
     ``CorporateAction``s for this instrument: cash is credited to the equity curve at pay date
     against the pre-ex holding (see ``_EquityRecorder``) — decoupled from prices, per spec §6.1.4.
     """
     if fee_bps < 0.0:
         raise DataError(f"fee_bps must be >= 0 (a negative fee pays you to trade), got {fee_bps}")
+    # The account is denominated in the instrument's quote currency (USD for equities, USDT for a
+    # USDT pair): PnL settles in that currency, so no exchange rate is ever needed. A USD account
+    # holding a USDT pair would need a USDT→USD rate no feed provides, and nautilus fails the
+    # equity read the first time a netting flip leaves a position snapshot to convert.
+    if currency is None:
+        currency = instrument.quote_currency
     engine = BacktestEngine(
         config=BacktestEngineConfig(
             trader_id="BACKTESTER-001",
