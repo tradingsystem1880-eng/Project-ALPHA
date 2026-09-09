@@ -5,6 +5,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { api } from '../api/client'
+import { CopyCommand } from '../components/CopyCommand'
+import { useAreaVersion } from '../state/activity'
 import type {
   JsonScalar,
   PaperEvent,
@@ -148,6 +150,8 @@ function EventLog({ events }: { events: PaperEvent[] }) {
   )
 }
 
+const PAPER_CLI_WHY = 'ADR-0017/0031: paper sessions exercise broker/paper authority, so they start, stop and reconcile only from the owner CLI; this window relays the journal.'
+
 export function PaperMonitor() {
   const [system, setSystem] = useState<SystemStatus | null>(null)
   const [sessions, setSessions] = useState<PaperSession[] | null>(null)
@@ -178,11 +182,12 @@ export function PaperMonitor() {
       .catch((reason: unknown) => setOverviewError(String(reason)))
   }, [])
 
+  const paperVersion = useAreaVersion('paper')
   useEffect(() => {
     loadOverview()
     const timer = window.setInterval(loadOverview, OVERVIEW_POLL_MS)
     return () => window.clearInterval(timer)
-  }, [loadOverview])
+  }, [loadOverview, paperVersion])
 
   useEffect(() => {
     eventCursor.current = 0
@@ -273,6 +278,12 @@ export function PaperMonitor() {
         ) : null}
         <section className="paper-sessions">
           <div className="rd-head">Sessions</div>
+          <details className="advanced-only">
+            <summary className="muted">Start, stop or reconcile a paper session (trusted CLI)</summary>
+            <CopyCommand command="uv run alpha paper run <SYMBOL> --strategy <name>" why={PAPER_CLI_WHY} />
+            <CopyCommand command={`uv run alpha paper stop ${selectedId ?? '<SESSION_ID>'}`} why={PAPER_CLI_WHY} />
+            <CopyCommand command={`uv run alpha paper reconcile ${selectedId ?? '<SESSION_ID>'}`} why={PAPER_CLI_WHY} />
+          </details>
           {sessions === null ? (
             <Placeholder>loading sessions…</Placeholder>
           ) : (

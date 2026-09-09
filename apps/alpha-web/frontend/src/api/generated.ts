@@ -46,6 +46,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Alerts
+         * @description The newest scan alerts, oldest first within the tail.
+         */
+        get: operations["alerts_api_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/candles/{symbol}": {
         parameters: {
             query?: never;
@@ -547,6 +567,46 @@ export interface paths {
          * @description The venue's earliest daily bar for ``symbol`` (relays ``alpha data first-bar --json``).
          */
         get: operations["first_bar_api_data_first_bar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/data/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Data Snapshots
+         * @description Every immutable data snapshot (relays ``alpha data snapshots --json``).
+         */
+        get: operations["data_snapshots_api_data_snapshots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/data/source-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Data Source Status
+         * @description SYMBOL's canonical provenance and pending receipts (``alpha data source-status``).
+         */
+        get: operations["data_source_status_api_data_source_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1215,6 +1275,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/overlays/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Overlays
+         * @description Indicator series and pattern annotations computed by ``alpha chart overlays`` over the
+         *     same point-in-time window as ``/api/candles``; the browser draws, it never computes.
+         *
+         *     Lives under ``/api/overlays`` because ``/candles/{symbol:path}`` swallows any suffix.
+         */
+        get: operations["overlays_api_overlays__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/owner-auth/actions/challenge": {
         parameters: {
             query?: never;
@@ -1794,6 +1877,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/research/cases/{project_id}/claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Research Claim Add
+         * @description Draft one claim; screening or rejecting it stays a Touch ID owner action.
+         */
+        post: operations["research_claim_add_api_research_cases__project_id__claims_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/research/cases/{project_id}/context-packets": {
         parameters: {
             query?: never;
@@ -1927,7 +2030,11 @@ export interface paths {
          */
         get: operations["research_notes_api_research_cases__project_id__notes_get"];
         put?: never;
-        post?: never;
+        /**
+         * Research Note Add
+         * @description Append an owner note beside Codex's commentary — commentary, never evidence.
+         */
+        post: operations["research_note_add_api_research_cases__project_id__notes_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2028,6 +2135,26 @@ export interface paths {
         get: operations["research_semantic_projection_api_research_cases__project_id__semantic_projection_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Research Source Add
+         * @description Register an owner-provided source; it is untrusted until an owner screens its claims.
+         */
+        post: operations["research_source_add_api_research_cases__project_id__sources_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2149,6 +2276,68 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Rules
+         * @description Every saved rule set (a hand-edited invalid file is listed with its error, never hidden).
+         */
+        get: operations["list_rules_api_rules_get"];
+        put?: never;
+        /**
+         * Save Rule
+         * @description Validate and save (or overwrite) ``data_dir/rules/<name>.json`` through the CLI.
+         */
+        post: operations["save_rule_api_rules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Rule
+         * @description Strict parse without saving — the builder's live check; invalid is a report, not a 4xx.
+         */
+        post: operations["validate_rule_api_rules_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Show Rule */
+        get: operations["show_rule_api_rules__name__get"];
+        put?: never;
+        post?: never;
+        /** Delete Rule */
+        delete: operations["delete_rule_api_rules__name__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2497,6 +2686,102 @@ export interface paths {
         get: operations["run_trials_api_runs__run_id__trials_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Scans */
+        get: operations["list_scans_api_scans_get"];
+        put?: never;
+        /**
+         * Save Scan
+         * @description Save (or overwrite) a scan naming a saved rule set and a universe.
+         */
+        post: operations["save_scan_api_scans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scans/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check All
+         * @description Check every saved scan; only changed signals become alerts (the live desk's `alerts`).
+         */
+        post: operations["check_all_api_scans_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scans/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Show Scan */
+        get: operations["show_scan_api_scans__name__get"];
+        put?: never;
+        post?: never;
+        /** Delete Scan */
+        delete: operations["delete_scan_api_scans__name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scans/{name}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check Scan */
+        post: operations["check_scan_api_scans__name__check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scans/{name}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Scan
+         * @description Evaluate the scan on point-in-time bars (optionally as of a date); writes nothing.
+         */
+        post: operations["run_scan_api_scans__name__run_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4172,6 +4457,25 @@ export interface components {
             /** Value */
             value: number;
         };
+        /** ChartOverlays */
+        ChartOverlays: {
+            /** Annotations */
+            annotations: components["schemas"]["ChartAnnotation"][];
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Indicators */
+            indicators: components["schemas"]["OverlaySeries"][];
+            provenance: components["schemas"]["CandleProvenance"];
+            /** Snapshot Id */
+            snapshot_id: string | null;
+            /** Symbol */
+            symbol: string;
+            /** T */
+            t: number[];
+        };
         /** ChartProvenance */
         ChartProvenance: {
             /** Artifact Contract Version */
@@ -5453,6 +5757,43 @@ export interface components {
              * @constant
              */
             state: "verified";
+        };
+        /** DataSnapshotRow */
+        DataSnapshotRow: {
+            /** Adapter Version */
+            adapter_version: string | null;
+            /** Created At */
+            created_at: string | null;
+            /** Manifest Sha256 */
+            manifest_sha256: string;
+            /** Parser Version */
+            parser_version: string | null;
+            /** Snapshot Id */
+            snapshot_id: string | null;
+            /** Source */
+            source: string | null;
+            /** Symbols */
+            symbols: string[];
+        };
+        /** DataSnapshots */
+        DataSnapshots: {
+            /** Snapshots */
+            snapshots: components["schemas"]["DataSnapshotRow"][];
+        };
+        /** DataSourceStatus */
+        DataSourceStatus: {
+            /** Candidates */
+            candidates: string[];
+            /** Promotion Pending */
+            promotion_pending: boolean;
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            } | null;
+            /** Quarantined */
+            quarantined: string[];
+            /** Symbol */
+            symbol: string;
         };
         /** DecisionPacket */
         DecisionPacket: {
@@ -7645,13 +7986,34 @@ export interface components {
             /** Vol */
             vol: number;
         };
+        /** OverlaySeries */
+        OverlaySeries: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Pane
+             * @enum {string}
+             */
+            pane: "price" | "rsi" | "atr" | "macd";
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "line" | "histogram";
+            /** Values */
+            values: (number | null)[];
+            /** Warmup */
+            warmup: number;
+        };
         /** OwnerActionChallengeRequest */
         OwnerActionChallengeRequest: {
             /**
              * Action Type
              * @enum {string}
              */
-            action_type: "screen_source_claim" | "reject_source_claim" | "revise_source_claim" | "freeze_source_pack" | "approve_exploration" | "reject_exploration" | "revise_exploration" | "launch_d1" | "approve_confirmation" | "reject_confirmation" | "launch_d2" | "record_final_disposition" | "record_semantic_event";
+            action_type: "screen_source_claim" | "reject_source_claim" | "revise_source_claim" | "freeze_source_pack" | "approve_exploration" | "reject_exploration" | "revise_exploration" | "launch_d1" | "approve_confirmation" | "reject_confirmation" | "launch_d2" | "record_final_disposition" | "record_semantic_event" | "pause_research" | "resume_research" | "cancel_research";
             /** Artifact Hash */
             artifact_hash: string;
             /** Consequence Summary */
@@ -8510,6 +8872,36 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** ResearchClaimAddRequest */
+        ResearchClaimAddRequest: {
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "supports" | "contradicts" | "contextualizes" | "method";
+            /** Limitations */
+            limitations: string;
+            /**
+             * Markets
+             * @default []
+             */
+            markets: string[];
+            /** Method */
+            method: string;
+            /** Sample */
+            sample: string;
+            /** Source Id */
+            source_id: string;
+            /**
+             * Strength
+             * @enum {string}
+             */
+            strength: "weak" | "moderate" | "strong";
+            /** Text */
+            text: string;
+        };
         /** ResearchContextPacket */
         ResearchContextPacket: {
             /** Created At */
@@ -9153,6 +9545,18 @@ export interface components {
             /** Sequence */
             sequence: number;
         };
+        /** ResearchNoteAddRequest */
+        ResearchNoteAddRequest: {
+            /** Body */
+            body: string;
+            /** Context Packet Id */
+            context_packet_id?: string | null;
+            /**
+             * Note Kind
+             * @enum {string}
+             */
+            note_kind: "critique" | "confounder_review" | "test_design" | "completeness_review" | "synthesis";
+        };
         /** ResearchNotePage */
         ResearchNotePage: {
             /** Items */
@@ -9466,6 +9870,29 @@ export interface components {
             /** Verified Read Sha256 */
             verified_read_sha256?: string | null;
         };
+        /** ResearchSourceAddRequest */
+        ResearchSourceAddRequest: {
+            /**
+             * Access Mode
+             * @enum {string}
+             */
+            access_mode: "metadata_only" | "open_access" | "owner_provided";
+            /**
+             * Authors
+             * @default []
+             */
+            authors: string[];
+            /** Doi */
+            doi?: string | null;
+            /** Locator */
+            locator: string;
+            /** Provider */
+            provider: string;
+            /** Title */
+            title: string;
+            /** Year */
+            year?: number | null;
+        };
         /** ResearchSourcePackOptionV1 */
         ResearchSourcePackOptionV1: {
             /** Created At */
@@ -9577,6 +10004,112 @@ export interface components {
             total_return: number;
             /** Value At Risk */
             value_at_risk: number;
+        };
+        /** RuleDeleted */
+        RuleDeleted: {
+            /** Deleted */
+            deleted: boolean;
+            /** Name */
+            name: string;
+        };
+        /** RuleList */
+        RuleList: {
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Rules */
+            rules: components["schemas"]["RuleSummary"][];
+        };
+        /** RuleRecord */
+        RuleRecord: {
+            /** History */
+            history: number;
+            /** Long Conditions */
+            long_conditions: string[];
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256: string;
+            /** Short Conditions */
+            short_conditions: string[];
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+            /** Spec Name */
+            spec_name: string;
+            /** Warmup */
+            warmup: number;
+        };
+        /** RuleSaveRequest */
+        RuleSaveRequest: {
+            /** Name */
+            name: string;
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuleSummary */
+        RuleSummary: {
+            /** Error */
+            error?: string | null;
+            /** History */
+            history?: number | null;
+            /** Long Conditions */
+            long_conditions?: string[] | null;
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256?: string | null;
+            /** Short Conditions */
+            short_conditions?: string[] | null;
+            /** Spec */
+            spec?: {
+                [key: string]: unknown;
+            } | null;
+            /** Spec Name */
+            spec_name?: string | null;
+            /** Warmup */
+            warmup?: number | null;
+        };
+        /** RuleValidateRequest */
+        RuleValidateRequest: {
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuleValidation */
+        RuleValidation: {
+            /** Error */
+            error: string | null;
+            /** History */
+            history?: number | null;
+            /** Long Conditions */
+            long_conditions?: string[] | null;
+            /** Name */
+            name?: string | null;
+            /** Sha256 */
+            sha256?: string | null;
+            /** Short Conditions */
+            short_conditions?: string[] | null;
+            /** Spec */
+            spec?: {
+                [key: string]: unknown;
+            } | null;
+            /** Spec Name */
+            spec_name?: string | null;
+            /** Valid */
+            valid: boolean;
+            /** Warmup */
+            warmup?: number | null;
         };
         /** RunComparisonRequest */
         RunComparisonRequest: {
@@ -9728,6 +10261,173 @@ export interface components {
             unit: string;
             /** Value */
             value: number;
+        };
+        /** ScanAlert */
+        ScanAlert: {
+            /** Bar Date */
+            bar_date: string;
+            /** Close */
+            close: number;
+            /** Previous */
+            previous: number | null;
+            /** Scan */
+            scan: string;
+            /** Signal */
+            signal: number;
+            /** Symbol */
+            symbol: string;
+            /** Ts */
+            ts: string;
+        };
+        /** ScanAlerts */
+        ScanAlerts: {
+            /** Alerts */
+            alerts: components["schemas"]["ScanAlert"][];
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+        };
+        /** ScanCheck */
+        ScanCheck: {
+            /** Alerts */
+            alerts: components["schemas"]["ScanAlert"][];
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Checked At */
+            checked_at: string;
+            /** Rows */
+            rows: number;
+            /** Scan */
+            scan: string;
+            /** Skipped */
+            skipped: number;
+        };
+        /** ScanCheckResult */
+        ScanCheckResult: {
+            /** Alerts */
+            alerts: components["schemas"]["ScanAlert"][];
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Checks */
+            checks: components["schemas"]["ScanCheck"][];
+        };
+        /** ScanDeleted */
+        ScanDeleted: {
+            /** Deleted */
+            deleted: boolean;
+            /** Name */
+            name: string;
+        };
+        /** ScanList */
+        ScanList: {
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Scans */
+            scans: components["schemas"]["ScanSummary"][];
+        };
+        /** ScanRecord */
+        ScanRecord: {
+            /** Checked At */
+            checked_at: string | null;
+            /** Name */
+            name: string;
+            /** Rules */
+            rules: string;
+            universe: components["schemas"]["ScanUniverse"];
+        };
+        /** ScanRow */
+        ScanRow: {
+            /** Bar Date */
+            bar_date: string;
+            /** Bar Ts */
+            bar_ts: number;
+            /** Close */
+            close: number;
+            /** Signal */
+            signal: number;
+            /** Symbol */
+            symbol: string;
+            /** Values */
+            values: {
+                [key: string]: number;
+            };
+        };
+        /** ScanRunRequest */
+        ScanRunRequest: {
+            /** As Of */
+            as_of?: string | null;
+        };
+        /** ScanRunResult */
+        ScanRunResult: {
+            /** As Of */
+            as_of: string | null;
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Rows */
+            rows: components["schemas"]["ScanRow"][];
+            /** Rules */
+            rules: string;
+            /** Rules Sha256 */
+            rules_sha256: string;
+            /** Scan */
+            scan: string;
+            /** Skipped */
+            skipped: components["schemas"]["ScanSkipped"][];
+            universe: components["schemas"]["ScanUniverse"];
+            /** Universe As Of */
+            universe_as_of: string;
+        };
+        /** ScanSaveRequest */
+        ScanSaveRequest: {
+            /** Name */
+            name: string;
+            /** Rules */
+            rules: string;
+            /** Symbols */
+            symbols?: string[] | null;
+        };
+        /** ScanSkipped */
+        ScanSkipped: {
+            /** Reason */
+            reason: string;
+            /** Symbol */
+            symbol: string;
+        };
+        /** ScanSummary */
+        ScanSummary: {
+            /** Checked At */
+            checked_at?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Name */
+            name: string;
+            /** Rules */
+            rules?: string | null;
+            universe?: components["schemas"]["ScanUniverse"] | null;
+        };
+        /** ScanUniverse */
+        ScanUniverse: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "stored" | "list";
+            /** Symbols */
+            symbols?: string[] | null;
         };
         /** ScreenerNews */
         ScreenerNews: {
@@ -10269,6 +10969,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    alerts_api_alerts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanAlerts"];
                 };
             };
             /** @description Stable, redacted Workstation error */
@@ -11297,6 +12028,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FirstBar"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    data_snapshots_api_data_snapshots_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataSnapshots"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    data_source_status_api_data_source_status_get: {
+        parameters: {
+            query: {
+                symbol: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataSourceStatus"];
                 };
             };
             /** @description Stable, redacted Workstation error */
@@ -12592,6 +13383,42 @@ export interface operations {
             };
         };
     };
+    overlays_api_overlays__symbol__get: {
+        parameters: {
+            query?: {
+                indicator?: string[] | null;
+                pattern?: string[] | null;
+                end?: string | null;
+                snapshot?: string | null;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartOverlays"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     start_action_api_owner_auth_actions_challenge_post: {
         parameters: {
             query?: never;
@@ -13618,6 +14445,43 @@ export interface operations {
             };
         };
     };
+    research_claim_add_api_research_cases__project_id__claims_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResearchClaimAddRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     research_context_packets_api_research_cases__project_id__context_packets_get: {
         parameters: {
             query?: {
@@ -13857,6 +14721,41 @@ export interface operations {
             };
         };
     };
+    research_note_add_api_research_cases__project_id__notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResearchNoteAddRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchNote"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     research_propose_api_research_cases__project_id__proposal_post: {
         parameters: {
             query?: never;
@@ -14003,6 +14902,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VerifiedBlindSemanticReadV1"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    research_source_add_api_research_cases__project_id__sources_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResearchSourceAddRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Stable, redacted Workstation error */
@@ -14193,6 +15129,163 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RiskReport"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    list_rules_api_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleList"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    save_rule_api_rules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleSaveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleRecord"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    validate_rule_api_rules_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleValidation"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    show_rule_api_rules__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleRecord"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    delete_rule_api_rules__name__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleDeleted"];
                 };
             };
             /** @description Stable, redacted Workstation error */
@@ -14751,6 +15844,225 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OptimTrials"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    list_scans_api_scans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanList"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    save_scan_api_scans_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanSaveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanRecord"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    check_all_api_scans_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanCheckResult"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    show_scan_api_scans__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanRecord"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    delete_scan_api_scans__name__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanDeleted"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    check_scan_api_scans__name__check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanCheckResult"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    run_scan_api_scans__name__run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ScanRunRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanRunResult"];
                 };
             };
             /** @description Stable, redacted Workstation error */

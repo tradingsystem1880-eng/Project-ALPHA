@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import { api, type OwnerActionType } from '../api/client'
+import { useAreaVersion } from '../state/activity'
 import { CopyCommand } from '../components/CopyCommand'
 import { OwnerActionButton } from '../components/OwnerActionButton'
 import {
@@ -35,6 +36,7 @@ import {
   CLI_ONLY,
   RESEARCH_DISPOSITIONS,
   RESEARCH_OUTCOMES,
+  lifecycleActions,
   ownerStep,
 } from './researchCockpitModel'
 import { HypothesisCardView, ScorecardDetail, ScorecardStrip } from './researchViews'
@@ -491,9 +493,22 @@ function CanonicalNextAction({ researchCase, onRefresh }: { researchCase: Resear
         />
       ) : step.kind === 'decide' ? (
         <span className="muted">Record the final disposition on the Decision tab.</span>
+      ) : step.kind === 'review' ? (
+        <span className="muted">Approve or reject the {step.scope} contract with Touch ID in the review panel below.</span>
       ) : step.kind === 'waiting' ? (
         <span className="muted">{step.text}</span>
       ) : null}
+      {lifecycleActions(researchCase).map((action) => (
+        <OwnerActionButton
+          key={action.actionType}
+          researchCase={researchCase}
+          actionType={action.actionType}
+          label={action.label}
+          consequence={action.consequence}
+          payload={{}}
+          onComplete={onRefresh}
+        />
+      ))}
     </section>
   )
 }
@@ -886,6 +901,13 @@ export function ResearchCockpit(props: PanelHandleProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedProjectId])
+
+  // The AI (CLI/MCP) advancing this case on disk re-projects it here.
+  const researchVersion = useAreaVersion('research')
+  useEffect(() => {
+    if (researchVersion > 0 && researchCase) void loadCase(researchCase.project_id, 'status')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [researchVersion])
 
   // The shell's New Idea action focuses the capture form; it never creates anything.
   useEffect(

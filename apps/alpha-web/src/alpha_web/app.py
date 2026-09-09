@@ -42,7 +42,9 @@ from alpha_web.api import owner_auth as owner_auth_api
 from alpha_web.api import paper as paper_api
 from alpha_web.api import research as research_api
 from alpha_web.api import risk as risk_api
+from alpha_web.api import rules as rules_api
 from alpha_web.api import runs as runs_api
+from alpha_web.api import scans as scans_api
 from alpha_web.api import screener as screener_api
 from alpha_web.api import v3 as v3_api
 from alpha_web.api import workspaces as workspaces_api
@@ -124,6 +126,8 @@ def create_app() -> FastAPI:
     app.include_router(owner_auth_api.router)
     app.include_router(paper_api.router)
     app.include_router(risk_api.router)
+    app.include_router(rules_api.router)
+    app.include_router(scans_api.router)
     app.include_router(screener_api.router)
     app.include_router(research_api.router)
     app.include_router(v3_api.router)

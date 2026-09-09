@@ -24,8 +24,37 @@ type GenericCommandClass = Literal["empirical", "owner_only", "safe", "unknown"]
 _EMPIRICAL_ROOTS = frozenset(
     {"backtest", "validate", "optim", "propfirm", "forecast", "ml", "monte-carlo"}
 )
-_OWNER_ONLY_ROOTS = frozenset({"owner-auth", "project", "suite"})
-_SAFE_ROOTS = frozenset({"info", "options", "screener", "risk", "report", "figures"})
+_OWNER_ONLY_ROOTS = frozenset({"owner-auth", "project", "suite", "provider"})
+_SAFE_ROOTS = frozenset(
+    {"info", "options", "screener", "risk", "report", "figures", "chart", "rules", "scan"}
+)
+# Governed crypto data house (ADR-0032): reads and verifications are safe; anything that
+# acquires, freezes, selects, batches, creates or cleans is owner authority.
+_CRYPTO_DATA_SAFE = frozenset(
+    {
+        "catalog",
+        "estimate",
+        "capabilities",
+        "storage",
+        "storage-inventory",
+        "storage-verify",
+        "asset",
+        "asset-contract",
+        "coverage",
+        "quality",
+        "features",
+        "feature-show",
+        "compare",
+        "profile-show",
+        "profiles",
+        "profile-batches",
+        "asset-masters",
+        "asset-master-verify",
+        "snapshot-verify",
+        "snapshot-verify-crowding",
+        "snapshot-verify-hedged-basis",
+    }
+)
 
 
 def classify_generic_command(argv: list[str]) -> GenericCommandClass:
@@ -55,6 +84,13 @@ def classify_generic_command(argv: list[str]) -> GenericCommandClass:
             if len(argv) > 1 and argv[1] in {"sessions", "readiness", "scheduler-status", "show"}
             else "owner_only"
         )
+    if root == "crypto-data":
+        return "safe" if len(argv) > 1 and argv[1] in _CRYPTO_DATA_SAFE else "owner_only"
+    if root == "quantpad-data":
+        return "safe" if len(argv) > 1 and argv[1] == "verify" else "owner_only"
+    if root == "strategy-candidate":
+        # `run` publishes immutable run artifacts, so it needs a server-verified run context.
+        return "empirical" if len(argv) > 1 and argv[1] == "run" else "safe"
     if root in _EMPIRICAL_ROOTS:
         return "empirical"
     if root in _SAFE_ROOTS:

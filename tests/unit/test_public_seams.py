@@ -22,6 +22,7 @@ def test_catalog_is_canonical_and_exposes_exclusive_bounds() -> None:
         "kronos",
         "ma_crossover",
         "mean_reversion",
+        "rules",
         "ts_momentum",
     ]
     entry_z = next(p for p in strategy_params("mean_reversion") if p["name"] == "entry_z")

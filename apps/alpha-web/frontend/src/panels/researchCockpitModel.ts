@@ -442,8 +442,54 @@ export function ownerStep(researchCase: ResearchCase): OwnerActionStep {
   return { kind: 'waiting', text: researchCase.next_action }
 }
 
+export interface LifecycleAction {
+  actionType: 'pause_research' | 'resume_research' | 'cancel_research'
+  label: string
+  consequence: string
+}
+
+/** The execution-lifecycle owner actions a case accepts right now (never phase decisions). */
+export function lifecycleActions(researchCase: ResearchCase): LifecycleAction[] {
+  if (researchCase.phase === 'closed') return []
+  const state = researchCase.execution_state
+  const cancel: LifecycleAction = {
+    actionType: 'cancel_research',
+    label: 'cancel active work',
+    consequence: 'Return the active research execution to idle (alpha research cancel); the evidence phase and contract are unchanged.',
+  }
+  if (state === 'queued' || state === 'running') {
+    return [
+      {
+        actionType: 'pause_research',
+        label: 'pause',
+        consequence: 'Pause the research worker at its next durable checkpoint (alpha research pause).',
+      },
+      cancel,
+    ]
+  }
+  if (state === 'paused' || state === 'failed' || state === 'blocked') {
+    return [
+      {
+        actionType: 'resume_research',
+        label: 'resume',
+        consequence: 'Re-queue the case from its last durable checkpoint without changing its contract or budget (alpha research resume).',
+      },
+      cancel,
+    ]
+  }
+  return []
+}
+
+/** The exact trusted-CLI override for an open research gate (ADR-0026/0030: never a web action). */
+export function overrideGateCommand(projectId: string): string {
+  return `uv run alpha project override-research-gate ${projectId} --actor owner --reason "<why the gate is bypassed>"`
+}
+
 /** The trusted-CLI steps the browser deliberately cannot perform, with the ADR that keeps them there. */
 export const CLI_ONLY = {
+  researchGateOverride: {
+    why: 'ADR-0026/0030: a research-gate override is an owner CLI act with actor and reason; every run launched under it is watermarked EXPLORATORY for good.',
+  },
   recovery: {
     command: 'uv run alpha owner-auth recover --reason "<credential recovery reason>"',
     why: 'ADR-0030: credential recovery is a trusted local CLI act; the browser never asserts owner presence.',

@@ -9,6 +9,8 @@ const DOCUMENTS = [
   { title: 'Chart', id: 'chart' },
   { title: 'Research', id: 'research' },
   { title: 'Build', id: 'build' },
+  { title: 'Strategy Builder', id: 'builder' },
+  { title: 'Scanner', id: 'scanner' },
   { title: 'Strategy Performance Report', id: 'report' },
   { title: 'Compare', id: 'compare' },
   { title: 'Forecast', id: 'forecast' },
@@ -1575,11 +1577,23 @@ interface MockOptions {
   /** Opt-in so the screenshot baselines keep an empty, deterministic Library rail. */
   runs?: unknown[]
   capturedOwnerAction?: (body: Record<string, unknown>) => void
+  /** Extra GET fixtures keyed by pathname, served before the built-in table. */
+  extraGet?: Record<string, unknown>
+  /** Sees every POST (pathname, body); a non-undefined return is served as the 200 JSON reply. */
+  capturedPost?: (pathname: string, body: Record<string, unknown>) => unknown
   researchDataRefreshDelayMs?: number
   /** Opt-in: LIBRARY_RUN carries one drawable figure (catalogue, metadata and an SVG image). */
   figureCatalogue?: boolean
   /** Opt-in daily bars per symbol for the candles projection (Market Watch, Chart). */
   candles?: Record<string, components['schemas']['Candle'][]>
+  /** Saved rule sets served by GET /api/rules. */
+  rules?: components['schemas']['RuleSummary'][]
+  /** Saved scans served by GET /api/scans. */
+  scans?: components['schemas']['ScanSummary'][]
+  /** Scan alerts served by GET /api/alerts (oldest first, as the CLI tails them). */
+  alerts?: components['schemas']['ScanAlert'][]
+  /** Receives the query string of every `/api/overlays/{symbol}` request the chart makes. */
+  capturedOverlays?: (query: string) => void
   /** Opt-in public tickers keyed `SYMBOL@exchange`; a missing key answers 422 like the CLI. */
   tickers?: Record<string, { last: number; ts: string }>
   /** Opt-in: the Expansion volume is not mounted. */
@@ -1664,6 +1678,13 @@ async function openHeavyPrice(page: Page): Promise<void> {
 
 function responseFor(route: Route, options: MockOptions): unknown {
   const url = new URL(route.request().url())
+  if (options.extraGet && route.request().method() === 'GET' && url.pathname in options.extraGet) {
+    return options.extraGet[url.pathname]
+  }
+  if (options.capturedPost && route.request().method() === 'POST') {
+    const served = options.capturedPost(url.pathname, (route.request().postDataJSON() ?? {}) as Record<string, unknown>)
+    if (served !== undefined) return served
+  }
   if (url.pathname === '/api/owner-auth/actions/challenge') {
     options.capturedOwnerAction?.(route.request().postDataJSON() as Record<string, unknown>)
     return {
@@ -2224,6 +2245,70 @@ function responseFor(route: Route, options: MockOptions): unknown {
       },
     }
   }
+  if (url.pathname.startsWith('/api/overlays/')) {
+    // A deterministic stand-in for `alpha chart overlays`: one line per requested indicator with
+    // the first bar as warm-up, one confirmed swing low when swings are asked for.
+    const symbol = decodeURIComponent(url.pathname.slice('/api/overlays/'.length))
+    const bars = options.candles?.[symbol]
+    if (!bars) return undefined
+    options.capturedOverlays?.(url.search)
+    const t = bars.map((row) => row.t)
+    const indicators = url.searchParams.getAll('indicator').map((id) => ({
+      id,
+      name: id.toUpperCase().replace(':', ' '),
+      pane: id.startsWith('rsi') ? 'rsi' : 'price',
+      style: 'line',
+      values: bars.map((row, index) => (index === 0 ? null : row.c)),
+      warmup: 1,
+    }))
+    const annotations = url.searchParams.getAll('pattern').includes('swings')
+      ? [
+          {
+            annotation_id: 1,
+            decision_sequence_id: null,
+            kind: 'line',
+            label: 'Swing low',
+            unit: 'price',
+            reason: 'fractal L=5; knowable from bar 1',
+            anchors: [{ anchor_index: 0, ts: t[0], value: bars[0].l }],
+          },
+        ]
+      : []
+    return {
+      symbol,
+      snapshot_id: null,
+      authority: 'none',
+      provenance: {
+        source: 'ccxt:binance',
+        venue: 'binance',
+        timeframe: '1D',
+        snapshot_id: null,
+        provenance_sha256: null,
+        receipt_id: null,
+        knowledge_cutoff: null,
+        quality_status: 'qualified',
+      },
+      t,
+      indicators,
+      annotations,
+    }
+  }
+  if (url.pathname === '/api/rules' && route.request().method() === 'GET') {
+    return { rules: options.rules ?? [], authority: 'none' }
+  }
+  if (url.pathname === '/api/scans' && route.request().method() === 'GET') {
+    return { scans: options.scans ?? [], authority: 'none' }
+  }
+  if (url.pathname === '/api/alerts') {
+    return { alerts: options.alerts ?? [], authority: 'none' }
+  }
+  if (url.pathname === '/api/rules/validate') {
+    const spec = (route.request().postDataJSON() as { spec: { long_when?: unknown[]; short_when?: unknown[] } }).spec
+    const conditions = (spec.long_when?.length ?? 0) + (spec.short_when?.length ?? 0)
+    return conditions
+      ? { valid: true, error: null, name: '(unsaved)', sha256: 'f'.repeat(64), spec_name: 'x', history: 80, warmup: 20, long_conditions: [], short_conditions: [], spec }
+      : { valid: false, error: 'rule spec needs at least one condition in long_when or short_when' }
+  }
   if (url.pathname === '/api/strategies' || url.pathname === '/api/commands') return []
   if (url.pathname === '/api/providers') return []
   if (url.pathname === '/api/system') return SYSTEM_STATUS
@@ -2361,6 +2446,8 @@ export async function preparePage(page: Page, options: MockOptions = {}): Promis
       constructor(url: string | URL) {
         super()
         this.url = String(url)
+        // Tests push server events through this handle (`window.__alphaStream`).
+        ;(window as unknown as { __alphaStream: EventTarget }).__alphaStream = this
         queueMicrotask(() => {
           this.dispatchEvent(new MessageEvent('snapshot', { data: '{"jobs_running":0}' }))
         })
@@ -2600,6 +2687,97 @@ test('the status bar tells the truth about the SSD and paper routing', async ({ 
   await expect(bar.locator('.status-segment--clock')).toHaveText(/\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/)
   await expect(bar.locator('.status-segment--ohlc')).toHaveText('O: — H: — L: — C: — V: —')
   await expect(bar.locator('.status-segment--bars')).toHaveText(/\d+ \/ \d+ bars/)
+})
+
+test('Strategy Builder validates through the CLI, saves, and tests in the sandbox', async ({ page }) => {
+  const posts: { path: string; body: Record<string, unknown> }[] = []
+  await preparePage(page, {
+    rules: [{ name: 'old-one', path: '/data/rules/old-one.json', sha256: 'a'.repeat(64), spec_name: 'Old one', history: 60, warmup: 20, long_conditions: ['sma:5 > sma:20'], short_conditions: [], spec: {}, error: null }],
+    capturedPost: (path, body) => {
+      posts.push({ path, body })
+      if (path === '/api/rules') {
+        return { name: body.name, sha256: 'b'.repeat(64), path: `/data/rules/${String(body.name)}.json`, spec_name: 'Trend', history: 80, warmup: 20, long_conditions: ['sma:5 > sma:20'], short_conditions: [], spec: body.spec }
+      }
+      if (path === '/api/jobs') return { job_id: 'job-rules-1', status: 'running' }
+      return undefined
+    },
+  })
+  await openDocument(page, 'Strategy Builder')
+  const editor = page.getByRole('region', { name: 'Rule editor' })
+  await expect(page.getByRole('complementary', { name: 'Saved rule sets' })).toContainText('old-one')
+  // A typo is caught before the CLI; a real spec is validated by the CLI.
+  await editor.getByLabel('long condition 1 left').fill('vwap:20')
+  await editor.getByLabel('long condition 1 right').fill('sma:20')
+  await expect(editor.getByRole('status')).toContainText('"vwap" is not a source')
+  await editor.getByLabel('long condition 1 left').fill('sma:5')
+  await expect(editor.getByRole('status')).toContainText('valid · warm-up 20 bars · history 80')
+  const save = editor.getByRole('button', { name: 'Save rule set' })
+  await expect(save).toBeDisabled()
+  await editor.getByLabel('File name').fill('trend')
+  await save.click()
+  await expect(editor.getByRole('button', { name: 'Test in sandbox' })).toBeEnabled()
+  expect(posts.filter((entry) => entry.path === '/api/rules')).toEqual([
+    {
+      path: '/api/rules',
+      body: {
+        name: 'trend',
+        spec: {
+          name: 'trend',
+          long_when: [{ left: { indicator: 'sma', params: [5] }, op: '>', right: { indicator: 'sma', params: [20] } }],
+          short_when: [],
+        },
+      },
+    },
+  ])
+  await editor.getByLabel('Test symbol').fill('XRP/USDT')
+  await editor.getByRole('button', { name: 'Test in sandbox' }).click()
+  const job = posts.find((entry) => entry.path === '/api/jobs')
+  expect(job?.body).toMatchObject({ command: 'backtest run', args: 'XRP/USDT --strategy rules --rules trend --account-type MARGIN' })
+  expect((job?.body.run_context as { kind?: string } | undefined)?.kind ?? 'standalone_sandbox').toBeTruthy()
+})
+
+test('Insert › Indicators draws CLI-computed overlays and chart windows tile', async ({ page }) => {
+  const bar = (t: number, c: number) => ({ t, o: c, h: c + 1, l: c - 1, c, v: 1 })
+  const overlayQueries: string[] = []
+  await preparePage(page, {
+    candles: {
+      'XRP/USDT': [bar(1_700_000_000, 100), bar(1_700_086_400, 110), bar(1_700_172_800, 105)],
+    },
+    capturedOverlays: (query) => overlayQueries.push(query),
+  })
+  await openDocument(page, 'Chart')
+  const price = page.getByRole('region', { name: 'Price' })
+  await expect(price.locator('.count')).toHaveText('3 bars')
+  // Nothing selected: the chart asks the CLI for nothing.
+  await expect(price.getByRole('button', { name: 'Indicators…', exact: true })).toBeVisible()
+  expect(overlayQueries).toEqual([])
+  // Insert › Indicators… opens the dialog; a typo never reaches the CLI.
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'Insert', exact: true }).click()
+  await page.getByRole('menu', { name: 'Insert' }).getByRole('menuitem', { name: 'Indicators…', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Indicators' })
+  await dialog.getByLabel('Custom indicator spec').fill('foo:1')
+  await dialog.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toContainText('unknown indicator "foo"')
+  await dialog.getByRole('checkbox', { name: 'SMA 20 sma:20', exact: true }).check()
+  await dialog.getByRole('checkbox', { name: /Swing highs/ }).check()
+  await dialog.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  // The chart re-requested overlays for exactly that selection and draws what came back.
+  await expect(price.getByRole('button', { name: 'Indicators… (2)', exact: true })).toBeVisible()
+  await expect(price.locator('.overlay-legend')).toHaveText(
+    'OVERLAYS · SMA 20 · 1 swings · computed by alpha chart overlays',
+  )
+  expect(overlayQueries.at(-1)).toBe('?indicator=sma%3A20&pattern=swings')
+  // A second chart window pins the linked symbol; Tile charts shows both at once.
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'Window', exact: true }).click()
+  await page.getByRole('menu', { name: 'Window' }).getByRole('menuitem', { name: 'New chart window', exact: true }).click()
+  await expect(documentTab(page, 'XRP/USDT')).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'Window', exact: true }).click()
+  await page.getByRole('menu', { name: 'Window' }).getByRole('menuitemcheckbox', { name: 'Tile charts', exact: true }).click()
+  const tiles = page.getByLabel('Tiled charts').locator('.mdi-tile')
+  await expect(tiles).toHaveCount(2)
+  await expect(tiles.nth(1).locator('.mdi-tile-head')).toHaveText('XRP/USDT')
+  await expect(page.getByRole('region', { name: 'Price' })).toHaveCount(2)
 })
 
 test('Market Watch reads red/green and never invents a price', async ({ page }) => {
@@ -3262,7 +3440,6 @@ test('Phase 3 acceptance: terminal chrome on every document, no hazard stripe, f
     await expect(page.getByRole('complementary', { name: 'Left docks' }).getByRole('region', { name: 'Market Watch' })).toBeVisible()
     await expect(page.getByRole('tree', { name: 'Navigator' })).toBeVisible()
     await expect(page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab')).toHaveText([/^Jobs/, 'Trades', 'Backtests', 'Data pulls', 'Log', 'Alerts'])
-    await expect(page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab', { name: 'Alerts' })).toBeDisabled()
     await expect(page.getByRole('complementary', { name: 'Data Manager' })).toBeVisible()
     // Artboard chrome: window glyphs, dock pin/close, the document header's own close.
     await expect(page.getByRole('group', { name: 'Window controls' }).getByRole('button')).toHaveCount(3)
@@ -3674,4 +3851,269 @@ test('CLI-only steps hand over the exact command with the ADR that keeps them on
   await page.getByRole('button', { name: 'Governance' }).click()
   await page.getByRole('region', { name: 'Governance' }).getByRole('button', { name: 'Touch ID' }).click()
   await expect(page.getByRole('link', { name: 'Enroll Touch ID' })).toHaveAttribute('href', '/owner-auth/enroll')
+})
+
+test('a store change outside the browser refreshes the panel watching its area', async ({ page }) => {
+  await preparePage(page, {
+    jobs: [
+      {
+        job_id: 'job-pull-1',
+        run_type: null,
+        command: 'data pull XRP/USDT --source ccxt --exchange binance --start 2019-01-01',
+        command_path: 'data pull',
+        kind: 'data',
+        status: 'done',
+        created_at: Date.now() / 1_000 - 60,
+        finished_at: Date.now() / 1_000 - 52,
+        elapsed_seconds: 8,
+        current_step: 'complete',
+        progress_mode: 'exact',
+        progress_fraction: 1,
+        eta_seconds: null,
+        eta_sample_count: 0,
+        run_id: null,
+        session_id: null,
+        returncode: 0,
+        n_lines: 3,
+      },
+      {
+        job_id: 'job-bt-1',
+        run_type: 'runs',
+        command: 'backtest run SPY --strategy ma_crossover',
+        command_path: 'backtest run',
+        kind: 'backtest',
+        status: 'done',
+        created_at: Date.now() / 1_000 - 30,
+        finished_at: Date.now() / 1_000 - 20,
+        elapsed_seconds: 10,
+        current_step: 'complete',
+        progress_mode: 'exact',
+        progress_fraction: 1,
+        eta_seconds: null,
+        eta_sample_count: 0,
+        run_id: 'abcdefabcdefabcd',
+        session_id: null,
+        returncode: 0,
+        n_lines: 3,
+      },
+    ],
+  })
+  const tabs = page.getByRole('tablist', { name: 'Toolbox tabs' })
+  // Data pulls is the jobs table filtered to data work.
+  await tabs.getByRole('tab', { name: 'Data pulls' }).click()
+  await expect(page.getByRole('row').filter({ hasText: 'data pull XRP/USDT' })).toHaveCount(1)
+  await expect(page.getByRole('row').filter({ hasText: 'backtest run SPY' })).toHaveCount(0)
+
+  // Trades mounts the paper monitor; a paper journal change on disk makes it refetch.
+  let sessionReads = 0
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/paper/sessions') sessionReads += 1
+  })
+  await tabs.getByRole('tab', { name: 'Trades' }).click()
+  await expect.poll(() => sessionReads).toBeGreaterThanOrEqual(1)
+  const before = sessionReads
+  await page.evaluate(() => {
+    ;(window as unknown as { __alphaStream: EventTarget }).__alphaStream.dispatchEvent(
+      new MessageEvent('store_changed', { data: '{"area":"paper","at":1}' }),
+    )
+  })
+  await expect.poll(() => sessionReads).toBeGreaterThan(before)
+
+  // The Log names what changed.
+  await tabs.getByRole('tab', { name: 'Log' }).click()
+  await expect(page.getByText('paper journal changed')).toBeVisible()
+})
+
+test('a running case offers Touch ID pause and cancel where the next action is printed', async ({ page }) => {
+  let challenge: Record<string, unknown> | null = null
+  await preparePage(page, {
+    capturedOwnerAction: (body) => { challenge = body },
+    researchCaseOverride: {
+      phase: 'deep_research',
+      execution_state: 'running',
+      responsibility: 'codex',
+      exploration_review: APPROVED,
+      next_action: 'Codex runs the frozen D1 plan.',
+    },
+  })
+  await captureCase(page)
+  const next = page.getByRole('region', { name: 'Canonical next action' })
+  await expect(next.getByRole('button', { name: 'Touch ID · cancel active work' })).toBeVisible()
+  const pause = next.getByRole('button', { name: 'Touch ID · pause' })
+  await expect(pause).toBeDisabled()
+  await next.getByLabel('Reason for pause').fill('Owner wants to review the checkpoint first.')
+  await pause.click()
+  await expect.poll(() => challenge).not.toBeNull()
+  expect(challenge).toMatchObject({ action_type: 'pause_research', project_id: RESEARCH_CASE.project_id })
+  expect(challenge).not.toHaveProperty('actor')
+})
+
+test('Data Manager Snapshots tab lists snapshots and Verify runs a data job', async ({ page }) => {
+  const posts: Array<{ path: string; body: Record<string, unknown> }> = []
+  await preparePage(page, {
+    extraGet: {
+      '/api/data/snapshots': {
+        snapshots: [
+          {
+            snapshot_id: 'snap1',
+            created_at: '2026-01-01T00:00:00+00:00',
+            source: 'tiingo',
+            adapter_version: '1',
+            parser_version: '1',
+            symbols: ['AAPL'],
+            manifest_sha256: 'a'.repeat(64),
+          },
+        ],
+      },
+    },
+    capturedPost: (path, body) => {
+      posts.push({ path, body })
+      if (path === '/api/jobs') return { job_id: 'job-verify-1', status: 'running' }
+      return undefined
+    },
+  })
+  const dock = page.locator('aside.dock--right')
+  await dock.getByRole('tablist', { name: 'Data Manager sections' }).getByRole('tab', { name: 'Snapshots' }).click()
+  const row = page.getByRole('table', { name: 'Snapshots' }).getByRole('row').filter({ hasText: 'snap1' })
+  await expect(row).toContainText('tiingo')
+  await row.getByRole('button', { name: 'Verify' }).click()
+  await expect(page.getByText(/verify snap1 started as job job-verify-1/)).toBeVisible()
+  expect(posts).toEqual([{ path: '/api/jobs', body: { command: 'data', args: 'verify snap1' } }])
+})
+
+test('the owner answers Codex in the notes stream through the notes route', async ({ page }) => {
+  const posts: Array<{ path: string; body: Record<string, unknown> }> = []
+  await preparePage(page, {
+    capturedPost: (path, body) => {
+      posts.push({ path, body })
+      if (path.endsWith('/notes')) {
+        return {
+          note_id: `rn_${'1'.repeat(64)}`,
+          project_id: RESEARCH_CASE.project_id,
+          sequence: 9,
+          note_kind: body['note_kind'],
+          body: body['body'],
+          author: 'owner',
+          author_kind: 'owner',
+          context_packet_id: null,
+          created_at: '2026-09-04T00:00:00+00:00',
+        }
+      }
+      return undefined
+    },
+  })
+  await page.getByRole('tab', { name: 'Research Case', exact: true }).click()
+  await page.getByLabel('Research Case project ID').fill(RESEARCH_CASE.project_id)
+  await page.getByRole('button', { name: 'open case' }).click()
+  await page.getByRole('tab', { name: 'Codex Research', exact: true }).click()
+  const composer = page.getByRole('form', { name: 'Add owner note' })
+  await composer.getByLabel('Owner note').fill('Check the funding regime before D1.')
+  await composer.getByRole('button', { name: 'Add note' }).click()
+  await expect.poll(() => posts.length).toBe(1)
+  expect(posts[0]).toEqual({
+    path: `/api/research/cases/${RESEARCH_CASE.project_id}/notes`,
+    body: { note_kind: 'critique', body: 'Check the funding regime before D1.' },
+  })
+})
+
+test('the Development Center links a run to a stage and keeps seal/decide as CLI copy commands', async ({ page }) => {
+  const posts: Array<{ path: string; body: Record<string, unknown> }> = []
+  await preparePage(page, {
+    candidateProject: true,
+    capturedPost: (path, body) => {
+      posts.push({ path, body })
+      if (path.endsWith('/stage-links')) {
+        return {
+          link_id: 'link-1',
+          project_id: CANDIDATE_PROJECT.project_id,
+          experiment_id: CANDIDATE_EXPERIMENT_ID,
+          stage: body['stage'],
+          run_id: body['run_id'],
+          state: 'ready',
+          created_at: '2026-09-04T00:00:00+00:00',
+          updated_at: '2026-09-04T00:00:00+00:00',
+          history: [],
+        }
+      }
+      return undefined
+    },
+  })
+  await openDocument(page, 'Build')
+  await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
+  await page.getByLabel('Strategy project').selectOption(CANDIDATE_PROJECT.project_id)
+  const rail = page.getByRole('region', { name: 'Development ledger actions' })
+  await rail.getByRole('button', { name: 'Link a run to a stage' }).click()
+  await rail.getByLabel('Run id (16 hex)').fill('abcdefabcdefabcd')
+  await rail.getByRole('button', { name: 'Link run' }).click()
+  await expect.poll(() => posts.length).toBeGreaterThanOrEqual(1)
+  expect(posts[0]).toEqual({
+    path: `/api/projects/${CANDIDATE_PROJECT.project_id}/stage-links`,
+    body: { experiment_id: CANDIDATE_EXPERIMENT_ID, run_id: 'abcdefabcdefabcd', stage: 'baseline', state: 'ready' },
+  })
+  // Advanced-only detail: present in the DOM (hidden in Guided mode) and CLI-shaped, never a button.
+  await expect(rail.locator('details.advanced-only')).toContainText('alpha project seal-holdout')
+  await expect(rail.locator('details.advanced-only')).toContainText('alpha project decide')
+  await expect(page.getByRole('button', { name: /Touch ID · seal/ })).toHaveCount(0)
+})
+
+test('Scanner saves a scan, runs it through the CLI, and Alerts relays checked signal changes', async ({ page }) => {
+  const posts: { path: string; body: Record<string, unknown> }[] = []
+  const rule = { name: 'trend', path: '/data/rules/trend.json', sha256: 'a'.repeat(64), spec_name: 'Trend', history: 60, warmup: 20, long_conditions: ['sma:5 > sma:20'], short_conditions: [], spec: {}, error: null }
+  await preparePage(page, {
+    rules: [rule],
+    scans: [{ name: 'trend-crypto', rules: 'trend', universe: { kind: 'list', symbols: ['XRP/USDT', 'BTC/USDT'] }, checked_at: null, error: null }],
+    alerts: [{ ts: '2026-09-04T10:00:00+00:00', scan: 'trend-crypto', symbol: 'BTC/USDT', previous: null, signal: 1, bar_date: '2026-06-30', close: 93354.22 }],
+    capturedPost: (path, body) => {
+      posts.push({ path, body })
+      if (path === '/api/scans') return { name: body.name, path: `/data/scans/${String(body.name)}.json`, rules: body.rules, universe: { kind: body.symbols ? 'list' : 'stored', symbols: body.symbols }, checked_at: null }
+      if (path === '/api/scans/trend-crypto/run') {
+        return {
+          scan: 'trend-crypto', rules: 'trend', rules_sha256: 'a'.repeat(64), as_of: null, universe_as_of: '2026-09-04T10:00:00+00:00', universe: ['XRP/USDT', 'BTC/USDT'],
+          rows: [
+            { symbol: 'XRP/USDT', signal: 0, bar_ts: 1, bar_date: '2026-06-30', close: 2.12, values: { 'sma:5': 2.1, 'sma:20': 2.2 } },
+            { symbol: 'BTC/USDT', signal: 1, bar_ts: 1, bar_date: '2026-06-30', close: 93354.22, values: { 'sma:5': 93000, 'sma:20': 90000 } },
+          ],
+          skipped: [{ symbol: 'ETH/USDT', reason: 'only 10 bars, rule set needs 60' }],
+          authority: 'none',
+        }
+      }
+      if (path === '/api/scans/trend-crypto/check' || path === '/api/scans/check') {
+        return { checks: [{ scan: 'trend-crypto', checked_at: '2026-09-04T10:05:00+00:00', evaluated: 2, skipped: 0, changed: 1 }], alerts: [{ ts: '2026-09-04T10:05:00+00:00', scan: 'trend-crypto', symbol: 'XRP/USDT', previous: 0, signal: -1, bar_date: '2026-06-30', close: 2.12 }], authority: 'none' }
+      }
+      return undefined
+    },
+  })
+  await openDocument(page, 'Scanner')
+  const side = page.getByRole('region', { name: 'Saved scans' })
+  await expect(side).toContainText('trend-crypto')
+  await expect(side).toContainText('XRP/USDT, BTC/USDT')
+  // Save a new scan over every stored symbol.
+  const form = page.getByRole('form', { name: 'New scan' })
+  await expect(form.getByRole('button', { name: 'Save scan' })).toBeDisabled()
+  await form.getByLabel('Scan name').fill('all-trend')
+  await form.getByRole('button', { name: 'Save scan' }).click()
+  expect(posts.find((entry) => entry.path === '/api/scans')?.body).toEqual({ name: 'all-trend', rules: 'trend', symbols: null })
+  // Run: matches lead, the operand values the rule compared are columns, skipped symbols say why.
+  await side.getByRole('button', { name: 'Run' }).first().click()
+  const results = page.getByRole('table', { name: 'Scan results' })
+  await expect(results.locator('tbody tr')).toHaveCount(2)
+  await expect(results.locator('tbody tr').first()).toContainText('BTC/USDT')
+  await expect(results.locator('tbody tr').first()).toContainText('LONG')
+  await expect(results.locator('thead')).toContainText('sma:5')
+  await expect(page.getByRole('region', { name: 'Scan results' })).toContainText('2 evaluated, 1 skipped')
+  expect(posts.find((entry) => entry.path === '/api/scans/trend-crypto/run')?.body).toEqual({ as_of: null })
+  // Check appends changed signals; the notice repeats the CLI's count.
+  await side.getByRole('button', { name: 'Check' }).first().click()
+  await expect(page.getByRole('region', { name: 'Scan results' }).getByRole('status')).toContainText('trend-crypto: 1 new alert')
+  // Toolbox › Alerts is live: it tails the log and offers a check of every scan.
+  await page.getByRole('tablist', { name: 'Toolbox tabs' }).getByRole('tab', { name: 'Alerts' }).click()
+  const alerts = page.getByRole('table', { name: 'Scan alerts' })
+  await expect(alerts.locator('tbody tr')).toHaveCount(1)
+  await expect(alerts).toContainText('→ LONG')
+  await expect(alerts).toContainText('BTC/USDT')
+  // Mounting the tab checked every scan once; the button checks again.
+  await expect.poll(() => posts.filter((entry) => entry.path === '/api/scans/check').length).toBe(1)
+  await page.getByRole('button', { name: 'Check all scans' }).click()
+  await expect.poll(() => posts.filter((entry) => entry.path === '/api/scans/check').length).toBe(2)
+  await expect(page.getByRole('region', { name: 'Toolbox' })).toContainText('last check 2026-09-04 10:05 UTC')
 })

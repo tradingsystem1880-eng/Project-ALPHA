@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { CommandDef } from '../api/types'
-import { GROUP_MENU, MENUS, assignCommands, commandGroup, menuBar } from './menuModel'
+import { GROUP_MENU, MENUS, assignCommands, commandGroup, commandHome, menuBar } from './menuModel'
 
 const command = (id: string): CommandDef => ({ id, args: [], options: [], run_type: null })
 
@@ -82,9 +82,11 @@ describe('menuModel', () => {
       ],
     )
     expect(menus.Window).toEqual([
+      { kind: 'shell', id: 'new-chart', label: 'New chart window' },
       { kind: 'document', key: 'chart', label: 'Chart', active: false },
       { kind: 'document', key: 'report:aaaaaaaa', label: 'Run A', active: true },
     ])
+    expect(menus.Insert[0]).toEqual({ kind: 'shell', id: 'indicators', label: 'Indicators…' })
     expect(menus.View).toEqual([
       { kind: 'open', window: 'chart', label: 'Chart' },
       { kind: 'open', window: 'governance', label: 'Governance' },
@@ -110,5 +112,37 @@ describe('menuModel', () => {
       { kind: 'mode', id: 'advanced', label: 'Advanced', active: false, disabled: true },
       { kind: 'shell', id: 'settings', label: 'Settings' },
     ])
+  })
+})
+
+describe('commandHome', () => {
+  it('sends owner-authority groups to the document that performs them and data groups to the dock', () => {
+    expect(commandHome('project create')).toEqual({ kind: 'window', id: 'build' })
+    expect(commandHome('research capture')).toEqual({ kind: 'window', id: 'research' })
+    expect(commandHome('paper run')).toEqual({ kind: 'window', id: 'paper' })
+    expect(commandHome('provider check')).toEqual({ kind: 'window', id: 'jobs' })
+    expect(commandHome('crypto-data acquire')).toEqual({ kind: 'dock', id: 'DataManager' })
+    expect(commandHome('data pull')).toEqual({ kind: 'dock', id: 'DataManager' })
+  })
+
+  it('leaves empirical launchers to the Strategy Lab', () => {
+    expect(commandHome('backtest run')).toBeNull()
+    expect(commandHome('validate')).toBeNull()
+    expect(commandHome('')).toBeNull()
+  })
+})
+
+describe('chart windows', () => {
+  it('offers Tile charts as a checkbox only when the shell reports the tiling state', () => {
+    const plain = menuBar([], [], null, [])
+    expect(plain.Window.some((item) => item.kind === 'shell' && item.id === 'tile')).toBe(false)
+    const tiled = menuBar([], [], null, [], { tiled: true })
+    expect(tiled.Window[1]).toEqual({ kind: 'shell', id: 'tile', label: 'Tile charts', checked: true })
+    expect(menuBar([], [], null, [], { tiled: false }).Window[1]).toEqual({
+      kind: 'shell',
+      id: 'tile',
+      label: 'Tile charts',
+      checked: false,
+    })
   })
 })

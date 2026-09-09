@@ -1112,6 +1112,66 @@
         "title": "ChartIndicator",
         "type": "object"
       },
+      "ChartOverlays": {
+        "additionalProperties": false,
+        "properties": {
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/ChartAnnotation"
+            },
+            "title": "Annotations",
+            "type": "array"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/OverlaySeries"
+            },
+            "title": "Indicators",
+            "type": "array"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/CandleProvenance"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "t": {
+            "items": {
+              "type": "number"
+            },
+            "title": "T",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbol",
+          "snapshot_id",
+          "provenance",
+          "authority",
+          "t",
+          "indicators",
+          "annotations"
+        ],
+        "title": "ChartOverlays",
+        "type": "object"
+      },
       "ChartProvenance": {
         "additionalProperties": false,
         "properties": {
@@ -4851,6 +4911,154 @@
           "next_action"
         ],
         "title": "CryptoStorageVerifyResponse",
+        "type": "object"
+      },
+      "DataSnapshotRow": {
+        "additionalProperties": false,
+        "properties": {
+          "adapter_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Version"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "manifest_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Sha256",
+            "type": "string"
+          },
+          "parser_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parser Version"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symbols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "created_at",
+          "source",
+          "adapter_version",
+          "parser_version",
+          "symbols",
+          "manifest_sha256"
+        ],
+        "title": "DataSnapshotRow",
+        "type": "object"
+      },
+      "DataSnapshots": {
+        "additionalProperties": false,
+        "properties": {
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/DataSnapshotRow"
+            },
+            "title": "Snapshots",
+            "type": "array"
+          }
+        },
+        "required": [
+          "snapshots"
+        ],
+        "title": "DataSnapshots",
+        "type": "object"
+      },
+      "DataSourceStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "promotion_pending": {
+            "title": "Promotion Pending",
+            "type": "boolean"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "quarantined": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Quarantined",
+            "type": "array"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "provenance",
+          "promotion_pending",
+          "candidates",
+          "quarantined"
+        ],
+        "title": "DataSourceStatus",
         "type": "object"
       },
       "DecisionPacket": {
@@ -11632,6 +11840,65 @@
         "title": "OptionGreeks",
         "type": "object"
       },
+      "OverlaySeries": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "pane": {
+            "enum": [
+              "price",
+              "rsi",
+              "atr",
+              "macd"
+            ],
+            "title": "Pane",
+            "type": "string"
+          },
+          "style": {
+            "enum": [
+              "line",
+              "histogram"
+            ],
+            "title": "Style",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Values",
+            "type": "array"
+          },
+          "warmup": {
+            "title": "Warmup",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "pane",
+          "style",
+          "values",
+          "warmup"
+        ],
+        "title": "OverlaySeries",
+        "type": "object"
+      },
       "OwnerActionChallengeRequest": {
         "additionalProperties": false,
         "properties": {
@@ -11649,7 +11916,10 @@
               "reject_confirmation",
               "launch_d2",
               "record_final_disposition",
-              "record_semantic_event"
+              "record_semantic_event",
+              "pause_research",
+              "resume_research",
+              "cancel_research"
             ],
             "title": "Action Type",
             "type": "string"
@@ -14281,6 +14551,86 @@
         "title": "ResearchChecklistQuestion",
         "type": "object"
       },
+      "ResearchClaimAddRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "contract_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "supports",
+              "contradicts",
+              "contextualizes",
+              "method"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "limitations": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Limitations",
+            "type": "string"
+          },
+          "markets": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Markets",
+            "type": "array"
+          },
+          "method": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Method",
+            "type": "string"
+          },
+          "sample": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Sample",
+            "type": "string"
+          },
+          "source_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Source Id",
+            "type": "string"
+          },
+          "strength": {
+            "enum": [
+              "weak",
+              "moderate",
+              "strong"
+            ],
+            "title": "Strength",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "contract_id",
+          "text",
+          "direction",
+          "strength",
+          "method",
+          "sample",
+          "limitations"
+        ],
+        "title": "ResearchClaimAddRequest",
+        "type": "object"
+      },
       "ResearchContextPacket": {
         "additionalProperties": false,
         "properties": {
@@ -16196,6 +16546,45 @@
         "title": "ResearchNote",
         "type": "object"
       },
+      "ResearchNoteAddRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "context_packet_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Packet Id"
+          },
+          "note_kind": {
+            "enum": [
+              "critique",
+              "confounder_review",
+              "test_design",
+              "completeness_review",
+              "synthesis"
+            ],
+            "title": "Note Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note_kind",
+          "body"
+        ],
+        "title": "ResearchNoteAddRequest",
+        "type": "object"
+      },
       "ResearchNotePage": {
         "additionalProperties": false,
         "properties": {
@@ -17208,6 +17597,78 @@
         "title": "ResearchSemanticStateV1",
         "type": "object"
       },
+      "ResearchSourceAddRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "access_mode": {
+            "enum": [
+              "metadata_only",
+              "open_access",
+              "owner_provided"
+            ],
+            "title": "Access Mode",
+            "type": "string"
+          },
+          "authors": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Authors",
+            "type": "array"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "locator": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Locator",
+            "type": "string"
+          },
+          "provider": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Provider",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "maximum": 2100.0,
+                "minimum": 1800.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "required": [
+          "title",
+          "locator",
+          "provider",
+          "access_mode"
+        ],
+        "title": "ResearchSourceAddRequest",
+        "type": "object"
+      },
       "ResearchSourcePackOptionV1": {
         "additionalProperties": false,
         "properties": {
@@ -17501,6 +17962,379 @@
           "total_return"
         ],
         "title": "RiskScenario",
+        "type": "object"
+      },
+      "RuleDeleted": {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "deleted"
+        ],
+        "title": "RuleDeleted",
+        "type": "object"
+      },
+      "RuleList": {
+        "additionalProperties": false,
+        "properties": {
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleSummary"
+            },
+            "title": "Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rules",
+          "authority"
+        ],
+        "title": "RuleList",
+        "type": "object"
+      },
+      "RuleRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "history": {
+            "title": "History",
+            "type": "integer"
+          },
+          "long_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Long Conditions",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "short_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Short Conditions",
+            "type": "array"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "title": "Spec",
+            "type": "object"
+          },
+          "spec_name": {
+            "title": "Spec Name",
+            "type": "string"
+          },
+          "warmup": {
+            "title": "Warmup",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "sha256",
+          "path",
+          "spec_name",
+          "history",
+          "warmup",
+          "long_conditions",
+          "short_conditions",
+          "spec"
+        ],
+        "title": "RuleRecord",
+        "type": "object"
+      },
+      "RuleSaveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "title": "Spec",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "spec"
+        ],
+        "title": "RuleSaveRequest",
+        "type": "object"
+      },
+      "RuleSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "history": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History"
+          },
+          "long_conditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Long Conditions"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "short_conditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Conditions"
+          },
+          "spec": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec"
+          },
+          "spec_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec Name"
+          },
+          "warmup": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warmup"
+          }
+        },
+        "required": [
+          "name",
+          "path"
+        ],
+        "title": "RuleSummary",
+        "type": "object"
+      },
+      "RuleValidateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "spec": {
+            "additionalProperties": true,
+            "title": "Spec",
+            "type": "object"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "title": "RuleValidateRequest",
+        "type": "object"
+      },
+      "RuleValidation": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "history": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History"
+          },
+          "long_conditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Long Conditions"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "short_conditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Conditions"
+          },
+          "spec": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec"
+          },
+          "spec_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec Name"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          },
+          "warmup": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warmup"
+          }
+        },
+        "required": [
+          "valid",
+          "error"
+        ],
+        "title": "RuleValidation",
         "type": "object"
       },
       "RunComparisonRequest": {
@@ -18054,6 +18888,499 @@
           "source_field"
         ],
         "title": "RunMetric",
+        "type": "object"
+      },
+      "ScanAlert": {
+        "additionalProperties": false,
+        "properties": {
+          "bar_date": {
+            "title": "Bar Date",
+            "type": "string"
+          },
+          "close": {
+            "title": "Close",
+            "type": "number"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous"
+          },
+          "scan": {
+            "title": "Scan",
+            "type": "string"
+          },
+          "signal": {
+            "title": "Signal",
+            "type": "integer"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ts",
+          "scan",
+          "symbol",
+          "previous",
+          "signal",
+          "bar_date",
+          "close"
+        ],
+        "title": "ScanAlert",
+        "type": "object"
+      },
+      "ScanAlerts": {
+        "additionalProperties": false,
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/ScanAlert"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alerts",
+          "authority"
+        ],
+        "title": "ScanAlerts",
+        "type": "object"
+      },
+      "ScanCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/ScanAlert"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "checked_at": {
+            "title": "Checked At",
+            "type": "string"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "scan": {
+            "title": "Scan",
+            "type": "string"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scan",
+          "checked_at",
+          "rows",
+          "skipped",
+          "alerts",
+          "authority"
+        ],
+        "title": "ScanCheck",
+        "type": "object"
+      },
+      "ScanCheckResult": {
+        "additionalProperties": false,
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/ScanAlert"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/ScanCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "checks",
+          "alerts",
+          "authority"
+        ],
+        "title": "ScanCheckResult",
+        "type": "object"
+      },
+      "ScanDeleted": {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "deleted"
+        ],
+        "title": "ScanDeleted",
+        "type": "object"
+      },
+      "ScanList": {
+        "additionalProperties": false,
+        "properties": {
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "scans": {
+            "items": {
+              "$ref": "#/components/schemas/ScanSummary"
+            },
+            "title": "Scans",
+            "type": "array"
+          }
+        },
+        "required": [
+          "scans",
+          "authority"
+        ],
+        "title": "ScanList",
+        "type": "object"
+      },
+      "ScanRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rules": {
+            "title": "Rules",
+            "type": "string"
+          },
+          "universe": {
+            "$ref": "#/components/schemas/ScanUniverse"
+          }
+        },
+        "required": [
+          "name",
+          "rules",
+          "universe",
+          "checked_at"
+        ],
+        "title": "ScanRecord",
+        "type": "object"
+      },
+      "ScanRow": {
+        "additionalProperties": false,
+        "properties": {
+          "bar_date": {
+            "title": "Bar Date",
+            "type": "string"
+          },
+          "bar_ts": {
+            "title": "Bar Ts",
+            "type": "number"
+          },
+          "close": {
+            "title": "Close",
+            "type": "number"
+          },
+          "signal": {
+            "title": "Signal",
+            "type": "integer"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "values": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "symbol",
+          "signal",
+          "bar_ts",
+          "bar_date",
+          "close",
+          "values"
+        ],
+        "title": "ScanRow",
+        "type": "object"
+      },
+      "ScanRunRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          }
+        },
+        "title": "ScanRunRequest",
+        "type": "object"
+      },
+      "ScanRunResult": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "authority": {
+            "const": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ScanRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "rules": {
+            "title": "Rules",
+            "type": "string"
+          },
+          "rules_sha256": {
+            "title": "Rules Sha256",
+            "type": "string"
+          },
+          "scan": {
+            "title": "Scan",
+            "type": "string"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/ScanSkipped"
+            },
+            "title": "Skipped",
+            "type": "array"
+          },
+          "universe": {
+            "$ref": "#/components/schemas/ScanUniverse"
+          },
+          "universe_as_of": {
+            "title": "Universe As Of",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scan",
+          "rules",
+          "rules_sha256",
+          "as_of",
+          "universe_as_of",
+          "universe",
+          "rows",
+          "skipped",
+          "authority"
+        ],
+        "title": "ScanRunResult",
+        "type": "object"
+      },
+      "ScanSaveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rules": {
+            "title": "Rules",
+            "type": "string"
+          },
+          "symbols": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbols"
+          }
+        },
+        "required": [
+          "name",
+          "rules"
+        ],
+        "title": "ScanSaveRequest",
+        "type": "object"
+      },
+      "ScanSkipped": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "reason"
+        ],
+        "title": "ScanSkipped",
+        "type": "object"
+      },
+      "ScanSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rules": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rules"
+          },
+          "universe": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanUniverse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ScanSummary",
+        "type": "object"
+      },
+      "ScanUniverse": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "stored",
+              "list"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "symbols": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbols"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ScanUniverse",
         "type": "object"
       },
       "ScreenerNews": {
@@ -19451,6 +20778,52 @@
         "summary": "Stream Activity",
         "tags": [
           "activity"
+        ]
+      }
+    },
+    "/api/alerts": {
+      "get": {
+        "description": "The newest scan alerts, oldest first within the tail.",
+        "operationId": "alerts_api_alerts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanAlerts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Alerts",
+        "tags": [
+          "scans"
         ]
       }
     },
@@ -20947,6 +22320,82 @@
           }
         },
         "summary": "First Bar",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/data/snapshots": {
+      "get": {
+        "description": "Every immutable data snapshot (relays ``alpha data snapshots --json``).",
+        "operationId": "data_snapshots_api_data_snapshots_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSnapshots"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Data Snapshots",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/data/source-status": {
+      "get": {
+        "description": "SYMBOL's canonical provenance and pending receipts (``alpha data source-status``).",
+        "operationId": "data_source_status_api_data_source_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSourceStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Data Source Status",
         "tags": [
           "catalog"
         ]
@@ -23131,6 +24580,119 @@
         ]
       }
     },
+    "/api/overlays/{symbol}": {
+      "get": {
+        "description": "Indicator series and pattern annotations computed by ``alpha chart overlays`` over the\nsame point-in-time window as ``/api/candles``; the browser draws, it never computes.\n\nLives under ``/api/overlays`` because ``/candles/{symbol:path}`` swallows any suffix.",
+        "operationId": "overlays_api_overlays__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "indicator",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Indicator"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pattern",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pattern"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "snapshot",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Snapshot"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChartOverlays"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Overlays",
+        "tags": [
+          "candles"
+        ]
+      }
+    },
     "/api/owner-auth/actions/challenge": {
       "post": {
         "operationId": "start_action_api_owner_auth_actions_challenge_post",
@@ -24739,6 +26301,61 @@
         ]
       }
     },
+    "/api/research/cases/{project_id}/claims": {
+      "post": {
+        "description": "Draft one claim; screening or rejecting it stays a Touch ID owner action.",
+        "operationId": "research_claim_add_api_research_cases__project_id__claims_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchClaimAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Research Claim Add Api Research Cases  Project Id  Claims Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Claim Add",
+        "tags": [
+          "research"
+        ]
+      }
+    },
     "/api/research/cases/{project_id}/context-packets": {
       "get": {
         "description": "Read this case's recorded Codex context packets \u2014 every byte Codex saw.",
@@ -25118,6 +26735,57 @@
         "tags": [
           "research"
         ]
+      },
+      "post": {
+        "description": "Append an owner note beside Codex's commentary \u2014 commentary, never evidence.",
+        "operationId": "research_note_add_api_research_cases__project_id__notes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchNoteAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchNote"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Note Add",
+        "tags": [
+          "research"
+        ]
       }
     },
     "/api/research/cases/{project_id}/proposal": {
@@ -25340,6 +27008,61 @@
           }
         },
         "summary": "Research Semantic Projection",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/cases/{project_id}/sources": {
+      "post": {
+        "description": "Register an owner-provided source; it is untrusted until an owner screens its claims.",
+        "operationId": "research_source_add_api_research_cases__project_id__sources_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchSourceAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Research Source Add Api Research Cases  Project Id  Sources Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Source Add",
         "tags": [
           "research"
         ]
@@ -25677,6 +27400,202 @@
         "summary": "Risk Scenario",
         "tags": [
           "risk"
+        ]
+      }
+    },
+    "/api/rules": {
+      "get": {
+        "description": "Every saved rule set (a hand-edited invalid file is listed with its error, never hidden).",
+        "operationId": "list_rules_api_rules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "List Rules",
+        "tags": [
+          "rules"
+        ]
+      },
+      "post": {
+        "description": "Validate and save (or overwrite) ``data_dir/rules/<name>.json`` through the CLI.",
+        "operationId": "save_rule_api_rules_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Save Rule",
+        "tags": [
+          "rules"
+        ]
+      }
+    },
+    "/api/rules/validate": {
+      "post": {
+        "description": "Strict parse without saving \u2014 the builder's live check; invalid is a report, not a 4xx.",
+        "operationId": "validate_rule_api_rules_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleValidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleValidation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Validate Rule",
+        "tags": [
+          "rules"
+        ]
+      }
+    },
+    "/api/rules/{name}": {
+      "delete": {
+        "operationId": "delete_rule_api_rules__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleDeleted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Delete Rule",
+        "tags": [
+          "rules"
+        ]
+      },
+      "get": {
+        "operationId": "show_rule_api_rules__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Show Rule",
+        "tags": [
+          "rules"
         ]
       }
     },
@@ -26676,6 +28595,293 @@
         "summary": "Run Trials",
         "tags": [
           "runs"
+        ]
+      }
+    },
+    "/api/scans": {
+      "get": {
+        "operationId": "list_scans_api_scans_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "List Scans",
+        "tags": [
+          "scans"
+        ]
+      },
+      "post": {
+        "description": "Save (or overwrite) a scan naming a saved rule set and a universe.",
+        "operationId": "save_scan_api_scans_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Save Scan",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/check": {
+      "post": {
+        "description": "Check every saved scan; only changed signals become alerts (the live desk's `alerts`).",
+        "operationId": "check_all_api_scans_check_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanCheckResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Check All",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{name}": {
+      "delete": {
+        "operationId": "delete_scan_api_scans__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanDeleted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Delete Scan",
+        "tags": [
+          "scans"
+        ]
+      },
+      "get": {
+        "operationId": "show_scan_api_scans__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Show Scan",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{name}/check": {
+      "post": {
+        "operationId": "check_scan_api_scans__name__check_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanCheckResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Check Scan",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{name}/run": {
+      "post": {
+        "description": "Evaluate the scan on point-in-time bars (optionally as of a date); writes nothing.",
+        "operationId": "run_scan_api_scans__name__run_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ScanRunRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanRunResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Run Scan",
+        "tags": [
+          "scans"
         ]
       }
     },

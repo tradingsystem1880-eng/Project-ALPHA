@@ -198,10 +198,10 @@ source_modules = ["alpha_data"]
 forbidden_modules = ["alpha_patterns", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
-name = "alpha_strategies depends only on core"
+name = "alpha_strategies depends only on core and patterns"
 type = "forbidden"
 source_modules = ["alpha_strategies"]
-forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli"]
+forbidden_modules = ["alpha_data", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_options", "alpha_screener", "alpha_research", "alpha_study", "alpha_cli"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_validation depends only on core"

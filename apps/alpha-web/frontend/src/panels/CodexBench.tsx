@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
+import { useAreaVersion } from '../state/activity'
 import type {
   ResearchContextPacket,
   ResearchNote,
@@ -29,6 +30,8 @@ export function CodexBench(props: PanelHandleProps) {
   const projectId = panelLink.linked.projectId
   const [protocols, setProtocols] = useState<ResearchProtocolEntry[] | null>(null)
   const [packets, setPackets] = useState<ResearchContextPacket[] | null>(null)
+  const researchVersion = useAreaVersion('research')
+  const [notesVersion, setNotesVersion] = useState(0)
   const [notes, setNotes] = useState<ResearchNote[] | null>(null)
   const [kind, setKind] = useState<PacketKind>('research_case')
   const [protocolId, setProtocolId] = useState<string>('new-idea-intake')
@@ -73,7 +76,7 @@ export function CodexBench(props: PanelHandleProps) {
     return () => {
       live = false
     }
-  }, [projectId])
+  }, [projectId, researchVersion, notesVersion])
 
   const command = projectId
     ? packetBuildCommand(projectId, kind, protocolId || null, panelLink.linked.symbol)
@@ -207,6 +210,7 @@ export function CodexBench(props: PanelHandleProps) {
 
             <section aria-label="Notes stream">
               <div className="rd-head">Notes stream</div>
+              <NoteComposer projectId={projectId} onAdded={() => setNotesVersion((v) => v + 1)} />
               {(notes ?? []).length === 0 ? (
                 <p className="muted">No commentary recorded for this case yet.</p>
               ) : (
@@ -227,5 +231,51 @@ export function CodexBench(props: PanelHandleProps) {
         )}
       </div>
     </div>
+  )
+}
+
+const NOTE_KINDS = ['critique', 'confounder_review', 'test_design', 'completeness_review', 'synthesis'] as const
+
+/** The owner answers Codex in the same stream its notes are read from — commentary, never evidence. */
+function NoteComposer({ projectId, onAdded }: { projectId: string; onAdded: () => void }) {
+  const [kind, setKind] = useState<(typeof NOTE_KINDS)[number]>('critique')
+  const [body, setBody] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  return (
+    <form
+      className="note-composer"
+      aria-label="Add owner note"
+      onSubmit={(event) => {
+        event.preventDefault()
+        setBusy(true)
+        setError(null)
+        api
+          .researchNoteAdd(projectId, { note_kind: kind, body: body.trim() })
+          .then(() => {
+            setBody('')
+            onAdded()
+          })
+          .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+          .finally(() => setBusy(false))
+      }}
+    >
+      <label className="field-row">
+        <span className="field-label">Note kind</span>
+        <select className="field" value={kind} onChange={(event) => setKind(event.target.value as (typeof NOTE_KINDS)[number])}>
+          {NOTE_KINDS.map((item) => (
+            <option key={item} value={item}>{item.replaceAll('_', ' ')}</option>
+          ))}
+        </select>
+      </label>
+      <label className="field-row">
+        <span className="field-label">Owner note</span>
+        <textarea className="field" value={body} onChange={(event) => setBody(event.target.value)} placeholder="Your reply to Codex — recorded as commentary, never evidence" />
+      </label>
+      <button className="btn primary" type="submit" disabled={busy || !body.trim()}>
+        {busy ? 'Adding…' : 'Add note'}
+      </button>
+      {error ? <span className="leak">⚠ {error}</span> : null}
+    </form>
   )
 }

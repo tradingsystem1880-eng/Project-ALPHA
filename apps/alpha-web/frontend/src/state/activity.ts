@@ -11,12 +11,33 @@ import type { JobSummary, RunListItem } from '../api/types'
 
 export type ConnectionState = 'connecting' | 'live' | 'down'
 
+/** The governed data areas the server watches by mtime (`_activity.AREAS`). */
+export const STORE_AREAS = ['research', 'control', 'bars', 'paper', 'workspaces', 'alerts'] as const
+export type StoreArea = (typeof STORE_AREAS)[number]
+
+export const AREA_TEXT: Record<StoreArea, string> = {
+  research: 'research case changed on disk',
+  control: 'control plane changed (projects · evidence · versions · jobs)',
+  bars: 'bar store changed (pull or snapshot)',
+  paper: 'paper journal changed',
+  workspaces: 'workspaces changed',
+  alerts: 'scan alerts changed',
+}
+
 export interface ActivityEvent {
   seq: number
   at: number // client wall-clock, display only
-  type: 'run_added' | 'run_updated' | 'job_started' | 'job_done' | 'job_failed' | 'job_cancelled'
+  type:
+    | 'run_added'
+    | 'run_updated'
+    | 'job_started'
+    | 'job_done'
+    | 'job_failed'
+    | 'job_cancelled'
+    | 'store_changed'
   run?: RunListItem
   job?: JobSummary
+  area?: StoreArea
 }
 
 export interface ActivityState {
@@ -25,6 +46,8 @@ export interface ActivityState {
   runsVersion: number
   /** Bumps on any job change — JobMonitor refetches /api/jobs on change. */
   jobsVersion: number
+  /** Bumps per area on a `store_changed` event AND on (re)connect — panels refetch their seam. */
+  areaVersions: Record<StoreArea, number>
   runningJobs: number
   /** Newest-first ring buffer of recent events for the Activity Feed. */
   feed: ActivityEvent[]
@@ -32,12 +55,39 @@ export interface ActivityState {
 
 const FEED_CAP = 200
 
+const ZERO_AREAS: Record<StoreArea, number> = {
+  research: 0,
+  control: 0,
+  bars: 0,
+  paper: 0,
+  workspaces: 0,
+  alerts: 0,
+}
+
 let state: ActivityState = {
   connection: 'connecting',
   runsVersion: 0,
   jobsVersion: 0,
+  areaVersions: ZERO_AREAS,
   runningJobs: 0,
   feed: [],
+}
+
+/** Pure: the store patch for one `store_changed` payload (unknown areas are ignored). */
+export function storeChangedPatch(
+  current: ActivityState,
+  payload: unknown,
+): { area: StoreArea; areaVersions: Record<StoreArea, number> } | null {
+  const area = (payload as { area?: unknown } | null)?.area
+  if (typeof area !== 'string' || !STORE_AREAS.includes(area as StoreArea)) return null
+  const key = area as StoreArea
+  return { area: key, areaVersions: { ...current.areaVersions, [key]: current.areaVersions[key] + 1 } }
+}
+
+function bumpAll(areas: Record<StoreArea, number>): Record<StoreArea, number> {
+  const next = { ...areas }
+  for (const area of STORE_AREAS) next[area] = areas[area] + 1
+  return next
 }
 let seq = 0
 let es: EventSource | null = null
@@ -53,18 +103,26 @@ function emit(patch: Partial<ActivityState>): void {
 function pushEvent(type: ActivityEvent['type'], data: string): void {
   let run: RunListItem | undefined
   let job: JobSummary | undefined
+  let area: StoreArea | undefined
+  let areaVersions: Record<StoreArea, number> | undefined
   try {
     const parsed = JSON.parse(data) as Record<string, unknown>
-    if (type.startsWith('run_')) run = parsed as unknown as RunListItem
+    if (type === 'store_changed') {
+      const changed = storeChangedPatch(state, parsed)
+      if (!changed) return
+      area = changed.area
+      areaVersions = changed.areaVersions
+    } else if (type.startsWith('run_')) run = parsed as unknown as RunListItem
     else job = parsed as unknown as JobSummary
   } catch {
     return
   }
   seq += 1
-  const ev: ActivityEvent = { seq, at: Date.now() / 1000, type, run, job }
+  const ev: ActivityEvent = { seq, at: Date.now() / 1000, type, run, job, area }
   const feed = [ev, ...state.feed].slice(0, FEED_CAP)
   const patch: Partial<ActivityState> = { feed }
-  if (type.startsWith('run_')) patch.runsVersion = state.runsVersion + 1
+  if (areaVersions) patch.areaVersions = areaVersions
+  else if (type.startsWith('run_')) patch.runsVersion = state.runsVersion + 1
   else {
     patch.jobsVersion = state.jobsVersion + 1
     if (type === 'job_started') patch.runningJobs = state.runningJobs + 1
@@ -94,6 +152,7 @@ function connect(): void {
       runningJobs: running,
       runsVersion: state.runsVersion + 1,
       jobsVersion: state.jobsVersion + 1,
+      areaVersions: bumpAll(state.areaVersions),
     })
   })
   const on = (type: ActivityEvent['type']) => (e: Event) =>
@@ -104,6 +163,7 @@ function connect(): void {
   source.addEventListener('job_done', on('job_done'))
   source.addEventListener('job_failed', on('job_failed'))
   source.addEventListener('job_cancelled', on('job_cancelled'))
+  source.addEventListener('store_changed', on('store_changed'))
 
   source.onerror = () => {
     source.close()
@@ -141,6 +201,15 @@ export function useActivity(): ActivityState {
 /** Subscribe to ONE primitive field — the component re-renders only when that field's value
  *  changes (React compares snapshots with Object.is), not on every feed event. Use this in
  *  panels that don't render the feed itself (Run Browser, Pipeline, Job Monitor, status). */
+/** Re-render only when the given governed area changed on disk (or the stream reconnected). */
+export function useAreaVersion(area: StoreArea): number {
+  return useSyncExternalStore(
+    subscribe,
+    () => state.areaVersions[area],
+    () => state.areaVersions[area],
+  )
+}
+
 export function useActivityField<K extends 'connection' | 'runsVersion' | 'jobsVersion' | 'runningJobs'>(
   field: K,
 ): ActivityState[K] {

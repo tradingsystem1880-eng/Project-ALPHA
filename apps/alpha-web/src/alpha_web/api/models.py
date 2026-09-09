@@ -651,6 +651,178 @@ class Candles(StrictModel):
     paper_markers: list[PaperCandleMarker]
 
 
+class OverlaySeries(StrictModel):
+    id: str
+    name: str
+    pane: Literal["price", "rsi", "atr", "macd"]
+    style: Literal["line", "histogram"]
+    values: list[float | None]
+    warmup: int
+
+
+class ChartOverlays(StrictModel):
+    symbol: str
+    snapshot_id: str | None
+    provenance: CandleProvenance
+    authority: Literal["none"]
+    t: list[float]
+    indicators: list[OverlaySeries]
+    annotations: list[ChartAnnotation]
+
+
+class RuleSummary(StrictModel):
+    name: str
+    path: str
+    sha256: str | None = None
+    spec_name: str | None = None
+    history: int | None = None
+    warmup: int | None = None
+    long_conditions: list[str] | None = None
+    short_conditions: list[str] | None = None
+    spec: dict[str, Any] | None = None
+    error: str | None = None
+
+
+class RuleList(StrictModel):
+    rules: list[RuleSummary]
+    authority: Literal["none"]
+
+
+class RuleRecord(StrictModel):
+    name: str
+    sha256: str
+    path: str
+    spec_name: str
+    history: int
+    warmup: int
+    long_conditions: list[str]
+    short_conditions: list[str]
+    spec: dict[str, Any]
+
+
+class RuleSaveRequest(StrictModel):
+    name: str
+    spec: dict[str, Any]
+
+
+class RuleValidateRequest(StrictModel):
+    spec: dict[str, Any]
+
+
+class RuleValidation(StrictModel):
+    valid: bool
+    error: str | None
+    name: str | None = None
+    sha256: str | None = None
+    spec_name: str | None = None
+    history: int | None = None
+    warmup: int | None = None
+    long_conditions: list[str] | None = None
+    short_conditions: list[str] | None = None
+    spec: dict[str, Any] | None = None
+
+
+class RuleDeleted(StrictModel):
+    name: str
+    deleted: bool
+
+
+class ScanUniverse(StrictModel):
+    kind: Literal["stored", "list"]
+    symbols: list[str] | None = None
+
+
+class ScanRecord(StrictModel):
+    name: str
+    rules: str
+    universe: ScanUniverse
+    checked_at: str | None
+
+
+class ScanSummary(StrictModel):
+    name: str
+    rules: str | None = None
+    universe: ScanUniverse | None = None
+    checked_at: str | None = None
+    error: str | None = None
+
+
+class ScanList(StrictModel):
+    scans: list[ScanSummary]
+    authority: Literal["none"]
+
+
+class ScanSaveRequest(StrictModel):
+    name: str
+    rules: str
+    symbols: list[str] | None = None
+
+
+class ScanRunRequest(StrictModel):
+    as_of: str | None = None
+
+
+class ScanRow(StrictModel):
+    symbol: str
+    signal: int
+    bar_ts: float
+    bar_date: str
+    close: float
+    values: dict[str, float]
+
+
+class ScanSkipped(StrictModel):
+    symbol: str
+    reason: str
+
+
+class ScanRunResult(StrictModel):
+    scan: str
+    rules: str
+    rules_sha256: str
+    as_of: str | None
+    universe_as_of: str
+    universe: ScanUniverse
+    rows: list[ScanRow]
+    skipped: list[ScanSkipped]
+    authority: Literal["none"]
+
+
+class ScanAlert(StrictModel):
+    ts: str
+    scan: str
+    symbol: str
+    previous: int | None
+    signal: int
+    bar_date: str
+    close: float
+
+
+class ScanCheck(StrictModel):
+    scan: str
+    checked_at: str
+    rows: int
+    skipped: int
+    alerts: list[ScanAlert]
+    authority: Literal["none"]
+
+
+class ScanCheckResult(StrictModel):
+    checks: list[ScanCheck]
+    alerts: list[ScanAlert]
+    authority: Literal["none"]
+
+
+class ScanAlerts(StrictModel):
+    alerts: list[ScanAlert]
+    authority: Literal["none"]
+
+
+class ScanDeleted(StrictModel):
+    name: str
+    deleted: bool
+
+
 class ParamDefinition(StrictModel):
     name: str
     type: str
@@ -801,6 +973,28 @@ class CommandDefinition(StrictModel):
 
 class Symbols(StrictModel):
     symbols: list[str]
+
+
+class DataSnapshotRow(StrictModel):
+    snapshot_id: str | None
+    created_at: str | None
+    source: str | None
+    adapter_version: str | None
+    parser_version: str | None
+    symbols: list[str]
+    manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class DataSnapshots(StrictModel):
+    snapshots: list[DataSnapshotRow]
+
+
+class DataSourceStatus(StrictModel):
+    symbol: str
+    provenance: dict[str, Any] | None
+    promotion_pending: bool
+    candidates: list[str]
+    quarantined: list[str]
 
 
 class FirstBar(StrictModel):
@@ -2442,6 +2636,36 @@ class ResearchNote(StrictModel):
     author_kind: Literal["owner", "agent"]
     context_packet_id: str | None
     created_at: str
+
+
+class ResearchSourceAddRequest(StrictModel):
+    title: str = Field(min_length=1, max_length=512)
+    locator: str = Field(min_length=1, max_length=2_048)
+    provider: str = Field(min_length=1, max_length=80)
+    access_mode: Literal["metadata_only", "open_access", "owner_provided"]
+    doi: str | None = None
+    year: int | None = Field(default=None, ge=1800, le=2100)
+    authors: list[str] = []
+
+
+class ResearchClaimAddRequest(StrictModel):
+    source_id: str = Field(min_length=1, max_length=120)
+    contract_id: str = Field(min_length=1, max_length=120)
+    text: str = Field(min_length=1, max_length=4_096)
+    direction: Literal["supports", "contradicts", "contextualizes", "method"]
+    strength: Literal["weak", "moderate", "strong"]
+    method: str = Field(min_length=1, max_length=2_048)
+    sample: str = Field(min_length=1, max_length=2_048)
+    markets: list[str] = []
+    limitations: str = Field(min_length=1, max_length=2_048)
+
+
+class ResearchNoteAddRequest(StrictModel):
+    note_kind: Literal[
+        "critique", "confounder_review", "test_design", "completeness_review", "synthesis"
+    ]
+    body: str = Field(min_length=1, max_length=8_192)
+    context_packet_id: str | None = None
 
 
 class ResearchNotePage(StrictModel):

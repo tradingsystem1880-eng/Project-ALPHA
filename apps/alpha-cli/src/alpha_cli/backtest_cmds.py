@@ -12,7 +12,7 @@ from datetime import date
 import numpy as np
 import typer
 
-from alpha_cli import _artifacts, _forecast_cache, _runner
+from alpha_cli import _artifacts, _forecast_cache, _runner, rules_cmds
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_validation import annualized_volatility, cagr, max_drawdown, sharpe_ratio
@@ -370,6 +370,9 @@ def run(
     size_on_equity: bool = False,
     halt_drawdown: float | None = None,
     param: list[str] | None = None,
+    rules: str | None = typer.Option(
+        None, "--rules", help="saved rule set for --strategy rules (alpha rules save NAME)"
+    ),
     snapshot: str | None = None,
     as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
     research_gate_override: bool = typer.Option(
@@ -379,9 +382,14 @@ def run(
     """Backtest SYMBOL with the fixed-parameter strategy; write the run artifacts.
 
     ``--strategy`` selects the registered strategy; ``--param name=value`` (repeatable) supplies any
-    strategy-specific parameters beyond the shared ones.
+    strategy-specific parameters beyond the shared ones; ``--rules NAME`` selects the owner's saved
+    rule set for ``--strategy rules``.
     """
     settings = AlphaSettings()
+    try:
+        rules_spec = rules_cmds.resolve_rules_spec(strategy, rules, settings.data_dir)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
     # walk-forward fields are unused by a plain backtest; carry coherent defaults
     spec = _runner.RunSpec(
         lookback=lookback,
@@ -404,6 +412,7 @@ def run(
         strategy_params=_runner.parse_strategy_params(strategy, param),
         size_on_equity=size_on_equity,
         halt_drawdown=halt_drawdown,
+        rules_spec=rules_spec,
     )
     try:
         research_cutoff = _runner.parse_as_of(as_of)

@@ -62,6 +62,8 @@ STRATEGY_PARAM_SCHEMA: dict[str, tuple[ParamSpec, ...]] = {
         ),
     ),
     "breakout": (ParamSpec("window", "int", 55, min=2, help="Donchian channel window"),),
+    # the owner's saved rule set is selected with --rules NAME, not tuned with --param
+    "rules": (),
     "kronos": (
         ParamSpec("context", "int", 400, min=2, help="trailing context bars"),
         ParamSpec("horizon", "int", 21, min=1, help="forecast horizon (bars)"),

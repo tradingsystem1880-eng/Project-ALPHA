@@ -252,6 +252,22 @@ gates green; owner walkthrough in both profiles.
 rail and the Governance dialog are gone; the Playwright harness runs on documents and docks with
 twenty document baselines; the owner walkthrough in both profiles is still to be run.**
 
+**Phase 5 — Analyst (2026-09-04/06).** The owner's TrendSpider-shaped asks on top of the Phase 4
+chrome: Insert › Indicators… (SMA/EMA/RSI/MACD/ATR/Bollinger series and swing/trendline/fib
+annotations computed by `alpha chart overlays`, never in the browser), multi-chart windows and
+tiling; the Strategy Builder document (rows of `left op right` over the same indicator names,
+validated live by `alpha rules validate`, saved as canonical JSON, tested in the standalone sandbox
+or handed to the Strategy Lab as the `rules` strategy with the spec bytes in run identity); the
+Scanner document (`alpha scan run` over every stored symbol on point-in-time bars) and the Toolbox
+› Alerts tab (`alpha scan check` appends only changed signals).
+Acceptance: an indicator selection draws what the CLI returned; a saved rule set backtests in the
+sandbox and reports; a saved scan lists each stored symbol's signal and a check lands in Alerts.
+**Status (2026-09-06): implemented (S1–S6, plan
+`docs/superpowers/plans/2026-09-04-trader-terminal-phase5-analyst.md`); proven by the Playwright
+harness and a scripted real-backend acceptance in both profiles, which also fixed the USD-denominated
+SIM account for USDT pairs on MARGIN. Rules and scans are screens, not evidence; the owner
+walkthrough is still to be run.**
+
 ## 8. Risks
 
 * **Governed-surface churn** (rule edit, e2e rewrite, screenshot baselines) — mitigated by doing it

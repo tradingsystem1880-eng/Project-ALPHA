@@ -11,6 +11,7 @@ import { api } from '../api/client'
 import { useNow } from '../context/clock'
 import { setLinked, useLinked } from '../context/linked'
 import { setStoredVenue } from '../context/storedQuotes'
+import { useAreaVersion } from '../state/activity'
 import { setSettings, useSettings } from '../state/settings'
 import { openDataSymbol } from './actions'
 import {
@@ -39,6 +40,7 @@ export function MarketWatch() {
   const [live, setLive] = useState<Record<string, LiveQuote | null>>({})
   const now = useNow()
   const [error, setError] = useState<string | null>(null)
+  const barsVersion = useAreaVersion('bars')
 
   useEffect(() => {
     let live = true
@@ -49,7 +51,7 @@ export function MarketWatch() {
     return () => {
       live = false
     }
-  }, [])
+  }, [barsVersion])
 
   const symbolKey = watchSymbols(profile, stored).join(' ')
   useEffect(() => {
@@ -70,7 +72,7 @@ export function MarketWatch() {
     return () => {
       live = false
     }
-  }, [symbolKey])
+  }, [symbolKey, barsVersion])
 
   const storedRows = watchRows(profile, stored, quotes, now)
   // The Navigator counts stored pairs per venue from these same reads.

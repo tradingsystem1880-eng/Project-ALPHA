@@ -109,14 +109,16 @@ export function StrategyLab(_props: PanelHandleProps) {
     if (symbols === 'SPY') setSymbols('BTC/USDT')
   }, [isPaper, strategy, symbols, visibleStrategies])
 
-  function launch(): void {
-    if (gate.lock || !linked.projectId) return
+  function launch(sandbox = false): void {
+    if (gate.lock) return
+    if (!sandbox && !linked.projectId) return
+    const context = runContextForProject(sandbox ? null : linked.projectId)
     if (!cmd) {
       // non-run-producing prefill (e.g. `data pull`, `forecast eval`): free-form launch
       const parts = [symbols.trim(), extra.trim()].filter(Boolean)
       setError(null)
       api
-        .launch(cmdId, parts.join(' '), runContextForProject(linked.projectId))
+        .launch(cmdId, parts.join(' '), context)
         .then((r) => setJobId(r.job_id))
         .catch((e: unknown) => setError(String(e)))
       return
@@ -142,7 +144,7 @@ export function StrategyLab(_props: PanelHandleProps) {
     if (extra.trim()) parts.push(extra.trim())
     setError(null)
     api
-      .launch(cmd.id, parts.join(' '), runContextForProject(linked.projectId))
+      .launch(cmd.id, parts.join(' '), context)
       .then((r) => setJobId(r.job_id))
       .catch((e: unknown) => setError(String(e)))
   }
@@ -287,9 +289,17 @@ export function StrategyLab(_props: PanelHandleProps) {
             className="btn primary"
             disabled={Boolean(gate.lock) || !linked.projectId}
             title={gate.lock?.reason ?? (!linked.projectId ? 'Select a promoted project or use Standalone Sandbox' : undefined)}
-            onClick={launch}
+            onClick={() => launch()}
           >
             ▶ Launch {cmdId}
+          </button>
+          <button
+            className="btn"
+            disabled={Boolean(gate.lock)}
+            title="Runs in the Standalone Sandbox: permanently STANDALONE_UNQUALIFIED, never evidence for a project"
+            onClick={() => launch(true)}
+          >
+            Test in sandbox
           </button>
           <span className="mono muted advanced-only">alpha {cmdId} {symbols} …</span>
         </div>

@@ -11,7 +11,7 @@ import { setLinked } from '../context/linked'
 import { pairsByVenue, useStoredVenues } from '../context/storedQuotes'
 import { dockOf } from '../shell/documents'
 import { Icon } from '../shell/icons'
-import { useActivityField } from '../state/activity'
+import { useActivityField, useAreaVersion } from '../state/activity'
 import { useSettings } from '../state/settings'
 import { storageRow } from './dataManagerModel'
 import { MARKET_UNKNOWN_LABEL, navigatorTree, type NavigatorLeaf } from './navigatorModel'
@@ -28,6 +28,8 @@ export function Navigator({ onOpenRun }: { onOpenRun: (runId: string, title: str
   const [storage, setStorage] = useState<CryptoStorage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const storeRevision = useActivityField('runsVersion')
+  const controlVersion = useAreaVersion('control')
+  const paperVersion = useAreaVersion('paper')
 
   useEffect(() => {
     let live = true
@@ -51,7 +53,7 @@ export function Navigator({ onOpenRun }: { onOpenRun: (runId: string, title: str
     return () => {
       live = false
     }
-  }, [storeRevision])
+  }, [storeRevision, controlVersion, paperVersion])
 
   const groups = navigatorTree({
     profile,

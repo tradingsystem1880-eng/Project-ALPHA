@@ -16,6 +16,13 @@
     },
     {
       "method": "GET",
+      "mode": "automatic",
+      "operation_id": "alerts_api_alerts_get",
+      "path": "/api/alerts",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
       "mode": "fixture_backed",
       "operation_id": "candles_api_candles__symbol__get",
       "path": "/api/candles/{symbol}",
@@ -236,6 +243,20 @@
       "mode": "fixture_backed",
       "operation_id": "first_bar_api_data_first_bar_get",
       "path": "/api/data/first-bar",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "data_snapshots_api_data_snapshots_get",
+      "path": "/api/data/snapshots",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "data_source_status_api_data_source_status_get",
+      "path": "/api/data/source-status",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
     },
     {
@@ -512,6 +533,13 @@
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
     },
     {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "overlays_api_overlays__symbol__get",
+      "path": "/api/overlays/{symbol}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
       "method": "POST",
       "mode": "fixture_backed",
       "operation_id": "start_action_api_owner_auth_actions_challenge_post",
@@ -729,6 +757,13 @@
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
     },
     {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "research_claim_add_api_research_cases__project_id__claims_post",
+      "path": "/api/research/cases/{project_id}/claims",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
       "method": "GET",
       "mode": "fixture_backed",
       "operation_id": "research_context_packets_api_research_cases__project_id__context_packets_get",
@@ -780,6 +815,13 @@
     {
       "method": "POST",
       "mode": "fixture_backed",
+      "operation_id": "research_note_add_api_research_cases__project_id__notes_post",
+      "path": "/api/research/cases/{project_id}/notes",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
       "operation_id": "research_propose_api_research_cases__project_id__proposal_post",
       "path": "/api/research/cases/{project_id}/proposal",
       "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
@@ -811,6 +853,13 @@
       "operation_id": "research_semantic_projection_api_research_cases__project_id__semantic_projection_get",
       "path": "/api/research/cases/{project_id}/semantic-projection",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "research_source_add_api_research_cases__project_id__sources_post",
+      "path": "/api/research/cases/{project_id}/sources",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
     },
     {
       "method": "GET",
@@ -852,6 +901,41 @@
       "mode": "fixture_backed",
       "operation_id": "risk_scenario_api_risk_scenario_get",
       "path": "/api/risk/scenario",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "list_rules_api_rules_get",
+      "path": "/api/rules",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "save_rule_api_rules_post",
+      "path": "/api/rules",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "validate_rule_api_rules_validate_post",
+      "path": "/api/rules/validate",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "DELETE",
+      "mode": "fixture_backed",
+      "operation_id": "delete_rule_api_rules__name__delete",
+      "path": "/api/rules/{name}",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "show_rule_api_rules__name__get",
+      "path": "/api/rules/{name}",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
     },
     {
@@ -972,6 +1056,55 @@
       "operation_id": "run_trials_api_runs__run_id__trials_get",
       "path": "/api/runs/{run_id}/trials",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "list_scans_api_scans_get",
+      "path": "/api/scans",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "save_scan_api_scans_post",
+      "path": "/api/scans",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "check_all_api_scans_check_post",
+      "path": "/api/scans/check",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "DELETE",
+      "mode": "fixture_backed",
+      "operation_id": "delete_scan_api_scans__name__delete",
+      "path": "/api/scans/{name}",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "show_scan_api_scans__name__get",
+      "path": "/api/scans/{name}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "check_scan_api_scans__name__check_post",
+      "path": "/api/scans/{name}/check",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "run_scan_api_scans__name__run_post",
+      "path": "/api/scans/{name}/run",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
     },
     {
       "method": "GET",

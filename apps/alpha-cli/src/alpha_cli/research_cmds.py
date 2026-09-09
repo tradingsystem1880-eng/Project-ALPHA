@@ -3484,6 +3484,7 @@ def pause(
     project_id: str,
     reason: str = typer.Option(...),
     checkpoint: str | None = typer.Option(None),
+    actor: str = typer.Option("codex", "--actor", help="who pauses (owner or codex)"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Pause an active research worker at a durable checkpoint."""
@@ -3494,7 +3495,7 @@ def pause(
             project_id,
             to_state="paused",
             contract_id=str(case["active_contract_id"]),
-            actor="codex",
+            actor=actor,
             reason=reason,
             next_action="Owner reviews the paused case or asks Codex to resume.",
             responsibility="owner",
@@ -3515,6 +3516,7 @@ def resume(
         "--acknowledge-orphaned-process",
         help="confirm that a stale running process is no longer alive before re-queueing",
     ),
+    actor: str = typer.Option("owner", "--actor", help="who resumes (owner or codex)"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Resume a paused or failed case without changing its contract or budget."""
@@ -3532,7 +3534,7 @@ def resume(
             project_id,
             to_state="queued",
             contract_id=str(case["active_contract_id"]),
-            actor="owner",
+            actor=actor,
             reason=reason,
             next_action="Codex resumes from the last durable checkpoint.",
             responsibility="codex",
@@ -3551,6 +3553,7 @@ def resume(
 def cancel(
     project_id: str,
     reason: str = typer.Option(...),
+    actor: str = typer.Option("owner", "--actor", help="who cancels (owner or codex)"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Return active research execution to idle without changing its evidence phase."""
@@ -3561,7 +3564,7 @@ def cancel(
             project_id,
             to_state="idle",
             contract_id=str(case["active_contract_id"]),
-            actor="owner",
+            actor=actor,
             reason=reason,
             next_action="Owner chooses whether to revise, park, or resume the case.",
             responsibility="owner",
@@ -3715,10 +3718,11 @@ def compare(
 
     names = [s.strip() for s in strategies.split(",") if s.strip()] or [
         # kronos needs a precomputed forecast cache (built by backtest/validate/optim, not this
-        # lightweight comparison spec), so exclude it from the default all-strategies sweep.
+        # lightweight comparison spec) and rules needs an owner-saved rule set (--rules), so
+        # exclude both from the default all-strategies sweep.
         n
         for n in _strategies.known_strategies()
-        if n != "kronos"
+        if n not in {"kronos", "rules"}
     ]
     settings = AlphaSettings()
     try:

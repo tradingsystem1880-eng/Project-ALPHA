@@ -1,9 +1,17 @@
 // Thin typed client over the FastAPI JSON layer. Same-origin (loopback), so no base URL.
 
+import type { components } from './generated'
+
+type Schema = components['schemas']
+
 import type {
   ActiveResearchGateOverride,
   AgentBrief,
   Candles,
+  ChartOverlays,
+  RuleList,
+  RuleRecord,
+  RuleValidation,
   ChartBundle,
   CommandDef,
   ControlJob,
@@ -79,8 +87,14 @@ import type {
   ResearchDatasetPage,
   ResearchDecisionView,
   ResearchEvidenceHub,
+  ResearchNote,
+  ResearchNoteAddRequest,
   ResearchNotePage,
   ResearchProtocolLibrary,
+  ResearchSourceAddRequest,
+  ResearchClaimAddRequest,
+  DataSnapshots,
+  DataSourceStatus,
   ResearchScorecard,
   ResearchLaunchResponse,
   ResearchProposalRequest,
@@ -106,6 +120,11 @@ import type {
   TradeRow,
   WorkspaceDoc,
   WorkspaceMeta,
+  ScanAlerts,
+  ScanCheckResult,
+  ScanList,
+  ScanRecord,
+  ScanRunResult,
 } from './types'
 
 export function runContextForProject(projectId: string | null): RunContextV1 {
@@ -193,6 +212,9 @@ export type OwnerActionType =
   | 'reject_confirmation'
   | 'launch_d2'
   | 'record_final_disposition'
+  | 'pause_research'
+  | 'resume_research'
+  | 'cancel_research'
 
 export interface OwnerCredentialOptions {
   challenge_id: string
@@ -323,6 +345,34 @@ export const api = {
   tearsheetUrl: (id: string): string => `/api/runs/${id}/tearsheet`,
   candles: (symbol: string, query = ''): Promise<Candles> =>
     getJSON(`/api/candles/${encodeURIComponent(symbol)}${query}`),
+  overlays: (symbol: string, query = ''): Promise<ChartOverlays> =>
+    getJSON(`/api/overlays/${encodeURIComponent(symbol)}${query}`),
+  rules: (): Promise<RuleList> => getJSON('/api/rules'),
+  rule: (name: string): Promise<RuleRecord> => getJSON(`/api/rules/${encodeURIComponent(name)}`),
+  ruleSave: (name: string, spec: Record<string, unknown>): Promise<RuleRecord> =>
+    postJSON('/api/rules', { name, spec }),
+  ruleValidate: (spec: Record<string, unknown>): Promise<RuleValidation> =>
+    postJSON('/api/rules/validate', { spec }),
+  ruleDelete: async (name: string): Promise<{ name: string; deleted: boolean }> => {
+    const res = await fetch(`/api/rules/${encodeURIComponent(name)}`, { method: 'DELETE' })
+    if (!res.ok) throw await responseError(res)
+    return (await res.json()) as { name: string; deleted: boolean }
+  },
+  scans: (): Promise<ScanList> => getJSON('/api/scans'),
+  scan: (name: string): Promise<ScanRecord> => getJSON(`/api/scans/${encodeURIComponent(name)}`),
+  scanSave: (name: string, rules: string, symbols: string[] | null): Promise<ScanRecord> =>
+    postJSON('/api/scans', { name, rules, symbols }),
+  scanRun: (name: string, asOf: string | null): Promise<ScanRunResult> =>
+    postJSON(`/api/scans/${encodeURIComponent(name)}/run`, { as_of: asOf }),
+  scanCheck: (name: string): Promise<ScanCheckResult> =>
+    postJSON(`/api/scans/${encodeURIComponent(name)}/check`, {}),
+  scanCheckAll: (): Promise<ScanCheckResult> => postJSON('/api/scans/check', {}),
+  scanDelete: async (name: string): Promise<{ name: string; deleted: boolean }> => {
+    const res = await fetch(`/api/scans/${encodeURIComponent(name)}`, { method: 'DELETE' })
+    if (!res.ok) throw await responseError(res)
+    return (await res.json()) as { name: string; deleted: boolean }
+  },
+  alerts: (limit: number): Promise<ScanAlerts> => getJSON(`/api/alerts?limit=${limit}`),
   strategies: (): Promise<StrategyDef[]> => getJSON('/api/strategies'),
   commands: (): Promise<CommandDef[]> => getJSON('/api/commands'),
   symbols: (): Promise<{ symbols: string[] }> => getJSON('/api/symbols'),
@@ -558,6 +608,15 @@ export const api = {
     ),
   researchContextPacket: (packetId: string): Promise<ResearchContextPacket> =>
     getJSON(`/api/research/context-packets/${encodeURIComponent(packetId)}`),
+  researchNoteAdd: (projectId: string, body: ResearchNoteAddRequest): Promise<ResearchNote> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/notes`, body),
+  researchSourceAdd: (projectId: string, body: ResearchSourceAddRequest): Promise<Record<string, unknown>> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/sources`, body),
+  researchClaimAdd: (projectId: string, body: ResearchClaimAddRequest): Promise<Record<string, unknown>> =>
+    postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/claims`, body),
+  dataSnapshots: (): Promise<DataSnapshots> => getJSON('/api/data/snapshots'),
+  dataSourceStatus: (symbol: string): Promise<DataSourceStatus> =>
+    getJSON(`/api/data/source-status?symbol=${encodeURIComponent(symbol)}`),
   researchNotes: (
     projectId: string,
     query: { limit?: number; offset?: number } = {},
@@ -601,6 +660,12 @@ export const api = {
       parameter_space: Record<string, unknown>
     },
   ): Promise<StrategyVersion> => postJSON(`/api/projects/${encodeURIComponent(projectId)}/versions`, body),
+  linkStageRun: (projectId: string, body: Schema['StageLinkCreateRequest']): Promise<Schema['StageRunLink']> =>
+    postJSON(`/api/projects/${encodeURIComponent(projectId)}/stage-links`, body),
+  updateStageState: (linkId: string, body: Schema['StageStateRequest']): Promise<Schema['StageRunLink']> =>
+    postJSON(`/api/stage-links/${encodeURIComponent(linkId)}/state`, body),
+  recordAttempt: (projectId: string, body: Schema['AttemptCreateRequest']): Promise<Schema['AttemptRecord']> =>
+    postJSON(`/api/projects/${encodeURIComponent(projectId)}/attempts`, body),
   createExperiment: (
     projectId: string,
     body: {

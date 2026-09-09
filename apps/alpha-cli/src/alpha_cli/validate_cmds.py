@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import typer
 
-from alpha_cli import _artifacts, _forecast_cache, _gauntlet, _runner
+from alpha_cli import _artifacts, _forecast_cache, _gauntlet, _runner, rules_cmds
 from alpha_core import Bar, DataError
 from alpha_core.config import AlphaSettings
 from alpha_validation import render_tearsheet_html, report_to_manifest
@@ -39,6 +39,9 @@ def validate(
     embargo: int = 5,
     anchored: bool = False,
     param: list[str] | None = None,
+    rules: str | None = typer.Option(
+        None, "--rules", help="saved rule set for --strategy rules (alpha rules save NAME)"
+    ),
     tier1_paths: int = 1000,
     tier2_paths: int = 64,
     n_resamples: int = 2000,
@@ -69,6 +72,10 @@ def validate(
     """
     settings = AlphaSettings()
     resolved_seed = seed if seed is not None else settings.random_seed
+    try:
+        rules_spec = rules_cmds.resolve_rules_spec(strategy, rules, settings.data_dir)
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
     spec = _runner.RunSpec(
         lookback=lookback,
         skip=skip,
@@ -88,6 +95,7 @@ def validate(
         anchored=anchored,
         strategy_name=strategy,
         strategy_params=_runner.parse_strategy_params(strategy, param),
+        rules_spec=rules_spec,
     )
     gparams = _gauntlet.GauntletParams(
         seed=resolved_seed,
@@ -171,6 +179,10 @@ def validate(
     manifest["folds"] = [_runner.fold_manifest(fold, bars) for fold in out.oos.folds]
     manifest["oos_execution_boundary"] = "fresh_portfolio_after_causal_indicator_priming"
     manifest["oos_trace_scope"] = "scored_test_sessions_plus_originating_prior_close_decision"
+    if spec.rules_spec is not None:
+        # the owner's exact rule set, so the report can show what was validated (identity
+        # already includes these bytes through ``vars(spec)``)
+        manifest["rules_spec"] = spec.rules_spec
     manifest.update(_artifacts.research_gate_override_fields(research_gate_override))
     manifest.update(identity.manifest_fields())
     if forecast_meta is not None:

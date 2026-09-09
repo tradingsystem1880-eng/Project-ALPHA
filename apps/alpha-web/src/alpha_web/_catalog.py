@@ -160,6 +160,20 @@ def first_bar(*, data_dir: Path, symbol: str, exchange: str) -> dict[str, str]:
     return result
 
 
+def snapshots(*, data_dir: Path) -> dict[str, object]:
+    """Every immutable snapshot's manifest summary (relays ``alpha data snapshots --json``)."""
+    result: dict[str, object] = _run_json(["data", "snapshots", "--json"], data_dir=data_dir)
+    return result
+
+
+def source_status(*, data_dir: Path, symbol: str) -> dict[str, object]:
+    """Canonical provenance plus pending candidate/quarantine receipts for SYMBOL."""
+    result: dict[str, object] = _run_json(
+        ["data", "source-status", symbol, "--json"], data_dir=data_dir
+    )
+    return result
+
+
 def ticker(*, data_dir: Path, symbol: str, exchange: str) -> dict[str, object]:
     """SYMBOL's current last-trade price on EXCHANGE (one public ccxt read; never stored)."""
     result: dict[str, object] = _run_json(

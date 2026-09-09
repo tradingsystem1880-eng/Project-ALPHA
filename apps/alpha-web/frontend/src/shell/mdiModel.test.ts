@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { EMPTY_MDI, activateDocument, closeDocument, openDocument, windowOf } from './mdiModel'
+import { EMPTY_MDI, activateDocument, closeDocument, instanceOf, openDocument, windowOf } from './mdiModel'
 
 describe('mdiModel', () => {
   it('opens and activates, never duplicating an open key', () => {
@@ -65,5 +65,24 @@ describe('mdiModel', () => {
       return closeDocument(state, 'report:aaaaaaaa')
     }
     expect(run()).toEqual(run())
+  })
+})
+
+describe('document instances', () => {
+  it('reads the instance part of a key, keeping slashes inside a symbol', () => {
+    expect(instanceOf('chart')).toBeNull()
+    expect(instanceOf('chart:')).toBeNull()
+    expect(instanceOf('chart:BTC/USDT')).toBe('BTC/USDT')
+    expect(instanceOf('report:aaaaaaaa')).toBe('aaaaaaaa')
+    expect(windowOf('chart:BTC/USDT')).toBe('chart')
+  })
+  it('keeps a pinned chart window apart from the plain Chart', () => {
+    let state = openDocument(EMPTY_MDI, 'chart', 'Chart')
+    state = openDocument(state, 'chart:BTC/USDT', 'BTC/USDT')
+    expect(state.documents.map((item) => [item.key, item.window])).toEqual([
+      ['chart', 'chart'],
+      ['chart:BTC/USDT', 'chart'],
+    ])
+    expect(state.active).toBe('chart:BTC/USDT')
   })
 })

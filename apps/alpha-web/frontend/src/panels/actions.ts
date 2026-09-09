@@ -23,6 +23,8 @@ export interface Navigator {
   showProviders(): void
   /** Open the Compare document (the selected run is ticked there). */
   showCompare(): void
+  /** Open the Insert › Indicators dialog for the current profile's chart overlays. */
+  showIndicators(): void
 }
 
 /** Until the shell registers, intents are no-ops rather than crashes. */
@@ -35,6 +37,7 @@ let active: Navigator = {
   showDataSymbol: () => undefined,
   showProviders: () => undefined,
   showCompare: () => undefined,
+  showIndicators: () => undefined,
 }
 
 let pendingPrefill: LabPrefill | null = null
@@ -112,6 +115,10 @@ export function openDataSymbol(): void {
 
 export function openCompare(): void {
   active.showCompare()
+}
+
+export function openIndicators(): void {
+  active.showIndicators()
 }
 
 export function openProviderCenter(): void {

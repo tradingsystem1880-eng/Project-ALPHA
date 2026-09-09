@@ -8,14 +8,18 @@ MCP, another terminal — surface in the UI live: the scan watches the store, no
 job registry.
 
 Events: an initial ``snapshot`` (counts), then ``run_added`` / ``run_updated`` (data = run record
-JSON) and ``job_started`` / ``job_done`` / ``job_failed`` / ``job_cancelled`` (data = job summary
-JSON). No event ids: a reconnecting client refetches ``/api/runs`` instead of replaying (the
-store is the durable record; the stream is only a change notification).
+JSON), ``job_started`` / ``job_done`` / ``job_failed`` / ``job_cancelled`` (data = job summary
+JSON) and ``store_changed`` (data = ``{"area", "at"}``) whenever the newest mtime under one of
+the governed data areas in ``AREAS`` rises — research cases, the CLI control plane, the bar
+store, paper journals, web workspaces, scan alerts. The web never reads those bytes to notice
+a change; panels refetch their own public seam. No event ids: a reconnecting client refetches
+instead of replaying (the store is the durable record; the stream is only a change notification).
 """
 
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -27,6 +31,46 @@ from alpha_web._runs import run_artifacts_readable, run_record
 
 _POLL_MIN = 0.05
 _POLL_MAX = 10.0
+
+# area → data_dir-relative roots (files or directories) whose newest mtime is the area's clock.
+AREAS: dict[str, tuple[str, ...]] = {
+    "research": ("research/projects",),
+    "control": (
+        "control/workstation.sqlite3",
+        "control/workstation.sqlite3-wal",
+        "control/workstation.sqlite3-shm",
+    ),
+    "bars": ("store/bars",),
+    "paper": ("paper",),
+    "workspaces": ("web/workspaces",),
+    "alerts": ("scans/alerts.jsonl",),
+}
+
+
+def _newest_mtime(root: Path) -> float | None:
+    """Newest mtime of ``root`` and everything below it; None when it does not exist."""
+    try:
+        newest = root.stat().st_mtime
+    except OSError:
+        return None
+    if root.is_dir():
+        for dirpath, _dirs, files in os.walk(root):
+            for name in files:
+                try:
+                    newest = max(newest, (Path(dirpath) / name).stat().st_mtime)
+                except OSError:
+                    continue  # vanished mid-scan — the next tick sees the settled state
+    return newest
+
+
+def snapshot_areas(data_dir: Path) -> dict[str, float]:
+    """area → newest mtime under its roots, for every area that exists. Stat-only."""
+    snap: dict[str, float] = {}
+    for area, roots in AREAS.items():
+        stamps = [m for m in (_newest_mtime(data_dir / rel) for rel in roots) if m is not None]
+        if stamps:
+            snap[area] = max(stamps)
+    return snap
 
 
 def clamp_poll(poll: float) -> float:
@@ -66,6 +110,7 @@ async def _diff_events(data_dir: Path, *, poll: float) -> AsyncGenerator[dict[st
     """The unbounded event stream: snapshot, then run/job diffs every ``poll`` seconds."""
     runs = snapshot_runs(data_dir)
     jobs = job_states()
+    areas = snapshot_areas(data_dir)
     running = sum(1 for s in jobs.values() if s == "running")
     yield {"event": "snapshot", "data": json.dumps({"runs": len(runs), "jobs_running": running})}
 
@@ -99,6 +144,12 @@ async def _diff_events(data_dir: Path, *, poll: float) -> AsyncGenerator[dict[st
             elif old != status:
                 yield {"event": f"job_{status}", "data": _job_data(job_id)}
         jobs = new_jobs
+
+        new_areas = snapshot_areas(data_dir)
+        for area, stamp in new_areas.items():
+            if stamp > areas.get(area, float("-inf")):
+                yield {"event": "store_changed", "data": json.dumps({"area": area, "at": stamp})}
+        areas = new_areas
 
 
 async def activity_events(
