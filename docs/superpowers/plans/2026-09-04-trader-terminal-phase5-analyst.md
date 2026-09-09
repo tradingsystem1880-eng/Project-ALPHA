@@ -1,4 +1,4 @@
-**Delivery state:** In progress (2026-09-04; S1–S6 on `feat/trader-terminal-phase5-analyst`).
+**Delivery state:** Completed (2026-09-09; S1–S6 on `feat/trader-terminal-phase5-analyst`).
 
 # Trader Terminal — Phase 5 "Analyst": everything doable in the UI, live desk, chart-first analysis, rule strategies, scanner + alerts
 
@@ -222,7 +222,7 @@
         "docs/BUILD-STATUS.md",
         "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md"
       ],
-      "status": "pending"
+      "status": "done"
     }
   ],
   "tier_impact": [
@@ -345,4 +345,19 @@ The test-architect specification (2026-09-04, 50 tests) is the ordered list the 
   fixture rises and its first bar's low is 0, which the store's `Bar` model rejects).
 - Two new document baselines (`scanner-document-chromium-{reference,wide}.png`); every other
   baseline was unchanged. The Toolbox `Alerts` tab is enabled (its disabled pin was removed).
+
+## Deviations recorded during S6
+
+- The real-backend acceptance (183 checks, both profiles, 1585×991 and 1440×900, overlays, builder
+  → sandbox run, scanner → alerts, Live ticker and an XRP/USDT pull over the network) found two
+  defects the mocked harness could not: the SIM account was always USD, so a USDT pair on MARGIN
+  crashed inside nautilus after a netting flip (fixed in `alpha_backtest.engine`, risk-tier review
+  APPROVE attested; every new run id changes because `alpha_backtest` is in the execution
+  fingerprint), and the builder validated with an empty spec name before a file name was typed.
+- `menuModel.GROUP_MENU` must not name `scan` (a non-run prefix outside the served catalog).
+- The independent reviewer noted, outside this diff, that `_closed_trades` reads only closed
+  positions so a netting flip's closed leg is missing from `trades.parquet` although the equity
+  curve carries its PnL — recorded here as a follow-up, not fixed in Phase 5.
+- CLAUDE.md's DAG line now reads `alpha_strategies` → core + patterns; the retired v1 line is kept
+  verbatim in `docs/BUILD-STATUS.md`.
 
