@@ -68,8 +68,6 @@ import type {
   PaperSession,
   PortfolioAnalyticsProjection,
   PropfirmPaths,
-  OptionCurve,
-  OptionGreeks,
   ProviderDefinition,
   ProviderCheckReceipt,
   ProjectDetail,
@@ -108,8 +106,6 @@ import type {
   RunContextV1,
   RunDetail,
   RunList,
-  ScreenerNews,
-  ScreenerQuote,
   StrategyDef,
   StrategyVersion,
   SystemStatus,
@@ -540,14 +536,8 @@ export const api = {
   },
   deleteWorkspace: (slug: string): Promise<Response> =>
     fetch(`/api/workspaces/${slug}`, { method: 'DELETE' }),
-  optionsGreeks: (query: string): Promise<OptionGreeks> => getJSON(`/api/options/greeks?${query}`),
-  optionsCurve: (query: string): Promise<OptionCurve> => getJSON(`/api/options/curve?${query}`),
   riskScenario: (runId: string, confidence = 0.95): Promise<RiskReport> =>
     getJSON(`/api/risk/scenario?run_id=${encodeURIComponent(runId)}&confidence=${confidence}`),
-  screenerQuote: (symbol: string): Promise<ScreenerQuote> =>
-    getJSON(`/api/screener/quote?symbol=${encodeURIComponent(symbol)}`),
-  screenerNews: (symbol: string, days = 7, limit = 20): Promise<ScreenerNews> =>
-    getJSON(`/api/screener/news?symbol=${encodeURIComponent(symbol)}&days=${days}&limit=${limit}`),
   researchCompare: (symbol: string, runContext: RunContextV1): Promise<ResearchReport> => {
     const params = new URLSearchParams({
       symbol,

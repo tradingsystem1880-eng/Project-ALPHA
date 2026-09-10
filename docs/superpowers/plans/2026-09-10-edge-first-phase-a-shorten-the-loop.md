@@ -1,4 +1,4 @@
-**Delivery state:** In progress (2026-09-10)
+**Delivery state:** Completed (2026-09-10; S1-S4b on `main`; QuantPad + worktree cleanup deferred as recorded)
 
 # Edge-first Phase A — shorten the loop: parallel gate, alpha/platform test tiers, surface freeze, dead-package removal
 
@@ -68,6 +68,7 @@
       "verify": "uv run pytest -q tests/unit/test_claude_md_relocation.py tests/unit/test_repo_awareness_drift.py tests/unit/test_documentation_truth.py",
       "expected": "All three drift suites green; CLAUDE.md stays under 200 lines / 35 KB",
       "rollback": "git revert the S3 commit",
+      "status": "done",
       "files": ["CLAUDE.md", "docs/operations/claude-code-harness.md", "docs/BUILD-STATUS.md"]
     },
     {
@@ -75,6 +76,7 @@
       "verify": "uv run lint-imports && uv run pytest -q tests/unit/test_public_seams.py tests/unit/test_claude_md_relocation.py tests/unit/test_repo_awareness_drift.py && uv run python scripts/gate.py full",
       "expected": "13 contracts pass; no module named alpha_options/alpha_screener importable; 12-wheel smoke green; full gate green",
       "rollback": "git revert the S4a commit (packages return from history)",
+      "status": "done",
       "files": ["packages/alpha-options", "packages/alpha-screener", "apps/alpha-cli/src/alpha_cli/options_cmds.py", "apps/alpha-cli/src/alpha_cli/screener_cmds.py", "apps/alpha-cli/src/alpha_cli/main.py", "apps/alpha-web/src/alpha_web/app.py", "apps/alpha-web/src/alpha_web/api/options.py", "apps/alpha-web/src/alpha_web/api/screener.py", "apps/alpha-web/src/alpha_web/_options.py", "apps/alpha-web/src/alpha_web/_screener.py", "apps/alpha-web/src/alpha_web/api/models.py", "pyproject.toml", "uv.lock", "scripts/gate.py", ".github/workflows/ci.yml", ".claude/harness-baseline.json", ".claude/rules/alpha-analytics.md", "CLAUDE.md", "tests/fixtures/claude_md_v1.md", "tests/unit/test_public_seams.py"]
     },
     {
@@ -82,6 +84,7 @@
       "verify": "uv run python scripts/generate_web_openapi.py && uv run python scripts/check_openapi_operations.py --write && cd apps/alpha-web/frontend && npm run lint -- --deny-warnings && npm run test:coverage && npm run generate:api && npm run test:e2e",
       "expected": "Frontend gate green; generated contracts and static/app clean after build; docs/governance classification + authority matrix byte-current",
       "rollback": "git revert the S4b commit",
+      "status": "done",
       "files": ["apps/alpha-web/frontend/src/panels/OptionsGreeks.tsx", "apps/alpha-web/frontend/src/panels/Screener.tsx", "apps/alpha-web/frontend/src/shell/documents.ts", "apps/alpha-web/frontend/src/shell/profiles.ts", "apps/alpha-web/frontend/src/shell/menuModel.ts", "apps/alpha-web/frontend/src/api/client.ts", "apps/alpha-web/frontend/src/api/generated.ts", "apps/alpha-web/frontend/e2e", "apps/alpha-web/src/alpha_web/static/app", "apps/alpha-web/openapi.json", "docs/governance/openapi-operation-classification.json", "docs/governance/capability-authority-matrix.md"]
     }
   ],
