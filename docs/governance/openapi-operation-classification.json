@@ -514,27 +514,6 @@
     {
       "method": "GET",
       "mode": "fixture_backed",
-      "operation_id": "options_curve_api_options_curve_get",
-      "path": "/api/options/curve",
-      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
-    },
-    {
-      "method": "GET",
-      "mode": "fixture_backed",
-      "operation_id": "options_greeks_api_options_greeks_get",
-      "path": "/api/options/greeks",
-      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
-    },
-    {
-      "method": "GET",
-      "mode": "fixture_backed",
-      "operation_id": "options_iv_api_options_iv_get",
-      "path": "/api/options/iv",
-      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
-    },
-    {
-      "method": "GET",
-      "mode": "fixture_backed",
       "operation_id": "overlays_api_overlays__symbol__get",
       "path": "/api/overlays/{symbol}",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
@@ -1105,20 +1084,6 @@
       "operation_id": "run_scan_api_scans__name__run_post",
       "path": "/api/scans/{name}/run",
       "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
-    },
-    {
-      "method": "GET",
-      "mode": "fixture_backed",
-      "operation_id": "screener_news_api_screener_news_get",
-      "path": "/api/screener/news",
-      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
-    },
-    {
-      "method": "GET",
-      "mode": "fixture_backed",
-      "operation_id": "screener_quote_api_screener_quote_get",
-      "path": "/api/screener/quote",
-      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
     },
     {
       "method": "POST",
