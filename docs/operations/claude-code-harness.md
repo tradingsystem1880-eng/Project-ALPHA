@@ -54,7 +54,7 @@ It is a pure content hash: any byte change anywhere invalidates it; a pure `git 
   guards, oracles, holdout are alpha). New tests default to the alpha tier.
 - `gate.py full` — uv lock --check, uv sync --locked, fast lint/type steps, pytest `-n auto`
   -m "not network" --cov (whole suite incl. holdout, pytest-xdist, coverage combined; ~3 min),
-  OpenAPI freshness, uv build --all-packages, 14-wheel import smoke
+  OpenAPI freshness, uv build --all-packages, 12-wheel import smoke
   (byte-mirrors `.github/workflows/ci.yml`); when a quant SOURCE module changed it also
   runs the `slow_oracle` suites and the mutation gate for those modules.
 - The stamp is deleted at gate start and written only on full success; `check --tier

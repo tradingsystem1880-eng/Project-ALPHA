@@ -29,8 +29,6 @@ export const GROUP_MENU: Readonly<Record<string, MenuName>> = Object.freeze({
   project: 'Edit',
   suite: 'Edit',
   evidence: 'Insert',
-  screener: 'Charts',
-  options: 'Charts',
   data: 'Data',
   'crypto-data': 'Data',
   'quantpad-data': 'Data',

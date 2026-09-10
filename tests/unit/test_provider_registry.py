@@ -27,7 +27,6 @@ def test_provider_ids_are_unique_and_historical_sources_come_from_registry() -> 
         "stooq",
         "tiingo",
         "quantpad",
-        "finnhub",
         "binance",
         "bybit",
         "coingecko",
@@ -54,18 +53,18 @@ def test_provider_configuration_reports_credential_presence_but_never_values() -
     secret = "do-not-leak-this-secret"
     absent = provider_definitions(environ={}, module_available=lambda _: True)
     present = provider_definitions(
-        environ={"ALPHA_FINNHUB_API_KEY": secret}, module_available=lambda _: True
+        environ={"ALPHA_TIINGO_API_KEY": secret}, module_available=lambda _: True
     )
 
-    absent_finnhub = next(provider for provider in absent if provider.id == "finnhub")
-    present_finnhub = next(provider for provider in present if provider.id == "finnhub")
-    assert absent_finnhub.installed is True and absent_finnhub.configured is False
-    assert present_finnhub.configured is True
-    assert absent_finnhub.to_dict()["credential_env"] == [
-        {"name": "ALPHA_FINNHUB_API_KEY", "present": False}
+    absent_tiingo = next(provider for provider in absent if provider.id == "tiingo")
+    present_tiingo = next(provider for provider in present if provider.id == "tiingo")
+    assert absent_tiingo.installed is True and absent_tiingo.configured is False
+    assert present_tiingo.configured is True
+    assert absent_tiingo.to_dict()["credential_env"] == [
+        {"name": "ALPHA_TIINGO_API_KEY", "present": False}
     ]
     serialized = json.dumps([provider.to_dict() for provider in present])
-    assert "ALPHA_FINNHUB_API_KEY" in serialized
+    assert "ALPHA_TIINGO_API_KEY" in serialized
     assert secret not in serialized
 
 
@@ -97,13 +96,13 @@ def test_verified_provider_without_current_injection_keeps_an_actionable_recover
 
 def test_provider_installation_is_part_of_configuration() -> None:
     providers = provider_definitions(
-        environ={"ALPHA_FINNHUB_API_KEY": "present"},
-        module_available=lambda module: module != "finnhub",
+        environ={"ALPHA_TIINGO_API_KEY": "present"},
+        module_available=lambda module: module != "alpha_data.adapters.tiingo_adapter",
     )
-    finnhub = next(provider for provider in providers if provider.id == "finnhub")
+    tiingo = next(provider for provider in providers if provider.id == "tiingo")
 
-    assert finnhub.installed is False
-    assert finnhub.configured is False
+    assert tiingo.installed is False
+    assert tiingo.configured is False
 
 
 def test_ccxt_exchange_option_is_registry_owned() -> None:

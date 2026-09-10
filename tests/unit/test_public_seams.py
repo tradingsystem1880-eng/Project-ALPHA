@@ -65,8 +65,6 @@ def test_surface_seams_do_not_import_heavy_numerical_stacks() -> None:
         ("alpha-backtest", "alpha_backtest"),
         ("alpha-validation", "alpha_validation"),
         ("alpha-forecast", "alpha_forecast"),
-        ("alpha-options", "alpha_options"),
-        ("alpha-screener", "alpha_screener"),
         ("alpha-cli", "alpha_cli"),
         ("alpha-mcp", "alpha_mcp"),
         ("alpha-web", "alpha_web"),
