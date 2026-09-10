@@ -150,3 +150,14 @@ BTCUSDT,ETHUSDT,SOLUSDT,ZECUSDT,XRPUSDT,IOSTUSDT,NEARUSDT,DOGEUSDT,ADAUSDT,BNBUS
 - B5 needed no adapter code: the yfinance path carries no dataset identity, so `^VIX`, `^TNX`,
   `DX-Y.NYB`, `HYG`, `LQD`, `TLT` pulled as ordinary daily bars (2015-01-01 -> 2026-09-10);
   the provider registry now declares `index` and the AssetClass literal admits it.
+
+## B3 universe seed (2026-09-10)
+
+`data/store/universe-sources/sp500_wikipedia_2026-09-10.csv` was built from the Wikipedia
+"List of S&P 500 companies" constituents table (Date added) plus the "Historical components of
+the S&P 500" change table (772 add/remove events, 1976-07-01 -> 2026-08-18), and imported as
+universe `sp500`: 887 intervals over 858 symbols, 384 removals. Point-in-time membership counts:
+492 (2010-01-04, 226 later removed), 497 (2015), 507 (2020), 503 (2023), 503 (today).
+Caveats recorded for any consumer: ticker renames are not linked, `delisting_return` is empty
+(no free source), and coverage before ~2000 is partial; this is a defensible cross-section from
+2010 onward, not a CRSP substitute. The bars for removed names still have to be pulled.
