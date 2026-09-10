@@ -170,52 +170,66 @@ def run_backfill(
     ledger = Ledger.open(
         ledger_path, provider=provider, family=family, category=category, frequency=frequency
     )
-    counts = {"windows_total": 0, "done": 0, "failed": 0, "skipped": 0}
+    counts = {"windows_total": 0, "done": 0, "failed": 0, "skipped": 0, "split": 0}
     failures: list[dict[str, str]] = []
+
+    def _acquire_window(symbol: str, base: str, quote_asset: str, window: BackfillWindow) -> None:
+        key = f"{symbol}|{window.key}"
+        if ledger.state(key) == "done":
+            counts["skipped"] += 1
+            return
+        if dry_run:
+            return
+        try:
+            result = acquire(
+                provider,
+                family,
+                symbol,
+                base=base,
+                quote=quote_asset,
+                category=category,
+                frequency=frequency,
+                period=window.period,
+                start=window.start,
+                end=window.end,
+            )
+        except DataError as exc:
+            halves = split_window(window) if _fills_a_page(exc) else None
+            if halves is not None:
+                # A denser-than-planned series (e.g. hourly funding): halve and retry both.
+                counts["split"] += 1
+                ledger.record(key, {"state": "split", "error": str(exc), "at": _iso(now)})
+                if log is not None:
+                    log(f"split {key}: {exc}")
+                for half in halves:
+                    _acquire_window(symbol, base, quote_asset, half)
+                return
+            counts["failed"] += 1
+            failures.append({"key": key, "error": str(exc)})
+            ledger.record(key, {"state": "failed", "error": str(exc), "at": _iso(now)})
+            if log is not None:
+                log(f"FAILED {key}: {exc}")
+        else:
+            counts["done"] += 1
+            ledger.record(
+                key,
+                {
+                    "state": "done",
+                    "manifest_id": str(result.get("normalized_manifest_id")),
+                    "quality_state": str(result.get("state")),
+                    "at": _iso(now),
+                },
+            )
+            if log is not None:
+                log(f"done {key}: {result.get('normalized_manifest_id')}")
+        if pause_seconds > 0:
+            time.sleep(pause_seconds)
+
     for symbol in symbols:
         base, quote_asset = split_symbol(symbol, quote=quote)
         for window in windows:
             counts["windows_total"] += 1
-            key = f"{symbol}|{window.key}"
-            if ledger.state(key) == "done":
-                counts["skipped"] += 1
-                continue
-            if dry_run:
-                continue
-            try:
-                result = acquire(
-                    provider,
-                    family,
-                    symbol,
-                    base=base,
-                    quote=quote_asset,
-                    category=category,
-                    frequency=frequency,
-                    period=window.period,
-                    start=window.start,
-                    end=window.end,
-                )
-            except DataError as exc:
-                counts["failed"] += 1
-                failures.append({"key": key, "error": str(exc)})
-                ledger.record(key, {"state": "failed", "error": str(exc), "at": _iso(now)})
-                if log is not None:
-                    log(f"FAILED {key}: {exc}")
-            else:
-                counts["done"] += 1
-                ledger.record(
-                    key,
-                    {
-                        "state": "done",
-                        "manifest_id": str(result.get("normalized_manifest_id")),
-                        "quality_state": str(result.get("state")),
-                        "at": _iso(now),
-                    },
-                )
-                if log is not None:
-                    log(f"done {key}: {result.get('normalized_manifest_id')}")
-            if pause_seconds > 0:
-                time.sleep(pause_seconds)
+            _acquire_window(symbol, base, quote_asset, window)
     return {
         **counts,
         "dry_run": dry_run,
@@ -224,3 +238,25 @@ def run_backfill(
         "windows": [window.key for window in windows],
         "execution_authority": False,
     }
+
+
+def _fills_a_page(exc: DataError) -> bool:
+    return "fills one provider page" in str(exc)
+
+
+def split_window(window: BackfillWindow) -> tuple[BackfillWindow, BackfillWindow] | None:
+    """Halve an ISO-range window; None when it is a calendar period or already <= 1 day."""
+    if window.start is None or window.end is None:
+        return None
+    start = datetime.fromisoformat(window.start.replace("Z", "+00:00"))
+    end = datetime.fromisoformat(window.end.replace("Z", "+00:00"))
+    if end - start <= timedelta(days=1):
+        return None
+    middle = start + (end - start) / 2
+    middle = middle.replace(minute=0, second=0, microsecond=0)
+    if middle <= start or middle >= end:
+        return None
+    return (
+        BackfillWindow(start=_iso(start), end=_iso(middle), period=None),
+        BackfillWindow(start=_iso(middle), end=_iso(end), period=None),
+    )

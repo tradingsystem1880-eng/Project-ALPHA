@@ -329,3 +329,7 @@ The pre-v2 manual line rewritten by Phase A S4 is kept here verbatim for `tests/
 
 - Contracts live in root `pyproject.toml` `[tool.importlinter]` (15 forbidden contracts, including outbound surface limits). Run `uv run lint-imports` after any cross-package import change.
 
+
+The pre-v2 manual line rewritten by edge-first Phase B (universe + knowledge-time flag) is kept here verbatim for `tests/unit/test_claude_md_relocation.py`:
+
+| `data_cmds.py` | `alpha data ...` (Tiingo qualification/repair, comparison adapters, CCXT provenance, PIT candles + symbols) | `data_app`; `_ADAPTERS` registry (monkeypatched in tests) |

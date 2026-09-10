@@ -55,6 +55,7 @@
       "verify": "uv run alpha crypto-data coverage --json | python3 -c 'import json,sys; rows=json.load(sys.stdin)[\"items\"]; print(len(rows), sum(r[\"state\"]==\"qualified\" for r in rows))'",
       "expected": "Thousands of qualified normalized manifests; ledger failure count near zero (listing-date windows only); volume usage in the GB range",
       "rollback": "Manifests are immutable evidence; nothing to roll back. A wrong universe is simply not snapshotted.",
+      "status": "in_progress",
       "files": ["data/crypto/backfill/*.json"]
     },
     {
@@ -62,6 +63,7 @@
       "verify": "uv run pytest -q tests/unit/test_universe_store.py tests/bias_guards/test_universe_survivorship.py -m 'not network' && uv run python scripts/gate.py fast",
       "expected": "universe_as_of(date) returns names whose [effective_from, effective_to) covers the date, including later-removed names; the poisoned reader that drops removed names fails the guard",
       "rollback": "git revert the B3 commit",
+      "status": "done",
       "files": ["packages/alpha-core/src/alpha_core/universe.py", "packages/alpha-core/src/alpha_core/__init__.py", "packages/alpha-data/src/alpha_data/store.py", "packages/alpha-data/src/alpha_data/pit.py", "apps/alpha-cli/src/alpha_cli/data_cmds.py", "tests/unit/test_universe_store.py", "tests/bias_guards/test_universe_survivorship.py"]
     },
     {
@@ -69,6 +71,7 @@
       "verify": "uv run pytest -q tests/integration/test_data_cli.py -k knowledge && uv run python scripts/gate.py fast",
       "expected": "JSON carries actions_total and knowledge_estimated counts; run manifests unchanged (identity tests green)",
       "rollback": "git revert the B4 commit",
+      "status": "done",
       "files": ["apps/alpha-cli/src/alpha_cli/data_cmds.py", "tests/integration/test_data_cli.py"]
     },
     {
@@ -76,6 +79,7 @@
       "verify": "uv run pytest -q tests/unit/test_yfinance_parser.py tests/integration/test_data_cli.py -m 'not network' && uv run python scripts/gate.py fast",
       "expected": "Index symbols pull and snapshot like ETFs; a bias guard is unaffected (same PIT path)",
       "rollback": "git revert the B5 commit",
+      "status": "done",
       "files": ["packages/alpha-data/src/alpha_data/adapters/yfinance_adapter.py", "apps/alpha-cli/src/alpha_cli/data_cmds.py", "tests/unit/test_yfinance_parser.py"]
     }
   ],
@@ -133,3 +137,16 @@ delisted before 2026-09-10 are excluded; point-in-time membership must come from
 ```
 BTCUSDT,ETHUSDT,SOLUSDT,ZECUSDT,XRPUSDT,IOSTUSDT,NEARUSDT,DOGEUSDT,ADAUSDT,BNBUSDT,LINKUSDT,UNIUSDT,APTUSDT,AAVEUSDT,LTCUSDT,DOTUSDT,DASHUSDT,AVAXUSDT,XMRUSDT,BCHUSDT,XLMUSDT,INJUSDT,OPUSDT,EGLDUSDT,WAVESUSDT,CRVUSDT,HBARUSDT,ATOMUSDT,FILUSDT,COTIUSDT,ICPUSDT,LRCUSDT,SHIB1000USDT,ZENUSDT,ETCUSDT,TRXUSDT,SANDUSDT,MINAUSDT,VETUSDT,LDOUSDT,XTZUSDT,ENSUSDT,GALAUSDT,ALGOUSDT,STXUSDT,PAXGUSDT,RVNUSDT,JASMYUSDT,ROSEUSDT,APEUSDT
 ```
+
+## B1 live-run defects fixed before B2 (2026-09-10)
+
+- `_acquire_result` called in-process leaves unspecified typer defaults as `typer.Option`
+  sentinels (not `None`), which tripped the research-case scope check; `_backfill_acquire` passes
+  every unused parameter as an explicit `None` (pinned by a test).
+- The CLI path re-raises provider failures as `typer.BadParameter`; the wrapper converts them to
+  `DataError` so one bad window is recorded and the run continues (pinned by a test).
+- Some perps fund hourly, so a 60-day funding window overflows the 200-row page; the runner now
+  halves a window on "fills one provider page" and retries both halves down to one day (pinned).
+- B5 needed no adapter code: the yfinance path carries no dataset identity, so `^VIX`, `^TNX`,
+  `DX-Y.NYB`, `HYG`, `LQD`, `TLT` pulled as ordinary daily bars (2015-01-01 -> 2026-09-10);
+  the provider registry now declares `index` and the AssetClass literal admits it.

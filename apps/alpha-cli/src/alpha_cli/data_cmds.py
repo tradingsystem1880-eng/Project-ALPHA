@@ -480,11 +480,32 @@ def candles(
 
 
 @data_app.command()
-def symbols(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
-    """List every symbol with stored bars (the workstation's symbol picker reads this)."""
-    stored = _store().list_symbols()
+def symbols(
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+    with_actions: bool = typer.Option(
+        False, "--with-actions", help="add per-symbol corporate-action knowledge-time counts"
+    ),
+) -> None:
+    """List every symbol with stored bars (the workstation's symbol picker reads this).
+
+    The JSON form also reports, per symbol, how many stored corporate actions carry an
+    *estimated* knowledge time (no ``announce_date``: the two-clock model is running on the
+    ex-date clock alone for them), so the single-clock state is visible rather than silent.
+    """
+    store = _store()
+    stored = store.list_symbols()
     if json_out:
-        typer.echo(json.dumps({"symbols": stored}))
+        payload: dict[str, object] = {"symbols": stored}
+        if with_actions:
+            actions_report: dict[str, dict[str, int]] = {}
+            for sym in stored:
+                actions = store.read_actions(sym)
+                actions_report[sym] = {
+                    "actions": len(actions),
+                    "knowledge_estimated": sum(a.knowledge_is_estimated for a in actions),
+                }
+            payload["actions"] = actions_report
+        typer.echo(json.dumps(payload, sort_keys=True))
         return
     for sym in stored:
         typer.echo(sym)
@@ -536,3 +557,76 @@ def verify(snapshot_id: str) -> None:
     except DataError as exc:  # missing snapshot or a hash mismatch (corruption)
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(f"snapshot {snapshot_id}: integrity OK")
+
+
+universe_app = typer.Typer(help="Point-in-time universe membership (survivorship-safe reads).")
+data_app.add_typer(universe_app, name="universe")
+
+
+@universe_app.command("import")
+def universe_import(
+    name: str,
+    csv_path: Path,
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Import symbol,effective_from,effective_to,delisting_return,reason rows as universe NAME."""
+    from alpha_data.universe import parse_universe_csv
+
+    try:
+        rows = parse_universe_csv(csv_path.read_text(encoding="utf-8"))
+        path = _store().write_universe(name, rows)
+    except (OSError, DataError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    payload = {
+        "name": name,
+        "memberships": len(rows),
+        "symbols": len({r.symbol for r in rows}),
+        "removed": sum(r.effective_to is not None for r in rows),
+        "path": str(path),
+        "authority": "none",
+    }
+    if json_out:
+        typer.echo(json.dumps(payload, sort_keys=True))
+    else:
+        typer.echo(
+            f"universe {name}: {payload['memberships']} memberships, {payload['symbols']} symbols, "
+            f"{payload['removed']} removed -> {path}"
+        )
+
+
+@universe_app.command("show")
+def universe_show(
+    name: str,
+    as_of: str = typer.Option(
+        ..., help="membership date YYYY-MM-DD (from inclusive, to exclusive)"
+    ),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """List the members of universe NAME as of a date, including names that later left."""
+    from alpha_core import members_as_of
+
+    try:
+        when = date.fromisoformat(as_of)
+        rows = _store().read_universe(name)
+    except (ValueError, DataError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    members = members_as_of(rows, when)
+    later_removed = sorted(
+        {r.symbol for r in rows if r.effective_to is not None and r.effective_to > when}
+        & set(members)
+    )
+    payload = {
+        "name": name,
+        "as_of": when.isoformat(),
+        "members": members,
+        "count": len(members),
+        "later_removed": later_removed,
+        "authority": "none",
+    }
+    if json_out:
+        typer.echo(json.dumps(payload, sort_keys=True))
+    else:
+        typer.echo(
+            f"{name} as of {when}: {len(members)} members ({len(later_removed)} later removed)"
+        )
+        typer.echo(" ".join(members))

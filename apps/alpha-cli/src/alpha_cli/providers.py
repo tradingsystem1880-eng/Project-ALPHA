@@ -218,8 +218,9 @@ def provider_definitions(
             limitations=(
                 "Unofficial public endpoint; availability and throttling are vendor-controlled.",
                 "Daily history only in ALPHA; raw prices are reconstructed from adjusted rows.",
+                "Index series (^VIX, ^TNX, DX-Y.NYB) are regime context, not tradables.",
             ),
-            asset_classes=("stock", "etf"),
+            asset_classes=("stock", "etf", "index"),
             timeframes=("1D",),
             research_authority=False,
             paper_execution=False,

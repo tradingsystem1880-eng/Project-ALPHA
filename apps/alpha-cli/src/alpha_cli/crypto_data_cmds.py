@@ -3950,6 +3950,33 @@ __all__ = [
 ]
 
 
+def _backfill_acquire(
+    provider: str, family: str, instrument: str, **window: object
+) -> dict[str, object]:
+    """Call the acquisition path in-process with every unused typer default made explicit.
+
+    ``_acquire_result``'s defaults are ``typer.Option`` sentinels when it is called as a plain
+    function, and a sentinel is ``not None`` — the research-case scope check would misfire.
+    """
+    try:
+        return _acquire_result(
+            provider,
+            family,
+            instrument,
+            network=None,
+            pool_address=None,
+            metrics=None,
+            case_id=None,
+            expected_case_revision=None,
+            reason=None,
+            **window,  # type: ignore[arg-type]
+        )
+    except typer.BadParameter as exc:
+        # The CLI path re-raises provider/data failures as usage errors; the backfill needs the
+        # typed failure so one bad window is recorded and the run continues.
+        raise DataError(str(exc)) from exc
+
+
 @crypto_data_app.command("backfill")
 def backfill(
     provider: str,
@@ -3989,7 +4016,7 @@ def backfill(
             start=start_date,
             end=end_date,
             ledger_path=ledger_path,
-            acquire=_acquire_result,
+            acquire=_backfill_acquire,
             now=_now(),
             dry_run=dry_run,
             log=None if json_out else lambda line: typer.echo(line, err=True),

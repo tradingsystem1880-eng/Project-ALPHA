@@ -10,6 +10,7 @@ Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `
 |---|---|---|
 | `store.py` | Raw unadjusted Parquet store + fail-closed promotion markers and v1/v2 per-symbol provenance | `ParquetStore(root)`: bars/actions methods + provenance/promotion methods |
 | `pit.py` | **Look-ahead firewall** (frame-level) | `PointInTimeReader.as_of` (split-adjusted, future-excluded), `.dividends_as_of` |
+| `universe.py` + `store.py` universe seam (Phase B, 2026-09-10) | Point-in-time universe membership: `alpha_core.UniverseMembership` intervals (`effective_from` inclusive, `effective_to` exclusive, optional `delisting_return`), stored wholesale as `universe/<name>.json`; the only sanctioned read is `alpha_core.members_as_of(memberships, when)` (keeps later-removed names, hides future additions; guarded by `tests/bias_guards/test_universe_survivorship.py` with a survivors-only leaky twin) | `parse_universe_csv`, `ParquetStore.write_universe/read_universe/list_universes` |
 | `source.py` | Typed PIT `DataSource` seam | `PointInTimeSource.as_of` → `list[Bar]`, `.dividends_as_of` |
 | `corporate.py` | Two-clock split/div math | `known_actions`, `cash_dividends`, `split_factor` |
 | `snapshot.py` | Immutable hashed snapshots + manifest; copies/hashes legacy or v2 provenance sidecars and rejects source relabelling | `create_snapshot`, `verify_snapshot` |

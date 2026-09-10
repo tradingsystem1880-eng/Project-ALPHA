@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -107,7 +107,7 @@ def _fake_acquire(
         calls.append({"provider": provider, "family": family, "instrument": instrument, **kwargs})
         key = f"{instrument}|{kwargs.get('start')}|{kwargs.get('period')}"
         if key in fail_windows:
-            raise DataError("Bybit bounded window fills one provider page")
+            raise DataError("Bybit acquisition returned no observations inside the range")
         return {"normalized_manifest_id": f"m-{len(calls)}", "state": "qualified"}
 
     return acquire
@@ -177,7 +177,7 @@ def test_rerun_skips_done_windows_and_retries_failed_ones(tmp_path: Path) -> Non
         for e in json.loads((tmp_path / "ledger.json").read_text())["windows"].values()
         if e["state"] == "failed"
     )
-    assert "fills one provider page" in failed_entry["error"]
+    assert "no observations" in failed_entry["error"]
 
     calls.clear()
     second = run_backfill(
@@ -210,4 +210,127 @@ def test_ledger_rejects_a_mismatched_scope(tmp_path: Path) -> None:
             family="open_interest",
             category="linear",
             frequency="1h",
+        )
+
+
+def test_cli_wrapper_makes_every_unused_typer_default_an_explicit_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A typer.Option sentinel is not None; the in-process call must never leak one."""
+    from alpha_cli import crypto_data_cmds
+
+    seen: dict[str, Any] = {}
+
+    def fake(provider: str, family: str, instrument: str, **kwargs: Any) -> dict[str, object]:
+        seen.update(kwargs)
+        return {"normalized_manifest_id": "m", "state": "qualified"}
+
+    monkeypatch.setattr(crypto_data_cmds, "_acquire_result", fake)
+    crypto_data_cmds._backfill_acquire(
+        "bybit",
+        "funding",
+        "BTCUSDT",
+        base="BTC",
+        quote="USDT",
+        category="linear",
+        frequency="1h",
+        period=None,
+        start="2024-01-01T00:00:00Z",
+        end="2024-03-01T00:00:00Z",
+    )
+    for key in (
+        "network",
+        "pool_address",
+        "metrics",
+        "case_id",
+        "expected_case_revision",
+        "reason",
+    ):
+        assert key in seen and seen[key] is None
+
+
+def test_a_window_that_fills_a_page_is_halved_until_it_fits(tmp_path: Path) -> None:
+    """Hourly-funding perps overflow the 60-day page: the runner splits, never truncates."""
+    calls: list[dict[str, Any]] = []
+
+    def acquire(provider: str, family: str, instrument: str, **kwargs: Any) -> dict[str, object]:
+        calls.append(kwargs)
+        start = datetime.fromisoformat(kwargs["start"].replace("Z", "+00:00"))
+        end = datetime.fromisoformat(kwargs["end"].replace("Z", "+00:00"))
+        if end - start > timedelta(days=15):
+            raise DataError("Bybit bounded window fills one provider page; narrow the range")
+        return {"normalized_manifest_id": f"m-{len(calls)}", "state": "qualified"}
+
+    summary = run_backfill(
+        provider="bybit",
+        family="funding",
+        symbols=["HOURLYUSDT"],
+        quote="USDT",
+        category="linear",
+        frequency="1h",
+        start=date(2024, 1, 1),
+        end=date(2024, 3, 1),
+        ledger_path=tmp_path / "ledger.json",
+        acquire=acquire,
+        now=NOW,
+        pause_seconds=0.0,
+    )
+    # 60 -> 30 -> 15: one planned window, three splits, four leaves acquired.
+    assert summary["windows_total"] == 1 and summary["split"] == 3
+    assert summary["done"] == 4 and summary["failed"] == 0
+    leaves = [
+        c
+        for c in calls
+        if c["end"] != "2024-03-01T00:00:00Z" or c["start"] != "2024-01-01T00:00:00Z"
+    ]
+    assert len(calls) == 7 and len(leaves) == 6
+    ledger = json.loads((tmp_path / "ledger.json").read_text())
+    assert sum(e["state"] == "split" for e in ledger["windows"].values()) == 3
+    assert sum(e["state"] == "done" for e in ledger["windows"].values()) == 4
+
+
+def test_a_one_day_window_that_still_overflows_is_recorded_failed(tmp_path: Path) -> None:
+    def acquire(provider: str, family: str, instrument: str, **kwargs: Any) -> dict[str, object]:
+        raise DataError("Bybit bounded window fills one provider page")
+
+    summary = run_backfill(
+        provider="bybit",
+        family="derivative_bars",
+        symbols=["BTCUSDT"],
+        quote="USDT",
+        category="linear",
+        frequency="5m",
+        start=date(2024, 1, 1),
+        end=date(2024, 1, 4),
+        ledger_path=tmp_path / "ledger.json",
+        acquire=acquire,
+        now=NOW,
+        pause_seconds=0.0,
+    )
+    assert summary["done"] == 0 and summary["failed"] != 0
+
+
+def test_cli_wrapper_turns_usage_errors_into_typed_data_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import typer
+
+    from alpha_cli import crypto_data_cmds
+
+    def boom(*args: Any, **kwargs: Any) -> dict[str, object]:
+        raise typer.BadParameter("Bybit acquisition returned no observations inside the range")
+
+    monkeypatch.setattr(crypto_data_cmds, "_acquire_result", boom)
+    with pytest.raises(DataError, match="no observations"):
+        crypto_data_cmds._backfill_acquire(
+            "bybit",
+            "funding",
+            "BTCUSDT",
+            base="BTC",
+            quote="USDT",
+            category="linear",
+            frequency="1h",
+            period=None,
+            start="2024-01-01T00:00:00Z",
+            end="2024-02-01T00:00:00Z",
         )
