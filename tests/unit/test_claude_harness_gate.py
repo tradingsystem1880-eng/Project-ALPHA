@@ -1078,6 +1078,23 @@ class TestQuantRigorTooling:
         (repo / ".semgrep" / "alpha.yml").write_text("rules: []\n")
         assert "semgrep" in [name for name, _ in gate.gate_steps("fast", repo)]
 
+    def test_full_gate_pytest_runs_in_parallel_with_coverage(self, repo: Path) -> None:
+        """Phase A S1: the sequential pytest step was 609 s of a 616 s gate; xdist runs the
+        same selection in parallel and coverage is still combined across workers."""
+        argv = dict(gate.gate_steps("full", repo))["pytest + coverage"]
+        assert "-n" in argv and argv[argv.index("-n") + 1] == "auto"
+        assert "--cov" in argv
+        assert argv[argv.index("-m") + 1] == "not network and not slow_oracle"
+
+    def test_fast_gate_runs_the_alpha_tier_without_platform_tests(self, repo: Path) -> None:
+        """Phase A S2: a Stop stamp must prove the alpha-relevant tests pass, so the fast tier
+        runs everything not marked ``platform`` in parallel and without coverage."""
+        argv = dict(gate.gate_steps("fast", repo))["pytest fast"]
+        assert "-n" in argv and argv[argv.index("-n") + 1] == "auto"
+        assert argv[argv.index("-m") + 1] == "not platform and not network and not slow_oracle"
+        assert "--cov" not in argv
+        assert "no:cacheprovider" in argv
+
 
 class TestAuditDigest:
     """`gate.py audit --digest` is the escape logbook: counts and paths, never contents."""

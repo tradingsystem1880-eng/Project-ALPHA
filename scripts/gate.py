@@ -946,15 +946,44 @@ def gate_steps(tier: str, root: Path | None = None) -> list[tuple[str, list[str]
     ]
     if (base / SEMGREP_RULES).is_file():
         fast.append(("semgrep", [sys.executable, "scripts/gate.py", "semgrep", "--changed"]))
+    # The alpha tier: everything not marked ``platform`` (tests/conftest.py classifies by path),
+    # in parallel and without coverage, so a Stop stamp proves the edge-relevant tests pass.
+    fast.append(
+        (
+            "pytest fast",
+            [
+                "uv",
+                "run",
+                "pytest",
+                "-q",
+                "-n",
+                "auto",
+                "-p",
+                "no:cacheprovider",
+                "-m",
+                "not platform and not network and not slow_oracle",
+            ],
+        )
+    )
     if tier == "fast":
         return fast
     full = [
         ("uv lock", ["uv", "lock", "--check"]),
         ("uv sync", ["uv", "sync", "--locked"]),
-        *fast,
+        *[step for step in fast if step[0] != "pytest fast"],
         (
             "pytest + coverage",
-            ["uv", "run", "pytest", "-q", "-m", "not network and not slow_oracle", "--cov"],
+            [
+                "uv",
+                "run",
+                "pytest",
+                "-q",
+                "-n",
+                "auto",
+                "-m",
+                "not network and not slow_oracle",
+                "--cov",
+            ],
         ),
         (
             "openapi freshness",

@@ -59,6 +59,7 @@ dev = [
     "import-linter>=2.1",
     "pandas-stubs>=2.0",
     "pytest-cov>=6",
+    "pytest-xdist>=3.6",
     "httpx2>=0.1",
 ]
 
@@ -132,6 +133,7 @@ markers = [
     "oracle: fast metamorphic / differential oracle tests over statistical primitives",
     "slow_oracle: known-truth calibration and coverage oracles (nightly + on-touch of quant modules)",
     "holdout: hidden behaviour tests the authoring agent never reads or edits (tests/holdout)",
+    "platform: control-plane / serving / wire-parser / harness tests, applied by tests/conftest.py from tests/_tiers.py; the fast gate runs `not platform`",
 ]
 filterwarnings = [
     "error",

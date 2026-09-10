@@ -46,9 +46,15 @@ It is a pure content hash: any byte change anywhere invalidates it; a pure `git 
 `.claude/state/` is gitignored, so harness bookkeeping never perturbs the hash.
 
 - `gate.py fast` — ruff check, ruff format --check, lint-imports, mypy (repo + harness),
-  `lint-harness`, semgrep on changed files.
-- `gate.py full` — uv lock --check, uv sync --locked, fast steps, pytest -m "not network"
-  --cov (holdout included), OpenAPI freshness, uv build --all-packages, 14-wheel import smoke
+  `lint-harness`, semgrep on changed files, then the **alpha tier**: `pytest -n auto -m "not
+  platform and not network and not slow_oracle"` (~1,700 tests, ~45 s on 10 cores, no
+  coverage). `tests/conftest.py` applies the `platform` marker from the pure path classifier
+  `tests/_tiers.py::classify_platform` (control plane, serving, wire parsers, rendering, harness
+  are platform; PIT, backtest, validation, strategies, patterns, research statistics, bias
+  guards, oracles, holdout are alpha). New tests default to the alpha tier.
+- `gate.py full` — uv lock --check, uv sync --locked, fast lint/type steps, pytest `-n auto`
+  -m "not network" --cov (whole suite incl. holdout, pytest-xdist, coverage combined; ~3 min),
+  OpenAPI freshness, uv build --all-packages, 14-wheel import smoke
   (byte-mirrors `.github/workflows/ci.yml`); when a quant SOURCE module changed it also
   runs the `slow_oracle` suites and the mutation gate for those modules.
 - The stamp is deleted at gate start and written only on full success; `check --tier
