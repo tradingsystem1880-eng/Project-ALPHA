@@ -206,7 +206,10 @@ def run_backfill(
                 return
             counts["failed"] += 1
             failures.append({"key": key, "error": str(exc)})
-            ledger.record(key, {"state": "failed", "error": str(exc), "at": _iso(now)})
+            entry: dict[str, Any] = {"state": "failed", "error": str(exc), "at": _iso(now)}
+            if exc.__cause__ is not None:
+                entry["cause"] = repr(exc.__cause__)  # the wire layer chains the transport error
+            ledger.record(key, entry)
             if log is not None:
                 log(f"FAILED {key}: {exc}")
         else:

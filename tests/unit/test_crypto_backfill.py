@@ -107,7 +107,12 @@ def _fake_acquire(
         calls.append({"provider": provider, "family": family, "instrument": instrument, **kwargs})
         key = f"{instrument}|{kwargs.get('start')}|{kwargs.get('period')}"
         if key in fail_windows:
-            raise DataError("Bybit acquisition returned no observations inside the range")
+            try:
+                raise TimeoutError("timed out")
+            except TimeoutError as exc:
+                raise DataError(
+                    "Bybit acquisition returned no observations inside the range"
+                ) from exc
         return {"normalized_manifest_id": f"m-{len(calls)}", "state": "qualified"}
 
     return acquire
@@ -178,6 +183,7 @@ def test_rerun_skips_done_windows_and_retries_failed_ones(tmp_path: Path) -> Non
         if e["state"] == "failed"
     )
     assert "no observations" in failed_entry["error"]
+    assert failed_entry["cause"] == "TimeoutError('timed out')"
 
     calls.clear()
     second = run_backfill(
