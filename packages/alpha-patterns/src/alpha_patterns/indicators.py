@@ -22,6 +22,7 @@ so the detection layer keeps its numpy purity while a seasonality study still ge
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -59,6 +60,19 @@ def rolling_mean(values: FloatArray, window: int) -> FloatArray:
     idx = np.arange(values.size)
     lo = np.maximum(0, idx - window + 1)
     return np.asarray((csum[idx + 1] - csum[lo]) / (idx - lo + 1).astype(np.float64))
+
+
+def rolling_median(values: FloatArray, window: int) -> FloatArray:
+    """Causal median over ``values[i-window+1 .. i]``; NaN until a full window exists.
+
+    Unlike ``rolling_mean`` this does not shorten the window at the head: a median of two bars is
+    not a robust centre, and the ported volume-normalisation studies treat the warm-up as unknown.
+    """
+    _check_window(window, "rolling_median", values.size)
+    out = np.full(values.size, np.nan)
+    for i in range(window - 1, values.size):
+        out[i] = np.median(values[i - window + 1 : i + 1])
+    return out
 
 
 def rolling_std(values: FloatArray, window: int) -> FloatArray:
@@ -170,6 +184,20 @@ def rsi(closes: FloatArray, window: int = RSI_WINDOW) -> FloatArray:
         avg_loss = (avg_loss * (window - 1) + losses[i - 1]) / window
         out[i] = _rsi_value(avg_gain, avg_loss)
     return out
+
+
+def rsi_matrix(closes: FloatArray, periods: Sequence[int]) -> FloatArray:
+    """One ``rsi`` column per period, shape ``(n, len(periods))``: the multi-horizon RSI feature
+    block the rolling-PCA study reduces. Each column keeps ``rsi``'s own warm-up convention.
+
+    Provenance: github.com/neurotrader888/RSI-PCA/rsi_behavior.py@f3b9735 (MIT); the feature
+    layout only, computed with ALPHA's ``rsi``.
+    """
+    if not periods:
+        raise DataError("rsi_matrix needs at least one period")
+    if len(set(periods)) != len(periods):
+        raise DataError(f"rsi_matrix periods must be unique, got {list(periods)}")
+    return np.column_stack([rsi(closes, int(p)) for p in periods])
 
 
 def _rsi_value(avg_gain: float, avg_loss: float) -> float:

@@ -161,6 +161,9 @@ class HSEvent:
     stop_head: float  # beyond the head — the Quasimodo stop
     stop_rs: float  # beyond the right shoulder — the H&S stop
 
+    # shape fidelity ------------------------------------------------------
+    pattern_r2: float  # R² of the LS→N1→head→N2→RS close polyline vs closes over [LS, RS]
+
     @property
     def is_quasimodo(self) -> bool:
         return self.has_bos
@@ -389,7 +392,27 @@ def _try_build(
         target_measured=target,
         stop_head=head.price,
         stop_rs=rs.price,
+        pattern_r2=_pattern_r2(bars.close, (ls.index, n1.index, head.index, n2.index, rs.index)),
     )
+
+
+def _pattern_r2(close: FloatArray, anchors: tuple[int, ...]) -> float:
+    """Coefficient of determination of the piecewise-linear close path through ``anchors``.
+
+    How much of the close variance over the structure the five-point outline explains: 1.0 is a
+    textbook picture, low values mean the anchors sit on a noisy path. NaN when the closes are
+    flat over the span (no variance to explain). Uses closes at the anchor bars only, so it is
+    knowable at the right shoulder. Provenance: the ``compute_pattern_r2`` idea in
+    github.com/neurotrader888/TechnicalAnalysisAutomation/head_shoulders.py@da99c20 (MIT), which
+    fits from the pattern start to the neckline break; ALPHA fits the confirmed structure only.
+    """
+    lo, hi = anchors[0], anchors[-1]
+    actual = close[lo : hi + 1]
+    model = np.interp(np.arange(lo, hi + 1), np.asarray(anchors), close[list(anchors)])
+    ss_tot = float(np.sum((actual - actual.mean()) ** 2))
+    if ss_tot <= 0.0:
+        return float("nan")
+    return 1.0 - float(np.sum((actual - model) ** 2)) / ss_tot
 
 
 def _neckline_series(n1: Swing, n2: Swing, lo: int, hi: int) -> FloatArray:
