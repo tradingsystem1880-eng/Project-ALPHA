@@ -61,6 +61,19 @@ def rolling_mean(values: FloatArray, window: int) -> FloatArray:
     return np.asarray((csum[idx + 1] - csum[lo]) / (idx - lo + 1).astype(np.float64))
 
 
+def rolling_median(values: FloatArray, window: int) -> FloatArray:
+    """Causal median over ``values[i-window+1 .. i]``; NaN until a full window exists.
+
+    Unlike ``rolling_mean`` this does not shorten the window at the head: a median of two bars is
+    not a robust centre, and the ported volume-normalisation studies treat the warm-up as unknown.
+    """
+    _check_window(window, "rolling_median", values.size)
+    out = np.full(values.size, np.nan)
+    for i in range(window - 1, values.size):
+        out[i] = np.median(values[i - window + 1 : i + 1])
+    return out
+
+
 def rolling_std(values: FloatArray, window: int) -> FloatArray:
     """Causal population standard deviation over the trailing window.
 

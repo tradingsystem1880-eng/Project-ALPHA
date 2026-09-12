@@ -27,8 +27,9 @@ from dataclasses import dataclass
 import numpy as np
 
 from alpha_core import DataError
+from alpha_patterns.indicators import rolling_median
 from alpha_patterns.oscillators import directional_index
-from alpha_patterns.series import OHLCV, FloatArray, IntArray
+from alpha_patterns.series import OHLCV, FloatArray, IntArray, log_atr
 
 _LINE_TOLERANCE = 1e-5
 _MIN_STEP = 0.0001
@@ -194,25 +195,6 @@ class BreakoutTrade:
         return self.log_return > 0.0
 
 
-def _log_atr(bars: OHLCV, window: int) -> FloatArray:
-    """Causal simple-mean ATR of log prices (ALPHA's ``atr`` convention, on a log scale)."""
-    h, lo, c = np.log(bars.high), np.log(bars.low), np.log(bars.close)
-    prev_c = np.concatenate(([c[0]], c[:-1]))
-    tr = np.maximum(h - lo, np.maximum(np.abs(h - prev_c), np.abs(lo - prev_c)))
-    csum = np.concatenate(([0.0], np.cumsum(tr)))
-    idx = np.arange(tr.size)
-    lo_i = np.maximum(0, idx - window + 1)
-    return np.asarray((csum[idx + 1] - csum[lo_i]) / (idx - lo_i + 1), dtype=np.float64)
-
-
-def _trailing_median_ratio(values: FloatArray, window: int) -> FloatArray:
-    out = np.full(values.size, np.nan)
-    for i in range(window - 1, values.size):
-        med = float(np.median(values[i - window + 1 : i + 1]))
-        out[i] = values[i] / med if med > 0.0 else np.nan
-    return out
-
-
 def breakout_features(
     bars: OHLCV,
     *,
@@ -239,8 +221,8 @@ def breakout_features(
     if n <= atr_lookback:
         return []
     close = np.log(bars.close)
-    atr = _log_atr(bars, atr_lookback)
-    vol_ratio = _trailing_median_ratio(bars.volume, atr_lookback)
+    atr = log_atr(bars, atr_lookback)
+    vol_ratio = bars.volume / rolling_median(bars.volume, atr_lookback)
     adx = directional_index(bars, window=lookback).adx
     trades: list[BreakoutTrade] = []
     pending: dict[str, float] | None = None

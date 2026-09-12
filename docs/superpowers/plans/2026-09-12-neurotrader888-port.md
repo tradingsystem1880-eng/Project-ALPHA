@@ -145,7 +145,8 @@
         "tests/unit/test_hawkes.py",
         "tests/unit/test_vsa.py",
         "tests/unit/test_vol_indicators_bias_guard.py"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "A6 runs.py + entropy.py + cmma.py + indicators.rsi_matrix (commit 1) and visibility.py + reversibility.py (commit 2)",

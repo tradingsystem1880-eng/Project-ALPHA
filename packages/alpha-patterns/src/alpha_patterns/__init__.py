@@ -54,6 +54,7 @@ from alpha_patterns.harmonics import (
     harmonics_known_by,
     ratio_error,
 )
+from alpha_patterns.hawkes import hawkes_process, hawkes_vol_signal
 from alpha_patterns.head_shoulders import (
     VARIANT_NAMES,
     HSConfig,
@@ -75,6 +76,7 @@ from alpha_patterns.indicators import (
     realized_volatility,
     rolling_correlation,
     rolling_mean,
+    rolling_median,
     rolling_std,
     rsi,
     volume_ratio,
@@ -87,6 +89,12 @@ from alpha_patterns.levels import (
     nearest_fib_distance,
     round_levels,
     round_number_distance,
+)
+from alpha_patterns.market_profile import (
+    MarketProfile,
+    market_profile,
+    sr_penetration_signal,
+    support_resistance_levels,
 )
 from alpha_patterns.market_structure import (
     ATRDirectionalChange,
@@ -124,6 +132,7 @@ from alpha_patterns.series import (
     FloatArray,
     IntArray,
     atr,
+    log_atr,
     rolling_max,
     rolling_min,
     rolling_vwap,
@@ -173,6 +182,7 @@ from alpha_patterns.triple_tap import (
     detect_nth_taps,
     detect_triple_taps,
 )
+from alpha_patterns.vsa import rolling_ols_residual, vsa_indicator
 from alpha_patterns.wedge import (
     KIND_CODES,
     Wedge,
@@ -219,6 +229,7 @@ __all__ = [
     "LeadLag",
     "LocalExtreme",
     "MACD",
+    "MarketProfile",
     "MatchedControls",
     "OHLCV",
     "OrderBlock",
@@ -288,6 +299,8 @@ __all__ = [
     "flags_known_by",
     "geometric_brownian_series",
     "harmonics_known_by",
+    "hawkes_process",
+    "hawkes_vol_signal",
     "hierarchical_extremes",
     "hurst_exponent",
     "hurst_random_walk_reference",
@@ -299,8 +312,10 @@ __all__ = [
     "keltner_channel",
     "last_pivot_before",
     "levels",
+    "log_atr",
     "log_returns",
     "macd",
+    "market_profile",
     "money_flow_index",
     "nearest_fib_distance",
     "on_balance_volume",
@@ -314,7 +329,9 @@ __all__ = [
     "rolling_hurst",
     "rolling_max",
     "rolling_mean",
+    "rolling_median",
     "rolling_min",
+    "rolling_ols_residual",
     "rolling_std",
     "rolling_variance_ratio",
     "rolling_vwap",
@@ -323,7 +340,9 @@ __all__ = [
     "rsi",
     "sample_matched_controls",
     "squeeze",
+    "sr_penetration_signal",
     "stochastic",
+    "support_resistance_levels",
     "swing_sequence",
     "swings_known_by",
     "trend_state_ma",
@@ -333,6 +352,7 @@ __all__ = [
     "typical_price",
     "variance_ratio",
     "volume_ratio",
+    "vsa_indicator",
     "wedge_lines",
     "wedge_panel",
     "wilder_smooth",
