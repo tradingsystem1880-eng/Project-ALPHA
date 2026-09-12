@@ -126,7 +126,8 @@
         "tests/unit/test_harmonics.py",
         "tests/unit/test_flags.py",
         "tests/unit/test_harmonics_flags_bias_guard.py"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "A5 _kde.py (weighted Gaussian KDE, Scott's rule) + market_profile.py (support_resistance_levels, sr_penetration_signal) + hawkes.py (hawkes_process, hawkes_vol_signal) + vsa.py (rolling_ols_residual, vsa_indicator); split into two commits if > 1000 lines",

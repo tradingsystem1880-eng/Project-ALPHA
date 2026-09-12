@@ -39,6 +39,12 @@ from alpha_patterns.cycles import (
     variance_ratio,
 )
 from alpha_patterns.directional_change import DCExtreme, dc_known_by, directional_change
+from alpha_patterns.flags import (
+    FlagPattern,
+    detect_flags_pips,
+    detect_flags_trendline,
+    flags_known_by,
+)
 from alpha_patterns.harmonics import (
     HARMONIC_RATIOS,
     HarmonicPattern,
@@ -198,6 +204,7 @@ __all__ = [
     "FairValueGap",
     "FibGrid",
     "FittedLine",
+    "FlagPattern",
     "FloatArray",
     "HARMONIC_RATIOS",
     "HSConfig",
@@ -254,6 +261,8 @@ __all__ = [
     "cross_correlation_lags",
     "cycles",
     "dc_known_by",
+    "detect_flags_pips",
+    "detect_flags_trendline",
     "detect_harmonics",
     "detect_head_shoulders",
     "detect_nth_taps",
@@ -276,6 +285,7 @@ __all__ = [
     "find_swings",
     "fit_trendlines_high_low",
     "fit_trendlines_single",
+    "flags_known_by",
     "geometric_brownian_series",
     "harmonics_known_by",
     "hierarchical_extremes",
