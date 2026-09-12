@@ -38,6 +38,7 @@ from alpha_patterns.cycles import (
     rolling_variance_ratio,
     variance_ratio,
 )
+from alpha_patterns.directional_change import DCExtreme, dc_known_by, directional_change
 from alpha_patterns.head_shoulders import (
     VARIANT_NAMES,
     HSConfig,
@@ -93,6 +94,7 @@ from alpha_patterns.oscillators import (
     wilder_smooth,
     williams_r,
 )
+from alpha_patterns.pips import PipDistance, PipWindows, find_pips, pip_windows
 from alpha_patterns.series import (
     OHLCV,
     FloatArray,
@@ -158,6 +160,7 @@ __all__ = [
     "CalendarFeatures",
     "Channel",
     "Cycle",
+    "DCExtreme",
     "Direction",
     "DirectionalIndex",
     "FIB_EXTENSIONS",
@@ -175,6 +178,8 @@ __all__ = [
     "MatchedControls",
     "OHLCV",
     "OrderBlock",
+    "PipDistance",
+    "PipWindows",
     "Population",
     "RSI_WINDOW",
     "Scale",
@@ -207,10 +212,12 @@ __all__ = [
     "consolidation_length",
     "cross_correlation_lags",
     "cycles",
+    "dc_known_by",
     "detect_head_shoulders",
     "detect_nth_taps",
     "detect_triple_taps",
     "detect_wedges",
+    "directional_change",
     "directional_index",
     "distance_from_low",
     "dominant_cycle",
@@ -221,6 +228,7 @@ __all__ = [
     "find_breaks",
     "find_fair_value_gaps",
     "find_order_blocks",
+    "find_pips",
     "find_swings",
     "geometric_brownian_series",
     "hurst_exponent",
@@ -240,6 +248,7 @@ __all__ = [
     "on_balance_volume",
     "oscillators",
     "percentile_rank",
+    "pip_windows",
     "realized_volatility",
     "rolling_autocorrelation",
     "rolling_correlation",

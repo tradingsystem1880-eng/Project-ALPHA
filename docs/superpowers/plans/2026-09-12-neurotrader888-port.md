@@ -66,7 +66,8 @@
         "docs/governance/README.md",
         "docs/governance/2026-07-19-dependency-license-matrix.md",
         "tests/fixtures/neurotrader/"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "A1 directional_change.py + pips.py (sigma directional change with confirmed_index/dc_known_by; find_pips euclid/perp/vertical; z-scored pip_windows) + find_swings equivalence test for upstream rolling_window",
@@ -81,7 +82,8 @@
         "tests/unit/test_directional_change.py",
         "tests/unit/test_pips.py",
         "tests/unit/test_dc_pips_bias_guard.py"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "A2 market_structure.py (LocalExtreme, extremes_sanity_checks raising DataError, streaming ATRDirectionalChange.update, HierarchicalExtremes with lag access)",
