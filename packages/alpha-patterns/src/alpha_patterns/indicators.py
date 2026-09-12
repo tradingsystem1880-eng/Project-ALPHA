@@ -22,6 +22,7 @@ so the detection layer keeps its numpy purity while a seasonality study still ge
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -183,6 +184,20 @@ def rsi(closes: FloatArray, window: int = RSI_WINDOW) -> FloatArray:
         avg_loss = (avg_loss * (window - 1) + losses[i - 1]) / window
         out[i] = _rsi_value(avg_gain, avg_loss)
     return out
+
+
+def rsi_matrix(closes: FloatArray, periods: Sequence[int]) -> FloatArray:
+    """One ``rsi`` column per period, shape ``(n, len(periods))``: the multi-horizon RSI feature
+    block the rolling-PCA study reduces. Each column keeps ``rsi``'s own warm-up convention.
+
+    Provenance: github.com/neurotrader888/RSI-PCA/rsi_behavior.py@f3b9735 (MIT); the feature
+    layout only, computed with ALPHA's ``rsi``.
+    """
+    if not periods:
+        raise DataError("rsi_matrix needs at least one period")
+    if len(set(periods)) != len(periods):
+        raise DataError(f"rsi_matrix periods must be unique, got {list(periods)}")
+    return np.column_stack([rsi(closes, int(p)) for p in periods])
 
 
 def _rsi_value(avg_gain: float, avg_loss: float) -> float:

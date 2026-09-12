@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from importlib.metadata import version
 
+from alpha_patterns.cmma import cmma, intermarket_difference, threshold_revert_signal
 from alpha_patterns.context import (
     Direction,
     FairValueGap,
@@ -39,6 +40,7 @@ from alpha_patterns.cycles import (
     variance_ratio,
 )
 from alpha_patterns.directional_change import DCExtreme, dc_known_by, directional_change
+from alpha_patterns.entropy import ordinal_patterns, permutation_entropy
 from alpha_patterns.flags import (
     FlagPattern,
     detect_flags_pips,
@@ -79,6 +81,7 @@ from alpha_patterns.indicators import (
     rolling_median,
     rolling_std,
     rsi,
+    rsi_matrix,
     volume_ratio,
 )
 from alpha_patterns.levels import (
@@ -127,6 +130,7 @@ from alpha_patterns.oscillators import (
     williams_r,
 )
 from alpha_patterns.pips import PipDistance, PipWindows, find_pips, pip_windows
+from alpha_patterns.runs import rolling_runs_z, runs_z
 from alpha_patterns.series import (
     OHLCV,
     FloatArray,
@@ -268,6 +272,7 @@ __all__ = [
     "build_trendlines",
     "calendar_features",
     "chaikin_money_flow",
+    "cmma",
     "consolidation_length",
     "cross_correlation_lags",
     "cycles",
@@ -309,6 +314,7 @@ __all__ = [
     "inject_head_shoulders",
     "inject_triple_tap",
     "inject_wedge",
+    "intermarket_difference",
     "keltner_channel",
     "last_pivot_before",
     "levels",
@@ -319,8 +325,10 @@ __all__ = [
     "money_flow_index",
     "nearest_fib_distance",
     "on_balance_volume",
+    "ordinal_patterns",
     "oscillators",
     "percentile_rank",
+    "permutation_entropy",
     "pip_windows",
     "ratio_error",
     "realized_volatility",
@@ -332,12 +340,15 @@ __all__ = [
     "rolling_median",
     "rolling_min",
     "rolling_ols_residual",
+    "rolling_runs_z",
     "rolling_std",
     "rolling_variance_ratio",
     "rolling_vwap",
     "round_levels",
     "round_number_distance",
     "rsi",
+    "rsi_matrix",
+    "runs_z",
     "sample_matched_controls",
     "squeeze",
     "sr_penetration_signal",
@@ -345,6 +356,7 @@ __all__ = [
     "support_resistance_levels",
     "swing_sequence",
     "swings_known_by",
+    "threshold_revert_signal",
     "trend_state_ma",
     "trend_state_vwap",
     "trendline_breakout",
