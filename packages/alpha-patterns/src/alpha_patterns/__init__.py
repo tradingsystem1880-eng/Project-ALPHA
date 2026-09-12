@@ -39,6 +39,15 @@ from alpha_patterns.cycles import (
     variance_ratio,
 )
 from alpha_patterns.directional_change import DCExtreme, dc_known_by, directional_change
+from alpha_patterns.harmonics import (
+    HARMONIC_RATIOS,
+    HarmonicPattern,
+    HarmonicRatios,
+    HarmonicScan,
+    detect_harmonics,
+    harmonics_known_by,
+    ratio_error,
+)
 from alpha_patterns.head_shoulders import (
     VARIANT_NAMES,
     HSConfig,
@@ -190,8 +199,12 @@ __all__ = [
     "FibGrid",
     "FittedLine",
     "FloatArray",
+    "HARMONIC_RATIOS",
     "HSConfig",
     "HSEvent",
+    "HarmonicPattern",
+    "HarmonicRatios",
+    "HarmonicScan",
     "HierarchicalExtremes",
     "Ichimoku",
     "IntArray",
@@ -241,6 +254,7 @@ __all__ = [
     "cross_correlation_lags",
     "cycles",
     "dc_known_by",
+    "detect_harmonics",
     "detect_head_shoulders",
     "detect_nth_taps",
     "detect_triple_taps",
@@ -263,6 +277,7 @@ __all__ = [
     "fit_trendlines_high_low",
     "fit_trendlines_single",
     "geometric_brownian_series",
+    "harmonics_known_by",
     "hierarchical_extremes",
     "hurst_exponent",
     "hurst_random_walk_reference",
@@ -282,6 +297,7 @@ __all__ = [
     "oscillators",
     "percentile_rank",
     "pip_windows",
+    "ratio_error",
     "realized_volatility",
     "rolling_autocorrelation",
     "rolling_correlation",
