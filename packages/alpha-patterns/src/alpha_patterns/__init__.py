@@ -130,6 +130,13 @@ from alpha_patterns.oscillators import (
     williams_r,
 )
 from alpha_patterns.pips import PipDistance, PipWindows, find_pips, pip_windows
+from alpha_patterns.reversibility import (
+    async_index,
+    perm_ts_reversibility,
+    relative_async_index,
+    rolling_perm_reversibility,
+    rolling_relative_async_index,
+)
 from alpha_patterns.runs import rolling_runs_z, runs_z
 from alpha_patterns.series import (
     OHLCV,
@@ -186,6 +193,12 @@ from alpha_patterns.triple_tap import (
     detect_nth_taps,
     detect_triple_taps,
 )
+from alpha_patterns.visibility import (
+    MAX_VG_LOOKBACK,
+    average_shortest_path,
+    rolling_vg_shortest_path,
+    visibility_graph,
+)
 from alpha_patterns.vsa import rolling_ols_residual, vsa_indicator
 from alpha_patterns.wedge import (
     KIND_CODES,
@@ -233,6 +246,7 @@ __all__ = [
     "LeadLag",
     "LocalExtreme",
     "MACD",
+    "MAX_VG_LOOKBACK",
     "MarketProfile",
     "MatchedControls",
     "OHLCV",
@@ -263,9 +277,11 @@ __all__ = [
     "WedgePanel",
     "WedgeTruth",
     "__version__",
+    "async_index",
     "atr",
     "atr_directional_change",
     "autocorrelation",
+    "average_shortest_path",
     "bollinger_bandwidth",
     "break_of_structure",
     "breakout_features",
@@ -328,10 +344,12 @@ __all__ = [
     "ordinal_patterns",
     "oscillators",
     "percentile_rank",
+    "perm_ts_reversibility",
     "permutation_entropy",
     "pip_windows",
     "ratio_error",
     "realized_volatility",
+    "relative_async_index",
     "rolling_autocorrelation",
     "rolling_correlation",
     "rolling_hurst",
@@ -340,9 +358,12 @@ __all__ = [
     "rolling_median",
     "rolling_min",
     "rolling_ols_residual",
+    "rolling_perm_reversibility",
+    "rolling_relative_async_index",
     "rolling_runs_z",
     "rolling_std",
     "rolling_variance_ratio",
+    "rolling_vg_shortest_path",
     "rolling_vwap",
     "round_levels",
     "round_number_distance",
@@ -363,6 +384,7 @@ __all__ = [
     "true_range",
     "typical_price",
     "variance_ratio",
+    "visibility_graph",
     "volume_ratio",
     "vsa_indicator",
     "wedge_lines",

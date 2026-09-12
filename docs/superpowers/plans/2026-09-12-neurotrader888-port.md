@@ -168,7 +168,8 @@
         "tests/unit/test_visibility.py",
         "tests/unit/test_reversibility.py",
         "tests/unit/test_complexity_bias_guard.py"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "A7 HSEvent.neckline_r2 + export audit + alpha-patterns rule table complete + uv run pytest -m bias_guard sweep",
