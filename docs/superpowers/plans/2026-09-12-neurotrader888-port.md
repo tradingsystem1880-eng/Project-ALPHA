@@ -110,7 +110,8 @@
         ".claude/rules/alpha-patterns.md",
         "tests/unit/test_trendline_fit.py",
         "tests/unit/test_trendline_fit_bias_guard.py"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "A4 harmonics.py (HARMONIC_RATIOS for Gartley/Bat/Butterfly/Crab/DeepCrab/Cypher/Shark, log-ratio error, detect_harmonics over DC extremes) and flags.py (FlagPattern, detect_flags_pips, detect_flags_trendline) as two commits",
