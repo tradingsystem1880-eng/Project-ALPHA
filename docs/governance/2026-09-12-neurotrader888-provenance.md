@@ -25,33 +25,33 @@ upstream code in a scratch environment and stored as small JSON arrays with name
 
 ## Mapping (upstream file → ALPHA module)
 
-| Repo @ head | Upstream file | ALPHA destination | Deviations (to be finalised per slice) |
+| Repo @ head | Upstream file | ALPHA destination | Deviations (stream A delivered 2026-09-12) |
 |---|---|---|---|
 | TechnicalAnalysisAutomation @ da99c20 | `rolling_window.py` | **not ported** — `alpha_patterns.swings.find_swings` + `swings_known_by` | upstream tie rule is strict on both sides; ALPHA is strict-left/non-strict-right; equivalence test pins the rest |
-| | `directional_change.py` | `alpha_patterns/directional_change.py` | extremes carry `confirmed_index`; DataFrame wrapper dropped |
-| | `perceptually_important.py` | `alpha_patterns/pips.py` | adds `pip_windows` (z-scored, `end_index`) |
-| | `head_shoulders.py` | **not ported** — `alpha_patterns.head_shoulders.detect_head_shoulders`; `HSEvent.neckline_r2` added | upstream forward-return helper is not a detector output |
-| | `flags_pennants.py` | `alpha_patterns/flags.py` | breakout searched strictly after confirmation |
-| | `harmonic_patterns.py` | `alpha_patterns/harmonics.py` | D confirmation index recorded |
+| | `directional_change.py` | `alpha_patterns/directional_change.py` | extremes carry `confirmed_index`; DataFrame wrapper and plotting dropped; exact parity |
+| | `perceptually_important.py` | `alpha_patterns/pips.py` | adds `pip_windows` (z-scored, `end_index`); a fully collinear window still selects a bar (upstream inserts index -1); exact parity otherwise |
+| | `head_shoulders.py` | **not ported** — `alpha_patterns.head_shoulders.detect_head_shoulders`; `HSEvent.neckline_r2` added | `HSEvent.pattern_r2` added (R² of the LS→N1→head→N2→RS close polyline; upstream `compute_pattern_r2` runs start→break); forward-return helper not ported |
+| | `flags_pennants.py` | `alpha_patterns/flags.py` | upstream rolling-window top/bottom test kept as a private helper for exact confirmation timing; exact parity for both variants |
+| | `harmonic_patterns.py` | `alpha_patterns/harmonics.py` | `confirmed_index == d`; a zero-height leg is skipped instead of raising from `log`; exact parity on 93 patterns |
 | | `retracement_ratios.py` | `alpha_research/retracements.py` | scipy KDE, peak list returned instead of a plot |
-| | `mp_support_resist.py` | `alpha_patterns/market_profile.py` + `_kde.py` | numpy weighted KDE (Scott's rule) instead of scipy; signal at i uses levels from i−1 |
-| | `trendline_automation.py` | `alpha_patterns/trendline_fit.py` | pure numpy, unchanged algorithm |
+| | `mp_support_resist.py` | `alpha_patterns/market_profile.py` + `_kde.py` | numpy weighted KDE and prominence peaks with SciPy's conventions (differential-tested); causal simple-mean `log_atr` instead of pandas_ta Wilder ATR; as upstream, the signal at i tests against the levels of bar i; exact parity with the ATR supplied |
+| | `trendline_automation.py` | `alpha_patterns/trendline_fit.py` | pure numpy, unchanged algorithm; exact parity |
 | | `pip_pattern_miner.py`, `wf_pip_miner.py` | `alpha_research/pip_miner.py` | numpy k-means++/silhouette replaces pyclustering; labels crossing `train_end` rejected; explicit seed |
 | TrendLineAutomation @ 63b1429 | `trendline_automation.py` | `alpha_patterns/trendline_fit.py` | same module as above |
-| TrendlineBreakoutMetaLabel @ 874d938 | `trendline_breakout.py`, `trendline_break_dataset.py` | `alpha_patterns/trendline_fit.py` (`trendline_breakout`, `breakout_features`) | ADX/ATR from `alpha_patterns`; no pandas_ta |
+| TrendlineBreakoutMetaLabel @ 874d938 | `trendline_breakout.py`, `trendline_break_dataset.py` | `alpha_patterns/trendline_fit.py` (`trendline_breakout`, `breakout_features`) | breakout series exact parity; `breakout_features` uses causal simple-mean log ATR and `directional_index` ADX instead of pandas_ta, and never returns an open trade |
 | mcpt @ 2c0d70c | `bar_permute.py` | `alpha_validation/bar_permutation.py` | `numpy.random.Generator` instead of global seed |
 | | `insample_*_mcpt.py`, `walkforward_donchian_mcpt.py` | `alpha_validation/mcpt.py`, `alpha_cli/_mcpt.py`, gauntlet tier | p-value `(1+c)/(1+N)` (Davison & Hinkley) instead of `c/N` |
 | | `donchian.py`, `moving_average.py` | **not ported** — `alpha_strategies` `breakout` / `ma_crossover` | optimisation via `alpha optim grid` |
 | | `tree_strat.py` | **excluded** | author-disowned; sklearn not a root dependency |
-| market-structure @ 36a7d89 | `local_extreme.py`, `atr_directional_change.py`, `hierarchical_extremes.py` | `alpha_patterns/market_structure.py` | `extremes_sanity_checks` raises `DataError` |
-| VolatilityHawkes @ 51c8557 | `hawkes.py` | `alpha_patterns/hawkes.py` | trade extraction helper not ported |
-| VSAIndicator @ a95bf30 | `vsa.py` | `alpha_patterns/vsa.py` | generic `rolling_ols_residual` extracted (reused by the TVL feature) |
-| RSI-PCA @ f3b9735 | `rsi_behavior.py`, `pca.py` | `alpha_patterns.indicators.rsi_matrix`, `alpha_research/rolling_pca.py` | rolling fit only; eigenvector sign fixed by largest loading |
-| IntramarketDifference (no licence) | — | `alpha_patterns/cmma.py` | re-implemented from formula; no upstream code |
-| TradeDependenceRunsTest @ 5f63804 | `runs_test.py`, `runs_indicator.py` | `alpha_patterns/runs.py`, `alpha_validation/trade_dependence.py` | typed unavailable result on < 2 signs |
-| TimeSeriesReversibility @ 3d76b9e | `reversibility.py` | `alpha_patterns/reversibility.py` | HVG from `alpha_patterns.visibility` instead of ts2vg |
-| TimeSeriesVisibilityGraphs @ d646293 | `ts_to_vg.py`, `network_indicators.py` | `alpha_patterns/visibility.py` | BFS shortest path instead of networkx; `lookback ≤ 500` |
-| PermutationEntropy @ 890da37 | `perm_entropy.py` | `alpha_patterns/entropy.py` | unchanged algorithm |
+| market-structure @ 36a7d89 | `local_extreme.py`, `atr_directional_change.py`, `hierarchical_extremes.py` | `alpha_patterns/market_structure.py` | frozen `LocalExtreme` keyed by bar index; `DataError` instead of `assert`; `update` returns the confirmed extreme; `get_level_*` return `None`; exact parity at every level |
+| VolatilityHawkes @ 51c8557 | `hawkes.py` | `alpha_patterns/hawkes.py` | bar-0 negative-index artefact replaced by skipping bar 0; quantile windows containing NaN stay NaN; trade extraction helper not ported; exact parity |
+| VSAIndicator @ a95bf30 | `vsa.py` | `alpha_patterns/vsa.py` | generic `rolling_ols_residual` extracted (reused by the TVL feature); causal simple-mean `atr` and `rolling_median` instead of pandas_ta/pandas; the gate uses Pearson r as upstream (not r²); exact parity on stored inputs |
+| RSI-PCA @ f3b9735 | `rsi_behavior.py`, `pca.py` | `alpha_patterns.indicators.rsi_matrix` (delivered), `alpha_research/rolling_pca.py` (stream B) | feature block computed with ALPHA's `rsi`; rolling fit only; eigenvector sign fixed by largest loading |
+| IntramarketDifference (no licence) | — | `alpha_patterns/cmma.py` | re-implemented from Masters' formula with a NaN warm-up; threshold-entry / zero-cross-exit rule stated in the module; no upstream code or fixture |
+| TradeDependenceRunsTest @ 5f63804 | `runs_test.py`, `runs_indicator.py` | `alpha_patterns/runs.py`, `alpha_validation/trade_dependence.py` | `runs_z` is NaN when all signs agree (upstream divides by zero); zeros break runs as upstream; exact parity |
+| TimeSeriesReversibility @ 3d76b9e | `reversibility.py` | `alpha_patterns/reversibility.py` | HVG from `alpha_patterns.visibility` (the author's `ts_to_vg` rule) instead of ts2vg; KL in numpy; embedding dimension parameterised; default-argsort tie order kept; exact parity on sine / logistic / price windows |
+| TimeSeriesVisibilityGraphs @ d646293 | `ts_to_vg.py`, `network_indicators.py` | `alpha_patterns/visibility.py` | boolean adjacency; BFS average shortest path (networkx convention) instead of networkx/ts2vg; `lookback ≤ 500`; exact parity incl. the author's worked example |
+| PermutationEntropy @ 890da37 | `perm_entropy.py` | `alpha_patterns/entropy.py` | unchanged algorithm; NaN head; exact parity for two embeddings |
 | TVLIndicator @ 00745d0 | `tvl_indicator.py` | `alpha_data/crypto/providers/defillama.py`, `crypto/features.py::defi_tvl_residual` (ADR-0036) | governed family with receipts and `available_at`; endpoint shape UNVERIFIED in the build sandbox |
 
 ## Primary sources cited by the ported statistics

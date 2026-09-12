@@ -172,7 +172,7 @@
       "status": "done"
     },
     {
-      "title": "A7 HSEvent.neckline_r2 + export audit + alpha-patterns rule table complete + uv run pytest -m bias_guard sweep",
+      "title": "A7 HSEvent.pattern_r2 (named for what it measures) + export audit + alpha-patterns rule table complete + uv run pytest -m bias_guard sweep",
       "verify": "uv run pytest -q -m bias_guard && uv run python scripts/gate.py full",
       "expected": "every new module has a rule-table row (test_repo_awareness_drift green), is exported from alpha_patterns, and appears in a bias guard; full gate stamps",
       "rollback": "git revert the slice commits",
@@ -180,7 +180,8 @@
         "packages/alpha-patterns/src/alpha_patterns/head_shoulders.py",
         "packages/alpha-patterns/src/alpha_patterns/__init__.py",
         ".claude/rules/alpha-patterns.md"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "B1 alpha_research/pip_miner.py (numpy kmeans_pp, silhouette_score, martin_ratio, fit_pip_clusters with end_index+hold<=train_end purge, predict_pip_cluster, walk_forward_pip_miner) + oracles",
