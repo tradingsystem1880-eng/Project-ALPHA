@@ -184,7 +184,7 @@
       "status": "done"
     },
     {
-      "title": "B1 alpha_research/pip_miner.py (numpy kmeans_pp, silhouette_score, martin_ratio, fit_pip_clusters with end_index+hold<=train_end purge, predict_pip_cluster, walk_forward_pip_miner) + oracles",
+      "title": "B1 alpha_research/pip_miner.py (numpy kmeans_pp, silhouette_score, martin_ratio, fit_pip_clusters with end_index+hold<=train_end purge, predict_pip_cluster, walk_forward_pip_signal) + oracles",
       "verify": "uv run pytest -q tests/oracles/test_metamorphic_pip_miner.py tests/unit/test_pip_miner_bias_guard.py && uv run python scripts/gate.py full",
       "expected": "planted blobs recovered; silhouette within [-1,1] and maximal at the true k; identical seed gives identical clusters; a training window whose label crosses train_end raises DataError; /verify-quant PASS and /review-gate APPROVE recorded",
       "rollback": "git revert the slice commits",
@@ -195,7 +195,8 @@
         "tests/oracles/test_metamorphic_pip_miner.py",
         "tests/unit/test_pip_miner_bias_guard.py",
         ".agents/skills/quant-source-verification/SKILL.md"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "B2 alpha_research/retracements.py (segment_ratios, retracement_density) + rolling_pca.py (rolling_pca_scores via eigh, sign fixed by largest loading) + oracles",
@@ -525,7 +526,7 @@ an explicit not-ported entry.
 | Reversibility | `alpha_patterns/reversibility.py` | `perm_ts_reversibility(values, d)`, `relative_async_index(values)`, rolling variants | per-window |
 | CMMA / intermarket | `alpha_patterns/cmma.py` | `cmma(bars, lookback, atr_lookback)`, `intermarket_difference(a, b)`, `threshold_revert_signal(diff, threshold)` | trailing; sequential state machine |
 | RSI matrix | `alpha_patterns/indicators.py` | `rsi_matrix(close, periods)` | trailing |
-| PIP cluster miner | `alpha_research/pip_miner.py` | `kmeans_pp`, `silhouette_score`, `martin_ratio`, `fit_pip_clusters(windows, end_index, forward_returns, *, train_end, hold, k_range, seed)`, `predict_pip_cluster`, `walk_forward_pip_miner` | `end_index + hold ≤ train_end` purge; predictions only after `train_end` |
+| PIP cluster miner | `alpha_research/pip_miner.py` | `kmeans_pp`, `silhouette_score`, `martin_ratio`, `fit_pip_clusters(windows, end_index, log_close, *, train_end, hold, k_range, seed)`, `predict_pip_cluster`, `walk_forward_pip_signal` | `end_index + hold ≤ train_end` purge; predictions only after `train_end` |
 | Retracement density | `alpha_research/retracements.py` | `segment_ratios`, `retracement_density(ratios, grid)` | descriptive over supplied extremes |
 | Rolling PCA | `alpha_research/rolling_pca.py` | `rolling_pca_scores(matrix, *, window, n_components)` | trailing covariance, sign fixed by largest loading |
 | Bar permutation | `alpha_validation/bar_permutation.py` | `permute_bars(open, high, low, close, *, start_index, rng)`, `permute_bars_multi` | prefix ≤ `start_index` byte-identical |
