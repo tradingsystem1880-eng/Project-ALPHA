@@ -43,6 +43,9 @@ quant-scope diff. The Stop guard demands it whenever quant paths were edited.
 | `walkforward.py` / `cpcv.py` — purging, embargo, CPCV | López de Prado, *Advances in Financial Machine Learning* (2018), ch. 7 |
 | `multiple_testing.py` — Holm | Holm, "A Simple Sequentially Rejective Multiple Test Procedure" (1979), Scand. J. Statist. 6(2) |
 | `montecarlo.py` — GARCH nulls | Bollerslev, "Generalized Autoregressive Conditional Heteroskedasticity" (1986), J. Econometrics 31(3) |
+| `pip_miner.py` — k-means++ seeding, Lloyd iterations | Arthur & Vassilvitskii, "k-means++: The Advantages of Careful Seeding" (2007), SODA — D²-weighted seeding; Lloyd, "Least Squares Quantization in PCM" (1982), IEEE Trans. Inf. Theory 28(2) |
+| `pip_miner.py` — silhouette | Rousseeuw, "Silhouettes: a graphical aid to the interpretation and validation of cluster analysis" (1987), J. Comput. Appl. Math. 20 — s(i) = (b − a)/max(a, b), singletons 0 |
+| `pip_miner.py` — Martin ratio / Ulcer index | Martin & McCann, *The Investor's Guide to Fidelity Funds* (1989) — UI = √mean(drawdown-from-running-peak²); their Ulcer Performance Index is (return − risk-free) / UI, while the port keeps upstream's numerator (raw log-return sum, no risk-free term, un-annualised) as a documented deviation |
 | Sharpe conventions | Sharpe, "The Sharpe Ratio" (1994), JPM 21(1) — ex-post, annualization by √periods |
 
 Repo-specific conventions that are DESIGN, not literature (verify against CLAUDE.md
