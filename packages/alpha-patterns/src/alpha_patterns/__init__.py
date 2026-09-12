@@ -73,6 +73,15 @@ from alpha_patterns.levels import (
     round_levels,
     round_number_distance,
 )
+from alpha_patterns.market_structure import (
+    ATRDirectionalChange,
+    HierarchicalExtremes,
+    LocalExtreme,
+    atr_directional_change,
+    extremes_known_by,
+    extremes_sanity_checks,
+    hierarchical_extremes,
+)
 from alpha_patterns.oscillators import (
     MACD,
     Channel,
@@ -154,6 +163,7 @@ __version__ = version("alpha-patterns")
 
 __all__ = [
     "ALL_BREAK_RULES",
+    "ATRDirectionalChange",
     "BOLLINGER_WINDOW",
     "BandReference",
     "BreakRule",
@@ -170,10 +180,12 @@ __all__ = [
     "FloatArray",
     "HSConfig",
     "HSEvent",
+    "HierarchicalExtremes",
     "Ichimoku",
     "IntArray",
     "KIND_CODES",
     "LeadLag",
+    "LocalExtreme",
     "MACD",
     "MatchedControls",
     "OHLCV",
@@ -203,6 +215,7 @@ __all__ = [
     "WedgeTruth",
     "__version__",
     "atr",
+    "atr_directional_change",
     "autocorrelation",
     "bollinger_bandwidth",
     "break_of_structure",
@@ -224,6 +237,8 @@ __all__ = [
     "donchian_channel",
     "ema",
     "extreme_between",
+    "extremes_known_by",
+    "extremes_sanity_checks",
     "fib_levels_at",
     "find_breaks",
     "find_fair_value_gaps",
@@ -231,6 +246,7 @@ __all__ = [
     "find_pips",
     "find_swings",
     "geometric_brownian_series",
+    "hierarchical_extremes",
     "hurst_exponent",
     "hurst_random_walk_reference",
     "ichimoku",

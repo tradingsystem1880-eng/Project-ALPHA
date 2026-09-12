@@ -96,7 +96,8 @@
         ".claude/rules/alpha-patterns.md",
         "tests/unit/test_market_structure.py",
         "tests/unit/test_market_structure_bias_guard.py"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "A3 trendline_fit.py (LSQ+pivot+step-halving fit_trendlines_single/high_low, trendline_breakout on [i-lookback, i-1], breakout_features meta-label dataset: resist_slope_atr, tl_err_atr, vol_ratio, max_dist_atr, adx, label)",
