@@ -16,7 +16,7 @@ from statistics import NormalDist
 import numpy as np
 
 from alpha_core import DataError
-from alpha_validation.metrics import to_returns
+from alpha_validation.metrics import profit_factor, to_returns
 
 
 @dataclass(frozen=True, slots=True)
@@ -370,7 +370,6 @@ def _trade_statistics(
     )
     winners = pnls[pnls > 0.0]
     losers = pnls[pnls < 0.0]
-    gross_loss = abs(float(np.sum(losers)))
     values: dict[str, float | None] = {
         "trade_count": float(n),
         "winning_trade_count": float(winners.size),
@@ -384,7 +383,7 @@ def _trade_statistics(
         "median_realized_pnl": float(np.median(pnls)),
         "average_realized_return": float(np.mean(realized_returns)),
         "median_realized_return": float(np.median(realized_returns)),
-        "profit_factor": float(np.sum(winners)) / gross_loss if gross_loss > 0.0 else None,
+        "profit_factor": profit_factor(pnls),
         "average_holding_seconds": float(np.mean(holding)),
         "median_holding_seconds": float(np.median(holding)),
         "largest_win_pnl": float(np.max(winners)) if winners.size else None,

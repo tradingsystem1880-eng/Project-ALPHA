@@ -250,8 +250,10 @@
         "packages/alpha-validation/src/alpha_validation/__init__.py",
         ".claude/rules/alpha-validation.md",
         "tests/oracles/test_calibration_mcpt.py",
-        "tests/oracles/_reference/tolerances.py"
-      ]
+        "tests/oracles/_reference/tolerances.py",
+        "tests/unit/test_mcpt.py"
+      ],
+      "status": "done"
     },
     {
       "title": "C3 alpha_validation/trade_dependence.py (trade_runs_test over Trade.realized_pnl signs ordered by entry_ts; typed None with reason on < 2 signs) + TradeStatistic row in native_tearsheet",
