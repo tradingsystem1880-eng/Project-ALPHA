@@ -46,6 +46,8 @@ quant-scope diff. The Stop guard demands it whenever quant paths were edited.
 | `pip_miner.py` — k-means++ seeding, Lloyd iterations | Arthur & Vassilvitskii, "k-means++: The Advantages of Careful Seeding" (2007), SODA — D²-weighted seeding; Lloyd, "Least Squares Quantization in PCM" (1982), IEEE Trans. Inf. Theory 28(2) |
 | `pip_miner.py` — silhouette | Rousseeuw, "Silhouettes: a graphical aid to the interpretation and validation of cluster analysis" (1987), J. Comput. Appl. Math. 20 — s(i) = (b − a)/max(a, b), singletons 0 |
 | `pip_miner.py` — Martin ratio / Ulcer index | Martin & McCann, *The Investor's Guide to Fidelity Funds* (1989) — UI = √mean(drawdown-from-running-peak²); their Ulcer Performance Index is (return − risk-free) / UI, while the port keeps upstream's numerator (raw log-return sum, no risk-free term, un-annualised) as a documented deviation |
+| `retracements.py` — Gaussian KDE of log ratios | Silverman, *Density Estimation for Statistics and Data Analysis* (1986) §2.4 — f̂(x) = (1/nh) Σ φ((x − xᵢ)/h); Scott, *Multivariate Density Estimation* (1992) — bandwidth as a multiple of the sample standard deviation (SciPy scalar `bw_method`, ddof=1) |
+| `rolling_pca.py` — principal components | Jolliffe, *Principal Component Analysis* (2nd ed., 2002), ch. 1 and §3.5 — eigenvectors of the sample covariance ordered by eigenvalue; SVD of the centred data gives the same components; sign is a free convention (fixed here by the largest loading) |
 | Sharpe conventions | Sharpe, "The Sharpe Ratio" (1994), JPM 21(1) — ex-post, annualization by √periods |
 
 Repo-specific conventions that are DESIGN, not literature (verify against CLAUDE.md

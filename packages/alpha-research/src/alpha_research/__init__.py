@@ -124,6 +124,12 @@ from alpha_research.power import (
     simulate_prospective_power_known_sigma,
 )
 from alpha_research.rendering import render_research_line_chart
+from alpha_research.retracements import (
+    RetracementDensity,
+    retracement_density,
+    retracement_ratios,
+)
+from alpha_research.rolling_pca import PCAResult, pca_components, pca_scores, rolling_pca_scores
 from alpha_research.stability import (
     rolling_effect_size,
     subsample_consistency,
@@ -173,6 +179,7 @@ __all__ = [
     "MarketStateConditionalValueV1",
     "MarketStateContractV1",
     "MarketStatePointV1",
+    "PCAResult",
     "PipClusterModel",
     "PipPrediction",
     "PreEventCovariate",
@@ -195,6 +202,7 @@ __all__ = [
     "ResearchEvidenceZoneBoundaryV1",
     "ResearchGatePacket",
     "ResearchOutcome",
+    "RetracementDensity",
     "SecondaryHypothesis",
     "autocorrelation",
     "build_research_gate_packet",
@@ -219,6 +227,8 @@ __all__ = [
     "leakage_diagnostic",
     "martin_ratio",
     "match_event_controls",
+    "pca_components",
+    "pca_scores",
     "predict_pip_cluster",
     "purge_overlapping_outcomes",
     "quantile_breakdown",
@@ -226,8 +236,11 @@ __all__ = [
     "rank_ic",
     "render_research_line_chart",
     "required_observations_known_sigma",
+    "retracement_density",
+    "retracement_ratios",
     "return_distribution",
     "registered_crypto_crowding_plan",
+    "rolling_pca_scores",
     "select_registered_crypto_crowding_events",
     "research_d2_boundary_from_dict",
     "rolling_effect_size",
