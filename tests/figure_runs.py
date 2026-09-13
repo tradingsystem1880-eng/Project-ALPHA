@@ -306,8 +306,8 @@ def validate_run(root: Path) -> Path:
     stamps, _ = _performance_artifacts(directory)
     _trace_artifacts(directory, stamps)
 
-    tiers = ("returns_level", "full_engine")
-    counts = (400, 64)
+    tiers = ("returns_level", "full_engine", "bar_permutation")
+    counts = (400, 64, 64)
     _write(
         directory,
         "nulls.parquet",
@@ -350,6 +350,12 @@ def validate_run(root: Path) -> Path:
             "nulls": [
                 {"tier": "returns_level", "observed": 1.02, "percentile": 0.97, "threshold": 0.95},
                 {"tier": "full_engine", "observed": 1.01, "percentile": 0.96, "threshold": 0.95},
+                {
+                    "tier": "bar_permutation",
+                    "observed": 1.01,
+                    "percentile": 0.94,
+                    "threshold": 0.95,
+                },
             ],
         },
     )

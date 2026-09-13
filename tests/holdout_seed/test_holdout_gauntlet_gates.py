@@ -86,7 +86,15 @@ def test_null_gate_is_conservative_across_tiers() -> None:
     both = [_null("returns_level", passed=True), _null("full_engine", passed=True)]
     tier1_fail = [_null("returns_level", passed=False), _null("full_engine", passed=True)]
     tier2_fail = [_null("returns_level", passed=True), _null("full_engine", passed=False)]
-    for nulls, expected in ((both, True), (tier1_fail, False), (tier2_fail, False)):
+    three = [*both, _null("bar_permutation", passed=True)]
+    tier3_fail = [*both, _null("bar_permutation", passed=False)]
+    for nulls, expected in (
+        (both, True),
+        (tier1_fail, False),
+        (tier2_fail, False),
+        (three, True),
+        (tier3_fail, False),
+    ):
         assert _gates(nulls=nulls)["randomized_price_null"].passed is expected
 
 
@@ -103,6 +111,20 @@ def test_flagged_low_fidelity_tier1_is_advisory_not_a_veto() -> None:
     assert gate.passed is True
     assert gate.detail["returns_level_flagged_low_fidelity"] == 1.0
     assert gate.detail["returns_level_convention_divergence"] == 0.5
+
+
+def test_bar_permutation_tier_is_never_rescued() -> None:
+    # the Tier-1 fidelity demotion never extends to an engine tier: a failing bar-permutation
+    # tier vetoes the null gate even when Tier 1 is flagged advisory and Tier 2 passed
+    nulls = [
+        _null("returns_level", passed=False, flagged=True),
+        _null("full_engine", passed=True),
+        _null("bar_permutation", passed=False),
+    ]
+    gate = _gates(nulls=nulls)["randomized_price_null"]
+    assert gate.passed is False
+    assert gate.detail["bar_permutation_percentile"] == pytest.approx(0.10)
+    assert "bar_permutation_flagged_low_fidelity" not in gate.detail
 
 
 def test_bootstrap_ci_gate_requires_strictly_positive_lower_bound() -> None:

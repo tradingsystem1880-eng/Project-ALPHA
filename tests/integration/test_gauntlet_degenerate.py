@@ -57,7 +57,9 @@ def test_flat_oos_yields_a_clean_fail_report() -> None:
     out = run_gauntlet(
         _rising_bars(),
         spec,
-        GauntletParams(seed=7, tier1_paths=20, tier2_paths=4, n_resamples=80, mean_block=5.0),
+        GauntletParams(
+            seed=7, tier1_paths=20, tier2_paths=4, tier3_paths=4, n_resamples=80, mean_block=5.0
+        ),
         run_id="degenerate",
         snapshot_id=None,
     )
@@ -66,6 +68,10 @@ def test_flat_oos_yields_a_clean_fail_report() -> None:
     by_name = {o.name: o for o in out.report.outcomes}
     assert by_name["walk_forward_oos"].passed is False
     assert by_name["randomized_price_null"].passed is False
+    # every null tier is degenerate (no statistic to rank), including the bar-permutation tier
+    assert [n.tier for n in out.report.nulls] == ["returns_level", "full_engine", "bar_permutation"]
+    assert all(n.passed is False and n.n_paths == 0 for n in out.report.nulls)
+    assert out.tier3_null.size == 0
     assert by_name["bootstrap_ci"].passed is False
     # a no-edge run still produces a Verdict, and it is nowhere near a passing grade
     assert out.report.verdict is not None

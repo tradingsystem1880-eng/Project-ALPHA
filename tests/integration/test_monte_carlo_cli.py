@@ -18,7 +18,7 @@ _VALIDATE = [
     "--lookback", "5", "--skip", "1", "--vol-window", "3", "--rebalance-every", "2",
     "--train-size", "30", "--test-size", "10", "--embargo", "1",
     "--fee-bps", "0", "--slippage-bps", "0", "--starting-cash", "100000",
-    "--tier1-paths", "30", "--tier2-paths", "4", "--n-resamples", "100",
+    "--tier1-paths", "30", "--tier2-paths", "4", "--tier3-paths", "4", "--n-resamples", "100",
 ]  # fmt: skip
 
 

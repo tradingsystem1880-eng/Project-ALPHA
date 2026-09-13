@@ -1000,7 +1000,7 @@ def null_distribution(ctx: BuildContext) -> FigureSpec:
     )
     panels: list[Panel] = []
     verdicts: list[str] = []
-    for tier in ("returns_level", "full_engine"):
+    for tier in ("returns_level", "full_engine", "bar_permutation"):
         subset = frame.filter(frame["tier"] == tier)
         if subset.is_empty():
             continue

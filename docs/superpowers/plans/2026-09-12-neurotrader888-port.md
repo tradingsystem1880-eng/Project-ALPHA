@@ -279,14 +279,25 @@
       "rollback": "git revert the slice commits",
       "files": [
         "apps/alpha-cli/src/alpha_cli/_gauntlet.py",
-        "apps/alpha-cli/src/alpha_cli/_seeds.py",
         "apps/alpha-cli/src/alpha_cli/validate_cmds.py",
+        "apps/alpha-cli/src/alpha_cli/_suite.py",
+        "apps/alpha-mcp/src/alpha_mcp/server.py",
         "packages/alpha-validation/src/alpha_validation/tearsheet.py",
         ".claude/rules/alpha-cli.md",
         ".claude/rules/quant.md",
         "tests/holdout_seed/test_holdout_gauntlet_gates.py",
-        "tests/unit/test_gauntlet.py"
-      ]
+        "tests/unit/test_gauntlet.py",
+        "apps/alpha-cli/src/alpha_cli/_synth.py",
+        "apps/alpha-cli/src/alpha_cli/figures/_builders.py",
+        "packages/alpha-research/src/alpha_research/figures/catalog.py",
+        "tests/figure_runs.py",
+        "tests/integration/test_validate_cli.py",
+        "tests/integration/test_gauntlet_null_model.py",
+        "tests/integration/test_gauntlet_degenerate.py",
+        ".agents/skills/quant-source-verification/SKILL.md",
+        "docs/governance/2026-09-12-neurotrader888-provenance.md"
+      ],
+      "status": "done"
     },
     {
       "title": "C5 in-sample MCPT composer alpha_cli/_mcpt.py + `alpha optim mcpt SYM --strategy breakout --grid window=... --perms N` (re-optimises per permutation via _optim.run_optimization; writes mcpt_null.parquet; documented as an optimisation-overfit test, never OOS evidence) + info commands catalog + public seams",
@@ -373,7 +384,7 @@
       ]
     },
     {
-      "title": "E2 SPA overlays: chartOverlaysModel (ARITY, INDICATOR_PRESETS, PATTERNS/PATTERN_LABEL, pane order derived from response, marker kind branch, legend), PriceChartCanvas colours/pane heights, ChartAnnotationPrimitive marker style, IndicatorsDialog; TS/Python indicator-table drift test; committed static/app",
+      "title": "E2 SPA overlays (+ explain/gates.ts nullStory and suggestions.ts must narrate the third bar_permutation null tier added in C4, naming the vetoing tier): chartOverlaysModel (ARITY, INDICATOR_PRESETS, PATTERNS/PATTERN_LABEL, pane order derived from response, marker kind branch, legend), PriceChartCanvas colours/pane heights, ChartAnnotationPrimitive marker style, IndicatorsDialog; TS/Python indicator-table drift test; committed static/app",
       "verify": "cd apps/alpha-web/frontend && npm run lint -- --deny-warnings && npm run test:coverage && npm run generate:api && npm run build && npm run test:e2e && uv run pytest -q tests/unit/test_overlay_tables_drift.py",
       "expected": "new indicators render in their own panes and markers draw at confirmed bars; the drift test pins chart_cmds.INDICATORS == TS ARITY; static/app clean",
       "rollback": "git revert the slice commits",

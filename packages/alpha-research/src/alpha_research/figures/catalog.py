@@ -281,7 +281,8 @@ FIGURES: Final[tuple[FigureDefinition, ...]] = (
         ),
         caveat=(
             "Tier 1 scores a surrogate on resampled returns and can credit high-turnover "
-            "strategies; Tier 2 runs the real engine and is the one that cannot be rescued."
+            "strategies; Tier 2 runs the real engine on resampled bars and Tier 3 on bar "
+            "permutations of the OOS window only; neither engine tier can be rescued."
         ),
         section="robustness",
         run_commands=("validate",),

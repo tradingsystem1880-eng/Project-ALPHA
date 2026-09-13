@@ -107,6 +107,7 @@ _VALIDATE_OPTIONS = _COMMON_RUN_OPTIONS | {
     "no-anchored",
     "tier1-paths",
     "tier2-paths",
+    "tier3-paths",
     "n-resamples",
     "mean-block",
     "threshold",

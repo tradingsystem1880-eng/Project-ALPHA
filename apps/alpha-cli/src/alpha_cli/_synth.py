@@ -1,8 +1,11 @@
-"""Synthetic price paths for the full-engine randomized-price null (Tier 2, spec §7.4).
+"""Synthetic price paths for the engine-backed randomized-price nulls (spec §7.4).
 
 The cheap Tier-1 null resamples *returns*; the faithfulness check (Tier 2) resamples whole OHLCV
 bars and re-runs the real engine on each synthetic path. ``synthetic_bar_paths`` generates those
 paths; the full-engine orchestration that runs them through ``run_backtest`` is added alongside.
+Tier 3 (``bar_permutation_null``) is the walk-forward Monte Carlo permutation test: every bar
+after the last decision bar before the OOS window is permuted (``alpha_validation.bar_permutation``,
+Masters 2018 ch. 7 / neurotrader888/mcpt) and the same fixed-parameter engine replay scores it.
 """
 
 from __future__ import annotations
@@ -17,6 +20,7 @@ import numpy as np
 from alpha_cli._runner import RunSpec, fresh_oos_execution
 from alpha_core import Bar, CorporateAction, DataError
 from alpha_validation import NullResult, sharpe_ratio, stationary_bootstrap_indices
+from alpha_validation.bar_permutation import OHLC, permute_bars
 
 # below this path count the pool's spin-up costs more than it saves; run in-process
 _SERIAL_THRESHOLD = 8
@@ -80,6 +84,47 @@ def synthetic_bar_paths(
     return paths
 
 
+def permuted_bar_paths(
+    bars: Sequence[Bar], *, start_index: int, n_paths: int, seed: int | None
+) -> list[list[Bar]]:
+    """Bar-permutation paths: bars ``0..start_index`` verbatim, every later bar permuted.
+
+    Each path draws one ``permute_bars`` permutation (log gaps and intrabar shapes shuffled as
+    two independent multisets, final close preserved) from one seeded generator, so the paths
+    are deterministic and distinct. Bars are re-stamped onto the original session axis with the
+    original symbol; volume stays at its session (upstream drops volume altogether, so no
+    permuted-volume convention exists to follow). Fails loud on ``n_paths < 1``; ``permute_bars``
+    rejects fewer than two bars or a ``start_index`` that leaves nothing to permute.
+    """
+    if n_paths < 1:
+        raise DataError(f"n_paths must be >= 1, got {n_paths}")
+    ohlc = OHLC(
+        open=np.array([b.open for b in bars], dtype=np.float64),
+        high=np.array([b.high for b in bars], dtype=np.float64),
+        low=np.array([b.low for b in bars], dtype=np.float64),
+        close=np.array([b.close for b in bars], dtype=np.float64),
+    )
+    rng = np.random.default_rng(seed)
+    paths: list[list[Bar]] = []
+    for _ in range(n_paths):
+        permuted = permute_bars(ohlc, start_index=start_index, rng=rng)
+        paths.append(
+            [
+                Bar(
+                    symbol=b.symbol,
+                    ts=b.ts,
+                    open=float(permuted.open[i]),
+                    high=float(permuted.high[i]),
+                    low=float(permuted.low[i]),
+                    close=float(permuted.close[i]),
+                    volume=b.volume,
+                )
+                for i, b in enumerate(bars)
+            ]
+        )
+    return paths
+
+
 @dataclass(frozen=True)
 class _SynthTask:
     """One picklable unit of full-engine work: a synthetic path + the run spec.
@@ -140,6 +185,71 @@ def full_engine_null(
             "(the real OOS Sharpe is undefined — a flat/zero-variance OOS)"
         )
     paths = synthetic_bar_paths(bars, n_paths=n_paths, mean_block=mean_block, seed=seed)
+    return _engine_null(
+        paths,
+        observed=observed,
+        spec=spec,
+        threshold=threshold,
+        max_workers=max_workers,
+        dividends=dividends,
+        spec_for_path=spec_for_path,
+        label="full-engine",
+    )
+
+
+def bar_permutation_null(
+    bars: Sequence[Bar],
+    *,
+    observed: float,
+    spec: RunSpec,
+    n_paths: int,
+    start_index: int,
+    threshold: float = 0.95,
+    seed: int | None = None,
+    max_workers: int | None = None,
+    dividends: Sequence[CorporateAction] = (),
+    spec_for_path: Callable[[list[Bar]], RunSpec] | None = None,
+) -> NullResult:
+    """Tier-3 walk-forward permutation null: the OOS Sharpe over bar-permuted OOS windows.
+
+    ``start_index`` is the last bar left untouched (the decision bar before the first scored OOS
+    bar), so the history the fixed rules were primed on is byte-identical on every path and only
+    the scored window is shuffled; ``observed`` is the same engine OOS Sharpe Tier 2 ranks, and
+    the ranking is the same ``(1 + c) / (1 + N)``. Same fail-loud contract as ``full_engine_null``.
+    """
+    if not 0.0 < threshold < 1.0:
+        raise DataError(f"threshold must be in (0, 1), got {threshold}")
+    if not bool(np.isfinite(observed)):
+        raise DataError(
+            f"bar-permutation null needs a finite observed statistic, got {observed!r} "
+            "(the real OOS Sharpe is undefined — a flat/zero-variance OOS)"
+        )
+    paths = permuted_bar_paths(bars, start_index=start_index, n_paths=n_paths, seed=seed)
+    return _engine_null(
+        paths,
+        observed=observed,
+        spec=spec,
+        threshold=threshold,
+        max_workers=max_workers,
+        dividends=dividends,
+        spec_for_path=spec_for_path,
+        label="bar-permutation",
+    )
+
+
+def _engine_null(
+    paths: Sequence[list[Bar]],
+    *,
+    observed: float,
+    spec: RunSpec,
+    threshold: float,
+    max_workers: int | None,
+    dividends: Sequence[CorporateAction],
+    spec_for_path: Callable[[list[Bar]], RunSpec] | None,
+    label: str,
+) -> NullResult:
+    """Score every path with the real engine (serially or in a spawn pool) and rank ``observed``."""
+    n_paths = len(paths)
     # spec_for_path lets model-backed strategies re-derive per-path state (e.g. a kronos
     # signal cache computed IN THE PARENT for each synthetic path) while workers stay
     # torch-free; None keeps the default one-spec-for-all behavior byte-identically.
@@ -162,7 +272,7 @@ def full_engine_null(
         null = np.array([_oos_sharpe_for_path(t) for t in tasks], dtype=np.float64)
 
     if not bool(np.all(np.isfinite(null))):
-        raise DataError("full-engine null produced a non-finite Sharpe on some path")
+        raise DataError(f"{label} null produced a non-finite Sharpe on some path")
     percentile = float(np.mean(null < observed))
     at_least_as_good = int(np.sum(null >= observed))
     p_value = (1 + at_least_as_good) / (1 + n_paths)
