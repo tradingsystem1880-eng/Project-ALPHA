@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from importlib.metadata import version
 
+from alpha_validation.bar_permutation import OHLC, permute_bars, permute_bars_multi
 from alpha_validation.barrier import (
     BarrierCounts,
     BarrierResult,
@@ -162,6 +163,7 @@ __all__ = [
     "MultipleTestResult",
     "MonteCarloFamilySummaryV1",
     "MonteCarloReviewV1",
+    "OHLC",
     "PathMetricArrays",
     "NullResult",
     "NullSummary",
@@ -215,6 +217,8 @@ __all__ = [
     "overlap_factor",
     "path_metric_arrays",
     "parametric_price_null",
+    "permute_bars",
+    "permute_bars_multi",
     "pinball_loss",
     "probabilistic_sharpe_ratio",
     "probability_of_backtest_overfitting",

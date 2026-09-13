@@ -233,8 +233,10 @@
         "packages/alpha-validation/src/alpha_validation/bar_permutation.py",
         "packages/alpha-validation/src/alpha_validation/__init__.py",
         ".claude/rules/alpha-validation.md",
-        "tests/oracles/test_metamorphic_bar_permutation.py"
-      ]
+        "tests/oracles/test_metamorphic_bar_permutation.py",
+        "tests/unit/test_bar_permutation.py"
+      ],
+      "status": "done"
     },
     {
       "title": "C2 alpha_validation/mcpt.py (permutation_test reusing _rank_null; walk-forward = start_index at train_end) + metrics.profit_factor promoted from native_tearsheet + calibration oracle",
