@@ -17,6 +17,7 @@ import numpy as np
 
 from alpha_core import DataError
 from alpha_validation.metrics import profit_factor, to_returns
+from alpha_validation.trade_dependence import trade_runs_test
 
 
 @dataclass(frozen=True, slots=True)
@@ -298,11 +299,15 @@ _TRADE_STAT_UNITS: tuple[tuple[str, str], ...] = (
     ("average_realized_return", "ratio"),
     ("median_realized_return", "ratio"),
     ("profit_factor", "ratio"),
+    ("trade_runs_z", "z_score"),
     ("average_holding_seconds", "seconds"),
     ("median_holding_seconds", "seconds"),
     ("largest_win_pnl", "account_currency"),
     ("largest_loss_pnl", "account_currency"),
 )
+
+
+_UNAVAILABLE_REASONS = {"profit_factor": "no_losing_trades", "trade_runs_z": "runs_test_undefined"}
 
 
 def _stat(
@@ -364,6 +369,8 @@ def _trade_statistics(
             for metric, unit in _TRADE_STAT_UNITS
         )
     pnls = np.asarray([trade.realized_pnl for trade in trades], dtype=np.float64)
+    entry_ordered = sorted(trades, key=lambda trade: trade.entry_ts)
+    runs = trade_runs_test([trade.realized_pnl for trade in entry_ordered])
     realized_returns = np.asarray([trade.realized_return for trade in trades], dtype=np.float64)
     holding = np.asarray(
         [(trade.exit_ts - trade.entry_ts).total_seconds() for trade in trades], dtype=np.float64
@@ -384,6 +391,7 @@ def _trade_statistics(
         "average_realized_return": float(np.mean(realized_returns)),
         "median_realized_return": float(np.median(realized_returns)),
         "profit_factor": profit_factor(pnls),
+        "trade_runs_z": None if runs is None else runs.z,
         "average_holding_seconds": float(np.mean(holding)),
         "median_holding_seconds": float(np.median(holding)),
         "largest_win_pnl": float(np.max(winners)) if winners.size else None,
@@ -394,7 +402,7 @@ def _trade_statistics(
             metric,
             values[metric],
             unit,
-            reason="no_losing_trades" if metric == "profit_factor" else "no_matching_trades",
+            reason=_UNAVAILABLE_REASONS.get(metric, "no_matching_trades"),
         )
         for metric, unit in _TRADE_STAT_UNITS
     )

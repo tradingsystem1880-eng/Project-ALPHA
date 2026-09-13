@@ -266,8 +266,11 @@
         "packages/alpha-validation/src/alpha_validation/__init__.py",
         ".claude/rules/alpha-validation.md",
         "tests/oracles/test_differential_runs_test.py",
-        "tests/unit/test_trade_dependence.py"
-      ]
+        "tests/unit/test_trade_dependence.py",
+        ".agents/skills/quant-source-verification/SKILL.md",
+        "docs/governance/2026-09-12-neurotrader888-provenance.md"
+      ],
+      "status": "done"
     },
     {
       "title": "C4 gauntlet tier bar_permutation (walk-forward, OOS window only): _gauntlet.py call beside Tier-2, _seeds namespaces validation.bar_permutation_wf, GauntletParams + RunMetadata knobs, validate_cmds third tier tuple, tests/holdout_seed contract test",

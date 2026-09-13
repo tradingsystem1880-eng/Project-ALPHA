@@ -133,6 +133,7 @@ from alpha_validation.tearsheet import (
     render_tearsheet_html,
     report_to_manifest,
 )
+from alpha_validation.trade_dependence import RunsTestResult, runs_test, trade_runs_test
 from alpha_validation.verdict import VerdictSummary, grade_tail_risk, grade_verdict
 from alpha_validation.walkforward import Split, walk_forward_splits
 
@@ -179,6 +180,7 @@ __all__ = [
     "ProportionInterval",
     "RegimePathResult",
     "RunMetadata",
+    "RunsTestResult",
     "ScenarioSummary",
     "ScoreFn",
     "Split",
@@ -236,6 +238,7 @@ __all__ = [
     "render_returns_tearsheet",
     "render_tearsheet_html",
     "report_to_manifest",
+    "runs_test",
     "risk_of_ruin",
     "rw_drift_end_returns",
     "scenario_metrics",
@@ -248,6 +251,7 @@ __all__ = [
     "summarize_path_family",
     "summarize_scores",
     "to_returns",
+    "trade_runs_test",
     "two_proportion_pvalue",
     "value_at_risk",
     "walk_forward_splits",
