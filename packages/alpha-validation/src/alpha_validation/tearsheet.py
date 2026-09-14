@@ -49,7 +49,7 @@ class FoldSummary:
 class NullSummary:
     """Where the observed statistic falls in one tier of the randomized-price null."""
 
-    tier: str  # "returns_level" (Tier 1) | "full_engine" (Tier 2)
+    tier: str  # "returns_level" (Tier 1) | "full_engine" (Tier 2) | "bar_permutation" (Tier 3)
     observed: float
     percentile: float
     p_value: float
@@ -135,6 +135,7 @@ class RunMetadata:
     null_model: str = "bootstrap"
     tier1_paths: int = 0
     tier2_paths: int = 0
+    tier3_paths: int = 0
     n_resamples: int = 0
     mean_block: float = 0.0
     threshold: float = 0.0
@@ -152,7 +153,7 @@ class GauntletReport:
     metadata: RunMetadata
     oos_metrics: Mapping[str, float]  # engine OOS: sharpe, cagr, annualized_vol, max_drawdown, ...
     folds: tuple[FoldSummary, ...]
-    nulls: tuple[NullSummary, ...]  # returns_level + full_engine
+    nulls: tuple[NullSummary, ...]  # returns_level + full_engine + bar_permutation
     cis: tuple[CISummary, ...]  # sharpe + cagr
     outcomes: tuple[ValidationOutcome, ...]  # one per gate (the alpha_core contract)
     passed: bool  # all gates passed

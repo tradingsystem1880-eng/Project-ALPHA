@@ -44,6 +44,7 @@ def validate(
     ),
     tier1_paths: int = 1000,
     tier2_paths: int = 64,
+    tier3_paths: int = 64,
     n_resamples: int = 2000,
     mean_block: float = 5.0,
     threshold: float = 0.95,
@@ -51,8 +52,9 @@ def validate(
     tier1_divergence_tol: float = 0.25,
     tier2_mode: str = typer.Option(
         "replay",
-        help="kronos Tier-2 policy: replay (cached signals, cheap) | model (re-forecast "
-        "every synthetic path — honest but ~tier2-paths x the model cost)",
+        help="kronos engine-tier policy (Tier 2 and the Tier-3 bar-permutation paths): replay "
+        "(cached signals, cheap) | model (re-forecast every synthetic path — honest but "
+        "~(tier2-paths + tier3-paths) x the model cost)",
     ),
     seed: int | None = None,
     max_workers: int | None = None,
@@ -101,6 +103,7 @@ def validate(
         seed=resolved_seed,
         tier1_paths=tier1_paths,
         tier2_paths=tier2_paths,
+        tier3_paths=tier3_paths,
         n_resamples=n_resamples,
         mean_block=mean_block,
         threshold=threshold,
@@ -187,12 +190,13 @@ def validate(
     manifest.update(identity.manifest_fields())
     if forecast_meta is not None:
         manifest["forecast"] = {**forecast_meta, "tier2_policy": tier2_mode}
-    # raw two-tier null distributions BEFORE the manifest (manifest.json is the run-exists marker)
+    # raw three-tier null distributions BEFORE the manifest (manifest.json is the run-exists marker)
     _artifacts.write_nulls(
         rdir,
         tiers=(
             ("returns_level", out.tier1_null.tolist()),
             ("full_engine", out.tier2_null.tolist()),
+            ("bar_permutation", out.tier3_null.tolist()),
         ),
     )
     _artifacts.write_run_sidecars(
@@ -226,7 +230,7 @@ def validate(
     typer.echo(
         f"validate {symbol} -> run {run_id}: {status} "
         f"({grade}OOS Sharpe {sharpe:.3f}, "
-        f"null pct {out.report.nulls[0].percentile:.2f}/{out.report.nulls[1].percentile:.2f}); "
+        f"null pct {'/'.join(f'{n.percentile:.2f}' for n in out.report.nulls)}); "
         f"tear sheet at {rdir / 'tearsheet.html'}"
     )
     if forecast_meta is not None:

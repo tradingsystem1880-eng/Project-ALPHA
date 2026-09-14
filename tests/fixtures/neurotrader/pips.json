@@ -1,0 +1,68 @@
+{
+ "upstream": "github.com/neurotrader888/TechnicalAnalysisAutomation@da99c20bf3d977b639451258cd6cfca9baa1dcc3/perceptually_important.py",
+ "series": {
+  "generator": "alpha_patterns.geometric_brownian_series",
+  "n_bars": 600,
+  "vol_per_bar": 0.02,
+  "seed": 7,
+  "start": 1.0
+ },
+ "window": [
+  200,
+  240
+ ],
+ "n_pips": 5,
+ "cases": [
+  {
+   "distance": "euclidean",
+   "pips_x": [
+    0,
+    5,
+    7,
+    31,
+    39
+   ],
+   "pips_y": [
+    0.5526780148237038,
+    0.6174697881753848,
+    0.5832134084061075,
+    0.4615899475637369,
+    0.46700092479922145
+   ]
+  },
+  {
+   "distance": "perpendicular",
+   "pips_x": [
+    0,
+    5,
+    7,
+    22,
+    39
+   ],
+   "pips_y": [
+    0.5526780148237038,
+    0.6174697881753848,
+    0.5832134084061075,
+    0.4936727382671899,
+    0.46700092479922145
+   ]
+  },
+  {
+   "distance": "vertical",
+   "pips_x": [
+    0,
+    5,
+    7,
+    22,
+    39
+   ],
+   "pips_y": [
+    0.5526780148237038,
+    0.6174697881753848,
+    0.5832134084061075,
+    0.4936727382671899,
+    0.46700092479922145
+   ]
+  }
+ ]
+}

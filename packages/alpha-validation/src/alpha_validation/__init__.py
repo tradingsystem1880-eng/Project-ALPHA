@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from importlib.metadata import version
 
+from alpha_validation.bar_permutation import OHLC, permute_bars, permute_bars_multi
 from alpha_validation.barrier import (
     BarrierCounts,
     BarrierResult,
@@ -66,6 +67,7 @@ from alpha_validation.forecast_eval import (
     score_origin,
     summarize_scores,
 )
+from alpha_validation.mcpt import MultiScoreFn, ScoreFn, permutation_test, permutation_test_multi
 from alpha_validation.metrics import (
     DrawdownEpisode,
     FloatArray,
@@ -75,6 +77,7 @@ from alpha_validation.metrics import (
     drawdown_episodes,
     expected_shortfall,
     max_drawdown,
+    profit_factor,
     sharpe_ratio,
     to_returns,
     value_at_risk,
@@ -130,6 +133,7 @@ from alpha_validation.tearsheet import (
     render_tearsheet_html,
     report_to_manifest,
 )
+from alpha_validation.trade_dependence import RunsTestResult, runs_test, trade_runs_test
 from alpha_validation.verdict import VerdictSummary, grade_tail_risk, grade_verdict
 from alpha_validation.walkforward import Split, walk_forward_splits
 
@@ -159,9 +163,11 @@ __all__ = [
     "ForecastStateDiagnosticV1",
     "GauntletReport",
     "LiftResult",
+    "MultiScoreFn",
     "MultipleTestResult",
     "MonteCarloFamilySummaryV1",
     "MonteCarloReviewV1",
+    "OHLC",
     "PathMetricArrays",
     "NullResult",
     "NullSummary",
@@ -174,7 +180,9 @@ __all__ = [
     "ProportionInterval",
     "RegimePathResult",
     "RunMetadata",
+    "RunsTestResult",
     "ScenarioSummary",
+    "ScoreFn",
     "Split",
     "Statistic",
     "StrategyFn",
@@ -215,9 +223,14 @@ __all__ = [
     "overlap_factor",
     "path_metric_arrays",
     "parametric_price_null",
+    "permutation_test",
+    "permutation_test_multi",
+    "permute_bars",
+    "permute_bars_multi",
     "pinball_loss",
     "probabilistic_sharpe_ratio",
     "probability_of_backtest_overfitting",
+    "profit_factor",
     "randomized_price_null",
     "regime_switching_return_paths",
     "student_t_return_paths",
@@ -225,6 +238,7 @@ __all__ = [
     "render_returns_tearsheet",
     "render_tearsheet_html",
     "report_to_manifest",
+    "runs_test",
     "risk_of_ruin",
     "rw_drift_end_returns",
     "scenario_metrics",
@@ -237,6 +251,7 @@ __all__ = [
     "summarize_path_family",
     "summarize_scores",
     "to_returns",
+    "trade_runs_test",
     "two_proportion_pvalue",
     "value_at_risk",
     "walk_forward_splits",

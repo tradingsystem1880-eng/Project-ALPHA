@@ -64,6 +64,54 @@ def test_parse_fills_defaults_and_computes_warmup() -> None:
         }
     )
     assert macd_spec.warmup == 34
+    line_spec = parse_rule_spec(
+        {
+            "name": "x",
+            "long_when": [
+                {
+                    "left": {"indicator": "macd", "params": [12, 26, 9], "field": "line"},
+                    "op": ">",
+                    "right": {"value": 0},
+                }
+            ],
+        }
+    )
+    assert line_spec.warmup == 26  # the MACD line is finite before its signal is
+
+
+def test_parse_accepts_the_ported_operands_and_computes_their_warmup() -> None:
+    def spec_for(operand: dict[str, object]) -> RuleSpec:
+        return parse_rule_spec(
+            {"name": "x", "long_when": [{"left": operand, "op": ">", "right": {"value": 0}}]}
+        )
+
+    hawkes = spec_for({"indicator": "hawkes", "params": [0.1, 20]})
+    assert hawkes.warmup == 21 and hawkes.long_when[0].left.params == (0.1, 20.0)
+    assert hawkes.long_when[0].left.label == "hawkes:0.1:20"
+    assert spec_for({"indicator": "vsa", "params": [20]}).warmup == 41
+    assert spec_for({"indicator": "runs_z", "params": [20]}).warmup == 21
+    assert spec_for({"indicator": "perm_entropy", "params": [3, 4]}).warmup == 27
+    assert spec_for({"indicator": "cmma", "params": [20, 14]}).warmup == 20
+    assert spec_for({"indicator": "vg_path", "params": [12], "field": "inverse"}).warmup == 13
+    assert spec_for({"indicator": "reversibility", "params": [30]}).warmup == 30
+
+
+@pytest.mark.parametrize(
+    ("operand", "message"),
+    [
+        ({"indicator": "hawkes", "params": [0, 20]}, r"hawkes decay\) must be > 0"),
+        ({"indicator": "hawkes", "params": [0.1, 1]}, "whole number of bars >= 2"),
+        ({"indicator": "reversibility", "params": [9]}, "reversibility window must be >= 10"),
+        ({"indicator": "vg_path", "params": [12]}, "needs field in"),
+        ({"indicator": "vsa", "params": [20], "field": "price"}, "has a single series"),
+        ({"indicator": "cmma", "params": [20]}, "takes 2 parameter"),
+    ],
+)
+def test_parse_rejects_malformed_ported_operands(operand: dict[str, object], message: str) -> None:
+    with pytest.raises(DataError, match=message):
+        parse_rule_spec(
+            {"name": "x", "long_when": [{"left": operand, "op": ">", "right": {"value": 0}}]}
+        )
 
 
 @pytest.mark.parametrize(

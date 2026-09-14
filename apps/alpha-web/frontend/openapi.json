@@ -747,7 +747,8 @@
             "enum": [
               "line",
               "polyline",
-              "zone"
+              "zone",
+              "marker"
             ],
             "title": "Kind",
             "type": "string"
@@ -3905,7 +3906,8 @@
           "dex_pools",
           "dex_ohlcv",
           "dex_transactions",
-          "comparison_bars"
+          "comparison_bars",
+          "defi_tvl"
         ],
         "type": "string"
       },
@@ -3979,7 +3981,8 @@
           "basis",
           "volatility_surface",
           "liquidity",
-          "onchain_change"
+          "onchain_change",
+          "defi_tvl_residual"
         ],
         "type": "string"
       },
@@ -4305,7 +4308,8 @@
           "coingecko",
           "geckoterminal",
           "coinmetrics",
-          "ccxt:coinbase"
+          "ccxt:coinbase",
+          "defillama"
         ],
         "type": "string"
       },
@@ -11852,12 +11856,6 @@
             "type": "string"
           },
           "pane": {
-            "enum": [
-              "price",
-              "rsi",
-              "atr",
-              "macd"
-            ],
             "title": "Pane",
             "type": "string"
           },

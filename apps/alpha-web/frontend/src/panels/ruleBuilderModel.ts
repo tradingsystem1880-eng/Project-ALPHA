@@ -11,10 +11,26 @@ export const OPS = ['>', '<', '>=', '<='] as const
 export type Op = (typeof OPS)[number]
 
 export const SOURCES = ['high', 'low', 'close'] as const
-const ARITY: Readonly<Record<string, number>> = Object.freeze({ sma: 1, ema: 1, bbands: 2, rsi: 1, atr: 1, macd: 3 })
-const FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+/** The same tables as `alpha_strategies.rules.INDICATOR_ARITY` / `INDICATOR_FIELDS` (drift-tested). */
+export const ARITY: Readonly<Record<string, number>> = Object.freeze({
+  sma: 1,
+  ema: 1,
+  bbands: 2,
+  rsi: 1,
+  atr: 1,
+  macd: 3,
+  hawkes: 2,
+  vsa: 1,
+  runs_z: 1,
+  perm_entropy: 2,
+  cmma: 2,
+  vg_path: 1,
+  reversibility: 1,
+})
+export const FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze({
   bbands: ['upper', 'middle', 'lower'],
   macd: ['line', 'signal', 'histogram'],
+  vg_path: ['price', 'inverse'],
 })
 
 export const OPERAND_EXAMPLES: readonly string[] = Object.freeze([
@@ -25,6 +41,13 @@ export const OPERAND_EXAMPLES: readonly string[] = Object.freeze([
   'atr:14',
   'bbands:20:2:lower',
   'macd:12:26:9:histogram',
+  'hawkes:0.1:168',
+  'vsa:168',
+  'runs_z:24',
+  'perm_entropy:3:28',
+  'cmma:24:168',
+  'vg_path:12:price',
+  'reversibility:30',
   '30',
 ])
 

@@ -24,7 +24,7 @@ from alpha_cli._runner import (
 from alpha_cli._seeds import semantic_seeds
 from alpha_cli._strategies import surrogate_for
 from alpha_cli._surrogate import Surrogate
-from alpha_cli._synth import full_engine_null
+from alpha_cli._synth import bar_permutation_null, full_engine_null
 from alpha_core import Bar, CorporateAction, DataError
 from alpha_validation import (
     CISummary,
@@ -70,6 +70,7 @@ class GauntletParams:
     seed: int | None = 7
     tier1_paths: int = 1000
     tier2_paths: int = 64
+    tier3_paths: int = 64  # Tier-3 bar-permutation paths (walk-forward MCPT, OOS window only)
     n_resamples: int = 2000
     mean_block: float = 5.0
     threshold: float = 0.95
@@ -100,11 +101,12 @@ class GauntletOutput:
     report: GauntletReport
     oos: OOSResult
     result: BacktestResult
-    # raw per-path null statistics behind the two NullSummary tiers (finite by construction —
+    # raw per-path null statistics behind the three NullSummary tiers (finite by construction —
     # the generators fail loud on non-finite paths; empty when a degenerate OOS drew no null).
     # Persisted by the CLI as nulls.parquet next to the manifest.
     tier1_null: FloatArray
     tier2_null: FloatArray
+    tier3_null: FloatArray
 
 
 def run_gauntlet(
@@ -148,6 +150,7 @@ def run_gauntlet(
         (
             "validation.tier1_null",
             "validation.tier2_null",
+            "validation.bar_permutation_wf",
             "validation.sharpe_ci",
             "validation.cagr_ci",
             "validation.risk_of_ruin",
@@ -155,6 +158,7 @@ def run_gauntlet(
     )
     t1_seed = child_seeds["validation.tier1_null"]
     t2_seed = child_seeds["validation.tier2_null"]
+    t3_seed = child_seeds["validation.bar_permutation_wf"]
     sharpe_seed = child_seeds["validation.sharpe_ci"]
     cagr_seed = child_seeds["validation.cagr_ci"]
     ruin_seed = child_seeds["validation.risk_of_ruin"]
@@ -178,9 +182,14 @@ def run_gauntlet(
         # shorts) has no measurable risk-adjusted edge: the headline Sharpe is undefined and ranking
         # it against a null or bootstrapping it is meaningless. Fail gracefully — degenerate gates,
         # overall FAIL — instead of letting an undefined-Sharpe error abort the run.
-        nulls = (_degenerate_null("returns_level"), _degenerate_null("full_engine"))
+        nulls = (
+            _degenerate_null("returns_level"),
+            _degenerate_null("full_engine"),
+            _degenerate_null("bar_permutation"),
+        )
         tier1_null = np.array([], dtype=np.float64)  # no null was drawn — nothing to persist
         tier2_null = np.array([], dtype=np.float64)
+        tier3_null = np.array([], dtype=np.float64)
         cis = (
             _degenerate_ci("sharpe", params.confidence),
             _degenerate_ci("cagr", params.confidence),
@@ -233,8 +242,25 @@ def run_gauntlet(
             dividends=dividends,
             spec_for_path=tier2_spec_for_path if params.tier2_mode == "model" else None,
         )
+        # Tier 3 — walk-forward bar-permutation null (Masters 2018 ch. 7 / neurotrader888/mcpt):
+        # every bar from the first scored OOS bar on is permuted (the decision bar before it and
+        # all priming history stay byte-identical), the fixed rules re-run in the real engine, and
+        # the observed OOS Sharpe is ranked against the permuted-window distribution.
+        tier3 = bar_permutation_null(
+            bars,
+            observed=oos_metrics["sharpe"],
+            spec=spec,
+            n_paths=params.tier3_paths,
+            start_index=oos.folds[0].test_start - 1,
+            threshold=params.threshold,
+            seed=t3_seed,
+            max_workers=params.max_workers,
+            dividends=dividends,
+            spec_for_path=tier2_spec_for_path if params.tier2_mode == "model" else None,
+        )
         tier1_null = tier1.null
         tier2_null = tier2.null
+        tier3_null = tier3.null
         divergence = _convention_divergence(bars, price_returns, surrogate, oos_idx, safe_sharpe)
         nulls = (
             _tier1_summary(
@@ -244,6 +270,7 @@ def run_gauntlet(
                 tolerance=params.tier1_divergence_tol,
             ),
             _null_summary("full_engine", tier2),
+            _null_summary("bar_permutation", tier3),
         )
 
         # Block-bootstrap BCa CIs on the OOS returns (cagr from the resampled equity path). The
@@ -286,7 +313,12 @@ def run_gauntlet(
         verdict=verdict,
     )
     return GauntletOutput(
-        report=report, oos=oos, result=result, tier1_null=tier1_null, tier2_null=tier2_null
+        report=report,
+        oos=oos,
+        result=result,
+        tier1_null=tier1_null,
+        tier2_null=tier2_null,
+        tier3_null=tier3_null,
     )
 
 
@@ -574,6 +606,7 @@ def _metadata(
         null_model=params.null_model,
         tier1_paths=params.tier1_paths,
         tier2_paths=params.tier2_paths,
+        tier3_paths=params.tier3_paths,
         n_resamples=params.n_resamples,
         mean_block=params.mean_block,
         threshold=params.threshold,

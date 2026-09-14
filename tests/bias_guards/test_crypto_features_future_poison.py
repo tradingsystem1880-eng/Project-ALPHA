@@ -247,3 +247,105 @@ def test_quality_gates_quarantine_observations_the_cutoff_cannot_know() -> None:
     )
     assert future_knowledge.state == "quarantined"
     assert "future_knowledge_time" in future_knowledge.failures
+
+
+def _days(count: int) -> list[datetime]:
+    return [NOW - timedelta(days=count - index) for index in range(count)]
+
+
+def _tvl_inputs(
+    days: list[datetime], *, poison: bool
+) -> tuple[QualifiedCryptoFrame, QualifiedCryptoFrame]:
+    n = len(days)
+    tvl_values = [1.0e9 * (1.0 + 0.01 * index) for index in range(n)]
+    closes = [100.0 + index for index in range(n)]
+    extra_days = [NOW + timedelta(days=k) for k in (1, 2)]
+    tvl = pl.DataFrame(
+        {
+            "chain": ["ethereum"] * (n + (2 if poison else 0)),
+            "observed_at": days + (extra_days if poison else []),
+            "tvl_usd": tvl_values + ([9.9e12, 1.0e3] if poison else []),
+            "available_at": [d + timedelta(days=1) for d in days + (extra_days if poison else [])],
+        }
+    )
+    market = pl.DataFrame(
+        {
+            "timestamp": days + (extra_days if poison else []),
+            "open": closes + ([1.0, 1.0] if poison else []),
+            "high": [c + 2.0 for c in closes] + ([2.0, 2.0] if poison else []),
+            "low": [c - 2.0 for c in closes] + ([0.5, 0.5] if poison else []),
+            "close": closes + ([1.0, 1.0] if poison else []),
+        }
+    )
+    tvl_source = QualifiedCryptoFrame(
+        name="tvl",
+        dataset=CryptoDatasetIdentityV1(
+            provider="defillama",
+            venue="defillama",
+            market_type="network",
+            family="defi_tvl",
+            instrument="ethereum",
+            base_asset="ETH",
+            quote_asset="USD",
+            frequency="1d",
+            units="usd",
+            timestamp_convention="utc_day_start_available_next_day",
+        ),
+        artifact_sha256=SHA,
+        quality=_source("defi_tvl", tvl, provider="defillama", observed_end=days[-1]).quality,
+        frame=tvl,
+    )
+    market_source = QualifiedCryptoFrame(
+        name="market",
+        dataset=CryptoDatasetIdentityV1(
+            provider="binance",
+            venue="binance",
+            market_type="spot",
+            family="market_bars",
+            instrument="ETHUSDT",
+            base_asset="ETH",
+            quote_asset="USDT",
+            frequency="1d",
+            units="provider_native",
+            timestamp_convention="interval_end_utc",
+        ),
+        artifact_sha256=SHA,
+        quality=_source("market_bars", market, provider="binance", observed_end=days[-1]).quality,
+        frame=market,
+    )
+    return tvl_source, market_source
+
+
+@pytest.mark.bias_guard
+def test_defi_tvl_residual_never_reads_a_later_day() -> None:
+    """The lagged TVL, trailing OLS and ATR are all backward-looking: future days change nothing."""
+    from alpha_data.crypto.features import defi_tvl_residual_features
+
+    days = _days(12)
+    clean_frame, _ = defi_tvl_residual_features(
+        *_tvl_inputs(days, poison=False), available_at=NOW, window=5, atr_window=3
+    )
+    poisoned_frame, _ = defi_tvl_residual_features(
+        *_tvl_inputs(days, poison=True),
+        available_at=NOW + timedelta(days=3),
+        window=5,
+        atr_window=3,
+    )
+    assert feature_frame_bytes(
+        poisoned_frame.filter(pl.col("timestamp") <= NOW).drop("available_at")
+    ) == feature_frame_bytes(clean_frame.drop("available_at"))
+    # the poison is potent: the appended days survive and carry a different residual
+    assert poisoned_frame.filter(pl.col("timestamp") > NOW).height == 2
+
+
+@pytest.mark.bias_guard
+def test_defi_tvl_residual_leaky_twin_is_caught() -> None:
+    """A same-day (unlagged) TVL would move the last row: the guard's relation is not vacuous."""
+    from alpha_data.crypto.features import defi_tvl_residual_features
+
+    days = _days(12)
+    tvl, market = _tvl_inputs(days, poison=False)
+    frame, _ = defi_tvl_residual_features(tvl, market, available_at=NOW, window=5, atr_window=3)
+    # the last row's lagged TVL is the previous day's value, never today's
+    assert frame["tvl_usd_lag1"].to_list()[-1] == pytest.approx(tvl.frame["tvl_usd"][-2])
+    assert frame["tvl_usd_lag1"].to_list()[-1] != pytest.approx(tvl.frame["tvl_usd"][-1])

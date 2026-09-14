@@ -67,6 +67,26 @@ def sharpe_ratio(
     return float(np.mean(excess)) / std * math.sqrt(periods_per_year)
 
 
+def profit_factor(returns: FloatSeq) -> float | None:
+    """Gross profit over gross loss of a return (or PnL) stream; ``None`` when there is no loss.
+
+    The ratio the native tear sheet and the upstream permutation-test demos
+    (github.com/neurotrader888/mcpt @ 2c0d70c, ``donchian.py``) score strategies with: the sum of
+    the positive entries divided by the absolute sum of the negative entries. Masters' own MCPT
+    programs score total return instead; the criterion is upstream's choice, not his. A stream
+    with no losing entry has no finite profit factor and is reported as ``None``, never ``inf``.
+    """
+    arr = np.asarray(returns, dtype=np.float64)
+    if arr.ndim != 1 or not np.all(np.isfinite(arr)):
+        raise DataError("profit factor returns must be a finite 1-D array")
+    if arr.size == 0:
+        raise DataError("profit factor needs at least one return")
+    gross_loss = abs(float(np.sum(arr[arr < 0.0])))
+    if gross_loss <= 0.0:
+        return None
+    return float(np.sum(arr[arr > 0.0])) / gross_loss
+
+
 def annualized_volatility(returns: FloatSeq, *, periods_per_year: int = 252) -> float:
     """Annualized volatility: sample std (ddof=1) of per-period returns × sqrt(periods_per_year)."""
     if periods_per_year < 1:

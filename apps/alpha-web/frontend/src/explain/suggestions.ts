@@ -13,6 +13,7 @@ export function suggestions(m: ValidateManifest): Suggestion[] {
   const strategy = str(md.strategy_name)
   const t1 = m.nulls?.find((n) => n.tier === 'returns_level')
   const t2 = m.nulls?.find((n) => n.tier === 'full_engine')
+  const t3 = m.nulls?.find((n) => n.tier === 'bar_permutation')
   const ci = m.cis?.find((c) => c.metric === 'sharpe')
   const nullGate = m.outcomes?.find((o) => o.name === 'randomized_price_null')
   const nOos = m.verdict?.detail?.sample_n_oos ?? null
@@ -21,12 +22,14 @@ export function suggestions(m: ValidateManifest): Suggestion[] {
   const overlap = (m.forecast as { pretrain?: { overlap?: boolean } } | undefined)?.pretrain?.overlap
 
   // --- luck test failed: the most important signal on the platform ---
-  if (nullGate && !nullGate.passed && !(t1?.flagged_low_fidelity && t2?.passed)) {
+  if (nullGate && !nullGate.passed && !(t1?.flagged_low_fidelity && t2?.passed && t3?.passed !== false)) {
     out.push({
       title: 'The edge is indistinguishable from luck here — change something structural',
       why:
         `Random no-edge prices matched the strategy (T1 ${fmtPct(t1?.percentile ?? null, 0)}, ` +
-        `T2 ${fmtPct(t2?.percentile ?? null, 0)} percentile — both need > 95%). Parameter ` +
+        `T2 ${fmtPct(t2?.percentile ?? null, 0)}` +
+        (t3 ? `, T3 ${fmtPct(t3.percentile, 0)}` : '') +
+        ` percentile — every tier needs > 95%). Parameter ` +
         `tweaks rarely fix a luck-level result; a different signal family, holding period, or ` +
         `universe usually does. Single-name momentum often fails exactly this way while a ` +
         `diversified basket of the same signal passes.`,
@@ -42,7 +45,7 @@ export function suggestions(m: ValidateManifest): Suggestion[] {
       why:
         `The fast surrogate fills at the close while the engine fills next open; on this run the ` +
         `two conventions diverge by ${fmtNum(t1.convention_divergence, 3)} Sharpe (tolerance ` +
-        `exceeded), so Tier 1's fail is advisory. The honest full-engine tier passed. High ` +
+        `exceeded), so Tier 1's fail is advisory. The honest engine tiers passed. High ` +
         `turnover amplifies this bias — a slower rebalance would shrink the divergence itself.`,
     })
   }

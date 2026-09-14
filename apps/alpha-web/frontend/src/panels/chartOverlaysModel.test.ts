@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import type { ChartAnnotation, OverlaySeries } from '../api/types'
 import {
+  ARITY,
   EMPTY_OVERLAYS,
+  INDICATOR_PRESETS,
   drawableAnnotations,
   hasOverlays,
   lineData,
@@ -16,7 +18,7 @@ import {
   togglePattern,
 } from './chartOverlaysModel'
 
-const series = (id: string, pane: OverlaySeries['pane'], name = id): OverlaySeries => ({
+const series = (id: string, pane: string, name = id): OverlaySeries => ({
   id,
   name,
   pane,
@@ -25,10 +27,15 @@ const series = (id: string, pane: OverlaySeries['pane'], name = id): OverlaySeri
   warmup: 1,
 })
 
-const annotation = (id: number, label: string, anchors: number[]): ChartAnnotation => ({
+const annotation = (
+  id: number,
+  label: string,
+  anchors: number[],
+  kind: ChartAnnotation['kind'] = anchors.length === 1 ? 'marker' : 'line',
+): ChartAnnotation => ({
   annotation_id: id,
   decision_sequence_id: null,
-  kind: 'line',
+  kind,
   label,
   unit: 'price',
   reason: 'fractal L=5; knowable from bar 9',
@@ -40,6 +47,13 @@ describe('indicator spec grammar (mirrors alpha chart overlays)', () => {
     expect(parseIndicatorSpec(' SMA:20 ')).toBe('sma:20')
     expect(parseIndicatorSpec('bbands:20:2.5')).toBe('bbands:20:2.5')
     expect(parseIndicatorSpec('macd:12:26:9')).toBe('macd:12:26:9')
+    expect(parseIndicatorSpec('HAWKES:0.1:168')).toBe('hawkes:0.1:168')
+    expect(parseIndicatorSpec('perm_entropy:3:28')).toBe('perm_entropy:3:28')
+    expect(parseIndicatorSpec('reversibility:10')).toBe('reversibility:10')
+  })
+  it('accepts every preset and every arity-table head', () => {
+    for (const preset of INDICATOR_PRESETS) expect(parseIndicatorSpec(preset.id)).toBe(preset.id)
+    expect(new Set(INDICATOR_PRESETS.map((preset) => preset.id.split(':')[0]))).toEqual(new Set(Object.keys(ARITY)))
   })
   it('names the problem instead of sending a bad spec to the CLI', () => {
     expect(() => parseIndicatorSpec('foo:2')).toThrow(/unknown indicator "foo"/)
@@ -49,6 +63,10 @@ describe('indicator spec grammar (mirrors alpha chart overlays)', () => {
     expect(() => parseIndicatorSpec('rsi:2.5')).toThrow(/whole numbers/)
     expect(() => parseIndicatorSpec('bbands:20:0')).toThrow(/width/)
     expect(() => parseIndicatorSpec('macd:26:12:9')).toThrow(/fast window/)
+    expect(() => parseIndicatorSpec('hawkes:0:168')).toThrow(/decay must be above 0/)
+    expect(() => parseIndicatorSpec('hawkes:0.1:1')).toThrow(/at least 2/)
+    expect(() => parseIndicatorSpec('reversibility:9')).toThrow(/at least 10/)
+    expect(() => parseIndicatorSpec('cmma:10')).toThrow(/cmma takes 2 parameters \(cmma:24:168\)/)
   })
 })
 
@@ -81,38 +99,59 @@ describe('overlay config', () => {
 })
 
 describe('response → chart data', () => {
-  it('splits price-pane series from oscillator panes in a fixed pane order', () => {
+  it('splits price-pane series from one sub-pane per oscillator in the order the CLI served them', () => {
     const rows = [
       series('macd:12:26:9:line', 'macd'),
       series('sma:20', 'price'),
       series('rsi:14', 'rsi'),
       series('bbands:20:2:upper', 'price'),
+      series('vg_path:12:price', 'vg_path'),
+      series('macd:12:26:9:signal', 'macd'),
+      series('vg_path:12:inverse', 'vg_path'),
     ]
     const split = splitPanes(rows)
     expect(split.price.map((row) => row.id)).toEqual(['sma:20', 'bbands:20:2:upper'])
     expect(split.panes.map((group) => [group.pane, group.series.length])).toEqual([
+      ['macd', 2],
       ['rsi', 1],
-      ['macd', 1],
+      ['vg_path', 2],
     ])
+    expect(splitPanes([series('hawkes:0.1:168', 'hawkes')]).panes.map((group) => group.pane)).toEqual(['hawkes'])
   })
   it('turns warm-up nulls into whitespace points and refuses a misaligned series', () => {
     expect(lineData([1, 2, 3], [null, 5, 6])).toEqual([{ time: 1 }, { time: 2, value: 5 }, { time: 3, value: 6 }])
     expect(() => lineData([1, 2], [null])).toThrow(/does not match/)
   })
-  it('renders single-anchor swings as bar markers and keeps multi-anchor shapes for drawing', () => {
+  it('renders marker annotations as bar markers and keeps multi-anchor shapes for drawing', () => {
     const rows = [
       annotation(1, 'Swing high', [4]),
       annotation(2, 'Swing low', [9]),
       annotation(3, 'Fib 0.618', [9, 20]),
       annotation(4, 'Descending trendline (3 touches, active)', [2, 9, 20]),
+      annotation(5, 'DC high', [12]),
+      annotation(6, 'Structure L1 low', [15]),
+      annotation(7, 'PIPs 5', [1, 5, 9, 14, 20], 'polyline'),
+      annotation(8, 'Profile level 101.5', [0, 20]),
     ]
     expect(swingMarkers(rows)).toEqual([
-      { id: 'swing:1', time: 1_004, position: 'aboveBar', text: 'H', title: 'Swing high · fractal L=5; knowable from bar 9' },
-      { id: 'swing:2', time: 1_009, position: 'belowBar', text: 'L', title: 'Swing low · fractal L=5; knowable from bar 9' },
+      { id: 'swing:1', time: 1_004, position: 'aboveBar', shape: 'circle', text: 'H', title: 'Swing high · fractal L=5; knowable from bar 9' },
+      { id: 'swing:2', time: 1_009, position: 'belowBar', shape: 'circle', text: 'L', title: 'Swing low · fractal L=5; knowable from bar 9' },
+      { id: 'swing:5', time: 1_012, position: 'aboveBar', shape: 'square', text: 'H', title: 'DC high · fractal L=5; knowable from bar 9' },
+      { id: 'swing:6', time: 1_015, position: 'belowBar', shape: 'square', text: 'L', title: 'Structure L1 low · fractal L=5; knowable from bar 9' },
     ])
-    expect(drawableAnnotations(rows).map((row) => row.annotation_id)).toEqual([3, 4])
-    expect(overlayLegend([series('sma:20', 'price', 'SMA 20'), series('macd:12:26:9:line', 'macd', 'MACD 12/26/9 line')], rows)).toBe(
-      'OVERLAYS · SMA 20 · MACD 12/26/9 · 2 swings · 1 trendline · 1 fib levels · computed by alpha chart overlays',
+    // a legacy single-anchor 'line' is never a marker, and a marker is never drawn as a shape
+    expect(swingMarkers([annotation(9, 'Swing low', [3], 'line')])).toEqual([])
+    expect(drawableAnnotations(rows).map((row) => row.annotation_id)).toEqual([3, 4, 7, 8])
+    expect(
+      overlayLegend(
+        [series('sma:20', 'price', 'SMA 20'), series('macd:12:26:9:line', 'macd', 'MACD 12/26/9 line')],
+        rows.slice(0, 4),
+      ),
+    ).toBe('OVERLAYS · SMA 20 · MACD 12/26/9 · 2 swings · 1 trendline · 1 fib levels · computed by alpha chart overlays')
+    expect(
+      overlayLegend([series('vg_path:12:price', 'vg_path', 'VG path 12 price'), series('vg_path:12:inverse', 'vg_path', 'VG path 12 inverse')], rows),
+    ).toBe(
+      'OVERLAYS · VG path 12 · 2 swings · 2 extremes · 1 trendline · 1 fib levels · 1 profile levels · 1 pattern · computed by alpha chart overlays',
     )
     expect(overlayLegend([], [])).toBe('')
   })

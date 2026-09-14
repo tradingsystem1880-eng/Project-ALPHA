@@ -34,7 +34,9 @@ _SPEC = RunSpec(
     embargo=1,
     anchored=False,
 )
-_PARAMS = GauntletParams(seed=7, tier1_paths=40, tier2_paths=8, n_resamples=150, mean_block=5.0)
+_PARAMS = GauntletParams(
+    seed=7, tier1_paths=40, tier2_paths=8, tier3_paths=8, n_resamples=150, mean_block=5.0
+)
 
 
 def _bars(n: int = 60, seed: int = 0) -> list[Bar]:
@@ -97,6 +99,8 @@ def test_fresh_process_cli_runs_are_byte_identical(tmp_path, monkeypatch) -> Non
         "--tier1-paths",
         "20",
         "--tier2-paths",
+        "4",
+        "--tier3-paths",
         "4",
         "--n-resamples",
         "50",

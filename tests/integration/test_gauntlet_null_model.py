@@ -45,11 +45,17 @@ def _spec() -> RunSpec:
 @pytest.mark.parametrize("model", ["student_t", "garch"])
 def test_parametric_null_models_run_and_report_returns_level_tier(model: str) -> None:
     params = GauntletParams(
-        seed=7, tier1_paths=40, tier2_paths=8, n_resamples=150, mean_block=5.0, null_model=model
+        seed=7,
+        tier1_paths=40,
+        tier2_paths=8,
+        tier3_paths=4,
+        n_resamples=150,
+        mean_block=5.0,
+        null_model=model,
     )
     out = run_gauntlet(_bars(), _spec(), params, run_id="x", snapshot_id=None)
     tiers = {n.tier for n in out.report.nulls}
-    assert tiers == {"returns_level", "full_engine"}
+    assert tiers == {"returns_level", "full_engine", "bar_permutation"}
     assert isinstance(out.report.passed, bool)
 
 

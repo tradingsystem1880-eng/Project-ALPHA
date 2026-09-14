@@ -1053,6 +1053,8 @@ def build_suite_plan(
             str(_stage_int(config, "tier1_paths", 1000, minimum=100, maximum=100_000)),
             "--tier2-paths",
             str(_stage_int(config, "tier2_paths", 64, minimum=1, maximum=10_000)),
+            "--tier3-paths",
+            str(_stage_int(config, "tier3_paths", 64, minimum=1, maximum=10_000)),
             "--n-resamples",
             str(_stage_int(config, "n_resamples", 2000, minimum=100, maximum=100_000)),
             "--mean-block",
@@ -1103,7 +1105,9 @@ def build_suite_plan(
         governance.update(
             {
                 "aggregation": "no_majority_vote",
-                "headline": "bootstrap Tier-1 paired with full-engine Tier-2",
+                "headline": (
+                    "bootstrap Tier-1 paired with full-engine Tier-2 and bar-permutation Tier-3"
+                ),
                 "sensitivities": ["student_t Tier-1", "garch Tier-1"],
                 "sensitivity_tier2_execution": (
                     "the canonical validate command currently repeats full-engine Tier-2 for "

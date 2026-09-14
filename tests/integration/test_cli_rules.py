@@ -109,6 +109,8 @@ def test_validate_runs_the_gauntlet_on_a_saved_rule_set(
             "20",
             "--tier2-paths",
             "2",
+            "--tier3-paths",
+            "2",
             "--n-resamples",
             "50",
         ],

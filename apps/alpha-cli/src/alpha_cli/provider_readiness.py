@@ -239,6 +239,24 @@ def _coingecko_check() -> tuple[tuple[str, ...], dict[str, object]]:
     }
 
 
+def _defillama_check() -> tuple[tuple[str, ...], dict[str, object]]:
+    from alpha_data.crypto.providers.defillama import (
+        check_chain_tvl,
+        defillama_url,
+        fetch_defillama,
+    )
+
+    chain = "ethereum"
+    summary = check_chain_tvl(fetch_defillama(defillama_url("chain_tvl", chain=chain)), chain=chain)
+    return ("defi_tvl",), {
+        "interface": "rest_public",
+        "chain": chain,
+        "rows": summary["rows"],
+        "last_observed_at": str(summary["last_observed_at"]),
+        "schema_version": 1,
+    }
+
+
 def _verified_what_if_receipt(data_dir: Path, account_alias: str, account_fingerprint: str) -> bool:
     roots = (
         Path(data_dir) / "ibkr-what-if-v2" / "receipts",
@@ -383,6 +401,7 @@ _CHECKERS: dict[str, Callable[[], tuple[tuple[str, ...], dict[str, object]]]] = 
     "quantpad": _quantpad_check,
     "ibkr": _ibkr_check,
     "coingecko": _coingecko_check,
+    "defillama": _defillama_check,
 }
 
 

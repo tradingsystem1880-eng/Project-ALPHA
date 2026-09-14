@@ -19,7 +19,7 @@ _ARGS = [
     "--lookback", "5", "--skip", "1", "--vol-window", "3", "--rebalance-every", "2",
     "--train-size", "15", "--test-size", "5", "--embargo", "1",
     "--fee-bps", "0", "--slippage-bps", "0", "--starting-cash", "100000",
-    "--tier1-paths", "50", "--tier2-paths", "8", "--n-resamples", "200",
+    "--tier1-paths", "50", "--tier2-paths", "8", "--tier3-paths", "4", "--n-resamples", "200",
 ]  # fmt: skip
 
 
@@ -40,21 +40,25 @@ def test_validate_writes_manifest_and_tearsheet(
     assert (rdir / "equity_curve.parquet").exists()
     assert (rdir / "trades.parquet").exists()
 
-    # the raw two-tier null distributions ride alongside the manifest (nulls.parquet)
+    # the raw three-tier null distributions ride alongside the manifest (nulls.parquet)
     nulls = pl.read_parquet(rdir / "nulls.parquet")
     assert nulls.columns == ["tier", "path_index", "statistic"]
     assert nulls.schema["tier"] == pl.String
     assert nulls.schema["path_index"] == pl.Int64
     assert nulls.schema["statistic"] == pl.Float64
-    assert nulls.height == 50 + 8  # --tier1-paths + --tier2-paths
+    assert nulls.height == 50 + 8 + 4  # --tier1-paths + --tier2-paths + --tier3-paths
     counts = dict(nulls.group_by("tier").len().iter_rows())
-    assert counts == {"returns_level": 50, "full_engine": 8}
+    assert counts == {"returns_level": 50, "full_engine": 8, "bar_permutation": 4}
     assert nulls.sort(["tier", "path_index"]).equals(nulls)  # stored in (tier, path) order
     assert nulls["statistic"].is_finite().all()  # finite by construction (fail-loud generators)
 
     manifest = json.loads((rdir / "manifest.json").read_text())
     assert set(manifest) >= {"cis", "folds", "nulls", "oos_metrics", "outcomes", "passed", "run_id"}
-    assert {n["tier"] for n in manifest["nulls"]} == {"returns_level", "full_engine"}
+    assert {n["tier"] for n in manifest["nulls"]} == {
+        "returns_level",
+        "full_engine",
+        "bar_permutation",
+    }
     assert {c["metric"] for c in manifest["cis"]} == {"sharpe", "cagr"}
     assert {o["name"] for o in manifest["outcomes"]} == {
         "walk_forward_oos",

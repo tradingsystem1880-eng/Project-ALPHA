@@ -38,6 +38,7 @@ type CryptoFamily = Literal[
     "dex_ohlcv",
     "dex_transactions",
     "comparison_bars",
+    "defi_tvl",
 ]
 type CryptoMarketType = Literal[
     "spot", "linear", "inverse", "option", "dex", "network", "reference"
@@ -73,6 +74,7 @@ FAMILY_AUTHORITIES: Final[dict[CryptoFamily, str]] = {
     "dex_ohlcv": "geckoterminal",
     "dex_transactions": "geckoterminal",
     "comparison_bars": "ccxt:coinbase",
+    "defi_tvl": "defillama",
 }
 _HEX = re.compile(r"^[0-9a-f]{64}$")
 _CASE_INSENSITIVE_ADDRESS_NETWORKS = frozenset(
