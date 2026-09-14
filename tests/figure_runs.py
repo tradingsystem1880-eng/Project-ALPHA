@@ -23,6 +23,7 @@ import polars as pl
 BACKTEST_RUN = "1111111111111111"
 VALIDATE_RUN = "2222222222222222"
 PORTFOLIO_RUN = "3333333333333333"
+MCPT_RUN = "4444444444444444"
 
 _START = datetime(2023, 1, 2, tzinfo=UTC)
 _SESSIONS = 260
@@ -185,6 +186,27 @@ def _trace_artifacts(directory: Path, stamps: list[datetime]) -> None:
     """Trades, orders and fills, plus the annotations and indicators price_signal draws."""
     entries = list(range(20, 220, 40))
     exits = [index + 15 for index in entries]
+    # signs in entry order: + - + + - (n=5, n_pos=3, n_neg=2, R=4 -> z = (4 - 3.4) / sqrt(0.84))
+    _write(
+        directory,
+        "trade_statistics.parquet",
+        pl.DataFrame(
+            {
+                "metric": ["profit_factor", "trade_runs_z"],
+                "value": [4.5, 0.6546536707079772],
+                "unit": ["ratio", "z_score"],
+                "available": [True, True],
+                "unavailable_reason": [None, None],
+            },
+            schema={
+                "metric": pl.String(),
+                "value": pl.Float64(),
+                "unit": pl.String(),
+                "available": pl.Boolean(),
+                "unavailable_reason": pl.String(),
+            },
+        ),
+    )
     _write(
         directory,
         "trades.parquet",
@@ -416,10 +438,58 @@ def portfolio_run(root: Path) -> Path:
     return directory
 
 
+def mcpt_run(root: Path) -> Path:
+    """An ``optim mcpt`` directory: the permutation bests and the observed best."""
+    directory = root / "optim" / MCPT_RUN
+    directory.mkdir(parents=True, exist_ok=True)
+    n_perms = 40
+    statistics = [0.2 + 0.05 * ((index * 7) % 11) - 0.1 * (index % 3) for index in range(n_perms)]
+    _write(
+        directory,
+        "mcpt_null.parquet",
+        pl.DataFrame(
+            {
+                "path_index": list(range(n_perms)),
+                "statistic": statistics,
+                "best_config": [
+                    json.dumps({"window": 20 + 5 * (index % 4)}) for index in range(n_perms)
+                ],
+            },
+            schema={
+                "path_index": pl.Int64(),
+                "statistic": pl.Float64(),
+                "best_config": pl.String(),
+            },
+        ),
+    )
+    observed = 0.85
+    count = sum(1 for value in statistics if value >= observed)
+    _manifest(
+        directory,
+        {
+            "run_id": MCPT_RUN,
+            "command": "optim_mcpt",
+            "symbol": "TEST",
+            "grid": {"window": [20, 25, 30, 35]},
+            "n_configs": 4,
+            "n_perms": n_perms,
+            "threshold": 0.95,
+            "statistic": "in_sample_sharpe",
+            "observed": {"config": {"window": 25}, "statistic": observed},
+            "percentile": 1.0 - count / n_perms,
+            "p_value": (1 + count) / (1 + n_perms),
+            "passed": True,
+            "metadata": {"symbol": "TEST", "strategy_name": "breakout"},
+        },
+    )
+    return directory
+
+
 def all_runs(root: Path) -> dict[str, Path]:
     """Every synthetic run, keyed by run id."""
     return {
         BACKTEST_RUN: backtest_run(root),
         VALIDATE_RUN: validate_run(root),
         PORTFOLIO_RUN: portfolio_run(root),
+        MCPT_RUN: mcpt_run(root),
     }

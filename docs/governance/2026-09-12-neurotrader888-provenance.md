@@ -54,6 +54,22 @@ upstream code in a scratch environment and stored as small JSON arrays with name
 | PermutationEntropy @ 890da37 | `perm_entropy.py` | `alpha_patterns/entropy.py` | unchanged algorithm; NaN head; exact parity for two embeddings |
 | TVLIndicator @ 00745d0 | `tvl_indicator.py` | `alpha_data/crypto/providers/defillama.py`, `crypto/features.py::defi_tvl_residual_features` (ADR-0036; delivered) | governed family with receipts and `available_at` (next UTC day); the TVL used on day t is day t−1's value (upstream regresses on the same-day TVL — a recorded deviation); trailing log-log OLS in numpy pinned equal to `alpha_patterns.vsa.rolling_ols_residual` (the data layer may not import patterns); ATR is a simple-mean true range (upstream `pandas_ta.atr` RMA); endpoint shape written against a recorded fixture, live receipt UNVERIFIED in the build sandbox (`api.llama.fi` egress-blocked) |
 
+### Surfaces (stream E, delivered 2026-09-14)
+
+Every ported technique reachable from the owner's tools, computed in Python and only drawn by
+the SPA: `alpha chart overlays` gains the indicators `hawkes`, `vsa`, `runs_z`, `perm_entropy`,
+`cmma`, `vg_path`, `reversibility`, `rsi_pc1` (one sub-pane each) and the patterns `dc_extremes`,
+`pips`, `market_profile`, `harmonics`, `flags`, `structure_levels` (each through its
+`*_known_by(last)` filter; single-anchor extremes are `marker` annotations); `alpha_strategies.rules`
+accepts the same indicators as operands except `rsi_pc1` (its PCA lives in `alpha_research`, which
+the strategy layer may not import), read from the identical `alpha_patterns` functions (parity
+test); the Strategy Builder and Insert › Indicators dialogs mirror the tables (drift test
+`tests/unit/test_overlay_tables_drift.py`); the figure catalogue gains `trade_runs_test` and
+`mcpt_null_histogram`. Not delivered: `pip_cluster_examples` and `retracement_density` figures — no
+run publishes a PIP-cluster or retracement artifact and a builder may not compute its own
+statistic; they return with the artifact that would carry them. The upstream `tree_strat` and
+`donchian`/`moving_average` demos stay unported (see the mapping table).
+
 ## Primary sources cited by the ported statistics
 
 Arthur & Vassilvitskii 2007 (k-means++); Rousseeuw 1987 (silhouette); Martin & McCann 1989 (Ulcer

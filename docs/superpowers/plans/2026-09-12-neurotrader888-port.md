@@ -1,5 +1,7 @@
 # neurotrader888 technique port — every public technique as a Project ALPHA asset
 
+**Delivery state:** Completed (2026-09-14; 26/26 slices; PR #50)
+
 ```json
 {
   "schema_version": 1,
@@ -215,14 +217,15 @@
       "status": "done"
     },
     {
-      "title": "B3 FigureDefinitions only (pip_cluster_examples, retracement_density, mcpt_null_histogram, trade_runs_test; section research; question/uncertainty/caveat required)",
+      "title": "B3 (folded into E5 because the catalogue and builders must agree in every commit) FigureDefinitions only (pip_cluster_examples, retracement_density, mcpt_null_histogram, trade_runs_test; section research; question/uncertainty/caveat required)",
       "verify": "uv run pytest -q tests/unit/test_figure_catalog.py && uv run python scripts/gate.py fast",
       "expected": "catalog_document lists the four ids with builder_not_implemented availability until E5 lands",
       "rollback": "git revert the slice commits",
       "files": [
         "packages/alpha-research/src/alpha_research/figures/catalog.py",
         "tests/unit/test_figure_catalog.py"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "C1 alpha_validation/bar_permutation.py (permute_bars, permute_bars_multi: log OHLC gap + intrabar components, separate multisets, prefix <= start_index untouched, shared permutation across markets) + oracles",
@@ -389,7 +392,8 @@
         ".claude/rules/alpha-cli.md",
         "tests/unit/test_chart_overlays.py",
         "tests/unit/test_chart_overlays_bias_guard.py"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "E2 SPA overlays (+ explain/gates.ts nullStory and suggestions.ts must narrate the third bar_permutation null tier added in C4, naming the vetoing tier): chartOverlaysModel (ARITY, INDICATOR_PRESETS, PATTERNS/PATTERN_LABEL, pane order derived from response, marker kind branch, legend), PriceChartCanvas colours/pane heights, ChartAnnotationPrimitive marker style, IndicatorsDialog; TS/Python indicator-table drift test; committed static/app",
@@ -404,7 +408,8 @@
         "apps/alpha-web/frontend/src/components/IndicatorsDialog.tsx",
         "apps/alpha-web/src/alpha_web/static/app/",
         "tests/unit/test_overlay_tables_drift.py"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "E3 rule operands hawkes/vsa/runs_z/perm_entropy/cmma/reversibility/vg_path in alpha_strategies.rules (INDICATOR_ARITY, bars_needed, operand_series, float-param parse path) + parity rows + run-identity test; resolve the rsi/macd warm-up exception instead of growing it",
@@ -418,7 +423,8 @@
         "tests/unit/test_rules_indicators_parity.py",
         "tests/unit/test_rules_bias_guard.py",
         "tests/unit/test_run_identity_rules.py"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "E4 SPA rule builder: ruleBuilderModel ARITY/FIELDS/OPERAND_EXAMPLES + tests + static/app",
@@ -429,20 +435,22 @@
         "apps/alpha-web/frontend/src/panels/ruleBuilderModel.ts",
         "apps/alpha-web/frontend/src/panels/ruleBuilderModel.test.ts",
         "apps/alpha-web/src/alpha_web/static/app/"
-      ]
+      ],
+      "status": "done"
     },
     {
-      "title": "E5 figure builders mcpt_null_histogram (reads mcpt_null.parquet), pip_cluster_examples, retracement_density, trade_runs_test + BUILDERS keys + reportModel research leaf + synthetic run tests",
+      "title": "E5 figure builders mcpt_null_histogram (reads mcpt_null.parquet) and trade_runs_test (reads trades.parquet + trade_statistics.parquet) + BUILDERS keys + synthetic optim_mcpt run; pip_cluster_examples and retracement_density are NOT delivered — no run command publishes a PIP-cluster or retracement artifact, and a figure that computes its own statistic is forbidden (catalogue rule: builders read declared artifacts only); they return with the artifact that would carry them. No report-model leaf: the trades section already claims trade_runs_test and optimisation figures fall to Other analysis",
       "verify": "uv run pytest -q tests/unit/test_figure_builders_synthetic.py tests/integration/test_figure_builders.py tests/integration/test_figure_builders_reproducible.py && uv run python scripts/gate.py full && cd apps/alpha-web/frontend && npm run lint -- --deny-warnings && npm run test:coverage && npm run generate:api && npm run build && npm run test:e2e",
       "expected": "each builder computes nothing the renderer could not have been handed; byte-stable renders across two runs; every figure id resolves in the SPA report tree",
       "rollback": "git revert the slice commits",
       "files": [
+        "packages/alpha-research/src/alpha_research/figures/catalog.py",
         "apps/alpha-cli/src/alpha_cli/figures/_builders.py",
-        "apps/alpha-cli/src/alpha_cli/figures/_sources.py",
-        "apps/alpha-web/frontend/src/panels/reportModel.ts",
-        "apps/alpha-web/frontend/src/panels/reportModel.test.ts",
-        "tests/unit/test_figure_builders_synthetic.py"
-      ]
+        "tests/figure_runs.py",
+        "tests/unit/test_figure_builders_synthetic.py",
+        "tests/integration/test_figure_builders_reproducible.py"
+      ],
+      "status": "done"
     },
     {
       "title": "Z close-out: BUILD-STATUS append, plan Delivery state Completed, provenance deviations final, /retrospective",
@@ -454,7 +462,8 @@
         "docs/superpowers/plans/2026-09-12-neurotrader888-port.md",
         "docs/governance/2026-09-12-neurotrader888-provenance.md",
         "docs/operations/retrospectives/"
-      ]
+      ],
+      "status": "done"
     }
   ],
   "tier_impact": [

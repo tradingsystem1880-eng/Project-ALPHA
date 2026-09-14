@@ -2527,8 +2527,122 @@ def ml_cost_sensitivity(ctx: BuildContext) -> FigureSpec:
     )
 
 
+def trade_runs_test(ctx: BuildContext) -> FigureSpec:
+    """Trade signs in entry order under the runs z-score the native tear sheet recorded."""
+    trades = src.require(ctx.rdir, "trades.parquet", "entry_ts")
+    pnl = src.floats(trades["realized_pnl"], name="realized_pnl")
+    stats = src.require(ctx.rdir, "trade_statistics.parquet", "metric")
+    row = stats.filter(stats["metric"] == "trade_runs_z")
+    if row.is_empty():
+        raise DataError("trade_statistics.parquet carries no trade_runs_z row")
+    available = bool(row["available"][0])
+    signs = tuple(1.0 if value > 0 else -1.0 if value < 0 else 0.0 for value in pnl)
+    runs = 1 + sum(1 for a, b in zip(signs, signs[1:], strict=False) if a != b)
+    ordinal = tuple(float(index + 1) for index in range(len(signs)))
+    marks: list[Mark] = [BarMark(x=ordinal, y=signs, signed_colour=True, width=0.8)]
+    if available:
+        (z,) = src.floats(row["value"], name="trade_runs_z")
+        reading = "clustered" if z < 0 else "alternating" if z > 0 else "exactly as expected"
+        answer = (
+            f"{len(signs):,} trades form {runs:,} runs of equal sign; the runs z-score is "
+            f"{z:+.2f} ({reading} relative to independence)."
+        )
+        marks.append(
+            RuleMark(
+                orientation="horizontal",
+                position=0.0,
+                role="feature",
+                width=0.8,
+                annotate=ValueLabel(text=f"runs z = {z:+.2f}", dy_pt=8.0),
+            )
+        )
+    else:
+        reason = str(row["unavailable_reason"][0])
+        answer = (
+            f"{len(signs):,} trades form {runs:,} runs of equal sign; the runs test is "
+            f"undefined here ({reason.replace('_', ' ')})."
+        )
+    return ctx.spec(
+        "trade_runs_test",
+        x_label="Trade (entry order)",
+        x_kind="numeric",
+        artifacts=("trades.parquet", "trade_statistics.parquet"),
+        answer=answer,
+        panels=(
+            Panel(
+                panel_id="signs",
+                y_label="Trade sign (win +1 / loss -1)",
+                y_unit="index",
+                y_zero_rule=True,
+                legend=False,
+                marks=tuple(marks),
+            ),
+        ),
+    )
+
+
+def mcpt_null_histogram(ctx: BuildContext) -> FigureSpec:
+    """Best in-sample score per bar permutation, with the observed best marked."""
+    frame = src.require(ctx.rdir, "mcpt_null.parquet", "path_index")
+    values = src.floats(frame["statistic"], name="statistic")
+    edges, counts = _hist(np.asarray(values, dtype=np.float64))
+    observed = ctx.manifest.get("observed")
+    stat = observed.get("statistic") if isinstance(observed, dict) else None
+    percentile = ctx.manifest.get("percentile")
+    p_value = ctx.manifest.get("p_value")
+    marks: list[Mark] = [
+        HistogramMark(
+            edges=edges,
+            counts=counts,
+            role="substrate",
+            alpha=0.9,
+            label=f"{len(values):,} re-optimised permutations",
+        )
+    ]
+    if isinstance(stat, int | float):
+        marks.append(
+            RuleMark(
+                orientation="vertical",
+                position=float(stat),
+                role="feature",
+                width=1.6,
+                dashed=False,
+                label="Observed best",
+                annotate=ValueLabel(text=_observed_label(float(stat), percentile)),
+            )
+        )
+    verdict = "The manifest records no observed percentile for the permutation bests"
+    if (
+        isinstance(percentile, int | float)
+        and isinstance(p_value, int | float)
+        and not isinstance(percentile, bool)
+        and not isinstance(p_value, bool)
+    ):
+        verdict = (
+            f"The observed best in-sample Sharpe beats {pct(float(percentile), 0)} of the "
+            f"permutation bests (p = {float(p_value):.3f})"
+        )
+    return ctx.spec(
+        "mcpt_null_histogram",
+        x_label="Best in-sample Sharpe over the grid (sharpe)",
+        x_kind="numeric",
+        artifacts=("mcpt_null.parquet",),
+        answer=f"{verdict}; an optimisation-overfit check, not out-of-sample evidence.",
+        panels=(
+            Panel(
+                panel_id="permutations",
+                y_label="Permutations (n)",
+                y_unit="count",
+                marks=tuple(marks),
+            ),
+        ),
+    )
+
+
 BUILDERS.update(
     {
+        "trade_runs_test": trade_runs_test,
+        "mcpt_null_histogram": mcpt_null_histogram,
         "portfolio_weights": portfolio_weights,
         "portfolio_correlations": portfolio_correlations,
         "monte_carlo_equity_fans": monte_carlo_equity_fans,

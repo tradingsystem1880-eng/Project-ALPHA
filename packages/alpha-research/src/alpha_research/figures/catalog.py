@@ -194,6 +194,26 @@ FIGURES: Final[tuple[FigureDefinition, ...]] = (
         order=60,
     ),
     _equity(
+        figure_id="trade_runs_test",
+        title="Trade-dependence runs test",
+        summary=(
+            "The sign of every closed trade in entry order, with the Wald-Wolfowitz runs z-score "
+            "the native tear sheet recorded for that sequence."
+        ),
+        question="Do wins and losses cluster or alternate more than independent outcomes would?",
+        uncertainty=(
+            "The z-score is an asymptotic normal approximation; with few trades the run count is "
+            "coarse and the score moves by whole steps."
+        ),
+        caveat=(
+            "A clustered sequence is dependence between consecutive outcomes, not evidence of an "
+            "edge; the test is undefined when every trade shares one sign and the sheet says so."
+        ),
+        section="trades",
+        required_artifacts=("trades.parquet", "trade_statistics.parquet"),
+        order=61,
+    ),
+    _equity(
         figure_id="holding_period",
         title="Holding periods",
         summary="How long trades were held, split by whether they made money.",
@@ -635,6 +655,28 @@ FIGURES: Final[tuple[FigureDefinition, ...]] = (
         required_artifacts=("chart-data.json",),
         panel_count=2,
         order=230,
+    ),
+    FigureDefinition(
+        figure_id="mcpt_null_histogram",
+        title="In-sample permutation test of the sweep",
+        summary=(
+            "The best in-sample Sharpe the optimiser found on each bar permutation, with the "
+            "best found on the real series marked."
+        ),
+        question="Does re-optimising on shuffled bars find an equally good parameter set?",
+        uncertainty=(
+            "The null is a finite sample of permutations, so the percentile carries its own "
+            "sampling error; a result near the threshold is not a clean pass."
+        ),
+        caveat=(
+            "An optimisation-overfit test only: every score is in-sample and the observed best "
+            "is selected by the same search, so it never stands in for the walk-forward null "
+            "tiers of alpha validate."
+        ),
+        section="optimisation",
+        run_commands=("optim_mcpt",),
+        required_artifacts=("mcpt_null.parquet",),
+        order=165,
     ),
 )
 
