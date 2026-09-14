@@ -43,6 +43,7 @@ _FREQUENCIES: Final[dict[CryptoFamily, tuple[str, ...]]] = {
     "dex_ohlcv": ("1d", "1h", "5m", "1m"),
     "dex_transactions": ("transaction_events",),
     "comparison_bars": ("1d", "1h", "5m", "1m"),
+    "defi_tvl": ("1d",),
 }
 
 _LIMITS: Final[dict[CryptoFamily, tuple[str, ...]]] = {
@@ -76,6 +77,7 @@ _LIMITS: Final[dict[CryptoFamily, tuple[str, ...]]] = {
     "dex_ohlcv": ("tracked_or_case_bound_pools",),
     "dex_transactions": ("tracked_or_case_bound_pools",),
     "comparison_bars": ("diagnostic_only_no_automatic_substitution",),
+    "defi_tvl": ("one_chain_series_per_request", "supplemental_research_only"),
 }
 
 

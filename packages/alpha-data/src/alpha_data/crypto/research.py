@@ -19,7 +19,7 @@ type CryptoResearchPurpose = Literal["research", "validation", "execution_price"
 
 _PURPOSES: Final = frozenset({"research", "validation", "execution_price"})
 _SUPPLEMENTAL_FAMILIES: Final = frozenset(
-    {"asset_metadata", "market_membership", "market_reference", "onchain_catalog"}
+    {"asset_metadata", "market_membership", "market_reference", "onchain_catalog", "defi_tvl"}
 )
 _PROVIDER_NATIVE_PRICE_FAMILIES: Final = frozenset(
     {

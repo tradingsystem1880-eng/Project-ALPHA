@@ -140,6 +140,7 @@ def test_every_primary_family_has_exactly_one_authority() -> None:
         "dex_ohlcv": "geckoterminal",
         "dex_transactions": "geckoterminal",
         "comparison_bars": "ccxt:coinbase",
+        "defi_tvl": "defillama",
     }
 
 

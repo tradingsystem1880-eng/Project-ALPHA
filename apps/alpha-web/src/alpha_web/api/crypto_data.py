@@ -57,6 +57,7 @@ _FEATURE_INPUT_ORDER = {
     "volatility_surface": ("quotes", "instruments"),
     "liquidity": ("pools",),
     "onchain_change": ("onchain",),
+    "defi_tvl_residual": ("tvl", "market"),
 }
 
 

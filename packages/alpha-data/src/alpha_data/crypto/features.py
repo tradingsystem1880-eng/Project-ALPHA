@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Final, Literal, cast
 
+import numpy as np
 import polars as pl
 
 from alpha_core import DataError
@@ -28,6 +29,7 @@ type CryptoFeatureName = Literal[
     "volatility_surface",
     "liquidity",
     "onchain_change",
+    "defi_tvl_residual",
 ]
 
 FEATURE_METHOD_VERSION: Final = "crypto-features-v1"
@@ -39,6 +41,7 @@ _FEATURE_NAMES: Final = frozenset(
         "volatility_surface",
         "liquidity",
         "onchain_change",
+        "defi_tvl_residual",
     }
 )
 _SHA256: Final = re.compile(r"^[0-9a-f]{64}$")
@@ -472,6 +475,95 @@ def onchain_features(
     return frame, _artifact("onchain_change", (source,), frame, availability)
 
 
+def _trailing_log_ols_prediction(x: np.ndarray, y: np.ndarray, window: int) -> np.ndarray:
+    """Prediction of ``y[i]`` from the OLS line fitted on ``[i-window+1, i]``; NaN before that.
+
+    A trailing-window ordinary least squares in numpy: ``alpha_data`` may not import
+    ``alpha_patterns.vsa.rolling_ols_residual`` (import-linter: data depends on core only), so the
+    same closed form lives here and is pinned equal to it by a unit test. Any NaN in the window
+    yields NaN.
+    """
+    n = x.size
+    out = np.full(n, np.nan)
+    for i in range(window - 1, n):
+        xs = x[i - window + 1 : i + 1]
+        ys = y[i - window + 1 : i + 1]
+        if not (np.all(np.isfinite(xs)) and np.all(np.isfinite(ys))):
+            continue
+        x_mean = xs.mean()
+        var = float(np.sum((xs - x_mean) ** 2))
+        if var <= 0.0:
+            continue
+        slope = float(np.sum((xs - x_mean) * (ys - ys.mean()))) / var
+        out[i] = ys.mean() + slope * (x[i] - x_mean)
+    return out
+
+
+def defi_tvl_residual_features(
+    tvl: QualifiedCryptoFrame,
+    market: QualifiedCryptoFrame,
+    *,
+    available_at: datetime,
+    window: int = 60,
+    atr_window: int = 14,
+) -> tuple[pl.DataFrame, CryptoFeatureArtifactV1]:
+    """TVL residual (ADR-0036; ported from neurotrader888/TVLIndicator, provenance doc).
+
+    Daily market bars are joined to the chain's TVL by UTC day; the TVL used on day ``t`` is the
+    day ``t - 1`` value because a day's TVL is only available after that day closes (upstream uses
+    the same-day value — a recorded deviation). A trailing ``window``-day OLS of log close on log
+    lagged TVL predicts the close; ``tvl_residual`` is ``(close - predicted) / ATR`` with a
+    ``atr_window`` simple-mean true range. NaN until both windows are full.
+    """
+    if window < 3 or atr_window < 1:
+        raise DataError("defi_tvl_residual windows must be >= 3 (ols) and >= 1 (atr)")
+    sources = (tvl, market)
+    availability = _validate_sources(sources, ("defi_tvl", "market_bars"), available_at)
+    _require_columns(tvl, ("chain", "observed_at", "tvl_usd"))
+    _require_columns(market, ("timestamp", "open", "high", "low", "close"))
+    if tvl.frame["chain"].n_unique() != 1:
+        raise DataError("defi_tvl_residual requires exactly one chain")
+    days = (
+        tvl.frame.select("chain", "observed_at", "tvl_usd")
+        .sort("observed_at")
+        .with_columns(pl.col("observed_at").dt.truncate("1d").alias("day"))
+    )
+    bars = (
+        market.frame.select("timestamp", "open", "high", "low", "close")
+        .sort("timestamp")
+        .with_columns(pl.col("timestamp").dt.truncate("1d").alias("day"))
+    )
+    for frame, label in ((days, "tvl"), (bars, "market")):
+        if frame["day"].is_duplicated().any():
+            raise DataError(f"defi_tvl_residual {label} input has more than one row per day")
+    joined = bars.join(days.drop("observed_at"), on="day", how="inner", validate="1:1").sort("day")
+    if joined.height < window + 1:
+        raise DataError("defi_tvl_residual needs more aligned days than the OLS window")
+    close = joined["close"].to_numpy().astype(np.float64)
+    high = joined["high"].to_numpy().astype(np.float64)
+    low = joined["low"].to_numpy().astype(np.float64)
+    tvl_lag = np.concatenate(([np.nan], joined["tvl_usd"].to_numpy().astype(np.float64)[:-1]))
+    if np.any(close <= 0.0) or np.any(tvl_lag[1:] <= 0.0):
+        raise DataError("defi_tvl_residual requires positive close and TVL values")
+    predicted_log = _trailing_log_ols_prediction(np.log(tvl_lag), np.log(close), window)
+    prev_close = np.concatenate(([np.nan], close[:-1]))
+    true_range = np.maximum.reduce(
+        [high - low, np.abs(high - prev_close), np.abs(low - prev_close)]
+    )
+    atr = np.full(close.size, np.nan)
+    for i in range(atr_window, close.size):  # true range needs a previous close: start at 1
+        atr[i] = float(np.mean(true_range[i - atr_window + 1 : i + 1]))
+    residual = (close - np.exp(predicted_log)) / atr
+    frame = joined.select("chain", "timestamp", "close").with_columns(
+        pl.Series("tvl_usd_lag1", tvl_lag, dtype=pl.Float64),
+        pl.Series("predicted_close", np.exp(predicted_log), dtype=pl.Float64),
+        pl.Series("atr", atr, dtype=pl.Float64),
+        pl.Series("tvl_residual", residual, dtype=pl.Float64),
+        pl.lit(availability).alias("available_at"),
+    )
+    return frame, _artifact("defi_tvl_residual", sources, frame, availability)
+
+
 __all__ = [
     "FEATURE_METHOD_VERSION",
     "CryptoFeatureArtifactV1",
@@ -480,6 +572,7 @@ __all__ = [
     "feature_frame_bytes",
     "funding_features",
     "liquidity_features",
+    "defi_tvl_residual_features",
     "onchain_features",
     "open_interest_features",
     "volatility_surface_features",

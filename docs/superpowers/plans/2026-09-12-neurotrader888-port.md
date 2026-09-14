@@ -328,7 +328,8 @@
         "docs/adr/README.md",
         "CLAUDE.md",
         "docs/governance/README.md"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "D1 alpha_data/crypto/providers/defillama.py (closed _ENDPOINTS, defillama_url, fetch_defillama with host prefix + fetch_bounded, parse_chain_tvl -> chain/observed_at/tvl_usd/available_at) + contracts/capabilities/research family rows",
@@ -343,7 +344,8 @@
         ".claude/rules/alpha-data.md",
         "tests/unit/test_crypto_defillama.py",
         "tests/fixtures/defillama/"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "D2 provider registration + acquisition: providers.py _definition(defillama), verification receipt, crypto_data_cmds page budget + _defillama_parser_at + _acquire_result branch, network smoke",
@@ -357,10 +359,11 @@
         "tests/unit/test_provider_registry.py",
         "tests/integration/test_crypto_data_cli.py",
         "tests/integration/test_crypto_reference_live.py"
-      ]
+      ],
+      "status": "done"
     },
     {
-      "title": "D3 defi_tvl_residual feature (rolling log-log OLS via alpha_patterns.vsa.rolling_ols_residual, ATR-normalised, positive lags only, available_at propagated) + CryptoFamilyValue OpenAPI/TS regeneration + bias guard",
+      "title": "D3 defi_tvl_residual feature (rolling log-log OLS in numpy inside alpha_data.crypto.features, pinned equal to alpha_patterns.vsa.rolling_ols_residual because the data layer may not import patterns; ATR-normalised, TVL lagged one day, available_at propagated) + CryptoFamilyValue OpenAPI/TS regeneration + bias guard",
       "verify": "uv run pytest -q tests/unit/test_crypto_features.py tests/bias_guards/test_crypto_features_future_poison.py && uv run python scripts/gate.py full && cd apps/alpha-web/frontend && npm run lint -- --deny-warnings && npm run test:coverage && npm run generate:api && npm run build && npm run test:e2e",
       "expected": "feature availability never precedes any input availability; poisoned future TVL rows leave earlier residuals unchanged; generated.ts carries defi_tvl",
       "rollback": "git revert the slice commits",
@@ -371,7 +374,8 @@
         "apps/alpha-web/frontend/openapi.json",
         "tests/unit/test_crypto_features.py",
         "tests/bias_guards/test_crypto_features_future_poison.py"
-      ]
+      ],
+      "status": "done"
     },
     {
       "title": "E1 chart overlays CLI + models: indicators hawkes/vsa/runs_z/perm_entropy/cmma/vg_path/reversibility/rsi_pc1, patterns dc_extremes/pips/market_profile/harmonics/flags/structure_levels; generic sub-pane per indicator id; ChartAnnotation.kind gains marker; per-indicator longest window guard; *_known_by filters",

@@ -1070,9 +1070,10 @@ type CryptoFamilyValue = Literal[
     "dex_ohlcv",
     "dex_transactions",
     "comparison_bars",
+    "defi_tvl",
 ]
 type CryptoProviderValue = Literal[
-    "binance", "bybit", "coingecko", "geckoterminal", "coinmetrics", "ccxt:coinbase"
+    "binance", "bybit", "coingecko", "geckoterminal", "coinmetrics", "ccxt:coinbase", "defillama"
 ]
 type CryptoQualificationStateValue = Literal[
     "unverified", "unavailable", "qualified", "warning", "quarantined"
@@ -1266,6 +1267,7 @@ type CryptoFeatureNameValue = Literal[
     "volatility_surface",
     "liquidity",
     "onchain_change",
+    "defi_tvl_residual",
 ]
 
 

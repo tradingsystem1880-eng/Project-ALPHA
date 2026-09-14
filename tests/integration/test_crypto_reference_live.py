@@ -69,3 +69,18 @@ def test_public_reference_provider_schemas_remain_parseable() -> None:
         metrics=metrics,
     )
     assert values.height > 0
+
+
+def test_defillama_chain_tvl_schema_remains_parseable() -> None:
+    """ADR-0036 live shape check; egress-blocked in the build sandbox (UNVERIFIED there)."""
+    from alpha_data.crypto.providers.defillama import (
+        defillama_url,
+        fetch_defillama,
+        parse_chain_tvl,
+    )
+
+    frame = parse_chain_tvl(
+        fetch_defillama(defillama_url("chain_tvl", chain="ethereum")), chain="ethereum"
+    )
+    assert frame.height > 365
+    assert (frame["available_at"] > frame["observed_at"]).all()

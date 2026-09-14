@@ -52,7 +52,7 @@ upstream code in a scratch environment and stored as small JSON arrays with name
 | TimeSeriesReversibility @ 3d76b9e | `reversibility.py` | `alpha_patterns/reversibility.py` | HVG from `alpha_patterns.visibility` (the author's `ts_to_vg` rule) instead of ts2vg; KL in numpy; embedding dimension parameterised; default-argsort tie order kept; exact parity on sine / logistic / price windows |
 | TimeSeriesVisibilityGraphs @ d646293 | `ts_to_vg.py`, `network_indicators.py` | `alpha_patterns/visibility.py` | boolean adjacency; BFS average shortest path (networkx convention) instead of networkx/ts2vg; `lookback ≤ 500`; exact parity incl. the author's worked example |
 | PermutationEntropy @ 890da37 | `perm_entropy.py` | `alpha_patterns/entropy.py` | unchanged algorithm; NaN head; exact parity for two embeddings |
-| TVLIndicator @ 00745d0 | `tvl_indicator.py` | `alpha_data/crypto/providers/defillama.py`, `crypto/features.py::defi_tvl_residual` (ADR-0036) | governed family with receipts and `available_at`; endpoint shape UNVERIFIED in the build sandbox |
+| TVLIndicator @ 00745d0 | `tvl_indicator.py` | `alpha_data/crypto/providers/defillama.py`, `crypto/features.py::defi_tvl_residual_features` (ADR-0036; delivered) | governed family with receipts and `available_at` (next UTC day); the TVL used on day t is day t−1's value (upstream regresses on the same-day TVL — a recorded deviation); trailing log-log OLS in numpy pinned equal to `alpha_patterns.vsa.rolling_ols_residual` (the data layer may not import patterns); ATR is a simple-mean true range (upstream `pandas_ta.atr` RMA); endpoint shape written against a recorded fixture, live receipt UNVERIFIED in the build sandbox (`api.llama.fi` egress-blocked) |
 
 ## Primary sources cited by the ported statistics
 
