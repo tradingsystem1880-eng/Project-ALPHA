@@ -300,7 +300,7 @@
       "status": "done"
     },
     {
-      "title": "C5 in-sample MCPT composer alpha_cli/_mcpt.py + `alpha optim mcpt SYM --strategy breakout --grid window=... --perms N` (re-optimises per permutation via _optim.run_optimization; writes mcpt_null.parquet; documented as an optimisation-overfit test, never OOS evidence) + info commands catalog + public seams",
+      "title": "C5 in-sample MCPT composer alpha_cli/_mcpt.py + `alpha optim mcpt SYM --strategy breakout --grid window=... --perms N` (re-optimises per permutation on the best in-sample full-series Sharpe via _runner.run_full_backtest — run_optimization selects on walk-forward OOS Sharpe and runs four bootstrap analyses per call, so it is not the Masters MCPT_TRN statistic; writes mcpt_null.parquet; documented as an optimisation-overfit test, never OOS evidence) + info commands catalog + public seams",
       "verify": "uv run pytest -q tests/unit/test_mcpt_cli.py tests/unit/test_public_seams.py tests/integration/test_info_catalog_cli.py && uv run python scripts/gate.py full",
       "expected": "a 3-config grid with 5 permutations on the synthetic fixture completes deterministically twice with identical artifact bytes; seeds derive from validation.bar_permutation_is/<perm>",
       "rollback": "git revert the slice commits",
@@ -311,8 +311,12 @@
         "apps/alpha-cli/src/alpha_cli/info_cmds.py",
         ".claude/rules/alpha-cli.md",
         "tests/unit/test_mcpt_cli.py",
-        "tests/unit/test_public_seams.py"
-      ]
+        "tests/unit/test_public_seams.py",
+        "apps/alpha-cli/src/alpha_cli/catalog.py",
+        "apps/alpha-web/src/alpha_web/_runs.py",
+        "docs/governance/2026-09-12-neurotrader888-provenance.md"
+      ],
+      "status": "done"
     },
     {
       "title": "D0 ADR-0036 DefiLlama DeFi TVL as a supplemental research family (authority DefiLlama, market_type network, never execution-price evidence, attribution/retention notes, raw bytes private-local only) + index + CLAUDE.md reference",

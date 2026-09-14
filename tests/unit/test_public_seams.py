@@ -29,6 +29,7 @@ def test_catalog_is_canonical_and_exposes_exclusive_bounds() -> None:
     assert entry_z["min"] == 0.0
     assert entry_z["min_exclusive"] is True
     assert COMMAND_RUN_TYPES["forecast eval"] == "forecast"
+    assert COMMAND_RUN_TYPES["optim mcpt"] == "optim"
 
 
 def test_run_store_validates_discovers_and_reads(tmp_path: Path) -> None:
