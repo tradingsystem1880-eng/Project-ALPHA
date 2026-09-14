@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import type { RuleRecord } from '../api/types'
 import {
+  ARITY,
   EMPTY_FORM,
+  OPERAND_EXAMPLES,
   formToSpec,
   operandText,
   parseOperandText,
@@ -19,6 +21,14 @@ describe('operand text (the way the chart names things)', () => {
     expect(parseOperandText('sma:20')).toEqual({ indicator: 'sma', params: [20] })
     expect(parseOperandText('bbands:20:2.5:lower')).toEqual({ indicator: 'bbands', params: [20, 2.5], field: 'lower' })
     expect(parseOperandText('macd:12:26:9:histogram')).toEqual({ indicator: 'macd', params: [12, 26, 9], field: 'histogram' })
+    expect(parseOperandText('hawkes:0.1:168')).toEqual({ indicator: 'hawkes', params: [0.1, 168] })
+    expect(parseOperandText('vg_path:12:inverse')).toEqual({ indicator: 'vg_path', params: [12], field: 'inverse' })
+    expect(parseOperandText('perm_entropy:3:28')).toEqual({ indicator: 'perm_entropy', params: [3, 28] })
+  })
+  it('offers an example for every indicator head and every example parses', () => {
+    const heads = OPERAND_EXAMPLES.map((text) => parseOperandText(text)).flatMap((operand) => ('indicator' in operand ? [operand.indicator] : []))
+    expect(new Set(heads)).toEqual(new Set(Object.keys(ARITY)))
+    for (const text of OPERAND_EXAMPLES) expect(operandText(parseOperandText(text))).toBe(text)
   })
   it('names the defect before anything reaches the CLI', () => {
     expect(() => parseOperandText('')).toThrow(/empty/)
@@ -27,6 +37,8 @@ describe('operand text (the way the chart names things)', () => {
     expect(() => parseOperandText('sma:abc')).toThrow(/must be numbers/)
     expect(() => parseOperandText('bbands:20:2')).toThrow(/needs a field/)
     expect(() => parseOperandText('macd:12:26:9:foo')).toThrow(/field must be one of/)
+    expect(() => parseOperandText('vg_path:12')).toThrow(/needs a field: price, inverse/)
+    expect(() => parseOperandText('cmma:24')).toThrow(/cmma takes 2 parameters/)
   })
   it('round-trips through operandText', () => {
     for (const text of ['close', '30', 'sma:20', 'bbands:20:2:lower', 'macd:12:26:9:signal']) {

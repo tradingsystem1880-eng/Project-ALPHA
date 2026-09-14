@@ -4349,7 +4349,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "line" | "polyline" | "zone";
+            kind: "line" | "polyline" | "zone" | "marker";
             /** Label */
             label: string;
             /** Reason */
@@ -7992,11 +7992,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
-            /**
-             * Pane
-             * @enum {string}
-             */
-            pane: "price" | "rsi" | "atr" | "macd";
+            /** Pane */
+            pane: string;
             /**
              * Style
              * @enum {string}

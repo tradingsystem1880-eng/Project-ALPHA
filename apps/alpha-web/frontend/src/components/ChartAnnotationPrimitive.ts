@@ -36,10 +36,10 @@ class AnnotationRenderer implements IPrimitivePaneRenderer {
       context.rect(0, 0, mediaSize.width, mediaSize.height)
       context.clip()
       for (const annotation of this.annotations) {
-        if (annotation.unit !== 'price' || annotation.anchors.length < 2) continue
+        if (annotation.unit !== 'price' || annotation.kind === 'marker' || annotation.anchors.length < 2) continue
         context.beginPath()
         context.strokeStyle = annotation.kind === 'zone' ? CHART.gold : CHART.accent
-        context.setLineDash(annotation.kind === 'zone' ? [6, 4] : [])
+        context.setLineDash(annotation.kind === 'zone' ? [6, 4] : annotation.kind === 'polyline' ? [2, 3] : [])
         let started = false
         for (const anchor of annotation.anchors) {
           const x = timeScale.timeToCoordinate(anchor.ts as UTCTimestamp)

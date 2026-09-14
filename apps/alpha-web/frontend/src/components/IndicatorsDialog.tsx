@@ -127,7 +127,7 @@ export function IndicatorsDialog({ onClose }: { onClose: () => void }) {
           </fieldset>
           <p className="muted indicators-note">
             Every value is computed in Python by <span className="mono">alpha chart overlays</span> over the same
-            point-in-time window as the candles: warm-up bars are blank, and a swing, trendline or level is drawn
+            point-in-time window as the candles: warm-up bars are blank, and a swing, pattern or level is drawn
             only once it was knowable on the last bar.
           </p>
         </div>

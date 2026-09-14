@@ -747,7 +747,8 @@
             "enum": [
               "line",
               "polyline",
-              "zone"
+              "zone",
+              "marker"
             ],
             "title": "Kind",
             "type": "string"
@@ -11855,12 +11856,6 @@
             "type": "string"
           },
           "pane": {
-            "enum": [
-              "price",
-              "rsi",
-              "atr",
-              "macd"
-            ],
             "title": "Pane",
             "type": "string"
           },

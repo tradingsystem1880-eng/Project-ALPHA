@@ -32,6 +32,24 @@ def test_overlays_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     assert all(a["label"].startswith("Swing") for a in payload["annotations"])
 
 
+def test_overlays_ported_indicators_and_patterns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    seed_store(tmp_path, symbol="SPY", n=90)
+    args = ["-i", "hawkes:0.1:10", "-i", "vg_path:10", "-p", "dc_extremes", "-p", "pips"]
+    result = runner.invoke(app, ["chart", "overlays", "SPY", *args, "--json"])
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.stdout)
+    assert [(s["id"], s["pane"]) for s in payload["indicators"]] == [
+        ("hawkes:0.1:10", "hawkes"),
+        ("vg_path:10:price", "vg_path"),
+        ("vg_path:10:inverse", "vg_path"),
+    ]
+    kinds = {a["kind"] for a in payload["annotations"]}
+    assert kinds == {"marker", "polyline"}, kinds
+
+
 def test_overlays_end_is_an_as_of_cutoff(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     seed_store(tmp_path, symbol="SPY", n=90)  # daily bars from 2020-01-01

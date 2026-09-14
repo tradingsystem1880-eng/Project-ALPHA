@@ -2266,7 +2266,7 @@ function responseFor(route: Route, options: MockOptions): unknown {
           {
             annotation_id: 1,
             decision_sequence_id: null,
-            kind: 'line',
+            kind: 'marker',
             label: 'Swing low',
             unit: 'price',
             reason: 'fractal L=5; knowable from bar 1',

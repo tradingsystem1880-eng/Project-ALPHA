@@ -33,7 +33,23 @@ from typing import Literal
 import numpy as np
 
 from alpha_core import DataError
-from alpha_patterns import OHLCV, atr, ema, macd, rolling_mean, rolling_std, rsi
+from alpha_patterns import (
+    OHLCV,
+    atr,
+    cmma,
+    ema,
+    hawkes_process,
+    log_atr,
+    macd,
+    permutation_entropy,
+    rolling_mean,
+    rolling_perm_reversibility,
+    rolling_runs_z,
+    rolling_std,
+    rolling_vg_shortest_path,
+    rsi,
+    vsa_indicator,
+)
 
 RULES_SPEC_VERSION = 1
 MAX_CONDITIONS_PER_SIDE = 12
@@ -53,12 +69,22 @@ INDICATOR_ARITY: Mapping[str, int] = {
     "rsi": 1,
     "atr": 1,
     "macd": 3,
+    "hawkes": 2,
+    "vsa": 1,
+    "runs_z": 1,
+    "perm_entropy": 2,
+    "cmma": 2,
+    "vg_path": 1,
+    "reversibility": 1,
 }
 #: multi-series indicators need a field; single-series ones must not carry one.
 INDICATOR_FIELDS: Mapping[str, tuple[str, ...]] = {
     "bbands": ("upper", "middle", "lower"),
     "macd": ("line", "signal", "histogram"),
+    "vg_path": ("price", "inverse"),
 }
+#: indicators whose first parameter is a positive decay rate rather than a window of bars
+FLOAT_FIRST: frozenset[str] = frozenset({"hawkes"})
 
 FloatArray = np.ndarray
 
@@ -92,11 +118,21 @@ class Operand:
         """Bars required before this operand has a finite value on the last bar."""
         if self.kind != "indicator":
             return 1
-        p = [int(v) for v in self.params]
+        p = [int(v) for v in self.params]  # a decay rate is never read as a window
         if self.indicator == "rsi":
             return p[0] + 1
         if self.indicator == "macd":
-            return p[1] + p[2] - 1
+            return p[1] if self.field == "line" else p[1] + p[2] - 1
+        if self.indicator == "hawkes":
+            return p[1] + 1
+        if self.indicator == "vsa":
+            return 2 * p[0] + 1
+        if self.indicator in {"runs_z", "vg_path"}:
+            return p[0] + 1
+        if self.indicator == "perm_entropy":
+            return math.factorial(p[0]) * p[1] + p[0]
+        if self.indicator == "cmma":
+            return max(p[0], p[1])
         return p[0]
 
     def to_json(self) -> dict[str, object]:
@@ -226,8 +262,15 @@ def parse_operand(payload: object, where: str) -> Operand:
                 if width <= 0:
                     raise DataError(f"{label} (Bollinger width) must be > 0, got {item!r}")
                 params.append(width)
+            elif name in FLOAT_FIRST and index == 0:
+                decay = _number(item, label)
+                if decay <= 0:
+                    raise DataError(f"{label} ({name} decay) must be > 0, got {item!r}")
+                params.append(decay)
             else:
                 params.append(_window(item, label))
+        if name == "reversibility" and params[0] < 10:
+            raise DataError(f"{where}: reversibility window must be >= 10, got {params[0]:g}")
         if name == "macd" and not params[0] < params[1]:
             raise DataError(f"{where}: macd fast window must be shorter than slow")
         fields = INDICATOR_FIELDS.get(name)
@@ -349,6 +392,31 @@ def operand_series(series: OHLCV, operand: Operand) -> FloatArray:
         sd = rolling_std(series.close, w)
         band = {"upper": mid + k * sd, "middle": mid, "lower": mid - k * sd}
         values, warm = band[str(operand.field)], w - 1
+    elif name == "hawkes":
+        kappa, lookback = float(p[0]), int(p[1])
+        with np.errstate(divide="ignore", invalid="ignore"):  # a zero-range window is NaN
+            norm_range = np.log(series.high / series.low) / log_atr(series, lookback)
+        values, warm = hawkes_process(norm_range, kappa=kappa), lookback
+    elif name == "vsa":
+        values, warm = vsa_indicator(series, norm_lookback=int(p[0])), 2 * int(p[0])
+    elif name == "runs_z":
+        values, warm = rolling_runs_z(series.close, lookback=int(p[0])), int(p[0])
+    elif name == "perm_entropy":
+        d, mult = int(p[0]), int(p[1])
+        values, warm = (
+            permutation_entropy(series.close, d=d, mult=mult),
+            math.factorial(d) * mult + d - 1,
+        )
+    elif name == "cmma":
+        lookback, atr_lookback = int(p[0]), int(p[1])
+        values = cmma(series, lookback=lookback, atr_lookback=atr_lookback)
+        warm = max(lookback, atr_lookback) - 1
+    elif name == "vg_path":
+        w = int(p[0])
+        price, inverse = rolling_vg_shortest_path(series.close, lookback=w)
+        values, warm = (price if operand.field == "price" else inverse), w
+    elif name == "reversibility":
+        values, warm = rolling_perm_reversibility(series.close, window=int(p[0])), int(p[0]) - 1
     else:
         fast, slow, signal = (int(v) for v in p)
         out = macd(series.close, fast=fast, slow=slow, signal=signal)
@@ -366,7 +434,8 @@ def _holds(condition: Condition, series: OHLCV) -> bool:
     if not (math.isfinite(left) and math.isfinite(right)):
         raise DataError(
             f"rule '{condition.label}' has no finite value on the decision bar "
-            f"(history {len(series)} bars); lengthen 'history'"
+            f"(history {len(series)} bars); lengthen 'history', or the statistic is undefined "
+            "on this window (one-signed runs, a zero range, absent ordinal patterns)"
         )
     if condition.op == ">":
         return left > right

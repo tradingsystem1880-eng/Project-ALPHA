@@ -13,7 +13,7 @@ import polars as pl
 import pytest
 from typer.testing import CliRunner
 
-from alpha_cli.chart_cmds import SWING_LOOKBACK, compute_overlays, to_ohlcv
+from alpha_cli.chart_cmds import INDICATORS, PATTERNS, SWING_LOOKBACK, compute_overlays, to_ohlcv
 from alpha_cli.main import app
 from alpha_data.store import ParquetStore
 from alpha_patterns import find_swings
@@ -22,7 +22,26 @@ from tests.fixtures.pit_fixtures import linear_bars
 pytestmark = pytest.mark.bias_guard
 
 runner = CliRunner()
-ARGS = ["-i", "sma:5", "-i", "rsi:5", "-i", "macd:3:6:3", "-p", "swings", "-p", "levels"]
+# every indicator id and pattern the CLI accepts, with windows that fit the 40-bar fixture
+_INDICATORS = [
+    "sma:5",
+    "ema:5",
+    "bbands:5:2",
+    "rsi:5",
+    "atr:5",
+    "macd:3:6:3",
+    "hawkes:0.1:10",
+    "vsa:8",
+    "runs_z:10",
+    "perm_entropy:3:2",
+    "cmma:10:5",
+    "vg_path:10",
+    "reversibility:12",
+    "rsi_pc1:10",
+]
+ARGS = [arg for spec in _INDICATORS for arg in ("-i", spec)] + [
+    arg for name in PATTERNS for arg in ("-p", name)
+]
 
 
 def _wavy(symbol: str, start: date, n: int, first_close: float = 100.0):  # type: ignore[no-untyped-def]
@@ -55,6 +74,10 @@ def test_future_bars_cannot_change_the_overlays(
     assert second["t"] == first["t"] and len(first["t"]) == 40
     assert second["indicators"] == first["indicators"]
     assert second["annotations"] == first["annotations"]
+    assert {spec.split(":")[0] for spec in _INDICATORS} == set(INDICATORS), (
+        "every accepted indicator must be exercised by this guard"
+    )
+    assert {row["pane"] for row in first["indicators"]} > {"price", "rsi", "macd", "hawkes"}
 
 
 def test_unconfirmed_tail_swing_is_never_drawn() -> None:
