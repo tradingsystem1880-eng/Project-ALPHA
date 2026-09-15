@@ -87,6 +87,8 @@ def test_kronos_validate_full_gauntlet(tmp_path: Path, monkeypatch: pytest.Monke
             "25",
             "--tier2-paths",
             "4",
+            "--tier3-paths",
+            "3",
             "--n-resamples",
             "50",
         ],
@@ -114,6 +116,8 @@ def test_kronos_validate_tier2_model_mode(tmp_path: Path, monkeypatch: pytest.Mo
             "25",
             "--tier2-paths",
             "3",
+            "--tier3-paths",
+            "3",
             "--n-resamples",
             "50",
             "--tier2-mode",
@@ -121,8 +125,9 @@ def test_kronos_validate_tier2_model_mode(tmp_path: Path, monkeypatch: pytest.Mo
         ],
     )
     assert result.exit_code == 0, result.output
-    # real-series cache + one cache per synthetic tier-2 path
-    assert len(_caches(tmp_path)) == 1 + 3
+    # real-series cache + one cache per synthetic tier-2 path + one per permuted tier-3 path
+    # (model mode re-derives forecasts on every engine-tier path, permuted windows included)
+    assert len(_caches(tmp_path)) == 1 + 3 + 3
     (rdir,) = sorted((tmp_path / "runs").iterdir())
     manifest = json.loads((rdir / "manifest.json").read_text())
     assert manifest["forecast"]["tier2_policy"] == "model"

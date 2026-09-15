@@ -300,6 +300,7 @@ _REQUIRED_ARTIFACTS: dict[str, tuple[str, ...]] = {
         "rolling_metrics.parquet",
     ),
     "optim_grid": ("trials.parquet",),
+    "optim_mcpt": ("mcpt_null.parquet",),
     "propfirm_run": ("propfirm_paths.parquet",),
     "propfirm": ("propfirm_paths.parquet",),
     "forecast_run": ("paths.parquet", "quantiles.parquet", "history.parquet"),

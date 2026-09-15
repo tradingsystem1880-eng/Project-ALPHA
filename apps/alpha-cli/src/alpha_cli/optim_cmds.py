@@ -11,7 +11,7 @@ from typing import Annotated, Any
 
 import typer
 
-from alpha_cli import _artifacts, _optim, _runner
+from alpha_cli import _artifacts, _mcpt, _optim, _runner, _seeds
 from alpha_cli._artifacts import sanitize
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
@@ -302,3 +302,145 @@ def _manifest(
         "passed": result.passed,
     }
     return {k: sanitize(v) for k, v in manifest.items()}
+
+
+@optim_app.command()
+def mcpt(
+    symbol: str,
+    axis: Annotated[
+        list[str] | None, typer.Option("--grid", help="sweep axis: name=v1,v2,...")
+    ] = None,
+    strategy: str = "ts_momentum",
+    lookback: int = 252,
+    skip: int = 21,
+    vol_window: int = 63,
+    target_vol: float = 0.15,
+    rebalance_every: int = 21,
+    max_leverage: float = 1.0,
+    allow_short: bool | None = None,  # default: MARGIN->True, CASH->False
+    fee_bps: float = 1.0,
+    slippage_bps: float = 2.0,
+    starting_cash: float = 1_000_000.0,
+    account_type: str = "CASH",
+    periods_per_year: int = 252,
+    train_size: int = 504,
+    test_size: int = 63,
+    embargo: int = 5,
+    anchored: bool = False,
+    param: list[str] | None = None,
+    perms: int = typer.Option(100, "--perms", help="bar permutations to re-optimise on"),
+    threshold: float = 0.95,
+    seed: int | None = None,
+    snapshot: str | None = None,
+    as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
+    research_gate_override: bool = typer.Option(
+        False,
+        "--research-gate-override",
+        help="watermark this run EXPLORATORY / RESEARCH GATE NOT COMPLETED "
+        "(launched under an owner research-gate override)",
+    ),
+) -> None:
+    """In-sample Monte Carlo permutation test of the ``--grid`` sweep (overfit test, not OOS)."""
+    settings = AlphaSettings()
+    resolved_seed = seed if seed is not None else settings.random_seed
+    permutation_seed = _seeds.semantic_seed(resolved_seed, "validation.bar_permutation_is")
+    grid_axes = _parse_axes(axis)
+    if perms < 1:
+        raise typer.BadParameter(f"--perms must be >= 1, got {perms}")
+    base = _runner.RunSpec(
+        lookback=lookback,
+        skip=skip,
+        vol_window=vol_window,
+        target_vol=target_vol,
+        rebalance_every=rebalance_every,
+        max_leverage=max_leverage,
+        allow_short=_runner.resolve_allow_short(allow_short, account_type),
+        periods_per_year=periods_per_year,
+        fee_bps=fee_bps,
+        slippage_bps=slippage_bps,
+        starting_cash=starting_cash,
+        account_type=account_type,
+        train_size=train_size,
+        test_size=test_size,
+        embargo=embargo,
+        anchored=anchored,
+        strategy_name=strategy,
+        strategy_params=_runner.parse_strategy_params(strategy, param),
+    )
+    try:
+        research_cutoff = _runner.parse_as_of(as_of)
+        bars, snapshot_id = _load_bars(
+            symbol, data_dir=settings.data_dir, snapshot_id=snapshot, as_of=research_cutoff
+        )
+        dividends = _load_dividends(
+            symbol, data_dir=settings.data_dir, snapshot_id=snapshot, as_of=research_cutoff
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    identity = _runner.run_identity_for(
+        {
+            "command": "optim_mcpt",
+            "symbol": symbol,
+            "snapshot_id": snapshot_id,
+            "grid": {k: list(v) for k, v in grid_axes.items()},
+            "perms": perms,
+            "threshold": threshold,
+            "seed": resolved_seed,
+            "research_cutoff": as_of,
+            **_artifacts.research_gate_override_identity(research_gate_override),
+            **vars(base),
+        },
+        source_fingerprint=_runner.source_fingerprint(bars, dividends=dividends),
+        snapshot_hash=_runner.verified_snapshot_hash(settings.data_dir, snapshot_id),
+    )
+    run_id = identity.run_id
+    try:
+        result = _mcpt.run_mcpt(
+            bars,
+            base,
+            grid_axes,
+            n_perms=perms,
+            seed=permutation_seed,
+            threshold=threshold,
+            dividends=dividends,
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    rdir = settings.data_dir / "optim" / run_id
+    rdir.mkdir(parents=True, exist_ok=True)
+    _mcpt.write_mcpt_null(rdir, result)  # the null BEFORE the manifest (run-exists marker)
+    null = result.null
+    manifest: dict[str, Any] = {
+        "schema_version": 1,
+        "run_id": run_id,
+        "command": "optim_mcpt",
+        "symbol": symbol,
+        "snapshot_id": snapshot_id,
+        "research_cutoff": as_of,
+        "grid": {k: list(v) for k, v in grid_axes.items()},
+        "n_configs": len(result.configs),
+        "configs": [dict(c) for c in result.configs],
+        "n_perms": perms,
+        "seed": resolved_seed,
+        "permutation_seed": permutation_seed,
+        "threshold": threshold,
+        "statistic": _mcpt.STATISTIC,
+        "observed": {"config": dict(result.observed_config), "statistic": null.observed},
+        "percentile": null.percentile,
+        "p_value": null.p_value,
+        "passed": null.passed,
+        "caveat": _mcpt.CAVEAT,
+    }
+    manifest = sanitize(manifest)
+    manifest.update(_artifacts.research_gate_override_fields(research_gate_override))
+    manifest.update(identity.manifest_fields())
+    _artifacts.write_manifest(rdir, manifest)
+
+    best = ", ".join(f"{key}={value:g}" for key, value in result.observed_config)
+    typer.echo(
+        f"optim {symbol} -> run {run_id}: {'PASS' if null.passed else 'FAIL'} "
+        f"(in-sample MCPT p {null.p_value:.3f}, percentile {null.percentile:.2f} over "
+        f"{perms} permutations; best {best}, in-sample Sharpe {null.observed:.3f}); "
+        f"overfit test only, not OOS evidence; manifest at {rdir / 'manifest.json'}"
+    )

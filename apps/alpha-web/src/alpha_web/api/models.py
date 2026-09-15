@@ -331,7 +331,7 @@ class ChartAnnotationAnchor(StrictModel):
 class ChartAnnotation(StrictModel):
     annotation_id: int
     decision_sequence_id: int | None
-    kind: Literal["line", "polyline", "zone"]
+    kind: Literal["line", "polyline", "zone", "marker"]
     label: str
     unit: str
     reason: str
@@ -654,7 +654,7 @@ class Candles(StrictModel):
 class OverlaySeries(StrictModel):
     id: str
     name: str
-    pane: Literal["price", "rsi", "atr", "macd"]
+    pane: str  # "price" or one sub-pane per oscillator id (rsi, atr, macd, hawkes, ...)
     style: Literal["line", "histogram"]
     values: list[float | None]
     warmup: int
@@ -1070,9 +1070,10 @@ type CryptoFamilyValue = Literal[
     "dex_ohlcv",
     "dex_transactions",
     "comparison_bars",
+    "defi_tvl",
 ]
 type CryptoProviderValue = Literal[
-    "binance", "bybit", "coingecko", "geckoterminal", "coinmetrics", "ccxt:coinbase"
+    "binance", "bybit", "coingecko", "geckoterminal", "coinmetrics", "ccxt:coinbase", "defillama"
 ]
 type CryptoQualificationStateValue = Literal[
     "unverified", "unavailable", "qualified", "warning", "quarantined"
@@ -1266,6 +1267,7 @@ type CryptoFeatureNameValue = Literal[
     "volatility_surface",
     "liquidity",
     "onchain_change",
+    "defi_tvl_residual",
 ]
 
 

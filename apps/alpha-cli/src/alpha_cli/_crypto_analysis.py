@@ -21,6 +21,7 @@ from alpha_data.crypto.features import (
     CryptoFeatureArtifactV1,
     QualifiedCryptoFrame,
     basis_features,
+    defi_tvl_residual_features,
     derive_available_at,
     feature_frame_bytes,
     funding_features,
@@ -39,6 +40,7 @@ _FEATURE_INPUT_NAMES: Final = {
     "volatility_surface": ("quotes", "instruments"),
     "liquidity": ("pools",),
     "onchain_change": ("onchain",),
+    "defi_tvl_residual": ("tvl", "market"),
 }
 
 
@@ -204,6 +206,10 @@ def create_feature(
         )
     elif feature_name == "liquidity":
         frame, artifact = liquidity_features(sources[0], available_at=available_at)
+    elif feature_name == "defi_tvl_residual":
+        frame, artifact = defi_tvl_residual_features(
+            sources[0], sources[1], available_at=available_at
+        )
     else:
         frame, artifact = onchain_features(sources[0], available_at=available_at)
     payload = feature_frame_bytes(frame)

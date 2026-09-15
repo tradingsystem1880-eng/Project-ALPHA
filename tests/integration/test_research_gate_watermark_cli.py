@@ -118,6 +118,8 @@ def test_every_strategy_run_command_accepts_the_override_watermark(
             "50",
             "--tier2-paths",
             "8",
+            "--tier3-paths",
+            "4",
             "--n-resamples",
             "200",
         ],  # fmt: skip

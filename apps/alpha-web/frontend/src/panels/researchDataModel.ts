@@ -34,6 +34,7 @@ export const CRYPTO_FEATURE_INPUTS: Record<CryptoFeatureName, readonly CryptoFam
   volatility_surface: ['option_quotes', 'option_instruments'],
   liquidity: ['dex_pools'],
   onchain_change: ['onchain_metrics'],
+  defi_tvl_residual: ['defi_tvl', 'market_bars'],
 }
 
 const CRYPTO_FEATURE_INPUT_NAMES: Record<CryptoFeatureName, readonly string[]> = {
@@ -43,6 +44,7 @@ const CRYPTO_FEATURE_INPUT_NAMES: Record<CryptoFeatureName, readonly string[]> =
   volatility_surface: ['quotes', 'instruments'],
   liquidity: ['pools'],
   onchain_change: ['onchain'],
+  defi_tvl_residual: ['tvl', 'market'],
 }
 
 export interface CryptoFeatureInputSelection {
@@ -150,7 +152,7 @@ export function cryptoSectionForFamily(family: CryptoFamily): CryptoDataSection 
     || family === 'option_quotes'
     || family === 'historical_volatility'
   ) return 'options'
-  if (family === 'onchain_catalog' || family === 'onchain_metrics') return 'onchain'
+  if (family === 'onchain_catalog' || family === 'onchain_metrics' || family === 'defi_tvl') return 'onchain'
   if (family === 'dex_pools' || family === 'dex_ohlcv' || family === 'dex_transactions') return 'dex'
   return 'quality'
 }

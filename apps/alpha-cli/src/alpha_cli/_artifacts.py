@@ -162,6 +162,7 @@ _REQUIRED_ARTIFACTS: dict[str, tuple[str, ...]] = {
         *_NATIVE_TEARSHEET_PARQUET,
     ),
     "optim_grid": ("trials.parquet", "trial_ledger.parquet"),
+    "optim_mcpt": ("mcpt_null.parquet",),
     "propfirm": ("propfirm_paths.parquet",),
     "propfirm_run": ("propfirm_paths.parquet",),
     "forecast_run": ("paths.parquet", "quantiles.parquet", "history.parquet"),

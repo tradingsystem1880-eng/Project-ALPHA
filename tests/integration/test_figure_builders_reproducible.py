@@ -50,7 +50,12 @@ def _render(spec: object) -> bytes:
 
 @pytest.mark.parametrize(
     "run_id",
-    [figure_runs.BACKTEST_RUN, figure_runs.VALIDATE_RUN, figure_runs.PORTFOLIO_RUN],
+    [
+        figure_runs.BACKTEST_RUN,
+        figure_runs.VALIDATE_RUN,
+        figure_runs.PORTFOLIO_RUN,
+        figure_runs.MCPT_RUN,
+    ],
 )
 def test_every_available_figure_builds_and_renders(synthetic: Path, run_id: str) -> None:
     rdir, manifest = resolve_run(run_id, data_dir=synthetic)
@@ -90,7 +95,12 @@ def test_the_synthetic_corpus_reaches_every_builder_the_stored_one_does(syntheti
     only on the machine that happens to have a matching stored run.
     """
     reached: set[str] = set()
-    for run_id in (figure_runs.BACKTEST_RUN, figure_runs.VALIDATE_RUN, figure_runs.PORTFOLIO_RUN):
+    for run_id in (
+        figure_runs.BACKTEST_RUN,
+        figure_runs.VALIDATE_RUN,
+        figure_runs.PORTFOLIO_RUN,
+        figure_runs.MCPT_RUN,
+    ):
         reached |= {
             item.definition.figure_id
             for item in available_figures(*resolve_run(run_id, data_dir=synthetic))
@@ -100,7 +110,8 @@ def test_the_synthetic_corpus_reaches_every_builder_the_stored_one_does(syntheti
     expected = {
         definition.figure_id
         for definition in FIGURES
-        if {"backtest_run", "validate", "backtest_portfolio"} & set(definition.run_commands)
+        if {"backtest_run", "validate", "backtest_portfolio", "optim_mcpt"}
+        & set(definition.run_commands)
         # price_signal reads bars back through the point-in-time firewall from a frozen
         # snapshot, which means a real store and a real snapshot -- more machinery than a
         # fixture should fake. Its marks are covered directly in the renderer tests, and

@@ -1,0 +1,86 @@
+# neurotrader888 Technique Provenance
+
+- **Reviewed:** 2026-09-12
+- **Scope:** every public repository of GitHub user `neurotrader888` and how each technique is
+  carried into Project ALPHA under the port plan
+  `docs/superpowers/plans/2026-09-12-neurotrader888-port.md`
+- **Status:** engineering inventory; not legal advice
+
+## Licence and permission
+
+Thirteen of the fourteen repositories carry the MIT licence (copyright neurotrader888). The owner
+additionally holds the author's personal approval, recorded on 2026-09-12, for full use of the
+licensed repositories inside this private, single-owner project. `IntramarketDifference` carries no
+licence file and is **not covered** by either grant: its technique (CMMA, close minus moving average
+normalised by ATR) is re-implemented from the published formula and Masters (2020) only, with no
+upstream code, fixtures, or data copied.
+
+ALPHA never vendors these scripts. Each technique is ported into the layer the architecture DAG
+assigns, rewritten for numpy/Polars, `mypy --strict`, fail-loud errors, and knowable-at timing, and
+each ported function carries a docstring line
+`Provenance: github.com/neurotrader888/<repo>/<file>@<sha> (MIT); adapted: <what changed and why>`.
+Upstream BTCUSDT CSV fixtures are not copied; parity fixtures are generated once from the pinned
+upstream code in a scratch environment and stored as small JSON arrays with named tolerances under
+`tests/fixtures/neurotrader/`.
+
+## Mapping (upstream file → ALPHA module)
+
+| Repo @ head | Upstream file | ALPHA destination | Deviations (stream A delivered 2026-09-12) |
+|---|---|---|---|
+| TechnicalAnalysisAutomation @ da99c20 | `rolling_window.py` | **not ported** — `alpha_patterns.swings.find_swings` + `swings_known_by` | upstream tie rule is strict on both sides; ALPHA is strict-left/non-strict-right; equivalence test pins the rest |
+| | `directional_change.py` | `alpha_patterns/directional_change.py` | extremes carry `confirmed_index`; DataFrame wrapper and plotting dropped; exact parity |
+| | `perceptually_important.py` | `alpha_patterns/pips.py` | adds `pip_windows` (z-scored, `end_index`); a fully collinear window still selects a bar (upstream inserts index -1); exact parity otherwise |
+| | `head_shoulders.py` | **not ported** — `alpha_patterns.head_shoulders.detect_head_shoulders`; `HSEvent.neckline_r2` added | `HSEvent.pattern_r2` added (R² of the LS→N1→head→N2→RS close polyline; upstream `compute_pattern_r2` runs start→break); forward-return helper not ported |
+| | `flags_pennants.py` | `alpha_patterns/flags.py` | upstream rolling-window top/bottom test kept as a private helper for exact confirmation timing; exact parity for both variants |
+| | `harmonic_patterns.py` | `alpha_patterns/harmonics.py` | `confirmed_index == d`; a zero-height leg is skipped instead of raising from `log`; exact parity on 93 patterns |
+| | `retracement_ratios.py` | `alpha_research/retracements.py` | takes extreme prices as an array (DC extremes come from `alpha_patterns` upstream of the research layer); SciPy KDE of log ratios with upstream's `bw_method=0.01` and `arange(-3, 3, 0.001)` grid as defaults; prominent modes returned as ratios instead of a plot; zero-height segments and identical ratios fail loud (upstream produced inf/NaN or a KDE error) |
+| | `mp_support_resist.py` | `alpha_patterns/market_profile.py` + `_kde.py` | numpy weighted KDE and prominence peaks with SciPy's conventions (differential-tested); causal simple-mean `log_atr` instead of pandas_ta Wilder ATR; as upstream, the signal at i tests against the levels of bar i; exact parity with the ATR supplied |
+| | `trendline_automation.py` | `alpha_patterns/trendline_fit.py` | pure numpy, unchanged algorithm; exact parity |
+| | `pip_pattern_miner.py`, `wf_pip_miner.py` | `alpha_research/pip_miner.py` | numpy k-means++ (Arthur & Vassilvitskii 2007) + brute-force silhouette (Rousseeuw 1987) replace pyclustering; silhouette k-search is inclusive of both bounds (pyclustering excludes `kmax`); every training window must satisfy `end_index + hold <= train_end` (upstream let hold-period labels cross the boundary) and only `log_close[: train_end + 1]` is read; explicit seed (walk-forward refits derive per-retrain seeds from `SeedSequence([seed, retrain])`); the walk-forward trains on a fixed trailing `train_bars` window (upstream's slice grows because it subtracts the *next* retrain index); windows whose interior PIP positions repeat the previous window's are kept (upstream dropped them; the pattern matrix carries no PIP x-positions); Martin ratio returns `None` when the equity never draws down (upstream divides by zero); the in-sample shuffled-returns permutation test is not ported (stream C's `permutation_test` covers it) |
+| TrendLineAutomation @ 63b1429 | `trendline_automation.py` | `alpha_patterns/trendline_fit.py` | same module as above |
+| TrendlineBreakoutMetaLabel @ 874d938 | `trendline_breakout.py`, `trendline_break_dataset.py` | `alpha_patterns/trendline_fit.py` (`trendline_breakout`, `breakout_features`) | breakout series exact parity; `breakout_features` uses causal simple-mean log ATR and `directional_index` ADX instead of pandas_ta, and never returns an open trade |
+| mcpt @ 2c0d70c | `bar_permute.py` | `alpha_validation/bar_permutation.py` | typed `OHLC` arrays instead of DataFrames; explicit `numpy.random.Generator` instead of `np.random.seed`; same draw order (intrabar permutation first, gap permutation second); the prefix through `start_index` is copied verbatim rather than round-tripped through log/exp; malformed bars and `start_index > n - 2` fail loud (upstream asserted only `start_index >= 0`) |
+| | `insample_donchian_mcpt.py`, `walkforward_donchian_mcpt.py` | `alpha_validation/mcpt.py` (delivered), `alpha_cli/_mcpt.py` + `alpha optim mcpt` (delivered; scores the best in-sample Sharpe over the grid where upstream uses the best in-sample profit factor), gauntlet tier `bar_permutation` (`alpha_cli/_synth.py`, delivered) | the strategy/statistic is one `score` callable over typed `OHLC` bars (no engine or optimiser import in `alpha_validation`); explicit seed; ranking via `_rank_null` — upstream's counter seeded at 1 over `N−1` permutations IS Davison & Hinkley's `(1+c)/(1+N)` estimator, the port just makes the draw count explicit; profit factor promoted to `metrics.profit_factor` and returns `None` without a loss (upstream divides by zero); the walk-forward variant documents `start_index` as the last training bar, whereas upstream passes `start_index=train_window` (the first OOS bar kept as the unpermuted basis), so the port permutes one more bar; the gauntlet tier deliberately uses the decision bar before the first scored OOS bar (every scored bar permuted) |
+| | `donchian.py`, `moving_average.py` | **not ported** — `alpha_strategies` `breakout` / `ma_crossover` | optimisation via `alpha optim grid` |
+| | `tree_strat.py` | **excluded** | author-disowned; sklearn not a root dependency |
+| market-structure @ 36a7d89 | `local_extreme.py`, `atr_directional_change.py`, `hierarchical_extremes.py` | `alpha_patterns/market_structure.py` | frozen `LocalExtreme` keyed by bar index; `DataError` instead of `assert`; `update` returns the confirmed extreme; `get_level_*` return `None`; exact parity at every level |
+| VolatilityHawkes @ 51c8557 | `hawkes.py` | `alpha_patterns/hawkes.py` | bar-0 negative-index artefact replaced by skipping bar 0; quantile windows containing NaN stay NaN; trade extraction helper not ported; exact parity |
+| VSAIndicator @ a95bf30 | `vsa.py` | `alpha_patterns/vsa.py` | generic `rolling_ols_residual` extracted (reused by the TVL feature); causal simple-mean `atr` and `rolling_median` instead of pandas_ta/pandas; the gate uses Pearson r as upstream (not r²); exact parity on stored inputs |
+| RSI-PCA @ f3b9735 | `rsi_behavior.py`, `pca.py` | `alpha_patterns.indicators.rsi_matrix` (delivered), `alpha_research/rolling_pca.py` (delivered) | feature block computed with ALPHA's `rsi`; scores project onto eigenvector COLUMNS (`evecs[:, j]`; upstream's `np.dot(rsis, evecs[j])` projects onto rows, a bug); `rolling_pca_scores` refits on a trailing window before scoring each row instead of one full-sample fit; eigenvector sign fixed by the largest loading; `pca_components` keeps the full-sample fit available for offline inspection only |
+| IntramarketDifference (no licence) | — | `alpha_patterns/cmma.py` | re-implemented from Masters' formula with a NaN warm-up; threshold-entry / zero-cross-exit rule stated in the module; no upstream code or fixture |
+| TradeDependenceRunsTest @ 5f63804 | `runs_test.py`, `runs_indicator.py` | `alpha_patterns/runs.py`, `alpha_validation/trade_dependence.py` (delivered) | `runs_z` is NaN when all signs agree (upstream divides by zero); zeros break runs as upstream; exact parity. `trade_dependence.runs_test` adds the run count, expectation and two-sided normal p-value and fails loud on a zero variance; `trade_runs_test` returns `None` for the undefined cases and the native tear sheet reports `trade_runs_z` over trades in entry order with reason `runs_test_undefined` (upstream prints one z per lookback and never handles the degenerate case) |
+| TimeSeriesReversibility @ 3d76b9e | `reversibility.py` | `alpha_patterns/reversibility.py` | HVG from `alpha_patterns.visibility` (the author's `ts_to_vg` rule) instead of ts2vg; KL in numpy; embedding dimension parameterised; default-argsort tie order kept; exact parity on sine / logistic / price windows |
+| TimeSeriesVisibilityGraphs @ d646293 | `ts_to_vg.py`, `network_indicators.py` | `alpha_patterns/visibility.py` | boolean adjacency; BFS average shortest path (networkx convention) instead of networkx/ts2vg; `lookback ≤ 500`; exact parity incl. the author's worked example |
+| PermutationEntropy @ 890da37 | `perm_entropy.py` | `alpha_patterns/entropy.py` | unchanged algorithm; NaN head; exact parity for two embeddings |
+| TVLIndicator @ 00745d0 | `tvl_indicator.py` | `alpha_data/crypto/providers/defillama.py`, `crypto/features.py::defi_tvl_residual_features` (ADR-0036; delivered) | governed family with receipts and `available_at` (next UTC day); the TVL used on day t is day t−1's value (upstream regresses on the same-day TVL — a recorded deviation); trailing log-log OLS in numpy pinned equal to `alpha_patterns.vsa.rolling_ols_residual` (the data layer may not import patterns); ATR is a simple-mean true range (upstream `pandas_ta.atr` RMA); endpoint shape written against a recorded fixture, live receipt UNVERIFIED in the build sandbox (`api.llama.fi` egress-blocked) |
+
+### Surfaces (stream E, delivered 2026-09-14)
+
+Every ported technique reachable from the owner's tools, computed in Python and only drawn by
+the SPA: `alpha chart overlays` gains the indicators `hawkes`, `vsa`, `runs_z`, `perm_entropy`,
+`cmma`, `vg_path`, `reversibility`, `rsi_pc1` (one sub-pane each) and the patterns `dc_extremes`,
+`pips`, `market_profile`, `harmonics`, `flags`, `structure_levels` (each through its
+`*_known_by(last)` filter; single-anchor extremes are `marker` annotations); `alpha_strategies.rules`
+accepts the same indicators as operands except `rsi_pc1` (its PCA lives in `alpha_research`, which
+the strategy layer may not import), read from the identical `alpha_patterns` functions (parity
+test); the Strategy Builder and Insert › Indicators dialogs mirror the tables (drift test
+`tests/unit/test_overlay_tables_drift.py`); the figure catalogue gains `trade_runs_test` and
+`mcpt_null_histogram`. Not delivered: `pip_cluster_examples` and `retracement_density` figures — no
+run publishes a PIP-cluster or retracement artifact and a builder may not compute its own
+statistic; they return with the artifact that would carry them. The upstream `tree_strat` and
+`donchian`/`moving_average` demos stay unported (see the mapping table).
+
+## Primary sources cited by the ported statistics
+
+Arthur & Vassilvitskii 2007 (k-means++); Rousseeuw 1987 (silhouette); Martin & McCann 1989 (Ulcer
+index / Martin ratio); Scott 1992 (KDE bandwidth); Chung, Fu, Luk & Ng 2001 (perceptually important
+points); Bandt & Pompe 2002 (permutation entropy); Zanin et al. 2018 and Yang & Shang 2018
+(reversibility); Lacasa et al. 2008 (visibility graphs); Wald & Wolfowitz 1940 (runs test); Masters
+2018 (permutation tests for trading systems) and Masters 2020 (CMMA); Davison & Hinkley 1997
+(permutation p-value convention); Jolliffe 2002 (PCA).
+
+## Review on change
+
+Re-verify the upstream head SHA before regenerating any parity fixture; a changed upstream file is
+a new provenance row, never a silent fixture update. Reopen this document if the owner's scope ever
+changes from private local use (see the dependency/license matrix).

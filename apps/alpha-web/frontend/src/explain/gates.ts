@@ -65,6 +65,7 @@ export function nullStory(m: ValidateManifest): GateStory {
   const tiers: NullTierRow[] = m.nulls ?? []
   const t1 = tiers.find((t) => t.tier === 'returns_level') ?? null
   const t2 = tiers.find((t) => t.tier === 'full_engine') ?? null
+  const t3 = tiers.find((t) => t.tier === 'bar_permutation') ?? null
   const passed = m.outcomes?.find((o) => o.name === 'randomized_price_null')?.passed ?? null
   const flagged = t1?.flagged_low_fidelity ?? false
 
@@ -75,11 +76,14 @@ export function nullStory(m: ValidateManifest): GateStory {
         `(p = ${fmtNum(t.p_value, 3)}) — ${t.passed ? 'clears' : 'fails'} the ${fmtPct(t.threshold, 0)} bar. `
       : ''
 
+  const engineTiers = [t2, t3].filter((t): t is NullTierRow => t !== null)
+  const vetoed = engineTiers.filter((t) => !t.passed).map((t) => t.tier)
   let narrative =
-    `The luck test. Both tiers ask the same question — would random, edge-free prices have paid ` +
+    `The luck test. Every tier asks the same question — would random, edge-free prices have paid ` +
     `this well? — at different fidelity. ` +
     tierLine(t1, 'Tier 1 (fast surrogate, resampled returns)') +
-    tierLine(t2, 'Tier 2 (real engine, synthetic OHLCV)')
+    tierLine(t2, 'Tier 2 (real engine, synthetic OHLCV)') +
+    tierLine(t3, 'Tier 3 (real engine, the OOS bars permuted)')
   if (flagged) {
     narrative +=
       `Tier 1 failed but was demoted to advisory: its close-fill convention diverges from the ` +
@@ -90,7 +94,8 @@ export function nullStory(m: ValidateManifest): GateStory {
     narrative +=
       `A fail here is the single most important red flag this platform produces: whatever the ` +
       `equity curve looks like, paths with NO edge performed comparably, so the result is ` +
-      `indistinguishable from luck on this symbol and period.`
+      `indistinguishable from luck on this symbol and period.` +
+      (vetoed.length ? ` The ${vetoed.join(' and ')} engine tier${vetoed.length === 1 ? '' : 's'} vetoed the gate; an engine tier is never excused.` : '')
   } else if (passed) {
     narrative += `Random prices could not match this performance — the edge survives its luck test.`
   }
@@ -110,6 +115,13 @@ export function nullStory(m: ValidateManifest): GateStory {
       { label: 'T2 paths', value: String(t2.n_paths) },
     )
   }
+  if (t3) {
+    stats.push(
+      { label: 'T3 percentile', value: fmtPct(t3.percentile, 1), term: 'null_test' },
+      { label: 'T3 p-value', value: fmtNum(t3.p_value, 3), term: 'p_value' },
+      { label: 'T3 paths', value: String(t3.n_paths) },
+    )
+  }
 
   const t = flagged && passed ? tone(true, true) : tone(passed)
   return {
@@ -118,12 +130,14 @@ export function nullStory(m: ValidateManifest): GateStory {
     passed,
     tests:
       'Could pure luck explain the performance? The strategy must beat the 95th percentile of ' +
-      'synthetic no-edge price paths in BOTH tiers: a fast returns-level surrogate (1,000 paths) ' +
-      'and the real engine on synthetic OHLCV (64 paths). A Tier-2 fail is never excused.',
+      'synthetic no-edge price paths in EVERY tier: a fast returns-level surrogate (1,000 paths), ' +
+      'the real engine on synthetic OHLCV (64 paths), and the real engine on permutations of the ' +
+      'out-of-sample bars themselves (64 paths). An engine-tier fail is never excused.',
     stats,
     terse:
       `T1 ${t1 ? `${fmtPct(t1.percentile, 0)} pct${t1.passed ? '✓' : '✗'}` : '—'} · ` +
       `T2 ${t2 ? `${fmtPct(t2.percentile, 0)} pct${t2.passed ? '✓' : '✗'}` : '—'}` +
+      (t3 ? ` · T3 ${fmtPct(t3.percentile, 0)} pct${t3.passed ? '✓' : '✗'}` : '') +
       (flagged ? ' · T1 demoted (low fidelity)' : ''),
     narrative,
     tone: t,

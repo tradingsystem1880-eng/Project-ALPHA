@@ -95,6 +95,7 @@ function defaultInstrument(family: CryptoFamily): string {
   if (family === 'market_reference') return 'bitcoin'
   if (family === 'onchain_catalog') return 'community'
   if (family === 'onchain_metrics') return 'btc'
+  if (family === 'defi_tvl') return 'ethereum'
   if (family.startsWith('option_') || family === 'historical_volatility') return 'BTC'
   return 'BTCUSDT'
 }

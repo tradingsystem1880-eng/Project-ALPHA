@@ -41,6 +41,11 @@ const FEATURE_CHOICES: { id: CryptoFeatureName; label: string; description: stri
     label: 'On-chain change',
     description: 'Causal changes in the selected network metrics.',
   },
+  {
+    id: 'defi_tvl_residual',
+    label: 'TVL residual',
+    description: 'Close versus a trailing log-log fit on the previous day\'s chain TVL, in ATR units.',
+  },
 ]
 
 export function CryptoQualityView({

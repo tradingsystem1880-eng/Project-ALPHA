@@ -123,6 +123,7 @@ from alpha_data.crypto.providers.coinmetrics import (
     parse_asset_metric_catalog,
     parse_asset_metrics,
 )
+from alpha_data.crypto.providers.defillama import defillama_url, fetch_defillama, parse_chain_tvl
 from alpha_data.crypto.providers.geckoterminal import (
     fetch_geckoterminal_public,
     geckoterminal_public_url,
@@ -181,6 +182,7 @@ _ROW_BYTES: Final[dict[CryptoFamily, int]] = {
     "dex_ohlcv": 176,
     "dex_transactions": 192,
     "comparison_bars": 128,
+    "defi_tvl": 96,
 }
 
 
@@ -2173,6 +2175,9 @@ def _fetch_non_bybit(
             fetched_at=fetched_at,
         )
 
+    if provider == "defillama":
+        return _fetch_defillama(family, instrument, base=base, quote=quote, frequency=frequency)
+
     if provider == "binance":
         return _fetch_binance(
             family,
@@ -2188,6 +2193,48 @@ def _fetch_non_bybit(
             fetched_at=fetched_at,
         )
     raise DataError(f"unsupported crypto acquisition provider {provider!r}")
+
+
+def _fetch_defillama(
+    family: CryptoFamily, instrument: str, *, base: str, quote: str, frequency: str
+) -> _FetchedAcquisition:
+    """One bounded chain-TVL series (ADR-0036): keyless, one request, next-day availability."""
+    if family != "defi_tvl":
+        raise DataError(f"DefiLlama is not authoritative for {family}")
+    if frequency != "1d":
+        raise DataError("DefiLlama chain TVL is published daily; --frequency must be 1d")
+    if quote.strip().upper() != "USD":
+        raise DataError("DefiLlama TVL is denominated in USD; --quote must be USD")
+    chain = instrument.strip().lower()
+    url = defillama_url("chain_tvl", chain=chain)
+    payload = fetch_defillama(url)
+    plan = _AcquisitionPlan(
+        endpoint="chain_tvl",
+        params={"chain": chain},
+        dataset=CryptoDatasetIdentityV1(
+            provider="defillama",
+            venue="defillama",
+            market_type="network",
+            family="defi_tvl",
+            instrument=chain,
+            base_asset=base.strip().upper(),
+            quote_asset="USD",
+            frequency="1d",
+            units="usd",
+            timestamp_convention="utc_day_start_available_next_day",
+        ),
+        parser=partial(parse_chain_tvl, chain=chain),
+        observed_column="observed_at",
+        key_columns=("chain", "observed_at"),
+        availability_column="available_at",
+    )
+    return _FetchedAcquisition(
+        plan=plan,
+        payload=payload,
+        provider_schema="defillama-v2-historical-chain-tvl",
+        parser_version="defillama-chain-tvl-v1",
+        logical_name="defi_tvl.json",
+    )
 
 
 def _acquisition_correction_lineage(

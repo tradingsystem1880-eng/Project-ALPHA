@@ -32,6 +32,7 @@ def test_provider_ids_are_unique_and_historical_sources_come_from_registry() -> 
         "coingecko",
         "geckoterminal",
         "coinmetrics",
+        "defillama",
         "ibkr",
     } == set(ids)
     historical_ids = {

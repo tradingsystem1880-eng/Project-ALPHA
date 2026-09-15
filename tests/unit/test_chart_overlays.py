@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import math
+import re
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from alpha_cli.chart_cmds import (
+    _NAN_AFTER_WARMUP,
+    PATTERNS,
+    PIP_COUNT,
     IndicatorSpec,
     compute_overlays,
     indicator_series,
@@ -16,6 +20,7 @@ from alpha_cli.chart_cmds import (
     to_ohlcv,
 )
 from alpha_core import Bar, DataError
+from alpha_patterns import geometric_brownian_series
 
 
 def _bars(n: int, *, closes: list[float] | None = None) -> list[Bar]:
@@ -46,6 +51,9 @@ def _bars(n: int, *, closes: list[float] | None = None) -> list[Bar]:
         ("rsi:14", IndicatorSpec("rsi", (14.0,))),
         ("atr:14", IndicatorSpec("atr", (14.0,))),
         ("macd:12:26:9", IndicatorSpec("macd", (12.0, 26.0, 9.0))),
+        ("hawkes:0.1:168", IndicatorSpec("hawkes", (0.1, 168.0))),
+        ("perm_entropy:3:28", IndicatorSpec("perm_entropy", (3.0, 28.0))),
+        ("reversibility:10", IndicatorSpec("reversibility", (10.0,))),
     ],
 )
 def test_parse_indicator_accepts_the_documented_forms(spec: str, expected: IndicatorSpec) -> None:
@@ -54,7 +62,22 @@ def test_parse_indicator_accepts_the_documented_forms(spec: str, expected: Indic
 
 @pytest.mark.parametrize(
     "spec",
-    ["foo:2", "sma", "sma:20:3", "sma:abc", "sma:1", "sma:2.5", "bbands:20:0", "macd:26:12:9"],
+    [
+        "foo:2",
+        "sma",
+        "sma:20:3",
+        "sma:abc",
+        "sma:1",
+        "sma:2.5",
+        "bbands:20:0",
+        "macd:26:12:9",
+        "hawkes:0:20",  # decay must be positive
+        "hawkes:0.1:1",  # the lookback is still an integer window
+        "hawkes:0.1:2.5",
+        "reversibility:9",  # d=3 ordinal patterns need >= 10 points
+        "vg_path:1",
+        "cmma:10",
+    ],
 )
 def test_parse_indicator_rejects_bad_specs_with_a_typed_error(spec: str) -> None:
     with pytest.raises(DataError):
@@ -94,6 +117,45 @@ def test_warmup_is_nulled_at_the_head_only(spec: str, warmups: list[int]) -> Non
         assert all(isinstance(v, float) and math.isfinite(v) for v in values[row["warmup"] :])
 
 
+@pytest.mark.parametrize(
+    ("spec", "warmups"),
+    [
+        ("hawkes:0.1:20", [20]),
+        ("vsa:10", [20]),
+        ("runs_z:10", [10]),
+        ("perm_entropy:3:4", [26]),
+        ("cmma:10:14", [13]),
+        ("vg_path:12", [12, 12]),
+        ("reversibility:30", [29]),
+        ("rsi_pc1:20", [43]),
+    ],
+)
+def test_ported_oscillators_sit_in_their_own_pane_with_head_only_warmup(
+    spec: str, warmups: list[int]
+) -> None:
+    series = to_ohlcv(_gbm_bars(80, seed=3))  # a smooth sine leaves reversibility undefined
+    parsed = parse_indicator(spec)
+    rows = indicator_series(series, parsed)
+    assert [row["warmup"] for row in rows] == warmups
+    for row in rows:
+        assert row["pane"] == parsed.name and row["style"] == "line"
+        values = row["values"]
+        assert len(values) == 80
+        assert all(v is None for v in values[: row["warmup"]])
+        tail = values[row["warmup"] :]
+        assert any(isinstance(v, float) and math.isfinite(v) for v in tail)
+        if parsed.name in _NAN_AFTER_WARMUP:
+            assert all(v is None or (isinstance(v, float) and math.isfinite(v)) for v in tail)
+        else:
+            assert all(isinstance(v, float) and math.isfinite(v) for v in tail)
+
+
+def test_vg_path_publishes_the_price_and_inverse_graphs_as_two_series() -> None:
+    price, inverse = indicator_series(to_ohlcv(_bars(40)), parse_indicator("vg_path:10"))
+    assert (price["id"], inverse["id"]) == ("vg_path:10:price", "vg_path:10:inverse")
+    assert price["name"].endswith(" price") and inverse["name"].endswith(" inverse")
+
+
 def test_sma_matches_a_plain_trailing_mean() -> None:
     bars = _bars(30)
     series = to_ohlcv(bars)
@@ -118,6 +180,13 @@ def test_short_window_fails_loud() -> None:
         indicator_series(series, parse_indicator("sma:50"))
     with pytest.raises(DataError, match="needs more than"):
         indicator_series(series, parse_indicator("macd:12:26:9"))
+    # the guard is the longest window each indicator reads, not its first parameter
+    with pytest.raises(DataError, match="needs more than 99 bars"):
+        indicator_series(series, parse_indicator("perm_entropy:4:4"))
+    with pytest.raises(DataError, match="needs more than 34 bars"):
+        indicator_series(series, parse_indicator("rsi_pc1:10"))
+    with pytest.raises(DataError, match="needs more than 30 bars"):
+        indicator_series(series, parse_indicator("vsa:15"))
 
 
 def test_to_ohlcv_fails_on_non_finite_or_too_short() -> None:
@@ -160,3 +229,67 @@ def test_pattern_annotations_are_chart_annotation_shaped_and_knowable() -> None:
 
 def test_no_patterns_means_no_annotations() -> None:
     assert compute_overlays(_bars(10), [], [])["annotations"] == []
+
+
+def _gbm_bars(n: int, *, seed: int) -> list[Bar]:
+    path = geometric_brownian_series(n, vol_per_bar=0.02, seed=seed, start=100.0)
+    start = datetime(2020, 1, 1, tzinfo=UTC)
+    return [
+        Bar(
+            symbol="ZZ",
+            ts=start + timedelta(days=i),
+            open=float(path.open[i]),
+            high=float(path.high[i]),
+            low=float(path.low[i]),
+            close=float(path.close[i]),
+            volume=float(path.volume[i]),
+        )
+        for i in range(n)
+    ]
+
+
+def test_ported_patterns_are_knowable_on_the_last_bar_and_name_that_bar() -> None:
+    bars = _gbm_bars(400, seed=11)
+    last = len(bars) - 1
+    ported = [p for p in PATTERNS if p not in {"swings", "trendlines", "levels"}]
+    rows = compute_overlays(bars, [], ported)["annotations"]
+    kinds = {row["kind"] for row in rows}
+    assert kinds <= {"line", "polyline", "marker"}
+    by_prefix = {
+        prefix: [r for r in rows if r["label"].startswith(prefix)]
+        for prefix in ("DC ", "PIPs", "Profile level", "Bull ", "Structure L")
+    }
+    assert all(by_prefix.values()), {k: len(v) for k, v in by_prefix.items()}
+    for row in rows:
+        assert row["unit"] == "price"
+        if row["kind"] == "marker":
+            assert len(row["anchors"]) == 1
+        else:
+            assert len(row["anchors"]) >= 2
+        # every reason names the bar the pattern became drawable, and it is never after --end
+        (bar,) = re.findall(r"(?:from|on) bar (\d+)", row["reason"])
+        assert int(bar) <= last
+        assert all(0 <= a["anchor_index"] <= last for a in row["anchors"])
+    (pips,) = by_prefix["PIPs"]
+    assert pips["kind"] == "polyline" and len(pips["anchors"]) == PIP_COUNT
+    assert pips["anchors"][-1]["anchor_index"] == last
+    assert all(r["kind"] == "marker" for r in by_prefix["DC "] + by_prefix["Structure L"])
+    assert all(r["kind"] == "line" for r in by_prefix["Profile level"])
+    (flag,) = by_prefix["Bull "]
+    assert flag["kind"] == "polyline" and len(flag["anchors"]) == 3
+    assert flag["reason"].endswith("confirmed on bar 267")
+
+
+def test_ported_patterns_never_draw_what_the_last_bar_cannot_confirm() -> None:
+    bars = _gbm_bars(400, seed=11)
+    # Standing on bar 266 the seed-11 bull flag (confirmed on bar 267) does not exist yet.
+    early = compute_overlays(bars[:267], [], ["flags", "dc_extremes", "structure_levels"])
+    assert not [r for r in early["annotations"] if r["label"].startswith("Bull ")]
+    late = compute_overlays(bars[:268], [], ["flags", "dc_extremes", "structure_levels"])
+    assert [r["reason"][-3:] for r in late["annotations"] if r["label"].startswith("Bull ")] == [
+        "267"
+    ]
+    # a marker drawn on a shorter window is drawn identically on the longer one
+    early_markers = {(r["label"], r["anchors"][0]["anchor_index"]) for r in early["annotations"]}
+    late_markers = {(r["label"], r["anchors"][0]["anchor_index"]) for r in late["annotations"]}
+    assert early_markers <= late_markers

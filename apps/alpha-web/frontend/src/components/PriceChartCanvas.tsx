@@ -207,7 +207,7 @@ export function PriceChartCanvas({
         id: marker.id,
         time: marker.time as UTCTimestamp,
         position: marker.position,
-        shape: 'circle',
+        shape: marker.shape,
         color: CHART.gold,
         size: 0.6,
         text: marker.text,

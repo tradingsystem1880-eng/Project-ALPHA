@@ -14,6 +14,7 @@ COMMAND_RUN_TYPES: dict[str, str] = {
     "backtest cross-sectional": "cross_sectional",
     "validate": "runs",
     "optim grid": "optim",
+    "optim mcpt": "optim",
     "propfirm run": "propfirm",
     "forecast run": "forecast",
     "forecast eval": "forecast",

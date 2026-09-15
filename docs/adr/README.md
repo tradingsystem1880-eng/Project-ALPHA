@@ -41,6 +41,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0033](0033-governed-crypto-crowding-research-and-sandbox-basis.md) | Govern crypto crowding research separately from sandbox basis development | Accepted | 2026-08-15 |
 | [0034](0034-agent-operating-system-v2.md) | Agent operating system v2 — owner-token authorization, oracle test tiers, second-model review seam | Accepted | 2026-08-19 |
 | [0035](0035-generic-study-composition-and-external-capability-adapters.md) | Govern generic study composition as a projection layer | Accepted | 2026-08-21 |
+| [0036](0036-defillama-tvl-supplemental-research-family.md) | Add DefiLlama chain TVL as a supplemental crypto research family | Accepted | 2026-09-14 |
 
 ## Conventions
 

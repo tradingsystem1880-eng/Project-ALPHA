@@ -4249,7 +4249,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "line" | "polyline" | "zone";
+            kind: "line" | "polyline" | "zone" | "marker";
             /** Label */
             label: string;
             /** Reason */
@@ -5266,7 +5266,7 @@ export interface components {
             provider: string;
         };
         /** @enum {string} */
-        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "market_membership" | "instrument_catalog" | "derivative_bars" | "derivative_trades" | "derivative_book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "onchain_catalog" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars";
+        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "market_membership" | "instrument_catalog" | "derivative_bars" | "derivative_trades" | "derivative_book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "onchain_catalog" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars" | "defi_tvl";
         /** CryptoFeatureCreateRequest */
         CryptoFeatureCreateRequest: {
             feature_name: components["schemas"]["CryptoFeatureNameValue"];
@@ -5295,7 +5295,7 @@ export interface components {
             research_authority: false;
         };
         /** @enum {string} */
-        CryptoFeatureNameValue: "funding" | "open_interest_change" | "basis" | "volatility_surface" | "liquidity" | "onchain_change";
+        CryptoFeatureNameValue: "funding" | "open_interest_change" | "basis" | "volatility_surface" | "liquidity" | "onchain_change" | "defi_tvl_residual";
         /** CryptoFeatureResponse */
         CryptoFeatureResponse: {
             /** Artifact Sha256 */
@@ -5435,7 +5435,7 @@ export interface components {
             state: "frozen";
         };
         /** @enum {string} */
-        CryptoProviderValue: "binance" | "bybit" | "coingecko" | "geckoterminal" | "coinmetrics" | "ccxt:coinbase";
+        CryptoProviderValue: "binance" | "bybit" | "coingecko" | "geckoterminal" | "coinmetrics" | "ccxt:coinbase" | "defillama";
         /** @enum {string} */
         CryptoQualificationStateValue: "unverified" | "unavailable" | "qualified" | "warning" | "quarantined";
         /** CryptoQualityReportResponse */
@@ -7831,11 +7831,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
-            /**
-             * Pane
-             * @enum {string}
-             */
-            pane: "price" | "rsi" | "atr" | "macd";
+            /** Pane */
+            pane: string;
             /**
              * Style
              * @enum {string}

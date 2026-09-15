@@ -18,7 +18,13 @@ import pytest
 
 from alpha_cli.figures import build_figure_spec
 from alpha_core import DataError
-from alpha_research.figures import RenderOptions, default_size, load_theme, render_figure
+from alpha_research.figures import (
+    FigureSpec,
+    RenderOptions,
+    default_size,
+    load_theme,
+    render_figure,
+)
 
 _RUN = "0f0f0f0f0f0f0f0f"
 
@@ -441,3 +447,83 @@ def test_every_synthetic_builder_is_one_the_catalogue_declares() -> None:
         "research_discovery_trace",
     }
     assert exercised <= declared
+
+
+def _answer(spec: object) -> str:
+    assert isinstance(spec, FigureSpec)
+    return spec.plain_language_answer
+
+
+def _trade_stats(rdir: Path, *, value: float | None, available: bool, reason: str | None) -> None:
+    pl.DataFrame(
+        {
+            "metric": ["trade_runs_z"],
+            "value": [value],
+            "unit": ["z_score"],
+            "available": [available],
+            "unavailable_reason": [reason],
+        },
+        schema={
+            "metric": pl.String(),
+            "value": pl.Float64(),
+            "unit": pl.String(),
+            "available": pl.Boolean(),
+            "unavailable_reason": pl.String(),
+        },
+    ).write_parquet(rdir / "trade_statistics.parquet")
+
+
+def _trades(rdir: Path, pnl: list[float]) -> None:
+    stamps = _stamps(len(pnl))
+    pl.DataFrame(
+        {
+            "entry_ts": stamps,
+            "exit_ts": [stamp + timedelta(days=1) for stamp in stamps],
+            "realized_pnl": pnl,
+        }
+    ).write_parquet(rdir / "trades.parquet")
+
+
+def test_trade_runs_test_reports_an_undefined_statistic_in_words(tmp_path: Path) -> None:
+    rdir = _run_dir(tmp_path, "backtest_run")
+    _trades(rdir, [5.0, 5.0, 5.0])
+    _trade_stats(rdir, value=None, available=False, reason="runs_test_undefined")
+    spec = _build(rdir, "trade_runs_test", tmp_path)
+    assert isinstance(spec, FigureSpec)
+    answer = spec.plain_language_answer
+    assert "3 trades form 1 runs" in answer and "undefined here (runs test undefined)" in answer
+    (panel,) = spec.panels
+    assert [mark.kind for mark in panel.marks] == ["bar"]  # the sign bars, no z rule
+
+
+def test_trade_runs_test_reads_the_sheet_z_and_names_its_direction(tmp_path: Path) -> None:
+    rdir = _run_dir(tmp_path, "backtest_run")
+    _trades(rdir, [30.0, -20.0, 30.0, 30.0, -20.0])  # + - + + -: four runs
+    _trade_stats(rdir, value=0.6546536707079772, available=True, reason=None)
+    answer = _answer(_build(rdir, "trade_runs_test", tmp_path))
+    assert "5 trades form 4 runs" in answer and "+0.65 (alternating" in answer
+    _trade_stats(rdir, value=0.0, available=True, reason=None)
+    assert "+0.00 (exactly as expected" in _answer(_build(rdir, "trade_runs_test", tmp_path))
+
+
+@pytest.mark.parametrize("value", [None, float("nan")])
+def test_trade_runs_test_fails_loud_on_a_malformed_sheet_z(
+    tmp_path: Path, value: float | None
+) -> None:
+    rdir = _run_dir(tmp_path, "backtest_run")
+    _trades(rdir, [30.0, -20.0, 30.0])
+    _trade_stats(rdir, value=value, available=True, reason=None)
+    with pytest.raises(DataError, match="trade_runs_z"):
+        _build(rdir, "trade_runs_test", tmp_path)
+
+
+def test_mcpt_null_histogram_ignores_a_boolean_percentile(tmp_path: Path) -> None:
+    rdir = _run_dir(
+        tmp_path, "optim_mcpt", observed={"statistic": 0.5}, percentile=True, p_value=0.5
+    )
+    pl.DataFrame(
+        {"path_index": [0, 1, 2], "statistic": [0.1, 0.2, 0.3], "best_config": ["{}"] * 3},
+        schema={"path_index": pl.Int64(), "statistic": pl.Float64(), "best_config": pl.String()},
+    ).write_parquet(rdir / "mcpt_null.parquet")
+    answer = _answer(_build(rdir, "mcpt_null_histogram", tmp_path))
+    assert answer.startswith("The manifest records no observed percentile")

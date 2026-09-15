@@ -98,6 +98,23 @@ def atr(bars: OHLCV, window: int = 14) -> FloatArray:
     return (csum[idx + 1] - csum[lo]) / counts
 
 
+def log_atr(bars: OHLCV, window: int = 14) -> FloatArray:
+    """``atr`` computed on log prices: the scale-free true range used by the ported studies.
+
+    Same causal simple mean as ``atr`` (bars ``i-window+1 .. i``, shorter at the head), so a
+    threshold in log-ATR units means the same thing at 1.0 and at 10,000.
+    """
+    if window < 1:
+        raise DataError(f"log_atr window must be >= 1, got {window}")
+    h, lo, c = np.log(bars.high), np.log(bars.low), np.log(bars.close)
+    prev_c = np.concatenate(([c[0]], c[:-1]))
+    tr = np.maximum(h - lo, np.maximum(np.abs(h - prev_c), np.abs(lo - prev_c)))
+    csum = np.concatenate(([0.0], np.cumsum(tr)))
+    idx = np.arange(tr.size)
+    lo_i = np.maximum(0, idx - window + 1)
+    return np.asarray((csum[idx + 1] - csum[lo_i]) / (idx - lo_i + 1).astype(np.float64))
+
+
 def rolling_vwap(bars: OHLCV, window: int) -> FloatArray:
     """Causal rolling volume-weighted average price over ``window`` bars.
 

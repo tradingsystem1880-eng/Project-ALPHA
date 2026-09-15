@@ -36,6 +36,7 @@ def test_info_providers_json_is_redacted(monkeypatch: pytest.MonkeyPatch) -> Non
         "coingecko",
         "geckoterminal",
         "coinmetrics",
+        "defillama",
         "ibkr",
     } == set(providers)
     assert providers["ccxt"]["options"]["exchange"]["choices"] == ["coinbase", "binance"]

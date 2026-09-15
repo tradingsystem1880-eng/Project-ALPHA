@@ -8,13 +8,30 @@
 
 import type { ChartAnnotation, OverlaySeries } from '../api/types'
 
-export const PATTERNS = ['swings', 'trendlines', 'levels'] as const
+/** The same closed list as `alpha_cli.chart_cmds.PATTERNS` (drift-tested). */
+export const PATTERNS = [
+  'swings',
+  'trendlines',
+  'levels',
+  'dc_extremes',
+  'pips',
+  'market_profile',
+  'harmonics',
+  'flags',
+  'structure_levels',
+] as const
 export type PatternName = (typeof PATTERNS)[number]
 
 export const PATTERN_LABEL: Readonly<Record<PatternName, string>> = Object.freeze({
   swings: 'Swing highs / lows (fractal, confirmed only)',
   trendlines: 'Descending trendlines (confirmed anchors)',
   levels: 'Fibonacci retracement of the last confirmed leg',
+  dc_extremes: 'Directional-change extremes (2% retrace, confirmed only)',
+  pips: 'Perceptually important points of the last 48 closes',
+  market_profile: 'Market-profile support / resistance levels',
+  harmonics: 'Harmonic XABCD patterns (Gartley, Bat, Butterfly, …)',
+  flags: 'Flags and pennants (confirmed breakouts only)',
+  structure_levels: 'Hierarchical market-structure extremes (3 levels)',
 })
 
 export interface OverlayConfig {
@@ -28,15 +45,25 @@ export const EMPTY_OVERLAYS: OverlayConfig = Object.freeze({
   patterns: Object.freeze([]) as readonly PatternName[],
 })
 
-/** The same arity table as `alpha_cli.chart_cmds.INDICATORS`. */
-const ARITY: Readonly<Record<string, number>> = Object.freeze({
+/** The same arity table as `alpha_cli.chart_cmds.INDICATORS` (drift-tested). */
+export const ARITY: Readonly<Record<string, number>> = Object.freeze({
   sma: 1,
   ema: 1,
   bbands: 2,
   rsi: 1,
   atr: 1,
   macd: 3,
+  hawkes: 2,
+  vsa: 1,
+  runs_z: 1,
+  perm_entropy: 2,
+  cmma: 2,
+  vg_path: 1,
+  reversibility: 1,
+  rsi_pc1: 1,
 })
+/** Indicators whose first parameter is a decay rate (any positive number), not a window. */
+const FLOAT_FIRST: readonly string[] = Object.freeze(['hawkes'])
 
 export const INDICATOR_PRESETS: readonly { id: string; label: string }[] = Object.freeze([
   { id: 'sma:20', label: 'SMA 20' },
@@ -47,6 +74,14 @@ export const INDICATOR_PRESETS: readonly { id: string; label: string }[] = Objec
   { id: 'rsi:14', label: 'RSI 14' },
   { id: 'atr:14', label: 'ATR 14' },
   { id: 'macd:12:26:9', label: 'MACD 12/26/9' },
+  { id: 'hawkes:0.1:168', label: 'Hawkes volatility κ=0.1 / 168' },
+  { id: 'vsa:168', label: 'VSA 168' },
+  { id: 'runs_z:24', label: 'Runs z 24' },
+  { id: 'perm_entropy:3:28', label: 'Permutation entropy 3 / 28' },
+  { id: 'cmma:24:168', label: 'CMMA 24 / 168' },
+  { id: 'vg_path:12', label: 'Visibility-graph path 12' },
+  { id: 'reversibility:30', label: 'Reversibility 30' },
+  { id: 'rsi_pc1:60', label: 'RSI PC1 60' },
 ])
 
 /** Normalise `name:p1[:p2[:p3]]` or throw an Error whose message names the problem. */
@@ -57,9 +92,11 @@ export function parseIndicatorSpec(text: string): string {
   if (rest.length !== arity) throw new Error(`${head} takes ${arity} parameter${arity === 1 ? '' : 's'} (${example(head)})`)
   const params = rest.map((part) => Number(part))
   if (params.some((value) => !Number.isFinite(value))) throw new Error(`parameters must be numbers (${example(head)})`)
-  const windows = head === 'bbands' ? params.slice(0, 1) : params
+  const windows = head === 'bbands' ? params.slice(0, 1) : FLOAT_FIRST.includes(head) ? params.slice(1) : params
   if (windows.some((value) => !Number.isInteger(value) || value < 2)) throw new Error('windows must be whole numbers of at least 2')
   if (head === 'bbands' && params[1] <= 0) throw new Error('Bollinger width must be above 0')
+  if (FLOAT_FIRST.includes(head) && params[0] <= 0) throw new Error(`${head} decay must be above 0`)
+  if (head === 'reversibility' && params[0] < 10) throw new Error('reversibility window must be at least 10')
   if (head === 'macd' && !(params[0] < params[1])) throw new Error('MACD fast window must be shorter than slow')
   return [head, ...params.map((value) => String(value))].join(':')
 }
@@ -125,19 +162,17 @@ export function overlayQuery(
   return text ? `?${text}` : ''
 }
 
-export type SubPane = Exclude<OverlaySeries['pane'], 'price'>
-export const SUB_PANE_ORDER: readonly SubPane[] = Object.freeze(['rsi', 'atr', 'macd'])
-
-/** Price-pane series first, then one group per oscillator pane in fixed order. */
+/** Price-pane series first, then one group per oscillator pane in the order the CLI served them. */
 export function splitPanes(indicators: readonly OverlaySeries[]): {
   price: OverlaySeries[]
-  panes: { pane: SubPane; series: OverlaySeries[] }[]
+  panes: { pane: string; series: OverlaySeries[] }[]
 } {
   const price = indicators.filter((series) => series.pane === 'price')
-  const panes = SUB_PANE_ORDER.map((pane) => ({
+  const order = Array.from(new Set(indicators.map((series) => series.pane).filter((pane) => pane !== 'price')))
+  const panes = order.map((pane) => ({
     pane,
     series: indicators.filter((series) => series.pane === pane),
-  })).filter((group) => group.series.length > 0)
+  }))
   return { price, panes }
 }
 
@@ -153,39 +188,50 @@ export interface SwingMarker {
   id: string
   time: number
   position: 'aboveBar' | 'belowBar'
+  shape: 'circle' | 'square'
   text: 'H' | 'L'
   title: string
 }
 
-/** Single-anchor swing annotations become bar markers; everything else stays a drawn shape. */
+/** `marker` annotations become bar markers (swings as circles, the ported extremes as squares). */
 export function swingMarkers(annotations: readonly ChartAnnotation[]): SwingMarker[] {
   return annotations
-    .filter((row) => row.anchors.length === 1 && row.label.startsWith('Swing'))
+    .filter((row) => row.kind === 'marker' && row.anchors.length === 1)
     .map((row) => {
-      const high = row.label === 'Swing high'
+      const high = row.label.endsWith('high')
       return {
         id: `swing:${row.annotation_id}`,
         time: row.anchors[0].ts,
         position: high ? 'aboveBar' : 'belowBar',
+        shape: row.label.startsWith('Swing') ? 'circle' : 'square',
         text: high ? 'H' : 'L',
         title: `${row.label} · ${row.reason}`,
       }
     })
 }
 
+/** Lines, polylines and zones with two or more anchors; markers are drawn as series markers. */
 export function drawableAnnotations(annotations: readonly ChartAnnotation[]): ChartAnnotation[] {
-  return annotations.filter((row) => row.anchors.length >= 2)
+  return annotations.filter((row) => row.kind !== 'marker' && row.anchors.length >= 2)
 }
 
 /** One-line legend for the chart foot: what is drawn, and that the CLI computed it. */
 export function overlayLegend(indicators: readonly OverlaySeries[], annotations: readonly ChartAnnotation[]): string {
-  const names = Array.from(new Set(indicators.map((series) => series.name.replace(/ (line|signal|histogram|mid|[+-].*)$/, ''))))
+  const names = Array.from(
+    new Set(indicators.map((series) => series.name.replace(/ (line|signal|histogram|mid|price|inverse|[+-].*)$/, ''))),
+  )
   const parts = [...names]
-  const swings = annotations.filter((row) => row.anchors.length === 1).length
+  const swings = annotations.filter((row) => row.kind === 'marker' && row.label.startsWith('Swing')).length
+  const extremes = annotations.filter((row) => row.kind === 'marker' && !row.label.startsWith('Swing')).length
   const lines = annotations.filter((row) => row.label.startsWith('Descending')).length
   const fibs = annotations.filter((row) => row.label.startsWith('Fib')).length
+  const levels = annotations.filter((row) => row.label.startsWith('Profile level')).length
+  const shapes = annotations.filter((row) => row.kind === 'polyline').length
   if (swings) parts.push(`${swings} swings`)
+  if (extremes) parts.push(`${extremes} extremes`)
   if (lines) parts.push(`${lines} trendline${lines === 1 ? '' : 's'}`)
   if (fibs) parts.push(`${fibs} fib levels`)
+  if (levels) parts.push(`${levels} profile levels`)
+  if (shapes) parts.push(`${shapes} pattern${shapes === 1 ? '' : 's'}`)
   return parts.length ? `OVERLAYS · ${parts.join(' · ')} · computed by alpha chart overlays` : ''
 }
