@@ -911,14 +911,14 @@ def _env_runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
     return (result.returncode == 0, time.monotonic() - started, output)
 
 
-# Mirrors CI's "Import built wheels" step byte-for-byte (14 wheels incl. alpha_study).
+# Mirrors CI's "Import built wheels" step byte-for-byte (12 wheels incl. alpha_study).
 _WHEEL_SMOKE_SH = (
     "uv pip install --python .venv/bin/python --reinstall --no-deps dist/*.whl && "
     ".venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, "
-    "alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, "
+    "alpha_validation, alpha_forecast, alpha_research, "
     "alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web; "
     'assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, '
-    "alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, "
+    "alpha_backtest, alpha_validation, alpha_forecast, "
     "alpha_research, alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web))'"
 )
 
@@ -946,15 +946,44 @@ def gate_steps(tier: str, root: Path | None = None) -> list[tuple[str, list[str]
     ]
     if (base / SEMGREP_RULES).is_file():
         fast.append(("semgrep", [sys.executable, "scripts/gate.py", "semgrep", "--changed"]))
+    # The alpha tier: everything not marked ``platform`` (tests/conftest.py classifies by path),
+    # in parallel and without coverage, so a Stop stamp proves the edge-relevant tests pass.
+    fast.append(
+        (
+            "pytest fast",
+            [
+                "uv",
+                "run",
+                "pytest",
+                "-q",
+                "-n",
+                "auto",
+                "-p",
+                "no:cacheprovider",
+                "-m",
+                "not platform and not network and not slow_oracle",
+            ],
+        )
+    )
     if tier == "fast":
         return fast
     full = [
         ("uv lock", ["uv", "lock", "--check"]),
         ("uv sync", ["uv", "sync", "--locked"]),
-        *fast,
+        *[step for step in fast if step[0] != "pytest fast"],
         (
             "pytest + coverage",
-            ["uv", "run", "pytest", "-q", "-m", "not network and not slow_oracle", "--cov"],
+            [
+                "uv",
+                "run",
+                "pytest",
+                "-q",
+                "-n",
+                "auto",
+                "-m",
+                "not network and not slow_oracle",
+                "--cov",
+            ],
         ),
         (
             "openapi freshness",

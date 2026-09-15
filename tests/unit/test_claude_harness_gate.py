@@ -8,6 +8,7 @@ and the harness doctor. Everything here runs against throwaway git repos.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -991,6 +992,25 @@ class TestQuantRigorTooling:
         assert entry["kill_rate"] == round(1 / 47, 4)
         assert 5400.0 in seen_timeouts
 
+    def test_mutate_runs_mutmut_with_single_threaded_accelerate(self, repo: Path) -> None:
+        # mutmut isolates each mutant with os.fork(); Apple's Accelerate BLAS is not fork-safe
+        # once its thread pool exists, so every mutant reaching numpy/scipy linear algebra is
+        # recorded as "segfault" (never credited as a kill) unless the pool is pinned to one thread.
+        rel = self._quant_module(repo)
+        (repo / "packages/alpha-validation/src/alpha_validation/__init__.py").write_text("")
+        (repo / "tests").mkdir()
+        (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\nmarkers = []\n")
+        envs: dict[str, dict[str, str] | None] = {}
+
+        def runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+            envs[cmd[-1]] = kwargs.get("env")
+            return (False, 0.0, "")
+
+        harness_quant.mutate(repo, [rel], runner=runner)
+        assert envs["run"] is not None
+        assert envs["run"]["VECLIB_MAXIMUM_THREADS"] == "1"
+        assert envs["run"]["PATH"] == os.environ["PATH"]  # the rest of the environment is kept
+
     def test_semgrep_command_and_scope(self, repo: Path) -> None:
         for rel in ("packages/x.py", "docs/a.md", "tests/t.py"):
             (repo / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -1077,6 +1097,23 @@ class TestQuantRigorTooling:
         (repo / ".semgrep").mkdir()
         (repo / ".semgrep" / "alpha.yml").write_text("rules: []\n")
         assert "semgrep" in [name for name, _ in gate.gate_steps("fast", repo)]
+
+    def test_full_gate_pytest_runs_in_parallel_with_coverage(self, repo: Path) -> None:
+        """Phase A S1: the sequential pytest step was 609 s of a 616 s gate; xdist runs the
+        same selection in parallel and coverage is still combined across workers."""
+        argv = dict(gate.gate_steps("full", repo))["pytest + coverage"]
+        assert "-n" in argv and argv[argv.index("-n") + 1] == "auto"
+        assert "--cov" in argv
+        assert argv[argv.index("-m") + 1] == "not network and not slow_oracle"
+
+    def test_fast_gate_runs_the_alpha_tier_without_platform_tests(self, repo: Path) -> None:
+        """Phase A S2: a Stop stamp must prove the alpha-relevant tests pass, so the fast tier
+        runs everything not marked ``platform`` in parallel and without coverage."""
+        argv = dict(gate.gate_steps("fast", repo))["pytest fast"]
+        assert "-n" in argv and argv[argv.index("-n") + 1] == "auto"
+        assert argv[argv.index("-m") + 1] == "not platform and not network and not slow_oracle"
+        assert "--cov" not in argv
+        assert "no:cacheprovider" in argv
 
 
 class TestAuditDigest:

@@ -1215,66 +1215,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/options/curve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Options Curve
-         * @description Price + greeks across a spot range for the greeks-vs-spot chart.
-         */
-        get: operations["options_curve_api_options_curve_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/options/greeks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Options Greeks
-         * @description Price + delta/gamma/vega/theta/rho for one European option.
-         */
-        get: operations["options_greeks_api_options_greeks_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/options/iv": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Options Iv
-         * @description The implied volatility that reprices the option to ``price`` (+ greeks at that vol).
-         */
-        get: operations["options_iv_api_options_iv_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/overlays/{symbol}": {
         parameters: {
             query?: never;
@@ -2782,46 +2722,6 @@ export interface paths {
          * @description Evaluate the scan on point-in-time bars (optionally as of a date); writes nothing.
          */
         post: operations["run_scan_api_scans__name__run_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/screener/news": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Screener News
-         * @description Recent company news for ``symbol`` (503 when unconfigured).
-         */
-        get: operations["screener_news_api_screener_news_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/screener/quote": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Screener Quote
-         * @description A live quote for ``symbol`` (503 when the finnhub key/network is missing).
-         */
-        get: operations["screener_quote_api_screener_quote_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7925,67 +7825,6 @@ export interface components {
             /** Trials */
             trials: components["schemas"]["OptimTrial"][];
         };
-        /** OptionCurve */
-        OptionCurve: {
-            /** Days */
-            days: number;
-            /** Kind */
-            kind: string;
-            /** Points */
-            points: components["schemas"]["OptionCurvePoint"][];
-            /** Rate */
-            rate: number;
-            /** Strike */
-            strike: number;
-            /** Vol */
-            vol: number;
-        };
-        /** OptionCurvePoint */
-        OptionCurvePoint: {
-            /** Delta */
-            delta: number;
-            /** Gamma */
-            gamma: number;
-            /** Price */
-            price: number;
-            /** Spot */
-            spot: number;
-            /** Theta */
-            theta: number;
-            /** Vega */
-            vega: number;
-        };
-        /** OptionGreeks */
-        OptionGreeks: {
-            /** Days */
-            days: number;
-            /** Delta */
-            delta: number;
-            /** Gamma */
-            gamma: number;
-            /** Implied Vol */
-            implied_vol?: number | null;
-            /** Kind */
-            kind: string;
-            /** Market Price */
-            market_price?: number | null;
-            /** Price */
-            price: number;
-            /** Rate */
-            rate: number;
-            /** Rho */
-            rho: number;
-            /** Spot */
-            spot: number;
-            /** Strike */
-            strike: number;
-            /** Theta */
-            theta: number;
-            /** Vega */
-            vega: number;
-            /** Vol */
-            vol: number;
-        };
         /** OverlaySeries */
         OverlaySeries: {
             /** Id */
@@ -10425,45 +10264,6 @@ export interface components {
             kind: "stored" | "list";
             /** Symbols */
             symbols?: string[] | null;
-        };
-        /** ScreenerNews */
-        ScreenerNews: {
-            /** Items */
-            items: components["schemas"]["ScreenerNewsItem"][];
-            /** Symbol */
-            symbol: string;
-        };
-        /** ScreenerNewsItem */
-        ScreenerNewsItem: {
-            /** Datetime */
-            datetime: number;
-            /** Headline */
-            headline: string;
-            /** Source */
-            source: string;
-            /** Summary */
-            summary: string;
-            /** Url */
-            url: string;
-        };
-        /** ScreenerQuote */
-        ScreenerQuote: {
-            /** Change */
-            change: number;
-            /** Current */
-            current: number;
-            /** High */
-            high: number;
-            /** Low */
-            low: number;
-            /** Open */
-            open: number;
-            /** Percent Change */
-            percent_change: number;
-            /** Prev Close */
-            prev_close: number;
-            /** Symbol */
-            symbol: string;
         };
         /** SemanticPointV1 */
         SemanticPointV1: {
@@ -13271,115 +13071,6 @@ export interface operations {
             };
         };
     };
-    options_curve_api_options_curve_get: {
-        parameters: {
-            query: {
-                strike: number;
-                vol: number;
-                days?: number;
-                rate?: number;
-                kind?: string;
-                width?: number;
-                points?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OptionCurve"];
-                };
-            };
-            /** @description Stable, redacted Workstation error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorV1"];
-                };
-            };
-        };
-    };
-    options_greeks_api_options_greeks_get: {
-        parameters: {
-            query: {
-                spot: number;
-                strike: number;
-                vol: number;
-                days?: number;
-                rate?: number;
-                kind?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OptionGreeks"];
-                };
-            };
-            /** @description Stable, redacted Workstation error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorV1"];
-                };
-            };
-        };
-    };
-    options_iv_api_options_iv_get: {
-        parameters: {
-            query: {
-                spot: number;
-                strike: number;
-                price: number;
-                days?: number;
-                rate?: number;
-                kind?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OptionGreeks"];
-                };
-            };
-            /** @description Stable, redacted Workstation error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorV1"];
-                };
-            };
-        };
-    };
     overlays_api_overlays__symbol__get: {
         parameters: {
             query?: {
@@ -16060,70 +15751,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScanRunResult"];
-                };
-            };
-            /** @description Stable, redacted Workstation error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorV1"];
-                };
-            };
-        };
-    };
-    screener_news_api_screener_news_get: {
-        parameters: {
-            query: {
-                symbol: string;
-                days?: number;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScreenerNews"];
-                };
-            };
-            /** @description Stable, redacted Workstation error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorV1"];
-                };
-            };
-        };
-    };
-    screener_quote_api_screener_quote_get: {
-        parameters: {
-            query: {
-                symbol: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScreenerQuote"];
                 };
             };
             /** @description Stable, redacted Workstation error */

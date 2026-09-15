@@ -2325,21 +2325,6 @@ function responseFor(route: Route, options: MockOptions): unknown {
     live_capital_routing: 'absent',
     derived_from_elapsed_time: false,
   }
-  if (url.pathname === '/api/screener/quote') {
-    return {
-      symbol: url.searchParams.get('symbol') ?? 'AAPL',
-      current: 100,
-      change: 0,
-      percent_change: 0,
-      open: 100,
-      high: 100,
-      low: 100,
-      prev_close: 100,
-    }
-  }
-  if (url.pathname === '/api/screener/news') {
-    return { symbol: url.searchParams.get('symbol') ?? 'AAPL', items: [] }
-  }
   if (options.researchGateLock && url.pathname === '/api/projects') {
     return { items: [GATED_PROJECT, UNGATED_PROJECT], limit: 50, offset: 0, has_more: false }
   }
@@ -2660,17 +2645,17 @@ test('both profiles gate windows, panels and providers without sending a profile
   // A crypto pair does not survive the switch: the equities default takes its place.
   await expect(chip).toContainText('AAPL')
   await expect(chip).not.toContainText('XRPUSDT')
-  await openDocument(page, 'Options Calculator')
+  await openDocument(page, 'Corporate actions')
   await page.getByRole('menubar').getByRole('menuitem', { name: 'View', exact: true }).click()
   const view = page.getByRole('menu', { name: 'View' })
   await expect(view.getByRole('menuitem', { name: 'Funding', exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
   await switchProfile(page, 'crypto')
   // The equities-only document closes with the profile; Funding is now offered.
-  await expect(documentTab(page, 'Options Calculator')).toHaveCount(0)
+  await expect(documentTab(page, 'Corporate actions')).toHaveCount(0)
   await page.getByRole('menubar').getByRole('menuitem', { name: 'View', exact: true }).click()
   await expect(view.getByRole('menuitem', { name: 'Funding', exact: true })).toBeVisible()
-  await expect(view.getByRole('menuitem', { name: 'Options Calculator', exact: true })).toHaveCount(0)
+  await expect(view.getByRole('menuitem', { name: 'Corporate actions', exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
   expect(requests.filter((entry) => /profile/i.test(entry))).toEqual([])
 })
@@ -3331,21 +3316,18 @@ test('only the active document mounts', async ({ page }) => {
   page.on('request', (request) => requested.push(new URL(request.url()).pathname))
   await preparePage(page)
 
-  // Research is the opening document. Closed documents and inactive tabs must not fetch.
-  expect(requested).not.toContain('/api/screener/quote')
-  expect(requested).not.toContain('/api/screener/news')
-  expect(requested).not.toContain('/api/options/greeks')
+  // Research is the opening document. Closed documents and inactive tabs must not fetch:
+  // the Paper sessions document polls /api/paper/readiness only while it is mounted.
+  const sessions = () => requested.filter((path) => path === '/api/paper/readiness').length
+  expect(sessions()).toBe(0)
 
-  await switchProfile(page, 'equities')
-  await openDocument(page, 'Market Overview')
-  await expect
-    .poll(() => requested.filter((path) => path === '/api/screener/quote').length)
-    .toBeGreaterThan(0)
-  const quotes = requested.filter((path) => path === '/api/screener/quote').length
-  // Switching back to Research unmounts Market Overview: no further quote requests.
+  await openDocument(page, 'Paper sessions')
+  await expect.poll(sessions).toBeGreaterThan(0)
+  const polled = sessions()
+  // Switching back to Research unmounts Paper sessions: no further session requests.
   await documentTab(page, 'Research').click()
   await page.waitForTimeout(1_200)
-  expect(requested.filter((path) => path === '/api/screener/quote').length).toBe(quotes)
+  expect(sessions()).toBe(polled)
 })
 
 test('legacy trace rerun opens the governed Development Center', async ({ page }) => {

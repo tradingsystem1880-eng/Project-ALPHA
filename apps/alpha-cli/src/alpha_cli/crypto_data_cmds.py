@@ -3995,3 +3995,81 @@ __all__ = [
     "crypto_hedged_basis_snapshot_compatibility",
     "crypto_snapshot_registration",
 ]
+
+
+def _backfill_acquire(
+    provider: str, family: str, instrument: str, **window: object
+) -> dict[str, object]:
+    """Call the acquisition path in-process with every unused typer default made explicit.
+
+    ``_acquire_result``'s defaults are ``typer.Option`` sentinels when it is called as a plain
+    function, and a sentinel is ``not None`` — the research-case scope check would misfire.
+    """
+    try:
+        return _acquire_result(
+            provider,
+            family,
+            instrument,
+            network=None,
+            pool_address=None,
+            metrics=None,
+            case_id=None,
+            expected_case_revision=None,
+            reason=None,
+            **window,  # type: ignore[arg-type]
+        )
+    except typer.BadParameter as exc:
+        # The CLI path re-raises provider/data failures as usage errors; the backfill needs the
+        # typed failure so one bad window is recorded and the run continues.
+        raise DataError(str(exc)) from exc
+
+
+@crypto_data_app.command("backfill")
+def backfill(
+    provider: str,
+    family: str,
+    symbols: str = typer.Option(..., help="comma-separated provider symbols, e.g. BTCUSDT,ETHUSDT"),
+    quote: str = typer.Option(..., help="exact quote asset shared by every symbol"),
+    start: str = typer.Option(..., help="first session YYYY-MM-DD (inclusive)"),
+    end: str = typer.Option(..., help="last bound YYYY-MM-DD (exclusive; clamped below now)"),
+    category: str = typer.Option("linear", help="spot, linear, or inverse market"),
+    frequency: str = typer.Option("1h", help="provider-native bounded frequency"),
+    ledger: str = typer.Option(..., help="ledger name under data_dir/crypto/backfill/"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="plan and count windows only"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Run many bounded `acquire` pages over symbols x windows, resumably; grants no authority."""
+    from alpha_cli._crypto_backfill import run_backfill
+
+    try:
+        start_date = date.fromisoformat(start)
+        end_date = date.fromisoformat(end)
+    except ValueError as exc:
+        raise typer.BadParameter("backfill --start/--end must be YYYY-MM-DD") from exc
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", ledger):
+        raise typer.BadParameter("ledger name must be a short filesystem-safe token")
+    symbol_list = [item.strip() for item in symbols.split(",") if item.strip()]
+    if not symbol_list:
+        raise typer.BadParameter("backfill needs at least one symbol")
+    ledger_path = AlphaSettings().data_dir / "crypto" / "backfill" / f"{ledger}.json"
+    try:
+        summary = run_backfill(
+            provider=provider,
+            family=_family(family),
+            symbols=symbol_list,
+            quote=quote,
+            category=category,
+            frequency=frequency,
+            start=start_date,
+            end=end_date,
+            ledger_path=ledger_path,
+            acquire=_backfill_acquire,
+            now=_now(),
+            dry_run=dry_run,
+            log=None if json_out else lambda line: typer.echo(line, err=True),
+        )
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(summary, json_out=json_out)
+    if summary["failed"]:
+        raise typer.Exit(code=1)

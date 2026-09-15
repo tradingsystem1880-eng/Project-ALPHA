@@ -19,7 +19,7 @@ runner = CliRunner()
 
 def test_info_providers_json_is_redacted(monkeypatch: pytest.MonkeyPatch) -> None:
     secret = "provider-secret-must-not-leak"
-    monkeypatch.setenv("ALPHA_FINNHUB_API_KEY", secret)
+    monkeypatch.setenv("ALPHA_TIINGO_API_KEY", secret)
 
     result = runner.invoke(app, ["info", "providers", "--json"])
 
@@ -31,7 +31,6 @@ def test_info_providers_json_is_redacted(monkeypatch: pytest.MonkeyPatch) -> Non
         "stooq",
         "tiingo",
         "quantpad",
-        "finnhub",
         "binance",
         "bybit",
         "coingecko",
@@ -40,7 +39,6 @@ def test_info_providers_json_is_redacted(monkeypatch: pytest.MonkeyPatch) -> Non
         "defillama",
         "ibkr",
     } == set(providers)
-    assert providers["finnhub"]["configured"] is True
     assert providers["ccxt"]["options"]["exchange"]["choices"] == ["coinbase", "binance"]
     assert providers["tiingo"]["research_authority"] is True
     assert providers["tiingo"]["budget_tier"] == "free_500_symbols"

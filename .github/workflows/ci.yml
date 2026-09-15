@@ -32,17 +32,17 @@ jobs:
       - name: Types
         run: uv run mypy packages apps tests
       - name: Tests + 93% owned-source coverage (incl. bias guards)
-        run: uv run pytest -q -m "not network" --cov --cov-report=term-missing
+        run: uv run pytest -q -n auto -m "not network" --cov --cov-report=term-missing
       - name: OpenAPI freshness
         run: uv run python scripts/generate_web_openapi.py --check
       - name: OpenAPI verification and authority documentation
         run: uv run python scripts/check_openapi_operations.py
-      - name: Build all 14 wheels
+      - name: Build all 12 wheels
         run: uv build --all-packages
       - name: Import built wheels
         run: |
           uv pip install --python .venv/bin/python --reinstall --no-deps dist/*.whl
-          .venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web; assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web))'
+          .venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_research, alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web; assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_research, alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web))'
 
   harness:
     # The Claude Code harness verifies itself: a control that is not tested is prose.

@@ -27,14 +27,11 @@ scripts/alpha-with-keychain-provider tiingo check
 | Tiingo | `project-alpha-tiingo` | `ALPHA_TIINGO_API_KEY` | authoritative stock/ETF EOD — the receipt→candidate→quality→canonical promotion path, and the daily scheduler | `scripts/alpha-with-keychain-provider tiingo check` |
 | QuantPad | `project-alpha-quantpad` | `QUANTPAD_API_KEY` | research-only bulk daily bars (`rd_` dataset registration) and the archive lane | `scripts/alpha-with-keychain-provider quantpad check` |
 | CoinGecko | `project-alpha-coingecko` | `ALPHA_COINGECKO_API_KEY` | crypto reference/catalog acquisition | `scripts/alpha-with-keychain-provider coingecko check` |
-| Finnhub | `project-alpha-finnhub` | `ALPHA_FINNHUB_API_KEY` | `alpha screener quote/news` | `scripts/alpha-with-keychain-provider finnhub quote` |
 | IBKR | `project-alpha-ibkr-paper-account` | `ALPHA_IBKR_PAPER_ACCOUNT`, `ALPHA_IBKR_GATEWAY_IMAGE`, `TWS_USERNAME`, `TWS_PASSWORD` | native IBKR Paper boundary | `uv run alpha provider check ibkr` |
 
 `alpha provider check` is registered for `tiingo`, `quantpad`, `coingecko`, and `ibkr`, and writes
-a redacted `ProviderCheckReceiptV1` under `data_dir`. Finnhub has no receipted readiness
-path, so the launcher rejects `finnhub check` with exit 64 rather than pretending. Use
-`finnhub quote` instead: it is a bounded live probe — fixed provider, fixed SPY symbol, no
-arguments accepted — so it verifies the credential without becoming a general data tool.
+a redacted `ProviderCheckReceiptV1` under `data_dir`. Finnhub was retired on 2026-09-10 together
+with `alpha_screener` (edge-first audit F6); the launcher no longer accepts it.
 
 `yfinance`, `ccxt`, `stooq`, `binance`, `bybit`, `geckoterminal`, and `coinmetrics` need no
 credential and already report `configured: true`.
@@ -57,6 +54,11 @@ quote. IBKR returned `connectivity_failed`; see below.
 A Finnhub API key was pasted in plaintext into an agent session on 2026-08-19. It is in the
 session transcript and in the on-disk session JSONL, so it must be treated as public. No agent
 used it and none will.
+
+**Retired 2026-09-10:** nothing in ALPHA reads `ALPHA_FINNHUB_API_KEY` any more, so the
+`project-alpha-finnhub` Keychain item is unused. The owner may delete it
+(`security delete-generic-password -s project-alpha-finnhub`) or leave it; the record below is
+kept as history of the rotation decision.
 
 **The owner was told and chose not to rotate it (2026-08-19).** That is a reasonable call for
 this key specifically — Finnhub here is read-only market data on a free tier, the blast

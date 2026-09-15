@@ -144,8 +144,6 @@ def _definition(
         raise RuntimeError("provider verification capabilities must be a sequence")
     if not installed:
         configuration_state = "not_installed"
-    elif provider_id == "finnhub" and not configured:
-        configuration_state = "optional_disabled"
     elif credential_names and not configured:
         configuration_state = "needs_process_injection"
     elif credential_names:
@@ -198,14 +196,6 @@ def provider_definitions(
     from alpha_cli.provider_readiness import last_check_status
 
     def verification(provider_id: str) -> Mapping[str, object]:
-        if provider_id == "finnhub" and not env.get("ALPHA_FINNHUB_API_KEY", "").strip():
-            return {
-                "verification_state": "optional_disabled",
-                "verified_at": None,
-                "last_receipt_id": None,
-                "granted_capabilities": [],
-                "recovery_action": "No action required unless Finnhub quote/news is wanted.",
-            }
         if data_dir is None:
             return {
                 "verification_state": "unverified",
@@ -228,8 +218,9 @@ def provider_definitions(
             limitations=(
                 "Unofficial public endpoint; availability and throttling are vendor-controlled.",
                 "Daily history only in ALPHA; raw prices are reconstructed from adjusted rows.",
+                "Index series (^VIX, ^TNX, DX-Y.NYB) are regime context, not tradables.",
             ),
-            asset_classes=("stock", "etf"),
+            asset_classes=("stock", "etf", "index"),
             timeframes=("1D",),
             research_authority=False,
             paper_execution=False,
@@ -340,25 +331,6 @@ def provider_definitions(
             environ=env,
             module_available=module_available,
             verification=verification("tiingo"),
-        ),
-        _definition(
-            provider_id="finnhub",
-            label="Finnhub",
-            capabilities=("live_quote", "news"),
-            module="finnhub",
-            network_required=True,
-            credential_names=("ALPHA_FINNHUB_API_KEY",),
-            options={},
-            limitations=("Free API-key tier is subject to provider rate limits.",),
-            asset_classes=("stock", "etf"),
-            timeframes=("quote",),
-            research_authority=False,
-            paper_execution=False,
-            budget_tier="free_optional",
-            factory=None,
-            environ=env,
-            module_available=module_available,
-            verification=verification("finnhub"),
         ),
         _definition(
             provider_id="binance",

@@ -40,7 +40,7 @@ _PROVIDER_ENV_NAMES = {
 
 def _credential_names_for_command(args: list[str]) -> frozenset[str]:
     if args[:2] == ["info", "providers"]:
-        return frozenset().union(*_PROVIDER_ENV_NAMES.values(), {"ALPHA_FINNHUB_API_KEY"})
+        return frozenset().union(*_PROVIDER_ENV_NAMES.values())
     if args[:2] == ["provider", "check"] and len(args) > 2:
         return _PROVIDER_ENV_NAMES.get(args[2].strip().lower(), frozenset())
     if args[:2] == ["data", "pull"] and "--source" in args:

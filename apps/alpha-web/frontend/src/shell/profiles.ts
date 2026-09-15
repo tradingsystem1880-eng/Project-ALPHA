@@ -18,8 +18,6 @@ export type WindowId =
   | 'ml-lab'
   | 'jobs'
   | 'paper'
-  | 'options'
-  | 'screener'
   | 'corporate-actions'
   | 'funding'
   | 'open-interest'
@@ -89,7 +87,7 @@ export const PROFILES: Readonly<Record<Profile, ProfileManifest>> = freeze({
   equities: {
     id: 'equities',
     label: 'Equities',
-    windows: [...MARKET_NEUTRAL_WINDOWS, 'options', 'screener', 'corporate-actions'],
+    windows: [...MARKET_NEUTRAL_WINDOWS, 'corporate-actions'],
     docks: DOCKS,
     providers: ['tiingo', 'yfinance', 'stooq', 'quantpad'],
     defaultSource: 'tiingo',

@@ -195,7 +195,11 @@ def mutate(
                 )
             )
         mutmut = ["uv", "run", "--project", str(root), "--with", "mutmut", "mutmut"]
-        ok, seconds, output = run([*mutmut, "run"], cwd=staging, timeout=timeout)
+        # mutmut isolates each mutant with os.fork(); Apple's Accelerate BLAS is not fork-safe
+        # once its thread pool exists, so mutants reaching numpy/scipy linear algebra die as
+        # "segfault" (never a kill) unless the pool is pinned to one thread.
+        fork_safe_env = {**os.environ, "VECLIB_MAXIMUM_THREADS": "1"}
+        ok, seconds, output = run([*mutmut, "run"], cwd=staging, timeout=timeout, env=fork_safe_env)
         entry["seconds"] = round(seconds + pre_seconds, 1)
         stats_path = staging / "mutants" / "mutmut-cicd-stats.json"
         if ok:

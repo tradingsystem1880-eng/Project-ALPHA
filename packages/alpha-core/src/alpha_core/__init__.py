@@ -15,6 +15,7 @@ from alpha_core.types import (
     IndicatorTrace,
     ValidationOutcome,
 )
+from alpha_core.universe import UniverseMembership, members_as_of
 
 __version__ = version("alpha-core")
 
@@ -25,6 +26,8 @@ __all__ = [
     "ChartAnchor",
     "ChartAnnotationTrace",
     "CorporateAction",
+    "UniverseMembership",
+    "members_as_of",
     "DataError",
     "DecisionTrace",
     "IndicatorTrace",

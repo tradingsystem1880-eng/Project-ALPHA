@@ -43,7 +43,7 @@ track; it is not a legal conclusion.
 | huggingface-hub | 1.22.0 | Apache-2.0 | local/offline Kronos weight resolution | retain ADR-0010 policy |
 | safetensors | 0.8.0 | Apache-2.0 | Kronos weight loading | retain |
 | tqdm | 4.68.2 | MPL-2.0 and MIT metadata | Kronos progress dependency | retain; preserve notices on distribution |
-| finnhub-python | 2.4.29 | Apache-2.0 metadata | credential-gated quote/news edge | retain |
+| finnhub-python | — | Apache-2.0 metadata | removed 2026-09-10 with `alpha_screener` (edge-first audit F6) | removed |
 | quantstats-lumi | 1.1.5 | Apache-2.0 metadata | tear-sheet pandas edge | retain |
 | matplotlib | 3.11.0 | PSF-style license plus bundled asset notices | deterministic tear-sheet, research-chart, and Workstation figure rendering | retain; release must include relevant notices, **including the bundled DejaVu fonts whose glyph outlines are now embedded in emitted SVGs** (see below) |
 | typer | 0.26.7 | MIT | authoritative CLI | retain |

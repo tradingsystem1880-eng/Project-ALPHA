@@ -2298,30 +2298,6 @@ class RiskReport(StrictModel):
     provenance: RiskProvenance
 
 
-class ScreenerQuote(StrictModel):
-    symbol: str
-    current: float
-    change: float
-    percent_change: float
-    high: float
-    low: float
-    open: float
-    prev_close: float
-
-
-class ScreenerNewsItem(StrictModel):
-    headline: str
-    source: str
-    url: str
-    datetime: int
-    summary: str
-
-
-class ScreenerNews(StrictModel):
-    symbol: str
-    items: list[ScreenerNewsItem]
-
-
 class ResearchRow(StrictModel):
     strategy: str
     total_return: float | None
@@ -3209,41 +3185,6 @@ class ResearchDecisionView(StrictModel):
     promotion_readiness: ResearchReadinessProjection
     gate_packet: ResearchGatePacket | None
     decision_history: list[ResearchDecisionHistoryEvent]
-
-
-class OptionGreeks(StrictModel):
-    spot: float
-    strike: float
-    rate: float
-    vol: float
-    days: float
-    kind: str
-    price: float
-    delta: float
-    gamma: float
-    vega: float
-    theta: float
-    rho: float
-    implied_vol: float | None = None
-    market_price: float | None = None
-
-
-class OptionCurvePoint(StrictModel):
-    spot: float
-    price: float
-    delta: float
-    gamma: float
-    vega: float
-    theta: float
-
-
-class OptionCurve(StrictModel):
-    strike: float
-    vol: float
-    days: float
-    rate: float
-    kind: str
-    points: list[OptionCurvePoint] = Field(min_length=2)
 
 
 class FigureCatalogueItem(StrictModel):

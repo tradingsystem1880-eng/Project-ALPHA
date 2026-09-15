@@ -24,10 +24,8 @@ members = [
     "alpha-data",
     "alpha-forecast",
     "alpha-mcp",
-    "alpha-options",
     "alpha-patterns",
     "alpha-research",
-    "alpha-screener",
     "alpha-strategies",
     "alpha-study",
     "alpha-validation",
@@ -193,9 +191,7 @@ dependencies = [
     { name = "alpha-core" },
     { name = "alpha-data" },
     { name = "alpha-forecast" },
-    { name = "alpha-options" },
     { name = "alpha-research" },
-    { name = "alpha-screener" },
     { name = "alpha-strategies" },
     { name = "alpha-study" },
     { name = "alpha-validation" },
@@ -212,9 +208,7 @@ requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
     { name = "alpha-data", editable = "packages/alpha-data" },
     { name = "alpha-forecast", editable = "packages/alpha-forecast" },
-    { name = "alpha-options", editable = "packages/alpha-options" },
     { name = "alpha-research", editable = "packages/alpha-research" },
-    { name = "alpha-screener", editable = "packages/alpha-screener" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-study", editable = "packages/alpha-study" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
@@ -312,21 +306,6 @@ requires-dist = [
 ]
 
 [[package]]
-name = "alpha-options"
-version = "1.0.0"
-source = { editable = "packages/alpha-options" }
-dependencies = [
-    { name = "alpha-core" },
-    { name = "scipy" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "alpha-core", editable = "packages/alpha-core" },
-    { name = "scipy", specifier = ">=1.17.1" },
-]
-
-[[package]]
 name = "alpha-patterns"
 version = "1.0.0"
 source = { editable = "packages/alpha-patterns" }
@@ -360,21 +339,6 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.9" },
     { name = "numpy", specifier = ">=2.4.6" },
     { name = "scipy", specifier = ">=1.17.1" },
-]
-
-[[package]]
-name = "alpha-screener"
-version = "1.0.0"
-source = { editable = "packages/alpha-screener" }
-dependencies = [
-    { name = "alpha-core" },
-    { name = "finnhub-python" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "alpha-core", editable = "packages/alpha-core" },
-    { name = "finnhub-python", specifier = ">=2.4" },
 ]
 
 [[package]]
@@ -1099,6 +1063,15 @@ wheels = [
 ]
 
 [[package]]
+name = "execnet"
+version = "2.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/89/780e11f9588d9e7128a3f87788354c7946a9cbb1401ad38a48c4db9a4f07/execnet-2.1.2.tar.gz", hash = "sha256:63d83bfdd9a23e35b9c6a3261412324f964c2ec8dcd8d3c6916ee9373e0befcd", size = 166622, upload-time = "2025-11-12T09:56:37.75Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ab/84/02fc1827e8cdded4aa65baef11296a9bbe595c474f0d6d758af082d849fd/execnet-2.1.2-py3-none-any.whl", hash = "sha256:67fba928dd5a544b783f6056f449e5e3931a5c378b128bc18501f7ea79e296ec", size = 40708, upload-time = "2025-11-12T09:56:36.333Z" },
+]
+
+[[package]]
 name = "executing"
 version = "2.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1130,18 +1103,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e3/ee/29c668c50888588c432a702f7c2e8ee8a0c9e5286028d91f170308d6b2e9/filelock-3.29.5.tar.gz", hash = "sha256:6e6034c57a00a020e767f2614a5539863f056de7e7991d6d1473aef7ff73f156", size = 68927, upload-time = "2026-07-03T03:50:31.818Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4a/e3/f1fae3647d170919c2cf2a898e77e7d1a4e5c7cae0aed7bb4bd3f5ebff6f/filelock-3.29.5-py3-none-any.whl", hash = "sha256:8af830889ba3a0ffcefbd6c7d2af8a54012058103771f2e10848222f476a1693", size = 45073, upload-time = "2026-07-03T03:50:30.445Z" },
-]
-
-[[package]]
-name = "finnhub-python"
-version = "2.4.29"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/02/0f/2b6327059da93579183607f662f11ba6d3947604b89ce223e6195a6a86c2/finnhub_python-2.4.29.tar.gz", hash = "sha256:0aaab7c60bd663cb97937fbdd95006e109aae81ed7982a3f97391cf70968533e", size = 13694, upload-time = "2026-06-24T07:14:16.189Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/71/a190a7bd7ba86ed4a1dc2b938a23eca37a34464e409af15e3d46fa6d9cca/finnhub_python-2.4.29-py3-none-any.whl", hash = "sha256:5fbec39b40b9501d4165d94cb6fc7600017059d29719edbb01ae5c1ed13374c5", size = 12092, upload-time = "2026-06-24T07:14:14.138Z" },
 ]
 
 [[package]]
@@ -2515,10 +2476,8 @@ dependencies = [
     { name = "alpha-data" },
     { name = "alpha-forecast" },
     { name = "alpha-mcp" },
-    { name = "alpha-options" },
     { name = "alpha-patterns" },
     { name = "alpha-research" },
-    { name = "alpha-screener" },
     { name = "alpha-strategies" },
     { name = "alpha-study" },
     { name = "alpha-validation" },
@@ -2534,6 +2493,7 @@ dev = [
     { name = "pandas-stubs" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "pytest-xdist" },
     { name = "ruff" },
 ]
 
@@ -2545,10 +2505,8 @@ requires-dist = [
     { name = "alpha-data", editable = "packages/alpha-data" },
     { name = "alpha-forecast", editable = "packages/alpha-forecast" },
     { name = "alpha-mcp", editable = "apps/alpha-mcp" },
-    { name = "alpha-options", editable = "packages/alpha-options" },
     { name = "alpha-patterns", editable = "packages/alpha-patterns" },
     { name = "alpha-research", editable = "packages/alpha-research" },
-    { name = "alpha-screener", editable = "packages/alpha-screener" },
     { name = "alpha-strategies", editable = "packages/alpha-strategies" },
     { name = "alpha-study", editable = "packages/alpha-study" },
     { name = "alpha-validation", editable = "packages/alpha-validation" },
@@ -2564,6 +2522,7 @@ dev = [
     { name = "pandas-stubs", specifier = ">=2.0" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-cov", specifier = ">=6" },
+    { name = "pytest-xdist", specifier = ">=3.6" },
     { name = "ruff", specifier = ">=0.6" },
 ]
 
@@ -3051,6 +3010,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b1/51/a849f96e117386044471c8ec2bd6cfebacda285da9525c9106aeb28da671/pytest_cov-7.1.0.tar.gz", hash = "sha256:30674f2b5f6351aa09702a9c8c364f6a01c27aae0c1366ae8016160d1efc56b2", size = 55592, upload-time = "2026-03-21T20:11:16.284Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9d/7a/d968e294073affff457b041c2be9868a40c1c71f4a35fcc1e45e5493067b/pytest_cov-7.1.0-py3-none-any.whl", hash = "sha256:a0461110b7865f9a271aa1b51e516c9a95de9d696734a2f71e3e78f46e1d4678", size = 22876, upload-time = "2026-03-21T20:11:14.438Z" },
+]
+
+[[package]]
+name = "pytest-xdist"
+version = "3.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "execnet" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/78/b4/439b179d1ff526791eb921115fca8e44e596a13efeda518b9d845a619450/pytest_xdist-3.8.0.tar.gz", hash = "sha256:7e578125ec9bc6050861aa93f2d59f1d8d085595d6551c2c90b6f4fad8d3a9f1", size = 88069, upload-time = "2025-07-01T13:30:59.346Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/31/d4e37e9e550c2b92a9cbc2e4d0b7420a27224968580b5a447f420847c975/pytest_xdist-3.8.0-py3-none-any.whl", hash = "sha256:202ca578cfeb7370784a8c33d6d05bc6e13b4f25b5053c30a152269fd10f0b88", size = 46396, upload-time = "2025-07-01T13:30:56.632Z" },
 ]
 
 [[package]]

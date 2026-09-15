@@ -17,7 +17,6 @@ def main() -> None:
         for name in (
             "ALPHA_TIINGO_API_KEY",
             "QUANTPAD_API_KEY",
-            "ALPHA_FINNHUB_API_KEY",
             "TWS_USERNAME",
             "TWS_PASSWORD",
             "ALPHA_IBKR_PAPER_ACCOUNT",

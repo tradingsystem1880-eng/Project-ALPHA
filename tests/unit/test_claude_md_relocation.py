@@ -85,7 +85,6 @@ class TestRuleFiles:
             "alpha-validation.md",
             "alpha-research.md",
             "alpha-forecast.md",
-            "alpha-analytics.md",
             "alpha-cli.md",
             "alpha-mcp.md",
             "alpha-web.md",
