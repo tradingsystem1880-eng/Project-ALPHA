@@ -8,6 +8,7 @@ and the harness doctor. Everything here runs against throwaway git repos.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -990,6 +991,25 @@ class TestQuantRigorTooling:
         assert entry["no_tests"] == 42 and entry["timeout"] == 1
         assert entry["kill_rate"] == round(1 / 47, 4)
         assert 5400.0 in seen_timeouts
+
+    def test_mutate_runs_mutmut_with_single_threaded_accelerate(self, repo: Path) -> None:
+        # mutmut isolates each mutant with os.fork(); Apple's Accelerate BLAS is not fork-safe
+        # once its thread pool exists, so every mutant reaching numpy/scipy linear algebra is
+        # recorded as "segfault" (never credited as a kill) unless the pool is pinned to one thread.
+        rel = self._quant_module(repo)
+        (repo / "packages/alpha-validation/src/alpha_validation/__init__.py").write_text("")
+        (repo / "tests").mkdir()
+        (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\nmarkers = []\n")
+        envs: dict[str, dict[str, str] | None] = {}
+
+        def runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+            envs[cmd[-1]] = kwargs.get("env")
+            return (False, 0.0, "")
+
+        harness_quant.mutate(repo, [rel], runner=runner)
+        assert envs["run"] is not None
+        assert envs["run"]["VECLIB_MAXIMUM_THREADS"] == "1"
+        assert envs["run"]["PATH"] == os.environ["PATH"]  # the rest of the environment is kept
 
     def test_semgrep_command_and_scope(self, repo: Path) -> None:
         for rel in ("packages/x.py", "docs/a.md", "tests/t.py"):
