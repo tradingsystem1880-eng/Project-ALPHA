@@ -961,6 +961,11 @@ def _payload(
             },
         }
     else:
+        from alpha_cli.research_analysis_plan import default_analysis_plan_v2
+
+        # This helper creates current contracts; historical compatibility fixtures
+        # explicitly select their pre-cutover plan and seed the old approval policy.
+        payload["analysis_plan"] = default_analysis_plan_v2(horizon_bars=4)
         protocol = cast(dict[str, object], payload["protocol"])
         protocol["d0_operator"] = registered_d0_operator(payload)
     return payload
@@ -3192,15 +3197,29 @@ def test_approval_validates_a_declared_analysis_plan(tmp_path: Path, mutation: s
         )
 
 
-def test_approval_accepts_the_registered_default_analysis_plan(tmp_path: Path) -> None:
-    from alpha_cli.research_analysis_plan import default_analysis_plan
+@pytest.mark.parametrize("plan_kind", ["v2", "v1", "omitted", "null", "omitted_event"])
+def test_approval_accepts_only_current_registered_analysis_plan(
+    tmp_path: Path, plan_kind: str
+) -> None:
+    from alpha_cli.research_analysis_plan import default_analysis_plan_v2
 
     store = ControlStore(tmp_path)
     _project(store)
     payload = _payload(_source_pack(store))
-    payload["analysis_plan"] = default_analysis_plan(horizon_bars=4)
+    payload["analysis_plan"] = default_analysis_plan_v2(horizon_bars=4)
+    if plan_kind == "v1":
+        from alpha_cli.research_analysis_plan import default_analysis_plan
+
+        payload["analysis_plan"] = default_analysis_plan(horizon_bars=4)
+    elif plan_kind == "omitted":
+        del payload["analysis_plan"]
+    elif plan_kind == "null":
+        payload["analysis_plan"] = None
     protocol = cast(dict[str, object], payload["protocol"])
     protocol["d0_operator"] = registered_d0_operator(payload)
+    if plan_kind == "omitted_event":
+        del payload["analysis_plan"]
+        del payload["event_definition"]
     contract = store.create_research_contract(
         PROJECT_ID,
         scope="exploration",
@@ -3221,6 +3240,41 @@ def test_approval_accepts_the_registered_default_analysis_plan(tmp_path: Path) -
             responsibility="owner" if phase == "exploration_review" else "codex",
             at=START + timedelta(minutes=minute),
         )
+    if plan_kind != "v2":
+        with pytest.raises(DataError, match="requires ResearchAnalysisPlanV2"):
+            store.review_research_contract(
+                PROJECT_ID,
+                contract_id,
+                scope="exploration",
+                decision="approve",
+                actor="owner",
+                actor_kind="human",
+                reason="A new V1 approval is forbidden.",
+                at=START + timedelta(minutes=6),
+            )
+        # Model an already-approved pre-cutover record without weakening the
+        # current approval path. Historical validation and idempotent reads stay valid.
+        with store._transaction(write=True) as connection:
+            row = store._require_research_contract(connection, PROJECT_ID, contract_id)
+            assert store._validate_research_contract_for_approval(connection, row) == payload
+            connection.execute(
+                """INSERT INTO research_contract_review_events
+                (contract_id, sequence, project_id, scope, decision, actor, actor_kind,
+                 occurred_at, reason) VALUES (?, 1, ?, 'exploration', 'approve',
+                 'owner', 'human', ?, 'Pre-cutover approval fixture')""",
+                (contract_id, PROJECT_ID, START.isoformat()),
+            )
+        prior = store.review_research_contract(
+            PROJECT_ID,
+            contract_id,
+            scope="exploration",
+            decision="approve",
+            actor="owner",
+            actor_kind="human",
+            reason="Read existing approval",
+        )
+        assert prior["reason"] == "Pre-cutover approval fixture"
+        return
     review = store.review_research_contract(
         PROJECT_ID,
         contract_id,
@@ -3236,11 +3290,11 @@ def test_approval_accepts_the_registered_default_analysis_plan(tmp_path: Path) -
 
 def _approved_deep_case(store: ControlStore) -> tuple[str, dict[str, object]]:
     """Approve a plan-bearing exploration contract and advance it into deep_research."""
-    from alpha_cli.research_analysis_plan import default_analysis_plan
+    from alpha_cli.research_analysis_plan import default_analysis_plan_v2
 
     pack_id = _source_pack(store)
     payload = _payload(pack_id)
-    payload["analysis_plan"] = default_analysis_plan(horizon_bars=4)
+    payload["analysis_plan"] = default_analysis_plan_v2(horizon_bars=4)
     contract = store.create_research_contract(
         PROJECT_ID,
         scope="exploration",
@@ -5167,6 +5221,63 @@ def test_context_packet_build_is_content_addressed_append_only_and_deterministic
         store.build_research_context_packet(project_id, kind="asset", created_by="codex")
     with pytest.raises(DataError, match="unknown research context packet"):
         store.get_research_context_packet("cp_" + "0" * 64)
+
+
+def test_context_screening_reference_is_optional_content_bound_and_non_authoritative(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    baseline = store.build_research_context_packet(
+        project_id, kind="research_case", created_by="codex", at=START
+    )
+    assert isinstance(baseline["payload"], dict)
+    assert "screening_reference" not in baseline["payload"]
+    reference = {
+        "authority": "none",
+        "scan_id": "a" * 64,
+        "spec_sha256": "b" * 64,
+        "attempt_id": "c" * 32,
+        "result_sha256": "d" * 64,
+        "result_digest": "e" * 64,
+    }
+    before = store.research_gate_packet_inputs(project_id)
+    linked = store.build_research_context_packet(
+        project_id,
+        kind="research_case",
+        created_by="codex",
+        at=START,
+        screening_reference=reference,
+    )
+    assert isinstance(linked["payload"], dict)
+    assert linked["payload"]["screening_reference"] == reference
+    assert {
+        key: value for key, value in linked["payload"].items() if key != "screening_reference"
+    } == baseline["payload"]
+    assert linked["packet_id"] != baseline["packet_id"]
+    assert store.research_gate_packet_inputs(project_id) == before
+    assert (
+        store.build_research_context_packet(
+            project_id,
+            kind="research_case",
+            created_by="codex",
+            at=START,
+            screening_reference=None,
+        )
+        == baseline
+    )
+    for bad in (
+        {**reference, "authority": "approved"},
+        {**reference, "path": "/tmp/a"},
+        {**reference, "scan_id": "../bad"},
+    ):
+        with pytest.raises(DataError, match="screening reference"):
+            store.build_research_context_packet(
+                project_id,
+                kind="research_case",
+                created_by="codex",
+                screening_reference=bad,
+            )
 
 
 def test_research_notes_are_append_only_and_structurally_outside_evidence(

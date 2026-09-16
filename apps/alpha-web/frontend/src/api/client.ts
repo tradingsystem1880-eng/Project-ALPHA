@@ -195,22 +195,11 @@ export function clearImmutableApiCache(): void {
   immutableCache.clear()
 }
 
-export type OwnerActionType =
-  | 'screen_source_claim'
-  | 'reject_source_claim'
-  | 'revise_source_claim'
-  | 'freeze_source_pack'
-  | 'approve_exploration'
-  | 'reject_exploration'
-  | 'revise_exploration'
-  | 'launch_d1'
-  | 'approve_confirmation'
-  | 'reject_confirmation'
-  | 'launch_d2'
-  | 'record_final_disposition'
-  | 'pause_research'
-  | 'resume_research'
-  | 'cancel_research'
+// Semantic ledger events use the server-owned Study cycle, never a generic owner button.
+export type OwnerActionType = Exclude<
+  Schema['OwnerActionChallengeRequest']['action_type'],
+  'record_semantic_event'
+>
 
 export interface OwnerCredentialOptions {
   challenge_id: string
@@ -219,14 +208,11 @@ export interface OwnerCredentialOptions {
   public_key: Record<string, unknown>
 }
 
-export interface OwnerActionChallengeRequest {
+export type OwnerActionChallengeRequest = Omit<
+  Schema['OwnerActionChallengeRequest'],
+  'action_type'
+> & {
   action_type: OwnerActionType
-  project_id: string
-  artifact_hash: string
-  expected_case_revision: string
-  consequence_summary: string
-  reason: string
-  payload: Record<string, unknown>
 }
 
 export interface OwnerActionResult {

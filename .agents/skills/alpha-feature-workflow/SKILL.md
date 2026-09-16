@@ -14,7 +14,7 @@ It composes the repo's existing skills — `karpathy-guidelines` (always),
 
 - Single-file fix with an obvious test → skip straight to TDD + `/gate fast`.
   No plan doc; the harness still enforces stamps and reviews at commit time.
-- Docs-only change → just edit and commit (the commit guard waives docs-only diffs).
+- Docs-only change → omit a feature plan; commit checks still apply to the tested tree.
 - Never skip for: anything touching quant paths, `alpha_backtest`, the seven
   risk-tier `alpha_cli` modules, cross-package work, or new public seams.
 
@@ -32,8 +32,9 @@ It composes the repo's existing skills — `karpathy-guidelines` (always),
    `/gate fast` → conventional commit. Data/strategy changes require a
    `@pytest.mark.bias_guard` future-poison test (see `tests/bias_guards/`).
    Load `incremental-implementation` for the slicing discipline.
-4. **Gate** — `/gate` (full tier) before any commit; the pre-bash guard enforces
-   the stamp mechanically. Never soften or summarize away a failing step.
+4. **Gate** — `uv run python scripts/gate.py full` before a commit. Installed Git
+   hooks bind the staged tree to verification; CI checks the shared component commands.
+   Never soften or summarize away a failing step. See `docs/operations/claude-code-harness.md`.
 5. **Review** — risk-tier paths need `/review-gate` (independent APPROVE bound to
    the current tree); quant paths need `/verify-quant` (PASS attestation bound to
    the quant diff). BLOCK findings are fixed and re-reviewed, never argued away.

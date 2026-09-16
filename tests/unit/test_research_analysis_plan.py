@@ -149,7 +149,9 @@ def test_intake_draft_registers_the_default_plan() -> None:
     )
     plan = draft["analysis_plan"]
     assert validate_analysis_plan(plan, max_grid_cells=64) == plan
-    event_grid = plan["families"][0]["grid"]
+    event_grid = next(entry for entry in plan["families"] if entry["family"] == "event_study")[
+        "grid"
+    ]
     assert event_grid["horizon_bars"] == [4]
 
     daily = draft_exploration_contract(
@@ -160,4 +162,7 @@ def test_intake_draft_registers_the_default_plan() -> None:
             "primary_outcome": "next_regular_session_return_50bp",
         },
     )
-    assert daily["analysis_plan"]["families"][0]["grid"]["horizon_bars"] == [1]
+    daily_event = next(
+        entry for entry in daily["analysis_plan"]["families"] if entry["family"] == "event_study"
+    )
+    assert daily_event["grid"]["horizon_bars"] == [1]

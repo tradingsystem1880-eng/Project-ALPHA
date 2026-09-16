@@ -227,14 +227,6 @@ def test_material_resolutions_make_the_contract_approval_ready_and_deterministic
                 "primary_outcome": "next_regular_session_return_50bp",
             },
         ),
-        (
-            "A generic owner research event may predict returns",
-            {
-                "chart_construction": "spy_rth_60m_four_hour_window",
-                "event_availability": "second_trough_confirmable",
-                "primary_outcome": "four_trading_hour_return_25bp",
-            },
-        ),
     ],
 )
 def test_resolved_but_unimplemented_variants_are_explicitly_unavailable_drafts(

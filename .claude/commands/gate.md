@@ -4,7 +4,7 @@ argument-hint: [full | fast]
 ---
 
 Tier is `$ARGUMENTS` if given, else `full`. Run `uv run python scripts/gate.py <tier>`.
-`full` mirrors CI (10-minute budget) and is required to commit; `fast` satisfies the Stop guard only.
+`full` aggregates shared CI components and is required to commit; `fast` is local feedback only.
 
 Report every step's PASS/FAIL verbatim. On failure: show the failing output exactly as printed,
 diagnose, fix, and re-run — never soften, summarize away, or work around a failing step. On

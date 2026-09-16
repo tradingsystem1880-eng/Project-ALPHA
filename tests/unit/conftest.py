@@ -22,7 +22,7 @@ def _harness_repo_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
     git(root, "init", "--quiet")
     git(root, "config", "user.email", "test@example.com")
     git(root, "config", "user.name", "Test")
-    (root / ".gitignore").write_text(".claude/state/\n")
+    (root / ".gitignore").write_text(".claude/state/\n.alpha/state/\n")
     (root / "tracked.py").write_text("x = 1\n")
     git(root, "add", "-A")
     git(root, "commit", "--quiet", "-m", "chore: init")

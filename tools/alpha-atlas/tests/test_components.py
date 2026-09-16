@@ -16,7 +16,12 @@ class TestComponents:
             "component:literature",
             "component:qlib",
         } <= components
-        assert len(components) == 16  # 11 packages + 3 apps + 2 workers
+        expected = {
+            f"component:{path.parent.name}"
+            for directory in ("packages", "apps", "workers")
+            for path in (repo_root / directory).glob("*/pyproject.toml")
+        }
+        assert components == expected
         assert any(p.endswith("pyproject.toml") for p in inputs)
 
     def test_rules_attach_component_responsibility_and_defines_edges(self, repo_root: Path) -> None:

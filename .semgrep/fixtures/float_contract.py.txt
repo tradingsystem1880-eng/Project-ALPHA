@@ -1,0 +1,25 @@
+class CryptoCrowdingResearchPlanV1:
+    def __post_init__(self):
+        # Exact registered generation checks: intentionally exempt.
+        if self.primary_percentile != 0.95:
+            raise ValueError("protocol")
+        if self.practical_hurdle_return != -0.0005:
+            raise ValueError("protocol")
+        # finding
+        if self.estimate != 0.95:
+            raise ValueError("computed")
+
+    def estimate(self):
+        # finding
+        return self.primary_percentile != 0.95
+
+
+class OtherProtocol:
+    def __post_init__(self):
+        # finding
+        return self.practical_hurdle_return != -0.0005
+
+
+def statistic(value):
+    # finding
+    return value == 0.95

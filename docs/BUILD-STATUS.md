@@ -333,3 +333,93 @@ The pre-v2 manual line rewritten by Phase A S4 is kept here verbatim for `tests/
 The pre-v2 manual line rewritten by edge-first Phase B (universe + knowledge-time flag) is kept here verbatim for `tests/unit/test_claude_md_relocation.py`:
 
 | `data_cmds.py` | `alpha data ...` (Tiingo qualification/repair, comparison adapters, CCXT provenance, PIT candles + symbols) | `data_app`; `_ADAPTERS` registry (monkeypatched in tests) |
+
+## 2026-09-16 — Agent-neutral refactor, local discovery and metadata slices
+
+**Delivery state: Implemented locally; aggregate candidate gate passed.** The accepted plan is
+[`2026-09-16-agent-neutral-reproducible-research.md`](superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md).
+[ADR-0036](adr/0036-agent-neutral-research-engineering.md) changes engineering ceremony only;
+application owner authority and scientific controls remain intact.
+
+Implemented locally: `alpha info commands --all --json` discovers all registered leaves without
+changing default catalog filtering; `alpha info procedures --json` describes V2 analysis-family,
+verified protocol and actual scan-command metadata. The optional Atlas now extracts current
+`documents.ts` registrations, resolves imported component paths, and shares computed extraction
+with bounded source-only `gate.py orient`. Default orientation was measured at 1,450 bytes and
+rejects summaries above 6,000 bytes; it reads no owner store or hidden tests. Atlas outputs were
+regenerated and freshness passed in the aggregate gate.
+
+Suite action vocabulary now lives in one lightweight CLI module; MCP still excludes owner-only
+holdout reveal. Frontend owner actions derive from generated contracts with semantic-ledger
+events explicitly excluded from generic owner buttons. Removed obsolete options/screener safe
+classification entries. OpenAPI freshness checked unchanged. Local evidence: 88 targeted Python
+suite/MCP/REST tests, 10 CLI/Atlas consistency tests, 43 affected Atlas tests, the owner vocabulary
+test and 20 frontend client/type tests passed; targeted mypy, TypeScript, lint and import checks
+passed. These incremental checks were followed by focused independent reviews and the aggregate gate.
+
+The root operating instructions are compressed into current invariants and source pointers;
+domain details live in [research-platform contracts](operations/research-platform-contracts.md).
+The historical prose relocation test is replaced by current link/invariant/size checks.
+The shared aggregate gate covers backend, frontend, literature, Qlib and Atlas components;
+thin Git guards are now installed locally and old per-edit/Stop/shell-parser hooks are retired.
+No commit, merge or live provider acceptance is claimed
+by this local delivery record. Historical narratives above remain historical, including obsolete
+screen counts and prior operating ceremonies.
+
+### Refactor delivery and verification
+
+Implementation slices 0–5 are locally verified under the
+[execution plan](superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md).
+New exploration plans use resolved V2 axes and actual finding roles with one primary
+horizon. Historical V1 execution/confirmation/read paths remain supported. Screening
+freezes inputs/code/lock, records distinct attempts and partial trials, and replays
+without discovering new data; optional context-packet references are hash-only and
+`authority: none`. Screening does not authorize strategy promotion, paper or execution.
+
+The full gate rejects concurrent tree changes. The Claude adapter is 113 lines;
+old audit data remains readable (`audit --legacy`, 833 verified events). Root guidance
+is 5,968 bytes. Shared vocabulary, generated owner-action types, schema constants and
+bounded planner helpers preserve authorities and transaction ordering.
+
+Independent focused reviews closed observed PIT outcome-censoring, crypto-quality,
+V2 approval/primary-role, tree-hash and commit-race defects. Six slow oracles passed;
+panel mutation score 94.48% and overfitting 81.38% met their recorded floors.
+Twelve built wheels imported from an isolated installation. The full aggregate gate
+passed all five components on one stable candidate tree in 709.8 seconds of checks
+(2026-09-16). Final hardening also canonicalizes V2 family order so equivalent plans
+share fingerprints while V1 remains unchanged. The delivery tree must carry a fresh
+`gate.py check --tier full` result after these final source/documentation updates;
+receipts live in ignored `.alpha/state/`, not in this historical status narrative.
+No owner data or approvals were exercised; changes remain uncommitted.
+
+## 2026-09-17 — Cancellation regression and commit preparation
+
+The [follow-up plan](superpowers/plans/2026-09-17-cancellation-and-research-walkthrough.md)
+reproduces a test-deadline defect: two valid, delayed real CLI journal calls exceeded
+the old five-second aggregate wait although cancellation completed and capacity was
+released. The test now synchronizes on heartbeat startup and budgets the existing
+bounded operations; production timeouts and terminal-state assertions are unchanged.
+Normal and delayed cases passed independently. Full-tree verification is required
+after these changes; the current ignored receipts are authoritative.
+
+Commit review also found and fixed staged-rename classification in the Git guard:
+both source and destination paths now participate in review/quant requirements.
+Three regressions failed before the fix; eleven guard tests passed afterwards.
+Panel documentation now identifies per-function sources versus local conventions;
+its non-docstring executable AST is unchanged. The independent quant review passed
+117 tests and six spot checks, including a new explicit-trade cost-accounting oracle.
+
+The required private `tests/holdout` suite is absent, so independent commit approval
+remains blocked pending restoration or an explicit documented owner exception.
+No absent tests are called passing; no commit-hook bypass is authorized. The planned
+real-data walkthrough is prepared read-only and awaits the requested commit step.
+
+## 2026-09-17 — Owner exception for unavailable hidden suite
+
+After restoration checks found no copy, the owner explicitly authorized documenting
+a one-time missing-suite exception, finishing independent review, committing, then
+running the research walkthrough. The [follow-up plan](superpowers/plans/2026-09-17-cancellation-and-research-walkthrough.md)
+records the exact scope: the integrated refactor/cancellation commit only. Hidden
+tests remain UNVERIFIED, not passed. All other checks, independent review and
+installed commit guards remain mandatory. Final commit and walkthrough results are
+recorded in the handoff and ignored evidence receipts, not assumed here.

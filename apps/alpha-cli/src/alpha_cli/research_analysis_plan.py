@@ -11,23 +11,72 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
+from copy import deepcopy
+from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any, Final
 
 from alpha_core import DataError
 
 ANALYSIS_PLAN_SCHEMA: Final = "ResearchAnalysisPlanV1"
-REGISTERED_ANALYSIS_FAMILIES: Final = frozenset(
+ANALYSIS_PLAN_SCHEMA_V2: Final = "ResearchAnalysisPlanV2"
+
+
+@dataclass(frozen=True)
+class AnalysisAxis:
+    name: str
+    default: int
+    minimum: int
+
+
+@dataclass(frozen=True)
+class AnalysisFamily:
+    runner: str
+    finding_role: str
+    axes: tuple[AnalysisAxis, ...] = ()
+
+
+# This registry describes the existing D1 runners, not a new executor. Families without
+# a horizon axis use the plan's maximum event/conditional-return horizon, as in V1.
+ANALYSIS_FAMILIES: Final = MappingProxyType(
     {
-        "event_study",
-        "conditional_returns",
-        "quantile_breakdown",
-        "rank_ic",
-        "temporal_stability",
-        "subsample_consistency",
-        "leadlag_leakage",
-        "shuffled_event_null",
+        "event_study": AnalysisFamily(
+            "_family_event_study", "primary", (AnalysisAxis("horizon_bars", 1, 1),)
+        ),
+        "conditional_returns": AnalysisFamily(
+            "_family_conditional_returns",
+            "secondary_holm",
+            (AnalysisAxis("horizon_bars", 1, 1),),
+        ),
+        "quantile_breakdown": AnalysisFamily(
+            "_family_quantile_breakdown",
+            "diagnostic",
+            (AnalysisAxis("quantiles", 4, 2),),
+        ),
+        "rank_ic": AnalysisFamily("_family_rank_ic", "diagnostic"),
+        "temporal_stability": AnalysisFamily(
+            "_family_temporal_stability",
+            "robustness",
+            (AnalysisAxis("n_periods", 2, 2),),
+        ),
+        "subsample_consistency": AnalysisFamily(
+            "_family_subsample_consistency",
+            "robustness",
+            (AnalysisAxis("n_splits", 4, 2),),
+        ),
+        "leadlag_leakage": AnalysisFamily(
+            "_family_leadlag_leakage",
+            "falsification",
+            (AnalysisAxis("max_lag", 3, 1),),
+        ),
+        "shuffled_event_null": AnalysisFamily(
+            "_family_shuffled_event_null",
+            "falsification",
+            (AnalysisAxis("shuffles", 200, 10),),
+        ),
     }
 )
+REGISTERED_ANALYSIS_FAMILIES: Final = frozenset(ANALYSIS_FAMILIES)
 FALSIFICATION_ANALYSIS_FAMILIES: Final = frozenset({"leadlag_leakage", "shuffled_event_null"})
 _MULTIPLICITY_ASSIGNMENTS: Final = frozenset({"primary", "secondary_holm", "falsification"})
 # The blanket-battery ceiling: a plan must SELECT families, not enumerate the registry.
@@ -64,7 +113,9 @@ def _grid_cells(grid: object, family: str) -> int:
     return cells
 
 
-def validate_analysis_plan(plan: Mapping[str, object], *, max_grid_cells: int) -> dict[str, Any]:
+def _validate_analysis_plan_v1(
+    plan: Mapping[str, object], *, max_grid_cells: int
+) -> dict[str, Any]:
     """Fail loud unless ``plan`` is a bounded, registered, frozen analysis plan."""
     if (
         isinstance(max_grid_cells, bool)
@@ -135,6 +186,92 @@ def validate_analysis_plan(plan: Mapping[str, object], *, max_grid_cells: int) -
     return dict(plan)
 
 
+def validate_analysis_plan(plan: Mapping[str, object], *, max_grid_cells: int) -> dict[str, Any]:
+    """Resolve V2 parameters; preserve V1's exact historical validation semantics."""
+    if not isinstance(plan, Mapping) or plan.get("schema") != ANALYSIS_PLAN_SCHEMA_V2:
+        return _validate_analysis_plan_v1(plan, max_grid_cells=max_grid_cells)
+    structural = deepcopy(dict(plan))
+    entries = structural.get("families")
+    if isinstance(entries, list):
+        for entry in entries:
+            if isinstance(entry, dict) and entry.get("multiplicity") in (
+                "robustness",
+                "diagnostic",
+            ):
+                entry["multiplicity"] = "secondary_holm"
+    legacy = _validate_analysis_plan_v1(
+        {**structural, "schema": ANALYSIS_PLAN_SCHEMA}, max_grid_cells=max_grid_cells
+    )
+    original_entries = plan["families"]
+    assert isinstance(original_entries, list)
+    for entry, original in zip(legacy["families"], original_entries, strict=True):
+        family = str(entry["family"])
+        descriptor = ANALYSIS_FAMILIES[family]
+        if original["multiplicity"] != descriptor.finding_role:
+            raise DataError(f"analysis family {family!r} requires role {descriptor.finding_role!r}")
+        axes = descriptor.axes
+        supplied = entry["grid"]
+        unknown = set(supplied) - {axis.name for axis in axes}
+        if unknown:
+            raise DataError(f"analysis family {family!r} has unsupported axes: {sorted(unknown)}")
+        resolved: dict[str, list[int]] = {}
+        for axis in axes:
+            values = supplied.get(axis.name, [axis.default])
+            if any(type(value) is not int or value < axis.minimum for value in values):
+                raise DataError(f"{family}.{axis.name} requires integers >= {axis.minimum}")
+            if len(set(values)) != len(values):
+                raise DataError(f"{family}.{axis.name} contains duplicate trial values")
+            resolved[axis.name] = sorted(values)
+        entry["grid"] = resolved
+        if descriptor.finding_role == "primary" and _grid_cells(resolved, family) != 1:
+            raise DataError("primary event_study requires exactly one prespecified horizon")
+    _validate_analysis_plan_v1(legacy, max_grid_cells=max_grid_cells)
+    for entry in legacy["families"]:
+        entry["multiplicity"] = ANALYSIS_FAMILIES[entry["family"]].finding_role
+    legacy["families"].sort(key=lambda entry: entry["family"])
+    return {**legacy, "schema": ANALYSIS_PLAN_SCHEMA_V2}
+
+
+def analysis_family_catalog() -> list[dict[str, object]]:
+    """Expose actual supported axes/defaults without importing the numerical executor."""
+    return [
+        {
+            "id": name,
+            "schema": ANALYSIS_PLAN_SCHEMA_V2,
+            "axes": [
+                {
+                    "name": axis.name,
+                    "type": "integer",
+                    "default": axis.default,
+                    "minimum": axis.minimum,
+                }
+                for axis in family.axes
+            ],
+            "multiplicity": [family.finding_role],
+            "finding_role": family.finding_role,
+            "primary_grid_cells": 1 if family.finding_role == "primary" else None,
+            "outcome_horizon": "family_axis"
+            if any(axis.name == "horizon_bars" for axis in family.axes)
+            else "maximum_plan_horizon",
+        }
+        for name, family in sorted(ANALYSIS_FAMILIES.items())
+    ]
+
+
+def validate_new_exploration_plan(plan: Mapping[str, object], *, max_grid_cells: int) -> None:
+    """New-approval policy only; never use for historical execution or verification."""
+    if plan.get("schema") == ANALYSIS_PLAN_SCHEMA:
+        raise DataError(
+            "new exploration approval requires ResearchAnalysisPlanV2; create a new draft"
+        )
+    if plan.get("schema") == ANALYSIS_PLAN_SCHEMA_V2:
+        resolved = validate_analysis_plan(plan, max_grid_cells=max_grid_cells)
+        if resolved != plan:
+            raise DataError(
+                "exploration analysis_plan must freeze resolved defaults before approval"
+            )
+
+
 def default_analysis_plan(*, horizon_bars: int) -> dict[str, Any]:
     """The registered default plan for the event-conditioned forward-return hypothesis."""
     if isinstance(horizon_bars, bool) or not isinstance(horizon_bars, int) or horizon_bars < 1:
@@ -188,7 +325,20 @@ def default_analysis_plan(*, horizon_bars: int) -> dict[str, Any]:
     }
 
 
+def default_analysis_plan_v2(*, horizon_bars: int) -> dict[str, Any]:
+    plan = default_analysis_plan(horizon_bars=horizon_bars)
+    plan["schema"] = ANALYSIS_PLAN_SCHEMA_V2
+    for entry in plan["families"]:
+        entry["multiplicity"] = ANALYSIS_FAMILIES[entry["family"]].finding_role
+    return validate_analysis_plan(plan, max_grid_cells=64)
+
+
 __all__ = [
+    "ANALYSIS_FAMILIES",
+    "ANALYSIS_PLAN_SCHEMA_V2",
+    "analysis_family_catalog",
+    "default_analysis_plan_v2",
+    "validate_new_exploration_plan",
     "ANALYSIS_PLAN_SCHEMA",
     "FALSIFICATION_ANALYSIS_FAMILIES",
     "REGISTERED_ANALYSIS_FAMILIES",

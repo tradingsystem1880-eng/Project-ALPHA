@@ -1,7 +1,7 @@
 """Extract the CLI surface from the committed command cache plus main.py wiring.
 
 The cache (`architecture/atlas/cache/cli-commands.json`) is the canonicalized
-output of `alpha info commands --json`, refreshed explicitly via
+output of `alpha info commands --all --json`, refreshed explicitly via
 `python -m alpha_atlas.generate --refresh-cli`. It lives outside generated/
 because it is an input: generation stays deterministic and offline, and the
 CLI is never subprocessed during a normal build. Group→module `calls` edges

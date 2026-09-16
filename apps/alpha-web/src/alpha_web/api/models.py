@@ -9,6 +9,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
+from alpha_cli.suite_catalog import SuiteActionValue as SuiteActionValue
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -1578,19 +1580,6 @@ type AttemptStatusValue = Literal[
     "cancelled",
 ]
 type ControlJobStatusValue = Literal["queued", "running", "succeeded", "failed", "cancelled"]
-type SuiteActionValue = Literal[
-    "baseline",
-    "inner_oos",
-    "three_null_families",
-    "monte_carlo",
-    "optimize_grid",
-    "fixed_stress",
-    "portfolio_cross_asset",
-    "qlib",
-    "kronos",
-    "holdout_reveal",
-    "paper_preflight",
-]
 type EvidenceStatusValue = Literal["draft", "corroborated", "rejected", "superseded"]
 type AuthorKindValue = Literal["human", "agent"]
 type ResearchPhaseValue = Literal[

@@ -1,4 +1,4 @@
-"""Scan the SPA: client.ts method→route joins, screens, panels, calls edges.
+"""Scan the SPA: client.ts method→route joins, documents, panels, calls edges.
 
 This is deliberately guarded regex, not a TypeScript compiler: every `/api/...`
 literal extracted from client.ts MUST join an openapi path (orphans fail
@@ -20,9 +20,7 @@ from alpha_atlas.generators.api_routes import OPENAPI_REL
 EXTRACTOR = "frontend_scan"
 
 CLIENT_REL = "apps/alpha-web/frontend/src/api/client.ts"
-SCREENS_REL = "apps/alpha-web/frontend/src/shell/screens.tsx"
-_FRONTEND_SRC = "apps/alpha-web/frontend/src"
-
+DOCUMENTS_REL = "apps/alpha-web/frontend/src/shell/documents.ts"
 _METHOD_FLOOR = 100
 _SPEC_METHODS = ("get", "post", "put", "delete")
 
@@ -91,13 +89,13 @@ def join_client_methods(root: Path) -> dict[str, tuple[str, str]]:
     return methods
 
 
-def _screens(source: str) -> list[tuple[str, str, list[str]]]:
-    """(screen id, label, [component names]) parsed from the SCREENS literal."""
-    start = source.index("export const SCREENS")
+def _documents(source: str) -> list[tuple[str, str, list[str]]]:
+    """(document id, title, components); retain the Atlas `screen` node kind."""
+    start = source.index("export const DOCUMENTS:")
     body = source[start:].split("\n]", 1)[0]
     screens: list[tuple[str, str, list[str]]] = []
     current: tuple[str, str, list[str]] | None = None
-    for match in re.finditer(r"id: '(\w+)'|label: '([^']+)'|component: (\w+)", body):
+    for match in re.finditer(r"id: '([\w-]+)'|title: '([^']+)'|component: (\w+)", body):
         screen_id, label, component = match.groups()
         if screen_id:
             current = (screen_id, "", [])
@@ -106,7 +104,23 @@ def _screens(source: str) -> list[tuple[str, str, list[str]]]:
             screens[-1] = current = (current[0], label, current[2])
         elif component and current and component not in current[2]:
             current[2].append(component)
+    if not screens or any(not title or not components for _, title, components in screens):
+        raise AtlasError("DOCUMENTS scan found an empty or incomplete document registry")
     return screens
+
+
+def _component_paths(root: Path, source: str) -> dict[str, str]:
+    paths: dict[str, str] = {}
+    for names, module in re.findall(r"import \{([^}]+)\} from '([^']+)'", source):
+        stem = (root / DOCUMENTS_REL).parent / module
+        found = next(
+            (path for path in (stem.with_suffix(".tsx"), stem / "index.tsx") if path.is_file()),
+            None,
+        )
+        if found is not None:
+            for name in names.split(","):
+                paths[name.strip().split(" as ")[-1]] = found.resolve().relative_to(root).as_posix()
+    return paths
 
 
 def extract(root: Path) -> tuple[Fragment, dict[str, str]]:
@@ -114,15 +128,16 @@ def extract(root: Path) -> tuple[Fragment, dict[str, str]]:
     record_input(root, CLIENT_REL, inputs)
     record_input(root, OPENAPI_REL, inputs)
     methods = join_client_methods(root)
-    screens_source = record_input(root, SCREENS_REL, inputs).decode("utf-8")
+    screens_source = record_input(root, DOCUMENTS_REL, inputs).decode("utf-8")
+    component_paths = _component_paths(root, screens_source)
 
     nodes: list[Node] = []
     edges: list[Edge] = []
     panel_files: dict[str, str] = {}
-    for screen_id, label, component_names in _screens(screens_source):
+    for screen_id, label, component_names in _documents(screens_source):
         node_id = f"screen:{screen_id}"
         provenance = Provenance(
-            extractor=EXTRACTOR, source=SCREENS_REL, detail=f"SCREENS entry {screen_id!r}"
+            extractor=EXTRACTOR, source=DOCUMENTS_REL, detail=f"DOCUMENTS entry {screen_id!r}"
         )
         nodes.append(
             Node(
@@ -137,12 +152,10 @@ def extract(root: Path) -> tuple[Fragment, dict[str, str]]:
         for component_name in component_names:
             panel_id = f"panel:{component_name}"
             if component_name not in panel_files:
-                candidates = (
-                    f"{_FRONTEND_SRC}/panels/{component_name}.tsx",
-                    f"{_FRONTEND_SRC}/shell/{component_name}.tsx",
-                )
-                found = next((c for c in candidates if (root / c).is_file()), None)
-                panel_files[component_name] = found or ""
+                found = component_paths.get(component_name)
+                if found is None:
+                    raise AtlasError(f"DOCUMENTS component has no source file: {component_name}")
+                panel_files[component_name] = found
                 meta: dict[str, object] = {}
                 if found:
                     record_input(root, found, inputs)
@@ -161,8 +174,8 @@ def extract(root: Path) -> tuple[Fragment, dict[str, str]]:
                             provenance=[
                                 Provenance(
                                     extractor=EXTRACTOR,
-                                    source=found or SCREENS_REL,
-                                    detail="screen pane component",
+                                    source=found,
+                                    detail="document pane component",
                                 )
                             ],
                         ),

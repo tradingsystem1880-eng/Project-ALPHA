@@ -28,7 +28,11 @@ from pathlib import Path
 from typing import Any, Final, cast
 
 from alpha_cli import _artifacts
-from alpha_cli.research_analysis_plan import validate_analysis_plan
+from alpha_cli.research_analysis_plan import (
+    ANALYSIS_FAMILIES,
+    ANALYSIS_PLAN_SCHEMA_V2,
+    validate_analysis_plan,
+)
 from alpha_cli.research_readiness import derive_research_readiness
 from alpha_core import DataError
 from alpha_research import (
@@ -380,10 +384,22 @@ def d1_execution_fingerprint(contract: Mapping[str, object]) -> str:
     _validate_contract(contract)
     plan = _plan(contract)
     spec = _detector_spec(contract)
+    # V2 separates scientific execution from the rationale's wording. The complete
+    # contract hash still preserves that prose in provenance and run identity.
+    if plan["schema"] == ANALYSIS_PLAN_SCHEMA_V2:
+        plan = {
+            **plan,
+            "families": [
+                {key: value for key, value in entry.items() if key != "rationale"}
+                for entry in plan["families"]
+            ],
+        }
     return _sha(
         {
             "runtime": "alpha_cli.research_d1.deep_research",
-            "runtime_version": _D1_RUNTIME_VERSION,
+            "runtime_version": 2
+            if plan["schema"] == ANALYSIS_PLAN_SCHEMA_V2
+            else _D1_RUNTIME_VERSION,
             "seed": _D1_SEED,
             "confidence": _D1_CONFIDENCE,
             "n_resamples": _D1_RESAMPLES,
@@ -700,14 +716,7 @@ def _family_leadlag_leakage(data: _D1Data, cell: Mapping[str, object]) -> dict[s
 
 
 _FAMILY_RUNNERS: Final[dict[str, Callable[[_D1Data, Mapping[str, object]], dict[str, object]]]] = {
-    "event_study": _family_event_study,
-    "conditional_returns": _family_conditional_returns,
-    "temporal_stability": _family_temporal_stability,
-    "subsample_consistency": _family_subsample_consistency,
-    "rank_ic": _family_rank_ic,
-    "quantile_breakdown": _family_quantile_breakdown,
-    "shuffled_event_null": _family_shuffled_event_null,
-    "leadlag_leakage": _family_leadlag_leakage,
+    name: globals()[definition.runner] for name, definition in ANALYSIS_FAMILIES.items()
 }
 
 

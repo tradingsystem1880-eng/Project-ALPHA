@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any, Final
 
-from alpha_cli.research_analysis_plan import default_analysis_plan
+from alpha_cli.research_analysis_plan import default_analysis_plan_v2
 from alpha_cli.research_runtime import registered_d0_material_choices
 from alpha_core import DataError
 from alpha_research import registered_crypto_crowding_plan
@@ -20,6 +20,10 @@ from alpha_research import registered_crypto_crowding_plan
 type ResearchContractDraft = dict[str, Any]
 
 _MAX_RAW_IDEA: Final = 8_192
+_OPERATORS: Final = {
+    "double_bottom.v1": "second_trough_confirmable",
+    "bybit_btcusdt_crowding_reversal.v1": "bybit_funding_event_point_in_time",
+}
 _RESOLUTION_KEYS: Final = frozenset({"chart_construction", "event_availability", "primary_outcome"})
 _CHART_CHOICES: Final = frozenset(
     {
@@ -459,6 +463,7 @@ def draft_exploration_contract(
     raw_idea: str,
     *,
     resolutions: Mapping[str, str] | None = None,
+    operator_id: str | None = None,
 ) -> ResearchContractDraft:
     """Turn one raw observation into a finite exploration-contract preview.
 
@@ -468,15 +473,35 @@ def draft_exploration_contract(
 
     exact_idea = _raw_idea(raw_idea)
     resolved = _clean_resolutions(resolutions)
+    if operator_id is not None and operator_id not in _OPERATORS:
+        raise DataError(f"unknown research operator {operator_id!r}")
+    selected_event = resolved.get("event_availability")
+    if (
+        operator_id is not None
+        and selected_event is not None
+        and selected_event != _OPERATORS[operator_id]
+    ):
+        raise DataError("research operator conflicts with the resolved event availability")
+    selected_operator = operator_id or next(
+        (name for name, event in _OPERATORS.items() if event == selected_event), None
+    )
     questions = _questions(exact_idea, resolved)
     availability = resolved.get("event_availability")
     chart = resolved.get("chart_construction")
     outcome = resolved.get("primary_outcome")
-    crypto_crowding = _recommended_bundle_id(exact_idea) == "bybit_btcusdt_crowding_reversal_v1"
+    crypto_crowding = (
+        selected_operator == "bybit_btcusdt_crowding_reversal.v1"
+        if selected_operator is not None
+        else _recommended_bundle_id(exact_idea) == "bybit_btcusdt_crowding_reversal_v1"
+    )
     event_name = (
         "bybit_btcusdt_crowding_reversal"
         if crypto_crowding
-        else ("double_bottom" if "double bottom" in exact_idea.casefold() else "owner_idea_event")
+        else (
+            "double_bottom"
+            if selected_operator == "double_bottom.v1" or "double bottom" in exact_idea.casefold()
+            else "owner_idea_event"
+        )
     )
     double_bottom_supported = (
         event_name == "double_bottom"
@@ -586,7 +611,7 @@ def draft_exploration_contract(
             registered_crypto_crowding_plan().to_dict()
             if crypto_crowding and outcome is not None
             else (
-                default_analysis_plan(
+                default_analysis_plan_v2(
                     horizon_bars=4 if outcome == "four_trading_hour_return_25bp" else 1
                 )
                 if outcome is not None

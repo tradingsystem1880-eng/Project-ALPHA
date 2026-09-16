@@ -140,14 +140,12 @@ class DoctorReport(_Strict):
 
 
 class HarnessBaseline(_Strict):
-    """Guardrail counts the weakening scanner refuses to let regress silently."""
+    """Explicit safety configuration; actual tests enforce architecture and bias controls."""
 
-    schema_version: Literal[1] = 1
+    schema_version: Literal[2] = 2
     deny_rules: list[str]
     hook_events: list[str]
     coverage_fail_under: int
-    importlinter_contracts: int
-    bias_guard_tests: int
     strict_markers: bool
     quant_suppressions: int
 

@@ -15,37 +15,21 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: "3.12"
           enable-cache: true
-      - name: Lockfile check
-        run: uv lock --check
       - name: Install (locked)
         run: uv sync --locked
-      - name: Lint
-        run: uv run ruff check .
-      - name: Format check
-        run: uv run ruff format --check .
-      - name: Architecture
-        run: uv run lint-imports
-      - name: Types
-        run: uv run mypy packages apps tests
-      - name: Tests + 93% owned-source coverage (incl. bias guards)
-        run: uv run pytest -q -n auto -m "not network" --cov --cov-report=term-missing
-      - name: OpenAPI freshness
-        run: uv run python scripts/generate_web_openapi.py --check
-      - name: OpenAPI verification and authority documentation
-        run: uv run python scripts/check_openapi_operations.py
-      - name: Build all 12 wheels
-        run: uv build --all-packages
-      - name: Import built wheels
-        run: |
-          uv pip install --python .venv/bin/python --reinstall --no-deps dist/*.whl
-          .venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_research, alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web; assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_research, alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web))'
+      - name: Shared backend gate
+        env:
+          ALPHA_GATE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: uv run python scripts/gate.py component backend
 
   harness:
-    # The Claude Code harness verifies itself: a control that is not tested is prose.
+    # Real Git guards and thin optional agent adapters verify themselves.
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -64,19 +48,8 @@ jobs:
         run: uv run python scripts/gate.py lint-harness
       - name: Harness types
         run: uv run mypy --strict $(uv run python -c "import sys; sys.path.insert(0, 'scripts'); import gate; print(' '.join(gate.HARNESS_SCRIPTS))")
-      - name: Block smoke (real hooks must refuse the three canonical bypasses)
-        run: |
-          set -u
-          git config user.email ci@example.com && git config user.name CI
-          echo "smoke = 1" > smoke_ci.py && git add smoke_ci.py
-          # 1. commit without a gate stamp
-          if echo '{"cwd":"'$PWD'","session_id":"ci","tool_input":{"command":"git commit -m \"feat: smoke\""}}' | python3 scripts/claude_hooks.py pre-bash-guard; then echo "commit without stamp was NOT blocked" >&2; exit 1; fi
-          # 2. protected edit without ack
-          if echo '{"cwd":"'$PWD'","session_id":"ci","tool_input":{"file_path":"'$PWD'/.claude/settings.json","content":"{}"}}' | python3 scripts/claude_hooks.py pre-edit-guard; then echo "protected edit without ack was NOT blocked" >&2; exit 1; fi
-          # 3. malformed attestation
-          if echo '{"verdict":"MAYBE"}' | uv run python scripts/gate.py attest --kind review; then echo "malformed attestation was NOT rejected" >&2; exit 1; fi
-          git rm -q --cached smoke_ci.py && rm smoke_ci.py
-          echo "block smoke OK"
+      - name: Git guard and adapter acceptance (disposable repositories)
+        run: uv run pytest -q tests/unit/test_git_guard.py tests/unit/test_gate_components.py tests/unit/test_claude_harness_hooks_subprocess.py
 
   frontend:
     runs-on: ubuntu-latest
@@ -92,69 +65,49 @@ jobs:
           enable-cache: true
       - name: Install backend for the Playwright real server (locked)
         run: uv sync --locked
-      - name: Install frontend (locked)
-        working-directory: apps/alpha-web/frontend
-        run: npm ci
-      - name: Lint (zero warnings)
-        working-directory: apps/alpha-web/frontend
-        run: npm run lint -- --deny-warnings
-      - name: Frontend tests + V8 coverage floors
-        working-directory: apps/alpha-web/frontend
-        run: npm run test:coverage
-      - name: Generated TypeScript freshness
-        working-directory: apps/alpha-web/frontend
-        run: npm run generate:api && git diff --exit-code -- src/api/generated.ts
       - name: Install Playwright Chromium
         working-directory: apps/alpha-web/frontend
-        run: npx playwright install --with-deps chromium
-      - name: Browser release gate (build, six desks, layouts, axe)
-        working-directory: apps/alpha-web/frontend
-        run: npm run test:e2e
-      - name: Committed SPA asset freshness
-        run: git diff --exit-code -- apps/alpha-web/src/alpha_web/static/app
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Shared frontend gate
+        run: uv run python scripts/gate.py component frontend
 
   qlib-worker:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: workers/qlib
     steps:
       - uses: actions/checkout@v6.0.3
       - uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: "3.12"
           enable-cache: true
-      - name: Lockfile check
-        run: uv lock --check
-      - name: Install isolated worker (locked)
+      - name: Install gate environment
         run: uv sync --locked
-      - name: Lint and format
-        run: uv run ruff check . && uv run ruff format --check .
-      - name: Types
-        run: uv run mypy
-      - name: Worker tests
-        run: uv run pytest -q
+      - name: Shared Qlib gate
+        run: uv run python scripts/gate.py component qlib
 
   literature-worker:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: workers/literature
     steps:
       - uses: actions/checkout@v6.0.3
       - uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: "3.12"
           enable-cache: true
-      - name: Install isolated worker (locked)
+      - name: Install gate environment
         run: uv sync --locked
-      - name: Lockfile check
-        run: uv lock --check
-      - name: Lint and format
-        run: uv run ruff check . && uv run ruff format --check .
-      - name: Types
-        run: uv run mypy
-      - name: Offline worker and hostile-document tests
-        run: uv run pytest -q -m "not network"
+      - name: Shared literature gate
+        run: uv run python scripts/gate.py component literature
+
+  atlas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Shared Atlas gate
+        run: uv run python scripts/gate.py component atlas

@@ -10,7 +10,7 @@ Follow `.agents/skills/alpha-feature-workflow/SKILL.md`. Steps:
 1. If this is a trivial single-file fix, STOP and say "no plan needed — just do
    it", then do it with TDD. Never produce a 1-step plan.
 2. Dispatch the `navigator` subagent with the concrete exploration questions
-   (it reads `.claude/state/repo-index.json` first); for changes touching
+   (use current `gate.py orient` output); for changes touching
    quant/risk-tier paths also dispatch `invariants-auditor` in parallel. Do not
    explore inline — keep this context clean.
 3. Dispatch the `test-architect` subagent for the failing-test specification.

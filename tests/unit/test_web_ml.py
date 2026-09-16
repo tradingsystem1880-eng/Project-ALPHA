@@ -15,7 +15,8 @@ import pytest
 
 from alpha_cli.artifact_contract import artifact_contract
 from alpha_cli.control_store import ControlStore
-from alpha_web import _ml
+from alpha_cli.durable_lease import DEFAULT_TERMINATE_GRACE_SECONDS
+from alpha_web import _catalog, _ml
 
 EXCHANGE_ID = "a" * 32
 INPUT_ID = "b" * 32
@@ -705,14 +706,36 @@ def test_silent_ml_child_heartbeats_and_heartbeat_failure_aborts(
     assert not any(args[1:4] == ["job-status", job_id, "succeeded"] for args in calls)
 
 
+@pytest.mark.parametrize("journal_startup_delay", [0.0, 2.6])
 def test_silent_ml_child_honours_audited_cancellation_and_releases_capacity(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, journal_startup_delay: float
 ) -> None:
     job_id = "88888888-8888-4888-8888-888888888888"
     store = ControlStore(tmp_path)
     store.create_job(kind="ml_train", request={"test": "cancel"}, job_id=job_id)
     store.set_job_status(job_id, "running")
     monkeypatch.setattr(_ml, "_DURABLE_HEARTBEAT_INTERVAL_S", 0.03)
+    journal_command = _catalog._command
+    monkeypatch.setattr(
+        _catalog,
+        "_command",
+        lambda args: [
+            sys.executable,
+            "-c",
+            "import os,sys,time; time.sleep(float(sys.argv[1])); "
+            "os.execvp(sys.argv[2], sys.argv[2:])",
+            str(journal_startup_delay),
+            *journal_command(args),
+        ],
+    )
+    heartbeat_started = threading.Event()
+    renew_heartbeat = _ml._renew_job_heartbeat
+
+    def observed_heartbeat(job_id: str, *, data_dir: Path) -> bool:
+        heartbeat_started.set()
+        return renew_heartbeat(job_id, data_dir=data_dir)
+
+    monkeypatch.setattr(_ml, "_renew_job_heartbeat", observed_heartbeat)
     monkeypatch.setattr(
         _ml,
         "_command",
@@ -724,12 +747,25 @@ def test_silent_ml_child_honours_audited_cancellation_and_releases_capacity(
         kwargs={"data_dir": tmp_path, "timeout_seconds": 60},
     )
     worker.start()
-    time.sleep(0.05)
-    assert worker.is_alive()
-    store.request_job_cancellation(job_id, actor="owner", reason="stop test worker")
-    worker.join(timeout=5)
-
-    assert not worker.is_alive(), "cancelled ML process was not reaped"
+    # An in-flight heartbeat can precede the request: allow it, the observing
+    # heartbeat, and the terminal journal call, each with its unchanged RPC limit.
+    # Cleanup permits TERM, KILL, and leader reap, each with the existing grace.
+    completion_budget = (
+        3 * _ml._DURABLE_HEARTBEAT_TIMEOUT_S
+        + 3 * DEFAULT_TERMINATE_GRACE_SECONDS
+        + _ml._DURABLE_HEARTBEAT_INTERVAL_S
+    )
+    try:
+        assert heartbeat_started.wait(timeout=5), "ML lease never started"
+        assert worker.is_alive()
+        store.request_job_cancellation(job_id, actor="owner", reason="stop test worker")
+        worker.join(timeout=completion_budget)
+        assert not worker.is_alive(), "cancelled ML process was not reaped"
+    finally:
+        # A failing assertion must not tear down the store/patches under a live
+        # worker. The test child naturally exits after 30s; execution is capped at 60s.
+        worker.join(timeout=61)
+    assert not worker.is_alive(), "ML worker leaked past its execution timeout"
     row = store.get_job(job_id)
     assert row["status"] == "cancelled"
     assert store.heavyweight_job_capacity()["active_count"] == 0
