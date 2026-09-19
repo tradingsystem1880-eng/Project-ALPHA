@@ -17,6 +17,102 @@ from alpha_data.crypto.quality import QUALITY_METHOD_VERSION
 from tests.fixtures.hypothesis_scan_fixtures import frozen_crypto
 
 
+def test_freeze_verifies_only_selected_artifacts_and_their_lineage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from alpha_data.crypto import storage
+
+    store = frozen_crypto(tmp_path)
+    inventory = cast(tuple[dict[str, Any], ...], store.inventory())
+    selected = next(
+        item
+        for item in inventory
+        if item.get("dataset", {}).get("instrument") == "AAAUSDT"
+        and item.get("dataset", {}).get("family") == "derivative_bars"
+    )
+    expected_keys = {selected["artifact_key"]}
+    for parent_id in selected["input_manifest_ids"]:
+        expected_keys.add(store.verify_manifest(parent_id)["artifact_key"])
+    original = storage.sha256_file
+    reads: list[str] = []
+
+    def record(path: Path) -> str:
+        reads.append(str(path.relative_to(store.bulk_root)))
+        return original(path)
+
+    monkeypatch.setattr(storage, "sha256_file", record)
+    monkeypatch.setattr(crypto, "bulk_store", lambda _: store)
+    result = crypto.freeze_crypto_inputs(
+        tmp_path,
+        {
+            "symbols": ["AAAUSDT"],
+            "as_of": "2020-03-02",
+            "category": "linear",
+            "signals": ["mom_30d"],
+        },
+    )
+    assert [item["manifest_id"] for item in result] == [selected["manifest_id"]]
+    assert set(reads) == expected_keys
+
+
+@pytest.mark.parametrize(
+    "corruption", ["selected_artifact", "raw_artifact", "raw_parent", "unrelated_metadata"]
+)
+def test_selective_discovery_preserves_integrity_checks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corruption: str
+) -> None:
+    import json
+
+    store = frozen_crypto(tmp_path)
+    inventory = cast(tuple[dict[str, Any], ...], store.inventory())
+    selected = next(
+        item
+        for item in inventory
+        if item.get("dataset", {}).get("instrument") == "AAAUSDT"
+        and item.get("dataset", {}).get("family") == "derivative_bars"
+    )
+    if corruption == "selected_artifact":
+        (store.bulk_root / str(selected["artifact_key"])).write_bytes(b"corrupt")
+    elif corruption == "raw_artifact":
+        parent = store.verify_manifest(selected["input_manifest_ids"][0])
+        raw_path = store.bulk_root / "fixtures/raw-only.bin"
+        raw_path.write_bytes((store.bulk_root / str(parent["artifact_key"])).read_bytes())
+        distinct_parent = store._publish_manifest(
+            {key: value for key, value in parent.items() if key != "manifest_id"}
+            | {"artifact_key": "fixtures/raw-only.bin"}
+        )
+        store._publish_manifest(
+            {key: value for key, value in selected.items() if key != "manifest_id"}
+            | {"input_manifest_ids": [distinct_parent["manifest_id"]]}
+        )
+        raw_path.write_bytes(b"corrupt")
+    else:
+        identity = (
+            selected["input_manifest_ids"][0]
+            if corruption == "raw_parent"
+            else next(
+                item["manifest_id"]
+                for item in inventory
+                if item.get("dataset", {}).get("instrument") == "BBBUSDT"
+            )
+        )
+        path = store.manifest_root / f"{identity}.json"
+        changed = json.loads(path.read_text())
+        changed["artifact_sha256"] = "0" * 64
+        path.write_text(json.dumps(changed))
+    monkeypatch.setattr(crypto, "bulk_store", lambda _: store)
+    with pytest.raises(DataError, match="integrity failure"):
+        crypto.freeze_crypto_inputs(
+            tmp_path,
+            {
+                "symbols": ["AAAUSDT"],
+                "as_of": "2020-03-02",
+                "category": "linear",
+                "signals": ["mom_30d"],
+            },
+        )
+
+
 def dataset(family: str = "derivative_bars") -> dict[str, Any]:
     frequency, units, convention, _column = crypto.FAMILIES[family]
     return {
@@ -141,7 +237,7 @@ def test_crypto_signals_ignore_future_rows() -> None:
 
 def test_late_raw_fetch_excludes_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     class Store:
-        def inventory(self) -> tuple[dict[str, Any], ...]:
+        def metadata_inventory(self) -> tuple[dict[str, Any], ...]:
             return (
                 {
                     "artifact_kind": "normalized",
@@ -153,6 +249,8 @@ def test_late_raw_fetch_excludes_manifest(tmp_path: Path, monkeypatch: pytest.Mo
             )
 
         def verify_manifest(self, _id: object) -> dict[str, Any]:
+            if _id == "n":
+                return self.metadata_inventory()[0]
             return {"receipt": {"fetched_at": "2020-02-02T00:00:00Z"}}
 
     monkeypatch.setattr(crypto, "bulk_store", lambda _: Store())

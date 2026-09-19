@@ -164,13 +164,42 @@ def _material_choice(
     }
 
 
-def _questions(raw: str, resolutions: Mapping[str, str]) -> list[dict[str, object]]:
+def _questions(
+    raw: str,
+    resolutions: Mapping[str, str],
+    *,
+    event_name: str,
+    recommended: str | None,
+) -> list[dict[str, object]]:
+    if event_name == "owner_idea_event":
+        return [
+            {
+                "id": identifier,
+                "prompt": prompt,
+                "blocking_reason": "Requires a bounded definition and reviewed research operator.",
+                "choices": [],
+                "recommended_answer_bundle_id": None,
+            }
+            for identifier, prompt in (
+                (
+                    "chart_construction",
+                    "Which exact instruments, venue, and observation cadence define the claim?",
+                ),
+                (
+                    "event_availability",
+                    "What observation defines the event, and when is it knowable?",
+                ),
+                (
+                    "primary_outcome",
+                    "What single outcome, horizon, direction, and useful effect define the claim?",
+                ),
+            )
+        ]
     lowered = raw.casefold()
     sp500 = any(token in lowered for token in ("s&p", "sp500", "s and p 500"))
     four_hour = re.search(r"\b(?:4h|4[- ]?hour)\b", lowered) is not None
     result: list[dict[str, object]] = []
-    recommended = _recommended_bundle_id(raw)
-    crypto_crowding = recommended == "bybit_btcusdt_crowding_reversal_v1"
+    crypto_crowding = event_name == "bybit_btcusdt_crowding_reversal"
     if "chart_construction" not in resolutions:
         if crypto_crowding:
             choices = [
@@ -485,24 +514,32 @@ def draft_exploration_contract(
     selected_operator = operator_id or next(
         (name for name, event in _OPERATORS.items() if event == selected_event), None
     )
-    questions = _questions(exact_idea, resolved)
     availability = resolved.get("event_availability")
     chart = resolved.get("chart_construction")
     outcome = resolved.get("primary_outcome")
     crypto_crowding = (
         selected_operator == "bybit_btcusdt_crowding_reversal.v1"
         if selected_operator is not None
-        else _recommended_bundle_id(exact_idea) == "bybit_btcusdt_crowding_reversal_v1"
+        else selected_event is None
+        and _recommended_bundle_id(exact_idea) == "bybit_btcusdt_crowding_reversal_v1"
     )
     event_name = (
         "bybit_btcusdt_crowding_reversal"
         if crypto_crowding
         else (
             "double_bottom"
-            if selected_operator == "double_bottom.v1" or "double bottom" in exact_idea.casefold()
+            if selected_operator == "double_bottom.v1"
+            or selected_event == "neckline_breakout_confirmed"
+            or "double bottom" in exact_idea.casefold()
             else "owner_idea_event"
         )
     )
+    recommended = _recommended_bundle_id(exact_idea)
+    if crypto_crowding:
+        recommended = "bybit_btcusdt_crowding_reversal_v1"
+    elif event_name == "owner_idea_event" or recommended == "bybit_btcusdt_crowding_reversal_v1":
+        recommended = None
+    questions = _questions(exact_idea, resolved, event_name=event_name, recommended=recommended)
     double_bottom_supported = (
         event_name == "double_bottom"
         and availability == "second_trough_confirmable"
@@ -535,7 +572,7 @@ def draft_exploration_contract(
             | (_EVENT_CHOICES - registered_event_choices)
         )
     ]
-    return {
+    draft: ResearchContractDraft = {
         "schema": "ResearchContractV1",
         "schema_version": 1,
         "scope": "exploration",
@@ -544,7 +581,7 @@ def draft_exploration_contract(
         "approval_ready": not questions and gate1_supported,
         "blocking_questions": questions,
         "valid_answer_bundles": registered_answer_bundles(),
-        "recommended_answer_bundle_id": _recommended_bundle_id(exact_idea),
+        "recommended_answer_bundle_id": recommended,
         "answer_capability_gaps": capability_gaps,
         "gate1_availability": {
             "state": "AVAILABLE" if gate1_supported else "UNAVAILABLE",
@@ -614,7 +651,7 @@ def draft_exploration_contract(
                 default_analysis_plan_v2(
                     horizon_bars=4 if outcome == "four_trading_hour_return_25bp" else 1
                 )
-                if outcome is not None
+                if outcome is not None and event_name == "double_bottom"
                 else {"status": "UNRESOLVED"}
             )
         ),
@@ -748,3 +785,31 @@ def draft_exploration_contract(
             "arbitrary_generated_python": "PROHIBITED",
         },
     }
+    if event_name == "owner_idea_event":
+        # Capturing arbitrary wording is not permission to invent its hypothesis or operator.
+        draft.update(
+            {
+                "valid_answer_bundles": [],
+                "answer_capability_gaps": [],
+                "gate1_availability": {
+                    "state": "UNAVAILABLE",
+                    "reason": "No registered research operator matches this observation. "
+                    "Define the hypothesis and review an exact operator before execution.",
+                },
+                "thesis": {
+                    "status": "UNRESOLVED",
+                    "observation": exact_idea,
+                    "mechanism": "UNRESOLVED",
+                    "prediction": "UNRESOLVED",
+                    "alternatives": [],
+                    "interpretation": "Unreviewed observation; no empirical or causal claim.",
+                },
+                "chart_fingerprint": {"status": "UNRESOLVED"},
+                "event_definition": {"name": event_name, "availability": "UNRESOLVED"},
+                "primary_claim": {"status": "UNRESOLVED"},
+                "analysis_plan": {"status": "UNRESOLVED"},
+                "required_falsifiers": [],
+                "confounders": [],
+            }
+        )
+    return draft

@@ -503,7 +503,7 @@ class CryptoBulkStore:
             }
         )
 
-    def verify_manifest(self, manifest_id: object) -> dict[str, object]:
+    def _manifest_metadata(self, manifest_id: object) -> dict[str, object]:
         if not isinstance(manifest_id, str):
             raise DataError("invalid crypto manifest id")
         _safe_component(manifest_id, "manifest id")
@@ -517,6 +517,10 @@ class CryptoBulkStore:
         body = {key: value for key, value in raw.items() if key != "manifest_id"}
         if hashlib.sha256(canonical_bytes(body)).hexdigest() != manifest_id:
             raise DataError("crypto manifest integrity failure")
+        return raw
+
+    def verify_manifest(self, manifest_id: object) -> dict[str, object]:
+        raw = self._manifest_metadata(manifest_id)
         artifact_key = raw.get("artifact_key")
         artifact_hash = raw.get("artifact_sha256")
         artifact_bytes = raw.get("artifact_bytes")
@@ -560,6 +564,16 @@ class CryptoBulkStore:
                 if parent_kind != expected_kind and not legacy_raw:
                     raise DataError("crypto manifest input lineage has the wrong artifact kind")
         return raw
+
+    def metadata_inventory(self) -> tuple[dict[str, object], ...]:
+        """Hash-verified discovery metadata, NOT verified artifact or lineage evidence.
+
+        Consumers must fully verify selected manifests before admitting their data.
+        Unrelated metadata corruption still fails closed instead of hiding candidates.
+        """
+        return tuple(
+            self._manifest_metadata(path.stem) for path in sorted(self.manifest_root.glob("*.json"))
+        )
 
     def inventory(self) -> tuple[dict[str, object], ...]:
         if not self.manifest_root.exists():

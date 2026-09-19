@@ -154,7 +154,7 @@ def freeze_crypto_inputs(data_dir: Path, options: Mapping[str, Any]) -> list[dic
         needed.add("open_interest")
     selected: list[dict[str, Any]] = []
     previous: dict[tuple[str, str], dict[str, Any]] = {}
-    for manifest in store.inventory():
+    for manifest in store.metadata_inventory():
         dataset = manifest.get("dataset")
         quality = manifest.get("quality")
         if (
@@ -173,6 +173,9 @@ def freeze_crypto_inputs(data_dir: Path, options: Mapping[str, Any]) -> list[dic
             or dataset.get("frequency") != FAMILIES[family][0]
         ):
             continue
+        # Discovery metadata is not evidence. Verify selected bytes and raw lineage
+        # before consulting availability or admitting the input to a frozen spec.
+        manifest = store.verify_manifest(manifest["manifest_id"])
         input_ids = manifest.get("input_manifest_ids")
         if not isinstance(input_ids, list) or not input_ids:
             raise DataError("crypto screen manifest has no raw input lineage")

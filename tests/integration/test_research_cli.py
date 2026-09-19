@@ -34,6 +34,18 @@ def _invoke(*args: str) -> dict[str, object]:
     return value
 
 
+def test_generic_capture_reports_operator_gap_not_owner_answer_batch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "Crypto momentum may predict later returns")
+    case = cast(dict[str, object], captured["case"])
+    assert case["phase"] == "triage"
+    assert case["responsibility"] == "codex"
+    assert "operator" in str(case["blocker"]).lower()
+    assert "answers" not in str(case["next_action"])
+
+
 def test_explicit_operator_draft_preserves_prose_and_freezes_v2(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1686,10 +1698,10 @@ def test_research_list_projects_bounded_backlog_rows_newest_activity_first(
     assert row["phase"] == "triage"
     assert row["execution_state"] == "idle"
     assert row["outcome"] is None and row["disposition"] is None
-    assert row["responsibility"] == "owner"
+    assert row["responsibility"] == "codex"
     assert (
-        row["recovery_action"]
-        == "Answer the single bounded question batch; Codex handles technical defaults."
+        row["recovery_action"] == "Clarify the observation without assuming a registered pattern; "
+        "implement and review an exact operator before proposing execution."
     )
     assert row["completed_milestones"] == 2  # captured + triage phase events
     assert row["total_milestones"] == 9  # the nine research phases

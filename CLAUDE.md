@@ -64,7 +64,7 @@ are installed locally; other checkouts require installation. Claude adapters ret
 and native-boundary safety only. Require a fresh full stamp; do not bypass active checks.
 [ADR-0036](docs/adr/0036-agent-neutral-research-engineering.md) separates engineering
 ceremony changes from unchanged application authority.
-[Harness operations](docs/operations/claude-code-harness.md): checks, scoped exception, legacy reads.
+[Harness operations](docs/operations/claude-code-harness.md): checks, screening, intake, exceptions.
 
 ## Sources of current truth
 

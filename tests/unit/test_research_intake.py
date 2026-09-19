@@ -16,6 +16,91 @@ CRYPTO_IDEA = (
 )
 
 
+@pytest.mark.parametrize(
+    "idea",
+    [
+        "Crypto momentum may predict later returns",
+        "S&P500 momentum on the 4h time frame",
+    ],
+)
+def test_generic_intake_does_not_invent_a_registered_thesis(idea: str) -> None:
+    draft = draft_exploration_contract(idea)
+    assert draft["raw_idea"] == idea
+    assert draft["approval_ready"] is False
+    assert draft["gate1_availability"]["state"] == "UNAVAILABLE"
+    assert "No registered" in draft["gate1_availability"]["reason"]
+    assert draft["recommended_answer_bundle_id"] is None
+    assert draft["thesis"]["status"] == "UNRESOLVED"
+    assert draft["chart_fingerprint"] == {"status": "UNRESOLVED"}
+    assert draft["event_definition"] == {"name": "owner_idea_event", "availability": "UNRESOLVED"}
+    assert draft["primary_claim"] == {"status": "UNRESOLVED"}
+    assert draft["analysis_plan"] == {"status": "UNRESOLVED"}
+    assert draft["valid_answer_bundles"] == []
+    assert all(question["choices"] == [] for question in draft["blocking_questions"])
+    assert "single-trough control" not in draft["required_falsifiers"]
+    assert "bounce" not in json.dumps(draft["blocking_questions"])
+
+
+@pytest.mark.parametrize("intent", ["operator", "resolution"])
+def test_explicit_crowding_intent_routes_questions_without_keywords(intent: str) -> None:
+    kwargs = (
+        {"operator_id": "bybit_btcusdt_crowding_reversal.v1"}
+        if intent == "operator"
+        else {"resolutions": {"event_availability": "bybit_funding_event_point_in_time"}}
+    )
+    draft = draft_exploration_contract("An owner observation", **kwargs)
+    chart_question = draft["blocking_questions"][0]
+    assert [choice["id"] for choice in chart_question["choices"]] == ["bybit_btcusdt_linear_hourly"]
+    assert draft["event_definition"]["name"] == "bybit_btcusdt_crowding_reversal"
+
+
+def test_generic_partial_choices_do_not_create_a_pattern_plan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def unexpected_plan(**_kwargs: object) -> None:
+        pytest.fail("generic intake must not construct a registered analysis plan")
+
+    monkeypatch.setattr("alpha_cli.research_intake.default_analysis_plan_v2", unexpected_plan)
+    draft = draft_exploration_contract(
+        "Momentum observation",
+        resolutions={
+            "chart_construction": "tiingo_daily_fallback",
+            "primary_outcome": "next_regular_session_return_50bp",
+        },
+    )
+    assert draft["approval_ready"] is False
+    assert draft["analysis_plan"] == {"status": "UNRESOLVED"}
+    assert draft["chart_fingerprint"] == {"status": "UNRESOLVED"}
+
+
+def test_explicit_double_bottom_intent_overrides_crypto_wording() -> None:
+    draft = draft_exploration_contract(CRYPTO_IDEA, operator_id="double_bottom.v1")
+    assert draft["event_definition"]["name"] == "double_bottom"
+    assert draft["recommended_answer_bundle_id"] is None
+    event_question = draft["blocking_questions"][1]
+    assert [choice["id"] for choice in event_question["choices"]] == [
+        "second_trough_confirmable",
+        "neckline_breakout_confirmed",
+    ]
+
+
+def test_explicit_unavailable_neckline_intent_overrides_crypto_wording() -> None:
+    draft = draft_exploration_contract(
+        CRYPTO_IDEA, resolutions={"event_availability": "neckline_breakout_confirmed"}
+    )
+    assert draft["event_definition"]["name"] == "double_bottom"
+    assert draft["event_definition"]["availability"] == "neckline_breakout_confirmed"
+    assert draft["recommended_answer_bundle_id"] is None
+    assert draft["approval_ready"] is False
+    assert draft["gate1_availability"]["state"] == "UNAVAILABLE"
+    assert all(
+        question["recommended_answer_bundle_id"] is None for question in draft["blocking_questions"]
+    )
+    assert "bybit_btcusdt_linear_hourly" not in {
+        choice["id"] for choice in draft["blocking_questions"][0]["choices"]
+    }
+
+
 def test_registered_answer_bundle_resolves_only_closed_registry_ids() -> None:
     bundle = registered_answer_bundle("synthetic_spy_60m_four_hour_v1")
     assert bundle["requires_dataset"] is False

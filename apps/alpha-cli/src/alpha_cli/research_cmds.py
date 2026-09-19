@@ -849,9 +849,17 @@ def capture(
     draft = draft_exploration_contract(idea)
     questions = cast(list[object], draft["blocking_questions"])
     count = len(questions)
-    if count:
+    if draft["event_definition"]["name"] == "owner_idea_event":
+        next_action = "Define a bounded hypothesis and assess the missing research operator."
+        responsibility: ResearchResponsibility = "codex"
+        blocker = "No registered research operator matches this observation."
+        recovery = (
+            "Clarify the observation without assuming a registered pattern; "
+            "implement and review an exact operator before proposing execution."
+        )
+    elif count:
         next_action = f"Owner answers the {count} material definition questions in one batch."
-        responsibility: ResearchResponsibility = "owner"
+        responsibility = "owner"
         blocker = "The primary chart, event timestamp, or outcome is materially ambiguous."
         recovery = "Answer the single bounded question batch; Codex handles technical defaults."
     else:

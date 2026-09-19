@@ -90,6 +90,31 @@ The root manual, active plan and BUILD-STATUS must distinguish implemented slice
 run, local hook installation, and aggregate acceptance. After configuration changes, a running
 client may need to reload repository settings; file presence alone does not prove that happened.
 
+Stage the intended candidate before final review/quant attestation. Moving a new file
+from untracked to staged changes the scoped-diff serialization even when its content
+tree is identical; if staging follows review, the independent reviewer must verify
+identity and refresh the binding before commit. Do not bypass the guard.
+
+### Research walkthrough operation
+
+Crypto screening discovers content-hash-verified manifest metadata across the local
+inventory, then fully verifies only matching normalized inputs and their raw lineage.
+Unrelated bulk artifact bytes are not read by screening discovery. Metadata corruption
+still fails closed; `CryptoBulkStore.inventory()` remains a full artifact audit, and
+replay re-verifies each frozen selected input. No persistent verification cache is used.
+
+Unsupported research observations remain neutral, unresolved drafts with an explicit
+missing-operator blocker. They do not inherit a double-bottom mechanism, trough fields,
+US-market chart assumptions or a fabricated executable protocol. Explicit registered
+operator/event intent still selects the corresponding supported draft path. Historical
+immutable contracts are not rewritten, and neither draft capture nor screening grants
+approval, promotion, sealed-data or trading authority.
+
+For interactive inspection, project the large JSON response with `jq` while preserving
+the CLI exit status (`set -o pipefail`); full per-date data remains in the immutable
+attempt artifacts. The [closure record](../superpowers/plans/2026-09-19-research-walkthrough-closure.md)
+tracks acceptance checks and limitations.
+
 ### Scoped missing-suite exception (2026-09-17)
 
 The owner explicitly authorized this refactor/cancellation commit to proceed without
@@ -98,3 +123,8 @@ the unavailable private holdout suite, after unsuccessful restoration checks. Th
 and independent-reviewer instructions define its one-time scope. Hidden tests remain
 UNVERIFIED. Other tests, independent review, quant attestation and Git guards remain
 mandatory; this is neither a hook bypass nor a waiver for future changes.
+
+A separate explicit owner resolution on 2026-09-19 covers only the
+[walkthrough closure change](../superpowers/plans/2026-09-19-research-walkthrough-closure.md)
+based on `b1b7510`. It has the same UNVERIFIED disclosure and preserves all other
+checks; it does not automatically extend the earlier exception to future work.

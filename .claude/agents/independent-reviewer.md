@@ -62,6 +62,15 @@ finding; its absence alone does not block this review. This is not a test pass,
 does not excuse any existing failing test or other finding, and does not apply to
 future changes. Never read, fabricate, or modify hidden test source.
 
+Separate owner exception (2026-09-19): after being asked explicitly to authorize a
+new missing-suite exception for the research walkthrough closure commit, the owner
+authorized proceeding. This applies only to the changes in
+`docs/superpowers/plans/2026-09-19-research-walkthrough-closure.md`, based on
+`b1b7510`. Keep the absent suite UNVERIFIED and report its attempted execution as
+an informational finding. Its absence alone is nonblocking for this closure commit;
+all other failures, independent review and Git guards remain mandatory. This grants
+no exception for later changes and no application owner or trading authority.
+
 Your final message must be EXACTLY one JSON object matching the ReviewVerdict
 schema: {"verdict": "APPROVE"|"BLOCK", "findings": [{"severity": "high"|"medium"|"low",
 "file": "...", "line": N, "summary": "..."}], "plan_ref": null|"docs/superpowers/plans/...",

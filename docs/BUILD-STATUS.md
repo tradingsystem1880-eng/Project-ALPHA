@@ -423,3 +423,36 @@ records the exact scope: the integrated refactor/cancellation commit only. Hidde
 tests remain UNVERIFIED, not passed. All other checks, independent review and
 installed commit guards remain mandatory. Final commit and walkthrough results are
 recorded in the handoff and ignored evidence receipts, not assumed here.
+
+## 2026-09-19 — Walkthrough issue closure implementation
+
+The [closure plan](superpowers/plans/2026-09-19-research-walkthrough-closure.md)
+records selective artifact verification and neutral unsupported research intake.
+Screening still hash-verifies all discovery metadata, but reads bulk artifact bytes
+only for selected inputs and their raw lineage. The full inventory audit and frozen
+replay integrity checks are unchanged. The existing 33,534-manifest real-data screen
+completed in 7.25 seconds, replay in 1.50 seconds, matching the earlier result digest
+without the scoped-inventory workaround. These are observed local timings only.
+
+Generic capture now reports a missing research operator with neutral unresolved
+fields instead of inventing a double-bottom thesis. Registered operator paths and
+historical immutable contracts are preserved. New context-packet reads were
+byte-identical and the linked screening reference was independently reverified;
+case review remained pending and execution idle. The original follow-up plan now
+records its actual completed commit `b1b7510` and walkthrough evidence.
+
+Final aggregate and review status are receipt-driven. The private hidden suite is
+still absent; the prior one-time exception does not extend to this change. That
+external review prerequisite remains UNVERIFIED, and no new commit or complete
+platform-readiness claim is implied by this implementation record.
+
+## 2026-09-19 — Owner resolution of closure review prerequisite
+
+Following the explicit request for a new missing-suite exception covering this
+closure commit, the owner authorized proceeding. The [closure plan](superpowers/plans/2026-09-19-research-walkthrough-closure.md)
+records this separate, narrowly scoped exception; the absent private suite remains
+UNVERIFIED. No future waiver, failing-test exemption, hook bypass or trading authority
+follows. All implementation and runtime checks are complete, with a passing full
+aggregate on the pre-exception tree; final delivery requires refreshed exact-tree
+verification and independent review. Final receipts and commit outcome are retained
+under `.alpha/state/` and in the handoff.

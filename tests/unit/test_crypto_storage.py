@@ -541,6 +541,26 @@ def test_manifest_errors_inventory_and_cache_cleanup(tmp_path: Path) -> None:
     assert not cache.exists()
 
 
+def test_metadata_inventory_checks_manifest_but_not_artifact_bytes(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    assert store.metadata_inventory() == ()
+    manifest = store._publish_manifest(
+        {
+            "artifact_kind": "raw",
+            "artifact_key": "absent.bin",
+            "artifact_sha256": "a" * 64,
+            "artifact_bytes": 1,
+        }
+    )
+    assert store.metadata_inventory() == (manifest,)
+    with pytest.raises(DataError, match="external artifact integrity"):
+        store.inventory()
+    path = store.manifest_root / f"{manifest['manifest_id']}.json"
+    path.write_text(json.dumps({**manifest, "artifact_bytes": 2}))
+    with pytest.raises(DataError, match="manifest integrity"):
+        store.metadata_inventory()
+
+
 def test_publish_rejects_hash_and_existing_artifact_collisions(tmp_path: Path) -> None:
     store = _store(tmp_path)
     handle = store.begin_staging(

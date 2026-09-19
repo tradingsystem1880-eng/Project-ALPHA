@@ -1,4 +1,4 @@
-**Delivery state:** In progress
+**Delivery state:** Completed with documented hidden-suite exception (2026-09-17).
 
 # Cancellation regression, commit, and research walkthrough
 
@@ -15,8 +15,8 @@
   "pre_mortem": ["A cancellation test passes while leaving a child or capacity claim alive; assert process cleanup and terminal journal stability.", "A broad commit silently changes existing owner work; compare baseline hashes and inspect the complete staged manifest.", "A walkthrough claims real-data success with synthetic inputs; identify exact frozen inputs and report unavailable data honestly."],
   "slices": [
     {"title": "1 Reproduce and repair cancellation test", "verify": "targeted cancellation tests, adversarial delay and full parallel coverage", "expected": "Discriminating stable test without weakened runtime cancellation controls", "rollback": "Revert only the scoped test/runtime fix", "status": "done"},
-    {"title": "2 Review and commit", "verify": "full gate, independent review, quant source report, staged manifest and preservation hashes", "expected": "Verified exact-tree conventional commit with no bypass", "rollback": "A reviewed revert, never destructive reset", "status": "in_progress"},
-    {"title": "3 Research-only walkthrough", "verify": "frozen scan, repeat/replay, context reference integrity", "expected": "Inspectable evidence with authority none and no provider or trading actions", "rollback": "Retain immutable walkthrough evidence; no owner approvals to undo", "status": "pending"}
+    {"title": "2 Review and commit", "verify": "full gate, independent review, quant source report, staged manifest and preservation hashes", "expected": "Verified exact-tree conventional commit with no bypass", "rollback": "A reviewed revert, never destructive reset", "status": "done"},
+    {"title": "3 Research-only walkthrough", "verify": "frozen scan, repeat/replay, context reference integrity", "expected": "Inspectable evidence with authority none and no provider or trading actions", "rollback": "Retain immutable walkthrough evidence; no owner approvals to undo", "status": "done"}
   ],
   "tier_impact": ["protected", "risk", "quant"],
   "docs_to_update": ["docs/BUILD-STATUS.md", "AGENTS.md", "docs/operations/claude-code-harness.md"],
@@ -80,8 +80,25 @@ stable-journal assertions. Cleanup joins the bounded worker before fixtures clos
 Production timeouts and lease behavior are unchanged. Both cases passed locally
 and independently; full parallel verification remains recorded by gate receipts.
 
-The research walkthrough is prepared but not executed: five qualified Bybit daily
-series (901 rows each, 2022-01-01 through 2024-06-19), acquired 2026-09-10. A
-2026-09-11 knowledge cutoff is required; a 2024 cutoff would precede acquisition.
-This is retrospective provenance testing, not a current-market signal. Execution
-waits until the requested commit step is legitimately satisfied.
+## Completion evidence (record synchronized 2026-09-19)
+
+Commit `b1b7510` passed the installed Git guards with independent APPROVE and quant
+PASS, after the full gate passed all five components on one stable tree. The owner
+exception above applied to that commit only; hidden tests remain UNVERIFIED.
+
+The subsequent research-only walkthrough completed using five qualified Bybit daily
+series (901 rows each, 2022-01-01 through 2024-06-19), acquired 2026-09-10, with a
+2026-09-11 knowledge cutoff. Two trials replayed with identical result digest
+`1365834257809431168784165364949f79989e23dd5984227b3e39595b56c50c` and distinct
+attempt IDs. Context packet
+`cp_405c4ec3ed58a84a10da5ee2554e12d3ad2ca373dc96cf595b049d08304049d3`
+read byte-identically and matched the verified original screening reference.
+Authority stayed none; case review pending, execution idle. This is retrospective
+provenance verification, not a current-market signal or validated research thesis.
+
+The full-inventory attempt was safely interrupted before resolution; a scoped view
+of ten original manifests completed. Its performance and generic-intake findings
+are tracked in the [closure plan](2026-09-19-research-walkthrough-closure.md).
+Local immutable receipts and the detailed report remain under
+`.alpha/state/walkthrough-2026-09-17-scoped/`; this record preserves the outcome
+without requiring that ignored report to be committed.
