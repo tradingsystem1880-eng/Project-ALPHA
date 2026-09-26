@@ -290,6 +290,27 @@ consumed on use and audited at write and consume with `authorized_by`.
 - Write paths (`attest`/`override`/`ack`/`baseline`) need pydantic and re-exec themselves
   under `.venv/bin/python` when invoked as plain `python3`.
 
+## Cloud sessions (Claude Code on the web)
+
+`session-start` checks `CLAUDE_CODE_REMOTE=true`. When it is set, the hook:
+- Adds `.venv/bin` to the front of `PATH` via `CLAUDE_ENV_FILE`. System `python3` is 3.11 and can't import the venv.
+- Launches `scripts/cloud_setup.sh` detached, logging to `.claude/state/cloud-setup.log`.
+
+The script is idempotent. It runs the root, `workers/qlib` and `workers/literature` `uv sync --locked`, then `npm ci` for the frontend, then installs Playwright's pinned chromium. It lists every failed step and exits non-zero. Local sessions are untouched.
+
+Two settings live in the cloud environment, not the repo (session title bar → environment → **Edit**):
+- **Network access**: choose **Custom**, tick *Also include default list*, and add these allowed domains:
+  - `download.pytorch.org`
+  - `download-r2.pytorch.org` (the locked `torch 2.12.1+cpu` wheel)
+  - `cdn.playwright.dev`
+  - `playwright.download.prss.microsoft.com` (chromium revision 1228)
+
+  Without them, the workspace sync and the Playwright step fail loud and name the blocked host.
+- **Setup script** (optional; warms the cached environment snapshot so later sessions sync from cache):
+  `#!/bin/bash` then `CLAUDE_CODE_REMOTE=true bash /home/user/Project-ALPHA/scripts/cloud_setup.sh || true`.
+
+A `uv run` that re-syncs and dies fetching torch is an environment failure, not a test failure. Check the log first. Codex stays unavailable in the cloud because it needs a ChatGPT login, and every gate passes without it.
+
 ## v2 rationale (evidence base)
 
 1. Repo gap audit of v1 (45 findings: enforcement holes A1–A15, awareness B1–B9,

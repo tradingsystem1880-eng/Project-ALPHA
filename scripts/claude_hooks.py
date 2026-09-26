@@ -1047,7 +1047,35 @@ def hook_session_start(payload: dict[str, Any], root: Path) -> HookResult:
     lines += _owner_warning(root)
     lines.append(KARPATHY_BLOCK)
     lines.append(_repo_brief_or_reason(root))
+    lines += _cloud_setup(root)
     return (0, "\n".join(lines))
+
+
+CLOUD_SETUP_LOG = ".claude/state/cloud-setup.log"
+
+
+def _cloud_setup(root: Path) -> list[str]:
+    """Cloud sessions only: put the venv first on PATH and install deps in the background.
+
+    Detached because a cold `uv sync` (torch) outlasts any hook timeout; `uv` locks the
+    venv, so an early `uv run` waits for the sync instead of racing it.
+    """
+    script = root / "scripts" / "cloud_setup.sh"
+    if os.environ.get("CLAUDE_CODE_REMOTE") != "true" or not script.is_file():
+        return []
+    env_file = os.environ.get("CLAUDE_ENV_FILE")
+    if env_file:
+        with open(env_file, "a", encoding="utf-8") as fh:
+            fh.write(f'export PATH="{root / ".venv" / "bin"}:$PATH"\n')
+    log = root / CLOUD_SETUP_LOG
+    log.parent.mkdir(parents=True, exist_ok=True)
+    log.write_text("", encoding="utf-8")
+    subprocess.run(
+        ["bash", "-c", 'nohup bash "$0" >>"$1" 2>&1 </dev/null &', str(script), str(log)],
+        cwd=root,
+        check=True,
+    )
+    return [f"CLOUD SETUP running in background — progress/failures in {CLOUD_SETUP_LOG}."]
 
 
 def _repo_brief_or_reason(root: Path) -> str:

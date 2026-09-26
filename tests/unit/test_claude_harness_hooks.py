@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -366,6 +367,34 @@ class TestContextHooks:
         assert "gate" in lowered
         assert "smallest diff" in lowered
         assert "/plan-feature" in lowered
+
+    def test_session_start_skips_cloud_setup_locally(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("CLAUDE_CODE_REMOTE", raising=False)
+        (repo / "scripts").mkdir()
+        (repo / "scripts" / "cloud_setup.sh").write_text("touch ran\n")
+        _, text = claude_hooks.hook_session_start(_payload(), repo)
+        assert "CLOUD SETUP" not in text
+        assert not (repo / claude_hooks.CLOUD_SETUP_LOG).exists()
+
+    def test_session_start_launches_cloud_setup_in_cloud(
+        self, repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        env_file = tmp_path / "env"
+        monkeypatch.setenv("CLAUDE_CODE_REMOTE", "true")
+        monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
+        (repo / "scripts").mkdir()
+        (repo / "scripts" / "cloud_setup.sh").write_text("echo cloud-ran\n")
+        _, text = claude_hooks.hook_session_start(_payload(), repo)
+        assert claude_hooks.CLOUD_SETUP_LOG in text
+        assert f"{repo / '.venv' / 'bin'}:$PATH" in env_file.read_text()
+        log = repo / claude_hooks.CLOUD_SETUP_LOG
+        for _ in range(100):
+            if "cloud-ran" in log.read_text():
+                break
+            time.sleep(0.05)
+        assert "cloud-ran" in log.read_text()
 
     def test_pre_compact_guidance(self, repo: Path) -> None:
         code, text = claude_hooks.hook_pre_compact(_payload(), repo)
