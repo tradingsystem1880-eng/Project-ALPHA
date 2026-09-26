@@ -1047,7 +1047,44 @@ def hook_session_start(payload: dict[str, Any], root: Path) -> HookResult:
     lines += _owner_warning(root)
     lines.append(KARPATHY_BLOCK)
     lines.append(_repo_brief_or_reason(root))
+    lines += _cloud_setup(root)
     return (0, "\n".join(lines))
+
+
+CLOUD_SETUP_LOG = ".claude/state/cloud-setup.log"
+CLOUD_SETUP_STATUS = ".claude/state/cloud-setup.status"
+
+
+def _cloud_setup(root: Path) -> list[str]:
+    """Cloud sessions only: put the venv first on PATH and install deps in the background.
+
+    Detached because a cold `uv sync` (torch) outlasts any hook timeout. The status file
+    reads `running` before this returns, so `cloud_setup.sh --wait` never races the
+    launch. `UV_NO_SYNC=1`: when the pytorch index is blocked the script installs PyPI
+    torch, which any syncing `uv run` would try (and fail) to replace.
+    """
+    script = root / "scripts" / "cloud_setup.sh"
+    if os.environ.get("CLAUDE_CODE_REMOTE") != "true" or not script.is_file():
+        return []
+    env_file = os.environ.get("CLAUDE_ENV_FILE")
+    if env_file:
+        with open(env_file, "a", encoding="utf-8") as fh:
+            fh.write(f'export PATH="{root / ".venv" / "bin"}:$PATH"\nexport UV_NO_SYNC=1\n')
+    log = root / CLOUD_SETUP_LOG
+    log.parent.mkdir(parents=True, exist_ok=True)
+    log.write_text("", encoding="utf-8")
+    (root / CLOUD_SETUP_STATUS).write_text("running\n", encoding="utf-8")
+    subprocess.run(
+        ["bash", "-c", 'nohup bash "$0" >>"$1" 2>&1 </dev/null &', str(script), str(log)],
+        cwd=root,
+        check=True,
+    )
+    return [
+        f"CLOUD SETUP running in background — log {CLOUD_SETUP_LOG}. Before Python/npm work "
+        "run `bash scripts/cloud_setup.sh --wait`. uv run does not auto-sync here "
+        "(UV_NO_SYNC=1): after changing dependencies run `uv sync --locked`. PID 1 here "
+        "never reaps orphans: run pytest and gate.py as `tini -s -- uv run ...`."
+    ]
 
 
 def _repo_brief_or_reason(root: Path) -> str:

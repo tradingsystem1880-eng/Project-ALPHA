@@ -290,6 +290,40 @@ consumed on use and audited at write and consume with `authorized_by`.
 - Write paths (`attest`/`override`/`ack`/`baseline`) need pydantic and re-exec themselves
   under `.venv/bin/python` when invoked as plain `python3`.
 
+## Cloud sessions (Claude Code on the web)
+
+`session-start` checks `CLAUDE_CODE_REMOTE=true`. When it is set, the hook:
+- Writes `.venv/bin` first on `PATH` plus `UV_NO_SYNC=1` to `CLAUDE_ENV_FILE`. System `python3` is 3.11.
+- Marks `.claude/state/cloud-setup.status` as `running`.
+- Launches `scripts/cloud_setup.sh` detached, logging to `.claude/state/cloud-setup.log`.
+
+Before Python or npm work, run `bash scripts/cloud_setup.sh --wait`; it blocks until setup finishes and prints the step summary. With a warm uv cache a full install takes seconds; a cold one takes minutes.
+
+The script is idempotent. It runs, in order:
+- the root, `workers/qlib` and `workers/literature` `uv sync --locked`
+- the frontend `npm ci`
+- Playwright's pinned chromium
+
+It prints `OK` or `FAILED` per step, and `FALLBACK` when it works around a blocked host:
+- **torch.** The locked `2.12.1+cpu` wheel lives on `download(-r2).pytorch.org`. If that is blocked, the script installs everything else as locked, plus the same torch version from PyPI (CUDA build; runs on CPU; about 6 GB). In that mode:
+  - `uv sync --locked` keeps failing, so `gate.py fast` stamps but `gate.py full` cannot.
+  - `uv run` must not sync, which is why the hook sets `UV_NO_SYNC=1`. After changing dependencies, run `uv sync --locked` yourself.
+- **Playwright.** If `cdn.playwright.dev` is blocked, the script aliases the newest chromium already in `PLAYWRIGHT_BROWSERS_PATH` under the pinned revision.
+
+Settings that live in the cloud environment, not the repo (session title bar → environment → **Edit**):
+- **Network access (removes both fallbacks; needed for a `gate.py full` stamp)**: choose **Custom**, tick *Also include default list*, and add these allowed domains:
+  - `download.pytorch.org`
+  - `download-r2.pytorch.org`
+  - `cdn.playwright.dev`
+  - `playwright.download.prss.microsoft.com`
+- **Environment variables**: `UV_NO_SYNC=1`. The hook's `CLAUDE_ENV_FILE` reaches only the Bash tool. The `alpha` MCP server (`uv run alpha-mcp`) needs the variable in its own environment, or it re-syncs, fails on torch and shows "Connection closed".
+- **Setup script** (runs before Claude Code launches and is cached as a snapshot, so the venv exists when MCP servers start):
+  `#!/bin/bash` then `CLAUDE_CODE_REMOTE=true bash /home/user/Project-ALPHA/scripts/cloud_setup.sh || true`.
+
+**Orphan reaping.** The VM's PID 1 (`process_api`) never reaps orphaned processes. Killed grandchildren therefore stay zombies, and `tests/unit/test_durable_job_lease.py` sees their process group as still alive, even though GitHub CI passes. The script installs `tini`; run pytest and the gate as `tini -s -- uv run python scripts/gate.py full`, since `tini` reaps them.
+
+Codex (`codex` MCP) cannot run in the cloud: it needs a ChatGPT login and `api.openai.com`. Every gate passes without it.
+
 ## v2 rationale (evidence base)
 
 1. Repo gap audit of v1 (45 findings: enforcement holes A1–A15, awareness B1–B9,
