@@ -293,23 +293,36 @@ consumed on use and audited at write and consume with `authorized_by`.
 ## Cloud sessions (Claude Code on the web)
 
 `session-start` checks `CLAUDE_CODE_REMOTE=true`. When it is set, the hook:
-- Adds `.venv/bin` to the front of `PATH` via `CLAUDE_ENV_FILE`. System `python3` is 3.11 and can't import the venv.
+- Writes `.venv/bin` first on `PATH` plus `UV_NO_SYNC=1` to `CLAUDE_ENV_FILE`. System `python3` is 3.11.
+- Marks `.claude/state/cloud-setup.status` as `running`.
 - Launches `scripts/cloud_setup.sh` detached, logging to `.claude/state/cloud-setup.log`.
 
-The script is idempotent. It runs the root, `workers/qlib` and `workers/literature` `uv sync --locked`, then `npm ci` for the frontend, then installs Playwright's pinned chromium. It lists every failed step and exits non-zero. Local sessions are untouched.
+Before Python or npm work, run `bash scripts/cloud_setup.sh --wait`; it blocks until setup finishes and prints the step summary. With a warm uv cache a full install takes seconds; a cold one takes minutes.
 
-Two settings live in the cloud environment, not the repo (session title bar → environment → **Edit**):
-- **Network access**: choose **Custom**, tick *Also include default list*, and add these allowed domains:
+The script is idempotent. It runs, in order:
+- the root, `workers/qlib` and `workers/literature` `uv sync --locked`
+- the frontend `npm ci`
+- Playwright's pinned chromium
+
+It prints `OK` or `FAILED` per step, and `FALLBACK` when it works around a blocked host:
+- **torch.** The locked `2.12.1+cpu` wheel lives on `download(-r2).pytorch.org`. If that is blocked, the script installs everything else as locked, plus the same torch version from PyPI (CUDA build; runs on CPU; about 6 GB). In that mode:
+  - `uv sync --locked` keeps failing, so `gate.py fast` stamps but `gate.py full` cannot.
+  - `uv run` must not sync, which is why the hook sets `UV_NO_SYNC=1`. After changing dependencies, run `uv sync --locked` yourself.
+- **Playwright.** If `cdn.playwright.dev` is blocked, the script aliases the newest chromium already in `PLAYWRIGHT_BROWSERS_PATH` under the pinned revision.
+
+Settings that live in the cloud environment, not the repo (session title bar → environment → **Edit**):
+- **Network access (removes both fallbacks; needed for a `gate.py full` stamp)**: choose **Custom**, tick *Also include default list*, and add these allowed domains:
   - `download.pytorch.org`
-  - `download-r2.pytorch.org` (the locked `torch 2.12.1+cpu` wheel)
+  - `download-r2.pytorch.org`
   - `cdn.playwright.dev`
-  - `playwright.download.prss.microsoft.com` (chromium revision 1228)
-
-  Without them, the workspace sync and the Playwright step fail loud and name the blocked host.
-- **Setup script** (optional; warms the cached environment snapshot so later sessions sync from cache):
+  - `playwright.download.prss.microsoft.com`
+- **Environment variables**: `UV_NO_SYNC=1`. The hook's `CLAUDE_ENV_FILE` reaches only the Bash tool. The `alpha` MCP server (`uv run alpha-mcp`) needs the variable in its own environment, or it re-syncs, fails on torch and shows "Connection closed".
+- **Setup script** (runs before Claude Code launches and is cached as a snapshot, so the venv exists when MCP servers start):
   `#!/bin/bash` then `CLAUDE_CODE_REMOTE=true bash /home/user/Project-ALPHA/scripts/cloud_setup.sh || true`.
 
-A `uv run` that re-syncs and dies fetching torch is an environment failure, not a test failure. Check the log first. Codex stays unavailable in the cloud because it needs a ChatGPT login, and every gate passes without it.
+**Orphan reaping.** The VM's PID 1 (`process_api`) never reaps orphaned processes. Killed grandchildren therefore stay zombies, and `tests/unit/test_durable_job_lease.py` sees their process group as still alive, even though GitHub CI passes. The script installs `tini`; run pytest and the gate as `tini -s -- uv run python scripts/gate.py full`, since `tini` reaps them.
+
+Codex (`codex` MCP) cannot run in the cloud: it needs a ChatGPT login and `api.openai.com`. Every gate passes without it.
 
 ## v2 rationale (evidence base)
 

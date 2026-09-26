@@ -388,7 +388,11 @@ class TestContextHooks:
         (repo / "scripts" / "cloud_setup.sh").write_text("echo cloud-ran\n")
         _, text = claude_hooks.hook_session_start(_payload(), repo)
         assert claude_hooks.CLOUD_SETUP_LOG in text
-        assert f"{repo / '.venv' / 'bin'}:$PATH" in env_file.read_text()
+        exports = env_file.read_text()
+        assert f"{repo / '.venv' / 'bin'}:$PATH" in exports
+        assert "export UV_NO_SYNC=1" in exports
+        assert "--wait" in text
+        assert (repo / claude_hooks.CLOUD_SETUP_STATUS).read_text() == "running\n"
         log = repo / claude_hooks.CLOUD_SETUP_LOG
         for _ in range(100):
             if "cloud-ran" in log.read_text():
