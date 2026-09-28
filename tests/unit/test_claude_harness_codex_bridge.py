@@ -3,7 +3,7 @@
 A fake `codex` executable on PATH plays every role (probe/login/models, review, research,
 quota failure, garbage output, hang) so the graceful `unavailable:` contract, schema
 wrapping, injection stripping and audit trail are pinned without network. One `network`
-marked smoke calls the real Spark model.
+marked smoke calls the real default model.
 """
 
 from __future__ import annotations
@@ -29,6 +29,8 @@ import json, os, sys, time
 args = sys.argv[1:]
 mode = os.environ.get("FAKE_CODEX_MODE", "ok")
 if args[:1] == ["--version"]:
+    if mode == "noversion":
+        print("error: boom", file=sys.stderr); sys.exit(1)
     print("codex-cli 0.146.0"); sys.exit(0)
 if args[:2] == ["login", "status"]:
     if mode == "logged_out":
@@ -76,7 +78,7 @@ def fake_codex(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     home = tmp_path / "codex-home"
     home.mkdir()
     (home / "models_cache.json").write_text(
-        json.dumps({"models": [{"slug": "gpt-5.3-codex-spark"}, {"slug": "gpt-5.4"}]})
+        json.dumps({"models": [{"slug": codex_bridge.DEFAULT_MODEL}, {"slug": "gpt-5.4"}]})
     )
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setenv("CODEX_HOME", str(home))
@@ -102,29 +104,42 @@ def _calls(fake: Path) -> list[dict[str, Any]]:
 class TestProbeAndModel:
     def test_model_resolution_order(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(codex_bridge.MODEL_ENV, raising=False)
-        assert codex_bridge.resolve_model(None) == "gpt-5.3-codex-spark"
+        assert codex_bridge.DEFAULT_MODEL == "gpt-6-astra"
+        assert codex_bridge.DEFAULT_EFFORT == "medium"
+        assert codex_bridge.resolve_model(None) == codex_bridge.DEFAULT_MODEL
         monkeypatch.setenv(codex_bridge.MODEL_ENV, "gpt-5.4")
         assert codex_bridge.resolve_model(None) == "gpt-5.4"
         assert codex_bridge.resolve_model("gpt-5.6-sol") == "gpt-5.6-sol"
 
     def test_probe_available(self, fake_codex: Path) -> None:
-        info = codex_bridge.probe("gpt-5.3-codex-spark")
+        info = codex_bridge.probe(codex_bridge.DEFAULT_MODEL)
         assert info["available"] is True and "Logged in using ChatGPT" in info["login"]
+
+    def test_cache_from_other_client_version_is_ignored(
+        self, fake_codex: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cache = Path(os.environ["CODEX_HOME"]) / "models_cache.json"
+        cache.write_text(json.dumps({"client_version": "0.146.0", "models": [{"slug": "gpt-5.4"}]}))
+        assert "not in models cache" in codex_bridge.probe("gpt-9-unknown")["reason"]
+        cache.write_text(json.dumps({"client_version": "0.152.1", "models": [{"slug": "gpt-5.4"}]}))
+        assert codex_bridge.probe("gpt-9-unknown")["available"] is True
+        monkeypatch.setenv("FAKE_CODEX_MODE", "noversion")
+        assert "codex --version unreadable" in codex_bridge.probe("gpt-9-unknown")["reason"]
 
     def test_probe_unavailable_paths(
         self, fake_codex: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         assert "not in models cache" in codex_bridge.probe("gpt-9-unknown")["reason"]
         monkeypatch.setenv("FAKE_CODEX_MODE", "logged_out")
-        assert "not logged in" in codex_bridge.probe("gpt-5.3-codex-spark")["reason"]
+        assert "not logged in" in codex_bridge.probe(codex_bridge.DEFAULT_MODEL)["reason"]
         monkeypatch.setenv("PATH", str(fake_codex / "empty"))
-        assert "not on PATH" in codex_bridge.probe("gpt-5.3-codex-spark")["reason"]
+        assert "not on PATH" in codex_bridge.probe(codex_bridge.DEFAULT_MODEL)["reason"]
 
 
 class TestReview:
     def test_review_wraps_sanitizes_and_runs_read_only(self, fake_codex: Path, repo: Path) -> None:
         result = codex_bridge.review(
-            repo, diff="+x = 1\n", model="gpt-5.3-codex-spark", effort="xhigh", timeout=30
+            repo, diff="+x = 1\n", model=codex_bridge.DEFAULT_MODEL, effort="xhigh", timeout=30
         )
         assert result["available"] is True and result["schema_version"] == 1
         sev = [f["severity"] for f in result["findings"]]
@@ -135,16 +150,20 @@ class TestReview:
         argv = call["argv"]
         assert argv[:2] == ["exec", "--skip-git-repo-check"]
         assert "--ephemeral" in argv and argv[argv.index("-s") + 1] == "read-only"
-        assert argv[argv.index("-m") + 1] == "gpt-5.3-codex-spark"
+        assert argv[argv.index("-m") + 1] == codex_bridge.DEFAULT_MODEL
         assert 'model_reasoning_effort="xhigh"' in argv and 'approval_policy="never"' in argv
         assert argv[argv.index("--output-schema") + 1].endswith("schemas/codex_review.json")
         assert "+x = 1" in call["stdin"] and "look-ahead" in call["stdin"]
 
     def test_empty_diff_and_oversize_diff(self, fake_codex: Path, repo: Path) -> None:
-        empty = codex_bridge.review(repo, diff="  \n", model="gpt-5.3-codex-spark", effort="low")
+        empty = codex_bridge.review(
+            repo, diff="  \n", model=codex_bridge.DEFAULT_MODEL, effort="low"
+        )
         assert empty["available"] is False and "empty diff" in empty["unavailable_reason"]
         big = "+" + "a" * (codex_bridge.MAX_DIFF_BYTES + 10) + "\n"
-        codex_bridge.review(repo, diff=big, model="gpt-5.3-codex-spark", effort="low", timeout=30)
+        codex_bridge.review(
+            repo, diff=big, model=codex_bridge.DEFAULT_MODEL, effort="low", timeout=30
+        )
         assert "[diff truncated]" in _calls(fake_codex)[-1]["stdin"]
 
     @pytest.mark.parametrize(
@@ -156,7 +175,7 @@ class TestReview:
     ) -> None:
         monkeypatch.setenv("FAKE_CODEX_MODE", mode)
         result = codex_bridge.review(
-            repo, diff="+x\n", model="gpt-5.3-codex-spark", effort="low", timeout=30
+            repo, diff="+x\n", model=codex_bridge.DEFAULT_MODEL, effort="low", timeout=30
         )
         assert result["available"] is False and result["findings"] == []
         assert (
@@ -169,7 +188,7 @@ class TestReview:
     ) -> None:
         monkeypatch.setenv("FAKE_CODEX_MODE", "hang")
         result = codex_bridge.review(
-            repo, diff="+x\n", model="gpt-5.3-codex-spark", effort="low", timeout=0.3
+            repo, diff="+x\n", model=codex_bridge.DEFAULT_MODEL, effort="low", timeout=0.3
         )
         assert result["available"] is False and "wall-clock cap" in result["unavailable_reason"]
 
@@ -181,7 +200,7 @@ class TestResearch:
         result = codex_bridge.research(
             repo,
             question="Does DSR reduce to PSR at N=1?",
-            model="gpt-5.3-codex-spark",
+            model=codex_bridge.DEFAULT_MODEL,
             effort="high",
             timeout=30,
         )
@@ -221,10 +240,13 @@ class TestCli:
         )
         (repo / "a.py").write_text("x = 2\n")
         out = self._run(repo, "review", "--uncommitted", "--timeout", "30")
-        assert out["available"] is True and out["model"] == "gpt-5.3-codex-spark"
+        assert out["available"] is True and out["model"] == codex_bridge.DEFAULT_MODEL
         assert "-x = 1" in _calls(fake_codex)[-1]["stdin"]
         events = gate.read_audit(repo, kind="codex_call")
-        assert events and "review model=gpt-5.3-codex-spark available=True" in events[-1]["detail"]
+        assert (
+            events
+            and f"review model={codex_bridge.DEFAULT_MODEL} available=True" in events[-1]["detail"]
+        )
 
     def test_cli_unavailable_is_exit_zero(
         self, fake_codex: Path, repo: Path, monkeypatch: pytest.MonkeyPatch
@@ -258,8 +280,8 @@ class TestCli:
 
 
 @pytest.mark.network
-def test_live_spark_smoke() -> None:
-    """One real Spark call; skipped offline/in CI. Proves the schema round-trip end to end."""
+def test_live_default_model_smoke() -> None:
+    """One real call to the default model; skipped offline/in CI. Proves the schema round-trip."""
     info = codex_bridge.probe(codex_bridge.resolve_model(None))
     if not info["available"]:
         pytest.skip(info["reason"])

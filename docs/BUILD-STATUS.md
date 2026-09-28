@@ -456,3 +456,24 @@ follows. All implementation and runtime checks are complete, with a passing full
 aggregate on the pre-exception tree; final delivery requires refreshed exact-tree
 verification and independent review. Final receipts and commit outcome are retained
 under `.alpha/state/` and in the handoff.
+
+## 2026-09-28 — Codex second-model seam repaired after codex-cli 0.154
+
+Two independent breaks were found while verifying the Claude↔Codex connection. codex-cli
+0.154.0 removed the `mcp-server` subcommand that `.mcp.json` launched, so every Claude Code
+session reported `codex (CONNECTION_CLOSED)`; the dead entry was removed (no replacement MCP
+mode exists in 0.154). The bridge default model `gpt-5.3-codex-spark` was retired from the
+models cache, so `scripts/codex_bridge.py probe` returned `available: false`; the default is
+now `gpt-6-astra` (the owner's Codex default), still overridable by `--model` and
+`ALPHA_CODEX_MODEL`; the owner also set the default reasoning effort to `medium` (was `xhigh`;
+`--effort` overrides). Live `research` and `review` round-trips through the bridge were verified
+against the real model on this tree. A third fault surfaced during that test: the desktop
+Codex apps (bundled codex 0.152.1 / 0.149) rewrite the shared models cache without the new
+model, which flipped the probe to a false `unavailable`; the probe now ignores a cache stamped
+with a different `client_version`. Runbook, owner checklist and ADR-0034 carry the amendment; plan:
+[codex seam repair](superpowers/plans/2026-09-28-codex-seam-repair.md). The hidden holdout
+suite is still absent; the owner granted a separate one-time exception for this commit only,
+recorded in that plan. Hidden tests remain UNVERIFIED. Codex remains
+optional and non-authoritative; no gate, surface or approval authority changed. Protected
+control-plane paths were edited, so commit requires the usual independent review and a fresh
+full stamp.

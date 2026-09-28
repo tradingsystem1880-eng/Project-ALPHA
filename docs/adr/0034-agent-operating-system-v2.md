@@ -54,6 +54,10 @@ Karpathy guidelines always on mechanically; and Codex — via the ChatGPT-authen
    (`agree|refute|out_of_scope`) in `ReviewVerdict.second_opinion[]`; Codex never attests,
    writes, or approves. `.mcp.json` registers `codex mcp-server` (Spark, read-only) for
    interactive use. Every mandatory gate must pass with Codex absent.
+   *(Amendment, 2026-09-28: codex-cli 0.154 removed `mcp-server` and retired
+   `gpt-5.3-codex-spark`; the `.mcp.json` entry was dropped and the bridge default became
+   `gpt-6-astra`. The bridge/`codex-liaison` path is the only Claude→Codex seam. See
+   `docs/operations/codex-second-model-runbook.md`.)*
 4. **Awareness and reasoning as generated artifacts.** Session brief and repo index are derived
    from the tree; MODULE MAP and CLI surface live in `.claude/rules/*.md` (relocation proven
    byte-for-byte by `tests/unit/test_claude_md_relocation.py`); plans carry a `FeaturePlan`

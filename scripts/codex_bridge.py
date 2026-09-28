@@ -12,8 +12,8 @@ second opinion only: every failure mode (no binary, not logged in, model missing
 models cache, quota/rate limit, timeout, malformed output) yields ``available: false`` with an
 ``unavailable:<reason>`` and exit code 0 — a gate must never depend on this script.
 
-Model resolution: ``--model`` > ``ALPHA_CODEX_MODEL`` > ``gpt-5.3-codex-spark``; the model must
-be present in ``$CODEX_HOME/models_cache.json``. Effort defaults to ``xhigh``. Every call is
+Model resolution: ``--model`` > ``ALPHA_CODEX_MODEL`` > ``gpt-6-astra``; the model must
+be present in ``$CODEX_HOME/models_cache.json``. Effort defaults to ``medium``. Every call is
 audited as ``codex_call``. Stdlib only (runs from any agent's sandbox); output fields are
 coerced to the schema here and re-validated by the SubagentStop hook.
 """
@@ -34,9 +34,9 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gate  # noqa: E402  (sibling module: repo_root, append_audit, codex_probe)
 
-DEFAULT_MODEL = "gpt-5.3-codex-spark"
+DEFAULT_MODEL = "gpt-6-astra"
 MODEL_ENV = "ALPHA_CODEX_MODEL"
-DEFAULT_EFFORT = "xhigh"
+DEFAULT_EFFORT = "medium"
 REVIEW_TIMEOUT = 900.0
 RESEARCH_TIMEOUT = 600.0
 MAX_DIFF_BYTES = 200_000
@@ -85,9 +85,34 @@ def resolve_model(explicit: str | None) -> str:
     return explicit or os.environ.get(MODEL_ENV) or DEFAULT_MODEL
 
 
+def _cli_version() -> str:
+    """Installed CLI version from ``codex --version`` (``codex-cli X.Y.Z``); raises otherwise."""
+    try:
+        out = subprocess.run(
+            ["codex", "--version"], capture_output=True, text=True, timeout=20, check=False
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError(f"codex --version failed: {exc!r}") from exc
+    match = re.fullmatch(r"codex-cli (\S+)", out.stdout.strip())
+    if out.returncode != 0 or match is None:
+        raise RuntimeError(
+            f"codex --version unreadable: {(out.stdout + out.stderr).strip()[:80]!r}"
+        )
+    return match.group(1)
+
+
 def cached_models() -> list[str]:
+    """Slugs from the models cache; [] when a different Codex client version wrote it.
+
+    The cache is shared by every Codex client on the machine (CLI, desktop app) and each rewrites
+    it with its own model list, so a cache stamped with another ``client_version`` says nothing
+    about what this CLI can run.
+    """
     home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
     data = gate.read_json(home / "models_cache.json") or {}
+    written_by = data.get("client_version")
+    if written_by and written_by != _cli_version():
+        return []
     models = data.get("models", [])
     return [str(m["slug"]) for m in models if isinstance(m, dict) and m.get("slug")]
 
@@ -97,7 +122,10 @@ def probe(model: str) -> dict[str, Any]:
     ok, detail = gate.codex_probe()
     if not ok:
         return {"available": False, "reason": f"unavailable: {detail}", "model": model}
-    models = cached_models()
+    try:
+        models = cached_models()
+    except RuntimeError as exc:
+        return {"available": False, "reason": f"unavailable: {exc}", "model": model}
     if models and model not in models:
         return {
             "available": False,
