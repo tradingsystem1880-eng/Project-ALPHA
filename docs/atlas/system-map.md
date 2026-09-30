@@ -2,7 +2,7 @@
 
 # System map
 
-14 components (packages, apps, workers), 307 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+14 components (packages, apps, workers), 310 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
 <!-- nodes: component:alpha-backtest|component:alpha-cli|component:alpha-core|component:alpha-data|component:alpha-forecast|component:alpha-mcp|component:alpha-patterns|component:alpha-research|component:alpha-strategies|component:alpha-study|component:alpha-validation|component:alpha-web|component:literature|component:qlib -->
 ```mermaid

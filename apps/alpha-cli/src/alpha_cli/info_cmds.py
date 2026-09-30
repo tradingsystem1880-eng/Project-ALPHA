@@ -96,7 +96,9 @@ _NON_RUN_COMMAND_PREFIXES: Final = ("figures", "chart", "scan")
 
 
 def _launchable(path: str) -> bool:
-    return path.split(" ", 1)[0] not in _NON_RUN_COMMAND_PREFIXES
+    return path.split(" ", 1)[0] not in _NON_RUN_COMMAND_PREFIXES and not path.startswith(
+        "research diagnostic "
+    )
 
 
 def _command_catalog(*, include_all: bool = False) -> list[dict[str, Any]]:

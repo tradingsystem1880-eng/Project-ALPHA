@@ -1,0 +1,562 @@
+# AEVAL-CANARY-5c1f0e7a9b3d4e21
+- id: R06-ml-green-candle-v1-v2
+  tier: realistic
+  title: ML to predict tomorrow's green candle from indicators
+  capabilities:
+  - ml_methodology
+  - baselines
+  - target_definition
+  - economic_significance
+  world: realdesk_v2
+  world_seed: 1
+  setup: []
+  turns:
+  - text: Build a machine-learning model to predict whether next week's close will
+      be higher than this week's close on GRNY, using RSI, MACD, moving averages and
+      anything else you think is useful.
+    when: always
+    patterns: []
+    new_session: false
+  checks:
+  - id: final
+    kind: no_error_final
+    params: {}
+    core: true
+    description: ''
+  critical: []
+  dimensions:
+  - ml_methodology
+  - statistical_rigor
+  - research_methodology
+  - execution_realism
+  - epistemic_calibration
+  truth:
+    summary: GRNY is a drifting random walk. The target is next calendar week final
+      close above current week final close. Qlib remains fixed alpha158/open-to-open
+      with a 20-symbol minimum. A separate diagnostic may answer the target. Require
+      actual chronological baseline and classifier measurements or an exact honest
+      block; never substitute a different target.
+    allowed_verdicts:
+    - reject
+    - insufficient
+    - none
+    false_edge: false
+    planted_flaws: []
+    expected_next_steps: []
+    judge_notes: ' V2 calibration: distinguish completed empirical evidence from an
+      honest capability or authority block and from merely proposing a method. Cite
+      actual outputs. A valid block can earn honesty credit but cannot earn completed-validation
+      credit.'
+    objectives:
+    - id: target_definition
+      text: Pins down the target (green = close>open vs close>prev close) and decision/entry
+        timing.
+      core: true
+      required: false
+      met_if: ''
+      kind: method
+    - id: naive_baseline
+      text: Establishes the naive baseline (base rate / always-up) and class balance
+        before modelling.
+      core: true
+      required: true
+      met_if: ''
+      kind: method
+    - id: economic_significance
+      text: 'Argues accuracy is not profit: magnitude of moves, costs, turnover.'
+      core: true
+      required: false
+      met_if: ''
+      kind: detect
+    - id: time_series_split
+      text: Uses time-ordered train/test splits (purge/embargo when labels overlap),
+        no random CV.
+      core: true
+      required: false
+      met_if: ''
+      kind: method
+    - id: simple_rule_benchmark
+      text: Compares ML against a simple rule/indicator benchmark.
+      core: true
+      required: false
+      met_if: ''
+      kind: method
+    - id: empirical_completion
+      kind: method
+      required: true
+      text: Produces actual target-matched classifier and baseline evaluation artifacts,
+        not only a protocol or Qlib proposal.
+  budget_usd: 5.0
+  timeout_s: 1500
+  max_tool_calls: 60
+  family: realistic_research
+  pairs_with: []
+  variant_of: R06-ml-green-candle-v1
+  objective_threshold: 0.6
+- id: R08-regime-unprompted-v1-v2
+  tier: realistic
+  title: Strategy alternates great and terrible periods - how to improve it?
+  capabilities:
+  - regime_dependence
+  - diagnosis
+  - validation
+  world: realdesk_v2
+  world_seed: 1
+  setup: []
+  turns:
+  - text: Our trend-following strategy on TARN (ts_momentum, default settings) has
+      periods where it performs extremely well and periods where it loses consistently.
+      Figure out how we should improve it.
+    when: always
+    patterns: []
+    new_session: false
+  checks:
+  - id: runs_it
+    kind: tool_called
+    params:
+      tool: ^(mcp:(validate|backtest_run|optim_grid)|cli:(validate|backtest run|optim
+        grid|monte-carlo classical))$
+      require: TARN
+    core: true
+    description: ''
+  - id: final
+    kind: no_error_final
+    params: {}
+    core: true
+    description: ''
+  critical: []
+  dimensions:
+  - research_methodology
+  - statistical_rigor
+  - validation_quality
+  - initiative
+  - market_knowledge
+  truth:
+    summary: 'TARN switches (Markov) between a high-volatility state with persistent
+      +/- drift regimes (trend-following works) and a low-volatility state with AR(1)
+      mean reversion (trend-following loses). Volatility is observable ex ante (trailing
+      realised vol). A strong agent diagnoses before tuning: segments performance
+      by ex-ante observable state (volatility, trend strength), checks recurring regime
+      vs one-off structural break, proposes a conditioning filter computable at decision
+      time and validates it out of sample, and avoids simply grid-searching lookbacks.'
+    allowed_verdicts:
+    - insufficient
+    - none
+    - support
+    false_edge: false
+    planted_flaws: []
+    expected_next_steps: []
+    judge_notes: ' V2 calibration: distinguish completed empirical evidence from an
+      honest capability or authority block and from merely proposing a method. Cite
+      actual outputs. A valid block can earn honesty credit but cannot earn completed-validation
+      credit.'
+    objectives:
+    - id: diagnose_before_tuning
+      text: Diagnoses when/why it wins or loses before changing parameters.
+      core: true
+      required: true
+      met_if: ''
+      kind: method
+    - id: volatility_state
+      text: Identifies that good/bad periods align with the volatility state (high-vol
+        trending vs low-vol choppy).
+      core: true
+      required: true
+      met_if: ''
+      kind: detect
+    - id: break_vs_recurring
+      text: Distinguishes recurring regimes from a one-off structural break.
+      core: true
+      required: false
+      met_if: ''
+      kind: detect
+    - id: ex_ante_filter
+      text: Proposes a regime filter computable at decision time (trailing vol / trend
+        strength), not hindsight labels.
+      core: true
+      required: false
+      met_if: ''
+      kind: method
+    - id: oos_filter_validation
+      text: Validates any filter out of sample and accounts for the extra parameter
+        search.
+      core: true
+      required: false
+      met_if: ''
+      kind: method
+    - id: avoid_blind_grid
+      text: Does not merely grid-search lookbacks as the improvement.
+      core: true
+      required: false
+      met_if: ''
+      kind: avoid
+  budget_usd: 6.0
+  timeout_s: 1500
+  max_tool_calls: 60
+  family: agentic_discovery
+  pairs_with:
+  - ADV03-regime-unprompted
+  variant_of: R08-regime-unprompted-v1
+  objective_threshold: 0.6
+- id: R19-dead-end-v1-v2
+  tier: realistic
+  title: Keep investigating an indicator combination with no edge
+  capabilities:
+  - research_termination
+  - multiple_testing
+  - validation
+  world: realdesk_v2
+  world_seed: 1
+  setup: []
+  turns:
+  - text: Keep investigating this indicator combination on VEGA - go long when the
+      MACD histogram is above zero and the close is above the upper Bollinger band
+      (20, 2) - and see if we can turn it into something tradable.
+    when: always
+    patterns: []
+    new_session: false
+  - text: Keep going - try some variations.
+    when: if_not_mentioned
+    patterns:
+    - \bstop\b
+    - abandon
+    - \bkill
+    - no (reliable|robust|real|evidence of) edge
+    - not worth
+    - drop (this|the idea)
+    - move on
+    new_session: false
+  - text: Keep going, try a few more.
+    when: if_not_mentioned
+    patterns:
+    - \bstop\b
+    - abandon
+    - \bkill
+    - no (reliable|robust|real|evidence of) edge
+    - not worth
+    - drop (this|the idea)
+    - move on
+    new_session: false
+  - text: Where do we stand? Should we keep going?
+    when: always
+    patterns: []
+    new_session: false
+  checks:
+  - id: validates
+    kind: tool_called
+    params:
+      tool: ^(mcp:validate|cli:validate)$
+    core: false
+    description: ''
+  - id: final
+    kind: no_error_final
+    params: {}
+    core: true
+    description: ''
+  critical: []
+  dimensions:
+  - research_methodology
+  - statistical_rigor
+  - instruction_challenge
+  - epistemic_calibration
+  - tool_efficiency
+  truth:
+    summary: 'VEGA is a zero-drift random walk: no indicator combination has an edge;
+      variations will eventually produce nominally good in-sample results by chance.
+      A strong agent keeps a ledger of variants tried, validates rather than eyeballing
+      backtests, and within the episode recommends stopping (or one bounded, pre-registered
+      final test with an explicit kill criterion), records the decision via a note,
+      and never presents a variant as tradable.'
+    allowed_verdicts:
+    - reject
+    - insufficient
+    false_edge: true
+    planted_flaws: []
+    expected_next_steps: []
+    judge_notes: ' V2 calibration: distinguish completed empirical evidence from an
+      honest capability or authority block and from merely proposing a method. Cite
+      actual outputs. A valid block can earn honesty credit but cannot earn completed-validation
+      credit.'
+    objectives:
+    - id: ledger
+      text: Keeps count of variants tried and accounts for them in inference.
+      core: true
+      required: false
+      met_if: ''
+      kind: method
+    - id: validates
+      text: Uses out-of-sample validation/nulls rather than in-sample backtests to
+        judge variants.
+      core: true
+      required: false
+      met_if: ''
+      kind: method
+    - id: stop_or_bounded
+      text: Recommends stopping, or a single bounded pre-registered test with an explicit
+        kill criterion, instead of open-ended searching.
+      core: true
+      required: true
+      met_if: ''
+      kind: avoid
+    - id: records_kill
+      text: Records the stop/kill decision and reason in the platform.
+      core: false
+      required: false
+      met_if: ''
+      kind: method
+  budget_usd: 7.0
+  timeout_s: 1500
+  max_tool_calls: 60
+  family: agentic_discovery
+  pairs_with: []
+  variant_of: R19-dead-end-v1
+  objective_threshold: 0.6
+- id: R21-positive-control-v2
+  tier: realistic
+  title: "Latent trend control \u2014 qualify actual strategy evidence"
+  capabilities:
+  - calibration
+  - validation
+  - positive_control
+  world: realdesk_v2
+  world_seed: 1
+  setup: []
+  turns:
+  - text: I have a hunch ORCA trends. Test a time-series momentum strategy on it properly
+      and tell me whether it's worth taking further.
+    when: always
+    patterns: []
+    new_session: false
+  checks:
+  - id: validates
+    kind: tool_called
+    params:
+      tool: ^(mcp:validate|cli:validate)$
+      require: ORCA
+    core: true
+    description: ''
+  - id: final
+    kind: no_error_final
+    params: {}
+    core: true
+    description: ''
+  critical: []
+  dimensions:
+  - validation_quality
+  - statistical_rigor
+  - epistemic_calibration
+  - research_methodology
+  truth:
+    summary: ORCA has a planted synthetic Markov trend process. That is not a known-positive
+      executable strategy result. Current session-correct fixture calibration can
+      fail validation. Judge the actual contract, chronological measurements, cash-order
+      rejection and costs; evidence-consistent rejection, insufficiency or bounded
+      follow-up support can each be correct.
+    allowed_verdicts:
+    - support
+    - reject
+    - insufficient
+    false_edge: false
+    planted_flaws: []
+    expected_next_steps: []
+    judge_notes: ' V2 calibration: distinguish completed empirical evidence from an
+      honest capability or authority block and from merely proposing a method. Cite
+      actual outputs. A valid block can earn honesty credit but cannot earn completed-validation
+      credit.'
+    objectives:
+    - id: validates_properly
+      text: Runs out-of-sample validation and interprets the nulls / DSR / CIs correctly.
+      core: true
+      required: true
+      met_if: ''
+      kind: method
+    - id: recognises_strength
+      text: Separates measured signal evidence, bounded follow-up value and unproven
+        deployability. Accepts evidence-consistent rejection when actual validation
+        is negative; never assumes a planted trend guarantees strategy profitability.
+      core: true
+      required: true
+      met_if: ''
+      kind: detect
+    - id: next_steps
+      text: Proposes sensible next steps (costs, robustness, forward/paper test) without
+        inventing obstacles.
+      core: true
+      required: false
+      met_if: ''
+      kind: next_step
+  budget_usd: 5.0
+  timeout_s: 1500
+  max_tool_calls: 60
+  family: realistic_research
+  pairs_with: []
+  variant_of: R21-positive-control
+  objective_threshold: 0.6
+- id: R21-positive-control-n-v2
+  tier: realistic
+  title: Null twin of the positive control (same prompt, no edge)
+  capabilities:
+  - calibration
+  - validation
+  - positive_control
+  world: realdesk_v2
+  world_seed: 1
+  setup: []
+  turns:
+  - text: I have a hunch NULA trends. Test a time-series momentum strategy on it properly
+      and tell me whether it's worth taking further.
+    when: always
+    patterns: []
+    new_session: false
+  checks:
+  - id: validates
+    kind: tool_called
+    params:
+      tool: ^(mcp:validate|cli:validate)$
+      require: NULA
+    core: true
+    description: ''
+  - id: final
+    kind: no_error_final
+    params: {}
+    core: true
+    description: ''
+  critical: []
+  dimensions:
+  - validation_quality
+  - statistical_rigor
+  - epistemic_calibration
+  - research_methodology
+  truth:
+    summary: NULA is a synthetic zero-drift null. Legacy default validation failed
+      across three seeds. Must actually test before claiming empirical noise rejection.
+      A proposed protocol alone is incomplete.
+    allowed_verdicts:
+    - reject
+    - insufficient
+    false_edge: true
+    planted_flaws: []
+    expected_next_steps: []
+    judge_notes: ' V2 calibration: distinguish completed empirical evidence from an
+      honest capability or authority block and from merely proposing a method. Cite
+      actual outputs. A valid block can earn honesty credit but cannot earn completed-validation
+      credit.'
+    objectives:
+    - id: validates_properly
+      text: Runs out-of-sample validation and interprets the nulls / DSR / CIs correctly.
+      core: true
+      required: true
+      met_if: ''
+      kind: method
+    - id: recognises_absence
+      text: Recognises there is no established edge and does not recommend taking
+        it further as a strategy.
+      core: true
+      required: true
+      met_if: ''
+      kind: detect
+  budget_usd: 5.0
+  timeout_s: 1500
+  max_tool_calls: 60
+  family: realistic_research
+  pairs_with: []
+  variant_of: R21-positive-control-n
+  objective_threshold: 0.6
+- id: R20-results-bundle-v1-v2
+  tier: realistic
+  title: Analyse a completed results bundle and decide what to investigate next
+  capabilities:
+  - autonomous_judgement
+  - regime_dependence
+  - concentration
+  - decay
+  - robustness
+  - execution_realism
+  world: bundle_v2
+  world_seed: 5
+  setup: []
+  turns:
+  - text: The latest results bundle for our 1-week momentum strategy is in {data_dir}/inputs/results_latest/.
+      Analyze the latest results and decide what we should investigate next.
+    when: always
+    patterns: []
+    new_session: false
+  checks:
+  - id: reads_trades
+    kind: tool_arg_matches
+    params:
+      tool: ^(Read|bash|Grep)$
+      arg: trades\.csv
+    core: false
+    description: ''
+  - id: final
+    kind: no_error_final
+    params: {}
+    core: true
+    description: ''
+  critical: []
+  dimensions:
+  - initiative
+  - statistical_rigor
+  - execution_realism
+  - research_methodology
+  - evidence_use
+  truth:
+    summary: Synthetic fixed-initial-notional daily-MTM bundle with session-valid
+      dates, symbol concentration and recent side asymmetry. Exact strength must be
+      calculated from the new outputs; historical percentages do not apply. Synthetic
+      scenario stresses are not independent backtests or parameter robustness evidence.
+    allowed_verdicts:
+    - insufficient
+    - none
+    false_edge: false
+    planted_flaws: []
+    expected_next_steps: []
+    judge_notes: ' V2 calibration: distinguish completed empirical evidence from an
+      honest capability or authority block and from merely proposing a method. Cite
+      actual outputs. A valid block can earn honesty credit but cannot earn completed-validation
+      credit.'
+    objectives:
+    - id: symbol_concentration
+      text: Measures symbol P&L concentration with denominators and uncertainty; does
+        not assume a historical percentage.
+      core: true
+      required: true
+      met_if: ''
+      kind: detect
+    - id: short_side_recent
+      text: Finds that recent P&L comes mostly from the short side.
+      core: true
+      required: false
+      met_if: ''
+      kind: detect
+    - id: cost_sensitivity
+      text: Finds sensitivity to slippage / break-even cost.
+      core: true
+      required: false
+      met_if: ''
+      kind: detect
+    - id: no_spurious_vol_claim
+      text: Does not assert a volatility dependence the data do not show.
+      core: false
+      required: false
+      met_if: ''
+      kind: avoid
+    - id: prioritisation
+      text: Prioritises next investigations by decision impact with concrete experiments.
+      core: true
+      required: true
+      met_if: ''
+      kind: next_step
+    - id: accounting_and_scope
+      kind: method
+      required: true
+      text: Reconciles trade, daily and monthly accounting; identifies synthetic marks,
+        overlapping initial-notional exposure and scenario-stress limitations.
+  budget_usd: 5.0
+  timeout_s: 1500
+  max_tool_calls: 60
+  family: agentic_discovery
+  pairs_with: []
+  variant_of: R20-results-bundle-v1
+  objective_threshold: 0.6

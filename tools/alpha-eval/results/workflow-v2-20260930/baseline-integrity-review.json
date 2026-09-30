@@ -1,0 +1,161 @@
+{
+  "kind": "retrospective",
+  "limitation": "Baseline acquisition had an empty hidden canary; this scan does not repair that provenance. Original evidence unchanged.",
+  "trials": [
+    {
+      "scenario": "R19-dead-end-v1-v2",
+      "trajectory_sha256": "95c574a3673cce33970b45f8e0d189a5bb9b7fa598eba42b47066521c7a18d04",
+      "raw_sha256": "2fb2b22e2048b1aa3f14c22571898bbbd52b7dd86f5b6767202eda36ae861483",
+      "suite_canary_found": false,
+      "integrity": {
+        "owner_state_before": {
+          "data_control": "",
+          "git_status": "7b2cd98ac67ba9f3de24594992893af005644698ecf7c817d3f491dcace0fd79"
+        },
+        "isolation": {
+          "verified": true,
+          "mcp_tools": 62,
+          "mechanism": "codex-permission-profile",
+          "profile_args": [
+            "-c",
+            "default_permissions=\"alpha_eval\"",
+            "-c",
+            "permissions.alpha_eval.network.enabled=false",
+            "-c",
+            "permissions.alpha_eval.filesystem={\"/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/07f03cc2c068\"=\"deny\",\"/Users/hunternovotny\"=\"deny\",\"/private/tmp\"=\"deny\",\"/tmp\"=\"deny\",\":minimal\"=\"read\",\"/Users/hunternovotny/.alpha-bench/workspace-v2-e54aa7ab05f4-eeece60745ef\"=\"read\",\"/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/07f03cc2c068/sb\"=\"write\",\"/opt/homebrew\"=\"read\",\"/usr/local\"=\"read\"}"
+          ]
+        },
+        "owner_state_after": {
+          "data_control": "",
+          "git_status": "7b2cd98ac67ba9f3de24594992893af005644698ecf7c817d3f491dcace0fd79"
+        },
+        "owner_state_unchanged": true,
+        "canary_leaked": false
+      }
+    },
+    {
+      "scenario": "R06-ml-green-candle-v1-v2",
+      "trajectory_sha256": "c08b0a9e698f9c32f6744a03d13f1153df0fe16c67ac44c968e86accca8367a3",
+      "raw_sha256": "9162bc10ea319206ca08603cc944b6516e8bbeabcfe34ff86c6562b135cf7961",
+      "suite_canary_found": false,
+      "integrity": {
+        "owner_state_before": {
+          "data_control": "",
+          "git_status": "7b2cd98ac67ba9f3de24594992893af005644698ecf7c817d3f491dcace0fd79"
+        },
+        "isolation": {
+          "verified": true,
+          "mcp_tools": 62,
+          "mechanism": "codex-permission-profile",
+          "profile_args": [
+            "-c",
+            "default_permissions=\"alpha_eval\"",
+            "-c",
+            "permissions.alpha_eval.network.enabled=false",
+            "-c",
+            "permissions.alpha_eval.filesystem={\"/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/336ebc115722\"=\"deny\",\"/Users/hunternovotny\"=\"deny\",\"/private/tmp\"=\"deny\",\"/tmp\"=\"deny\",\":minimal\"=\"read\",\"/Users/hunternovotny/.alpha-bench/workspace-v2-e54aa7ab05f4-eeece60745ef\"=\"read\",\"/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/336ebc115722/sb\"=\"write\",\"/opt/homebrew\"=\"read\",\"/usr/local\"=\"read\"}"
+          ]
+        },
+        "owner_state_after": {
+          "data_control": "",
+          "git_status": "7b2cd98ac67ba9f3de24594992893af005644698ecf7c817d3f491dcace0fd79"
+        },
+        "owner_state_unchanged": true,
+        "canary_leaked": false
+      }
+    },
+    {
+      "scenario": "R21-positive-control-n-v2",
+      "trajectory_sha256": "12ceab1de4805d2af5bd57618f789f695fd6c2820024ee9512bf9149f015cd74",
+      "raw_sha256": "b02e451fb94c8a560a1232e742ce58ac9a72488b3bc059480c30878443d727b1",
+      "suite_canary_found": false,
+      "integrity": {
+        "owner_state_before": {
+          "data_control": "",
+          "git_status": "7b2cd98ac67ba9f3de24594992893af005644698ecf7c817d3f491dcace0fd79"
+        },
+        "isolation": {
+          "verified": true,
+          "mcp_tools": 62,
+          "mechanism": "codex-permission-profile",
+          "profile_args": [
+            "-c",
+            "default_permissions=\"alpha_eval\"",
+            "-c",
+            "permissions.alpha_eval.network.enabled=false",
+            "-c",
+            "permissions.alpha_eval.filesystem={\"/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/38bc836d91ac\"=\"deny\",\"/Users/hunternovotny\"=\"deny\",\"/private/tmp\"=\"deny\",\"/tmp\"=\"deny\",\":minimal\"=\"read\",\"/Users/hunternovotny/.alpha-bench/workspace-v2-e54aa7ab05f4-eeece60745ef\"=\"read\",\"/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/38bc836d91ac/sb\"=\"write\",\"/opt/homebrew\"=\"read\",\"/usr/local\"=\"read\"}"
+          ]
+        },
+        "owner_state_after": {
+          "data_control": "",
+          "git_status": "7b2cd98ac67ba9f3de24594992893af005644698ecf7c817d3f491dcace0fd79"
+        },
+        "owner_state_unchanged": true,
+        "canary_leaked": false
+      }
+    },
+    {
+      "scenario": "R08-regime-unprompted-v1-v2",
+      "trajectory_sha256": "f78af40cd625b4e6c255b73a34fa3516e078827fddb12842093792bff9c0e9c1",
+      "raw_sha256": "eb2add0b95eb553d7c589bb240d8a825a9b68aa3d2d225caffd0ceee60b64d32",
+      "suite_canary_found": false,
+      "integrity": {
+        "owner_state_before": {
+          "data_control": "",
+          "git_status": "7b2cd98ac67ba9f3de24594992893af005644698ecf7c817d3f491dcace0fd79"
+        },
+        "isolation": {
+          "verified": true,
+          "mcp_tools": 62,
+          "mechanism": "codex-permission-profile",
+          "profile_args": [
+            "-c",
+            "default_permissions=\"alpha_eval\"",
+            "-c",
+            "permissions.alpha_eval.network.enabled=false",
+            "-c",
+            "permissions.alpha_eval.filesystem={\"/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/735134d57b25\"=\"deny\",\"/Users/hunternovotny\"=\"deny\",\"/private/tmp\"=\"deny\",\"/tmp\"=\"deny\",\":minimal\"=\"read\",\"/Users/hunternovotny/.alpha-bench/workspace-v2-e54aa7ab05f4-eeece60745ef\"=\"read\",\"/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/735134d57b25/sb\"=\"write\",\"/opt/homebrew\"=\"read\",\"/usr/local\"=\"read\"}"
+          ]
+        },
+        "owner_state_after": {
+          "data_control": "",
+          "git_status": "7b2cd98ac67ba9f3de24594992893af005644698ecf7c817d3f491dcace0fd79"
+        },
+        "owner_state_unchanged": true,
+        "canary_leaked": false
+      }
+    },
+    {
+      "scenario": "R21-positive-control-v2",
+      "trajectory_sha256": "8bfbdc5ff0ddabd3ce9baf3f0c3786c9474c82cb784414ea40744cd6cd7d53c3",
+      "raw_sha256": "bd000682864d5dc2e248184cf4a59f69f66fed849706a7ba2370891acda17cca",
+      "suite_canary_found": false,
+      "integrity": {
+        "owner_state_before": {
+          "data_control": "",
+          "git_status": "7b2cd98ac67ba9f3de24594992893af005644698ecf7c817d3f491dcace0fd79"
+        },
+        "isolation": {
+          "verified": true,
+          "mcp_tools": 62,
+          "mechanism": "codex-permission-profile",
+          "profile_args": [
+            "-c",
+            "default_permissions=\"alpha_eval\"",
+            "-c",
+            "permissions.alpha_eval.network.enabled=false",
+            "-c",
+            "permissions.alpha_eval.filesystem={\"/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/76835d5e35ff\"=\"deny\",\"/Users/hunternovotny\"=\"deny\",\"/private/tmp\"=\"deny\",\"/tmp\"=\"deny\",\":minimal\"=\"read\",\"/Users/hunternovotny/.alpha-bench/workspace-v2-e54aa7ab05f4-eeece60745ef\"=\"read\",\"/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/76835d5e35ff/sb\"=\"write\",\"/opt/homebrew\"=\"read\",\"/usr/local\"=\"read\"}"
+          ]
+        },
+        "owner_state_after": {
+          "data_control": "",
+          "git_status": "7b2cd98ac67ba9f3de24594992893af005644698ecf7c817d3f491dcace0fd79"
+        },
+        "owner_state_unchanged": true,
+        "canary_leaked": false
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 # CLI flow
 
-200 leaf commands in 23 groups (from the committed `alpha info commands` cache); 9 MCP action tools bridge to CLI leaves via argv literals. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+202 leaf commands in 23 groups (from the committed `alpha info commands` cache); 9 MCP action tools bridge to CLI leaves via argv literals. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
 <!-- nodes: cli:alpha backtest|cli:alpha chart|cli:alpha crypto-data|cli:alpha data|cli:alpha evidence|cli:alpha figures|cli:alpha forecast|cli:alpha info|cli:alpha ml|cli:alpha monte-carlo|cli:alpha optim|cli:alpha owner-auth|cli:alpha paper|cli:alpha project|cli:alpha propfirm|cli:alpha provider|cli:alpha quantpad-data|cli:alpha research|cli:alpha risk|cli:alpha rules|cli:alpha scan|cli:alpha strategy-candidate|cli:alpha suite -->
 ```mermaid
@@ -315,6 +315,8 @@ cli:alpha suite
 | `alpha research data register-crypto` | `--symbol`, `--registered-by`, `--json` |
 | `alpha research decide` | `--outcome`, `--disposition`, `--actor`, `--reason`, `--json` |
 | `alpha research decision-view` | `--json` |
+| `alpha research diagnostic check-review` | — |
+| `alpha research diagnostic weekly-classifier` | `--snapshot`, `--as-of`, `--calendar`, `--cost-bps-per-side` |
 | `alpha research draft` | `--source-pack-id`, `--answer`, `--dataset`, `--answer-bundle`, `--operator`, `--expected-case-revision` |
 | `alpha research draft-confirmation` | `--created-by`, `--json` |
 | `alpha research evidence-hub` | `--json` |

@@ -1,0 +1,160 @@
+"""Immutable discovery diagnostics. These outputs cannot advance governed research cases."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import sys
+from datetime import timedelta
+from importlib.metadata import version
+from pathlib import Path
+
+import exchange_calendars as xcals  # type: ignore[import-untyped]
+import typer
+
+from alpha_cli import _artifacts, _identity, _runner
+from alpha_core import DataError
+from alpha_core.config import AlphaSettings
+from alpha_research.weekly_diagnostic import VERSION, weekly_diagnostic
+
+diagnostic_app = typer.Typer(
+    help="Non-admitted discovery measurements; no gate or deployment authority."
+)
+
+
+@diagnostic_app.command("weekly-classifier")
+def weekly_classifier(
+    symbol: str,
+    snapshot: str = typer.Option(..., help="Immutable snapshot ID"),
+    as_of: str = typer.Option(..., help="Inclusive knowledge cutoff YYYY-MM-DD"),
+    calendar: str = typer.Option("XNYS", help="Explicit exchange calendar"),
+    cost_bps_per_side: float = 2.0,
+) -> None:
+    """Measure next-week close direction versus majority and momentum baselines.
+
+    Fixed research diagnostic, not a Qlib recipe or an admitted research operator.
+    Prints JSON and writes content-bound immutable evidence under diagnostics/.
+    """
+    settings = AlphaSettings()
+    try:
+        cutoff = _runner.parse_as_of(as_of)
+        bars, _ = _runner.load_bars(
+            symbol, data_dir=settings.data_dir, snapshot_id=snapshot, as_of=cutoff
+        )
+        first, last = bars[0].ts.date(), bars[-1].ts.date()
+        cal = xcals.get_calendar(
+            calendar,
+            start=(first - timedelta(days=10)).isoformat(),
+            end=(last + timedelta(days=20)).isoformat(),
+        )
+        sessions = [
+            s.date()
+            for s in cal.sessions_in_range(
+                first.isoformat(), (last + timedelta(days=10)).isoformat()
+            )
+        ]
+        report = weekly_diagnostic(bars, sessions=sessions, cost_bps_per_side=cost_bps_per_side)
+        identity = dict(
+            version=VERSION,
+            execution_fingerprint=_identity.execution_fingerprint(),
+            research_source_sha256=hashlib.sha256(
+                Path(weekly_diagnostic.__code__.co_filename).read_bytes()
+            ).hexdigest(),
+            runtime_versions={
+                name: version(name) for name in ("numpy", "scipy", "exchange-calendars")
+            },
+            python_version=sys.version,
+            symbol=symbol,
+            snapshot=snapshot,
+            as_of=as_of,
+            calendar=calendar,
+            cost_bps_per_side=cost_bps_per_side,
+            snapshot_hash=_runner.verified_snapshot_hash(settings.data_dir, snapshot),
+            source_hash=_runner.source_fingerprint(bars),
+            calendar_hash=hashlib.sha256(
+                json.dumps([s.isoformat() for s in sessions]).encode()
+            ).hexdigest(),
+        )
+        serialized = json.dumps(
+            {"identity": identity, "report": report}, sort_keys=True, allow_nan=False
+        )
+        digest = hashlib.sha256(serialized.encode()).hexdigest()
+        directory = settings.data_dir / "diagnostics" / digest
+        _artifacts.publish_artifact(
+            directory / "evidence.json", lambda p: p.write_text(serialized, encoding="utf-8")
+        )
+        completion = json.dumps(
+            dict(
+                schema_version=1,
+                admitted=False,
+                evidence_sha256=digest,
+                evidence_file="evidence.json",
+            ),
+            sort_keys=True,
+        )
+        _artifacts.publish_artifact(
+            directory / "manifest.json", lambda p: p.write_text(completion, encoding="utf-8")
+        )
+    except (DataError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(
+        json.dumps(
+            dict(
+                status="completed_evidence",
+                admitted=False,
+                evidence=str(directory / "evidence.json"),
+                sha256=digest,
+                metrics=report["metrics"],
+            ),
+            sort_keys=True,
+            allow_nan=False,
+        )
+    )
+
+
+@diagnostic_app.command("check-review")
+def check_review(path: str) -> None:
+    """Check a typed advisory review and its local JSON evidence hashes/selectors.
+
+    This checks content binding, not the truth or sufficiency of a model's claims.
+    """
+    from alpha_cli.research_workflow_contract import SpecialistReview
+
+    def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        result: dict[str, object] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate JSON object key")
+            result[key] = value
+        return result
+
+    try:
+        review = SpecialistReview.model_validate_json(Path(path).read_text(encoding="utf-8"))
+        for evidence in review.evidence:
+            raw = Path(evidence.artifact).read_bytes()
+            if hashlib.sha256(raw).hexdigest() != evidence.sha256:
+                raise ValueError(f"evidence hash mismatch: {evidence.artifact}")
+            value = json.loads(raw, object_pairs_hook=unique_object)
+            if evidence.pointer:
+                for part in evidence.pointer[1:].split("/"):
+                    key = part.replace("~1", "/").replace("~0", "~")
+                    if isinstance(value, list):
+                        if re.fullmatch(r"0|[1-9][0-9]*", key) is None:
+                            raise ValueError("non-canonical JSON pointer array index")
+                        value = value[int(key)]
+                    else:
+                        value = value[key]
+    except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(
+        json.dumps(
+            dict(
+                schema_valid=True,
+                evidence_resolved=True,
+                advisory_only=True,
+                claim_truth="not_verified",
+                review=review.model_dump(mode="json"),
+            )
+        )
+    )

@@ -66,6 +66,8 @@ ceremony changes from unchanged application authority.
 [Harness operations](docs/operations/claude-code-harness.md): checks, screening, intake, exceptions.
 
 Benchmark: [Codex-only; preserve history; enforce isolation](tools/alpha-eval/README.md).
+Research: [bounded workflow](docs/operations/bounded-research-workflow.md); feasibility and baseline
+before variants, then stop or record exact blocks. `alpha research diagnostic` is non-admitted and advisory.
 
 ## Sources of current truth
 

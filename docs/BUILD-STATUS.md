@@ -532,3 +532,13 @@ Independent delivery review reproduced three offline test failures when Codex wa
 PATH. The scorer unit tests now mock the client-version lookup as well as judging; production
 version fingerprints remain real. The evaluator suite is checked with a Codex-free PATH before
 the refreshed aggregate gate.
+
+### 2026-09-30 — bounded research diagnostics (verification in progress)
+
+Isolated continuation from e54aa7a adds a non-admitted weekly-close classifier CLI, typed advisory
+specialist review contracts and evidence-selector checking, and a bounded baseline-before-variants
+procedure. Qlib, research approvals, D2, promotion and the MCP/REST tool surfaces are unchanged.
+Versioned benchmark worlds add XNYS calendars and reconciling synthetic MTM; historical scenarios
+and model evidence remain retained. The classifier, fixture and contract tests have focused
+coverage; aggregate acceptance and the paired diagnostic panel remain pending in the
+[delivery plan](superpowers/plans/2026-09-30-research-workflow-completion.md).

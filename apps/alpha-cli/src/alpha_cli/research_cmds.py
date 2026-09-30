@@ -56,6 +56,7 @@ from alpha_cli.research_d2 import (
     d2_execution_fingerprint,
     run_confirmation,
 )
+from alpha_cli.research_diagnostic_cmds import diagnostic_app
 from alpha_cli.research_dossier import (
     DossierReceipt,
     export_research_dossier,
@@ -123,6 +124,7 @@ protocols_app = typer.Typer(help="The Git-owned Codex research protocol library.
 data_app = typer.Typer(help="Fail-closed research dataset registration and descriptive audits.")
 claim_app = typer.Typer(help="Claim-level literature evidence; only owner screening elevates.")
 sources_app.add_typer(claim_app, name="claim")
+research_app.add_typer(diagnostic_app, name="diagnostic")
 research_app.add_typer(sources_app, name="sources")
 research_app.add_typer(context_app, name="context")
 research_app.add_typer(note_app, name="note")

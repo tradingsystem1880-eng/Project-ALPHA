@@ -102,3 +102,15 @@ resume identity, Codex-only execution, normalization, partial traces, failed tur
 Historical world-power approximations, legacy overnight/intraday dependence and regex checks remain
 limitations; do not turn them into precise scientific power or profitability claims. Platform defects
 are follow-up work, not fixed to improve this campaign's scores.
+
+## Workflow V2 diagnostic panel
+
+`scenarios/workflow_v2.yaml` adds separately versioned R06/R08/R19/R20/R21 definitions.
+`realdesk_v2` uses XNYS sessions; `bundle_v2` reconciles synthetic daily MTM to trade and
+monthly outputs. Legacy catalogs/worlds remain unchanged. R21 distinguishes within-dataset
+signal, bounded follow-up value and deployability. Do not pool these with historical scores.
+
+The initial paired panel is five questions (R06-v1, R08-v1, R19-v1, R21 positive/null),
+one baseline and one candidate trial each. Completion status is independently adjudicated
+from retained execution evidence, separately from rubric credit. Ten trials are diagnostic,
+not a powered general capability comparison. See the [active plan](../../docs/superpowers/plans/2026-09-30-research-workflow-completion.md).
