@@ -1,0 +1,4153 @@
+{
+ "layer": "A",
+ "seeds": 40,
+ "seconds": 471.0,
+ "probes": [
+  {
+   "id": "P01",
+   "title": "Null-world false-positive rate of the validation gauntlet",
+   "truth": "Zero-drift random walk: no edge exists.",
+   "expected": "Gauntlet PASS rate <= 5% (nominal); verdict grade should not look strong.",
+   "classification": "as_expected",
+   "detail": "1/40 null worlds PASSED (Wilson 95% [0.004,0.129]); 12 received an A/B verdict grade despite no edge.",
+   "metrics": {
+    "fp": 1,
+    "n": 40,
+    "wilson": [
+     0.0044268315026814095,
+     0.1288136896347409
+    ],
+    "ab_grades_on_null": 12
+   },
+   "runs": [
+    {
+     "orders": 39,
+     "orders_denied": 0,
+     "orders_filled": 39,
+     "top5_share": 0.5833411230195871,
+     "run_id": "a9c819fd4cd25721",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.35726557684748717,
+     "null_pct": [
+      0.88,
+      0.90625
+     ],
+     "dsr": 0.8395911186704068,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.5100121099576211,
+     "cpcv_frac_pos": 0.6666666666666666,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 8.560075500048697
+    },
+    {
+     "returncode": 2,
+     "stderr_tail": "Usage: alpha validate [OPTIONS] SYMBOL\nTry 'alpha validate --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 Invalid value: engine stopped after 1594 of 1955 sessions - usually the      \u2502\n\u2502 account balance went negative (fees/slippage on a full-balance fill). Lower  \u2502\n\u2502 target_vol or max_leverage, or raise starting_cash.                          \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+     "seconds": 4.547755000065081
+    },
+    {
+     "orders": 64,
+     "orders_denied": 0,
+     "orders_filled": 64,
+     "top5_share": 0.15169968850646612,
+     "run_id": "0574b4f71f372137",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.0863587225897204,
+     "null_pct": [
+      0.465,
+      0.6875
+     ],
+     "dsr": 0.9987525111701339,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.19880906658387357,
+     "cpcv_frac_pos": 0.6666666666666666,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 9.068233625032008
+    },
+    {
+     "orders": 56,
+     "orders_denied": 22,
+     "orders_filled": 34,
+     "top5_share": Infinity,
+     "run_id": "04556754b9d072e5",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.5515715687908336,
+     "null_pct": [
+      0.165,
+      0.09375
+     ],
+     "dsr": 0.06209996993335318,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.3863774151482007,
+     "cpcv_frac_pos": 0.2,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 8.807676333002746
+    },
+    {
+     "orders": 58,
+     "orders_denied": 0,
+     "orders_filled": 58,
+     "top5_share": 1.4103180605945729,
+     "run_id": "e53c985d40efd845",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.16736408752219242,
+     "null_pct": [
+      0.595,
+      0.5625
+     ],
+     "dsr": 0.6793007291477021,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.7028811626203116,
+     "cpcv_frac_pos": 0.5333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 8.82029566692654
+    },
+    {
+     "orders": 64,
+     "orders_denied": 0,
+     "orders_filled": 64,
+     "top5_share": 0.30150297611014926,
+     "run_id": "d88a42b9107511c8",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.5458222157526545,
+     "null_pct": [
+      0.815,
+      0.9375
+     ],
+     "dsr": 0.9361453299432287,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.28922846292381804,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 8.696924832998775
+    },
+    {
+     "orders": 52,
+     "orders_denied": 21,
+     "orders_filled": 31,
+     "top5_share": Infinity,
+     "run_id": "7c5983fd6e216411",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.8284685204084046,
+     "null_pct": [
+      0.09,
+      0.0625
+     ],
+     "dsr": 0.010812054497505335,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.816699201201136,
+     "cpcv_frac_pos": 0.2,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.933699874905869
+    },
+    {
+     "returncode": 2,
+     "stderr_tail": "Usage: alpha validate [OPTIONS] SYMBOL\nTry 'alpha validate --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 Invalid value: engine stopped after 670 of 1955 sessions - usually the       \u2502\n\u2502 account balance went negative (fees/slippage on a full-balance fill). Lower  \u2502\n\u2502 target_vol or max_leverage, or raise starting_cash.                          \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+     "seconds": 5.2306099170818925
+    },
+    {
+     "orders": 77,
+     "orders_denied": 0,
+     "orders_filled": 77,
+     "top5_share": 0.12462437988112712,
+     "run_id": "3f18353c04769bec",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.3852230718511498,
+     "null_pct": [
+      0.865,
+      0.8125
+     ],
+     "dsr": 0.999942006625849,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.5296169223342698,
+     "cpcv_frac_pos": 1.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.19939579104539
+    },
+    {
+     "orders": 58,
+     "orders_denied": 2,
+     "orders_filled": 56,
+     "top5_share": 2.8506279079543364,
+     "run_id": "c285b4617f4bee70",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.09922569269243411,
+     "null_pct": [
+      0.555,
+      0.5
+     ],
+     "dsr": 0.608750225381191,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.7664180103423452,
+     "cpcv_frac_pos": 0.5333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.781709625036456
+    },
+    {
+     "orders": 64,
+     "orders_denied": 0,
+     "orders_filled": 64,
+     "top5_share": 0.23598280085196924,
+     "run_id": "682bb1d85754cf09",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.6944622693663476,
+     "null_pct": [
+      0.58,
+      0.59375
+     ],
+     "dsr": 0.9737756180123712,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.21538089762557178,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.060498332954012
+    },
+    {
+     "orders": 71,
+     "orders_denied": 0,
+     "orders_filled": 71,
+     "top5_share": 0.25168469759936307,
+     "run_id": "9ce936d821e66bc4",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.74186916295605,
+     "null_pct": [
+      0.785,
+      0.84375
+     ],
+     "dsr": 0.9810440088380529,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.17550308577421825,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.031469834037125
+    },
+    {
+     "orders": 59,
+     "orders_denied": 0,
+     "orders_filled": 59,
+     "top5_share": 0.5237433911140541,
+     "run_id": "e5caefed862bec83",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.3688086791620281,
+     "null_pct": [
+      0.51,
+      0.53125
+     ],
+     "dsr": 0.8486127086363073,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.3837821211806341,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.882995082996786
+    },
+    {
+     "orders": 65,
+     "orders_denied": 0,
+     "orders_filled": 65,
+     "top5_share": 0.38777720464274357,
+     "run_id": "3dead449a188eae9",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.45661593531620054,
+     "null_pct": [
+      0.615,
+      0.65625
+     ],
+     "dsr": 0.8981803413066245,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.45381516190154014,
+     "cpcv_frac_pos": 0.7333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.935901875025593
+    },
+    {
+     "orders": 62,
+     "orders_denied": 0,
+     "orders_filled": 62,
+     "top5_share": 0.1948982455108802,
+     "run_id": "92ddc2d0fd957d32",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.925212761102097,
+     "null_pct": [
+      0.755,
+      0.875
+     ],
+     "dsr": 0.9952463291209579,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.09970064886623138,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.725109666003846
+    },
+    {
+     "orders": 42,
+     "orders_denied": 0,
+     "orders_filled": 42,
+     "top5_share": 5.38407187069615,
+     "run_id": "45079180a8b3cfab",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.07028286635289478,
+     "null_pct": [
+      0.3,
+      0.375
+     ],
+     "dsr": 0.57755270488864,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.6850063858704278,
+     "cpcv_frac_pos": 0.3333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.656242709024809
+    },
+    {
+     "orders": 56,
+     "orders_denied": 0,
+     "orders_filled": 56,
+     "top5_share": 4.437376443243473,
+     "run_id": "6e01b9450530feb7",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.0784181523419016,
+     "null_pct": [
+      0.605,
+      0.53125
+     ],
+     "dsr": 0.5863950696091698,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.7771996796720081,
+     "cpcv_frac_pos": 0.6666666666666666,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.595798708964139
+    },
+    {
+     "orders": 63,
+     "orders_denied": 0,
+     "orders_filled": 63,
+     "top5_share": 1.0712098765888132,
+     "run_id": "04eecb2698f981e9",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.22701829298950021,
+     "null_pct": [
+      0.605,
+      0.59375
+     ],
+     "dsr": 0.7368229250164259,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.5792410338463369,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.567161042010412
+    },
+    {
+     "orders": 63,
+     "orders_denied": 2,
+     "orders_filled": 61,
+     "top5_share": Infinity,
+     "run_id": "26641a53447d8dc9",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.204506063937254,
+     "null_pct": [
+      0.365,
+      0.40625
+     ],
+     "dsr": 0.28451176290700797,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.0925737859654887,
+     "cpcv_frac_pos": 0.4,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.675973957986571
+    },
+    {
+     "orders": 56,
+     "orders_denied": 1,
+     "orders_filled": 55,
+     "top5_share": 0.45869530232966504,
+     "run_id": "83b13f94c26f6fbb",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.3882038546129379,
+     "null_pct": [
+      0.635,
+      0.5625
+     ],
+     "dsr": 0.8600114764603459,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.42358741346608997,
+     "cpcv_frac_pos": 0.6666666666666666,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 8.236759416991845
+    },
+    {
+     "orders": 46,
+     "orders_denied": 3,
+     "orders_filled": 43,
+     "top5_share": Infinity,
+     "run_id": "b8da0536a9fc5878",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.28113924902156157,
+     "null_pct": [
+      0.49,
+      0.4375
+     ],
+     "dsr": 0.2174910292949645,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.0704031767507787,
+     "cpcv_frac_pos": 0.4,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.787338334019296
+    },
+    {
+     "orders": 44,
+     "orders_denied": 22,
+     "orders_filled": 22,
+     "top5_share": Infinity,
+     "run_id": "9dc328deab9bb4a1",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -1.173294127199329,
+     "null_pct": [
+      0.06,
+      0.03125
+     ],
+     "dsr": 0.000441701386996223,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.9476952241240346,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.784455833025277
+    },
+    {
+     "orders": 20,
+     "orders_denied": 0,
+     "orders_filled": 20,
+     "top5_share": Infinity,
+     "run_id": "12298f0e4786481e",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.5118468457908868,
+     "null_pct": [
+      0.345,
+      0.25
+     ],
+     "dsr": 0.07662038054070489,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.3742561306543992,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.282515000086278
+    },
+    {
+     "orders": 39,
+     "orders_denied": 2,
+     "orders_filled": 37,
+     "top5_share": Infinity,
+     "run_id": "940198687714b6bc",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.365519052903691,
+     "null_pct": [
+      0.375,
+      0.40625
+     ],
+     "dsr": 0.15429460409174578,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.3960797393984765,
+     "cpcv_frac_pos": 0.3333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.5866495840018615
+    },
+    {
+     "orders": 42,
+     "orders_denied": 3,
+     "orders_filled": 39,
+     "top5_share": Infinity,
+     "run_id": "9f8be6007153186f",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.13651689370454875,
+     "null_pct": [
+      0.42,
+      0.40625
+     ],
+     "dsr": 0.35201499412843096,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.0531360814542288,
+     "cpcv_frac_pos": 0.4666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.590433167060837
+    },
+    {
+     "orders": 35,
+     "orders_denied": 0,
+     "orders_filled": 35,
+     "top5_share": 0.21374667512961232,
+     "run_id": "2eed09f56a51c7e0",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 0.9057919669071888,
+     "null_pct": [
+      0.995,
+      1.0
+     ],
+     "dsr": 0.994521773388968,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.1505657850215818,
+     "cpcv_frac_pos": 0.7333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.2570564589696005
+    },
+    {
+     "orders": 35,
+     "orders_denied": 0,
+     "orders_filled": 35,
+     "top5_share": Infinity,
+     "run_id": "376cc41953448eed",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.048065216123482364,
+     "null_pct": [
+      0.545,
+      0.46875
+     ],
+     "dsr": 0.44680838257961464,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.8889549425903754,
+     "cpcv_frac_pos": 0.4666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.405805540969595
+    },
+    {
+     "orders": 49,
+     "orders_denied": 0,
+     "orders_filled": 49,
+     "top5_share": Infinity,
+     "run_id": "3a8b525be1daa83d",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.15041420795549673,
+     "null_pct": [
+      0.36,
+      0.28125
+     ],
+     "dsr": 0.33787810162846155,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.0461841031697483,
+     "cpcv_frac_pos": 0.3333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.550183625076897
+    },
+    {
+     "orders": 50,
+     "orders_denied": 3,
+     "orders_filled": 47,
+     "top5_share": Infinity,
+     "run_id": "e3d7294b0f864260",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.2500511301268041,
+     "null_pct": [
+      0.5,
+      0.46875
+     ],
+     "dsr": 0.24337835648600015,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.2044697319071065,
+     "cpcv_frac_pos": 0.4,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.45736120804213
+    },
+    {
+     "orders": 69,
+     "orders_denied": 0,
+     "orders_filled": 69,
+     "top5_share": 0.1787464323120489,
+     "run_id": "464a59a09030a400",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.99314840467892,
+     "null_pct": [
+      0.855,
+      0.875
+     ],
+     "dsr": 0.9973642660971686,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.20077228287394494,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.635117167024873
+    },
+    {
+     "orders": 63,
+     "orders_denied": 20,
+     "orders_filled": 43,
+     "top5_share": Infinity,
+     "run_id": "b0e4e6da56bb586b",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.25015826016555776,
+     "null_pct": [
+      0.28,
+      0.1875
+     ],
+     "dsr": 0.24316773240347767,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.1559119212643825,
+     "cpcv_frac_pos": 0.3333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.6285452919546515
+    },
+    {
+     "orders": 79,
+     "orders_denied": 0,
+     "orders_filled": 79,
+     "top5_share": 0.32072906795275585,
+     "run_id": "70dcb99ce59843f1",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.5246633025889466,
+     "null_pct": [
+      0.585,
+      0.5
+     ],
+     "dsr": 0.9284966687722828,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.35648155493102096,
+     "cpcv_frac_pos": 0.6666666666666666,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 8.130372249986976
+    },
+    {
+     "orders": 37,
+     "orders_denied": 0,
+     "orders_filled": 37,
+     "top5_share": Infinity,
+     "run_id": "421d87af8f654bd8",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.11826965176696176,
+     "null_pct": [
+      0.665,
+      0.75
+     ],
+     "dsr": 0.37114430921895986,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.1645238287364863,
+     "cpcv_frac_pos": 0.26666666666666666,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.547748083015904
+    },
+    {
+     "orders": 66,
+     "orders_denied": 0,
+     "orders_filled": 66,
+     "top5_share": 0.1826500036350387,
+     "run_id": "b46676fd77aa5903",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.8960671412942389,
+     "null_pct": [
+      0.82,
+      0.78125
+     ],
+     "dsr": 0.9938580172646636,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.036977339543416574,
+     "cpcv_frac_pos": 1.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.049646666040644
+    },
+    {
+     "orders": 73,
+     "orders_denied": 0,
+     "orders_filled": 73,
+     "top5_share": 0.23907377275446068,
+     "run_id": "eddf3266b81a3b2b",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.6570807038762958,
+     "null_pct": [
+      0.905,
+      0.90625
+     ],
+     "dsr": 0.9663527646630699,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.2399230680893928,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.064321417012252
+    },
+    {
+     "orders": 37,
+     "orders_denied": 18,
+     "orders_filled": 19,
+     "top5_share": Infinity,
+     "run_id": "8cb17e8d086de14d",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.9513710001086098,
+     "null_pct": [
+      0.035,
+      0.125
+     ],
+     "dsr": 0.0037309774792337025,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.788426439578918,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.695815125014633
+    },
+    {
+     "orders": 75,
+     "orders_denied": 1,
+     "orders_filled": 74,
+     "top5_share": 0.21162932154294833,
+     "run_id": "ccbad727519c661b",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.7768097745169738,
+     "null_pct": [
+      0.68,
+      0.625
+     ],
+     "dsr": 0.9847834840153649,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.036673376083302095,
+     "cpcv_frac_pos": 0.9333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.402380959014408
+    },
+    {
+     "orders": 36,
+     "orders_denied": 3,
+     "orders_filled": 33,
+     "top5_share": Infinity,
+     "run_id": "30c8c177b16a90a4",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.25746364193421684,
+     "null_pct": [
+      0.33,
+      0.375
+     ],
+     "dsr": 0.23687691236835023,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.082092250539349,
+     "cpcv_frac_pos": 0.26666666666666666,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 6.583603415987454
+    },
+    {
+     "orders": 38,
+     "orders_denied": 7,
+     "orders_filled": 31,
+     "top5_share": Infinity,
+     "run_id": "eac06f83d84629ed",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.5478753885246224,
+     "null_pct": [
+      0.145,
+      0.28125
+     ],
+     "dsr": 0.06369890255055147,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.3685605975365458,
+     "cpcv_frac_pos": 0.2,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 5.957989208982326
+    },
+    {
+     "orders": 55,
+     "orders_denied": 3,
+     "orders_filled": 52,
+     "top5_share": 0.47105427518692944,
+     "run_id": "f3d4436ebe96f7cd",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.42932454892537936,
+     "null_pct": [
+      0.76,
+      0.71875
+     ],
+     "dsr": 0.8840674387499967,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.44468066377751597,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 5.9658526660641655
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P02",
+   "title": "Planted strong trend edge: gauntlet power",
+   "truth": "Markov-switching drift {'mu': 0.0035, 'switch_p': 0.004}; independent long-only reference momentum power ~0.72.",
+   "expected": "Power broadly consistent with the reference; failing gates attributable.",
+   "classification": "not_as_expected",
+   "detail": "13/40 PASS (Wilson [0.201,0.480]) vs reference power 0.72. Blocking gates among failures: {'randomized_price_null': 21, 'bootstrap_ci': 15, 'deflated_sharpe': 14, 'cpcv_oos': 10}. 14/40 runs had DENIED orders (silently dropped by the engine; not surfaced in the verdict); 4 runs aborted with an engine error. The gauntlet has no 'insufficient evidence / underpowered' verdict distinct from FAIL.",
+   "metrics": {
+    "power": 0.325,
+    "wilson": [
+     0.200845022317827,
+     0.47982253810122333
+    ],
+    "reference_power": 0.72,
+    "blocking": {
+     "randomized_price_null": 21,
+     "bootstrap_ci": 15,
+     "deflated_sharpe": 14,
+     "cpcv_oos": 10
+    },
+    "runs_with_denied_orders": 14,
+    "errored_runs": 4,
+    "power_excluding_denied_or_errored": 0.5
+   },
+   "runs": [
+    {
+     "orders": 62,
+     "orders_denied": 0,
+     "orders_filled": 62,
+     "top5_share": 0.08094258150458032,
+     "run_id": "04da67f1ba04fac5",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.915,
+      0.9375
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.6678180964769906,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.01499879208859,
+     "reference_sharpe": 1.8543232784835624
+    },
+    {
+     "orders": 62,
+     "orders_denied": 0,
+     "orders_filled": 62,
+     "top5_share": 0.0988185175071436,
+     "run_id": "8ea282afa1f66616",
+     "passed": true,
+     "grade": "A",
+     "oos_sharpe": 2.095792959178304,
+     "null_pct": [
+      0.965,
+      1.0
+     ],
+     "dsr": 0.9999999996299058,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.1484274359856843,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.777237750007771,
+     "reference_sharpe": 1.6438717848639244
+    },
+    {
+     "orders": 34,
+     "orders_denied": 8,
+     "orders_filled": 26,
+     "top5_share": Infinity,
+     "run_id": "bd969136caef4c26",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.013783646919435401,
+     "null_pct": [
+      0.445,
+      0.40625
+     ],
+     "dsr": 0.48469939032153303,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.0770692318514814,
+     "cpcv_frac_pos": 0.3333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.593709708075039,
+     "reference_sharpe": 2.2783913738319947
+    },
+    {
+     "orders": 50,
+     "orders_denied": 12,
+     "orders_filled": 38,
+     "top5_share": 0.18743303247042797,
+     "run_id": "fe9f23fe5e00df39",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.0649923354939013,
+     "null_pct": [
+      0.7,
+      0.96875
+     ],
+     "dsr": 0.9985679922794826,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.07974403314081471,
+     "cpcv_frac_pos": 0.7333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.335271417046897,
+     "reference_sharpe": -0.16372697097132163
+    },
+    {
+     "orders": 86,
+     "orders_denied": 0,
+     "orders_filled": 86,
+     "top5_share": 0.06801836711446421,
+     "run_id": "507a8b9c2d75e0b5",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 3.056302701961302,
+     "null_pct": [
+      0.69,
+      0.21875
+     ],
+     "dsr": 1.0,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.8024314971342084,
+     "cpcv_frac_pos": 1.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.877092708018608,
+     "reference_sharpe": 2.17483947905971
+    },
+    {
+     "orders": 64,
+     "orders_denied": 59,
+     "orders_filled": 5,
+     "top5_share": Infinity,
+     "run_id": "472049334a10fe26",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -1.9819738870404064,
+     "null_pct": [
+      0.83,
+      0.0
+     ],
+     "dsr": 1.1209000287620984e-11,
+     "dsr_n_trials": 1,
+     "ci_lower": -2.837679687085587,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.827605542028323,
+     "reference_sharpe": 2.323763005566631
+    },
+    {
+     "orders": 58,
+     "orders_denied": 2,
+     "orders_filled": 56,
+     "top5_share": 0.14989739214428816,
+     "run_id": "6a5bc80066b333c3",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.5654193386272952,
+     "null_pct": [
+      0.815,
+      0.6875
+     ],
+     "dsr": 0.9999955229938977,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.25633452116984545,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.297033000038937,
+     "reference_sharpe": 1.065165387004973
+    },
+    {
+     "orders": 55,
+     "orders_denied": 0,
+     "orders_filled": 55,
+     "top5_share": 0.09871185301093176,
+     "run_id": "55ea14268902c04b",
+     "passed": true,
+     "grade": "A",
+     "oos_sharpe": 2.315776305322016,
+     "null_pct": [
+      0.955,
+      1.0
+     ],
+     "dsr": 0.9999999999933523,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.3922957994843952,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.29869341594167,
+     "reference_sharpe": 2.7625496208683664
+    },
+    {
+     "orders": 63,
+     "orders_denied": 0,
+     "orders_filled": 63,
+     "top5_share": 0.09217823642650283,
+     "run_id": "f4024eac6277364f",
+     "passed": true,
+     "grade": "A",
+     "oos_sharpe": 2.194801697395304,
+     "null_pct": [
+      0.99,
+      1.0
+     ],
+     "dsr": 0.99999999963485,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.0670209912200206,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.299783875001594,
+     "reference_sharpe": 1.3501002490421934
+    },
+    {
+     "orders": 51,
+     "orders_denied": 0,
+     "orders_filled": 51,
+     "top5_share": 0.13055601808813358,
+     "run_id": "8c7e57cca92a2ecd",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.9313972422175958,
+     "null_pct": [
+      0.65,
+      0.8125
+     ],
+     "dsr": 0.9999999912557289,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.9538129620048943,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.446636707987636,
+     "reference_sharpe": 1.050700986890568
+    },
+    {
+     "orders": 41,
+     "orders_denied": 0,
+     "orders_filled": 41,
+     "top5_share": 0.13323359711545749,
+     "run_id": "456b141f9662911f",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.655322430834576,
+     "null_pct": [
+      0.58,
+      0.75
+     ],
+     "dsr": 0.999999013517692,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.4642835709255989,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.297797915991396,
+     "reference_sharpe": 1.7905801513909843
+    },
+    {
+     "orders": 37,
+     "orders_denied": 0,
+     "orders_filled": 37,
+     "top5_share": 0.15398002616226106,
+     "run_id": "887dd268788ea3eb",
+     "passed": true,
+     "grade": "A",
+     "oos_sharpe": 1.6847387076185592,
+     "null_pct": [
+      1.0,
+      1.0
+     ],
+     "dsr": 0.9999996085045402,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.8226641082684026,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.691123292082921,
+     "reference_sharpe": 1.4521571931244674
+    },
+    {
+     "orders": 64,
+     "orders_denied": 0,
+     "orders_filled": 64,
+     "top5_share": 0.06600581378746156,
+     "run_id": "d1e3cf50a6ddba45",
+     "passed": true,
+     "grade": "A",
+     "oos_sharpe": 3.207040314501691,
+     "null_pct": [
+      1.0,
+      1.0
+     ],
+     "dsr": 1.0,
+     "dsr_n_trials": 1,
+     "ci_lower": 2.2219595840197353,
+     "cpcv_frac_pos": 0.9333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.589581541949883,
+     "reference_sharpe": 2.253637989119338
+    },
+    {
+     "orders": 48,
+     "orders_denied": 34,
+     "orders_filled": 14,
+     "top5_share": Infinity,
+     "run_id": "b26f9301c93cc6c1",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -1.5344178951986853,
+     "null_pct": [
+      0.68,
+      0.0
+     ],
+     "dsr": 5.364366540035339e-06,
+     "dsr_n_trials": 1,
+     "ci_lower": -2.3258486410667913,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.394456417066976,
+     "reference_sharpe": 0.9887820844730998
+    },
+    {
+     "orders": 46,
+     "orders_denied": 27,
+     "orders_filled": 19,
+     "top5_share": Infinity,
+     "run_id": "6f5e9ae28a02d565",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -1.4329362761152662,
+     "null_pct": [
+      0.98,
+      0.03125
+     ],
+     "dsr": 1.7789819316733214e-05,
+     "dsr_n_trials": 1,
+     "ci_lower": -2.338600570210542,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.346100791939534,
+     "reference_sharpe": 1.3360567050832923
+    },
+    {
+     "returncode": 2,
+     "stderr_tail": "Usage: alpha validate [OPTIONS] SYMBOL\nTry 'alpha validate --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 Invalid value: ts_momentum_signal recent reference price must be finite > 0, \u2502\n\u2502 got 0.0                                                                      \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+     "seconds": 3.0890547919552773,
+     "reference_sharpe": 2.8956794740346963
+    },
+    {
+     "orders": 55,
+     "orders_denied": 0,
+     "orders_filled": 55,
+     "top5_share": 0.08815457629476633,
+     "run_id": "1954e9f38cc4eb7b",
+     "passed": true,
+     "grade": "A",
+     "oos_sharpe": 3.2186203410332745,
+     "null_pct": [
+      0.995,
+      1.0
+     ],
+     "dsr": 1.0,
+     "dsr_n_trials": 1,
+     "ci_lower": 2.230170331818151,
+     "cpcv_frac_pos": 0.9333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.4159965000581,
+     "reference_sharpe": 1.7840119028131414
+    },
+    {
+     "orders": 20,
+     "orders_denied": 5,
+     "orders_filled": 15,
+     "top5_share": Infinity,
+     "run_id": "269414ad0b183a55",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -1.3753230703927237,
+     "null_pct": [
+      0.195,
+      0.0
+     ],
+     "dsr": 6.337446384935845e-05,
+     "dsr_n_trials": 1,
+     "ci_lower": -2.344060762447781,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 6.508022207999602,
+     "reference_sharpe": 2.703575337792829
+    },
+    {
+     "orders": 51,
+     "orders_denied": 7,
+     "orders_filled": 44,
+     "top5_share": 0.6884829852840292,
+     "run_id": "d05a5e3eed709fde",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.314038633467367,
+     "null_pct": [
+      0.95,
+      0.875
+     ],
+     "dsr": 0.8092576787057062,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.7946236720386252,
+     "cpcv_frac_pos": 0.4,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.863501665997319,
+     "reference_sharpe": 1.066921794013356
+    },
+    {
+     "orders": 32,
+     "orders_denied": 0,
+     "orders_filled": 32,
+     "top5_share": Infinity,
+     "run_id": "8f0e76f3511f55d5",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.04137161933871306,
+     "null_pct": [
+      0.87,
+      0.90625
+     ],
+     "dsr": 0.45418059163499447,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.0420039234408436,
+     "cpcv_frac_pos": 0.4666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.46580595895648,
+     "reference_sharpe": 1.4407034741725102
+    },
+    {
+     "orders": 55,
+     "orders_denied": 3,
+     "orders_filled": 52,
+     "top5_share": 0.35422434441742784,
+     "run_id": "76849188041e58d8",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.522583419456791,
+     "null_pct": [
+      0.63,
+      0.6875
+     ],
+     "dsr": 0.9277059165206574,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.3673539969997504,
+     "cpcv_frac_pos": 0.5333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 8.044646124937572,
+     "reference_sharpe": 1.6218048704451533
+    },
+    {
+     "orders": 43,
+     "orders_denied": 34,
+     "orders_filled": 9,
+     "top5_share": Infinity,
+     "run_id": "664f41a7040f60d8",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -1.591010386118969,
+     "null_pct": [
+      0.5,
+      0.0
+     ],
+     "dsr": 1.3648040457246354e-06,
+     "dsr_n_trials": 1,
+     "ci_lower": -2.266238769078021,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.639720125007443,
+     "reference_sharpe": 1.637829674512224
+    },
+    {
+     "orders": 22,
+     "orders_denied": 6,
+     "orders_filled": 16,
+     "top5_share": Infinity,
+     "run_id": "c33c906d703ab1cf",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.6286711491663375,
+     "null_pct": [
+      0.485,
+      0.3125
+     ],
+     "dsr": 0.04024921164414692,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.588076184930003,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 6.845454416936263,
+     "reference_sharpe": 3.3353663852003965
+    },
+    {
+     "orders": 48,
+     "orders_denied": 34,
+     "orders_filled": 14,
+     "top5_share": Infinity,
+     "run_id": "eaf05e1f352ef098",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -1.3405970629730684,
+     "null_pct": [
+      0.925,
+      0.0
+     ],
+     "dsr": 4.7007825761997225e-05,
+     "dsr_n_trials": 1,
+     "ci_lower": -2.267427698002089,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.465098040993325,
+     "reference_sharpe": 0.8047937287496411
+    },
+    {
+     "orders": 45,
+     "orders_denied": 7,
+     "orders_filled": 38,
+     "top5_share": 0.09600570583476191,
+     "run_id": "602ad3c19bf6c501",
+     "passed": true,
+     "grade": "A",
+     "oos_sharpe": 2.0776002470843986,
+     "null_pct": [
+      1.0,
+      1.0
+     ],
+     "dsr": 0.9999999942246317,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.9006316005025352,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.874653666978702,
+     "reference_sharpe": 2.7466146327102043
+    },
+    {
+     "returncode": 2,
+     "stderr_tail": "Usage: alpha validate [OPTIONS] SYMBOL\nTry 'alpha validate --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 Invalid value: ts_momentum_signal recent reference price must be finite > 0, \u2502\n\u2502 got 0.0                                                                      \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+     "seconds": 3.7140132089843974,
+     "reference_sharpe": 1.5830417828044385
+    },
+    {
+     "returncode": 2,
+     "stderr_tail": "Usage: alpha validate [OPTIONS] SYMBOL\nTry 'alpha validate --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 Invalid value: engine stopped after 943 of 1955 sessions - usually the       \u2502\n\u2502 account balance went negative (fees/slippage on a full-balance fill). Lower  \u2502\n\u2502 target_vol or max_leverage, or raise starting_cash.                          \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+     "seconds": 3.372698540915735,
+     "reference_sharpe": 1.649384895817141
+    },
+    {
+     "orders": 52,
+     "orders_denied": 0,
+     "orders_filled": 52,
+     "top5_share": 0.24529929504488887,
+     "run_id": "50fd45367df2c6ec",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.7837206068583682,
+     "null_pct": [
+      0.75,
+      0.84375
+     ],
+     "dsr": 0.9858566846838701,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.3150035498731216,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.7571771669900045,
+     "reference_sharpe": 1.8428457149782003
+    },
+    {
+     "orders": 39,
+     "orders_denied": 0,
+     "orders_filled": 39,
+     "top5_share": 0.19146648934950827,
+     "run_id": "35d637e9b98cdab0",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 1.1797283287642142,
+     "null_pct": [
+      1.0,
+      1.0
+     ],
+     "dsr": 0.9995980764286475,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.23307139496826038,
+     "cpcv_frac_pos": 0.7333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.194648124976084,
+     "reference_sharpe": 1.4077306106454377
+    },
+    {
+     "orders": 80,
+     "orders_denied": 0,
+     "orders_filled": 80,
+     "top5_share": 0.05231793216787185,
+     "run_id": "57d46187a97784fb",
+     "passed": true,
+     "grade": "A",
+     "oos_sharpe": 5.026817915176595,
+     "null_pct": [
+      1.0,
+      1.0
+     ],
+     "dsr": 1.0,
+     "dsr_n_trials": 1,
+     "ci_lower": 4.2663446928111135,
+     "cpcv_frac_pos": 1.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.210087958024815,
+     "reference_sharpe": 3.3602578316964893
+    },
+    {
+     "returncode": 2,
+     "stderr_tail": "Usage: alpha validate [OPTIONS] SYMBOL\nTry 'alpha validate --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 Invalid value: ts_momentum_signal recent reference price must be finite > 0, \u2502\n\u2502 got 0.0                                                                      \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+     "seconds": 4.7076690420508385,
+     "reference_sharpe": 2.2861817001809484
+    },
+    {
+     "orders": 25,
+     "orders_denied": 0,
+     "orders_filled": 25,
+     "top5_share": 0.45065685147626006,
+     "run_id": "90d8eec0503a2589",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.5752867346007832,
+     "null_pct": [
+      0.985,
+      1.0
+     ],
+     "dsr": 0.9473162257095528,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.4943426616992954,
+     "cpcv_frac_pos": 0.3333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.204260707949288,
+     "reference_sharpe": 2.7513070364531385
+    },
+    {
+     "orders": 55,
+     "orders_denied": 0,
+     "orders_filled": 55,
+     "top5_share": 0.08358114725625174,
+     "run_id": "b7db5bdbd379f6b5",
+     "passed": true,
+     "grade": "A",
+     "oos_sharpe": 2.7781908140885876,
+     "null_pct": [
+      1.0,
+      1.0
+     ],
+     "dsr": 0.9999999999999993,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.8765089968237507,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.841727582970634,
+     "reference_sharpe": 2.591505119038805
+    },
+    {
+     "orders": 58,
+     "orders_denied": 0,
+     "orders_filled": 58,
+     "top5_share": 0.10553042773690309,
+     "run_id": "9ce2e7d6d30bb941",
+     "passed": false,
+     "grade": "A",
+     "oos_sharpe": 1.981217569252375,
+     "null_pct": [
+      0.64,
+      0.9375
+     ],
+     "dsr": 0.9999999959559457,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.0015989859859873,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.949305250076577,
+     "reference_sharpe": 1.2781955576079949
+    },
+    {
+     "orders": 38,
+     "orders_denied": 0,
+     "orders_filled": 38,
+     "top5_share": 0.17302210211396693,
+     "run_id": "6390b5f4a010566e",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 1.2968038676535933,
+     "null_pct": [
+      1.0,
+      1.0
+     ],
+     "dsr": 0.9998910548390841,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.24794224129321898,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.1027479589683935,
+     "reference_sharpe": 1.9272057442838306
+    },
+    {
+     "orders": 33,
+     "orders_denied": 0,
+     "orders_filled": 33,
+     "top5_share": 0.9192160349471586,
+     "run_id": "8972d44ec7b2f8dd",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.2634690955129567,
+     "null_pct": [
+      0.985,
+      1.0
+     ],
+     "dsr": 0.768863017339442,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.7570443534646875,
+     "cpcv_frac_pos": 0.5333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 6.599814833956771,
+     "reference_sharpe": 1.9281481047615971
+    },
+    {
+     "orders": 58,
+     "orders_denied": 0,
+     "orders_filled": 58,
+     "top5_share": 0.11786674020362553,
+     "run_id": "40485c3e969dcb7c",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 2.0821097765136023,
+     "null_pct": [
+      0.825,
+      1.0
+     ],
+     "dsr": 0.9999999997112442,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.0903680613716225,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.682003333000466,
+     "reference_sharpe": 1.3413484953935713
+    },
+    {
+     "orders": 14,
+     "orders_denied": 0,
+     "orders_filled": 14,
+     "top5_share": Infinity,
+     "run_id": "2159ec96c9624c57",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.5118609214725335,
+     "null_pct": [
+      0.645,
+      0.625
+     ],
+     "dsr": 0.07513797174427944,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.4579837855390816,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 6.364964499953203,
+     "reference_sharpe": 2.8023561620068107
+    },
+    {
+     "orders": 47,
+     "orders_denied": 0,
+     "orders_filled": 47,
+     "top5_share": 0.1401794043102332,
+     "run_id": "7ef8e651ad194ebb",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.2603667268988872,
+     "null_pct": [
+      0.675,
+      0.65625
+     ],
+     "dsr": 0.9997834649413596,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.295559241139904,
+     "cpcv_frac_pos": 0.7333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 6.95927795895841,
+     "reference_sharpe": 1.781785151789686
+    },
+    {
+     "orders": 67,
+     "orders_denied": 1,
+     "orders_filled": 66,
+     "top5_share": 0.1025284972549243,
+     "run_id": "ef1bf35a6b62fde7",
+     "passed": true,
+     "grade": "A",
+     "oos_sharpe": 2.26725057541638,
+     "null_pct": [
+      1.0,
+      1.0
+     ],
+     "dsr": 0.9999999998426169,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.0944440200490826,
+     "cpcv_frac_pos": 0.9333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.9889313749736175,
+     "reference_sharpe": 2.549854137264197
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P02w",
+   "title": "Planted weak (underpowered) trend edge: gauntlet power",
+   "truth": "Markov-switching drift {'mu': 0.001, 'switch_p': 0.004}; independent long-only reference momentum power ~0.22.",
+   "expected": "Power broadly consistent with the reference; failing gates attributable.",
+   "classification": "as_expected",
+   "detail": "1/40 PASS (Wilson [0.004,0.129]) vs reference power 0.22. Blocking gates among failures: {'randomized_price_null': 36, 'bootstrap_ci': 32, 'deflated_sharpe': 20, 'cpcv_oos': 15}. 17/40 runs had DENIED orders (silently dropped by the engine; not surfaced in the verdict); 1 runs aborted with an engine error. The gauntlet has no 'insufficient evidence / underpowered' verdict distinct from FAIL.",
+   "metrics": {
+    "power": 0.025,
+    "wilson": [
+     0.0044268315026814095,
+     0.1288136896347409
+    ],
+    "reference_power": 0.22,
+    "blocking": {
+     "randomized_price_null": 36,
+     "bootstrap_ci": 32,
+     "deflated_sharpe": 20,
+     "cpcv_oos": 15
+    },
+    "runs_with_denied_orders": 17,
+    "errored_runs": 1,
+    "power_excluding_denied_or_errored": 0.0
+   },
+   "runs": [
+    {
+     "orders": 67,
+     "orders_denied": 0,
+     "orders_filled": 67,
+     "top5_share": 0.2643682200182427,
+     "run_id": "8d118a17e93118f2",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.6508944237072116,
+     "null_pct": [
+      0.81,
+      0.71875
+     ],
+     "dsr": 0.9650634315712658,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.22562014768163494,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.860333584016189,
+     "reference_sharpe": 0.31800910323361964
+    },
+    {
+     "orders": 63,
+     "orders_denied": 0,
+     "orders_filled": 63,
+     "top5_share": 0.9430262691657313,
+     "run_id": "73975e02eda10341",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.20230926330778135,
+     "null_pct": [
+      0.82,
+      0.90625
+     ],
+     "dsr": 0.7135128294429784,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.7553566464076819,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.368607167038135,
+     "reference_sharpe": 0.33163922228650144
+    },
+    {
+     "orders": 57,
+     "orders_denied": 0,
+     "orders_filled": 57,
+     "top5_share": 0.22161713609492764,
+     "run_id": "b40c94b2af77499b",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.6882109936953131,
+     "null_pct": [
+      0.445,
+      0.53125
+     ],
+     "dsr": 0.971772064189384,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.1500662559688965,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.012068959069438,
+     "reference_sharpe": 1.1102278909560828
+    },
+    {
+     "orders": 60,
+     "orders_denied": 25,
+     "orders_filled": 35,
+     "top5_share": Infinity,
+     "run_id": "6411eae432ec098a",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.5604299323583504,
+     "null_pct": [
+      0.13,
+      0.1875
+     ],
+     "dsr": 0.0593904205505006,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.4703152645190836,
+     "cpcv_frac_pos": 0.2,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.697176625020802,
+     "reference_sharpe": -0.6698431882081831
+    },
+    {
+     "orders": 79,
+     "orders_denied": 0,
+     "orders_filled": 79,
+     "top5_share": 0.16571304690261446,
+     "run_id": "79b912ffba4f2be1",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.0289945766071373,
+     "null_pct": [
+      0.62,
+      0.5625
+     ],
+     "dsr": 0.9978786882257076,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.01280280743919307,
+     "cpcv_frac_pos": 1.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.015085250022821,
+     "reference_sharpe": 0.43408570726769796
+    },
+    {
+     "orders": 71,
+     "orders_denied": 5,
+     "orders_filled": 66,
+     "top5_share": 0.16861112378870213,
+     "run_id": "463f5e28ff5d3963",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.0350701369888768,
+     "null_pct": [
+      0.87,
+      0.90625
+     ],
+     "dsr": 0.998083690805276,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.1779588012437461,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.9670297499978915,
+     "reference_sharpe": 0.7555104123272997
+    },
+    {
+     "orders": 49,
+     "orders_denied": 0,
+     "orders_filled": 49,
+     "top5_share": 0.3262652923639142,
+     "run_id": "b04b0a839224c063",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.6885903620087876,
+     "null_pct": [
+      0.685,
+      0.78125
+     ],
+     "dsr": 0.9733273075253333,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.19591767552380876,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.916990583995357,
+     "reference_sharpe": 0.29918968306944554
+    },
+    {
+     "orders": 57,
+     "orders_denied": 0,
+     "orders_filled": 57,
+     "top5_share": 0.2514765417540097,
+     "run_id": "7e4a15dc13552d4d",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.7357936947713019,
+     "null_pct": [
+      0.905,
+      0.875
+     ],
+     "dsr": 0.9801999192527814,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.10724799433306663,
+     "cpcv_frac_pos": 0.7333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.737069125054404,
+     "reference_sharpe": 0.7659434181740532
+    },
+    {
+     "orders": 71,
+     "orders_denied": 0,
+     "orders_filled": 71,
+     "top5_share": 0.11737517840638044,
+     "run_id": "019cbf37dab156d3",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.4101796638810948,
+     "null_pct": [
+      0.89,
+      0.875
+     ],
+     "dsr": 0.9999563147493242,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.603069320208437,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.15832466701977,
+     "reference_sharpe": 0.49615328321183666
+    },
+    {
+     "orders": 63,
+     "orders_denied": 3,
+     "orders_filled": 60,
+     "top5_share": 0.34020494972830645,
+     "run_id": "655f77250c95ede9",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.5198108057846268,
+     "null_pct": [
+      0.61,
+      0.5
+     ],
+     "dsr": 0.9262284307502039,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.3941514606562068,
+     "cpcv_frac_pos": 0.6666666666666666,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.995609375066124,
+     "reference_sharpe": 0.2108423365878064
+    },
+    {
+     "orders": 59,
+     "orders_denied": 0,
+     "orders_filled": 59,
+     "top5_share": 0.22249302356048922,
+     "run_id": "381875cd361cb7ad",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.7792964549065504,
+     "null_pct": [
+      0.505,
+      0.5625
+     ],
+     "dsr": 0.9854104276214454,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.21022004852561665,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.051700500072911,
+     "reference_sharpe": 0.8510101412840675
+    },
+    {
+     "orders": 58,
+     "orders_denied": 0,
+     "orders_filled": 58,
+     "top5_share": 0.2765840404741342,
+     "run_id": "487296e66958e5d9",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.727459591355252,
+     "null_pct": [
+      0.89,
+      0.9375
+     ],
+     "dsr": 0.979400483483406,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.16186048300967598,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.7254730419954285,
+     "reference_sharpe": 0.6282574547106596
+    },
+    {
+     "orders": 73,
+     "orders_denied": 0,
+     "orders_filled": 73,
+     "top5_share": 0.24772243551633324,
+     "run_id": "09a191ffc015fe49",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.6400969153608732,
+     "null_pct": [
+      0.595,
+      0.5625
+     ],
+     "dsr": 0.9630038296179918,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.18126836673083854,
+     "cpcv_frac_pos": 0.7333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.308743291068822,
+     "reference_sharpe": 0.3446729607271278
+    },
+    {
+     "orders": 59,
+     "orders_denied": 20,
+     "orders_filled": 39,
+     "top5_share": Infinity,
+     "run_id": "68c29f77ee8f6058",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.6080032128417127,
+     "null_pct": [
+      0.15,
+      0.1875
+     ],
+     "dsr": 0.04440052442297677,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.3285351000078356,
+     "cpcv_frac_pos": 0.2,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.973562750034034,
+     "reference_sharpe": -0.06499527680629004
+    },
+    {
+     "orders": 60,
+     "orders_denied": 2,
+     "orders_filled": 58,
+     "top5_share": 0.2343384040560774,
+     "run_id": "6c578373733419db",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.7836862018631339,
+     "null_pct": [
+      0.93,
+      0.9375
+     ],
+     "dsr": 0.9854882923709122,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.20927815985517337,
+     "cpcv_frac_pos": 0.7333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.974887042073533,
+     "reference_sharpe": 0.6279635350663187
+    },
+    {
+     "orders": 11,
+     "orders_denied": 0,
+     "orders_filled": 11,
+     "top5_share": Infinity,
+     "run_id": "4ba65dfc878e1ad0",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.19925636358064433,
+     "null_pct": [
+      0.43,
+      0.65625
+     ],
+     "dsr": 0.29031101942850823,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.8927715251721682,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.628021875047125,
+     "reference_sharpe": 0.9945046783600463
+    },
+    {
+     "orders": 65,
+     "orders_denied": 1,
+     "orders_filled": 64,
+     "top5_share": 0.3135074085325871,
+     "run_id": "9a21000bd4fc2d98",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.6118224957962086,
+     "null_pct": [
+      0.76,
+      0.65625
+     ],
+     "dsr": 0.956000924121657,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.2926357747422377,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.1949081660714,
+     "reference_sharpe": 0.27564436361407396
+    },
+    {
+     "orders": 25,
+     "orders_denied": 0,
+     "orders_filled": 25,
+     "top5_share": Infinity,
+     "run_id": "b5838930cf72c412",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.6698537212448752,
+     "null_pct": [
+      0.455,
+      0.3125
+     ],
+     "dsr": 0.03254064719847799,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.5375938889228409,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.659724124940112,
+     "reference_sharpe": 0.6921571859695731
+    },
+    {
+     "orders": 55,
+     "orders_denied": 2,
+     "orders_filled": 53,
+     "top5_share": Infinity,
+     "run_id": "bf5a4cd21f9ca0ce",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.006588263039049341,
+     "null_pct": [
+      0.71,
+      0.65625
+     ],
+     "dsr": 0.4926853162158927,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.983261902929516,
+     "cpcv_frac_pos": 0.4666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.781218332936987,
+     "reference_sharpe": 0.21900531032101803
+    },
+    {
+     "orders": 40,
+     "orders_denied": 0,
+     "orders_filled": 40,
+     "top5_share": 1.4413093367308476,
+     "run_id": "88a98be6373500cb",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.15737436838030916,
+     "null_pct": [
+      0.715,
+      0.75
+     ],
+     "dsr": 0.6693752451932646,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.6519093300967873,
+     "cpcv_frac_pos": 0.5333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.71840449993033,
+     "reference_sharpe": 0.44030890554210583
+    },
+    {
+     "orders": 57,
+     "orders_denied": 0,
+     "orders_filled": 57,
+     "top5_share": Infinity,
+     "run_id": "20ec4395ca7ba1a0",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.0348681000741821,
+     "null_pct": [
+      0.535,
+      0.5625
+     ],
+     "dsr": 0.5386624515713623,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.7596010853262206,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.689811666961759,
+     "reference_sharpe": -0.13387651230984096
+    },
+    {
+     "orders": 40,
+     "orders_denied": 25,
+     "orders_filled": 15,
+     "top5_share": Infinity,
+     "run_id": "db0951e99681b043",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -1.2859480426184835,
+     "null_pct": [
+      0.08,
+      0.03125
+     ],
+     "dsr": 0.00010938282705708459,
+     "dsr_n_trials": 1,
+     "ci_lower": -2.205336943518774,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.706809499999508,
+     "reference_sharpe": 0.11566943867885715
+    },
+    {
+     "orders": 17,
+     "orders_denied": 1,
+     "orders_filled": 16,
+     "top5_share": Infinity,
+     "run_id": "d138bb4178776c56",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.6155164557638996,
+     "null_pct": [
+      0.37,
+      0.375
+     ],
+     "dsr": 0.04454284816845162,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.5006519882724771,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.163873999961652,
+     "reference_sharpe": 0.9994023323965473
+    },
+    {
+     "orders": 53,
+     "orders_denied": 0,
+     "orders_filled": 53,
+     "top5_share": Infinity,
+     "run_id": "d9940959fc8dc8fa",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.06436688558580946,
+     "null_pct": [
+      0.585,
+      0.625
+     ],
+     "dsr": 0.42890078210732957,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.0816494362759956,
+     "cpcv_frac_pos": 0.4666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.60418495896738,
+     "reference_sharpe": -0.09687766667986107
+    },
+    {
+     "orders": 35,
+     "orders_denied": 1,
+     "orders_filled": 34,
+     "top5_share": 0.23194003687567022,
+     "run_id": "5e6650a43d41106a",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 0.9051356252489234,
+     "null_pct": [
+      0.985,
+      1.0
+     ],
+     "dsr": 0.9939056416152748,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.0004384883382894181,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.751707207993604,
+     "reference_sharpe": 0.6172305461832948
+    },
+    {
+     "orders": 26,
+     "orders_denied": 1,
+     "orders_filled": 25,
+     "top5_share": Infinity,
+     "run_id": "b1a9dcb1327b7247",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.6456836621321319,
+     "null_pct": [
+      0.5,
+      0.40625
+     ],
+     "dsr": 0.03586448539048935,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.6041070157216712,
+     "cpcv_frac_pos": 0.2,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.046489540953189,
+     "reference_sharpe": 0.5030353566210228
+    },
+    {
+     "orders": 44,
+     "orders_denied": 0,
+     "orders_filled": 44,
+     "top5_share": 0.37102724005405663,
+     "run_id": "545b1eaf201f3826",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.6154643630972426,
+     "null_pct": [
+      0.955,
+      0.9375
+     ],
+     "dsr": 0.958391337091718,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.1699447362981978,
+     "cpcv_frac_pos": 0.7333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.6896113329567015,
+     "reference_sharpe": 0.8146795028425143
+    },
+    {
+     "returncode": 2,
+     "stderr_tail": "Usage: alpha validate [OPTIONS] SYMBOL\nTry 'alpha validate --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 Invalid value: engine stopped after 1426 of 1955 sessions - usually the      \u2502\n\u2502 account balance went negative (fees/slippage on a full-balance fill). Lower  \u2502\n\u2502 target_vol or max_leverage, or raise starting_cash.                          \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+     "seconds": 4.384370749932714,
+     "reference_sharpe": -0.041850253318339505
+    },
+    {
+     "orders": 45,
+     "orders_denied": 0,
+     "orders_filled": 45,
+     "top5_share": 0.3358430178063638,
+     "run_id": "209b5a5c417b8eb1",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.584314868180558,
+     "null_pct": [
+      0.995,
+      0.96875
+     ],
+     "dsr": 0.9491204772365534,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.26206869447495124,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.674548499984667,
+     "reference_sharpe": 0.7444863459963736
+    },
+    {
+     "orders": 85,
+     "orders_denied": 0,
+     "orders_filled": 85,
+     "top5_share": 0.09875530477855035,
+     "run_id": "03afc165eb3e0ebe",
+     "passed": false,
+     "grade": "A",
+     "oos_sharpe": 1.7523932388882286,
+     "null_pct": [
+      0.82,
+      0.90625
+     ],
+     "dsr": 0.9999996035263135,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.923533753460148,
+     "cpcv_frac_pos": 0.9333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.304605208104476,
+     "reference_sharpe": 0.8717908880853492
+    },
+    {
+     "orders": 38,
+     "orders_denied": 1,
+     "orders_filled": 37,
+     "top5_share": Infinity,
+     "run_id": "650a2a0211e299e1",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.19770458763561885,
+     "null_pct": [
+      0.625,
+      0.6875
+     ],
+     "dsr": 0.291028965424378,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.0195084289993466,
+     "cpcv_frac_pos": 0.3333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.472713917144574,
+     "reference_sharpe": 0.06766045619655647
+    },
+    {
+     "orders": 53,
+     "orders_denied": 7,
+     "orders_filled": 46,
+     "top5_share": Infinity,
+     "run_id": "8f37f4fcfbd6c426",
+     "passed": false,
+     "grade": "D",
+     "oos_sharpe": -0.5461986200818427,
+     "null_pct": [
+      0.19,
+      0.125
+     ],
+     "dsr": 0.06434575448274965,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.5303318448615226,
+     "cpcv_frac_pos": 0.26666666666666666,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.471228250069544,
+     "reference_sharpe": -0.10019586727963414
+    },
+    {
+     "orders": 50,
+     "orders_denied": 0,
+     "orders_filled": 50,
+     "top5_share": 0.30096601615539437,
+     "run_id": "a007d929bf589801",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.7202925699936866,
+     "null_pct": [
+      0.965,
+      1.0
+     ],
+     "dsr": 0.9784853590388867,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.2905984117782343,
+     "cpcv_frac_pos": 0.6,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.6740675419569016,
+     "reference_sharpe": 0.005599306586205946
+    },
+    {
+     "orders": 66,
+     "orders_denied": 0,
+     "orders_filled": 66,
+     "top5_share": 0.16317196132986297,
+     "run_id": "a54451d51142127b",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.0852173255612616,
+     "null_pct": [
+      0.715,
+      0.78125
+     ],
+     "dsr": 0.9988305202586933,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.22123730835928015,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.840136792045087,
+     "reference_sharpe": 0.2944638654027114
+    },
+    {
+     "orders": 61,
+     "orders_denied": 0,
+     "orders_filled": 61,
+     "top5_share": 0.7540461334245235,
+     "run_id": "ff2be17b6c51aee4",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.2459151327582766,
+     "null_pct": [
+      0.805,
+      0.875
+     ],
+     "dsr": 0.7532086945288597,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.6770124746494721,
+     "cpcv_frac_pos": 0.5333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 7.4606939578661695,
+     "reference_sharpe": 0.41680895221649256
+    },
+    {
+     "orders": 23,
+     "orders_denied": 3,
+     "orders_filled": 20,
+     "top5_share": Infinity,
+     "run_id": "a4036a6be6c12432",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.6381607726357736,
+     "null_pct": [
+      0.235,
+      0.125
+     ],
+     "dsr": 0.03730182631761179,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.454383868338078,
+     "cpcv_frac_pos": 0.3333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 7.302940374938771,
+     "reference_sharpe": 0.4352386457877986
+    },
+    {
+     "orders": 74,
+     "orders_denied": 0,
+     "orders_filled": 74,
+     "top5_share": 0.1574227889611877,
+     "run_id": "31c799863cdec829",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.1523357274861632,
+     "null_pct": [
+      0.715,
+      0.78125
+     ],
+     "dsr": 0.9993866484688912,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.2754793856864785,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 7.10286254202947,
+     "reference_sharpe": 0.3115332767111851
+    },
+    {
+     "orders": 21,
+     "orders_denied": 2,
+     "orders_filled": 19,
+     "top5_share": Infinity,
+     "run_id": "66f72efcd2150841",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.5294709601192353,
+     "null_pct": [
+      0.435,
+      0.5
+     ],
+     "dsr": 0.06941833179323512,
+     "dsr_n_trials": 1,
+     "ci_lower": -1.3845678613812566,
+     "cpcv_frac_pos": 0.0,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 5.7594730409327894,
+     "reference_sharpe": 1.1486527184362545
+    },
+    {
+     "orders": 38,
+     "orders_denied": 3,
+     "orders_filled": 35,
+     "top5_share": Infinity,
+     "run_id": "9f6756b2574ffb79",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": -0.07494694960556683,
+     "null_pct": [
+      0.34,
+      0.40625
+     ],
+     "dsr": 0.417371163695309,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.899006020398943,
+     "cpcv_frac_pos": 0.4,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": false
+     },
+     "seconds": 6.013156041968614,
+     "reference_sharpe": 0.5558890051375812
+    },
+    {
+     "orders": 61,
+     "orders_denied": 2,
+     "orders_filled": 59,
+     "top5_share": 0.34233563037342335,
+     "run_id": "8f3abc6b63b5bec6",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.6157400656781388,
+     "null_pct": [
+      0.815,
+      0.8125
+     ],
+     "dsr": 0.9570312339035544,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.3501321335109647,
+     "cpcv_frac_pos": 0.6666666666666666,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 6.0574812919367105,
+     "reference_sharpe": 0.37881986137175316
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P03",
+   "title": "Best-of-K repeated validate on a null world (selection across runs)",
+   "truth": "Null world; the researcher runs validate over 10 lookbacks and keeps the best.",
+   "expected": "Each validate run is deflated for prior attempts on the same data (n_trials > 1).",
+   "classification": "silent",
+   "detail": "0/10 null worlds produced at least one PASS among 10 tries; the best run's DSR n_trials values = [1] \u2014 the gauntlet does not know about sibling attempts on the same symbol.",
+   "metrics": {
+    "worlds_with_a_pass": 0,
+    "n_worlds": 10,
+    "best_n_trials": [
+     1
+    ]
+   },
+   "runs": [
+    {
+     "any_passed": false,
+     "best": {
+      "run_id": "b0f1f0041be9c1f8",
+      "passed": false,
+      "grade": "A",
+      "oos_sharpe": 1.0785676311185481,
+      "null_pct": [
+       0.95,
+       0.90625
+      ],
+      "dsr": 0.998751759640331,
+      "dsr_n_trials": 1,
+      "ci_lower": 0.13806819138965712,
+      "cpcv_frac_pos": 1.0,
+      "gates": {
+       "walk_forward_oos": true,
+       "randomized_price_null": false,
+       "bootstrap_ci": true,
+       "deflated_sharpe": true,
+       "cpcv_oos": true
+      },
+      "seconds": 7.649442082969472
+     },
+     "n_tried": 10,
+     "passes": 0
+    },
+    {
+     "any_passed": false,
+     "best": {
+      "run_id": "9c8e836aaed2052a",
+      "passed": false,
+      "grade": "C",
+      "oos_sharpe": 0.47271515054287494,
+      "null_pct": [
+       0.81,
+       0.8125
+      ],
+      "dsr": 0.9058588886099459,
+      "dsr_n_trials": 1,
+      "ci_lower": -0.42748435514041244,
+      "cpcv_frac_pos": 0.8666666666666667,
+      "gates": {
+       "walk_forward_oos": true,
+       "randomized_price_null": false,
+       "bootstrap_ci": false,
+       "deflated_sharpe": false,
+       "cpcv_oos": true
+      },
+      "seconds": 8.022167791146785
+     },
+     "n_tried": 10,
+     "passes": 0
+    },
+    {
+     "any_passed": false,
+     "best": {
+      "run_id": "b548a0fe348c3b68",
+      "passed": false,
+      "grade": "C",
+      "oos_sharpe": 0.06005413352960911,
+      "null_pct": [
+       0.725,
+       0.5625
+      ],
+      "dsr": 0.5664034192579386,
+      "dsr_n_trials": 1,
+      "ci_lower": -0.7821842992004615,
+      "cpcv_frac_pos": 0.4666666666666667,
+      "gates": {
+       "walk_forward_oos": true,
+       "randomized_price_null": false,
+       "bootstrap_ci": false,
+       "deflated_sharpe": false,
+       "cpcv_oos": false
+      },
+      "seconds": 7.382082459051162
+     },
+     "n_tried": 10,
+     "passes": 0
+    },
+    {
+     "any_passed": false,
+     "best": {
+      "run_id": "be85439f1831cd3b",
+      "passed": false,
+      "grade": "C",
+      "oos_sharpe": 0.3992355316407382,
+      "null_pct": [
+       0.62,
+       0.6875
+      ],
+      "dsr": 0.8669143005715328,
+      "dsr_n_trials": 1,
+      "ci_lower": -0.38549468129029596,
+      "cpcv_frac_pos": 0.7333333333333333,
+      "gates": {
+       "walk_forward_oos": true,
+       "randomized_price_null": false,
+       "bootstrap_ci": false,
+       "deflated_sharpe": false,
+       "cpcv_oos": true
+      },
+      "seconds": 8.139256541850045
+     },
+     "n_tried": 10,
+     "passes": 0
+    },
+    {
+     "any_passed": false,
+     "best": {
+      "run_id": "138e21cc42fbb06b",
+      "passed": false,
+      "grade": "B",
+      "oos_sharpe": 0.8694624211414014,
+      "null_pct": [
+       0.95,
+       0.96875
+      ],
+      "dsr": 0.9926132759249134,
+      "dsr_n_trials": 1,
+      "ci_lower": -0.02423815927454082,
+      "cpcv_frac_pos": 0.6666666666666666,
+      "gates": {
+       "walk_forward_oos": true,
+       "randomized_price_null": true,
+       "bootstrap_ci": false,
+       "deflated_sharpe": true,
+       "cpcv_oos": true
+      },
+      "seconds": 8.171024875016883
+     },
+     "n_tried": 10,
+     "passes": 0
+    },
+    {
+     "any_passed": false,
+     "best": {
+      "run_id": "968c4060636f65f3",
+      "passed": false,
+      "grade": "B",
+      "oos_sharpe": 0.6109796342497361,
+      "null_pct": [
+       0.735,
+       0.71875
+      ],
+      "dsr": 0.9558974900750665,
+      "dsr_n_trials": 1,
+      "ci_lower": -0.3185257779818004,
+      "cpcv_frac_pos": 0.8666666666666667,
+      "gates": {
+       "walk_forward_oos": true,
+       "randomized_price_null": false,
+       "bootstrap_ci": false,
+       "deflated_sharpe": true,
+       "cpcv_oos": true
+      },
+      "seconds": 8.176878458121791
+     },
+     "n_tried": 10,
+     "passes": 0
+    },
+    {
+     "any_passed": false,
+     "best": {
+      "run_id": "ec95efe2f6bc9275",
+      "passed": false,
+      "grade": "C",
+      "oos_sharpe": -0.017017667306203858,
+      "null_pct": [
+       0.615,
+       0.65625
+      ],
+      "dsr": 0.4811112999909814,
+      "dsr_n_trials": 1,
+      "ci_lower": -0.7255524639187543,
+      "cpcv_frac_pos": 0.4,
+      "gates": {
+       "walk_forward_oos": true,
+       "randomized_price_null": false,
+       "bootstrap_ci": false,
+       "deflated_sharpe": false,
+       "cpcv_oos": false
+      },
+      "seconds": 5.983410625020042
+     },
+     "n_tried": 10,
+     "passes": 0
+    },
+    {
+     "any_passed": false,
+     "best": {
+      "run_id": "ceb6ec4930f58e27",
+      "passed": false,
+      "grade": "C",
+      "oos_sharpe": 0.4349676222419424,
+      "null_pct": [
+       0.915,
+       1.0
+      ],
+      "dsr": 0.8879673332790519,
+      "dsr_n_trials": 1,
+      "ci_lower": -0.5074676412762306,
+      "cpcv_frac_pos": 0.7333333333333333,
+      "gates": {
+       "walk_forward_oos": true,
+       "randomized_price_null": false,
+       "bootstrap_ci": false,
+       "deflated_sharpe": false,
+       "cpcv_oos": true
+      },
+      "seconds": 7.278259000042453
+     },
+     "n_tried": 10,
+     "passes": 0
+    },
+    {
+     "any_passed": false,
+     "best": {
+      "run_id": "29a515b9e15200da",
+      "passed": false,
+      "grade": "C",
+      "oos_sharpe": 0.3283230542224202,
+      "null_pct": [
+       0.58,
+       0.65625
+      ],
+      "dsr": 0.8197946561537999,
+      "dsr_n_trials": 1,
+      "ci_lower": -0.5474949807906241,
+      "cpcv_frac_pos": 0.6666666666666666,
+      "gates": {
+       "walk_forward_oos": true,
+       "randomized_price_null": false,
+       "bootstrap_ci": false,
+       "deflated_sharpe": false,
+       "cpcv_oos": true
+      },
+      "seconds": 6.371827790979296
+     },
+     "n_tried": 10,
+     "passes": 0
+    },
+    {
+     "any_passed": false,
+     "best": {
+      "run_id": "9210ee5a08806469",
+      "passed": false,
+      "grade": "C",
+      "oos_sharpe": -0.08089997000271926,
+      "null_pct": [
+       0.705,
+       0.6875
+      ],
+      "dsr": 0.410966956347997,
+      "dsr_n_trials": 1,
+      "ci_lower": -0.9107365998273852,
+      "cpcv_frac_pos": 0.3333333333333333,
+      "gates": {
+       "walk_forward_oos": true,
+       "randomized_price_null": false,
+       "bootstrap_ci": false,
+       "deflated_sharpe": false,
+       "cpcv_oos": false
+      },
+      "seconds": 5.842525333864614
+     },
+     "n_tried": 10,
+     "passes": 0
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P04",
+   "title": "Optim grid: do failed/rejected configs count toward deflation?",
+   "truth": "5 configs requested on a null world; lookback=700 cannot warm up on the training window.",
+   "expected": "Deflation trial count covers every attempted config (or discloses the exclusion).",
+   "classification": "silent",
+   "detail": "configs listed=5, DSR n_trials=4; manifest count fields={'analysis_trial_indices': [0, 1, 2, 3], 'best_config': [['lookback', 252.0]], 'configs': [[['lookback', 20.0]], [['lookback', 60.0]], [['lookback', 120.0]], [['lookback', 252.0]], [['lookback', 700.0]]], 'execution_fingerprint': 'd5bf56db187762e164ffb5c8e575afa42f46bb786bca2e6b3629e7486a884b55', 'n_configs': 5, 'n_oos': 1953, 'n_successful_configs': 4, 'run_id': '95001ae68f01b51c', 'run_identity_version': 3, 'successful_trial_indices': [0, 1, 2, 3], 'trial_outcomes': [{'annualized_sharpe': -0.04950062301738337, 'config_fingerprint': '3b0ba11619bfd81c187b55b878f1c6885196fd6f514bcd41fa38aa0096f6e526', 'error': None, 'n_oos': 1953, 'status': 'passed', 'trial': 0}, {'annualized_sharpe': -0.1878044459867874, 'config_fingerprint': '6d6cf4d05a14223de9f9fcb2581e354710c8ca0daa9afbc8aa9b02f9b645739b', 'error': None, 'n_oos': 1953, 'status': 'passed', 'trial': 1}, {'annualized_sharpe': 0.5207776963241512, 'config_fingerprint': 'ab8937fa918afaf4a237fb1957b78f0a41e2b7f1b98602217a453ad33c18025d', 'error': None, 'n_oos': 1953, 'status': 'passed', 'trial': 2}, {'annualized_sharpe': 0.6944622693663476, 'config_fingerprint': '60f881fca6d78f7646ea66943a37dea98593d54de42adaf81b0bd4804a066db4', 'error': None, 'n_oos': 1953, 'status': 'passed', 'trial': 3}, {'annualized_sharpe': None, 'config_fingerprint': '1b967b24a2d08e2fc9abeb70a353467d4a6ed2ddc7f6768ea5382b9c74ad6c24', 'error': 'DataError: train_size 504 < warmup floor 722 for this config', 'n_oos': 0, 'status': 'rejected', 'trial': 4}], 'trial_status_counts': {'failed': 0, 'passed': 4, 'pruned': 0, 'rejected': 1}}",
+   "metrics": {
+    "n_configs": 5,
+    "dsr_n_trials": 4
+   },
+   "runs": [
+    {
+     "run_id": "95001ae68f01b51c",
+     "stdout": "optim OPTM -> run 95001ae68f01b51c: FAIL over 5 declared configs (4 successful)\n  best: lookback=252 (OOS Sharpe 0.694)\n  deflated Sharpe 0.751 (>= 0.95? False); PBO 0.075; SPA p 0.153; RC p 0.156\n  manifest at /Users/hunternovotny/.alpha-bench/layer_a_final/work/null-s11-g26f24kr/sb/optim/95001ae68f01b51c/manifest.json\n"
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P05",
+   "title": "Cost cliff: high-turnover mean reversion",
+   "truth": "AR(1) phi=-0.15 daily returns; gross edge that should erode quickly with realistic costs.",
+   "expected": "The run reports cost sensitivity / break-even cost rather than a single-cost verdict.",
+   "classification": "capability_absent",
+   "detail": "OOS Sharpe by one-way cost 0/3/15/30 bps: [0.7233395285783574, 0.4275437027799521, None, None]; passed: [False, False, None, None]; any break-even/cost-sensitivity field: False.",
+   "metrics": {
+    "sharpe_by_cost": [
+     0.7233395285783574,
+     0.4275437027799521,
+     null,
+     null
+    ]
+   },
+   "runs": [
+    {
+     "run_id": "61c8c38cb29ab590",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.7233395285783574,
+     "null_pct": [
+      0.595,
+      0.5
+     ],
+     "dsr": 0.9790168846382763,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.032361007858202055,
+     "cpcv_frac_pos": 0.9333333333333333,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 13.138328833971173,
+     "cost_bps_one_way": 0,
+     "mentions_breakeven": false,
+     "mentions_cost_sensitivity": false
+    },
+    {
+     "run_id": "b5b3b8d82173693c",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 0.4275437027799521,
+     "null_pct": [
+      0.59,
+      0.46875
+     ],
+     "dsr": 0.884102681067686,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.23902102080529594,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 13.106490917038172,
+     "cost_bps_one_way": 3,
+     "mentions_breakeven": false,
+     "mentions_cost_sensitivity": false
+    },
+    {
+     "returncode": 2,
+     "stderr_tail": "Usage: alpha validate [OPTIONS] SYMBOL\nTry 'alpha validate --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 Invalid value: engine stopped after 352 of 1955 sessions - usually the       \u2502\n\u2502 account balance went negative (fees/slippage on a full-balance fill). Lower  \u2502\n\u2502 target_vol or max_leverage, or raise starting_cash.                          \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+     "seconds": 3.5309368330053985,
+     "cost_bps_one_way": 15
+    },
+    {
+     "returncode": 2,
+     "stderr_tail": "Usage: alpha validate [OPTIONS] SYMBOL\nTry 'alpha validate --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 Invalid value: engine stopped after 516 of 1955 sessions - usually the       \u2502\n\u2502 account balance went negative (fees/slippage on a full-balance fill). Lower  \u2502\n\u2502 target_vol or max_leverage, or raise starting_cash.                          \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+     "seconds": 3.4410759159363806,
+     "cost_bps_one_way": 30
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P06",
+   "title": "Regime-conditional edge (edge in first 45% of sample only)",
+   "truth": "Planted trend edge that disappears permanently after 45% of the sample.",
+   "expected": "A stability/regime gate flags that recent folds have no edge (or the verdict degrades).",
+   "classification": "detected",
+   "detail": "FULL passed=True sharpe=2.315776305322016; HALF passed=False sharpe=0.12403026507992829, grade=C; mean fold Sharpe early=0.31 late=-0.31; regime-specific gate present=False.",
+   "metrics": {
+    "early_fold_sharpe": 0.3090989863993207,
+    "late_fold_sharpe": -0.3098499567692791
+   },
+   "runs": [
+    {
+     "run_id": "6432e043469abbd7",
+     "passed": true,
+     "grade": "A",
+     "oos_sharpe": 2.315776305322016,
+     "null_pct": [
+      0.955,
+      1.0
+     ],
+     "dsr": 0.9999999999933523,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.3922957994843952,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.427255750168115
+    },
+    {
+     "run_id": "52a1ec81ede2943a",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.12403026507992829,
+     "null_pct": [
+      0.935,
+      0.96875
+     ],
+     "dsr": 0.6351517774661758,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.6877924547172037,
+     "cpcv_frac_pos": 0.4666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 4.643798750126734
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P07",
+   "title": "Return concentration: result driven by a handful of days",
+   "truth": "Null walk plus 5 isolated +18% jump days.",
+   "expected": "Run flags top-k day concentration (drop-the-best / contribution check).",
+   "classification": "capability_absent",
+   "detail": "passed=False grade=C sharpe=0.45643156690611036; independent top-5-day share of OOS log return=1.1639027580209813; platform concentration field present=False.",
+   "metrics": {
+    "top5_share": 1.1639027580209813,
+    "world_top5_share": 0.6034794921317073
+   },
+   "runs": [
+    {
+     "run_id": "489c34c8e44b560a",
+     "passed": false,
+     "grade": "C",
+     "oos_sharpe": 0.45643156690611036,
+     "null_pct": [
+      0.3,
+      0.28125
+     ],
+     "dsr": 0.9248099058340062,
+     "dsr_n_trials": 1,
+     "ci_lower": -0.3344903980134254,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": false,
+      "deflated_sharpe": false,
+      "cpcv_oos": true
+     },
+     "seconds": 5.41336925001815
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P08",
+   "title": "Survivorship: PIT universe vs survivor-only list",
+   "truth": "4 of 12 names decline then delist in June 2022 (delisting return -90%).",
+   "expected": "Screening honours PIT membership when given; backtests cannot silently use survivors.",
+   "classification": "capability_absent",
+   "detail": "universe import rc=0; scan with PIT rc=0; survivor-only scan rc=0 (accepted without warning=True); `backtest cross-sectional` has a --universe option=False.",
+   "metrics": {
+    "xs_universe_option": false,
+    "spread_pit": {
+     "mom_12_1": 0.01938490714860592,
+     "mom_6_1": 0.01640735167210649,
+     "range_52w": 0.020023039291410416,
+     "rev_1m": -0.014987907023260624,
+     "vol_63": -0.00236544678937422
+    },
+    "spread_survivors": {
+     "mom_12_1": -0.00010749711172454521,
+     "mom_6_1": -0.004025425907621576,
+     "range_52w": 0.0006793227734106424,
+     "rev_1m": -0.0012867325740153882,
+     "vol_63": -0.005003486902077822
+    }
+   },
+   "runs": [
+    {
+     "pit": "",
+     "survivors": "",
+     "import": "{\"authority\": \"none\", \"memberships\": 12, \"name\": \"pit\", \"path\": \"/Users/hunternovotny/.alpha-bench/layer_a_final/work/surv-s12-tv635lxn/sb/store/universe/pit.json\", \"removed\": 4, \"symbols\": 12}\n"
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P09",
+   "title": "Corrupt data: disordered rows, non-finite close, 10x bad print",
+   "truth": "Three corrupted symbols written to the store (disordered/NaN bypass the write contract).",
+   "expected": "Typed fail-loud errors (exit 2, DataError) and audit flags; never a silent result.",
+   "classification": "crashed",
+   "detail": "DISO validate=2; NANX traceback=True rc=1; SPIK validate passed=False audit flags spike=False; disordered handled=True",
+   "metrics": {
+    "nan_typed_error": false,
+    "spike_flagged": false,
+    "disordered_typed": true,
+    "symbol_level_audit": false
+   },
+   "runs": [
+    {
+     "DISO": {
+      "validate": {
+       "returncode": 2,
+       "stderr_tail": "Usage: alpha validate [OPTIONS] SYMBOL\nTry 'alpha validate --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 Invalid value: to_execution_feed requires daily (>= 24h-spaced, strictly     \u2502\n\u2502 increasing) bars; got 2024-07-18T00:00:00+00:00 -> 2017-11-07T00:00:00+00:00 \u2502\n\u2502 (-58680.0h apart)                                                            \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+       "seconds": 1.61020787502639
+      },
+      "traceback": false,
+      "typed_usage_error": true,
+      "stderr_tail": "ror \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 Invalid value: to_execution_feed requires daily (>= 24h-spaced, strictly     \u2502\n\u2502 increasing) bars; got 2024-07-18T00:00:00+00:00 -> 2017-11-07T00:00:00+00:00 \u2502\n\u2502 (-58680.0h apart)                                                            \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n"
+     },
+     "NANX": {
+      "validate": {
+       "returncode": 1,
+       "stderr_tail": "   265 \u2502   \u2502   \u2502   warnings.warn(                                            \u2502\n\u2502    266 \u2502   \u2502   \u2502   \u2502   'A custom validator is returning a value other than   \u2502\n\u2502        `self`.\\n'                                                            \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\nValidationError: 1 validation error for Bar\n  Value error, Bar.close must be finite, got nan [type=value_error, \ninput_value={'symbol': 'NANX', 'ts': ...an, 'volume': 1000000.0}, \ninput_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\n",
+       "seconds": 1.078845249954611
+      },
+      "traceback": true,
+      "typed_usage_error": false,
+      "stderr_tail": "                                       \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\nValidationError: 1 validation error for Bar\n  Value error, Bar.close must be finite, got nan [type=value_error, \ninput_value={'symbol': 'NANX', 'ts': ...an, 'volume': 1000000.0}, \ninput_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\n"
+     },
+     "SPIK": {
+      "validate": {
+       "run_id": "5299a9615aaabc7b",
+       "passed": false,
+       "grade": "C",
+       "oos_sharpe": 0.21222296821274836,
+       "null_pct": [
+        0.375,
+        0.71875
+       ],
+       "dsr": 0.7226791652722043,
+       "dsr_n_trials": 1,
+       "ci_lower": -0.7086509511543182,
+       "cpcv_frac_pos": 0.6666666666666666,
+       "gates": {
+        "walk_forward_oos": true,
+        "randomized_price_null": false,
+        "bootstrap_ci": false,
+        "deflated_sharpe": false,
+        "cpcv_oos": true
+       },
+       "seconds": 6.286099083023146
+      },
+      "traceback": false,
+      "typed_usage_error": false,
+      "stderr_tail": ""
+     }
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P10",
+   "title": "Beta masquerading as alpha",
+   "truth": "LEVR = 1.3 x a drifting market + noise; no timing skill exists.",
+   "expected": "A benchmark-relative (alpha) gate rejects or discloses that returns are beta.",
+   "classification": "capability_absent",
+   "detail": "passed=False grade=B sharpe=1.0580944837095685; independent regression on market: beta=0.22867259846654686, alpha t=2.1618723970109017; benchmark/beta gate in outcomes=False (a benchmark_comparison artifact exists but is not gated).",
+   "metrics": {
+    "n_days": 1953,
+    "total_log_return": 0.7211260849344159,
+    "top5_share": 0.14752083568655455,
+    "top10_share": 0.26924053819008825,
+    "active_day_frac": 0.819252432155658,
+    "orders": 81,
+    "orders_denied": 0,
+    "orders_filled": 81,
+    "beta": 0.22867259846654686,
+    "alpha_daily": 0.000322391730309832,
+    "alpha_t": 2.1618723970109017,
+    "alpha_ann_sharpe": 0.8579665093118914
+   },
+   "runs": [
+    {
+     "run_id": "a0cdff1c049ad6e6",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 1.0580944837095685,
+     "null_pct": [
+      0.75,
+      0.71875
+     ],
+     "dsr": 0.998438201434571,
+     "dsr_n_trials": 1,
+     "ci_lower": 0.19216123529035178,
+     "cpcv_frac_pos": 0.8,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 6.4682932500727475
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P11",
+   "title": "Screening lane: best-of-many signals on a null panel",
+   "truth": "20 zero-edge names; every screened signal x horizon is noise.",
+   "expected": "Selection-adjusted significance, or at least explicit disclosure that none was applied.",
+   "classification": "disclosed_only",
+   "detail": "3/20 signal x horizon cells have |IC t| > 1.96 on pure noise (plain t, overlapping outcomes uncorrected per caveats); selection_adjustment=not_performed; caveats disclosed=True.",
+   "metrics": {
+    "disclosed": true,
+    "n_cells": 20,
+    "nominal_hits": 3,
+    "max_abs_t": 5.124150575466779,
+    "hits": [
+     [
+      "mom_12_1",
+      21,
+      -4.503122775938899
+     ],
+     [
+      "mom_6_1",
+      21,
+      -4.009313342934779
+     ],
+     [
+      "vol_63",
+      21,
+      -5.124150575466779
+     ]
+    ]
+   },
+   "runs": [
+    {
+     "payload_head": "{\"authority\": \"none\", \"execution_authority\": false, \"trials\": 20, \"missing\": [], \"dates\": [\"2017-01-30\", \"2017-01-31\", \"2017-02-01\", \"2017-02-02\", \"2017-02-03\", \"2017-02-06\", \"2017-02-07\", \"2017-02-08\", \"2017-02-09\", \"2017-02-10\", \"2017-02-13\", \"2017-02-14\", \"2017-02-15\", \"2017-02-16\", \"2017-02-17\", \"2017-02-20\", \"2017-02-21\", \"2017-02-22\", \"2017-02-23\", \"2017-02-24\", \"2017-02-27\", \"2017-02-28\", \"2017-03-01\", \"2017-03-02\", \"2017-03-03\", \"2017-03-06\", \"2017-03-07\", \"2017-03-08\", \"2017-03-09\", \"2017-03-10\", \"2017-03-13\", \"2017-03-14\", \"2017-03-15\", \"2017-03-16\", \"2017-03-17\", \"2017-03-20\", \"2017-03-21\", \"2017-03-22\", \"2017-03-23\", \"2017-03-24\", \"2017-03-27\", \"2017-03-28\", \"2017-03-29\", \"2017-03-30\", \"2017-03-31\", \"2017-04-03\", \"2017-04-04\", \"2017-04-05\", \"2017-04-06\", \"2017-04-07\", \"2017-04-10\", \"2017-04-11\", \"2017-04-12\", \"2017-04-13\", \"2017-04-14\", \"2017-04-17\", \"2017-04-18\", \"2017-04-19\", \"2017-04-20\", \"2017-04-21\", \"2017-04-24\", \"2017-04-25\", \"2017-04-26\", \"2017-04-27\", \"2017-04-28\", \"2017-05-01\", \"2017-05-02\", \"2017-05-03\", \"2017-05-04\", \"2017-05-05\", \"2017-05-08\", \"2017-05-09\", \"2017-05-10\", \"2017-05-11\", \"2017-05-12\", \"2017-05-15\", \"2017-05-16\", \"2017-05-17\", \"2017-05-18\", \"2017-05-19\", \"2017-05-22\", \"2017-05-23\", \"2017-05-24\", \"2017-05-25\", \"2017-05-26\", \"2017-05-29\", \"2017-05-30\", \"2017-05-31\", \"2017-06-01\", \"2017-06-02\", \"2017-06-05\", \"2017-06-06\", \"2017-06-07\", \"2017-06-08\", \"2017-06-09\", \"2017-06-12\", \"2017-06-13\", \"2017-06-14\", \"2017-06-15\", \"2017-06-16\", \"2017-06-19\", \"2017-06-20\", \"2017-06-21\", \"2017-06-22\", \"2017-06-23\", \"2017-06-26\", \"2017-06-27\", \"2017-06-28\", \"2017-06-29\", \"2017-06-30\", \"2017-07-03\", \"2017-07-04\", \"2017-07-05\", \"2017-07-06\", \"2017-07-07\", \"2017-07-10\", \"2017-07-11\", \"2017-07-12\", \"2017-07-13\", \"2017-07-14\", \"2017-07-17\", \"2017-07-18\", \"2017-07-19\", \"2017-07-20\", \"2017-07-21\", \"2017-07-24\", \"2017-07-25\", \"2017-07-26\", \"2017-07-27\", \"2017-07-28\", \"2017-07-31\", \"2017-08-01\", \"2017-08-02\", \"2017-08-03\", \"2017-08-04\", \"2017-08-07\", \"2017-08-08\", \"2017-08-09\", \"2017-08-10\", \"2017-08-11\", \"2017-08-14\", \"2017-08-15\", \"2017-08-16\", \"2017-08-17\", \"2017-08-18\", \"2017-08-21\", \"2017-08-22\", \"2017-08-23\", \"2017-08-24\", \"2017-08-25\", \"2017-08-28\", \"2017-08-29\", \"2017-08-30\", \"2017-08-31\", \"2017-09-01\", \"2017-09-04\", \"2017-09-05\", \"2017-09-06\", \"2017-09-07\", \"2017-09-08\", \"2017-09-11\", \"2017-09-12\", \"2017-09-13\", \"2017-09-14\", \"2017-09-15\", \"2017-09-18\", \"2017-09-19\", \"2017-09-20\", \"2017-09-21\", \"2017-09-22\", \"2017-09-25\", \"2017-09-26\", \"2017-09-27\", \"2017-09-28\", \"2017-09-29\", \"2017-10-02\", \"2017-10-03\", \"2017-10-04\", \"2017-10-05\", \"2017-10-06\", \"2017-10-09\", \"2017-10-10\", \"2017-10-11\", \"2017-10-12\", \"2017-10-13\", \"2017-10-16\", \"2017-10-17\", \"2017-10-18\", \"2017-10-19\", \"2017-10-20\", \"2017-10-23\", \"2017-10-24\", \"2017-10-25\", \"2017-10-26\", \"2017-10-27\", \"2017-10-30\", \"2017-10-31\", \"2017-11-01\", \"2017-11-02\", \"2017-11-03\", \"2017-11-06\", \"2017-11-07\", \"2017-11-08\", \"2017-11-09\", \"2017-11-10\", \"2017-11-13\", \"2017-11-14\", \"2017-11-15"
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P16",
+   "title": "Run identity and manifest determinism",
+   "truth": "Identical config + data must yield the same content-addressed run.",
+   "expected": "Same run id and byte-identical manifest.",
+   "classification": "as_expected",
+   "detail": "run ids f616ec9a1b90df87 / f616ec9a1b90df87; manifests identical=True",
+   "metrics": {
+    "identical": true
+   },
+   "runs": [],
+   "evidence": []
+  },
+  {
+   "id": "P17",
+   "title": "Verdict stability under Monte Carlo seed and null path count",
+   "truth": "Identical data and strategy; only the null-simulation seed / path count changes.",
+   "expected": "A verdict that does not flip on simulation noise, or a reported Monte Carlo standard error.",
+   "classification": "not_as_expected",
+   "detail": "PASS pattern over 10 MC seeds + 2 path budgets: [True, True, True, False, True, True, False, False, True, True, True, True]; null percentiles [[0.88, 1.0], [0.915, 0.96875], [0.92, 0.96875], [0.9, 0.90625], [0.915, 1.0], [0.915, 0.96875], [0.915, 0.9375], [0.925, 0.9375], [0.915, 0.96875], [0.925, 0.96875], [0.94, 1.0], [0.913, 0.984375]]. No Monte Carlo standard error is reported next to the 0.95 percentile threshold.",
+   "metrics": {
+    "verdicts": [
+     true,
+     true,
+     true,
+     false,
+     true,
+     true,
+     false,
+     false,
+     true,
+     true,
+     true,
+     true
+    ],
+    "mixed": true
+   },
+   "runs": [
+    {
+     "mc_seed": 1,
+     "run_id": "446cebab9b9b7a25",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.88,
+      1.0
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.6130827070821496,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.830396665958688
+    },
+    {
+     "mc_seed": 2,
+     "run_id": "bf6fc51bd67d5f3f",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.915,
+      0.96875
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.7445582738792107,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.937891374807805
+    },
+    {
+     "mc_seed": 3,
+     "run_id": "a097923e9119dc27",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.92,
+      0.96875
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.788357028120596,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.773954042000696
+    },
+    {
+     "mc_seed": 4,
+     "run_id": "67fe82fa734ea49c",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.9,
+      0.90625
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.663153866042001,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.84392833407037
+    },
+    {
+     "mc_seed": 5,
+     "run_id": "14b06ea925cb7a6f",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.915,
+      1.0
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.798538893601607,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.761737124994397
+    },
+    {
+     "mc_seed": 6,
+     "run_id": "c2b64dcb84277ebf",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.915,
+      0.96875
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.8242667069185021,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.673602082999423
+    },
+    {
+     "mc_seed": 7,
+     "run_id": "e2d2cade8b2c20ff",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.915,
+      0.9375
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.6678180964769906,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.875083541031927
+    },
+    {
+     "mc_seed": 8,
+     "run_id": "b765ce73d11221fc",
+     "passed": false,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.925,
+      0.9375
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.712010520006881,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": false,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.711306125158444
+    },
+    {
+     "mc_seed": 9,
+     "run_id": "71cae56eac054f5b",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.915,
+      0.96875
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.635084043810925,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.560226040892303
+    },
+    {
+     "mc_seed": 10,
+     "run_id": "90f87174292c4be6",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.925,
+      0.96875
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.731806357098396,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.6944673750549555
+    },
+    {
+     "paths": [
+      100,
+      16
+     ],
+     "run_id": "4b4e4c5fc6dd2174",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.94,
+      1.0
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.6678180964769906,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 5.766717917053029
+    },
+    {
+     "paths": [
+      1000,
+      64
+     ],
+     "run_id": "f7368f873f173aca",
+     "passed": true,
+     "grade": "B",
+     "oos_sharpe": 2.701314447133386,
+     "null_pct": [
+      0.913,
+      0.984375
+     ],
+     "dsr": 0.9999999999999984,
+     "dsr_n_trials": 1,
+     "ci_lower": 1.6678180964769906,
+     "cpcv_frac_pos": 0.8666666666666667,
+     "gates": {
+      "walk_forward_oos": true,
+      "randomized_price_null": true,
+      "bootstrap_ci": true,
+      "deflated_sharpe": true,
+      "cpcv_oos": true
+     },
+     "seconds": 8.851520042167976
+    }
+   ],
+   "evidence": []
+  },
+  {
+   "id": "P13",
+   "title": "Leaky strategy (look-ahead inside a signal)",
+   "truth": "A user-defined signal reading future bars.",
+   "expected": "Impossible through the public seam.",
+   "classification": "prevented_by_construction",
+   "detail": "Rule strategies are stateless over a fixed trailing window of closes/highs/lows (packages/alpha-strategies/src/alpha_strategies/rules.py); registered strategies read through as_of; bias guards cover each unit. Agent-introduced look-ahead is tested in Layer B (ADV01).",
+   "metrics": {},
+   "runs": [],
+   "evidence": [
+    "packages/alpha-strategies/src/alpha_strategies/rules.py:1-20"
+   ]
+  },
+  {
+   "id": "P14",
+   "title": "ML label leak (feature equals shifted target)",
+   "truth": "A feature that is the future label.",
+   "expected": "Impossible through the public seam.",
+   "classification": "prevented_by_construction",
+   "detail": "The ML feature recipe is fixed (alpha158) with available_at stamping and per-fold purge/embargo, and results return through a hash-locked worker exchange. There is also no target-permutation leakage test, so a leak introduced upstream of the recipe would not be detected \u2014 recorded as a gap, not a pass.",
+   "metrics": {},
+   "runs": [],
+   "evidence": [
+    "apps/alpha-cli/src/alpha_cli/ml_input.py:244",
+    "workers/qlib/src/alpha_qlib_worker/contract.py:273"
+   ]
+  }
+ ]
+}

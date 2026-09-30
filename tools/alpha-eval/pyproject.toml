@@ -1,0 +1,55 @@
+[project]
+name = "alpha-eval"
+version = "0.1.0"
+description = "Agentic research benchmark for Project ALPHA: platform probes and agent trajectory evals."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+alpha-eval = "alpha_eval.cli:main"
+
+[dependency-groups]
+dev = [
+    "mypy==2.1.0",
+    "pytest==9.1.0",
+    "ruff==0.15.17",
+    "types-pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/alpha_eval"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
+addopts = "--strict-markers --import-mode=importlib"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# worlds/build.py runs in the platform environment (numpy/polars/alpha_data), not this one
+extend-exclude = ["results"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# rubric prose, probe evidence strings, markdown table rows and golden trajectory text
+"src/alpha_eval/judge.py" = ["E501"]
+"src/alpha_eval/probes.py" = ["E501"]
+"src/alpha_eval/report.py" = ["E501"]
+"src/alpha_eval/analysis.py" = ["E501"]
+"tests/*" = ["E501"]
+"worlds/artifacts.py" = ["E501"]  # fixture prose (data dictionary, summaries)
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["alpha_eval"]

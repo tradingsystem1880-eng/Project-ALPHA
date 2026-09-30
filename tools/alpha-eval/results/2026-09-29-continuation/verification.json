@@ -1,0 +1,443 @@
+{
+  "schema_version": 1,
+  "aggregate_status": "blocked",
+  "command": "uv run --env-file /private/tmp/alpha-benchmark-gate-workers.env python scripts/gate.py full",
+  "verification_checkout": "/private/tmp/alpha-benchmark-verification-20260929",
+  "pytest_workers": 4,
+  "backend": {
+    "component": "backend",
+    "definition_hash": "048116207d0a704e400990e9f9d9201311567c2195510ba47d6cd87a6b62afdf",
+    "ok": true,
+    "schema_version": 1,
+    "stable_tree": true,
+    "status": "passed",
+    "steps": [
+      {
+        "command": [
+          "uv",
+          "lock",
+          "--check"
+        ],
+        "cwd": ".",
+        "name": "uv lock",
+        "ok": true,
+        "seconds": 0.058674999978393316
+      },
+      {
+        "command": [
+          "uv",
+          "sync",
+          "--locked"
+        ],
+        "cwd": ".",
+        "name": "uv sync",
+        "ok": true,
+        "seconds": 0.18731333292089403
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "ruff",
+          "check",
+          "."
+        ],
+        "cwd": ".",
+        "name": "ruff check",
+        "ok": true,
+        "seconds": 0.22232366702519357
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "ruff",
+          "format",
+          "--check",
+          "."
+        ],
+        "cwd": ".",
+        "name": "ruff format",
+        "ok": true,
+        "seconds": 0.10468145809136331
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "lint-imports"
+        ],
+        "cwd": ".",
+        "name": "import contracts",
+        "ok": true,
+        "seconds": 0.33509754086844623
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "mypy",
+          "packages",
+          "apps",
+          "tests"
+        ],
+        "cwd": ".",
+        "name": "mypy",
+        "ok": true,
+        "seconds": 1.9296524580568075
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "mypy",
+          "scripts/gate.py",
+          "scripts/gate_components.py",
+          "scripts/git_guard.py",
+          "scripts/wheel_smoke.py",
+          "scripts/check_semgrep_contracts.py",
+          "scripts/repo_orientation.py",
+          "scripts/claude_hooks.py",
+          "scripts/harness_awareness.py",
+          "scripts/harness_models.py",
+          "scripts/harness_quant.py",
+          "scripts/codex_bridge.py",
+          ".claude/statusline.py"
+        ],
+        "cwd": ".",
+        "name": "mypy harness",
+        "ok": true,
+        "seconds": 0.7922467919997871
+      },
+      {
+        "command": [
+          "/private/tmp/alpha-benchmark-verification-20260929/.venv/bin/python3",
+          "scripts/gate.py",
+          "lint-harness"
+        ],
+        "cwd": ".",
+        "name": "harness lint",
+        "ok": true,
+        "seconds": 0.09820516710169613
+      },
+      {
+        "command": [
+          "/private/tmp/alpha-benchmark-verification-20260929/.venv/bin/python3",
+          "scripts/gate.py",
+          "semgrep"
+        ],
+        "cwd": ".",
+        "name": "semgrep",
+        "ok": true,
+        "seconds": 24.2180421249941
+      },
+      {
+        "command": [
+          "/private/tmp/alpha-benchmark-verification-20260929/.venv/bin/python3",
+          "scripts/check_semgrep_contracts.py"
+        ],
+        "cwd": ".",
+        "name": "semgrep contracts",
+        "ok": true,
+        "seconds": 2.284441625000909
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "pytest",
+          "-q",
+          "-n",
+          "auto",
+          "-m",
+          "not network and not slow_oracle",
+          "--cov"
+        ],
+        "cwd": ".",
+        "name": "pytest + coverage",
+        "ok": true,
+        "seconds": 460.29330654093064
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "python",
+          "scripts/generate_web_openapi.py",
+          "--check"
+        ],
+        "cwd": ".",
+        "name": "openapi freshness",
+        "ok": true,
+        "seconds": 1.1630335000809282
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "python",
+          "scripts/check_openapi_operations.py"
+        ],
+        "cwd": ".",
+        "name": "openapi authority",
+        "ok": true,
+        "seconds": 0.06468316703103483
+      },
+      {
+        "command": [
+          "uv",
+          "build",
+          "--all-packages"
+        ],
+        "cwd": ".",
+        "name": "build wheels",
+        "ok": true,
+        "seconds": 1.9417465419974178
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "python",
+          "scripts/wheel_smoke.py"
+        ],
+        "cwd": ".",
+        "name": "wheel smoke",
+        "ok": true,
+        "seconds": 0.7974615420680493
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "pytest",
+          "-q",
+          "-m",
+          "slow_oracle"
+        ],
+        "cwd": ".",
+        "name": "slow oracles",
+        "ok": true,
+        "seconds": 12.279543292010203
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "python",
+          "scripts/gate.py",
+          "mutate",
+          "packages/alpha-research/src/alpha_research/panel.py",
+          "packages/alpha-validation/src/alpha_validation/overfitting.py"
+        ],
+        "cwd": ".",
+        "name": "mutation gate",
+        "ok": true,
+        "seconds": 149.0072487089783
+      }
+    ],
+    "tree_hash": "832d72b01fdce1ac7e6b2d2ec2c78692480f36c26a240d2e62b64624e9c42d63"
+  },
+  "frontend": {
+    "component": "frontend",
+    "definition_hash": "1735da28ce02eaeba82dc2179d89ef04ab8dd99bf7870af67c0b6cfee04959b1",
+    "ok": false,
+    "schema_version": 1,
+    "stable_tree": false,
+    "status": "failed",
+    "steps": [
+      {
+        "command": [
+          "npm",
+          "ci"
+        ],
+        "cwd": "apps/alpha-web/frontend",
+        "name": "install",
+        "ok": true,
+        "seconds": 2.1662692909594625
+      },
+      {
+        "command": [
+          "npm",
+          "run",
+          "lint",
+          "--",
+          "--deny-warnings"
+        ],
+        "cwd": "apps/alpha-web/frontend",
+        "name": "lint",
+        "ok": true,
+        "seconds": 0.6390653748530895
+      },
+      {
+        "command": [
+          "npx",
+          "tsc",
+          "-b",
+          "--pretty",
+          "false"
+        ],
+        "cwd": "apps/alpha-web/frontend",
+        "name": "types",
+        "ok": true,
+        "seconds": 3.4354016669094563
+      },
+      {
+        "command": [
+          "npm",
+          "run",
+          "test:coverage"
+        ],
+        "cwd": "apps/alpha-web/frontend",
+        "name": "coverage",
+        "ok": true,
+        "seconds": 2.3468161658383906
+      },
+      {
+        "command": [
+          "npm",
+          "run",
+          "generate:api"
+        ],
+        "cwd": "apps/alpha-web/frontend",
+        "name": "API generation",
+        "ok": true,
+        "seconds": 0.6142770000733435
+      },
+      {
+        "command": [
+          "git",
+          "diff",
+          "--exit-code",
+          "--",
+          "src/api/generated.ts"
+        ],
+        "cwd": "apps/alpha-web/frontend",
+        "name": "API freshness",
+        "ok": true,
+        "seconds": 0.016274791909381747
+      },
+      {
+        "command": [
+          "npm",
+          "run",
+          "test:e2e"
+        ],
+        "cwd": "apps/alpha-web/frontend",
+        "name": "browser",
+        "ok": false,
+        "seconds": 335.4789668750018
+      }
+    ],
+    "tree_hash": "832d72b01fdce1ac7e6b2d2ec2c78692480f36c26a240d2e62b64624e9c42d63"
+  },
+  "browser_result": {
+    "passed": 188,
+    "failed": 1,
+    "not_run": 4,
+    "failure": "workflow.spec.ts:86 chromium-minimum scan deletion remained visible"
+  },
+  "limitations": [
+    "Frontend build changed generated assets in the verification snapshot.",
+    "No full-gate stamp; later aggregate components not reached.",
+    "No hidden-suite or live-provider acceptance claim."
+  ],
+  "historical_preservation": {
+    "original_files_verified": 57664,
+    "mismatches": [],
+    "new_trials": 15,
+    "all_completed": true,
+    "all_isolation_verified": true,
+    "all_owner_state_unchanged": true
+  },
+  "evaluator_snapshot_comparison": {
+    "python_files": 31,
+    "mismatches": []
+  },
+  "final_evaluator_component": {
+    "component": "eval",
+    "definition_hash": "565f501246e6cee5c528b47145a95fb288ffd6c947f7c9ec2e08b0701c600e1d",
+    "ok": true,
+    "schema_version": 1,
+    "stable_tree": true,
+    "status": "passed",
+    "steps": [
+      {
+        "command": [
+          "uv",
+          "lock",
+          "--check"
+        ],
+        "cwd": "tools/alpha-eval",
+        "name": "lock",
+        "ok": true,
+        "seconds": 0.017739499919116497
+      },
+      {
+        "command": [
+          "uv",
+          "sync",
+          "--locked"
+        ],
+        "cwd": "tools/alpha-eval",
+        "name": "install",
+        "ok": true,
+        "seconds": 0.024413666920736432
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "ruff",
+          "check",
+          "."
+        ],
+        "cwd": "tools/alpha-eval",
+        "name": "lint",
+        "ok": true,
+        "seconds": 0.10077287489548326
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "ruff",
+          "format",
+          "--check",
+          "."
+        ],
+        "cwd": "tools/alpha-eval",
+        "name": "format",
+        "ok": true,
+        "seconds": 0.04469462507404387
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "mypy"
+        ],
+        "cwd": "tools/alpha-eval",
+        "name": "types",
+        "ok": true,
+        "seconds": 0.29847429203800857
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "pytest",
+          "-q",
+          "-m",
+          "not network"
+        ],
+        "cwd": "tools/alpha-eval",
+        "name": "tests",
+        "ok": true,
+        "seconds": 4.0710222909692675
+      }
+    ],
+    "tree_hash": "13641651acc2a57f13fb911ef45a9dae5d329abbd0f0931d32497ffdeef47a4d"
+  },
+  "plan_validation": "passed: five slices, four done; aggregate slice remains open"
+}

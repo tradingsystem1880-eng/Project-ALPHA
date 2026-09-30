@@ -1,0 +1,154 @@
+{
+ "name": "realdesk",
+ "n": 2520,
+ "start": "2017-01-30",
+ "bar_split": "independent",
+ "symbols": [
+  {
+   "symbol": "KNOT",
+   "family": "ar1_regime",
+   "params": {
+    "phi": -0.35,
+    "frac": 0.3,
+    "sigma": 0.012
+   }
+  },
+  {
+   "symbol": "LYNX",
+   "family": "jumps",
+   "params": {
+    "k": 6,
+    "size": 0.15,
+    "sigma": 0.012
+   }
+  },
+  {
+   "symbol": "BRIO",
+   "family": "null",
+   "params": {
+    "sigma": 0.013
+   }
+  },
+  {
+   "symbol": "VEGA",
+   "family": "null",
+   "params": {
+    "sigma": 0.011
+   }
+  },
+  {
+   "symbol": "MOSR",
+   "family": "vol_regime",
+   "params": {
+    "mu": 0.003,
+    "sigma_hi": 0.02,
+    "sigma_lo": 0.007,
+    "phi": -0.25
+   }
+  },
+  {
+   "symbol": "TARN",
+   "family": "vol_regime",
+   "params": {
+    "mu": 0.0035,
+    "sigma_hi": 0.022,
+    "sigma_lo": 0.006,
+    "phi": -0.3,
+    "switch_p": 0.008
+   }
+  },
+  {
+   "symbol": "DIPR",
+   "family": "dipcrash",
+   "params": {
+    "k": 7,
+    "crash": -0.035,
+    "crash_len": 6,
+    "phi": -0.3,
+    "mu": 0.0006,
+    "sigma": 0.009
+   }
+  },
+  {
+   "symbol": "DIPS",
+   "family": "dipcrash",
+   "params": {
+    "k": 9,
+    "crash": -0.03,
+    "crash_len": 5,
+    "phi": -0.25,
+    "mu": 0.0005,
+    "sigma": 0.01
+   }
+  },
+  {
+   "symbol": "GRNX",
+   "family": "drift",
+   "params": {
+    "mu": 0.0004,
+    "sigma": 0.011
+   }
+  },
+  {
+   "symbol": "GRNY",
+   "family": "drift",
+   "params": {
+    "mu": 0.0003,
+    "sigma": 0.013
+   }
+  },
+  {
+   "symbol": "ORCA",
+   "family": "trend",
+   "params": {
+    "mu": 0.005,
+    "sigma": 0.011,
+    "switch_p": 0.004
+   }
+  },
+  {
+   "symbol": "NULA",
+   "family": "null",
+   "params": {
+    "sigma": 0.011
+   }
+  },
+  {
+   "symbol": "TIDE",
+   "family": "trend",
+   "params": {
+    "mu": 0.0012,
+    "sigma": 0.012
+   }
+  },
+  {
+   "symbol": "MKTR",
+   "family": "drift",
+   "params": {
+    "mu": 0.0003,
+    "sigma": 0.01
+   }
+  }
+ ],
+ "snapshots": [
+  {
+   "id": "realdesk-2026",
+   "symbols": [
+    "KNOT",
+    "LYNX",
+    "BRIO",
+    "VEGA",
+    "MOSR",
+    "TARN",
+    "DIPR",
+    "DIPS",
+    "GRNX",
+    "GRNY",
+    "ORCA",
+    "NULA",
+    "TIDE",
+    "MKTR"
+   ]
+  }
+ ]
+}

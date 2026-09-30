@@ -10,7 +10,7 @@ from pathlib import Path
 
 import gate
 
-COMPONENTS = ("backend", "frontend", "literature", "qlib", "atlas")
+COMPONENTS = ("backend", "frontend", "literature", "qlib", "atlas", "eval")
 Step = tuple[str, Path, list[str]]
 
 
@@ -43,6 +43,8 @@ def required_components(paths: list[str] | None) -> set[str]:
         for worker in ("literature", "qlib"):
             if path.startswith(f"workers/{worker}/"):
                 required.add(worker)
+        if path.startswith("tools/alpha-eval/"):
+            required.add("eval")
         if not path.startswith(("packages/", "apps/", "workers/", "docs/", "tools/")):
             return set(COMPONENTS)
     return required
@@ -89,8 +91,9 @@ def component_steps(root: Path, component: str) -> list[Step]:
                 ["git", "diff", "--exit-code", "--", "apps/alpha-web/src/alpha_web/static/app"],
             ),
         ]
-    if component in {"literature", "qlib", "atlas"}:
-        cwd = root / ("tools/alpha-atlas" if component == "atlas" else f"workers/{component}")
+    if component in {"literature", "qlib", "atlas", "eval"}:
+        tools = {"atlas": "tools/alpha-atlas", "eval": "tools/alpha-eval"}
+        cwd = root / tools.get(component, f"workers/{component}")
         steps: list[Step] = [
             ("lock", cwd, ["uv", "lock", "--check"]),
             ("install", cwd, ["uv", "sync", "--locked"]),

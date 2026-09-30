@@ -1275,7 +1275,9 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("fast")
     sub.add_parser("full")
     component_p = sub.add_parser("component")
-    component_p.add_argument("name", choices=("backend", "frontend", "literature", "qlib", "atlas"))
+    component_p.add_argument(
+        "name", choices=("backend", "frontend", "literature", "qlib", "atlas", "eval")
+    )
     orient_p = sub.add_parser("orient")
     orient_p.add_argument("--component")
     orient_p.add_argument("--json", action="store_true")

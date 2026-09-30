@@ -477,3 +477,58 @@ recorded in that plan. Hidden tests remain UNVERIFIED. Codex remains
 optional and non-authoritative; no gate, surface or approval authority changed. Protected
 control-plane paths were edited, so commit requires the usual independent review and a fresh
 full stamp.
+
+## 2026-09-29 — Codex-only research benchmark continuation
+
+Owner approved preservation of all Claude evidence and Codex-only future execution. The
+[continuation plan](superpowers/plans/2026-09-29-codex-benchmark-continuation.md) adds non-destructive
+attempts/scoring revisions, execution fingerprints, streamed partial traces, per-turn failure checks,
+and verified filesystem/MCP boundaries. Original reports and 57,664 inventoried evidence files remain
+historical. The [capability audit](audit/2026-09-29-codex-capability-audit.md) records omitted web-search
+and truncated-note evidence that made two fabrication allegations unreliable, alongside a confirmed
+historical read escape and shared-export writes. These are benchmark findings, not platform fixes.
+
+At this implementation checkpoint, 74 evaluator tests and 44 affected bridge/gate tests passed.
+The corrected live smoke reached 62 MCP tools, retrieved seeded candles, and preserved owner control
+state. Retained-trace Codex scoring and the 15 missing realistic variants are in progress. A full-gate
+stamp, independent final review and complete campaign conclusions are not claimed at this checkpoint.
+Concurrent UI work in the same checkout is preserved and excluded from benchmark changes.
+
+## 2026-09-29 — Benchmark final evidence checkpoint
+
+Codex-only continuation implementation, bounded campaign and independent review are complete.
+All 57,664 original evidence files, including Claude results, remain byte-identical. The 15 new
+isolated variants scored 12 pass / 3 fail; retained realistic V4 covers 132 trajectories and qualifies
+all 11 automated critical cards in a separate review ledger. Evaluator tests: 84 passed; strict
+source typing: 22 files passed. See the [capability audit](audit/2026-09-29-codex-capability-audit.md).
+
+Aggregate verification remains blocked: frozen-copy backend passed with four workers, but the
+concurrent minimum-width UI scan-deletion browser test failed (188 passed, 1 failed, 4 not run).
+Frontend assets also changed that snapshot. No full-gate, hidden-suite or live-provider acceptance
+is claimed; UI repair remains separate. No benchmark commit or push was made.
+
+
+## 2026-09-30 — Benchmark continuation verification closed
+
+The [Codex-only continuation](superpowers/plans/2026-09-29-codex-benchmark-continuation.md) is delivered.
+All six canonical full-gate components passed on one stable tree; the stamp matched the live
+checkout before this documentation update. Previous UI deletion and generated-output blockers
+are cleared. Independent final benchmark review found no remaining delivery gap. The
+[new verification receipt](../tools/alpha-eval/results/2026-09-29-continuation/verification-2026-09-30.json)
+preserves the successful run separately from earlier failures. Documentation edits follow the
+tested tree; no later exact-tree stamp, commit, push, hidden-suite or live-provider acceptance
+is claimed. Existing Claude evidence and benchmark conclusions are unchanged.
+
+## 2026-09-30 — Benchmark-only commit preparation
+
+The benchmark delivery is isolated from concurrent UI changes for exact-tree verification and
+independent protected-file review. Its commit includes the evaluator, Codex judge bridge, shared
+evaluator gate/CI integration, preserved evidence reports and benchmark documentation. UI code,
+UI plans and UI-specific manual changes remain outside this commit. The historical combined-tree
+receipts above retain their original scope. Final commit checks require a new full-gate stamp and
+independent review on this isolated tree; local receipts are retained in `.alpha/state/`.
+
+Independent delivery review reproduced three offline test failures when Codex was absent from
+PATH. The scorer unit tests now mock the client-version lookup as well as judging; production
+version fingerprints remain real. The evaluator suite is checked with a Codex-free PATH before
+the refreshed aggregate gate.

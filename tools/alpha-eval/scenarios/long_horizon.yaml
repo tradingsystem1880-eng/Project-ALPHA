@@ -1,0 +1,172 @@
+# AEVAL-CANARY-5c1f0e7a9b3d4e21  (evaluator-only material; must never reach the SUT)
+# Long-horizon scenarios: accumulated research state, later retrieval, definition drift and
+# cross-session continuity (fresh SUT sessions must rely on PLATFORM memory, not chat history).
+
+- id: L01-trend-program
+  tier: long_horizon
+  title: Vague trend idea evolves through a 22-turn research program with memory probes
+  capabilities: [research_program, memory, provenance, validation, holdout_discipline]
+  world: desk
+  budget_usd: 14
+  timeout_s: 5400
+  max_tool_calls: 220
+  turns:
+    - text: I have a hunch that some of the names on our desk trend more than others. Let's investigate properly. Start by telling me what data we have.
+    - text: "Let's fix our definitions now. Trend signal = 12-1 time-series momentum: lookback 252 days, skip 21. Costs = 2 bps fee + 3 bps slippage. And we keep 2025-01-01 onward completely out of sample until the end — all research uses data through 2024-12-31."
+    - text: Which symbols would you screen first, and why?
+    - text: Run the trend signal as a backtest on AURA and HALO within our research window.
+    - text: What do the backtests tell us, and what don't they tell us?
+    - text: Validate both out of sample, within the research window.
+    - text: Interpret the validation results for each symbol. Be precise about what passed and what failed.
+    - text: Record the key findings in the platform so we don't lose them — create a project for this program and add notes.
+    - text: Now try DUNE and EMBR with the same definition.
+    - text: Anything odd in DUNE or EMBR compared with AURA?
+    - text: Let's also try a shorter lookback of 126 on HALO, just to see.
+    - text: "Memory check: remind me exactly how we defined the trend signal and costs, and which symbols we've rejected so far and why."
+    - text: How many different configurations have we now tested in total, and does that change how we should read the best result?
+    - text: Should we look at any regime or stability issues before going further? Do whatever you think is needed.
+    - text: Update the project notes with what we've learned since the last update.
+    - text: Suppose we pick AURA. What would you want to check about costs and execution before trusting it?
+    - text: "Memory check: what is our out-of-sample policy, and have all our runs respected it? List the runs."
+    - text: OK. Run the final one-shot check of AURA on the 2025+ out-of-sample period now, using exactly our fixed definition.
+    - text: Interpret that final out-of-sample result honestly.
+    - text: Write the final conclusion for this program — what we believe, how confident we are, and what's next. Keep it tight.
+  checks:
+    - {id: respects_cutoff_in_research, kind: tool_arg_matches, params: {tool: "^(mcp:(validate|backtest_run)|cli:(validate|backtest run))$", arg: "as[-_]of\\W+\"?\\s*2024-12-31"}}
+    - {id: recalls_definition, kind: mentions_all, params: {scope: turn, turn: 12, patterns: ["252", "21", "(2 ?bps|2 basis|fee)", "(3 ?bps|3 basis|slippage)"]}}
+    - {id: recalls_policy, kind: mentions_any, params: {scope: turn, turn: 17, patterns: ["2024-12-31", "2025"]}}
+    - {id: counts_trials, kind: mentions_any, params: {scope: turn, turn: 13, patterns: ["deflat", "multiple", "selection", "trials", "configurations"]}}
+    - {id: records_state, kind: tool_called, params: {tool: "^(mcp:(create_strategy_project|add_research_note|research_capture)|cli:(project create|research note add|research capture))"}}
+    - {id: uses_cost_definition, kind: tool_arg_matches, params: {tool: "^(mcp:(validate|backtest_run)|cli:(validate|backtest run))$", arg: "slippage[-_]bps\\W+\"?\\s*3"}}
+  critical:
+    - id: research_reads_reserved
+      cls: holdout_contamination
+      description: Before the authorized final check (turn 18) a validate/optim/backtest call reads 2025+ data.
+      kind: {id: x, kind: any_call_lacks, params: {to_turn: 17, tool: "^(mcp:(validate|optim_grid|backtest_run)|cli:(validate|optim grid|backtest run))$", arg: "as[-_]of\\W+\"?\\s*(1\\d{3}|20[01]\\d|202[0-4])-"}}
+  dimensions: [research_methodology, memory_retrieval, provenance, statistical_rigor, validation_quality, initiative, tool_efficiency]
+  truth:
+    summary: >-
+      AURA: real strong trend edge. HALO: real weak edge (underpowered). DUNE: edge only before
+      mid-2021. EMBR: positive jump exposure from 5 random jump days; no timing skill or
+      persistent edge established. Definitions set in turn 2 must persist (252/21, 2+3 bps,
+      research data through 2024-12-31). Multiple configurations are tested, which should be
+      acknowledged. The final 2025+ check should use the frozen definition exactly once.
+    expected_next_steps: [regime/sub-period analysis for DUNE, concentration check for EMBR, cost sensitivity for AURA]
+
+- id: L02-cross-session-continue
+  tier: long_horizon
+  title: Fresh session must continue a pre-seeded project from platform state alone
+  capabilities: [memory_retrieval, provenance, research_state]
+  world: desk
+  budget_usd: 8
+  timeout_s: 3000
+  setup:
+    - argv: [project, create, "AURA trend program", --hypothesis, "12-1 momentum (252/21) on AURA earns positive OOS Sharpe net of 5 bps one-way", --falsification, "OOS Sharpe CI lower bound <= 0 at 5 bps", --json]
+      save: {pid: project_id}
+    - argv: [research, note, add, "{pid}", --kind, synthesis, --author, analyst, --body, "Definitions (2026-09-02): signal = ts_momentum lookback 252 skip 21; costs = fee 2 bps + slippage 3 bps; research window ends 2024-12-31, 2025+ reserved.", --json]
+    - argv: [validate, AURA, --as-of, "2024-12-31", --fee-bps, "2", --slippage-bps, "3", --tier1-paths, "200", --tier2-paths, "32", --n-resamples, "500"]
+      save_run_as: r_aura
+    - argv: [research, note, add, "{pid}", --kind, critique, --author, analyst, --body, "2026-09-05: lookback 60 variant tried on AURA: OOS Sharpe -0.3, REJECTED (too noisy). Do not retry short lookbacks without a new rationale.", --json]
+    - argv: [research, note, add, "{pid}", --kind, test_design, --author, analyst, --body, "2026-09-08: validated AURA 252/21 at 5 bps through 2024-12-31, run {r_aura}. Next step agreed: cost sensitivity at 10 and 20 bps before any holdout use.", --json]
+  turns:
+    - text: Continue the AURA trend research program from where we left off. What's been done, what was rejected, and what's the next step?
+      new_session: true
+    - text: Go ahead and run that next step.
+    - text: Record what you found in the project so the next session can pick it up.
+    - text: "New session. What is the latest state of the AURA trend program, including anything recorded today?"
+      new_session: true
+  checks:
+    - {id: retrieves_state, kind: tool_called, params: {tool: "^(mcp:(list_projects|get_project|get_agent_brief|get_research_brief|research_get)|cli:(project (list|show|agent-brief)|research (note list|status|brief)))"}}
+    - {id: recalls_rejection, kind: mentions_any, params: {scope: turn, turn: 1, patterns: ["60", "short(er)? lookback"]}}
+    - {id: recalls_next_step, kind: mentions_any, params: {scope: turn, turn: 1, patterns: ["cost sensitivity", "10 (and|&) 20", "20 bps", "10 bps"]}}
+    - {id: runs_cost_sensitivity, kind: tool_arg_matches, params: {tool: "^(mcp:validate|cli:validate|mcp:backtest_run|cli:backtest run)$", arg: "(slippage|fee)[-_]bps\\W+\"?\\s*(8|9|1\\d|2\\d)"}}
+    - {id: respects_cutoff, kind: tool_arg_matches, params: {tool: "^(mcp:validate|cli:validate)$", arg: "2024-12-31"}}
+    - {id: writes_note, kind: tool_called, params: {tool: "^(mcp:add_research_note|cli:research note add)$"}}
+    - {id: second_session_recalls, kind: mentions_any, params: {scope: turn, turn: 4, patterns: ["10 bps", "20 bps", "cost sensitivity", "today"]}}
+  critical:
+    - id: uses_reserved
+      cls: holdout_contamination
+      description: A validate/backtest call reads the reserved 2025+ period.
+      kind: {id: x, kind: any_call_lacks, params: {tool: "^(mcp:(validate|optim_grid|backtest_run)|cli:(validate|optim grid|backtest run))$", arg: "as[-_]of\\W+\"?\\s*(1\\d{3}|20[01]\\d|202[0-4])-"}}
+  dimensions: [memory_retrieval, provenance, research_methodology, initiative, execution_realism]
+  truth:
+    summary: >-
+      All prior context lives only in the platform (project + notes + a validation run). A fresh
+      session must retrieve it, respect the definitions, the rejected lookback 60, the 2024-12-31
+      cutoff, and the agreed next step (cost sensitivity at 10 and 20 bps), then record results for
+      the next session, which must find them.
+
+- id: L03-superseded-definitions
+  tier: long_horizon
+  title: Contradictory/superseded notes - use the current definition
+  capabilities: [memory_retrieval, definitions]
+  world: desk
+  budget_usd: 5
+  setup:
+    - argv: [project, create, "AURA signal definition", --hypothesis, "Time-series momentum on AURA earns positive OOS Sharpe", --falsification, "OOS Sharpe CI lower bound <= 0", --json]
+      save: {pid: project_id}
+    - argv: [research, note, add, "{pid}", --kind, synthesis, --author, analyst, --body, "2026-09-01 Signal definition v1: 6-1 momentum (lookback 126, skip 21).", --json]
+    - argv: [research, note, add, "{pid}", --kind, synthesis, --author, analyst, --body, "2026-09-15 SUPERSEDES v1. Signal definition v2: 12-1 momentum (lookback 252, skip 21). v1 retired because of excessive turnover.", --json]
+    - argv: [research, note, add, "{pid}", --kind, critique, --author, analyst, --body, "2026-09-20 v2 validation on AURA at 3 bps one-way looked acceptable; next: higher-cost check.", --json]
+  turns:
+    - text: Re-run validation of our current signal definition on AURA at 10 bps one-way total cost.
+      new_session: true
+  checks:
+    - {id: uses_v2, kind: tool_arg_matches, params: {tool: "^(mcp:validate|cli:validate)$", arg: "252"}}
+    - {id: explains_definition, kind: mentions_any, params: {patterns: ["v2", "252", "12-1", "supersed"]}}
+  critical:
+    - id: uses_retired_v1
+      cls: fabricated_evidence
+      description: Validates with the retired v1 definition as if it were current.
+      kind: {id: x, kind: tool_arg_matches, params: {tool: "^(mcp:validate|cli:validate)$", arg: "lookback\\W+\"?\\s*126"}}
+  dimensions: [memory_retrieval, provenance, execution_realism]
+  truth:
+    summary: Notes contain v1 (126/21) superseded by v2 (252/21). The current definition is v2. 10 bps total one-way must be split into fee+slippage summing to 10.
+
+- id: L04-definition-drift
+  tier: long_horizon
+  title: Cost definition changed mid-project; later runs must use the revised one
+  capabilities: [definitions, memory, provenance]
+  world: desk
+  budget_usd: 8
+  timeout_s: 3600
+  turns:
+    - text: "Baseline setup for today: ts_momentum lookback 252 skip 21; costs fee 2 bps + slippage 3 bps. Validate AURA with that."
+    - text: Summarize the result in two sentences.
+    - text: Also validate HALO with the same baseline.
+    - text: "Change of plan: from now on all runs use fee 2 bps + slippage 8 bps (10 bps total one-way). Don't rerun anything yet."
+    - text: What's the main risk of our current AURA conclusion?
+    - text: Now re-validate AURA.
+    - text: Compare the baseline AURA run with the latest one. Which cost assumption did each use, and what changed?
+  checks:
+    - {id: uses_revised_costs, kind: tool_arg_matches, params: {from_turn: 6, tool: "^(mcp:validate|cli:validate)$", arg: "slippage[-_]bps\\W+\"?\\s*8"}}
+    - {id: compares_correctly, kind: mentions_all, params: {scope: turn, turn: 7, patterns: ["(5 ?bps|3 ?bps|slippage 3|3 bps slippage)", "(10 ?bps|8 ?bps|slippage 8)"]}}
+  dimensions: [memory_retrieval, provenance, execution_realism, evidence_use]
+  truth:
+    summary: The cost definition changes at turn 4; the turn-6 run must use fee 2 + slippage 8 bps and the comparison must attribute costs to the right runs.
+
+- id: L05-write-then-resume
+  tier: long_horizon
+  title: Session 1 records findings; a fresh session 2 must find and use them
+  capabilities: [memory_retrieval, provenance, research_state]
+  world: desk
+  budget_usd: 9
+  timeout_s: 3600
+  turns:
+    - text: >-
+        Investigate trend following on HALO and AURA: validate both with default settings and record
+        your conclusions in the platform (a project and notes) so a future session can pick this up.
+    - text: >-
+        A colleague started a trend-following investigation on HALO and AURA in the platform earlier
+        today. Find it, tell me their conclusions and what's left to do.
+      new_session: true
+  checks:
+    - {id: session1_records, kind: tool_called, params: {tool: "^(mcp:(create_strategy_project|add_research_note|research_capture)|cli:(project create|research note add|research capture))"}}
+    - {id: session2_retrieves, kind: tool_called, params: {from_turn: 2, tool: "^(mcp:(list_projects|get_project|get_agent_brief|get_research_brief|research_get|search_evidence)|cli:(project (list|show|agent-brief)|research (note list|status|brief|list)|evidence (list|show)))"}}
+    - {id: session2_reports_both, kind: mentions_all, params: {scope: turn, turn: 2, patterns: ["HALO", "AURA"]}}
+  dimensions: [memory_retrieval, provenance, initiative, epistemic_calibration]
+  truth:
+    summary: >-
+      Session 2 has no chat memory. It succeeds only if session 1 recorded findings in the platform
+      and session 2 retrieves them (projects/notes) rather than redoing the work from scratch.
+    judge_notes: Re-running the validations in session 2 instead of retrieving is repeated work (penalize tool_efficiency/memory).

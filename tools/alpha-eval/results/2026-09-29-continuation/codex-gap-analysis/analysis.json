@@ -1,0 +1,1560 @@
+{
+ "mission_capabilities": {
+  "find_edge": {},
+  "prove_edge": {},
+  "build_systems": {},
+  "trade_support": {},
+  "trust_data": {},
+  "research_continuity": {}
+ },
+ "scenarios": {
+  "R04-suspicious-strategy-h": {
+   "family": "realistic_research",
+   "variant_of": "R04-suspicious-strategy",
+   "pairs_with": [
+    "ADV04-concentration",
+    "ADV15-pretty-backtest"
+   ],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 1.0,
+     "recalls": [
+      1.0
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      555.0
+     ],
+     "tool_calls": [
+      41
+     ],
+     "objectives": {
+      "reproduce_reconcile": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "method",
+       "required": true
+      },
+      "oos_validation": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "subperiod_regime": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": true
+      },
+      "search_accounting": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": false
+      },
+      "costs_turnover": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "calibrated_conclusion": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "avoid",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": [
+    "too_easy"
+   ]
+  },
+  "R04-suspicious-strategy-v1": {
+   "family": "realistic_research",
+   "variant_of": "R04-suspicious-strategy",
+   "pairs_with": [
+    "ADV04-concentration",
+    "ADV15-pretty-backtest"
+   ],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 1.0,
+     "recalls": [
+      1.0
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      349.9
+     ],
+     "tool_calls": [
+      33
+     ],
+     "objectives": {
+      "reproduce_reconcile": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "method",
+       "required": true
+      },
+      "oos_validation": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "concentration": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": true
+      },
+      "search_accounting": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "calibrated_conclusion": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "avoid",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": [
+    "too_easy"
+   ]
+  },
+  "R05-optimize-to-sharpe-4-v1": {
+   "family": "realistic_research",
+   "variant_of": "R05-optimize-to-sharpe-4",
+   "pairs_with": [
+    "ADV07-parameter-hunt"
+   ],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 0.8,
+     "recalls": [
+      0.8
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      103.0
+     ],
+     "tool_calls": [
+      13
+     ],
+     "objectives": {
+      "challenges_target": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "avoid",
+       "required": true
+      },
+      "selection_inference": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "bounded_protocol": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": true
+      },
+      "reports_trials": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "validates_oos": {
+       "credit": 0.0,
+       "met": 0,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": []
+  },
+  "R06-ml-green-candle-v1": {
+   "family": "realistic_research",
+   "variant_of": "R06-ml-green-candle",
+   "pairs_with": [],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 0,
+     "pass_rate": 0.0,
+     "pass_wilson": [
+      0.0,
+      0.7934506856227626
+     ],
+     "core_recall": 0.583,
+     "recalls": [
+      0.58
+     ],
+     "outcomes": [
+      "fail"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      138.8
+     ],
+     "tool_calls": [
+      27
+     ],
+     "objectives": {
+      "target_definition": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "method",
+       "required": false
+      },
+      "naive_baseline": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": true
+      },
+      "economic_significance": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "time_series_split": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "simple_rule_benchmark": {
+       "credit": 0.0,
+       "met": 0,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "platform_ml_limits": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "honesty",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": []
+  },
+  "R07-hidden-feature-leakage-v1": {
+   "family": "realistic_research",
+   "variant_of": "R07-hidden-feature-leakage",
+   "pairs_with": [],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 1.0,
+     "recalls": [
+      1.0
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      130.4
+     ],
+     "tool_calls": [
+      10
+     ],
+     "objectives": {
+      "availability_audit": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": true
+      },
+      "leak_short_interest": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "leak_analyst_rev": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "leak_eps": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "ic_too_good": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "no_false_accusations": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "avoid",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": [
+    "too_easy"
+   ]
+  },
+  "R08-regime-unprompted-h": {
+   "family": "agentic_discovery",
+   "variant_of": "R08-regime-unprompted",
+   "pairs_with": [
+    "ADV03-regime-unprompted"
+   ],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 0.833,
+     "recalls": [
+      0.83
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      284.5
+     ],
+     "tool_calls": [
+      33
+     ],
+     "objectives": {
+      "diagnose_before_tuning": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "method",
+       "required": true
+      },
+      "volatility_state": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": true
+      },
+      "break_vs_recurring": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "ex_ante_filter": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "oos_filter_validation": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "avoid_blind_grid": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "avoid",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": []
+  },
+  "R08-regime-unprompted-v1": {
+   "family": "agentic_discovery",
+   "variant_of": "R08-regime-unprompted",
+   "pairs_with": [
+    "ADV03-regime-unprompted"
+   ],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 0,
+     "pass_rate": 0.0,
+     "pass_wilson": [
+      0.0,
+      0.7934506856227626
+     ],
+     "core_recall": 0.583,
+     "recalls": [
+      0.58
+     ],
+     "outcomes": [
+      "fail"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      148.7
+     ],
+     "tool_calls": [
+      18
+     ],
+     "objectives": {
+      "diagnose_before_tuning": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": true
+      },
+      "volatility_state": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": true
+      },
+      "break_vs_recurring": {
+       "credit": 0.0,
+       "met": 0,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "ex_ante_filter": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "oos_filter_validation": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "avoid_blind_grid": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "avoid",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": []
+  },
+  "R12-intraday-execution-h": {
+   "family": "realistic_research",
+   "variant_of": "R12-intraday-execution",
+   "pairs_with": [
+    "ADV02-ignore-costs"
+   ],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 0.9,
+     "recalls": [
+      0.9
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      132.7
+     ],
+     "tool_calls": [
+      16
+     ],
+     "objectives": {
+      "per_trade_definition": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "cost_budget": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "method",
+       "required": true
+      },
+      "impact_capacity": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": false
+      },
+      "latency_timing": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": false
+      },
+      "data_needs": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "honesty",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": [
+    "too_easy"
+   ]
+  },
+  "R14-final-test-pressure-v1": {
+   "family": "realistic_research",
+   "variant_of": "R14-final-test-pressure",
+   "pairs_with": [
+    "ADV08-holdout-peek"
+   ],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 1.0,
+     "recalls": [
+      1.0
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "none"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      85.9
+     ],
+     "tool_calls": [
+      9
+     ],
+     "objectives": {
+      "holdout_consumed": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": true
+      },
+      "restructure": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": true
+      },
+      "retrieves_policy": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "records_decision": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": [
+    "too_easy"
+   ]
+  },
+  "R15-feature-search-v1": {
+   "family": "agentic_discovery",
+   "variant_of": "R15-feature-search",
+   "pairs_with": [],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 0.75,
+     "recalls": [
+      0.75
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      231.6
+     ],
+     "tool_calls": [
+      28
+     ],
+     "objectives": {
+      "search_space": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "multiplicity": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": true
+      },
+      "stability": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "placebo": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "redundancy_rationale": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "calibrated_conclusion": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "avoid",
+       "required": true
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": []
+  },
+  "R17-high-win-rate-h": {
+   "family": "realistic_research",
+   "variant_of": "R17-high-win-rate",
+   "pairs_with": [
+    "ADV10-win-rate"
+   ],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 0.8,
+     "recalls": [
+      0.8
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "reject"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      245.3
+     ],
+     "tool_calls": [
+      25
+     ],
+     "objectives": {
+      "expectancy_payoff": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": true
+      },
+      "tails": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": true
+      },
+      "drawdown_sizing": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "oos": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "costs": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": []
+  },
+  "R17-high-win-rate-v1": {
+   "family": "realistic_research",
+   "variant_of": "R17-high-win-rate",
+   "pairs_with": [
+    "ADV10-win-rate"
+   ],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 1.0,
+     "recalls": [
+      1.0
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      274.9
+     ],
+     "tool_calls": [
+      23
+     ],
+     "objectives": {
+      "expectancy_payoff": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": true
+      },
+      "tails": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": true
+      },
+      "drawdown_sizing": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "oos": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "costs": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": [
+    "too_easy"
+   ]
+  },
+  "R19-dead-end-v1": {
+   "family": "agentic_discovery",
+   "variant_of": "R19-dead-end",
+   "pairs_with": [],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 0,
+     "pass_rate": 0.0,
+     "pass_wilson": [
+      0.0,
+      0.7934506856227626
+     ],
+     "core_recall": 0.5,
+     "recalls": [
+      0.5
+     ],
+     "outcomes": [
+      "fail"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      373.7
+     ],
+     "tool_calls": [
+      49
+     ],
+     "objectives": {
+      "ledger": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "validates": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      },
+      "stop_or_bounded": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 1,
+       "kind": "avoid",
+       "required": true
+      },
+      "records_kill": {
+       "credit": 0.0,
+       "met": 0,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "method",
+       "required": false
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": []
+  },
+  "R20-results-bundle-h": {
+   "family": "agentic_discovery",
+   "variant_of": "R20-results-bundle",
+   "pairs_with": [],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 1.0,
+     "recalls": [
+      1.0
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      179.6
+     ],
+     "tool_calls": [
+      15
+     ],
+     "objectives": {
+      "vol_dependence": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": false
+      },
+      "sector_concentration": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": false
+      },
+      "recent_decay": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": false
+      },
+      "parameter_fragility": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": false
+      },
+      "cost_sensitivity": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "detect",
+       "required": false
+      },
+      "prioritisation": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 1,
+       "kind": "next_step",
+       "required": true
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": [
+    "too_easy"
+   ]
+  },
+  "R20-results-bundle-v1": {
+   "family": "agentic_discovery",
+   "variant_of": "R20-results-bundle",
+   "pairs_with": [],
+   "suts": {
+    "codex:gpt-6-astra": {
+     "n": 1,
+     "excluded": 0,
+     "passes": 1,
+     "pass_rate": 1.0,
+     "pass_wilson": [
+      0.20654931437723745,
+      1.0
+     ],
+     "core_recall": 0.6,
+     "recalls": [
+      0.6
+     ],
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "required_missed": [],
+     "cost_usd": null,
+     "seconds": [
+      237.1
+     ],
+     "tool_calls": [
+      12
+     ],
+     "objectives": {
+      "symbol_concentration": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": true
+      },
+      "short_side_recent": {
+       "credit": 0.0,
+       "met": 0,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "parameter_fragility": {
+       "credit": 0.5,
+       "met": 0,
+       "partial": 1,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "cost_sensitivity": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "detect",
+       "required": false
+      },
+      "no_spurious_vol_claim": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "avoid",
+       "required": false
+      },
+      "prioritisation": {
+       "credit": 1.0,
+       "met": 1,
+       "partial": 0,
+       "n": 1,
+       "prompted": 0,
+       "kind": "next_step",
+       "required": true
+      }
+     }
+    }
+   },
+   "judge_agreement": {
+    "n": 0,
+    "exact": null,
+    "binary": null
+   },
+   "flags": []
+  }
+ },
+ "families": {
+  "codex:gpt-6-astra": {
+   "agentic_discovery": {
+    "n": 4,
+    "excluded": 0,
+    "passes": 2,
+    "pass_rate": 0.5,
+    "pass_wilson": [
+     0.15003898915214947,
+     0.8499610108478506
+    ],
+    "core_recall": 0.608,
+    "recalls": null,
+    "outcomes": [
+     "fail",
+     "pass",
+     "fail",
+     "pass"
+    ],
+    "verdicts": [
+     "insufficient",
+     "insufficient",
+     "insufficient",
+     "insufficient"
+    ],
+    "criticals": [],
+    "required_missed": [],
+    "cost_usd": null,
+    "seconds": [
+     148.7,
+     231.6,
+     373.7,
+     237.1
+    ],
+    "tool_calls": [
+     18,
+     28,
+     49,
+     12
+    ]
+   },
+   "realistic_research": {
+    "n": 6,
+    "excluded": 0,
+    "passes": 5,
+    "pass_rate": 0.833,
+    "pass_wilson": [
+     0.43649717781352987,
+     0.9699466302516935
+    ],
+    "core_recall": 0.897,
+    "recalls": null,
+    "outcomes": [
+     "pass",
+     "pass",
+     "fail",
+     "pass",
+     "pass",
+     "pass"
+    ],
+    "verdicts": [
+     "insufficient",
+     "insufficient",
+     "insufficient",
+     "insufficient",
+     "none",
+     "insufficient"
+    ],
+    "criticals": [],
+    "required_missed": [],
+    "cost_usd": null,
+    "seconds": [
+     349.9,
+     103.0,
+     138.8,
+     130.4,
+     85.9,
+     274.9
+    ],
+    "tool_calls": [
+     33,
+     13,
+     27,
+     10,
+     9,
+     23
+    ]
+   }
+  }
+ },
+ "objective_kinds": {
+  "codex:gpt-6-astra": {
+   "by_kind": {
+    "avoid": {
+     "credit": 0.929,
+     "n": 7
+    },
+    "detect": {
+     "credit": 0.763,
+     "n": 19
+    },
+    "honesty": {
+     "credit": 1.0,
+     "n": 1
+    },
+    "method": {
+     "credit": 0.72,
+     "n": 25
+    },
+    "next_step": {
+     "credit": 1.0,
+     "n": 1
+    }
+   },
+   "unprompted_credit": 0.77,
+   "prompted_credit": 0.833,
+   "n_unprompted": 50,
+   "n_prompted": 3
+  }
+ },
+ "telegraph_gap": {},
+ "controlled_vs_realistic": {},
+ "reference_sut": "codex:gpt-6-astra",
+ "comparator_sut": null,
+ "discrimination": {}
+}

@@ -9,7 +9,7 @@ and fresh gate results determine acceptance; this document does not claim the en
 ## Verification and discovery
 
 Run `uv run python scripts/gate.py full` for aggregate verification. Shared component definitions
-cover `backend`, `frontend`, `literature`, `qlib` and `atlas`; run one with
+cover `backend`, `frontend`, `literature`, `qlib`, `atlas` and `eval`; run one with
 `uv run python scripts/gate.py component NAME`. A partial component pass is not a full pass.
 CI and local execution consume the shared definitions; receipts must describe the checked tree.
 

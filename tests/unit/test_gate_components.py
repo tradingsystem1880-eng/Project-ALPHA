@@ -24,6 +24,23 @@ def test_worker_change_includes_worker_and_repository_checks() -> None:
     assert {"backend", "literature", "atlas"} <= required
 
 
+def test_benchmark_change_requires_eval_component_only_with_repository_checks() -> None:
+    required = gate_components.required_components(["tools/alpha-eval/src/alpha_eval/score.py"])
+    assert required == {"backend", "atlas", "eval"}
+
+
+def test_eval_component_runs_its_own_offline_suite() -> None:
+    commands = gate_components.component_steps(Path.cwd(), "eval")
+    assert all(cwd.name == "alpha-eval" for _, cwd, _ in commands)
+    assert ["uv", "run", "pytest", "-q", "-m", "not network"] in [c for _, _, c in commands]
+
+
+def test_component_cli_accepts_every_registered_component() -> None:
+    parser = gate.build_parser()
+    for name in gate_components.COMPONENTS:
+        assert parser.parse_args(["component", name]).name == name
+
+
 def test_frontend_commands_include_types_browser_and_freshness() -> None:
     commands = gate_components.component_steps(Path.cwd(), "frontend")
     flattened = "\n".join(" ".join(command) for _, _, command in commands)

@@ -4,6 +4,7 @@
     python3 scripts/codex_bridge.py probe
     python3 scripts/codex_bridge.py review  (--uncommitted | --diff FILE) [--model M] [--effort E]
     python3 scripts/codex_bridge.py research --question "..." [--model M] [--effort E]
+    python3 scripts/codex_bridge.py judge --prompt-file FILE [--model M] [--effort E]
 
 Runs the ChatGPT-authenticated ``codex`` CLI non-interactively (``codex exec`` with a
 read-only sandbox, ephemeral session, an output JSON schema and a wall-clock cap) and prints
@@ -39,6 +40,8 @@ MODEL_ENV = "ALPHA_CODEX_MODEL"
 DEFAULT_EFFORT = "medium"
 REVIEW_TIMEOUT = 900.0
 RESEARCH_TIMEOUT = 600.0
+JUDGE_TIMEOUT = 900.0
+MAX_JUDGE_PROMPT_BYTES = 700_000
 MAX_DIFF_BYTES = 200_000
 SCHEMA_DIR = Path(__file__).resolve().parent / "schemas"
 
@@ -296,6 +299,71 @@ def research(
     return _call("research", root, prompt, model, effort, timeout, question)
 
 
+_JUDGE_KEYS = (
+    "verdict",
+    "verdict_quote",
+    "claims",
+    "scores",
+    "pitfalls",
+    "next_steps",
+    "criticals",
+)
+
+
+def judge(
+    root: Path, *, prompt: str, model: str, effort: str, timeout: float = JUDGE_TIMEOUT
+) -> dict[str, Any]:
+    """Second-opinion grading of an alpha-eval trajectory (tools/alpha-eval). Output is DATA.
+
+    The prompt (rubric + hidden truth + transcript) is built by alpha-eval; the verdict quote is
+    kept verbatim because alpha-eval verifies it against the transcript, while free-text fields
+    are sanitized like every other bridge output.
+    """
+    base: dict[str, Any] = {"schema_version": 1, "model": model, "judgement": None}
+    if not prompt.strip():
+        return {**base, "available": False, "unavailable_reason": "unavailable: empty prompt"}
+    if len(prompt.encode()) > MAX_JUDGE_PROMPT_BYTES:
+        return {**base, "available": False, "unavailable_reason": "unavailable: prompt too large"}
+    # Judge receives evidence through stdin only; no repo/user configuration or tools.
+    with tempfile.TemporaryDirectory(prefix="alpha-eval-judge-") as judge_root:
+        extra = ["--ignore-user-config", "-c", 'web_search="disabled"']
+        for feature in (
+            "shell_tool",
+            "plugins",
+            "apps",
+            "memories",
+            "multi_agent",
+            "browser_use",
+            "computer_use",
+            "hooks",
+            "image_generation",
+        ):
+            extra += ["--disable", feature]
+        text, error = _run_codex(
+            Path(judge_root), prompt, SCHEMA_DIR / "codex_judge.json", model, effort, timeout, extra
+        )
+    if text is None:
+        return {**base, "available": False, "unavailable_reason": error}
+    raw = _parse_object(text)
+    if raw is None or any(key not in raw for key in _JUDGE_KEYS):
+        return {
+            **base,
+            "available": False,
+            "unavailable_reason": "unavailable: codex output was not the judge schema",
+        }
+    for item in raw.get("scores", []):
+        if isinstance(item, dict):
+            item["rationale"] = sanitize(str(item.get("rationale", "")))
+    for item in raw.get("criticals", []):
+        if isinstance(item, dict):
+            item["detail"] = sanitize(str(item.get("detail", "")))
+    for item in raw.get("objectives", []):
+        if isinstance(item, dict):
+            item["rationale"] = sanitize(str(item.get("rationale", "")))
+    raw["summary"] = sanitize(str(raw.get("summary", "")))
+    return {**base, "available": True, "unavailable_reason": None, "judgement": raw}
+
+
 def _audit(root: Path, kind: str, model: str, result: dict[str, Any]) -> None:
     detail = f"{kind} model={model} available={result.get('available')}"
     if not result.get("available"):
@@ -310,7 +378,11 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="codex_bridge.py")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("probe").add_argument("--model", default=None)
-    for name, default_timeout in (("review", REVIEW_TIMEOUT), ("research", RESEARCH_TIMEOUT)):
+    for name, default_timeout in (
+        ("review", REVIEW_TIMEOUT),
+        ("research", RESEARCH_TIMEOUT),
+        ("judge", JUDGE_TIMEOUT),
+    ):
         p = sub.add_parser(name)
         p.add_argument("--model", default=None)
         p.add_argument("--effort", default=DEFAULT_EFFORT)
@@ -318,6 +390,8 @@ def main(argv: list[str]) -> int:
         if name == "review":
             p.add_argument("--uncommitted", action="store_true")
             p.add_argument("--diff", default=None, help="file holding the diff to review")
+        elif name == "judge":
+            p.add_argument("--prompt-file", required=True, help="alpha-eval judge prompt")
         else:
             p.add_argument("--question", required=True)
     args = parser.parse_args(argv)
@@ -329,7 +403,21 @@ def main(argv: list[str]) -> int:
         return 0
 
     avail = probe(model)
-    if not avail["available"]:
+    if args.cmd == "judge":
+        if not avail["available"]:
+            result = {
+                "schema_version": 1,
+                "model": model,
+                "available": False,
+                "unavailable_reason": avail["reason"],
+                "judgement": None,
+            }
+        else:
+            prompt = Path(args.prompt_file).read_text()
+            result = judge(
+                root, prompt=prompt, model=model, effort=args.effort, timeout=args.timeout
+            )
+    elif not avail["available"]:
         result = _unavailable(args.cmd, model, avail["reason"], getattr(args, "question", ""))
     elif args.cmd == "review":
         if args.diff:

@@ -1,0 +1,15 @@
+{
+ "name": "features",
+ "n": 10,
+ "symbols": [],
+ "artifacts": [
+  {
+   "kind": "feature_table",
+   "dir": "inputs/rivr_research",
+   "params": {
+    "symbol": "RIVR",
+    "leak_set": "A"
+   }
+  }
+ ]
+}
