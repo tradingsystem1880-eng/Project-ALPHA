@@ -542,3 +542,10 @@ Versioned benchmark worlds add XNYS calendars and reconciling synthetic MTM; his
 and model evidence remain retained. The classifier, fixture and contract tests have focused
 coverage; aggregate acceptance and the paired diagnostic panel remain pending in the
 [delivery plan](superpowers/plans/2026-09-30-research-workflow-completion.md).
+
+
+## 2026-09-30 — Research workflow paired closeout
+
+Implementation `8d0db28` passed the canonical full gate on tree `7ad880237b475f741c8b19106e58ac8fcc8d139498e299c1210e5ba64a812a7d`, independent APPROVE and quant PASS. New calendar/MTM fixtures, weekly classification diagnostics, typed advisory reviews and bounded workflow guidance are delivered; historical Claude evidence remains unchanged.
+
+The bounded ten-trial Codex-only diagnostic is complete. It supports further work on execution budgets, evidence reconciliation and information boundaries; it does not establish a general model ranking or validate an independent multi-agent architecture. Scenario-specific outcomes and control diagnoses remain in `tools/alpha-eval/results/workflow-v2-20260930/README.md` and the architecture audit, which are excluded from agent workspace exports. This public build record deliberately omits those answers. Closure documentation is committed only after its own exact-tree full gate.

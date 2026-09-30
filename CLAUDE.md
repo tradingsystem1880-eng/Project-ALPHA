@@ -58,11 +58,9 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
   `uv run pytest -q -m bias_guard`. Component definitions own exact gate steps.
 
 **2026-09-16:** [delivery record](docs/superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md).
-Shared checks, discovery, V2 plans and frozen-input screening are implemented. Install thin Git
-guards in new checkouts. Claude adapters provide orientation and native-boundary safety only.
-Require a fresh full stamp; never bypass checks.
-[ADR-0036](docs/adr/0036-agent-neutral-research-engineering.md) separates engineering
-ceremony changes from unchanged application authority.
+Install Git guards; require a fresh
+full stamp and never bypass checks. Claude adapters only orient and guard native boundaries.
+[ADR-0036](docs/adr/0036-agent-neutral-research-engineering.md) preserves application authority.
 [Harness operations](docs/operations/claude-code-harness.md): checks, screening, intake, exceptions.
 
 Benchmark: [Codex-only; preserve history; enforce isolation](tools/alpha-eval/README.md).

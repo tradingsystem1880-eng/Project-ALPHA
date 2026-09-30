@@ -1,4 +1,4 @@
-**Delivery state:** In progress.
+**Delivery state:** Completed
 
 # Research workflow completion
 
@@ -68,14 +68,14 @@
       "verify": "cd tools/alpha-eval && uv run alpha-eval --help",
       "expected": "Reproduced failure is corrected with honest evidence and no historical rewrite.",
       "rollback": "Revert only new versioned code; retain historical and newly acquired evidence.",
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "Independent source/code review and exact-tree aggregate verification",
       "verify": "uv run python scripts/gate.py full",
       "expected": "Reproduced failure is corrected with honest evidence and no historical rewrite.",
       "rollback": "Revert only new versioned code; retain historical and newly acquired evidence.",
-      "status": "pending"
+      "status": "done"
     }
   ],
   "tier_impact": [
@@ -110,3 +110,8 @@
 One mutator per slice. Primary-source statistical verification and independent code review are required. The baseline/candidate panel uses identical repaired fixtures and runtime conditions; only the specified workflow treatment differs. No pooled historical improvement claim. Default Codex model gpt-6-astra, medium effort, concurrency two. New diagnostic outputs are not governed confirmation or deployment approval.
 
 Calibration qualification: R21 is a latent-trend fixture, not a verified positive strategy control. Actual failures must permit an evidence-consistent reject. The paired panel remains diagnostic; no positive-control sensitivity claim is authorized by this data.
+
+
+## Delivery evidence and residual failures
+
+Implementation `8d0db28` passed canonical full verification, independent APPROVE, quant PASS and mutation testing. The planned ten trials completed (one candidate capped); original acquisition/scoring evidence remains immutable. See [paired results](../../../tools/alpha-eval/results/workflow-v2-20260930/README.md). Delivery completion does not mean all benchmark tasks pass: R08 lacks measured regime/filter evidence; R19 exhausted its budget before synthesis and exposed later prices during inspection; ORCA omitted denied orders; R21 positive-control sensitivity remains unverified. PydanticAI migration is deferred with explicit acceptance criteria, not delivered as a runtime.
