@@ -1,0 +1,19 @@
+{
+  "admitted": false,
+  "files": {
+    "controller-manifest.json": "73a47da49c06253b51eb46a03224be310854f4e3f3b736c754d2a35518c2e997",
+    "controller-plan.json": "e865fe1c9b737057e483194e30b16d7e63bd8c19fd8b566861f894f037b8a658",
+    "controller-receipt.json": "927e244d1320c14697fa22c78bca9dff222ad7a730cd57a8ec61045e92dce3bf",
+    "retained-execution-digest.json": "86cd2e4b56ef7954efb8380026fa1a51edc83e14687088e9b531f1c44cf8325c"
+  },
+  "kind": "deterministic_controller_smoke_not_agent_trial",
+  "limitations": [
+    "Single fixed operator and synthetic snapshot; not a new autonomous-agent benchmark.",
+    "No agent-wide information isolation claim.",
+    "Elapsed times are one local execution, not a controlled speedup estimate."
+  ],
+  "model_calls": 0,
+  "replay_equal": true,
+  "schema_version": 1,
+  "source_directory": "/private/tmp/alpha-controller-smoke-20260930"
+}

@@ -1,0 +1,210 @@
+{
+  "admitted": false,
+  "attempts": [
+    {
+      "digest": {
+        "admitted": false,
+        "closed_trades": 1,
+        "closed_trades_by_instrument": {
+          "ORCA.SIM": 1
+        },
+        "command": "backtest_run",
+        "configuration": {
+          "account_type": "CASH",
+          "allow_short": false,
+          "anchored": false,
+          "embargo": 5,
+          "fee_bps": 1.0,
+          "forecast_cache": null,
+          "halt_drawdown": null,
+          "lookback": 252,
+          "max_leverage": 1.0,
+          "periods_per_year": 252,
+          "rebalance_every": 21,
+          "rules_spec": null,
+          "size_on_equity": false,
+          "skip": 21,
+          "slippage_bps": 2.0,
+          "starting_cash": 1000000.0,
+          "strategy_name": "ts_momentum",
+          "strategy_params": [],
+          "target_vol": 0.15,
+          "test_size": 63,
+          "train_size": 504,
+          "vol_window": 63
+        },
+        "denied_or_rejected_orders": 0,
+        "evidence": {
+          "equity_curve": {
+            "file": "equity_curve.parquet",
+            "sha256": "ce40d504363f1d091c2e02332a8c51df16b4d8ad664b681115e58e09a1043593"
+          },
+          "fills": {
+            "file": "fills.parquet",
+            "sha256": "279cf4757952b5cb0bcdfbed32d8a9c1e9fe183883b2f7752b4d1d369b4a95ca"
+          },
+          "orders": {
+            "file": "orders.parquet",
+            "sha256": "3a603bfd4e9e78403ffa1d2306034e5623445732fbf47c92b9b628d08bd67bca"
+          },
+          "trades": {
+            "file": "trades.parquet",
+            "sha256": "31c32fd039dcd3b7f6d8c3972611b3dff2f31f0b134af780fffb3b54ddfc6b00"
+          }
+        },
+        "fill_events": 21,
+        "manifest_sha256": "4b3d9d0ac4daebf57e8c9936ac05af51df701b42a1ba636148d4c2828f10febb",
+        "oos_metrics": null,
+        "orders_by_status": {
+          "FILLED": 21
+        },
+        "research_cutoff": "2022-10-17",
+        "run_id": "470892bb3744c22e",
+        "schema_version": 1,
+        "sessions": {
+          "coverage": "reconciled",
+          "definition": "equity observations including initial observation",
+          "expectation_source": "snapshot_schedule",
+          "expected": 1440,
+          "first": "2017-01-30T00:00:00+00:00",
+          "last": "2022-10-17T00:00:00+00:00",
+          "observed": 1440
+        },
+        "snapshot_hash": "2afc2e72b8a2615db9d7beb063e4be5c6b5057c8c3d626acb443c73664c8dd3f",
+        "snapshot_id": "realdesk-2026",
+        "source_fingerprint": "f8d45fb2c8149fd660fb2031186ce4365838f7b09dcf193283e10d0c223fb7ff",
+        "unavailable": [
+          "rejection_reasons",
+          "terminal_open_positions",
+          "agent_information_history"
+        ],
+        "validation_passed": null
+      },
+      "elapsed_seconds": 2.1025736671872437,
+      "log": "baseline.log",
+      "returncode": 0,
+      "stage": "baseline",
+      "status": "completed"
+    },
+    {
+      "digest": {
+        "admitted": false,
+        "closed_trades": 1,
+        "closed_trades_by_instrument": {
+          "ORCA.SIM": 1
+        },
+        "command": "validate",
+        "configuration": {
+          "account_type": "CASH",
+          "allow_short": false,
+          "anchored": false,
+          "confidence": 0.95,
+          "cpcv_groups": 6,
+          "cpcv_test_groups": 2,
+          "dsr_threshold": 0.95,
+          "embargo": 5,
+          "fee_bps": 1.0,
+          "first_ts": "2017-01-30T00:00:00+00:00",
+          "last_ts": "2022-10-17T00:00:00+00:00",
+          "lookback": 252,
+          "max_leverage": 1.0,
+          "mean_block": 5.0,
+          "n_bars": 1440,
+          "n_resamples": 2000,
+          "null_model": "bootstrap",
+          "periods_per_year": 252,
+          "quantstats_version": "1.1.5",
+          "rebalance_every": 21,
+          "run_id": "cf8f89bc336b5790",
+          "seed": 42,
+          "skip": 21,
+          "slippage_bps": 2.0,
+          "snapshot_id": "realdesk-2026",
+          "starting_cash": 1000000.0,
+          "strategy_name": "ts_momentum",
+          "strategy_params": [],
+          "symbol": "ORCA",
+          "target_vol": 0.15,
+          "test_size": 63,
+          "threshold": 0.95,
+          "tier1_divergence_tol": 0.25,
+          "tier1_paths": 1000,
+          "tier2_paths": 64,
+          "train_size": 504,
+          "vol_window": 63
+        },
+        "denied_or_rejected_orders": 4,
+        "evidence": {
+          "equity_curve": {
+            "file": "equity_curve.parquet",
+            "sha256": "8c4bb09cb95497aad8ad727c7331c23ddf209dfc1fc638857a97664282f34833"
+          },
+          "fills": {
+            "file": "fills.parquet",
+            "sha256": "210714b6306ed9880a62dabc36a8659d00507efb33c980256961b358f48f49a6"
+          },
+          "orders": {
+            "file": "orders.parquet",
+            "sha256": "82cf9ea6ba290d84c751c3a05c17901ea4f7c73b97f5e2efc4bf3a6dcfa4abd5"
+          },
+          "trades": {
+            "file": "trades.parquet",
+            "sha256": "508923e484744407bf7d471b13ec0db53ccc760f769d3b4dece0f38bb4bbb9a2"
+          }
+        },
+        "fill_events": 3,
+        "manifest_sha256": "e74dee89072c5f5908f8eef125cfb3ed4b54660b77f1daa07b8c06fe00c583a5",
+        "oos_metrics": {
+          "annualized_vol": 0.05363253767067559,
+          "cagr": -0.12299080888649805,
+          "expected_shortfall": 0.012337335652523164,
+          "max_drawdown": -0.37324728000000007,
+          "risk_of_ruin": 0.077,
+          "sharpe": -2.419363088995334,
+          "total_return": -0.36829471999999996,
+          "value_at_risk": 0.005897621920757494
+        },
+        "orders_by_status": {
+          "DENIED": 4,
+          "FILLED": 3
+        },
+        "research_cutoff": "2022-10-17",
+        "run_id": "cf8f89bc336b5790",
+        "schema_version": 1,
+        "sessions": {
+          "coverage": "reconciled",
+          "definition": "equity observations including initial observation",
+          "expectation_source": "snapshot_schedule",
+          "expected": 883,
+          "first": "2019-02-07T00:00:00+00:00",
+          "last": "2022-08-09T00:00:00+00:00",
+          "observed": 883
+        },
+        "snapshot_hash": "2afc2e72b8a2615db9d7beb063e4be5c6b5057c8c3d626acb443c73664c8dd3f",
+        "snapshot_id": "realdesk-2026",
+        "source_fingerprint": "f8d45fb2c8149fd660fb2031186ce4365838f7b09dcf193283e10d0c223fb7ff",
+        "unavailable": [
+          "rejection_reasons",
+          "terminal_open_positions",
+          "agent_information_history"
+        ],
+        "validation_passed": false
+      },
+      "elapsed_seconds": 5.7810540408827364,
+      "log": "validation.log",
+      "returncode": 0,
+      "stage": "validation",
+      "status": "completed"
+    }
+  ],
+  "candidate_variants": 0,
+  "execution_id": "575f69f19108c3954c99c205b14af1ac2aa13e4ee41f624c25dd6c383b177a4d",
+  "information_boundary": "controller_operations_only; surrounding_agent_not_certified",
+  "missing_evidence": [],
+  "model_calls": 0,
+  "objective_coverage": "fixed baseline and validation only; no regime or strategy search",
+  "receipt": "/private/tmp/alpha-controller-smoke-20260930/research_executions/575f69f19108c3954c99c205b14af1ac2aa13e4ee41f624c25dd6c383b177a4d/receipt.json",
+  "schema_version": 1,
+  "status": "completed_evidence",
+  "stop_reason": "fixed_measurements_completed"
+}

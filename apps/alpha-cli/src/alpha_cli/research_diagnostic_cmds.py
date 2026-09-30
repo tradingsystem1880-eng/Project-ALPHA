@@ -23,6 +23,37 @@ diagnostic_app = typer.Typer(
 )
 
 
+@diagnostic_app.command("run-plan")
+def run_plan(path: Path) -> None:
+    """Run a frozen momentum baseline and validation; always read the terminal receipt.
+
+    Non-admitted discovery. Bounds its own operations, not the surrounding agent's data access.
+    Repeating the same plan returns verified evidence; interrupted attempts are not retried.
+    """
+    from alpha_cli.research_execution import BaselineExecutionPlan, execute_plan
+
+    try:
+        plan = BaselineExecutionPlan.model_validate_json(path.read_text())
+        result = execute_plan(plan, data_dir=AlphaSettings().data_dir)
+    except (DataError, OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(json.dumps(result, sort_keys=True, allow_nan=False))
+
+
+@diagnostic_app.command("execution-digest")
+def digest_run(run_id: str, as_of: str = typer.Option(...)) -> None:
+    """Verify existing baseline/validation execution, including fills and denied orders."""
+    from alpha_cli.research_execution_digest import execution_digest
+
+    try:
+        if re.fullmatch(r"[0-9a-f]{16}", run_id) is None:
+            raise ValueError("expected a 16-hex run ID")
+        result = execution_digest(AlphaSettings().data_dir / "runs" / run_id, cutoff=as_of)
+    except (DataError, OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(json.dumps(result, sort_keys=True, allow_nan=False))
+
+
 @diagnostic_app.command("weekly-classifier")
 def weekly_classifier(
     symbol: str,
