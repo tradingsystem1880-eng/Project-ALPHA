@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections import Counter
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -98,7 +99,68 @@ def execution_digest(
             or (row["status"] == "FILLED" and not math.isclose(actual, quantity))
         ):
             raise DataError("order/fill accounting mismatch")
-    rejected = counts["DENIED"] + counts["REJECTED"]
+    order_rejected = counts["DENIED"] + counts["REJECTED"]
+    rejection_path = directory / "pretrade_rejections.parquet"
+    pretrade_rejected = 0
+    pretrade_by_reason: Counter[str] = Counter()
+    if rejection_path.name in manifest["artifacts"]:
+        rejections = pl.read_parquet(rejection_path)
+        required_columns = {
+            "sequence_id",
+            "ts",
+            "instrument_id",
+            "side",
+            "requested_quantity",
+            "reference_price",
+            "available_cash",
+            "estimated_fee",
+            "required_cash",
+            "reason",
+        }
+        if set(rejections.columns) != required_columns:
+            raise DataError("invalid pretrade rejection evidence schema")
+        rejection_rows = rejections.to_dicts()
+        if rejections["sequence_id"].n_unique() != rejections.height:
+            raise DataError("duplicate pretrade rejection identifiers")
+        for row in rejection_rows:
+            numeric = (
+                row["requested_quantity"],
+                row["reference_price"],
+                row["available_cash"],
+                row["estimated_fee"],
+                row["required_cash"],
+            )
+            if (
+                not isinstance(row["ts"], datetime)
+                or row["ts"].date() > end
+                or row["side"] != "BUY"
+                or not isinstance(row["instrument_id"], str)
+                or not row["instrument_id"]
+                or not isinstance(row["reason"], str)
+                or not row["reason"]
+                or any(
+                    isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or not math.isfinite(value)
+                    for value in numeric
+                )
+                or row["requested_quantity"] <= 0
+                or row["reference_price"] <= 0
+                or row["available_cash"] < 0
+                or row["estimated_fee"] < 0
+                or Decimal(str(row["required_cash"])) <= Decimal(str(row["available_cash"]))
+            ):
+                raise DataError("invalid pretrade rejection record")
+            pretrade_by_reason[row["reason"]] += 1
+        pretrade_rejected = rejections.height
+    declared_pretrade = manifest.get("pretrade_rejections", 0)
+    if type(declared_pretrade) is not int or declared_pretrade < 0:
+        raise DataError("manifest pretrade_rejections must be a non-negative integer")
+    if declared_pretrade != pretrade_rejected:
+        raise DataError("manifest pretrade_rejections disagrees with rejection sidecar")
+    if pretrade_rejected and "pretrade_rejections.parquet" not in manifest["artifacts"]:
+        raise DataError("pretrade rejection evidence unavailable")
+    rejected = order_rejected + pretrade_rejected
     for key, value in {
         "orders": orders.height,
         "fills": fills.height,
@@ -136,6 +198,10 @@ def execution_digest(
         },
         "orders_by_status": dict(sorted(counts.items())),
         "denied_or_rejected_orders": rejected,
+        "pretrade_rejections": {
+            "count": pretrade_rejected,
+            "by_reason": dict(sorted(pretrade_by_reason.items())),
+        },
         "fill_events": fills.height,
         "closed_trades": trades.height,
         "closed_trades_by_instrument": dict(
@@ -149,10 +215,22 @@ def execution_digest(
             "agent_information_history",
         ],
         "evidence": {
-            name: {
-                "file": f"{name}.parquet",
-                "sha256": manifest["artifacts"][f"{name}.parquet"]["sha256"],
-            }
-            for name in names
+            **{
+                name: {
+                    "file": f"{name}.parquet",
+                    "sha256": manifest["artifacts"][f"{name}.parquet"]["sha256"],
+                }
+                for name in names
+            },
+            **(
+                {
+                    "pretrade_rejections": {
+                        "file": "pretrade_rejections.parquet",
+                        "sha256": manifest["artifacts"]["pretrade_rejections.parquet"]["sha256"],
+                    }
+                }
+                if "pretrade_rejections.parquet" in manifest["artifacts"]
+                else {}
+            ),
         },
     }

@@ -2,7 +2,7 @@
 
 # System map
 
-14 components (packages, apps, workers), 312 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+14 components (packages, apps, workers), 313 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
 <!-- nodes: component:alpha-backtest|component:alpha-cli|component:alpha-core|component:alpha-data|component:alpha-forecast|component:alpha-mcp|component:alpha-patterns|component:alpha-research|component:alpha-strategies|component:alpha-study|component:alpha-validation|component:alpha-web|component:literature|component:qlib -->
 ```mermaid
@@ -100,9 +100,9 @@ component:alpha-web -> component:alpha-core
 
 ## Unknowns review queue
 
-47 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
+48 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
 
-<details><summary>47 unknown-level node(s)</summary>
+<details><summary>48 unknown-level node(s)</summary>
 
 - `component:alpha-study`
 - `component:literature`
@@ -114,6 +114,7 @@ component:alpha-web -> component:alpha-core
 - `module:alpha_cli._crypto_panel`
 - `module:alpha_cli._hypothesis_scan`
 - `module:alpha_cli.figures._sources`
+- `module:alpha_core.costs`
 - `module:alpha_core.universe`
 - `module:alpha_data._atomic`
 - `module:alpha_data.crypto.providers`

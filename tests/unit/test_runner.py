@@ -14,15 +14,17 @@ from datetime import UTC, datetime, timedelta
 import numpy as np
 import pytest
 
+from alpha_backtest.results import BacktestResult, OrderTrace
 from alpha_cli._runner import (
     RunSpec,
+    _scope_execution,
     run_id_for,
     run_identity_for,
     source_fingerprint,
     walk_forward_oos,
 )
 from alpha_cli.validate_cmds import validate
-from alpha_core import DataError
+from alpha_core import DataError, ExecutionRejectionTrace
 from alpha_validation import walk_forward_splits
 
 
@@ -273,3 +275,53 @@ def test_load_bars_with_snapshot_reads_the_frozen_data(tmp_path) -> None:  # typ
         load_bars("AAPL", data_dir=data_dir, snapshot_id="no-such-snapshot")
     with pytest.raises(DataError, match="invalid snapshot id"):
         load_bars("AAPL", data_dir=data_dir, snapshot_id="../../outside")
+
+
+def test_scoped_execution_keeps_only_in_window_pretrade_rejections() -> None:
+    jan2 = datetime(2020, 1, 2, tzinfo=UTC)
+    jan3 = datetime(2020, 1, 3, tzinfo=UTC)
+    result = BacktestResult(
+        orders=2,
+        fills=0,
+        trades=[],
+        equity_curve=[(jan2, 100.0)],
+        rejected=3,
+        order_trace=(
+            OrderTrace(1, jan2, "AAPL.SIM", "BUY", 10.0, 0.0, "DENIED"),
+            OrderTrace(2, jan3, "AAPL.SIM", "BUY", 10.0, 0.0, "DENIED"),
+        ),
+        execution_rejections=(
+            ExecutionRejectionTrace(
+                ts=jan2,
+                instrument_id="AAPL.SIM",
+                side="BUY",
+                requested_quantity=1.0,
+                reference_price=101.0,
+                available_cash=100.0,
+                estimated_fee=0.01,
+                required_cash=101.01,
+                reason="cash_notional_exceeds_free_balance",
+            ),
+            ExecutionRejectionTrace(
+                ts=jan3,
+                instrument_id="AAPL.SIM",
+                side="BUY",
+                requested_quantity=1.0,
+                reference_price=101.0,
+                available_cash=100.0,
+                estimated_fee=0.01,
+                required_cash=101.01,
+                reason="cash_notional_exceeds_free_balance",
+            ),
+        ),
+    )
+    scoped = _scope_execution(
+        result,
+        equity=[(jan2, 100.0)],
+        execution_dates={jan2.date()},
+        decision_dates={datetime(2020, 1, 1, tzinfo=UTC).date()},
+    )
+    assert scoped.orders == 1
+    assert scoped.rejected == 2  # one venue denial plus one pre-submit affordability rejection
+    assert len(scoped.execution_rejections) == 1
+    assert scoped.execution_rejections[0].ts == jan2

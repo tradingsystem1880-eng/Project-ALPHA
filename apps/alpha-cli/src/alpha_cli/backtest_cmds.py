@@ -197,6 +197,8 @@ def holdout(
             },
             "n_scored_sessions": len(equity),
             "n_trades": len(scoped_trades),
+            "rejected": scoped.rejected,
+            "pretrade_rejections": len(scoped.execution_rejections),
             **_artifacts.research_gate_override_fields(research_gate_override),
             **identity.manifest_fields(),
         }
@@ -331,6 +333,8 @@ def oos(
                 "sharpe": sharpe,
                 "max_drawdown": max_drawdown(equity_values),
             },
+            "rejected": scoped.rejected,
+            "pretrade_rejections": len(scoped.execution_rejections),
             **_artifacts.research_gate_override_fields(research_gate_override),
             **identity.manifest_fields(),
         }
@@ -479,6 +483,7 @@ def run(
         "orders": result.orders,
         "fills": result.fills,
         "rejected": result.rejected,
+        "pretrade_rejections": len(result.execution_rejections),
         "n_trades": len(result.trades),
         "starting_equity": result.starting_equity,
         "final_equity": result.final_equity,

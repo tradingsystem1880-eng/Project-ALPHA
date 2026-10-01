@@ -10,19 +10,15 @@ from nautilus_trader.backtest.models import FeeModel
 from nautilus_trader.model.instruments import Instrument
 from nautilus_trader.model.objects import Money, Price, Quantity
 
-from alpha_core import DataError
+from alpha_core import bps_rate
 
 
 class BpsFeeModel(FeeModel):  # type: ignore[misc]  # nautilus FeeModel is untyped (Cython)
     """Commission = notional × (``fee_bps`` / 10_000), in the instrument's quote currency."""
 
     def __init__(self, fee_bps: float) -> None:
-        if fee_bps < 0.0:
-            raise DataError(
-                f"fee_bps must be >= 0 (a negative fee pays you to trade), got {fee_bps}"
-            )
         super().__init__()
-        self._rate = fee_bps / 10_000.0
+        self._rate = bps_rate(fee_bps)
 
     def get_commission(
         self, order: object, fill_qty: Quantity, fill_px: Price, instrument: Instrument

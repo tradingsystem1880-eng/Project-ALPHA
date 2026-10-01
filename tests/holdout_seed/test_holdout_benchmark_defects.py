@@ -1,9 +1,7 @@
-"""Proposed holdout: platform defects found by the 2026-09-28 agentic benchmark (tools/alpha-eval).
+"""Regression cases promoted from the 2026-09-28 agentic benchmark (tools/alpha-eval).
 
-Each test states the behavioural contract and is pinned ``xfail(strict=True)`` because the defect is
-open today: the suite stays green, and the fix turns the test into an XPASS that fails strictly, so
-whoever fixes it must also remove the marker. Evidence (Layer A probes P02 and P09):
-docs/audit/2026-09-28-agentic-benchmark-baseline.md.
+The P02 CASH affordability case now checks explicit pre-submit rejection evidence. P09 remains
+strictly xfailed until malformed provider bars become a typed usage error.
 """
 
 from __future__ import annotations
@@ -63,14 +61,13 @@ def test_validate_on_non_finite_close_fails_loud_with_a_typed_data_error(
     assert result.exit_code == 2, (result.exit_code, repr(result.exception))
 
 
-@pytest.mark.xfail(strict=True, reason="P02: denied OOS orders are silent in the manifest")
-def test_denied_orders_are_disclosed_in_the_validation_manifest(
+def test_cash_affordability_rejections_are_disclosed_in_the_validation_manifest(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A strategy whose orders the venue DENIED did not run as specified; the verdict must say so.
+    """An unaffordable OOS CASH buy is suppressed before venue submission and disclosed.
 
     World: uptrend, drawdown, uptrend. After the drawdown a cash-account BUY sized from starting
-    capital is denied, so part of the OOS record is an unintended flat position.
+    capital is suppressed, leaving the interval flat; its exact reason must remain reviewable.
     """
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     rng = np.random.default_rng(0)
@@ -88,7 +85,10 @@ def test_denied_orders_are_disclosed_in_the_validation_manifest(
     run_dir = next((tmp_path / "runs").iterdir())
     orders = pl.read_parquet(run_dir / "orders.parquet")
     denied = orders.filter(pl.col("status") == "DENIED").height
-    manifest = (run_dir / "manifest.json").read_text(encoding="utf-8")
-    assert denied == 0 or "denied" in manifest.lower(), (
-        f"{denied} DENIED orders, none disclosed in manifest keys {sorted(json.loads(manifest))}"
-    )
+    rejected = pl.read_parquet(run_dir / "pretrade_rejections.parquet")
+    manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert denied == 0  # unaffordable orders do not reach the venue matcher
+    assert rejected.height > 0
+    assert manifest["pretrade_rejections"] == rejected.height
+    assert manifest["rejected"] == denied + rejected.height
+    assert set(rejected["reason"].to_list()) == {"cash_notional_exceeds_free_balance"}

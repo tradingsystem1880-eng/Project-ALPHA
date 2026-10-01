@@ -265,6 +265,19 @@ _FILL_TRACE_SCHEMA: dict[str, pl.DataType] = {
     "price": pl.Float64(),
 }
 
+_PRETRADE_REJECTION_SCHEMA: dict[str, pl.DataType] = {
+    "sequence_id": pl.Int64(),
+    "ts": pl.Datetime(time_unit="us", time_zone="UTC"),
+    "instrument_id": pl.String(),
+    "side": pl.String(),
+    "requested_quantity": pl.Float64(),
+    "reference_price": pl.Float64(),
+    "available_cash": pl.Float64(),
+    "estimated_fee": pl.Float64(),
+    "required_cash": pl.Float64(),
+    "reason": pl.String(),
+}
+
 _INDICATOR_TRACE_SCHEMA: dict[str, pl.DataType] = {
     "sequence_id": pl.Int64(),
     "decision_sequence_id": pl.Int64(),
@@ -708,6 +721,7 @@ def write_execution_trace(rdir: Path, result: BacktestResult) -> None:
     decision_rows: list[dict[str, Any]] = []
     order_rows: list[dict[str, Any]] = []
     fill_rows: list[dict[str, Any]] = []
+    pretrade_rejection_rows: list[dict[str, Any]] = []
     decisions = sorted(
         result.decision_trace,
         key=lambda item: (item.ts, item.instrument_id, item.reason, item.target_quantity),
@@ -822,6 +836,55 @@ def write_execution_trace(rdir: Path, result: BacktestResult) -> None:
                 "realized_return": None,
             }
         )
+    for index, rejection in enumerate(
+        sorted(
+            result.execution_rejections,
+            key=lambda item: (item.ts, item.instrument_id, item.side, item.reason),
+        ),
+        start=1,
+    ):
+        candidates = [
+            event
+            for event in decision_events
+            if event["instrument_id"] == rejection.instrument_id and event["ts"] < rejection.ts
+        ]
+        parent = max(candidates, key=lambda event: event["ts"])["_key"] if candidates else None
+        pretrade_rejection_rows.append(
+            {
+                "sequence_id": index,
+                "ts": rejection.ts,
+                "instrument_id": rejection.instrument_id,
+                "side": rejection.side,
+                "requested_quantity": rejection.requested_quantity,
+                "reference_price": rejection.reference_price,
+                "available_cash": rejection.available_cash,
+                "estimated_fee": rejection.estimated_fee,
+                "required_cash": rejection.required_cash,
+                "reason": rejection.reason,
+            }
+        )
+        events.append(
+            {
+                "_key": f"execution_rejection:{index}",
+                "_parent": parent,
+                "event_type": "execution_rejection",
+                "ts": rejection.ts,
+                "instrument_id": rejection.instrument_id,
+                "side": rejection.side,
+                "quantity": rejection.requested_quantity,
+                "filled_quantity": 0.0,
+                "price": rejection.reference_price,
+                "status": rejection.reason,
+                "signal": None,
+                "decision_reason": rejection.reason,
+                "entry_ts": None,
+                "exit_ts": None,
+                "entry_price": None,
+                "exit_price": None,
+                "realized_pnl": None,
+                "realized_return": None,
+            }
+        )
     fill_events = [event for event in events if event["event_type"] == "fill"]
     for index, trade in enumerate(
         sorted(result.trades, key=lambda item: (item.exit_ts, item.entry_ts, item.instrument_id)),
@@ -858,7 +921,7 @@ def write_execution_trace(rdir: Path, result: BacktestResult) -> None:
                 "realized_return": trade.realized_return,
             }
         )
-    rank = {"decision": 0, "order": 1, "fill": 2, "trade": 3}
+    rank = {"decision": 0, "order": 1, "execution_rejection": 2, "fill": 3, "trade": 4}
     events.sort(key=lambda event: (event["ts"], rank[event["event_type"]], event["_key"]))
     sequence_by_key = {event["_key"]: index for index, event in enumerate(events, start=1)}
     # A decision's artifact identifier is its position in the one canonical causal sequence, not
@@ -972,6 +1035,9 @@ def write_execution_trace(rdir: Path, result: BacktestResult) -> None:
     publish_artifact(rdir / "orders.parquet", order_frame.write_parquet)
     publish_artifact(rdir / "fills.parquet", fill_frame.write_parquet)
     publish_artifact(rdir / "execution_trace.parquet", frame.write_parquet)
+    if pretrade_rejection_rows:
+        rejection_frame = pl.DataFrame(pretrade_rejection_rows, schema=_PRETRADE_REJECTION_SCHEMA)
+        publish_artifact(rdir / "pretrade_rejections.parquet", rejection_frame.write_parquet)
     publish_artifact(rdir / "indicator_series.parquet", indicator_frame.write_parquet)
     publish_artifact(rdir / "chart_annotations.parquet", annotation_frame.write_parquet)
 

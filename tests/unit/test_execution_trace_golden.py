@@ -38,6 +38,7 @@ from alpha_core import (
     ChartAnnotationTrace,
     DataError,
     DecisionTrace,
+    ExecutionRejectionTrace,
     IndicatorTrace,
 )
 
@@ -522,3 +523,38 @@ def test_dangling_fill_order_reference_keeps_silent_null_parent(tmp_path: Path) 
     fill_events = trace.filter(pl.col("event_type") == "fill")
     assert fill_events["parent_sequence_id"].to_list() == [None]
     assert pl.read_parquet(rdir / "orders.parquet").height == 0
+
+
+def test_pretrade_affordability_rejection_is_persisted_as_separate_evidence(
+    tmp_path: Path,
+) -> None:
+    rdir = tmp_path / "run"
+    rdir.mkdir()
+    rejection = ExecutionRejectionTrace(
+        ts=_JAN6_OPEN,
+        instrument_id=_AAPL,
+        side="BUY",
+        requested_quantity=1.0,
+        reference_price=100.0,
+        available_cash=100.0,
+        estimated_fee=0.01,
+        required_cash=100.01,
+        reason="cash_plus_commission_exceeds_free_balance",
+    )
+    _artifacts.write_execution_trace(
+        rdir,
+        BacktestResult(
+            orders=0,
+            fills=0,
+            trades=[],
+            equity_curve=[],
+            rejected=1,
+            execution_rejections=(rejection,),
+        ),
+    )
+
+    records = pl.read_parquet(rdir / "pretrade_rejections.parquet")
+    assert records.height == 1
+    assert records["required_cash"].item() == pytest.approx(100.01)
+    causal = pl.read_parquet(rdir / "execution_trace.parquet")
+    assert causal.filter(pl.col("event_type") == "execution_rejection").height == 1

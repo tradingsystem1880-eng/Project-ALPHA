@@ -17,7 +17,7 @@ from alpha_cli.research_execution_digest import execution_digest
 from alpha_core import DataError
 
 
-def run_fixture(root: Path) -> Path:
+def run_fixture(root: Path, *, pretrade_rejection: bool = False) -> Path:
     directory = root / "1234567890abcdef"
     directory.mkdir()
     ts = datetime(2020, 1, 2, tzinfo=UTC)
@@ -53,6 +53,21 @@ def run_fixture(root: Path) -> Path:
     pl.DataFrame(
         {"ts": [datetime(2020, 1, 1, tzinfo=UTC), ts], "equity": [100.0, 100.0]}
     ).write_parquet(directory / "equity_curve.parquet")
+    if pretrade_rejection:
+        pl.DataFrame(
+            {
+                "sequence_id": [1],
+                "ts": [ts],
+                "instrument_id": ["TEST.SIM"],
+                "side": ["BUY"],
+                "requested_quantity": [1.0],
+                "reference_price": [10.0],
+                "available_cash": [10.0],
+                "estimated_fee": [0.01],
+                "required_cash": [10.01],
+                "reason": ["cash_plus_commission_exceeds_free_balance"],
+            }
+        ).write_parquet(directory / "pretrade_rejections.parquet")
     manifest = {
         "schema_version": 3,
         "run_identity_version": 3,
@@ -68,7 +83,8 @@ def run_fixture(root: Path) -> Path:
         "research_cutoff": "2020-01-02",
         "orders": 2,
         "fills": 1,
-        "rejected": 1,
+        "rejected": 1 + int(pretrade_rejection),
+        "pretrade_rejections": int(pretrade_rejection),
         "n_trades": 0,
         "params": {"fee_bps": 1.0, "slippage_bps": 2.0, "starting_cash": 100.0},
         "artifacts": artifact_contract(directory),
@@ -86,6 +102,23 @@ def test_digest_retains_denial_and_missing_reason(tmp_path: Path) -> None:
     assert digest["sessions"]["coverage"] == "reconciled"
     assert "rejection_reasons" in digest["unavailable"]
     assert digest["admitted"] is False
+
+
+def test_digest_reconciles_pretrade_suppression_separately_from_submitted_orders(
+    tmp_path: Path,
+) -> None:
+    digest = execution_digest(
+        run_fixture(tmp_path, pretrade_rejection=True),
+        cutoff="2020-01-02",
+        expected_sessions=2,
+    )
+    assert digest["orders_by_status"] == {"DENIED": 1, "FILLED": 1}
+    assert digest["denied_or_rejected_orders"] == 2
+    assert digest["pretrade_rejections"] == {
+        "count": 1,
+        "by_reason": {"cash_plus_commission_exceeds_free_balance": 1},
+    }
+    assert "pretrade_rejections" in digest["evidence"]
 
 
 @pytest.mark.parametrize(
