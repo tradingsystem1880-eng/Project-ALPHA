@@ -10,6 +10,7 @@ Read/write of the owner's own files only; no authority of any kind.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -46,10 +47,39 @@ def load_rule_text(data_dir: Path, name: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def resolve_rules_spec(strategy: str, rules: str | None, data_dir: Path) -> str | None:
+def resolve_rules_spec(
+    strategy: str,
+    rules: str | None,
+    data_dir: Path,
+    *,
+    rules_file: Path | None = None,
+    rules_sha256: str | None = None,
+) -> str | None:
     """The canonical spec bytes a ``RunSpec`` should carry for ``--strategy``/``--rules``."""
     from alpha_strategies.rules import canonical_json, rule_spec_from_json
 
+    if rules_file is not None or rules_sha256 is not None:
+        if strategy != "rules" or rules is not None:
+            raise DataError("--rules-file is exclusive with --rules and requires --strategy rules")
+        if rules_file is None or rules_sha256 is None:
+            raise DataError("--rules-file and --rules-sha256 are required together")
+        if re.fullmatch(r"[0-9a-f]{64}", rules_sha256) is None:
+            raise DataError("--rules-sha256 must be a lowercase SHA-256 digest")
+        try:
+            if not rules_file.is_file() or rules_file.stat().st_size > 1_000_000:
+                raise DataError("frozen rule input must be a regular file of at most 1000000 bytes")
+            with rules_file.open("rb") as stream:
+                raw = stream.read(1_000_001)
+            if len(raw) > 1_000_000:
+                raise DataError("frozen rule input exceeds 1000000 bytes")
+            if hashlib.sha256(raw).hexdigest() != rules_sha256:
+                raise DataError("frozen rule hash mismatch")
+            text = canonical_json(rule_spec_from_json(raw.decode("utf-8")))
+        except (OSError, UnicodeError) as exc:
+            raise DataError(f"cannot read frozen rule input: {exc}") from exc
+        if raw != text.encode("utf-8"):
+            raise DataError("frozen rule input must use canonical JSON bytes")
+        return text
     if rules is None:
         if strategy == "rules":
             raise DataError(

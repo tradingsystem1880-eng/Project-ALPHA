@@ -554,3 +554,19 @@ The bounded ten-trial Codex-only diagnostic is complete. It supports further wor
 ## 2026-09-30 — Bounded baseline execution controller
 
 A CLI-first controller now runs one frozen momentum baseline and validation, preserves durable attempts, reserves reconciliation time and publishes verified execution digests. It makes no model calls, launches no candidate variants, and grants no research admission or owner authority. The digest retains order denials independently of model narrative and checks execution quantities and session coverage. This bounds controller operations; surrounding-agent temporal read isolation and specialist-agent effectiveness remain unverified. Historical benchmark evidence is retained. See the [controller plan](superpowers/plans/2026-09-30-bounded-research-controller.md); exact-tree gate/review receipts determine acceptance.
+
+
+## 2026-10-01 — Immutable rule execution in the bounded research controller
+
+The isolated research branch adds embedded canonical rule specifications to `BaselineExecutionPlan`.
+Both baseline and validation consume one immutable rule file plus its exact byte hash, and the
+collector verifies returned rule identity. Existing named-rule behavior, CASH/long-only policy,
+validation defaults and two-operation budget remain unchanged. Invalid or altered inputs fail
+before engine execution. Default launch forms omit the new local-file options; existing authorized
+generic CLI transport can relay them. No new REST schema, MCP tool or approval authority.
+
+This addresses fixed-rule operator coverage, not agent pressure-turn behavior or whole-agent
+information isolation. Historical Claude evidence is unchanged; no new model trial is claimed.
+See the [plan](superpowers/plans/2026-10-01-immutable-research-rules.md) and
+[usage guide](operations/bounded-research-workflow.md). Acceptance is recorded separately in
+exact-tree gate and independent-review receipts; combined main/UI integration remains pending.

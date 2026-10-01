@@ -7,6 +7,8 @@ sheet under ``data_dir/runs/<run_id>/``.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 from alpha_cli import _artifacts, _forecast_cache, _gauntlet, _runner, rules_cmds
@@ -42,6 +44,12 @@ def validate(
     rules: str | None = typer.Option(
         None, "--rules", help="saved rule set for --strategy rules (alpha rules save NAME)"
     ),
+    rules_file: Path | None = typer.Option(  # noqa: B008
+        None, "--rules-file", help="canonical frozen rule file (local path)"
+    ),
+    rules_sha256: str | None = typer.Option(
+        None, "--rules-sha256", help="SHA-256 of exact frozen rule file bytes"
+    ),
     tier1_paths: int = 1000,
     tier2_paths: int = 64,
     n_resamples: int = 2000,
@@ -73,7 +81,9 @@ def validate(
     settings = AlphaSettings()
     resolved_seed = seed if seed is not None else settings.random_seed
     try:
-        rules_spec = rules_cmds.resolve_rules_spec(strategy, rules, settings.data_dir)
+        rules_spec = rules_cmds.resolve_rules_spec(
+            strategy, rules, settings.data_dir, rules_file=rules_file, rules_sha256=rules_sha256
+        )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     spec = _runner.RunSpec(

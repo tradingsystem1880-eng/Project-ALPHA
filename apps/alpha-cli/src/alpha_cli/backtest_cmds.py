@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
+from pathlib import Path
 
 import numpy as np
 import typer
@@ -373,6 +374,12 @@ def run(
     rules: str | None = typer.Option(
         None, "--rules", help="saved rule set for --strategy rules (alpha rules save NAME)"
     ),
+    rules_file: Path | None = typer.Option(  # noqa: B008
+        None, "--rules-file", help="canonical frozen rule file (local path)"
+    ),
+    rules_sha256: str | None = typer.Option(
+        None, "--rules-sha256", help="SHA-256 of exact frozen rule file bytes"
+    ),
     snapshot: str | None = None,
     as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
     research_gate_override: bool = typer.Option(
@@ -387,7 +394,9 @@ def run(
     """
     settings = AlphaSettings()
     try:
-        rules_spec = rules_cmds.resolve_rules_spec(strategy, rules, settings.data_dir)
+        rules_spec = rules_cmds.resolve_rules_spec(
+            strategy, rules, settings.data_dir, rules_file=rules_file, rules_sha256=rules_sha256
+        )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     # walk-forward fields are unused by a plain backtest; carry coherent defaults

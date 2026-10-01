@@ -113,6 +113,8 @@ def _command_catalog(*, include_all: bool = False) -> list[dict[str, Any]]:
         args: list[dict[str, Any]] = []
         options: list[dict[str, Any]] = []
         for param in cmd.params:
+            if param.name in {"rules_file", "rules_sha256"}:
+                continue  # Local immutable inputs are not launch-form capabilities.
             if param.param_type_name == "argument":
                 args.append(
                     {

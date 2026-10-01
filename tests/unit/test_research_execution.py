@@ -354,7 +354,15 @@ def test_identical_concurrent_execution_is_refused(
 
 @pytest.mark.parametrize(
     "mismatch",
-    [None, "symbol", "snapshot_id", "max_leverage", "strategy_name", "execution_fingerprint"],
+    [
+        None,
+        "symbol",
+        "snapshot_id",
+        "max_leverage",
+        "strategy_name",
+        "execution_fingerprint",
+        "rules_spec",
+    ],
 )
 def test_collect_checks_terminal_receipt_and_frozen_identity(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, mismatch: str | None
@@ -373,7 +381,7 @@ def test_collect_checks_terminal_receipt_and_frozen_identity(
         strategy_name=plan.strategy, account_type="CASH", allow_short=False, periods_per_year=252
     )
     manifest["params"] = config
-    if mismatch in {"max_leverage", "strategy_name"}:
+    if mismatch in {"max_leverage", "strategy_name", "rules_spec"}:
         config[mismatch] = "wrong"
     elif mismatch is not None:
         manifest[mismatch] = "c" * 64 if mismatch == "execution_fingerprint" else "wrong"
@@ -425,3 +433,151 @@ def test_digest_cli_exposes_denials_and_rejects_path_traversal(
     )
     assert invalid.exit_code != 0
     assert "16-hex run ID" in invalid.output
+
+
+def test_rule_plan_freezes_canonical_spec_and_pairs_strategy() -> None:
+    from pydantic import ValidationError
+
+    TREND = (
+        '{"name":"fixed","long_when":[{"left":{"source":"close"},"op":">","right":{"value":1}}]}'
+    )
+
+    values = dict(symbol="TEST", snapshot="frozen", as_of="2020-01-02")
+    with pytest.raises(ValidationError):
+        BaselineExecutionPlan(**values, strategy="rules")
+    with pytest.raises(ValidationError):
+        BaselineExecutionPlan(**values, rules_spec=TREND)
+    plan = BaselineExecutionPlan(**values, strategy="rules", rules_spec=TREND)
+    assert plan.rules_spec is not None
+    assert plan.rules_spec == json.dumps(
+        json.loads(plan.rules_spec), sort_keys=True, separators=(",", ":")
+    )
+
+
+def test_rules_dispatch_frozen_file_and_replay(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from alpha_cli.rules_cmds import resolve_rules_spec
+
+    TREND = (
+        '{"name":"fixed","long_when":[{"left":{"source":"close"},"op":">","right":{"value":1}}]}'
+    )
+
+    controller, base = controller_setup(monkeypatch, tmp_path)
+    plan = BaselineExecutionPlan(**{**base.model_dump(), "strategy": "rules", "rules_spec": TREND})
+    calls = []
+
+    def success(args: list[str], *, output: Path, **kwargs: Any) -> dict[str, Any]:
+        path = Path(args[args.index("--rules-file") + 1])
+        sha = args[args.index("--rules-sha256") + 1]
+        assert (
+            resolve_rules_spec("rules", None, tmp_path, rules_file=path, rules_sha256=sha)
+            == plan.rules_spec
+        )
+        calls.append(str(path))
+        output.write_text("terminal run")
+        return {"status": "completed", "returncode": 0}
+
+    monkeypatch.setattr(controller, "run_child", success)
+    monkeypatch.setattr(controller, "_collect", lambda *a: {"source_fingerprint": "same"})
+    first = controller.execute_plan(plan, data_dir=tmp_path)
+    assert first["status"] == "completed_evidence"
+    assert len(calls) == 2 and calls[0] == calls[1]
+    assert controller.execute_plan(plan, data_dir=tmp_path) == first
+    assert len(calls) == 2
+    Path(calls[0]).write_text("changed")
+    with pytest.raises(DataError):
+        controller.execute_plan(plan, data_dir=tmp_path)
+
+
+def test_rules_changed_between_stages_stop_before_execution(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from alpha_cli.rules_cmds import resolve_rules_spec
+
+    controller, base = controller_setup(monkeypatch, tmp_path)
+    plan = BaselineExecutionPlan(
+        **{
+            **base.model_dump(),
+            "strategy": "rules",
+            "rules_spec": (
+                '{"name":"fixed","long_when":[{"left":{"source":"close"},'
+                '"op":">","right":{"value":1}}]}'
+            ),
+        }
+    )
+    executed = []
+
+    def child(args: list[str], *, output: Path, **kwargs: Any) -> dict[str, Any]:
+        path = Path(args[args.index("--rules-file") + 1])
+        sha = args[args.index("--rules-sha256") + 1]
+        resolve_rules_spec("rules", None, tmp_path, rules_file=path, rules_sha256=sha)
+        executed.append(output.name)
+        output.write_text("terminal run")
+        path.write_text("tampered")
+        return {"status": "completed", "returncode": 0}
+
+    monkeypatch.setattr(controller, "run_child", child)
+    monkeypatch.setattr(controller, "_collect", lambda *a: {"source_fingerprint": "same"})
+    result = controller.execute_plan(plan, data_dir=tmp_path)
+    assert executed == ["baseline.log"]
+    assert result["status"] == "infrastructure_invalid"
+    assert result["missing_evidence"] == ["validation"]
+    assert "hash mismatch" in result["attempts"][-1]["error"]
+
+
+@pytest.mark.parametrize("stage", ["baseline", "validation"])
+@pytest.mark.parametrize("returned", ["matching", "missing", "different"])
+def test_collect_binds_rule_specification(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, stage: str, returned: str
+) -> None:
+    from types import SimpleNamespace
+
+    from alpha_cli import _identity
+    from alpha_cli import research_execution as controller
+
+    (tmp_path / "runs").mkdir()
+    directory = run_fixture(tmp_path / "runs")
+    plan = BaselineExecutionPlan(
+        symbol="TEST",
+        snapshot="frozen",
+        as_of="2020-01-02",
+        strategy="rules",
+        rules_spec='{"name":"fixed","long_when":[{"left":{"source":"close"},"op":">","right":{"value":1}}]}',
+    )
+    path = directory / "manifest.json"
+    manifest = json.loads(path.read_text())
+    config = plan.model_dump(mode="json")
+    config.pop("rules_spec")
+    config.update(
+        strategy_name="rules", account_type="CASH", allow_short=False, periods_per_year=252
+    )
+    manifest["params" if stage == "baseline" else "metadata"] = config
+    if stage == "validation":
+        del manifest["params"]
+        manifest.update(command="validate", folds=[{"n_test": 1}])
+    destination = config if stage == "baseline" else manifest
+    if returned != "missing":
+        destination["rules_spec"] = plan.rules_spec if returned == "matching" else "{}"
+    path.write_text(json.dumps(manifest))
+    log = tmp_path / "child.log"
+    log.write_text(f"run TEST -> run {directory.name}: done\n")
+    monkeypatch.setattr(_identity, "execution_fingerprint", lambda: "b" * 64)
+    monkeypatch.setattr(
+        _runner,
+        "load_bars",
+        lambda *a, **kw: (
+            [SimpleNamespace(ts=datetime(2020, 1, day, tzinfo=UTC)) for day in [1, 2]],
+            "frozen",
+        ),
+    )
+    monkeypatch.setattr(
+        controller, "walk_forward_splits", lambda *a, **kw: [SimpleNamespace(test=range(1))]
+    )
+    if returned == "matching":
+        assert (
+            controller._collect(plan, stage, log, tmp_path, "a" * 64, 2)["run_id"] == directory.name
+        )
+    else:
+        with pytest.raises(DataError, match="rule specification mismatch"):
+            controller._collect(plan, stage, log, tmp_path, "a" * 64, 2)

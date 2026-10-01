@@ -16,7 +16,7 @@ from pathlib import Path
 from types import FrameType
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from alpha_cli import _artifacts, _identity, _runner
 from alpha_cli.artifact_contract import sha256_file
@@ -34,7 +34,8 @@ class BaselineExecutionPlan(BaseModel):
     symbol: str = Field(pattern=r"^[A-Z0-9][A-Z0-9._/-]{0,39}$")
     snapshot: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$")
     as_of: date
-    strategy: Literal["ts_momentum"] = "ts_momentum"
+    strategy: Literal["ts_momentum", "rules"] = "ts_momentum"
+    rules_spec: str | None = Field(default=None, max_length=1_000_000)
     lookback: int = Field(default=252, ge=2, le=2000)
     skip: int = Field(default=21, ge=0, le=252)
     vol_window: int = Field(default=63, ge=2, le=1000)
@@ -50,11 +51,33 @@ class BaselineExecutionPlan(BaseModel):
     seed: int = Field(default=42, ge=0, le=2**32 - 1)
     seconds: int = Field(default=900, ge=30, le=1500)
 
+    @field_validator("rules_spec")
+    @classmethod
+    def canonical_rules(cls, value: str | None) -> str | None:
+        from alpha_strategies.rules import canonical_json, rule_spec_from_json
 
-def command_args(plan: BaselineExecutionPlan, stage: str) -> list[str]:
+        if value is None:
+            return None
+        try:
+            return canonical_json(rule_spec_from_json(value))
+        except DataError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @model_validator(mode="after")
+    def paired_rules(self) -> BaselineExecutionPlan:
+        if (self.strategy == "rules") != (self.rules_spec is not None):
+            raise ValueError("strategy rules requires rules_spec; other strategies forbid it")
+        return self
+
+
+def command_args(
+    plan: BaselineExecutionPlan, stage: str, *, rules_file: Path | None = None
+) -> list[str]:
     """Closed argv; no model-generated shell, extra flags, owner override or rules mutation."""
     if stage not in {"baseline", "validation"}:
         raise ValueError("unknown execution stage")
+    if (plan.rules_spec is not None) != (rules_file is not None):
+        raise ValueError("frozen rule plan requires its immutable file")
     args = [sys.executable, "-m", "alpha_cli.main"]
     args += ["backtest", "run"] if stage == "baseline" else ["validate"]
     args += [plan.symbol]
@@ -76,6 +99,13 @@ def command_args(plan: BaselineExecutionPlan, stage: str) -> list[str]:
     for name in shared + extra:
         args += ["--" + name.replace("_", "-"), str(getattr(plan, name))]
     args += ["--account-type", "CASH", "--no-allow-short", "--periods-per-year", "252"]
+    if rules_file is not None and plan.rules_spec is not None:
+        args += [
+            "--rules-file",
+            str(rules_file),
+            "--rules-sha256",
+            hashlib.sha256(plan.rules_spec.encode("utf-8")).hexdigest(),
+        ]
     if stage == "validation":
         args += ["--max-workers", "1"]
     return args
@@ -187,6 +217,9 @@ def _collect(
     ):
         if config.get(name) != getattr(plan, name):
             raise DataError(f"child configuration mismatch: {name}")
+    child_rules = manifest.get("rules_spec") if stage == "validation" else config.get("rules_spec")
+    if child_rules != plan.rules_spec:
+        raise DataError("child frozen rule specification mismatch")
     if config.get("strategy_name") != plan.strategy:
         raise DataError("child strategy mismatch")
     for name, expected in {
@@ -246,6 +279,9 @@ def execute_plan(plan: BaselineExecutionPlan, *, data_dir: Path) -> dict[str, An
         except BlockingIOError as exc:
             raise DataError("research execution is already running") from exc
         _publish(directory / "plan.json", identity)
+        if plan.rules_spec is not None:
+            raw = plan.rules_spec.encode("utf-8")
+            _artifacts.publish_artifact(directory / "rules.json", lambda p: p.write_bytes(raw))
         if (directory / "receipt.json").exists():
             receipt: dict[str, Any] = json.loads((directory / "receipt.json").read_text())
             for attempt in receipt["attempts"]:
@@ -322,7 +358,11 @@ def _execute_locked(
                     status="honest_block", stop_reason="budget_reserved_for_reconciliation"
                 )
                 break
-            args = command_args(plan, stage)
+            args = command_args(
+                plan,
+                stage,
+                rules_file=directory / "rules.json" if plan.rules_spec is not None else None,
+            )
             _publish(attempt_path, {"stage": stage, "argv": args, "seconds": remaining})
             log = directory / f"{stage}.log"
             try:
