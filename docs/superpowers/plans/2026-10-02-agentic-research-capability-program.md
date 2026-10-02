@@ -396,3 +396,12 @@ question floor, typed novel proposals, exact evidence binding and an exploratory
 This precedes the autonomous four-action demo; physical information boundaries remain a
 prerequisite for that demo. It does not establish better model reasoning or complete this program.
 Implementation is isolated in `feat/research-teammate` on the delivered `73fb2a9` foundation.
+
+
+## Synthetic demo implementation — 2026-10-02
+
+[Closed investigation demo](2026-10-02-closed-investigation-demo.md) implements a restricted
+four-action development path after the advisory slice. It uses designed synthetic panels, not
+real-data exports or engine backtests. The negative control is specifically a frozen-indicator
+null. Worker enforcement and tools-disabled Codex transport have distinct evidence; no broad
+agent isolation, predictive confirmation, model-team uplift or program completion is claimed.

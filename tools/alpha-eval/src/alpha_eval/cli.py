@@ -175,9 +175,28 @@ def _cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_investigate_demo(args: argparse.Namespace) -> int:
+    from alpha_eval.investigation_runner import run_demo
+
+    report = run_demo(Path(args.out), args.model, live=args.live)
+    print(f"Synthetic development report -> {Path(args.out) / 'report.md'}")
+    return int(
+        any(c["model_run"] and c["model_run"]["status"] != "completed" for c in report["cases"])
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="alpha-eval")
     sub = parser.add_subparsers(dest="cmd", required=True)
+    demo = sub.add_parser(
+        "investigate-demo", help="Closed synthetic retrospective investigation demo"
+    )
+    demo.add_argument("--out", required=True, help="New output directory; refuses reuse")
+    demo.add_argument(
+        "--live", action="store_true", help="Run bounded Codex reasoning after calibration"
+    )
+    demo.add_argument("--model", default="gpt-6-astra")
+    demo.set_defaults(func=_cmd_investigate_demo)
     probe = sub.add_parser("probe", help="Layer A deterministic platform probes")
     probe.add_argument("--out", default=str(tool_root() / "results" / "probes-latest"))
     probe.add_argument("--seeds", type=int, default=20)

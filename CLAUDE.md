@@ -64,10 +64,10 @@ full stamp and never bypass checks. Claude adapters only orient and guard native
 [Harness operations](docs/operations/claude-code-harness.md): checks, screening, intake, exceptions.
 
 Benchmark: [Codex-only; preserve history; enforce isolation](tools/alpha-eval/README.md).
-Research: [bounded workflow](docs/operations/bounded-research-workflow.md); feasibility and baseline
-before variants, then stop or record exact blocks. `alpha research diagnostic run-plan` executes a
-fixed baselines/validation with durable bounds and verified digests; no agent-wide read isolation.
-`diagnostic suggest` proposes evidence-bound follow-ups; outputs are non-admitted advice.
+Research: [bounded workflow](docs/operations/bounded-research-workflow.md); baseline before variants.
+`diagnostic run-plan` executes bounded fixed baselines/validation; `diagnostic suggest` proposes
+follow-ups. Both remain advisory; no agent-wide read isolation.
+Demo: `alpha-eval investigate-demo --live` adds bounded Codex reasoning; see benchmark limits.
 
 ## Sources of current truth
 
@@ -77,4 +77,4 @@ applicable rules and [build record](docs/BUILD-STATUS.md). Contracts:
 to historical claims. Provider acceptance requires receipts; missing or failed live evidence is not a pass.
 
 Update this manual and append `docs/BUILD-STATUS.md` when behavior changes.
-Preserve user work; separate local checks from full acceptance.
+Preserve user work. Concurrent gate port: `ALPHA_PLAYWRIGHT_PORT` (default 8802).

@@ -1,5 +1,12 @@
 import { defineConfig } from '@playwright/test'
 
+const rawPort = process.env.ALPHA_PLAYWRIGHT_PORT ?? '8802'
+const port = Number(rawPort)
+if (!/^[0-9]{4,5}$/.test(rawPort) || port < 1024 || port > 65535 || port === 8801) {
+  throw new Error('ALPHA_PLAYWRIGHT_PORT must be 1024..65535, excluding owner port 8801')
+}
+const baseURL = `http://localhost:${port}/`
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -13,7 +20,7 @@ export default defineConfig({
   snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{-projectName}{ext}',
   expect: { timeout: 5_000 },
   use: {
-    baseURL: 'http://localhost:8802/',
+    baseURL,
     browserName: 'chromium',
     colorScheme: 'dark',
     contextOptions: { reducedMotion: 'reduce' },
@@ -45,8 +52,8 @@ export default defineConfig({
   webServer: {
     command: 'uv run python scripts/run_playwright_backend.py',
     cwd: '../../..',
-    url: 'http://localhost:8802/',
-    reuseExistingServer: !process.env.CI,
+    url: baseURL,
+    reuseExistingServer: false,
     timeout: 60_000,
   },
 })

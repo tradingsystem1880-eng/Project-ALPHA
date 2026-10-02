@@ -114,3 +114,46 @@ The initial paired panel is five questions (R06-v1, R08-v1, R19-v1, R21 positive
 one baseline and one candidate trial each. Completion status is independently adjudicated
 from retained execution evidence, separately from rubric credit. Ten trials are diagnostic,
 not a powered general capability comparison. See the [active plan](../../docs/superpowers/plans/2026-09-30-research-workflow-completion.md).
+
+## Closed synthetic investigation demo
+
+`uv run --project tools/alpha-eval alpha-eval investigate-demo --out NEW_DIRECTORY`
+calibrates three designed controls using physically restricted measurement workers. Add `--live`
+to invoke bounded Codex reasoning (default model follows the existing `gpt-6-astra` route).
+Outputs are append-only; an existing destination is rejected. No Claude invocation or historical
+result mutation occurs. This is an evaluator command, not a public research admission workflow.
+
+The identical vague question is presented for an observable planted indicator, a frozen-indicator
+null, and an accounting defect. The null uses the same equity path with an alternating indicator;
+it is not evidence that no other explanatory feature exists. These are synthetic panels, not
+engine-generated backtests. The positive indicator is deliberately planted; calibration cannot
+establish real-world causality or predictive availability.
+
+The lead returns a strict Pydantic proposal. A trusted controller alone dispatches `inspect_run`,
+`loss_episodes`, `historical_context`, or `conditional_diagnostic`. It reserves attempts before
+execution, counts denials/failures, permits each action once, and allows at most five model calls
+including synthesis. Accounting failure blocks further interpretation. A final must cite its
+inspection receipt; response completion is distinct from independently reviewed research quality.
+No action accepts model-provided paths, code, search parameters or commands.
+
+Inputs contain only cutoff-permitted synthetic rows and bounded source records. Parent hashes
+remain evaluator-side. Measurement workers have read-only input/code access, a minimized environment
+and no network access. Actual preflight probes test reads, denied input mutation, absolute/relative/
+symlink escapes and network connection denial. Model decisions use an empty workspace, host skills
+and configuration disabled, auxiliary tools disabled, explicit deny/read permissions, and no MCP.
+Raw events are retained; unexpected tool events invalidate the turn. A model canary refusal is
+only evidence of no observed disclosure, not a substitute for worker enforcement probes.
+
+Conditional summaries freeze indicator t against equity return t→t+1 and report counts/means,
+without significance or uncertainty estimates. Context is dated untrusted synthetic text, never
+instructions or proof of cause. All exposed periods remain observed retrospective evidence.
+`summary.json`, per-action receipts, raw model events, invocation settings, code/input hashes and
+`report.md` preserve what actually happened. There is no baseline comparison or general AI-uplift
+claim in this development panel. Real-data exports, predictive confirmation, broader recovery,
+agent-team/SDK ablations and outcome benchmarks remain later work.
+
+Configuration reference used for this adapter:
+[OpenAI Codex configuration](https://developers.openai.com/codex/config-reference) and
+[permissions](https://developers.openai.com/codex/permissions), verified against installed CLI help
+and the retained transport smoke. Provider transport remains trusted; model tools and measurement
+workers have separate restrictions.

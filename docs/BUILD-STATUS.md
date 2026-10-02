@@ -582,3 +582,26 @@ Exploratory-analysis protocol now explicitly asks for useful unsolicited questio
 skips. Focused tests cover corrupt evidence, cutoff, loss diagnosis, reference binding and CLI.
 Acceptance requires independent review and a fresh full-gate receipt; this entry is not a receipt.
 The broader capability program, isolation and agent-reasoning benchmark uplift remain pending.
+
+
+## 2026-10-02 — Closed synthetic investigation demo
+
+Next slice after `535a461`, implemented in isolated `feat/research-investigation-demo`.
+The evaluator exports neutral cutoff-scoped synthetic panels and dispatches four fixed measurements
+from typed model proposals. Input mutation/path escape/network denial are tested by actual worker
+preflight. Failed/denied attempts consume bounds; accounting failure blocks interpretation and
+synthesis requires an inspection receipt. Fresh tools-disabled Codex turns retain raw evidence.
+Designed controls distinguish a planted indicator, a frozen-indicator null and an accounting defect;
+they are not engine backtests or evidence of real predictive causality. Model completion and research
+quality are separate. The original general harness and historical results are unchanged.
+Independent review and a fresh full-gate stamp remain acceptance requirements; this narrative is
+not a receipt. Consult the retained development report for live outcomes and limitations.
+
+Retained [synthetic live evidence](../tools/alpha-eval/results/investigation-demo-20261002/README.md)
+records three final responses, 12 model calls and nine measurements. The planted indicator and
+frozen-indicator null received distinct interpretations; the defect case stopped after inspection.
+These observations do not establish benchmark uplift, unrestricted initiative or real trading edge.
+
+Verification infrastructure: `ALPHA_PLAYWRIGHT_PORT` selects a separate test-only backend port
+(default 8802, excludes owner port 8801); Playwright refuses reuse of another server. This fixes
+observed cross-checkout verification interference without changing application routes or authority.

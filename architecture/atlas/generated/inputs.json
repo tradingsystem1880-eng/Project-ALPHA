@@ -696,6 +696,7 @@
     "tests/unit/test_pit_source.py": "1c9839776d6fce72c9c474415e21fe1dc7c95dabae9363bd34d8779f7a248c0e",
     "tests/unit/test_pit_tz.py": "298aa79a3bece336ee3fb3ded4d1ad3e58836ba1674e64e3a0500962acacb945",
     "tests/unit/test_platform_tier.py": "afe82e141cbe0a25b1f0c1517ce30717d4b2404ced13c180887921946ae99a3d",
+    "tests/unit/test_playwright_backend_port.py": "290a7274a7cd2b757cc4cdb393fa6740595e5b2eec5d646dd908effef16e5649",
     "tests/unit/test_portfolio.py": "7d7f19b3252f54e78b717dc0bd48d28f94557c4f1b0bc69298ac3e9ab69867c6",
     "tests/unit/test_portfolio_replay_engine.py": "e9764559ba340629472cd9ea9381740c5d6b9a3e5f281743df4969e39f95e2da",
     "tests/unit/test_project_workspace.py": "e8498c75ff02652b9d7ca78e3619583ef9afd8ba2d10153da769740fe89ea847",
