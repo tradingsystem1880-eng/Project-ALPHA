@@ -157,3 +157,28 @@ Configuration reference used for this adapter:
 [permissions](https://developers.openai.com/codex/permissions), verified against installed CLI help
 and the retained transport smoke. Provider transport remains trusted; model tools and measurement
 workers have separate restrictions.
+
+
+### Investigation efficiency comparison
+
+`alpha-eval investigate-compare --out NEW_DIR` performs isolated synthetic calibration and
+writes the frozen nine-cell protocol. Add `--live` to acquire all nine Codex trials. It compares
+the unchanged legacy adaptive policy with pre-model inspection plus compact JSON, and a
+fixed-evidence advisory synthesis. The latter collects all permitted measurements before one
+model call, stopping collection on integrity failure. It is a synthetic comparator, not the
+production `diagnostic suggest` workflow. The default demo remains unchanged.
+
+All automatic measurements consume the four-action budget. The same panel hashes, worker, model
+and isolation are used across arms; mode order rotates across cases. Full receipts are preserved
+losslessly. `comparison-protocol.json` precedes inference; `comparison.json` includes every trial,
+including failures. Usage totals are unknown when any call lacks valid usage; cached tokens are
+a subset of input, never an additional charge estimate. Trial elapsed time includes measurements
+and provider setup/model calls but excludes shared preflight/calibration. Calibration
+measurements are reported separately. No billing dollars or statistical uplift are inferred.
+
+See the [efficiency plan](../../docs/superpowers/plans/2026-10-02-investigation-efficiency.md).
+
+[Retained nine-trial results](results/investigation-efficiency-20261002/report.md) show lower
+measured usage for prechecked and fixed policies, with an independent qualitative evidence
+review. The small designed panel does not establish general agent reliability; defaults remain
+unchanged and richer selection tests precede any team/runtime expansion.

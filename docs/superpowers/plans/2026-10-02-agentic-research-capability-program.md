@@ -405,3 +405,14 @@ four-action development path after the advisory slice. It uses designed syntheti
 real-data exports or engine backtests. The negative control is specifically a frozen-indicator
 null. Worker enforcement and tools-disabled Codex transport have distinct evidence; no broad
 agent isolation, predictive confirmation, model-team uplift or program completion is claimed.
+
+
+## Efficiency comparison — 2026-10-02
+
+The closed demo passed review and the full gate in `d5f3cd4`. The next isolated slice is
+[the frozen efficiency comparison](2026-10-02-investigation-efficiency.md): legacy adaptive,
+prechecked adaptive, and fixed-evidence advisory synthesis on the same three designed cases.
+It measures orchestration cost without changing models, actions or isolation. Automatic checks
+are controller behavior, not independent model initiative. Real-data reconciliation, richer
+negative controls and repeated held-back evaluations remain program work; no team or SDK
+migration follows merely from completing this comparison.

@@ -56,7 +56,10 @@ def run_case(
     measure: Callable[[str], dict[str, Any]],
     *,
     seconds: float = 360,
+    mode: Literal["legacy", "prechecked", "fixed"] = "legacy",
 ) -> dict[str, Any]:
+    if mode not in ("legacy", "prechecked", "fixed"):
+        raise ValueError("unsupported investigation mode")
     output.mkdir(parents=True, exist_ok=False)
     deadline = time.monotonic() + seconds
     attempts: list[dict[str, Any]] = []
@@ -66,15 +69,65 @@ def run_case(
     final: dict[str, Any] | None = None
     error = None
     calls = 0
-    for turn in range(1, 6):
+
+    def execute_attempt(action: str, reason: str) -> None:
+        nonlocal integrity
+        attempt = dict(
+            id=f"attempt-{len(attempts) + 1}", action=action, reason=reason, status="reserved"
+        )
+        write_once(output / f"{attempt['id']}.json", attempt)
+        attempts.append(attempt)
+        denial = None
+        if action in seen:
+            denial = "action already attempted"
+        elif action != "inspect_run" and integrity is not True:
+            denial = "verified integrity required before interpretation"
+        seen.add(action)  # failed and denied actions consume their allowance
+        if denial:
+            attempt.update(status="denied", error=denial)
+        else:
+            try:
+                result = measure(action)
+                receipt = dict(id=attempt["id"], action=action, result=result)
+                write_once(output / f"{attempt['id']}.receipt.json", receipt)
+                receipts.append(receipt)
+                if action == "inspect_run":
+                    integrity = result["integrity_ok"] is True
+                attempt["status"] = "completed"
+            except (ValueError, RuntimeError, OSError) as exc:
+                attempt.update(status="failed", error=str(exc))
+        write_once(output / f"{attempt['id']}.terminal.json", attempt)
+
+    if mode != "legacy":
+        execute_attempt(
+            "inspect_run", "Controller prerequisite: verify integrity before reasoning."
+        )
+        if integrity is None:
+            error = "automatic inspection failed; no verified receipt"
+        if mode == "fixed" and integrity is True:
+            for action in ACTIONS[1:]:
+                if deadline - time.monotonic() <= 90:
+                    break  # reserve a synthesis slot rather than overspend the deadline
+                execute_attempt(action, "Fixed-evidence advisory collection; not model initiative.")
+    max_calls = {"legacy": 5, "prechecked": 4, "fixed": 1}[mode]
+    for turn in range(1, max_calls + 1):
+        if error:
+            break
         remaining = deadline - time.monotonic()
-        final_only = turn == 5 or remaining <= 100
+        final_only = (
+            turn == max_calls or remaining <= 100 or (mode != "legacy" and integrity is False)
+        )
         if remaining <= 0:
             error = "deadline exhausted"
             break
-        prompt = (
+        policy = (
             POLICY
-            + "\n"
+            if mode == "legacy"
+            else POLICY.replace("five model calls", f"{max_calls} model calls")
+        )
+        prompt = (
+            policy
+            + ("\n" if mode == "legacy" else "\nSTATE\n")
             + json.dumps(
                 dict(
                     question=QUESTION,
@@ -82,7 +135,8 @@ def run_case(
                     attempts_remaining=4 - len(attempts),
                     attempts=attempts,
                     receipts=receipts,
-                )
+                ),
+                separators=(",", ":") if mode != "legacy" else None,
             )
         )
         slot = output / f"turn-{turn}"
@@ -110,33 +164,10 @@ def run_case(
         if final_only:
             error = "synthesis required; action budget closed"
             break
-        attempt = dict(
-            id=f"attempt-{len(attempts) + 1}", action=d.action, reason=d.reason, status="reserved"
-        )
-        write_once(output / f"{attempt['id']}.json", attempt)
-        attempts.append(attempt)
-        denial = None
-        if d.action in seen:
-            denial = "action already attempted"
-        elif d.action != "inspect_run" and integrity is not True:
-            denial = "verified integrity required before interpretation"
-        seen.add(d.action)  # failed and denied actions consume their allowance
-        if denial:
-            attempt.update(status="denied", error=denial)
-        else:
-            try:
-                result = measure(d.action)
-                receipt = dict(id=attempt["id"], action=d.action, result=result)
-                write_once(output / f"{attempt['id']}.receipt.json", receipt)
-                receipts.append(receipt)
-                if d.action == "inspect_run":
-                    integrity = result["integrity_ok"] is True
-                attempt["status"] = "completed"
-            except (ValueError, RuntimeError, OSError) as exc:
-                attempt.update(status="failed", error=str(exc))
-        write_once(output / f"{attempt['id']}.terminal.json", attempt)
+        execute_attempt(d.action, d.reason)
     report = dict(
         schema_version=1,
+        controller_mode=mode,
         synthetic=True,
         mode="retrospective_diagnosis",
         admitted=False,

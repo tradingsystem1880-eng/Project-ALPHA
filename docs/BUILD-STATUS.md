@@ -605,3 +605,21 @@ These observations do not establish benchmark uplift, unrestricted initiative or
 Verification infrastructure: `ALPHA_PLAYWRIGHT_PORT` selects a separate test-only backend port
 (default 8802, excludes owner port 8801); Playwright refuses reuse of another server. This fixes
 observed cross-checkout verification interference without changing application routes or authority.
+
+
+## 2026-10-02 — Investigation efficiency comparison
+
+Implemented on isolated `feat/research-investigation-efficiency` after `d5f3cd4`. New
+`alpha-eval investigate-compare` freezes three policies across the same three synthetic panels:
+legacy adaptive, prechecked adaptive and fixed-evidence advisory synthesis. Automatic work
+uses the existing attempt budget; lossless compact JSON retains complete evidence. Setup failures
+are reserved and retained; missing or malformed usage stays unknown. Defaults and historical
+evidence are unchanged. No model, dependency, statistical operator or application authority changed.
+
+[Retained report](../tools/alpha-eval/results/investigation-efficiency-20261002/report.md): all nine
+trials completed. Legacy used 12 calls / 127832 input tokens, prechecked 7 / 74126 (42.01% fewer
+input tokens), fixed 3 / 32425 (74.63% fewer). A separate reviewer recomputed measurements and
+checked all 22 transport usage records; no critical regression was observed in these outputs.
+Three designed cases, one trial per cell, do not establish general reliability or real edge.
+The simpler fixed-evidence baseline motivates richer task-selection tests before adding teams.
+Fresh exact-tree full-gate and code-review receipts remain required for engineering acceptance.

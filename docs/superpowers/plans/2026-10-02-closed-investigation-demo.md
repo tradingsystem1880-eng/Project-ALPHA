@@ -1,6 +1,6 @@
 # Closed synthetic investigation demo
 
-**Delivery state:** Implemented; acceptance is bound to independent review and the fresh gate receipt.
+**Delivery state:** Completed — delivered as d5f3cd4 with independent review and full-gate acceptance.
 
 ```json
 {
@@ -50,7 +50,7 @@
       "verify": "uv run python scripts/gate.py full",
       "expected": "Fresh full pass plus reviewed exact tree.",
       "rollback": "Revert demo additions; preserve historical trials.",
-      "status": "pending"
+      "status": "done"
     }
   ],
   "tier_impact": [

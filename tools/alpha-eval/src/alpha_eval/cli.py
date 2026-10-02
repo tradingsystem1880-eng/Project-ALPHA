@@ -185,6 +185,14 @@ def _cmd_investigate_demo(args: argparse.Namespace) -> int:
     )
 
 
+def _cmd_investigate_compare(args: argparse.Namespace) -> int:
+    from alpha_eval.investigation_comparison import run_comparison
+
+    report = run_comparison(Path(args.out), args.model, live=args.live)
+    print(f"Synthetic comparison -> {Path(args.out) / 'comparison.json'}")
+    return int(any(r["result"]["status"] != "completed" for r in report["records"]))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="alpha-eval")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -197,6 +205,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     demo.add_argument("--model", default="gpt-6-astra")
     demo.set_defaults(func=_cmd_investigate_demo)
+    comparison = sub.add_parser(
+        "investigate-compare", help="Frozen synthetic cost and quality development comparison"
+    )
+    comparison.add_argument("--out", required=True, help="New directory; refuses reuse")
+    comparison.add_argument("--live", action="store_true", help="Run nine bounded Codex trials")
+    comparison.add_argument("--model", default="gpt-6-astra")
+    comparison.set_defaults(func=_cmd_investigate_compare)
     probe = sub.add_parser("probe", help="Layer A deterministic platform probes")
     probe.add_argument("--out", default=str(tool_root() / "results" / "probes-latest"))
     probe.add_argument("--seeds", type=int, default=20)
