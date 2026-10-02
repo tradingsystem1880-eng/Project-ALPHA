@@ -1,6 +1,6 @@
 # Investigation efficiency comparison
 
-**Delivery state:** Implementation and nine-cell acquisition completed; engineering acceptance is bound to the independent review and fresh full-gate receipt.
+**Delivery state:** Completed — delivered as 77d6e94 with independent review and full-gate acceptance.
 
 ```json
 {

@@ -182,3 +182,34 @@ See the [efficiency plan](../../docs/superpowers/plans/2026-10-02-investigation-
 measured usage for prechecked and fixed policies, with an independent qualitative evidence
 review. The small designed panel does not establish general agent reliability; defaults remain
 unchanged and richer selection tests precede any team/runtime expansion.
+
+
+### Research judgment cases
+
+`alpha-eval investigate-judgment --out NEW_DIR` prepares six isolated synthetic cases and
+freezes a 12-cell protocol. Add `--live` for prechecked versus fixed Codex trials (at most 30
+model calls). The same optional judgment guidance asks both modes for a leading explanation,
+a credible alternative, discriminating evidence and prioritized next work. It is not a
+production assistant integration or a claim of expert trading competence. Old commands and
+default prompts remain unchanged.
+
+Cases contrast relevant and misleading context, strategy losses against a rising benchmark,
+post-outcome labels, missing benchmark/indicator data, and an injected context measurement outage.
+The last is a deterministic test fault, not an observed provider incident. Null data remain
+unavailable, never fabricated zero returns. Indicator provenance is exposed; labels unavailable
+at the export cutoff are redacted and independently checked by the worker. The numerical
+estimators are unchanged. Source inventory titles are untrusted metadata, not conclusions.
+
+Review actual source exposure before crediting resistance to injected instructions. Failure to
+retrieve a source is not successful handling of its text. Automatic accounting enforcement is
+separate from model judgment. The fixed mode still supplies all available measurements; no
+artificial cost handicap is added to manufacture an adaptive advantage.
+
+[Judgment plan](../../docs/superpowers/plans/2026-10-02-research-judgment-cases.md) defines the
+case-specific expectations outside model inputs. Completion, engineering verification and
+research-quality review are separate. Real execution reconciliation and data export remain
+prerequisites for using owner trading evidence.
+
+Transport receipts now include `failure_kind`, distinguishing provider errors, malformed events,
+unexpected tool events and timeouts. The shared stream `stop` field retains its legacy generic
+callback-stop label; it must not by itself be interpreted as evidence of a model tool attempt.

@@ -416,3 +416,15 @@ It measures orchestration cost without changing models, actions or isolation. Au
 are controller behavior, not independent model initiative. Real-data reconciliation, richer
 negative controls and repeated held-back evaluations remain program work; no team or SDK
 migration follows merely from completing this comparison.
+
+
+## Judgment evidence and next handoff — 2026-10-02
+
+After the efficiency comparison (`77d6e94`), the [judgment slice](2026-10-02-research-judgment-cases.md)
+adds six designed cases covering misleading context, benchmark divergence, hindsight labels,
+missing evidence and source failure. Original and recovery cohorts remain separate; the
+[report](../../../tools/alpha-eval/results/research-judgment-20261002/report.md) records limitations.
+The next useful owner journey is a verified read-only real-run brief plus execution reconciliation,
+connected to the existing advisory path. Prioritize useful questions and decision-changing evidence;
+neither agent count nor synthetic completion establishes expert trading competence. Repeated
+held-back evaluation and production integration remain outstanding. No team/SDK migration is implied.

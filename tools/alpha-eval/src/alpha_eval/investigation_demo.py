@@ -57,6 +57,7 @@ def run_case(
     *,
     seconds: float = 360,
     mode: Literal["legacy", "prechecked", "fixed"] = "legacy",
+    judgment: bool = False,
 ) -> dict[str, Any]:
     if mode not in ("legacy", "prechecked", "fixed"):
         raise ValueError("unsupported investigation mode")
@@ -125,6 +126,19 @@ def run_case(
             if mode == "legacy"
             else POLICY.replace("five model calls", f"{max_calls} model calls")
         )
+        if judgment:
+            policy = policy.replace("frozen observable\nindicator", "recorded\nindicator")
+            policy += (
+                "\nAct as a thoughtful trading research teammate. Prioritize the leading plausible "
+                "explanation and a credible alternative. Specify evidence that would distinguish "
+                "them or change your view, then the next concrete investigation "
+                "and why it matters. "
+                "Inspect availability and source relevance before relying on a story or signal. "
+                "Suggest useful work beyond the owner's question "
+                "without pretending it was executed. "
+                "Separate observed facts, hypotheses and unknowns; "
+                "prioritize rather than list everything.\n"
+            )
         prompt = (
             policy
             + ("\n" if mode == "legacy" else "\nSTATE\n")
@@ -168,6 +182,7 @@ def run_case(
     report = dict(
         schema_version=1,
         controller_mode=mode,
+        judgment_guidance=judgment,
         synthetic=True,
         mode="retrospective_diagnosis",
         admitted=False,

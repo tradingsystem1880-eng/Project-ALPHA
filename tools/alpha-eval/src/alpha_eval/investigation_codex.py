@@ -101,10 +101,11 @@ class CodexProposer:
         )
         completed = False
         bad_event = False
+        failure_kind: str | None = None
         usage: list[object] = []
 
         def consume(line: str) -> bool:
-            nonlocal completed, bad_event
+            nonlocal completed, bad_event, failure_kind
             try:
                 event = json.loads(line)
                 if event.get("type") == "turn.completed":
@@ -112,6 +113,7 @@ class CodexProposer:
                     usage.append(event.get("usage"))
                 if event.get("type") in ("error", "turn.failed"):
                     bad_event = True
+                    failure_kind = "provider_error"
                 item = event.get("item")
                 disabled_host_notice = (
                     item
@@ -126,8 +128,12 @@ class CodexProposer:
                     and item.get("type") not in ("agent_message", "reasoning")
                 ):
                     bad_event = True
+                    failure_kind = (
+                        "provider_error" if item.get("type") == "error" else "unexpected_tool_event"
+                    )
             except (ValueError, AttributeError):
                 bad_event = True
+                failure_kind = "malformed_event"
             return not bad_event
 
         env = {"HOME": str(Path.home()), "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"}
@@ -135,10 +141,16 @@ class CodexProposer:
             env["CODEX_HOME"] = os.environ["CODEX_HOME"]
         with slot.with_suffix(".raw.jsonl").open("x") as raw:
             meta = stream_process(argv, self.workspace, env, seconds, raw, consume)
+        if failure_kind is None and (meta["stop"] != "completed" or not completed):
+            failure_kind = meta["stop"] if meta["stop"] != "completed" else "missing_completion"
         write_once(
             slot.with_suffix(".transport.json"),
             dict(
-                **meta, usage=usage, turn_completed=completed, unexpected_or_failed_event=bad_event
+                **meta,
+                usage=usage,
+                turn_completed=completed,
+                unexpected_or_failed_event=bad_event,
+                failure_kind=failure_kind,
             ),
         )
         if bad_event or not completed or meta["stop"] != "completed":

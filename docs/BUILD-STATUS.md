@@ -623,3 +623,19 @@ checked all 22 transport usage records; no critical regression was observed in t
 Three designed cases, one trial per cell, do not establish general reliability or real edge.
 The simpler fixed-evidence baseline motivates richer task-selection tests before adding teams.
 Fresh exact-tree full-gate and code-review receipts remain required for engineering acceptance.
+
+
+## 2026-10-02 — Research judgment development cases
+
+Implemented in isolated `feat/research-judgment-cases` after `77d6e94`. The optional evaluator
+judgment path adds six contrasting cases, explicit missingness, cutoff-safe indicator provenance,
+and a labeled measurement outage. It asks for competing explanations, discriminating evidence and
+prioritized next work. Existing demo defaults and historical Claude evidence remain unchanged.
+
+[Retained evidence](../tools/alpha-eval/results/research-judgment-20261002/report.md) separates
+original A (4/12 finals, provider interruptions), recovery B (local path failure, zero inference),
+and recovery C (8/8 finals, 16 calls). Independent review found no critical factual or causal failure
+in the available finals. This does not repair A's completion rate or establish general reliability.
+New transport metadata distinguishes provider errors from tool events. The production assistant
+is not integrated with this optional judgment path; real-run export and independent execution
+reconciliation are next. Engineering acceptance requires fresh full-gate and exact-tree review receipts.

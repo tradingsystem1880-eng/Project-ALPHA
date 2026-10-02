@@ -86,6 +86,16 @@ def export_panel(panel: dict[str, Any], target: Path, cutoff: str) -> dict[str, 
             and date.fromisoformat(s["available_date"]) <= day
         ],
     }
+    provenance = panel.get("indicator_provenance")
+    if (
+        provenance
+        and provenance.get("available_date")
+        and date.fromisoformat(provenance["available_date"]) > day
+    ):
+        exported["indicator_provenance"] = dict(
+            kind="unavailable", available_date=None, definition="Unavailable at export cutoff."
+        )
+        exported["rows"] = [{**row, "risk_indicator": None} for row in exported["rows"]]
     raw = encode(exported)
     fingerprint = digest(raw)
     target.mkdir(parents=True, exist_ok=False)

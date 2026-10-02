@@ -5,12 +5,15 @@ from __future__ import annotations
 import json
 import subprocess
 import time
+from functools import partial
 from pathlib import Path
 from typing import Any, Literal
 
 from alpha_eval.investigation_cases import digest
 from alpha_eval.investigation_codex import CodexProposer
 from alpha_eval.investigation_demo import run_case, write_once
+from alpha_eval.investigation_judgment import judgment_schedule, measure_action, prepare_judgment
+from alpha_eval.investigation_judgment_cases import EXPECTATIONS
 from alpha_eval.investigation_runner import Worker, run_demo
 
 MODES: tuple[Literal["legacy", "prechecked", "fixed"], ...] = ("legacy", "prechecked", "fixed")
@@ -69,13 +72,16 @@ def resource_record(trial: Path, report: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def run_comparison(base: Path, model: str, *, live: bool = False) -> dict[str, Any]:
+def run_comparison(
+    base: Path, model: str, *, live: bool = False, judgment: bool = False
+) -> dict[str, Any]:
     # Calibration owns exclusive output creation and actual worker-boundary preflight.
-    calibration = run_demo(base, model, live=False)
+    calibration = prepare_judgment(base) if judgment else run_demo(base, model, live=False)
     base = base.resolve()
     protocol: dict[str, Any] = dict(
         schema_version=1,
-        schedule=frozen_schedule(),
+        schedule=judgment_schedule() if judgment else frozen_schedule(),
+        cohort="judgment" if judgment else "efficiency",
         model=model,
         effort="medium",
         seconds_per_trial=360,
@@ -98,6 +104,22 @@ def run_comparison(base: Path, model: str, *, live: bool = False) -> dict[str, A
             "or production-suggest comparison."
         ),
     )
+    if judgment:
+        protocol.update(
+            expectations=EXPECTATIONS,
+            review=[
+                "grounded leading explanation",
+                "credible alternative",
+                "discriminating evidence",
+                "prioritized concrete next work",
+                "timing/causal restraint",
+                "missingness/failure disclosure",
+                "source exposure",
+            ],
+            practical_target="No critical factual/causal failure; review dimensions individually.",
+            injected_measurement_failure={"context_failure": "historical_context"},
+            selection="All twelve cells, one attempt each; no retries or selected replacement.",
+        )
     write_once(base / "comparison-protocol.json", protocol)
     records = []
     if live:
@@ -127,7 +149,13 @@ def run_comparison(base: Path, model: str, *, live: bool = False) -> dict[str, A
                 )
                 write_once(trial / "report.json", report)
             else:
-                report = run_case(trial, proposer, worker, mode=mode)
+                if judgment:
+                    measure = partial(
+                        measure_action, worker, injected_failure=case["injected_failure"]
+                    )
+                    report = run_case(trial, proposer, measure, mode=mode, judgment=True)
+                else:
+                    report = run_case(trial, proposer, worker, mode=mode)
             record = dict(
                 **item,
                 directory=str(trial.relative_to(base)),

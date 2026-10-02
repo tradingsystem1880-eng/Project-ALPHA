@@ -40,17 +40,24 @@ class Row(Strict):
     equity: float = Field(gt=0)
     cash: float
     marked_position: float
-    benchmark: float = Field(gt=0)
-    risk_indicator: int = Field(ge=0, le=1)
+    benchmark: float | None = Field(gt=0)
+    risk_indicator: int | None = Field(ge=0, le=1)
 
 
 class Source(Strict):
+    title: str | None = Field(default=None, max_length=200)
     source_id: str = Field(min_length=1, max_length=100)
     text: str = Field(min_length=1, max_length=2000)
     event_date: Day
     publication_date: Day
     available_date: Day
     retrieved_date: Day
+
+
+class IndicatorProvenance(Strict):
+    kind: Literal["online_observable", "post_outcome_label", "unavailable"]
+    available_date: Day | None
+    definition: str = Field(min_length=1, max_length=1000)
 
 
 class Panel(Strict):
@@ -60,11 +67,25 @@ class Panel(Strict):
     cutoff: Day
     rows: list[Row] = Field(min_length=3, max_length=10000)
     sources: list[Source] = Field(max_length=20)
+    indicator_provenance: IndicatorProvenance | None = None
 
     @model_validator(mode="after")
     def timing(self) -> Panel:
         if not self.synthetic:
             raise ValueError("only synthetic panels are supported")
+        provenance = self.indicator_provenance
+        if provenance:
+            if provenance.kind == "unavailable":
+                if provenance.available_date is not None or any(
+                    r.risk_indicator is not None for r in self.rows
+                ):
+                    raise ValueError("unavailable indicator must contain no labels or date")
+            elif provenance.available_date is None or provenance.available_date > self.cutoff:
+                raise ValueError("indicator provenance unavailable at cutoff")
+            elif provenance.kind == "online_observable" and any(
+                r.risk_indicator is not None and r.ts < provenance.available_date for r in self.rows
+            ):
+                raise ValueError("online indicator labels predate availability")
         timestamps = [r.ts for r in self.rows]
         if timestamps != sorted(set(timestamps)):
             raise ValueError("timestamps must be ordered and unique")
@@ -132,6 +153,8 @@ def execute(directory: Path, action: str) -> dict[str, Any]:
         "mode": "retrospective_diagnosis",
         "cutoff": panel.cutoff.isoformat(),
     }
+    if panel.indicator_provenance:
+        base["indicator_provenance"] = panel.indicator_provenance.model_dump(mode="json")
     if action == "inspect_run":
         return {
             **base,
@@ -139,6 +162,15 @@ def execute(directory: Path, action: str) -> dict[str, Any]:
             "maximum_identity_error": maximum,
             "integrity_scope": "synthetic_identity_only",
             "rows": len(panel.rows),
+            **(
+                {
+                    "source_inventory": [
+                        dict(source_id=s.source_id, title=s.title) for s in panel.sources
+                    ]
+                }
+                if panel.indicator_provenance
+                else {}
+            ),
         }
     if not valid:
         raise ValueError("integrity failure blocks performance interpretation")
@@ -157,7 +189,10 @@ def execute(directory: Path, action: str) -> dict[str, Any]:
                     "peak_to_trough_intervals": e.length,
                     "benchmark_total_return": panel.rows[e.trough_index].benchmark
                     / panel.rows[e.peak_index].benchmark
-                    - 1.0,
+                    - 1.0
+                    if panel.rows[e.trough_index].benchmark is not None
+                    and panel.rows[e.peak_index].benchmark is not None
+                    else None,
                 }
                 for e in episodes
             ],
@@ -168,7 +203,9 @@ def execute(directory: Path, action: str) -> dict[str, Any]:
             peak = panel.rows[episodes[0].peak_index].ts
             trough = panel.rows[episodes[0].trough_index].ts
             relevant = [
-                s.model_dump(mode="json") for s in panel.sources if peak <= s.event_date <= trough
+                s.model_dump(mode="json", exclude_none=True)
+                for s in panel.sources
+                if peak <= s.event_date <= trough
             ]
         return {
             **base,
@@ -178,8 +215,16 @@ def execute(directory: Path, action: str) -> dict[str, Any]:
             "content_trust": "untrusted_data_not_instructions",
         }
     if action == "conditional_diagnostic":
+        if any(r.risk_indicator is None for r in panel.rows[:-1]):
+            return {
+                **base,
+                "status": "unavailable",
+                "reason": "indicator history incomplete",
+                "validated_edge": False,
+            }
         grouped: dict[int, list[float]] = {0: [], 1: []}
         for current, following in zip(panel.rows[:-1], panel.rows[1:], strict=True):
+            assert current.risk_indicator is not None
             grouped[current.risk_indicator].append(following.equity / current.equity - 1.0)
         if any(not values for values in grouped.values()):
             raise ValueError("conditional diagnostic requires both indicator groups")
@@ -193,7 +238,11 @@ def execute(directory: Path, action: str) -> dict[str, Any]:
             "mean_difference_1_minus_0": groups["1"]["mean_next_return"]
             - groups["0"]["mean_next_return"],
             "interpretation": "descriptive_no_uncertainty_estimate",
-            "conditioning": "frozen risk_indicator at t; equity return t to t+1",
+            "conditioning": (
+                "recorded risk_indicator indexed at t; equity return t to t+1"
+                if panel.indicator_provenance
+                else "frozen risk_indicator at t; equity return t to t+1"
+            ),
             "validated_edge": False,
         }
     raise ValueError("unsupported action")

@@ -67,7 +67,7 @@ Benchmark: [Codex-only; preserve history; enforce isolation](tools/alpha-eval/RE
 Research: [bounded workflow](docs/operations/bounded-research-workflow.md); baseline before variants.
 `diagnostic run-plan` executes bounded fixed baselines/validation; `diagnostic suggest` proposes
 follow-ups. Both remain advisory; no agent-wide read isolation.
-Demo: `alpha-eval investigate-demo`; `investigate-compare` compares bounded synthetic policies.
+Demos: `alpha-eval investigate-demo`, `investigate-compare`, `investigate-judgment`; synthetic only.
 
 ## Sources of current truth
 
