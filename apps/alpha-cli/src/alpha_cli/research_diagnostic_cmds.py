@@ -9,6 +9,7 @@ import sys
 from datetime import timedelta
 from importlib.metadata import version
 from pathlib import Path
+from typing import Annotated
 
 import exchange_calendars as xcals  # type: ignore[import-untyped]
 import typer
@@ -189,3 +190,39 @@ def check_review(path: str) -> None:
             )
         )
     )
+
+
+@diagnostic_app.command("suggest")
+def suggest_run(
+    run_id: str,
+    as_of: str = typer.Option(...),
+    proposals: Annotated[
+        Path | None, typer.Option(help="Optional typed, basis-bound advisory proposals")
+    ] = None,
+) -> None:
+    """Act as a research teammate: suggest useful next tests over verified existing evidence.
+
+    Read-only retrospective advice. Does not invoke a model, run proposed tests or grant authority.
+    """
+    from alpha_cli.research_suggestions import suggest_investigations
+    from alpha_cli.research_workflow_contract import InvestigationProposals
+
+    try:
+        if re.fullmatch(r"[0-9a-f]{16}", run_id) is None:
+            raise ValueError("expected a 16-hex run ID")
+        extra = None
+        if proposals is not None:
+            with proposals.open("rb") as source:
+                raw = source.read(65_537)
+            if len(raw) > 65_536:
+                raise ValueError("proposal file exceeds 64 KiB")
+            extra = InvestigationProposals.model_validate_json(raw)
+        result = suggest_investigations(
+            AlphaSettings().data_dir / "runs" / run_id,
+            cutoff=as_of,
+            proposals=extra.proposals if extra else (),
+            basis_sha256=extra.basis_sha256 if extra else None,
+        )
+    except (DataError, OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(json.dumps(result, sort_keys=True, allow_nan=False))

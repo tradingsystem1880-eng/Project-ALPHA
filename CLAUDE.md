@@ -66,8 +66,8 @@ full stamp and never bypass checks. Claude adapters only orient and guard native
 Benchmark: [Codex-only; preserve history; enforce isolation](tools/alpha-eval/README.md).
 Research: [bounded workflow](docs/operations/bounded-research-workflow.md); feasibility and baseline
 before variants, then stop or record exact blocks. `alpha research diagnostic run-plan` executes a
-fixed momentum or immutable-rule baseline/validation with durable bounds and verified digests; no agent-wide read isolation.
-Diagnostic outputs remain non-admitted and advisory.
+fixed baselines/validation with durable bounds and verified digests; no agent-wide read isolation.
+`diagnostic suggest` proposes evidence-bound follow-ups; outputs are non-admitted advice.
 
 ## Sources of current truth
 

@@ -68,3 +68,27 @@ an automatic strategy search. Completed validation may reject the hypothesis.
 File/hash options are excluded from the default launch-form catalog. No REST schema or MCP tool
 was added; existing authorized generic CLI transport may relay these options. Catalog exclusion
 is a discovery convention, not a filesystem or authority boundary.
+
+
+## Research teammate suggestions
+
+`alpha research diagnostic suggest RUN_ID --as-of YYYY-MM-DD` verifies existing v3 run
+artifacts for cutoff-bound diagnostic backtest/validation runs (ordinary v3 runs without
+`research_cutoff` are rejected), reports up to three drawdown episodes, and returns prioritized investigation
+questions. Integrity and execution questions come before interpretation. A large drawdown
+prompts diagnosis, not automatic acceptance or rejection. No new experiment or model call runs.
+
+The deterministic questions are a starting point. An AI using the exploratory-analysis protocol
+should propose up to three additional useful tests, or explain why none are warranted. Export
+those as JSON with `basis_sha256` from the brief and a `proposals` array, then pass the file with
+`--proposals PATH`. Each proposal requires `question`, `rationale`, `competing_explanation`,
+`test`, `data_needed` (string array), `decision_value`, `stop_condition`, and
+`evidence_pointers` (JSON pointers under `/observations/`). Input is bounded to 64 KiB.
+Unknown fields, stale basis hashes and unresolved pointers fail. External claims are labeled
+`binding_only`: schema and references do not prove their truth.
+
+This is retrospective, read-only advice. The entire inspected run is observed evidence; a fresh
+context does not make it untouched confirmation. No agent-wide read isolation is established.
+Regime and macro explanations remain untested. No new dependency, live provider call, model
+team, data collection, strategy admission or execution authority is introduced. PydanticAI and
+measured reasoning improvements remain program work, not delivered capabilities.

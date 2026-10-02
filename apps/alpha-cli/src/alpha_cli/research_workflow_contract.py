@@ -69,3 +69,33 @@ class ResearchWorkflowPlan(BaseModel):
         if len(set(self.candidates)) != len(self.candidates):
             raise ValueError("duplicate candidate identities")
         return self
+
+
+class InvestigationProposal(BaseModel):
+    """A proposed question/test, never an execution request or a verified explanation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
+    question: str = Field(min_length=1, max_length=1000)
+    rationale: str = Field(min_length=1, max_length=2000)
+    competing_explanation: str = Field(min_length=1, max_length=1000)
+    test: str = Field(min_length=1, max_length=2000)
+    data_needed: tuple[str, ...] = Field(min_length=1, max_length=10)
+    decision_value: str = Field(min_length=1, max_length=1000)
+    stop_condition: str = Field(min_length=1, max_length=1000)
+    evidence_pointers: tuple[str, ...] = Field(min_length=1, max_length=8)
+
+    @model_validator(mode="after")
+    def _bounded_references(self) -> InvestigationProposal:
+        if any(not item.strip() or len(item) > 1000 for item in self.data_needed):
+            raise ValueError("data requirements must be nonempty and bounded")
+        if any(not p.startswith("/observations/") or len(p) > 500 for p in self.evidence_pointers):
+            raise ValueError("evidence must select brief observations")
+        return self
+
+
+class InvestigationProposals(BaseModel):
+    """External suggestions bind to one exact brief; no inference or action authority."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    basis_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    proposals: tuple[InvestigationProposal, ...] = Field(min_length=1, max_length=3)

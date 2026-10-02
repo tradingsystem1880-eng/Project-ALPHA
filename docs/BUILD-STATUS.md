@@ -570,3 +570,15 @@ information isolation. Historical Claude evidence is unchanged; no new model tri
 See the [plan](superpowers/plans/2026-10-01-immutable-research-rules.md) and
 [usage guide](operations/bounded-research-workflow.md). Acceptance is recorded separately in
 exact-tree gate and independent-review receipts; combined main/UI integration remains pending.
+
+
+## 2026-10-02 — Research teammate advisory slice
+
+Implemented in isolated `feat/research-teammate` on `73fb2a9`, preserving concurrent primary
+checkout changes and historical Claude evidence. New CLI `research diagnostic suggest` verifies
+retained evidence, measures existing drawdown episodes and proposes bounded follow-ups. Typed
+external proposals permit novel questions with exact brief binding; no automatic execution.
+Exploratory-analysis protocol now explicitly asks for useful unsolicited questions and justified
+skips. Focused tests cover corrupt evidence, cutoff, loss diagnosis, reference binding and CLI.
+Acceptance requires independent review and a fresh full-gate receipt; this entry is not a receipt.
+The broader capability program, isolation and agent-reasoning benchmark uplift remain pending.
