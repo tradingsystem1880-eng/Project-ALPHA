@@ -12,6 +12,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from alpha_cli.investigation_comparisons import ComparisonPlan, comparison_evidence
 from alpha_cli.research_suggestions import suggest_investigations
 from alpha_core import DataError
 
@@ -36,6 +37,21 @@ class _Identity(BaseModel):
     basis_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     max_calls: int = Field(ge=1, le=6)
     request_limit: Literal[12] = 12
+
+
+class _ComparisonIdentity(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    schema_version: Literal[3] = 3
+    question: str = Field(min_length=1, max_length=8000, pattern=r"\S")
+    model: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9._-]+$")
+    run: str = Field(min_length=1, max_length=4096)
+    cutoff: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    basis_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    max_calls: int = Field(ge=1, le=6)
+    request_limit: Literal[12] = 12
+    comparisons: ComparisonPlan
+    data_dir: str = Field(min_length=1, max_length=4096)
+    comparison_evidence_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 class Case:
@@ -64,8 +80,19 @@ class Case:
 
     @classmethod
     def create(
-        cls, path: Path, run: Path, cutoff: str, question: str, model: str, max_calls: int = 6
+        cls,
+        path: Path,
+        run: Path,
+        cutoff: str,
+        question: str,
+        model: str,
+        max_calls: int = 6,
+        *,
+        comparisons: ComparisonPlan | None = None,
+        data_dir: Path | None = None,
     ) -> Case:
+        if (comparisons is None) != (data_dir is None):
+            raise DataError("comparison plan and data root must be supplied together")
         packet = suggest_investigations(run, cutoff=cutoff)
         identity = _Identity(
             question=question,
@@ -75,6 +102,19 @@ class Case:
             basis_sha256=packet["basis_sha256"],
             max_calls=max_calls,
         ).model_dump()
+        if comparisons is not None and data_dir is not None:
+            comparisons = ComparisonPlan.model_validate_json(comparisons.model_dump_json())
+            evidence = comparison_evidence(packet, comparisons, data_dir.resolve())
+            packet["observations"]["comparisons"] = evidence
+            identity = _ComparisonIdentity.model_validate(
+                {
+                    **identity,
+                    "schema_version": 3,
+                    "comparisons": comparisons,
+                    "data_dir": str(data_dir.resolve()),
+                    "comparison_evidence_sha256": _hash(evidence),
+                }
+            ).model_dump(mode="json")
         path.mkdir(parents=True, exist_ok=True)
         case = cls(path)
         database = case.path / "case.sqlite3"
@@ -118,7 +158,17 @@ class Case:
         if row is None:
             raise DataError("investigation case context missing")
         record: dict[str, Any] = json.loads(row[0])
-        identity = _Identity.model_validate(record["identity"]).model_dump()
+        if record["identity"].get("schema_version") == 3:
+            identity = _ComparisonIdentity.model_validate_json(
+                _encode(record["identity"])
+            ).model_dump(mode="json")
+            if (
+                _hash(record["packet"]["observations"]["comparisons"])
+                != identity["comparison_evidence_sha256"]
+            ):
+                raise DataError("investigation comparison evidence is corrupt")
+        else:
+            identity = _Identity.model_validate(record["identity"]).model_dump()
         if (
             record["case_id"] != _hash(identity)
             or record["packet"]["basis_sha256"] != identity["basis_sha256"]
@@ -158,6 +208,11 @@ class Case:
         if run.is_symlink() or any(item.is_symlink() for item in run.iterdir()):
             raise DataError("investigation run evidence cannot be symlinked")
         packet = suggest_investigations(run, cutoff=identity["cutoff"])
+        if identity["schema_version"] == 3:
+            plan = ComparisonPlan.model_validate_json(_encode(identity["comparisons"]))
+            packet["observations"]["comparisons"] = comparison_evidence(
+                packet, plan, Path(identity["data_dir"])
+            )
         if packet != record["packet"]:
             raise DataError("investigation case evidence or policy changed")
         return packet
@@ -175,6 +230,11 @@ class Case:
                 "drawdown_episodes": packet["observations"]["drawdown_episodes"],
                 "macro_cause": "not_tested",
                 "regime_effect": "not_tested",
+                **(
+                    {"comparisons": packet["observations"]["comparisons"]}
+                    if "comparisons" in packet["observations"]
+                    else {}
+                ),
             }
         return {"suggestions": packet["suggestions"], "executed_experiments": []}
 
@@ -225,6 +285,16 @@ class Case:
             "run_id": record["packet"]["observations"]["execution"]["run_id"],
             "cutoff": identity["cutoff"],
             "basis_sha256": identity["basis_sha256"],
+            **(
+                {
+                    "comparison_series": [
+                        {key: series[key] for key in ("symbol", "role", "snapshot_id")}
+                        for series in identity["comparisons"]["series"]
+                    ]
+                }
+                if identity["schema_version"] == 3
+                else {}
+            ),
             "actions": list(ACTIONS),
             "max_calls": identity["max_calls"],
             "calls_remaining": identity["max_calls"] - len(self.receipts()),

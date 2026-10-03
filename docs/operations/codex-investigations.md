@@ -39,7 +39,7 @@ Only three parameterless tools are exposed:
 | Tool | Result |
 |---|---|
 | `inspect_execution` | Verified execution counts, constraints, costs and coverage status |
-| `inspect_losses` | Measured drawdown episodes from the exact equity artifact |
+| `inspect_losses` | Measured drawdown episodes and optional frozen snapshot comparisons |
 | `suggest_followups` | Grounded starting questions, not executed follow-up experiments |
 
 Execution inspection must succeed first. Source and policy hashes are reverified on every result,
@@ -80,8 +80,60 @@ generated from the installed CLI. No additional inference framework or model wei
 
 This increment cannot collect missing comparison data, establish macro causes, fit causal regimes,
 implement strategy operators or activate learned skills. Those remain explicit subsequent slices.
-The next useful increment is frozen-snapshot comparison evidence and data qualification, followed
-by workstation integration after reconciling concurrent UI changes. Native Codex chart input,
+Frozen-snapshot endpoint comparisons are now available below. The next useful increment is bounded
+data acquisition and quality checks, followed by workstation integration after reconciling UI changes.
+Native Codex chart input,
 isolated strategy engineering and evaluated procedure learning remain in the accepted roadmap.
 Large finance models stay research candidates for later GPU trials; local Qwen vision is not part
 of the near-term design. Historical Claude benchmark artifacts remain unchanged.
+
+## Frozen snapshot comparisons
+
+New investigations can include `--comparisons /absolute/path/comparisons.json`. The plan selects
+one to four daily series from existing `ALPHA_DATA_DIR/snapshots` snapshots, with exact manifest
+SHA-256 values reported by `alpha data snapshots --json`. Example structure (replace the hash):
+
+```json
+{
+  "schema_version": 1,
+  "series": [{
+    "snapshot_id": "comparison_snapshot",
+    "snapshot_sha256": "<64-character verified manifest SHA-256>",
+    "symbol": "SPY",
+    "role": "market"
+  }]
+}
+```
+
+Roles are `asset`, `market`, `sector` or `other`; they are operator-selected hypotheses and do not
+establish benchmark suitability. Codex sees the available series and can inspect them through
+the same `inspect_losses` tool. No additional model, MCP tool, network permission or dependency
+is added. The case freezes plan contents, data root and comparison evidence in schema v3. Editing
+the plan file cannot change the case; changing inputs requires a new case. Existing schema-v2
+investigations retain their original identity, three tools, receipts, checkpoints and budgets.
+
+For each existing top-three strategy drawdown window, the tool reports the comparison's exact
+peak/trough session-label prices, endpoint fractional price change, and observed row count.
+It uses the existing PIT reader and splits known/applied by the run cutoff. There is no nearest-date
+substitution or forward filling. Prices exclude dividends, FX conversion, costs and leverage;
+closes in different markets need not be simultaneous. Interior schedule completeness, historical
+data vintage, data-quality certification and causality remain explicitly unverified/not established.
+Do not interpret a strategy/comparison difference as alpha or a reason to accept/reject a strategy.
+
+Missing snapshot members, v2 instrument/fetch provenance, or exact endpoint observations produce
+explicit blockers and data requirements. Snapshot tampering, unsafe paths or malformed data fail
+loudly. A fetch receipt is declared provenance, not proof that a historical data vintage is correct.
+The runtime does not download missing data or silently substitute another source. Crypto bulk-store
+JSON manifests are not supported by this ordinary snapshot reader.
+
+Plan JSON is capped at 64 KiB. Before hashing, snapshots are capped at 1 MiB of manifest text,
+128 members and 128 MiB total declared payloads; individual bar files are capped at 32 MiB and
+action/provenance files at 1 MiB. The selected daily OHLCV table is capped at 50,000 rows before
+materialization. Every read, including cached receipt reuse, rechecks source integrity and the
+frozen comparison. These limits do not certify broader vendor or machine isolation.
+
+The [comparison delivery plan](../superpowers/plans/2026-10-03-codex-comparison-evidence.md)
+records scope and acceptance evidence. A live Codex test used a labeled synthetic fixture, with
+40% strategy drawdown and 20% comparison decline. It retained the relevant limitations, proposed
+reconciliation, and resumed identical findings without another model turn. This is operational
+acceptance only; no real-market comparative result or general judgment benchmark follows.

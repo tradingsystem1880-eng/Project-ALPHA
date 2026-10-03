@@ -68,7 +68,7 @@ Research: [bounded workflow](docs/operations/bounded-research-workflow.md); base
 `diagnostic run-plan` executes bounded fixed baselines/validation; `diagnostic suggest` proposes
 follow-ups. Both remain advisory; no agent-wide read isolation.
 Demos: `alpha-eval investigate-demo`, `investigate-compare`, `investigate-judgment`; synthetic only.
-Codex: [scoped recorded-run investigations](docs/operations/codex-investigations.md); CLI only.
+Codex: [run/comparison investigations](docs/operations/codex-investigations.md); CLI only.
 
 ## Sources of current truth
 

@@ -317,7 +317,7 @@ cli:alpha suite
 | `alpha research decision-view` | `--json` |
 | `alpha research diagnostic check-review` | — |
 | `alpha research diagnostic execution-digest` | `--as-of` |
-| `alpha research diagnostic investigate` | `--run-id`, `--as-of`, `--question`, `--model`, `--resume` |
+| `alpha research diagnostic investigate` | `--run-id`, `--as-of`, `--question`, `--model`, `--resume`, `--comparisons` |
 | `alpha research diagnostic investigation-tool` | — |
 | `alpha research diagnostic run-plan` | — |
 | `alpha research diagnostic suggest` | `--as-of`, `--proposals` |

@@ -44,6 +44,7 @@ def investigate(
     question: str | None = None,
     model: str = "gpt-6-astra",
     resume: bool = False,
+    comparisons: Path | None = None,
 ) -> None:
     """Investigate one verified recorded run with Codex; persists budget and evidence.
 
@@ -54,10 +55,11 @@ def investigate(
 
     from alpha_cli.codex_investigation import run_investigation
     from alpha_cli.investigation_case import Case
+    from alpha_cli.investigation_comparisons import ComparisonPlan
 
     try:
         if resume:
-            if any(value is not None for value in (run_id, as_of, question)):
+            if any(value is not None for value in (run_id, as_of, question, comparisons)):
                 raise ValueError("Resume uses frozen context; create a new case for revisions")
             investigation = Case.open(case)
         else:
@@ -67,8 +69,24 @@ def investigate(
                 raise ValueError("New case requires --as-of and --question")
             if (case / "case.sqlite3").exists():
                 raise ValueError("Case exists; use --resume or choose a new case directory")
+            plan = None
+            if comparisons is not None:
+                if comparisons.stat().st_size > 65536:
+                    raise ValueError("Comparison plan must not exceed 64 KiB")
+                with comparisons.open("rb") as stream:
+                    raw_plan = stream.read(65537)
+                if len(raw_plan) > 65536:
+                    raise ValueError("Comparison plan must not exceed 64 KiB")
+                plan = ComparisonPlan.model_validate_json(raw_plan)
+            data_dir = AlphaSettings().data_dir
             investigation = Case.create(
-                case, AlphaSettings().data_dir / "runs" / run_id, as_of, question, model
+                case,
+                data_dir / "runs" / run_id,
+                as_of,
+                question,
+                model,
+                comparisons=plan,
+                data_dir=data_dir if plan is not None else None,
             )
         result = asyncio.run(run_investigation(investigation))
     except (DataError, OSError, ValueError, RuntimeError) as exc:
