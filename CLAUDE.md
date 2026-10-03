@@ -2,7 +2,7 @@
 
 Authority: `docs/governance/capability-authority-matrix.md`.
 
-Private, single-owner, local research platform. Python 3.12; uv workspace.
+Private local research; single owner. Python 3.12; uv.
 No distribution, hosting or multi-user scope.
 
 ## Rules (path-scoped)
@@ -44,8 +44,8 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
   Existing owner-auth actions remain the bounded path; no inferred approvals.
 - Tests under `tests/holdout/` may run, but agents never read or edit them. Proposed tests go in
   `tests/holdout_seed/`. No owner data, credentials or hidden tests in discovery indexes.
-- REST/MCP/Trader Terminal surfaces remain frozen; new research ships CLI-first. No new surface,
-  paper, broker, order or promotion authority follows from this refactor.
+- REST/Terminal research stays frozen. New research ships CLI-first; only the private fixed-case
+  diagnostic MCP is added. No paper, broker, order or promotion authority follows.
 
 ## Commands
 
@@ -68,13 +68,14 @@ Research: [bounded workflow](docs/operations/bounded-research-workflow.md); base
 `diagnostic run-plan` executes bounded fixed baselines/validation; `diagnostic suggest` proposes
 follow-ups. Both remain advisory; no agent-wide read isolation.
 Demos: `alpha-eval investigate-demo`, `investigate-compare`, `investigate-judgment`; synthetic only.
+Codex: [scoped recorded-run investigations](docs/operations/codex-investigations.md); CLI only.
 
 ## Sources of current truth
 
-Before governed changes, read [architecture](docs/ARCHITECTURE.md), the [ADR index](docs/adr/README.md),
-applicable rules and [build record](docs/BUILD-STATUS.md). Contracts:
-[research platform](docs/operations/research-platform-contracts.md). Prefer source and fresh tests
-to historical claims. Provider acceptance requires receipts; missing or failed live evidence is not a pass.
+Before governed changes: [architecture](docs/ARCHITECTURE.md), [ADRs](docs/adr/README.md), rules,
+[build record](docs/BUILD-STATUS.md), [contracts](docs/operations/research-platform-contracts.md).
+Prefer source and fresh tests. Provider acceptance requires receipts; missing/failed live evidence
+is not a pass.
 
 Update this manual and append `docs/BUILD-STATUS.md` when behavior changes.
 Preserve user work. Concurrent gate port: `ALPHA_PLAYWRIGHT_PORT` (default 8802).

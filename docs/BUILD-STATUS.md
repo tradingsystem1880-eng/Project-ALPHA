@@ -639,3 +639,40 @@ in the available finals. This does not repair A's completion rate or establish g
 New transport metadata distinguishes provider errors from tool events. The production assistant
 is not integrated with this optional judgment path; real-run export and independent execution
 reconciliation are next. Engineering acceptance requires fresh full-gate and exact-tree review receipts.
+
+## 2026-10-03 — Codex-first recorded-run runtime, first increment
+
+Implemented on isolated `feat/codex-research-runtime` based on the delivered research checkout
+`8a00b27`; concurrent primary workstation changes remain untouched. The CLI connects Codex App
+Server to three fixed-case MCP tools, verifies actual execution isolation and thread policy,
+retains durable tool/model budgets and evidence receipts, and validates final citation bindings.
+Completed checkpoint resume revalidates evidence without spending another model turn. Transport
+steering/interruption seams exist; workstation controls and chart input are not integrated yet.
+
+Local acceptance used existing MSFT run `8648eedee80cbdc4` at its recorded 2024-12-30 cutoff.
+The successful trial invoked execution, loss and follow-up tools and produced three verified
+receipts. It preserved unverified coverage, distinguished fills from independent closed bets,
+and proposed reconciliation before causal attribution. This is one operational smoke, not a
+benchmark win or a claim of reliable trading judgment. Earlier development failures are retained:
+initial isolation probe denied launch; first model turn could not discover tools with code-mode
+host disabled; second model turn encountered missing per-tool preauthorization. Both unsupported
+reports failed admission. The corrected configuration preauthorizes only the three fixed tools.
+
+Raw cases and reports remain private under `/private/tmp/alpha-codex-acceptance-20261003`, outside
+Git; they contain conversation history and should not be published. The source run and historical
+Claude benchmarks were not edited. [Operation and limits](operations/codex-investigations.md),
+[execution plan and remaining roadmap](superpowers/plans/2026-10-03-codex-research-runtime.md).
+Engineering acceptance requires the canonical full gate and independent review of the final tree;
+this runtime grants no research, confirmation, paper or trading authority.
+
+### First-increment acceptance record
+
+The 65 targeted runtime tests and all six canonical full-gate components passed. Independent
+review approved the implementation and reproduced the three live receipts from source. Native
+thread resume and CLI checkpoint resume succeeded without another model turn. Full-gate scope
+was the 25-file increment against `8a00b2749984f937c994c0b7bc6b261de297cc89`; this is not cumulative
+branch-versus-main acceptance. The passing implementation tree and private log are recorded in
+the execution plan. Final delivery-record changes must receive a fresh full stamp before commit.
+Earlier gate failures were retained and addressed: manual size and coverage were corrected;
+two existing cancellation tests failed under concurrent load, passed in isolation, and passed in
+the clean aggregate rerun with four workers. No test threshold or authority boundary was waived.

@@ -24,6 +24,58 @@ diagnostic_app = typer.Typer(
 )
 
 
+@diagnostic_app.command("investigation-tool", hidden=True)
+def investigation_tool(case: Path, action: str) -> None:
+    """Fixed-case diagnostic seam used by the restricted MCP service."""
+    from alpha_cli.investigation_case import Case
+
+    try:
+        result = Case.open(case).call(action)
+    except (DataError, OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(json.dumps(result, sort_keys=True, allow_nan=False))
+
+
+@diagnostic_app.command("investigate")
+def investigate(
+    case: Path,
+    run_id: str | None = None,
+    as_of: str | None = None,
+    question: str | None = None,
+    model: str = "gpt-6-astra",
+    resume: bool = False,
+) -> None:
+    """Investigate one verified recorded run with Codex; persists budget and evidence.
+
+    New case requires --run-id, --as-of and --question. --resume uses the frozen case.
+    Only diagnostic research-cutoff runs are supported; never grants research authority.
+    """
+    import asyncio
+
+    from alpha_cli.codex_investigation import run_investigation
+    from alpha_cli.investigation_case import Case
+
+    try:
+        if resume:
+            if any(value is not None for value in (run_id, as_of, question)):
+                raise ValueError("Resume uses frozen context; create a new case for revisions")
+            investigation = Case.open(case)
+        else:
+            if not run_id or re.fullmatch(r"[0-9a-f]{16}", run_id) is None:
+                raise ValueError("New case requires --run-id (16 hex characters)")
+            if as_of is None or question is None:
+                raise ValueError("New case requires --as-of and --question")
+            if (case / "case.sqlite3").exists():
+                raise ValueError("Case exists; use --resume or choose a new case directory")
+            investigation = Case.create(
+                case, AlphaSettings().data_dir / "runs" / run_id, as_of, question, model
+            )
+        result = asyncio.run(run_investigation(investigation))
+    except (DataError, OSError, ValueError, RuntimeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(json.dumps(result, sort_keys=True, allow_nan=False))
+
+
 @diagnostic_app.command("run-plan")
 def run_plan(path: Path) -> None:
     """Run a frozen momentum baseline and validation; always read the terminal receipt.
