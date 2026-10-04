@@ -45,6 +45,7 @@ def investigate(
     model: str = "gpt-6-astra",
     resume: bool = False,
     comparisons: Path | None = None,
+    comparison_data_root: Path | None = None,
 ) -> None:
     """Investigate one verified recorded run with Codex; persists budget and evidence.
 
@@ -59,10 +60,15 @@ def investigate(
 
     try:
         if resume:
-            if any(value is not None for value in (run_id, as_of, question, comparisons)):
+            if any(
+                value is not None
+                for value in (run_id, as_of, question, comparisons, comparison_data_root)
+            ):
                 raise ValueError("Resume uses frozen context; create a new case for revisions")
             investigation = Case.open(case)
         else:
+            if comparison_data_root is not None and comparisons is None:
+                raise ValueError("--comparison-data-root requires --comparisons")
             if not run_id or re.fullmatch(r"[0-9a-f]{16}", run_id) is None:
                 raise ValueError("New case requires --run-id (16 hex characters)")
             if as_of is None or question is None:
@@ -86,12 +92,59 @@ def investigate(
                 question,
                 model,
                 comparisons=plan,
-                data_dir=data_dir if plan is not None else None,
+                data_dir=(comparison_data_root or data_dir) if plan is not None else None,
             )
         result = asyncio.run(run_investigation(investigation))
     except (DataError, OSError, ValueError, RuntimeError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(json.dumps(result, sort_keys=True, allow_nan=False))
+
+
+@diagnostic_app.command("acquisition-plan")
+def acquisition_plan(
+    case: Path,
+    symbol: Annotated[list[str], typer.Option("--symbol")],
+    asset_class: Annotated[str, typer.Option("--asset-class")],
+    role: Annotated[str, typer.Option("--role")],
+) -> None:
+    """Draft a bounded Tiingo comparison request for an inspected case; no network."""
+    from alpha_cli.comparison_acquisition import AcquisitionSeries, draft_acquisition
+    from alpha_cli.investigation_case import Case
+
+    try:
+        series = [
+            AcquisitionSeries.model_validate(
+                {"symbol": value, "asset_class": asset_class, "role": role}
+            )
+            for value in symbol
+        ]
+        plan = draft_acquisition(Case.open(case), series)
+    except (DataError, OSError, ValueError, RuntimeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(plan.model_dump_json(indent=2))
+
+
+@diagnostic_app.command("acquire-comparisons")
+def acquire_comparisons(case: Path, plan: Path) -> None:
+    """Execute one frozen comparison acquisition batch in private case storage."""
+    from alpha_cli.comparison_acquisition import AcquisitionPlan
+    from alpha_cli.comparison_acquisition import acquire_comparisons as acquire
+    from alpha_cli.investigation_case import Case
+
+    try:
+        if plan.stat().st_size > 65536:
+            raise ValueError("Acquisition plan must not exceed 64 KiB")
+        with plan.open("rb") as stream:
+            raw_plan = stream.read(65537)
+        if len(raw_plan) > 65536:
+            raise ValueError("Acquisition plan must not exceed 64 KiB")
+        parsed = AcquisitionPlan.model_validate_json(raw_plan)
+        result = acquire(Case.open(case), parsed)
+    except (DataError, OSError, ValueError, RuntimeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(json.dumps(result, sort_keys=True, allow_nan=False))
+    if result.get("status") == "failed":
+        raise typer.Exit(code=1)
 
 
 @diagnostic_app.command("run-plan")

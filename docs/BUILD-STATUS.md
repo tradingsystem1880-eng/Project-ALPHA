@@ -685,3 +685,28 @@ Continued `feat/codex-research-runtime` from `e111377`. New investigations optio
 Forty-eight new tests passed, including actual MCP-to-CLI comparison execution, future-poison controls, sparse/malformed inputs and bounded reads. The fast gate passed after test-typing corrections. Independent review identified an all-member hashing limit gap; pre-hash manifest/member/payload bounds and pre-materialization row/schema limits resolved it. A real Codex session on a labeled synthetic fixture reported the known 40% versus 20% declines with limitations; both its resume and the earlier real MSFT v2 checkpoint preserved findings without another model turn. This confirms operational wiring, not trading reliability or economic benefit.
 
 [Runbook](operations/codex-investigations.md), [scope and acceptance record](superpowers/plans/2026-10-03-codex-comparison-evidence.md). Final-tree full gate and independent review are required before commit. Snapshot provenance is not quality certification or historical-vintage proof; schedule completeness, causality and benchmark suitability remain unverified. Bounded acquisition and existing-contract data qualification remain next. Historical Claude results and concurrent primary UI work were untouched.
+
+
+## 2026-10-04 — Bounded private comparison acquisition
+
+Continued `feat/codex-research-runtime` from `dd1c745`. An inspected parent investigation can
+reserve one explicit batch of up to four daily Tiingo stock/ETF comparisons. The trusted CLI
+runs bounded downloads through the existing ingestion checks in a private store, retains emitted
+receipts/quarantine, and publishes a snapshot and comparison plan only when all requests pass.
+Completed reads reverify hashes and replay raw parsing/quality checks; failed or ambiguous batches
+never automatically retry. A separate comparison-data root leaves original run resolution unchanged.
+The model retains its three read-only tools. No canonical data, research admission or trading
+authority is granted; historical Claude evidence and concurrent workstation edits are preserved.
+
+Fixture tests cover CLI acquisition, private snapshot-to-investigation handoff, unchanged parent
+budgets, cached reads without credentials, tampering, failed batches, bounded transport and future
+poison with discriminating controls. These are synthetic operational checks, not real-market
+findings. Live Tiingo acceptance is **UNVERIFIED**: no provider credential is configured here.
+Declared instrument metadata, proxy suitability, historical vintage and independent-source
+agreement remain unverified. Final-tree full gate and independent review are required before commit.
+
+[Runbook](operations/codex-investigations.md),
+[scope and acceptance plan](superpowers/plans/2026-10-04-bounded-comparison-acquisition.md).
+Next: live-provider acceptance when configured and workstation integration after reconciling its
+separate active changes; macro attribution, regime learning and strategy engineering remain later
+increments, not implied capabilities of this download path.

@@ -78,10 +78,10 @@ generated from the installed CLI. No additional inference framework or model wei
 
 ## Next acceptance work
 
-This increment cannot collect missing comparison data, establish macro causes, fit causal regimes,
+This increment cannot establish macro causes, fit causal regimes,
 implement strategy operators or activate learned skills. Those remain explicit subsequent slices.
-Frozen-snapshot endpoint comparisons are now available below. The next useful increment is bounded
-data acquisition and quality checks, followed by workstation integration after reconciling UI changes.
+Frozen-snapshot endpoint comparisons and bounded acquisition are available below. The next useful
+increment is workstation integration after reconciling UI changes and live-provider acceptance.
 Native Codex chart input,
 isolated strategy engineering and evaluated procedure learning remain in the accepted roadmap.
 Large finance models stay research candidates for later GPU trials; local Qwen vision is not part
@@ -137,3 +137,55 @@ records scope and acceptance evidence. A live Codex test used a labeled syntheti
 40% strategy drawdown and 20% comparison decline. It retained the relevant limitations, proposed
 reconciliation, and resumed identical findings without another model turn. This is operational
 acceptance only; no real-market comparative result or general judgment benchmark follows.
+
+
+## Bounded comparison acquisition
+
+After execution and loss inspection, the trusted CLI can draft and execute one private batch:
+
+```bash
+uv run alpha research diagnostic acquisition-plan /absolute/private/cases/example \
+  --symbol SPY --asset-class etf --role market > /absolute/private/comparison-request.json
+uv run alpha research diagnostic acquire-comparisons /absolute/private/cases/example \
+  /absolute/private/comparison-request.json
+```
+
+The strict request identifies up to four distinct Tiingo stock/ETF symbols, explicit roles, and
+USD/US/XNYS metadata. Metadata and proxy suitability are operator declarations, not independently
+verified instrument facts. All command-line symbols share the selected role/class; use the typed
+JSON request for mixed roles/classes. Dates cover the parent's drawdown endpoints within its
+recorded sessions and cutoff, with a maximum 3,660-day span. A Tiingo credential is required in
+`ALPHA_TIINGO_API_KEY`; absent credentials fail before reserving the batch.
+
+The entire batch is reserved before network access under the parent's `comparison-acquisition`
+directory. Requests run sequentially in bounded child processes with only the required credential,
+private home/temp directories, no redirects, an 8 MiB response cap and a 90-second worker deadline.
+Known failures and ambiguous incomplete reservations never retry. Completed repeated commands
+reverify retained evidence without networking. This is one batch per parent, not a global budget
+across newly created cases; creating another case does not restore untouched research evidence.
+
+The existing ingestion pipeline runs in private storage. It retains emitted raw receipts,
+quality reports and quarantine artifacts; transport/parser failures can precede raw receipt
+creation. Checks cover the existing OHLCV/action/duplicate rules and declared-calendar required
+session coverage. Fresh-store comparison rows are zero: independent source agreement, complete
+calendar validity, historical vintage and general quality certification are not established.
+Cached success replays raw parsing and checks against a fresh store and compares the artifacts.
+
+Only an all-pass batch publishes `comparisons.json` and a private snapshot. A failed batch emits
+its receipt with a nonzero CLI exit status; it never silently publishes a successful subset.
+Use the emitted comparison plan and `data_root` in a new investigation:
+
+```bash
+uv run alpha research diagnostic investigate /absolute/private/cases/with-comparisons \
+  --run-id RUN_ID --as-of YYYY-MM-DD --question 'Compare these drawdown windows.' \
+  --comparisons /absolute/private/cases/example/comparison-acquisition/comparisons.json \
+  --comparison-data-root /absolute/private/cases/example/comparison-acquisition/data
+```
+
+The original run still resolves under `ALPHA_DATA_DIR`. Comparison inputs freeze into the new
+case; root overrides are rejected on resume and without a comparison plan. The model's three
+read-only tools remain unchanged. Acquiring data confers no admission or trading authority.
+
+Live Tiingo acceptance remains **UNVERIFIED** because no credential is configured in this
+environment. Fixture acceptance exercises parsing, quality checks, private publication and the
+comparison handoff; it does not establish real-market coverage or provider availability.

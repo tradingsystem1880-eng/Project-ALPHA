@@ -95,3 +95,11 @@ Independent review identified and the implementation fixed all-member hashing be
 ## Next increment
 
 Design bounded acquisition requests from these explicit blockers, qualify fresh provider data using existing quality contracts, freeze results into new snapshots/case revisions, and retain all exposure and search budgets. Do not fill missing prices or relabel metadata verification as data quality. Then integrate Codex controls/chart input with the reconciled workstation branch.
+
+
+### Follow-on implementation
+
+The bounded private acquisition increment is tracked in
+[2026-10-04-bounded-comparison-acquisition.md](2026-10-04-bounded-comparison-acquisition.md).
+It retains a separate quality receipt and does not upgrade this comparison contract's general
+quality or causal claims. Live-provider acceptance remains pending configuration.
