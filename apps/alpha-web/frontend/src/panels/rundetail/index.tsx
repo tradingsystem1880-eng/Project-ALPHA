@@ -25,6 +25,7 @@ import { Artifacts } from './Artifacts'
 import { Gates } from './Gates'
 import { rerunCommand } from './rerun'
 import { Risk } from './Risk'
+import { RunInvestigation } from '../RunInvestigation'
 import { TradesTab } from './TradesTab'
 
 /** Hand the browser a CSV file; the rows are the trades projection exactly. */
@@ -46,6 +47,7 @@ export function RunDetail(props: PanelHandleProps) {
   const [error, setError] = useState<string | null>(null)
   const [catalogue, setCatalogue] = useState<FigureCatalogue | null>(null)
   const [view, setView] = useState('summary')
+  const [investigating, setInvestigating] = useState(false)
 
   useEffect(() => {
     if (!runId) {
@@ -164,6 +166,7 @@ export function RunDetail(props: PanelHandleProps) {
   return (
     <div className="panel report-document">
       <div className="panel-toolbar report-toolbar" role="toolbar" aria-label="Report toolbar">
+        <button type="button" className="btn" onClick={() => setInvestigating(value => !value)}>{investigating ? 'Close investigation' : 'Investigate this run'}</button>
         <button type="button" className="btn glyph" disabled aria-label="Save report" title="The report is its run directory on disk — already saved, immutable">
           <Icon name="report" />
         </button>
@@ -255,7 +258,7 @@ export function RunDetail(props: PanelHandleProps) {
           </ul>
         </nav>
         <div className="figure-scroll">
-          {body}
+          {investigating ? <RunInvestigation key={runId} runId={runId} /> : body}
           <p className="report-hint muted">Double-click any chart to open it full-screen · Save PNG / SVG / Copy from there</p>
         </div>
       </div>

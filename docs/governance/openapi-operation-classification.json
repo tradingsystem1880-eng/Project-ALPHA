@@ -345,6 +345,55 @@
     },
     {
       "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "listing_api_investigations_get",
+      "path": "/api/investigations",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "create_api_investigations_post",
+      "path": "/api/investigations",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "eligibility_api_investigations_eligibility__run_id__get",
+      "path": "/api/investigations/eligibility/{run_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "show_api_investigations__identifier__get",
+      "path": "/api/investigations/{identifier}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "draft_api_investigations__identifier__comparison_plan_post",
+      "path": "/api/investigations/{identifier}/comparison-plan",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "acquire_api_investigations__identifier__comparisons_post",
+      "path": "/api/investigations/{identifier}/comparisons",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
+      "operation_id": "turn_api_investigations__identifier__turns_post",
+      "path": "/api/investigations/{identifier}/turns",
+      "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
       "mode": "automatic",
       "operation_id": "list_jobs_api_jobs_get",
       "path": "/api/jobs",

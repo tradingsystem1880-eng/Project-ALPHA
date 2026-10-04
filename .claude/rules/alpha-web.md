@@ -58,3 +58,11 @@ Server = thin JSON+SSE orchestrator; all composition stays behind `alpha`. Actio
 
 ## Adding a panel (relocated from CLAUDE.md; the UI is frozen at Trader Terminal Phase 5)
 - **New Workstation panel** → a manifest/artifact read and/or `alpha ... --json` projection + an `alpha_web/api/` router + a `frontend/src/panels/` component placed as a pane of a document (or a dock tab) in `shell/documents.ts`, shown per profile by `shell/profiles.ts`. Operational state needs a separately governed public seam (never `RUN_DIRS` by default). Then run the frontend gate and commit `static/app`.
+
+## Authorized investigation extension (2026-10-04)
+
+The owner authorized the narrow managed advisory investigation controls inside RunDetail.
+`research investigations` remains the CLI-owned public seam; typed web relays never import
+engines. Opaque IDs, immutable evidence, durable budgets and explicit comparison preview apply.
+This exception does not reopen research admission, D2, paper, broker or order authority.
+See `docs/superpowers/plans/2026-10-04-workstation-investigations.md`.

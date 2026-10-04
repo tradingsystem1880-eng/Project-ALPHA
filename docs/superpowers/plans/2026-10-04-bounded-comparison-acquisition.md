@@ -99,6 +99,7 @@ traversal also has a count bound. Commit requires independent review binding of 
 and the canonical full gate; gate receipts record aggregate acceptance, not this implementation
 narrative. No benchmark win, broad quality certification, or trading reliability is claimed.
 
-Next: configure and retain live-provider acceptance, reconcile workstation integration, and then
+Workstation integration is tracked in [the follow-on plan](2026-10-04-workstation-investigations.md).
+Next: configure and retain live-provider acceptance, verify the combined workstation tree, and then
 expand evidence-led diagnostics. The download seam alone does not add macro causality, regime
 models or strategy engineering.

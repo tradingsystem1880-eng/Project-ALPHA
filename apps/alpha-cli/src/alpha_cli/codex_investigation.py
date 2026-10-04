@@ -122,24 +122,51 @@ async def run_investigation(
     case: Case,
     *,
     on_event: Callable[[dict[str, Any]], None] | None = None,
+    followup: str | None = None,
 ) -> dict[str, Any]:
     from alpha_cli.codex_environment import preflight, prepare
     from alpha_cli.codex_session import Session
+    from alpha_cli.investigation_lifecycle import watched_argv
 
+    if followup is not None and (not followup.strip() or len(followup) > 8000):
+        raise ValueError("Follow-up must contain 1..8000 characters")
     context = case.context()
     with Session(case.path, context["identity_sha256"], context["model"]) as session:
         cached = session.state.get("latest_report")
+        turns = session.state["turns"]
+        if followup is None and turns and turns[-1]["status"] in {"failed", "interrupted"}:
+            previous_input = session.last_prompt()
+            if previous_input is not None and "followup" in previous_input:
+                followup = previous_input["followup"]
+                if not isinstance(followup, str) or not followup.strip() or len(followup) > 8000:
+                    raise ValueError("Invalid retained follow-up input")
+        if followup is not None and cached is None:
+            raise ValueError("Follow-up requires a prior completed investigation report")
         if cached is not None:
             verified = verify_report(case, json.dumps(cached["report"]))
-            if (
-                cached["case_id"] != verified["case_id"]
-                or cached["receipts"] != verified["receipts"]
+            receipts = {item["id"]: item for item in verified["receipts"]}
+            if cached["case_id"] != verified["case_id"] or any(
+                receipts.get(item["id"]) != item for item in cached["receipts"]
             ):
                 raise ValueError("Cached report evidence changed")
             # Regenerate authority metadata; cached prose cannot promote itself on resume.
-            return {**verified, "model": context["model"], "resumed_from_checkpoint": True}
+            if followup is None and turns and turns[-1]["status"] == "completed":
+                return {
+                    **verified,
+                    "model": context["model"],
+                    "resumed_from_checkpoint": True,
+                    "latest_attempt_status": turns[-1]["status"] if turns else None,
+                    "latest_completed_turn": max(
+                        (t["number"] for t in turns if t["status"] == "completed"), default=None
+                    ),
+                }
+        turns = session.state["turns"]
+        if turns and turns[-1]["status"] in {"running", "reserved"}:
+            raise ValueError("ambiguous prior attempt; no automatic retry")
+        if len(turns) >= 4:
+            raise ValueError("session turn budget exhausted")
         argv, cwd, env = prepare(case.path)
-        async with CodexRpc(argv, cwd=cwd, env=env) as rpc:
+        async with CodexRpc(watched_argv(argv), cwd=cwd, env=env) as rpc:
             isolation = await preflight(rpc, cwd)
             params = {
                 "cwd": str(cwd),
@@ -162,7 +189,10 @@ async def run_investigation(
             thread_id = response["thread"]["id"]
             session.bind_thread(thread_id)
             await _check_tools(rpc, thread_id)
-            number = session.reserve_turn()
+            prompt = {"context": context, "prior_receipts": case.receipts()}
+            if followup is not None:
+                prompt["followup"] = followup
+            number = session.reserve_turn(prompt=prompt)
             turn = await rpc.request(
                 "turn/start",
                 {
@@ -170,13 +200,7 @@ async def run_investigation(
                     "input": [
                         {
                             "type": "text",
-                            "text": json.dumps(
-                                {
-                                    "context": context,
-                                    "prior_receipts": case.receipts(),
-                                },
-                                sort_keys=True,
-                            ),
+                            "text": json.dumps(prompt, sort_keys=True),
                         }
                     ],
                     "outputSchema": InvestigationReport.model_json_schema(),

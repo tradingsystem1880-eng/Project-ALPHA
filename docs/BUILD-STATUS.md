@@ -710,3 +710,27 @@ agreement remain unverified. Final-tree full gate and independent review are req
 Next: live-provider acceptance when configured and workstation integration after reconciling its
 separate active changes; macro attribution, regime learning and strategy engineering remain later
 increments, not implied capabilities of this download path.
+
+
+## 2026-10-04 — Managed recorded-run investigations in the workstation
+
+Continued `feat/codex-research-runtime` from `4b93c97`. The shared run report now starts and
+restores CLI-owned investigations, shows evidence separately from hypotheses and proposed tests,
+and supports same-case follow-ups, cancellation and refresh recovery within durable budgets.
+Explicit comparison previews lead to private acquisition and a linked new exposed case; an
+interrupted child publication can finish without another download or duplicate child. Verified
+list/show projections do not initialize sessions or acquire data. Ambiguous model reservations
+remain blocked. Parent-death/deadline supervision reaps the owned Codex process group.
+
+Browser acceptance passed through actual HTTP, CLI processes and persisted state, using labeled
+model/provider doubles. Separate live Codex CLI and web follow-ups passed; active-turn cancellation
+left none of four observed descendant processes alive and preserved consumed turn budgets. An
+initial cancellation status mismatch was fixed and rechecked against live Codex. Live Tiingo
+acceptance remains UNVERIFIED without a configured credential. These are operational checks,
+not evidence of trading reliability. The final staged tree requires independent review and the
+canonical full gate before commit; its receipt records aggregate acceptance.
+
+[Plan and acceptance scope](superpowers/plans/2026-10-04-workstation-investigations.md),
+[operator workflow](operations/codex-investigations.md). Primary checkout's concurrent UI is
+untouched; this branch's acceptance does not certify a future combined tree. Codex stays the only
+reasoning model; Claude artifacts, research admission and trading authority are unchanged.

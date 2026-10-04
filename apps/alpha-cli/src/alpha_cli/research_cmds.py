@@ -27,6 +27,7 @@ from alpha_cli.control_store import (
     ResearchResponsibility,
     research_case_revision,
 )
+from alpha_cli.investigation_workspace_cmds import app as investigations_app
 from alpha_cli.research_crypto_binding import (
     CryptoEmpiricalDataset,
     load_crypto_empirical_d1,
@@ -125,6 +126,7 @@ data_app = typer.Typer(help="Fail-closed research dataset registration and descr
 claim_app = typer.Typer(help="Claim-level literature evidence; only owner screening elevates.")
 sources_app.add_typer(claim_app, name="claim")
 research_app.add_typer(diagnostic_app, name="diagnostic")
+research_app.add_typer(investigations_app, name="investigations")
 research_app.add_typer(sources_app, name="sources")
 research_app.add_typer(context_app, name="context")
 research_app.add_typer(note_app, name="note")

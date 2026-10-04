@@ -2,8 +2,7 @@
 
 Authority: `docs/governance/capability-authority-matrix.md`.
 
-Private local research; single owner. Python 3.12; uv.
-No distribution, hosting or multi-user scope.
+Private single-owner research. Python 3.12; uv. No hosting or distribution.
 
 ## Rules (path-scoped)
 
@@ -44,8 +43,8 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
   Existing owner-auth actions remain the bounded path; no inferred approvals.
 - Tests under `tests/holdout/` may run, but agents never read or edit them. Proposed tests go in
   `tests/holdout_seed/`. No owner data, credentials or hidden tests in discovery indexes.
-- REST/Terminal research stays frozen. New research ships CLI-first; only the private fixed-case
-  diagnostic MCP is added. No paper, broker, order or promotion authority follows.
+- Research ships CLI-first. Managed advisory investigations are available in the run-report UI.
+  Existing research admission, D2, paper, broker and order authority remain unchanged.
 
 ## Commands
 
@@ -68,7 +67,7 @@ Research: [bounded workflow](docs/operations/bounded-research-workflow.md); base
 `diagnostic run-plan` executes bounded fixed baselines/validation; `diagnostic suggest` proposes
 follow-ups. Both remain advisory; no agent-wide read isolation.
 Demos: `alpha-eval investigate-demo`, `investigate-compare`, `investigate-judgment`; synthetic only.
-Codex: [investigations/private acquisition](docs/operations/codex-investigations.md); CLI only.
+Codex: [run-report investigations](docs/operations/codex-investigations.md); bounded advisory sessions.
 
 ## Sources of current truth
 

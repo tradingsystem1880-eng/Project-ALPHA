@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -37,6 +38,43 @@ class Session:
         self._lock: int | None = None
         self._state: dict[str, Any] = {}
         self._active: int | None = None
+
+    @classmethod
+    def snapshot(cls, case_path: Path, identity_sha256: str, model: str) -> dict[str, Any] | None:
+        """Read without creating files or taking the executing owner's exclusive lock.
+
+        A reservation published before its state is conservatively reported as busy;
+        readers must never infer a replenished budget from this transient.
+        """
+        reader = cls(case_path, identity_sha256, model)
+        try:
+            reader._directory = os.open(case_path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            for _ in range(3):
+                names = {n for n in os.listdir(reader._directory) if n.startswith("codex-turn-")}
+                try:
+                    reader._state = reader._read(_STATE)
+                except FileNotFoundError:
+                    if names:
+                        raise ValueError("session missing despite existing reservations") from None
+                    return None
+                try:
+                    reader._validate(names)
+                except ValueError:
+                    # A live writer may have published a marker immediately before its state.
+                    lock = reader._open("codex-session.lock", os.O_RDONLY)
+                    try:
+                        try:
+                            fcntl.flock(lock, fcntl.LOCK_SH | fcntl.LOCK_NB)
+                        except BlockingIOError:
+                            continue
+                        raise
+                    finally:
+                        os.close(lock)
+                if reader._state == reader._read(_STATE):
+                    return reader.state
+            raise ValueError("session busy: retry read; budgets are not yet available")
+        finally:
+            reader._release()
 
     @property
     def state(self) -> dict[str, Any]:
@@ -139,7 +177,11 @@ class Session:
         for number, turn in enumerate(turns, 1):
             if (
                 not isinstance(turn, dict)
-                or set(turn) != {"number", "status", "turn_id"}
+                or set(turn)
+                not in (
+                    {"number", "status", "turn_id"},
+                    {"number", "status", "turn_id", "input_sha256"},
+                )
                 or type(turn["number"]) is not int
                 or turn["number"] != number
                 or not isinstance(turn["status"], str)
@@ -158,13 +200,28 @@ class Session:
                 raise ValueError("reserved turn already has a server identifier")
             if turn["status"] in {"reserved", "running"} and number != len(turns):
                 raise ValueError("ambiguous attempt precedes another reservation")
-            if self._read(f"codex-turn-{number}.json") != self._reservation(number):
+            marker = self._read(f"codex-turn-{number}.json")
+            expected = self._reservation(number)
+            if "input_sha256" in turn:
+                prompt = marker.get("input")
+                if not isinstance(prompt, dict) or self._input_hash(prompt) != turn["input_sha256"]:
+                    raise ValueError("session input binding mismatch")
+                expected["input"] = prompt
+            if marker != expected:
                 raise ValueError("session reservation binding mismatch")
         if state["latest_report"] is not None and not isinstance(state["latest_report"], dict):
             raise ValueError("invalid latest report")
 
     def _reservation(self, number: int) -> dict[str, Any]:
         return {"identity_sha256": self.identity, "model": self.model, "number": number}
+
+    def last_prompt(self) -> dict[str, Any] | None:
+        """Validated retained input for explicit retry; historical turns may have none."""
+        turns = self._state["turns"]
+        if not turns or "input_sha256" not in turns[-1]:
+            return None
+        prompt: dict[str, Any] = self._read(f"codex-turn-{len(turns)}.json")["input"]
+        return prompt
 
     def bind_thread(self, thread_id: str) -> None:
         if not isinstance(thread_id, str) or not 1 <= len(thread_id) <= 256:
@@ -174,7 +231,13 @@ class Session:
         self._state["thread_id"] = thread_id
         self._write(_STATE, self._state)
 
-    def reserve_turn(self) -> int:
+    @staticmethod
+    def _input_hash(prompt: dict[str, Any]) -> str:
+        return hashlib.sha256(
+            json.dumps(prompt, sort_keys=True, allow_nan=False).encode()
+        ).hexdigest()
+
+    def reserve_turn(self, prompt: dict[str, Any] | None = None) -> int:
         turns = self._state["turns"]
         if turns and turns[-1]["status"] in {"reserved", "running"}:
             raise ValueError("ambiguous prior attempt; no automatic retry")
@@ -182,8 +245,13 @@ class Session:
         if number > 4:
             raise ValueError("session turn budget exhausted")
         # Marker first: a crash before state publication fails closed rather than resetting budget.
-        self._write(f"codex-turn-{number}.json", self._reservation(number), immutable=True)
-        turns.append({"number": number, "status": "reserved", "turn_id": None})
+        marker = self._reservation(number)
+        turn: dict[str, Any] = {"number": number, "status": "reserved", "turn_id": None}
+        if prompt is not None:
+            marker["input"] = copy.deepcopy(prompt)
+            turn["input_sha256"] = self._input_hash(prompt)
+        self._write(f"codex-turn-{number}.json", marker, immutable=True)
+        turns.append(turn)
         self._write(_STATE, self._state)
         self._active = number
         return number

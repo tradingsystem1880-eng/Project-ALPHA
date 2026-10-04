@@ -39,6 +39,8 @@ _PROVIDER_ENV_NAMES = {
 
 
 def _credential_names_for_command(args: list[str]) -> frozenset[str]:
+    if args[:3] == ["research", "investigations", "acquire"]:
+        return _PROVIDER_ENV_NAMES["tiingo"]
     if args[:2] == ["info", "providers"]:
         return frozenset().union(*_PROVIDER_ENV_NAMES.values())
     if args[:2] == ["provider", "check"] and len(args) > 2:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import tempfile
+from pathlib import Path
 
 import uvicorn
 
@@ -32,9 +33,14 @@ def main() -> None:
             "ALPHA_IBKR_GATEWAY_IMAGE",
         ):
             os.environ.pop(name, None)
+        from playwright_investigation_fixture import install
+
+        from alpha_web.app import create_app
+
+        application = create_app()
+        install(application, Path(data_dir))
         uvicorn.run(
-            "alpha_web.app:create_app",
-            factory=True,
+            application,
             host="127.0.0.1",
             port=port,
             log_level="warning",

@@ -88,7 +88,7 @@ Implement transport and durable tool service independently in small tested incre
 ## Remaining accepted roadmap
 
 1. Connect Codex sessions and one real recorded-run investigation (this increment).
-2. [Frozen comparison evidence and missing-data blockers](2026-10-03-codex-comparison-evidence.md) are implemented. Bounded acquisition and quality checks remain next, then workstation sessions, steering, cancellation and chart context on the reconciled UI branch.
+2. [Frozen comparison evidence and missing-data blockers](2026-10-03-codex-comparison-evidence.md) are implemented. [Bounded acquisition](2026-10-04-bounded-comparison-acquisition.md) and [workstation sessions, follow-ups and cancellation](2026-10-04-workstation-investigations.md) are implemented on the isolated runtime branch. Live-provider acceptance, combined-tree workstation verification, active-turn steering and chart context remain outstanding.
 3. Strategy capability bridge: isolated development, causal tests, independent review, immutable registration, explicit case revision.
 4. Evaluated learning: staged candidate procedures, untouched evaluation, activation between cases, rollback and cumulative search budgets; amend governance explicitly before activation.
 5. Expand regime, pattern and portfolio investigations against measured gaps; use small local numeric specialists only after baseline comparison. Preserve large-model research for later GPU experiments.

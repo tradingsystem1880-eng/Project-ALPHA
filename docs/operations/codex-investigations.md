@@ -30,7 +30,8 @@ The completed checkpoint is reverified and returned without another model call. 
 after a known failure uses the same Codex thread and spent budgets. A crash leaving an ambiguous
 reservation blocks replay. Do not delete reservations to replenish a budget. Transport events
 support streaming, active-turn steering and interruption through `InvestigationTurn`; workstation
-controls are not wired in this increment. CLI interruption closes the process group.
+controls now expose cancellation and bounded follow-ups through managed cases. Active-turn steering
+remains unwired. Signal cancellation closes the process group; a watchdog handles parent death.
 
 ## Capabilities and limits
 
@@ -80,8 +81,8 @@ generated from the installed CLI. No additional inference framework or model wei
 
 This increment cannot establish macro causes, fit causal regimes,
 implement strategy operators or activate learned skills. Those remain explicit subsequent slices.
-Frozen-snapshot endpoint comparisons and bounded acquisition are available below. The next useful
-increment is workstation integration after reconciling UI changes and live-provider acceptance.
+Frozen-snapshot endpoint comparisons and bounded acquisition are available below. The run-report workstation integration is described below. Live-provider acceptance remains
+unverified; strategy engineering and evaluated learning remain subsequent increments.
 Native Codex chart input,
 isolated strategy engineering and evaluated procedure learning remain in the accepted roadmap.
 Large finance models stay research candidates for later GPU trials; local Qwen vision is not part
@@ -189,3 +190,44 @@ read-only tools remain unchanged. Acquiring data confers no admission or trading
 Live Tiingo acceptance remains **UNVERIFIED** because no credential is configured in this
 environment. Fixture acceptance exercises parsing, quality checks, private publication and the
 comparison handoff; it does not establish real-market coverage or provider availability.
+
+
+## Workstation investigations
+
+On `feat/codex-research-runtime`, open a recorded run's **Strategy Performance Report**, then
+**Investigate this run**. The panel checks eligibility from the recorded manifest, restores saved
+investigations, and starts a bounded Codex session for the question. Findings and receipt details
+are separate from hypotheses, proposed next tests and limitations. Ordinary historical runs without
+the required cutoff remain unavailable; the UI never retrofits their manifests.
+
+Follow-ups retain the same case, thread and four-turn/twelve-request limits. Each new prompt is
+bound to its immutable turn reservation. A failed follow-up preserves the earlier verified report;
+explicit resume retries the retained question within remaining budget. A completed checkpoint does
+not spend another model turn. Ambiguous reservations are blocked, not automatically retried.
+The UI supports cancellation and refresh recovery; progress shows named tool stages, not raw model
+events or invented completion percentages. Existing case identities and legacy session markers remain
+readable. Live steering of a currently running turn is not exposed.
+
+Comparison selection accepts at most four explicit proxies. Preview the dates, provider and declared
+instrument metadata before **Acquire this comparison plan**. An all-pass batch opens a linked new
+investigation with frozen comparison evidence; it does not change the parent or restore its budgets.
+This child is a newly exposed case, not untouched evaluation data. If child publication is interrupted,
+**Finish comparison handoff** verifies the cached batch and completes its reserved child without
+another download. Missing credentials, quarantine and failed batches remain explicit.
+
+The browser supplies only typed IDs and intent. `alpha research investigations` owns case storage
+below `ALPHA_DATA_DIR/investigations`; list/show are verified projections, and run/acquire execute as
+CLI jobs. Provider credentials pass only to the acquisition command and its bounded provider worker.
+The fixed-case model tools and existing research/trading authority are unchanged. No additional model
+or framework is installed.
+
+This implementation uses the shared RunDetail insertion point. The primary checkout's uncommitted
+workstation and chart/rule assistant are preserved; they have not been wholesale merged. Acceptance
+on this isolated branch does not certify a future combined tree.
+
+Acceptance distinguishes two types of evidence: browser-to-API-to-CLI fixture tests exercise persisted
+cases, cancellation, refresh and private comparison handoff with model/vendor test doubles; an actual
+Codex CLI run and web-launched same-case follow-up exercise App Server and the closed worker environment.
+The real model used a labeled synthetic operational case, not market profitability evidence. Tiingo
+live-provider acceptance remains unverified. Private live artifacts are retained outside Git at
+`/private/tmp/alpha-workstation-investigation-live-20261004`.

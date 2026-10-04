@@ -35,6 +35,7 @@ from alpha_web.api import control as control_api
 from alpha_web.api import crypto_data as crypto_data_api
 from alpha_web.api import development as development_api
 from alpha_web.api import figures as figures_api
+from alpha_web.api import investigations as investigations_api
 from alpha_web.api import jobs as jobs_api
 from alpha_web.api import ml as ml_api
 from alpha_web.api import owner_auth as owner_auth_api
@@ -111,6 +112,7 @@ def create_app() -> FastAPI:
 
     app.include_router(runs_api.router)
     app.include_router(jobs_api.router)
+    app.include_router(investigations_api.router)
     app.include_router(activity_api.router)
     app.include_router(catalog_api.router)
     app.include_router(control_api.router)
