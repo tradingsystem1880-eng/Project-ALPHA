@@ -53,7 +53,8 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 45 browser specs across four viewport projects; PR #53 hit 15 minutes inside the browser step.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6.0.3
       - uses: actions/setup-node@v5
