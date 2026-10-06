@@ -27,7 +27,7 @@ export function FigureSection({
     <section className="figure-section" aria-label={title}>
       <h2>{title}</h2>
       {items.map((item) => (
-        <FigureCard key={item.figure_id} runId={runId} runName={runName} item={item} />
+        <FigureCard key={`${runId}:${item.figure_id}`} runId={runId} runName={runName} item={item} />
       ))}
     </section>
   )

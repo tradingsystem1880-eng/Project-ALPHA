@@ -21,7 +21,7 @@ export const GOVERNANCE_SENTENCES = {
   paper: 'PAPER ONLY · BINANCE LOCAL SANDBOX + IBKR PAPER · LIVE-CAPITAL ROUTING ABSENT',
   standalone: 'STANDALONE_UNQUALIFIED · THESE RUNS CAN NEVER COUNT AS GOVERNED RESEARCH EVIDENCE',
   strategy: 'SANDBOX · PUBLIC BINANCE DATA · REAL EXECUTION IS NOT AVAILABLE',
-  touchId: 'TOUCH ID REQUIRED · NO OVERRIDE · NO TRADING',
+  touchId: 'LOCAL CONFIRMATION · NO OVERRIDE · NO LIVE TRADING',
 } as const
 
 export type Tone = 'ok' | 'warn' | 'bad'
@@ -149,25 +149,31 @@ export function governancePages(input: GovernanceInput): GovernancePage[] {
   return [
     page('authority', 'Authority & status', authority(input)),
     {
-      ...page('touchid', 'Touch ID', [
+      ...page('touchid', 'Owner confirmation', [
         { label: 'Owner actions', value: GOVERNANCE_SENTENCES.touchId, tone: 'warn' },
         {
           label: 'Research decisions',
-          value: 'Every research decision, semantic freeze and paper acceptance is a Touch ID owner action recorded with a receipt; the browser never derives or caches presence.',
+          value: 'Closed research actions require explicit local confirmation and an action-bound receipt. This records local intent, not biometric presence. Paper access remains separately gated.',
           tone: 'ok',
         },
         {
-          label: 'Enrolment',
-          value: 'one platform credential',
+          label: 'Biometric enrolment',
+          value: 'optional legacy authentication',
           tone: 'ok',
-          detail: 'Enrol or re-enrol Touch ID on this machine at /owner-auth/enroll; recovery stays a trusted CLI act (ADR-0030).',
+          detail: 'Ordinary UI actions need no enrollment. Historical Touch ID receipts remain unchanged.',
         },
       ]),
-      link: { label: 'Enroll Touch ID', href: '/owner-auth/enroll' },
+
     },
     gates(input),
     overrides(input.overrides),
-    providers(input.providers),
+    {
+      ...providers(input.providers),
+      link: {
+        label: 'TradingView Lightweight Charts™ — Copyright (с) 2025 TradingView, Inc.',
+        href: 'https://www.tradingview.com/',
+      },
+    },
     page('storage', 'Storage', [
       { label: 'Expansion SSD', value: ssd.label, tone: ssd.tone === 'amber' ? 'warn' : 'ok', detail: ssd.detail },
     ]),

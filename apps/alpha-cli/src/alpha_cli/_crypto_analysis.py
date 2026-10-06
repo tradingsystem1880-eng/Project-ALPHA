@@ -70,6 +70,7 @@ def manifest_acquisition_scope(
 def normalized_member(
     store: CryptoBulkStore, manifest_id: str
 ) -> tuple[CryptoSnapshotMemberV1, CryptoQualityReportV1]:
+    store.require_active(manifest_id)
     manifest = store.verify_manifest(manifest_id)
     if manifest.get("artifact_kind") != "normalized":
         raise DataError("crypto snapshot members must be normalized artifacts")

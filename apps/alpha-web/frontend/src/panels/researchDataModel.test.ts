@@ -6,6 +6,7 @@ import {
   datasetOriginSummary,
   datasetRangeLabel,
   cryptoCanonicalAction,
+  cryptoAcquisitionFrequencies,
   cryptoFeatureInputSelection,
   cryptoMarketChoicesForFamily,
   cryptoSectionForFamily,
@@ -31,6 +32,12 @@ function row(overrides: Partial<ResearchDatasetRefRow> = {}): ResearchDatasetRef
 }
 
 describe('research data model', () => {
+  it('keeps reference-history and current catalogs on their native cadences', () => {
+    expect(cryptoAcquisitionFrequencies('protocol_tvl', 'defillama')).toEqual(['1d'])
+    expect(cryptoAcquisitionFrequencies('stablecoin_supply', 'defillama')).toEqual(['1d'])
+    expect(cryptoAcquisitionFrequencies('yield_history', 'defillama')).toEqual(['1d'])
+    expect(cryptoAcquisitionFrequencies('yield_pools', 'defillama')).toEqual(['catalog_snapshot'])
+  })
   it('classifies audit badges from recorded counts only', () => {
     expect(datasetAuditBadge(null)).toEqual({ state: 'unaudited', label: 'NOT AUDITED' })
     expect(
@@ -77,6 +84,10 @@ describe('research data model', () => {
     expect(cryptoSectionForFamily('onchain_metrics')).toBe('onchain')
     expect(cryptoSectionForFamily('onchain_catalog')).toBe('onchain')
     expect(cryptoSectionForFamily('dex_pools')).toBe('dex')
+    expect(cryptoSectionForFamily('protocol_tvl')).toBe('defi')
+    expect(cryptoSectionForFamily('stablecoin_supply')).toBe('defi')
+    expect(cryptoSectionForFamily('yield_pools')).toBe('defi')
+    expect(cryptoSectionForFamily('yield_history')).toBe('defi')
     expect(cryptoSectionForFamily('asset_metadata')).toBe('assets')
     expect(cryptoSectionForFamily('market_membership')).toBe('derivatives')
   })

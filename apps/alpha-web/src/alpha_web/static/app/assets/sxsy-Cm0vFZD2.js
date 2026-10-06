@@ -1,0 +1,1 @@
+import{a as e}from"./buffer-CFrR9PNK.js";import{t}from"./single_marker-BkKl3PrI.js";var n=class extends t{glyph;constructor(e,t){super(e,t),this.glyph=t}_set_data(){let n=this.nvertices,r=this._centers.get_sized_array(2*n);e(this.glyph.sx,this.glyph.sy,n,t.missing_point,r),this._centers.update()}};export{n as t};

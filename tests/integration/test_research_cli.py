@@ -535,7 +535,7 @@ def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
             "definition": None,
             "review": None,
             "freeze": None,
-            "next_owner_action": "Record a semantic definition with fresh Touch ID.",
+            "next_owner_action": "Record a semantic definition with fresh owner confirmation.",
         },
         "d1": {
             "launch_authority": "owner_cli_only",

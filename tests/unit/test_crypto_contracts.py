@@ -139,6 +139,10 @@ def test_every_primary_family_has_exactly_one_authority() -> None:
         "dex_pools": "geckoterminal",
         "dex_ohlcv": "geckoterminal",
         "dex_transactions": "geckoterminal",
+        "protocol_tvl": "defillama",
+        "stablecoin_supply": "defillama",
+        "yield_pools": "defillama",
+        "yield_history": "defillama",
         "comparison_bars": "ccxt:coinbase",
     }
 

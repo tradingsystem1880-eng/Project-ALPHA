@@ -1,7 +1,7 @@
 # Agent-neutral engineering checks and the Claude adapter
 
 Current transition: **implemented locally; full aggregate verified, 2026-09-16**.
-[ADR-0036](../adr/0036-agent-neutral-research-engineering.md) supersedes the engineering ceremony
+[ADR-0037](../adr/0037-agent-neutral-research-engineering.md) supersedes the engineering ceremony
 of ADR-0034. Application owner authorization, scientific verification and sandbox boundaries remain
 unchanged. The [implementation plan](../superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md)
 and fresh gate results determine acceptance; this document does not claim the entire program passed.
@@ -128,3 +128,7 @@ A separate explicit owner resolution on 2026-09-19 covers only the
 [walkthrough closure change](../superpowers/plans/2026-09-19-research-walkthrough-closure.md)
 based on `b1b7510`. It has the same UNVERIFIED disclosure and preserves all other
 checks; it does not automatically extend the earlier exception to future work.
+
+A third explicit owner resolution on 2026-10-05 covers only the commits made under the
+[clean-and-reconcile plan](../superpowers/plans/2026-10-05-clean-reconcile-main.md). Hidden
+tests remain UNVERIFIED; every other check stays mandatory; no extension to later work.

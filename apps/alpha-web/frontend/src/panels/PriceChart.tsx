@@ -1,12 +1,19 @@
 // Price — candlesticks for the linked symbol over the linked as-of window (PIT-adjusted). Typing a
 // symbol here rebroadcasts it to every linked panel.
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { DEFAULT_LINKED, type LinkedState } from '../context/linked'
+import type { PanelSource } from '../shell/chartWorkspaceModel'
+import type { ChartControls } from '../context/chartControls'
+import type { ChartLinkRegistry } from '../shell/chartLinkRegistry'
 import { setChartHover } from '../context/chartHover'
-import { api } from '../api/client'
+import { api, type ArchiveChartDataset } from '../api/client'
+import { ArchiveChartSelect } from '../components/ArchiveChartSelect'
 import type { Candle, CandleProvenance, ChartBundle, ChartOverlays, PaperCandleMarker } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
+import { ScientificMarketCanvas } from '../components/ScientificMarketCanvas'
+import type { PlotRenderer } from '../shell/chartWorkspaceModel'
 import { PriceChartCanvas } from '../components/PriceChartCanvas'
 import { usePanelLinked } from '../context/usePanelLinked'
 import {
@@ -16,7 +23,7 @@ import {
   useChartSelection,
 } from '../state/chartSelection'
 import { useSettings } from '../state/settings'
-import { openDevelopmentCenter, openIndicators } from './actions'
+import { openArchiveMarket, openDevelopmentCenter, openIndicators } from './actions'
 import { ChartDataAlternative } from './ChartDataAlternative'
 import { hasOverlays, overlayLegend, overlayQuery } from './chartOverlaysModel'
 import { TraceEvidencePanel } from './TraceEvidencePanel'
@@ -29,12 +36,24 @@ import type { PanelHandleProps } from '../context/panelHandle'
 
 export function PriceChart(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
-  const { linked, setLinked: setPanelLinked } = panelLink
+  const workspace = props.params as { onChooseSource?: () => void; renderer?: PlotRenderer; visible?: boolean; canonicalContext?: LinkedState; source?: PanelSource; controls?: ChartControls; reset?: number; panelId?: string; registry?: ChartLinkRegistry; table?: boolean } | undefined
+  const canonicalRef = useRef(panelLink.linked)
+  if (workspace?.visible !== false) canonicalRef.current = panelLink.linked
+  const source = workspace?.source
+  const isolated = source && source.kind !== 'primary'
+  const linked = !isolated ? workspace?.canonicalContext ?? canonicalRef.current : { ...DEFAULT_LINKED, ...(source.kind === 'run' ? { runId: source.runId } : source.kind === 'market' ? source : { symbol: source.dataset.instrument }) }
+  const updateCanonical = panelLink.setLinked
+  const setPanelLinked = useCallback((patch: Parameters<typeof panelLink.setLinked>[0]) => { if (!isolated) updateCanonical(patch) }, [isolated, updateCanonical])
   // A tiled chart window (`chart:<symbol>`) is pinned to its own symbol; the plain Chart follows
   // the linked symbol like every other panel.
   const instance = (props.params as { instance?: unknown } | undefined)?.instance
-  const pinned = typeof instance === 'string' && instance ? instance : null
-  const [symbol, setSymbol] = useState(pinned ?? linked.symbol ?? '')
+  const pinned = isolated && source.kind === 'market' ? source.symbol : typeof instance === 'string' && instance ? instance : null
+  const parameters = props.params as { archive?: ArchiveChartDataset | null; onArchiveChange?: (value: ArchiveChartDataset | null) => void } | undefined
+  const archive = source?.kind === 'archive' ? source.dataset : isolated || pinned ? null : parameters?.archive ?? null
+  const setArchive = isolated ? () => undefined : parameters?.onArchiveChange ?? (() => undefined)
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [storedSymbol, setSymbol] = useState(pinned ?? linked.symbol ?? '')
+  const symbol = archive?.instrument ?? storedSymbol
   const { profile, overlays: overlaySettings } = useSettings()
   const overlayConfig = overlaySettings[profile]
   const [overlays, setOverlays] = useState<ChartOverlays | null>(null)
@@ -54,12 +73,12 @@ export function PriceChart(props: PanelHandleProps) {
   }, [bars])
   useEffect(() => {
     if (!pinned) setSymbol(linked.symbol ?? '')
-  }, [linked.symbol, pinned])
+  }, [linked.symbol, linked.projectId, linked.linkGroup, linked.runId, profile, pinned])
 
   // Overlays come from `alpha chart overlays` over the same as-of window as the candles; a
   // failure keeps the candles and says why the overlay is missing. Run documents draw the run's
   // own annotations instead.
-  const overlayQueryText = overlayQuery(overlayConfig, { end: linked.end ?? null, snapshotId: linked.snapshotId ?? null })
+  const overlayQueryText = overlayQuery(overlayConfig, { end: linked.end ?? null, snapshotId: archive ? null : linked.snapshotId ?? null }) + (archive ? `&manifest_id=${archive.manifest_id}` : '')
   const wantOverlays = !linked.runId && Boolean(symbol) && hasOverlays(overlayConfig)
   useEffect(() => {
     if (!wantOverlays) {
@@ -68,6 +87,8 @@ export function PriceChart(props: PanelHandleProps) {
       return
     }
     let live = true
+    setOverlays(null)
+    setOverlayError(null)
     api
       .overlays(symbol, overlayQueryText)
       .then((result) => {
@@ -97,7 +118,8 @@ export function PriceChart(props: PanelHandleProps) {
     const params = new URLSearchParams()
     if (linked.start) params.set('start', linked.start)
     if (linked.end) params.set('end', linked.end)
-    if (linked.snapshotId) params.set('snapshot', linked.snapshotId)
+    if (archive) params.set('manifest_id', archive.manifest_id)
+    else if (linked.snapshotId) params.set('snapshot', linked.snapshotId)
     const query = params.toString() ? `?${params.toString()}` : ''
     api
       .candles(symbol, query)
@@ -111,7 +133,7 @@ export function PriceChart(props: PanelHandleProps) {
     return () => {
       live = false
     }
-  }, [symbol, linked.start, linked.end, linked.snapshotId, linked.runId])
+  }, [symbol, linked.start, linked.end, linked.snapshotId, linked.runId, archive])
 
   useEffect(() => {
     if (!linked.runId) {
@@ -190,6 +212,7 @@ export function PriceChart(props: PanelHandleProps) {
     if (event) selectTraceEvent(bundle.run_id, event, bundle.trace)
   }, [bundle])
 
+  const PriceCanvas = workspace?.renderer === 'market' ? PriceChartCanvas : ScientificMarketCanvas
   return (
     <div className="panel price-panel">
       <div className="panel-toolbar price-toolbar">
@@ -197,11 +220,15 @@ export function PriceChart(props: PanelHandleProps) {
         <input
           className="field sym-input"
           value={symbol}
-          onChange={(e) => setSymbol(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && setPanelLinked({ symbol })}
+          onChange={(e) => { setArchive(null); setSymbol(e.target.value) }}
+          readOnly={Boolean(archive) || Boolean(isolated) || Boolean(linked.runId)}
+          onKeyDown={(e) => !archive && !isolated && !linked.runId && e.key === 'Enter' && setPanelLinked({ symbol })}
           placeholder="symbol"
           spellCheck={false}
         />
+        {!linked.runId && !pinned && !isolated ? <button className="btn" onClick={() => setArchiveOpen(value => !value)}>External archive…</button> : null}
+        {archive && !isolated ? <button className="btn" onClick={() => { setArchive(null); setSymbol(linked.symbol ?? '') }}>Return to stored chart</button> : null}
+        {archive ? <span className="chip">{archive.venue} · {archive.market_type} · {archive.frequency} · archive {archive.manifest_id.slice(0, 10)}</span> : null}
         {bars ? <span className="count">{bars.length} bars</span> : null}
         {!linked.runId ? (
           <button
@@ -239,22 +266,24 @@ export function PriceChart(props: PanelHandleProps) {
           </span>
         ) : null}
       </div>
+      {archiveOpen ? <ArchiveChartSelect onClose={() => setArchiveOpen(false)} onSelect={item => { openArchiveMarket(item); setArchiveOpen(false) }} /> : null}
       <div className="panel-body price-body price-evidence-layout">
         {error ? (
-          <Placeholder big="no data">{error}</Placeholder>
+          <Placeholder big={linked.runId ? "Recorded price unavailable" : "no data"}>{linked.runId ? "Frozen snapshot required; current market data is never substituted. " : ""}{error}</Placeholder>
         ) : !symbol ? (
-          <Placeholder big="no symbol">Pick one in Data Manager or a run, or type it above</Placeholder>
+          <Placeholder big="Choose data to chart"><p>Browse stored markets or open a verified native archive. No project is required.</p>{workspace?.onChooseSource ? <button className="btn" onClick={workspace.onChooseSource}>Choose chart source</button> : null}{!isolated ? <button className="btn" onClick={() => setArchiveOpen(true)}>Browse native archives</button> : null}</Placeholder>
         ) : !bars ? (
           <Placeholder>loading…</Placeholder>
         ) : bars.length === 0 ? (
-          <Placeholder>no bars in window</Placeholder>
+          <Placeholder>{linked.runId ? bundle?.bars_status === 'not_applicable' ? "Price is not applicable to this recorded run." : `Frozen price snapshot unavailable or no recorded bars in this window (${bundle?.bars_status ?? 'unavailable'}). Current market data is never substituted.` : "no bars in window"}</Placeholder>
         ) : (
           <div className="price-chart-frame">
-            <div className="price-chart-canvas-wrap">
-              <PriceChartCanvas
+            <div className="price-chart-canvas-wrap" hidden={workspace?.table}>
+              <PriceCanvas
                 bars={bars}
+                controls={workspace?.controls} reset={workspace?.reset} panelId={workspace?.panelId} registry={workspace?.registry}
                 evidence={visibleEvidence}
-                annotations={bundle?.annotations ?? []}
+                annotations={bundle?.annotations}
                 selectedSequenceId={selectedSequenceId}
                 selectedTrade={selectedTrade}
                 onSelectEvidence={selectEvidence}
@@ -264,8 +293,9 @@ export function PriceChart(props: PanelHandleProps) {
             <div className="chart-foot mono">
               <span>PRICE · NATIVE QUOTE UNITS</span>
               <span>TIME · UTC</span>
+              {candleProvenance?.volume_unit ? <span>VOLUME · {candleProvenance.volume_unit.toUpperCase()} ASSET</span> : null}
               <span>AS OF {linked.end ?? new Date((bundle?.provenance.as_of ?? bars.at(-1)!.t) * 1_000).toISOString().slice(0, 10)}</span>
-              <span>SNAPSHOT · {linked.snapshotId ?? 'CURRENT STORE'}</span>
+              <span>{archive ? `ARCHIVE · ${archive.manifest_id.slice(0, 12)} · ${archive.market_type} · reconstructed history` : `SNAPSHOT · ${linked.snapshotId ?? 'CURRENT STORE'}`}</span>
               <span>D decision · F fill · P paper journal event</span>
               {overlays ? <span className="overlay-legend">{overlayLegend(overlays.indicators, overlays.annotations)}</span> : null}
             </div>
@@ -291,6 +321,7 @@ export function PriceChart(props: PanelHandleProps) {
         {bars ? (
           <ChartDataAlternative
             bars={bars}
+            expanded={workspace?.table}
             truncated={bundle?.truncated.bars ?? false}
             runId={bundle?.run_id ?? null}
             symbol={symbol}

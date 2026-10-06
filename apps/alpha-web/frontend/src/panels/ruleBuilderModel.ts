@@ -137,3 +137,10 @@ export function sandboxArgs(symbol: string, ruleId: string, marginAccount: boole
   if (marginAccount) parts.push('--account-type', 'MARGIN')
   return parts.join(' ')
 }
+
+/** Backend-validated assistant proposals remain unsaved editor drafts. */
+export function draftToForm(spec: Record<string, unknown>): BuilderForm {
+  return { id: '', name: typeof spec.name === 'string' ? spec.name : 'Draft',
+    history: typeof spec.history === 'number' ? String(spec.history) : '',
+    longRows: jsonToRows(spec.long_when), shortRows: jsonToRows(spec.short_when) }
+}

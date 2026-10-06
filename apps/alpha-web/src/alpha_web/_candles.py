@@ -22,6 +22,7 @@ def candles(
     start: str | None = None,
     end: str | None = None,
     snapshot: str | None = None,
+    manifest_id: str | None = None,
 ) -> dict[str, Any]:
     """``{symbol, snapshot_id, bars:[{t,o,h,l,c,v}]}`` for ``symbol`` over the window."""
     # Guard the cache-key mtime probe against traversal (a crafted ``../`` symbol must not stat
@@ -30,14 +31,20 @@ def candles(
     parquet = data_dir / "store" / "bars" / f"{symbol}.parquet"
     mtime = parquet.stat().st_mtime if (safe and parquet.exists()) else None
     key = (str(data_dir), symbol, start, end, snapshot, mtime)
-    if key in _CACHE:
+    if manifest_id is None and key in _CACHE:
         return _CACHE[key]
     args = ["data", "candles", symbol, "--json"]
-    for flag, value in (("--start", start), ("--end", end), ("--snapshot", snapshot)):
+    for flag, value in (
+        ("--start", start),
+        ("--end", end),
+        ("--snapshot", snapshot),
+        ("--manifest-id", manifest_id),
+    ):
         if value:
             args += [flag, value]
     result: dict[str, Any] = _run_json(args, data_dir=data_dir)
-    _CACHE[key] = result
+    if manifest_id is None:
+        _CACHE[key] = result
     return result
 
 
@@ -49,22 +56,24 @@ def overlays(
     patterns: tuple[str, ...] = (),
     end: str | None = None,
     snapshot: str | None = None,
+    manifest_id: str | None = None,
 ) -> dict[str, Any]:
     """``alpha chart overlays --json`` over the same PIT window, cached like :func:`candles`."""
     safe = ".." not in symbol and "\\" not in symbol and not symbol.startswith("/")
     parquet = data_dir / "store" / "bars" / f"{symbol}.parquet"
     mtime = parquet.stat().st_mtime if (safe and parquet.exists()) else None
     key = ("overlays", str(data_dir), symbol, indicators, patterns, end, snapshot, mtime)
-    if key in _CACHE:
+    if manifest_id is None and key in _CACHE:
         return _CACHE[key]
     args = ["chart", "overlays", symbol, "--json"]
     for spec in indicators:
         args += ["--indicator", spec]
     for spec in patterns:
         args += ["--pattern", spec]
-    for flag, value in (("--end", end), ("--snapshot", snapshot)):
+    for flag, value in (("--end", end), ("--snapshot", snapshot), ("--manifest-id", manifest_id)):
         if value:
             args += [flag, value]
     result: dict[str, Any] = _run_json(args, data_dir=data_dir)
-    _CACHE[key] = result
+    if manifest_id is None:
+        _CACHE[key] = result
     return result

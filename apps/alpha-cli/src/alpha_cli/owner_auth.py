@@ -257,7 +257,7 @@ def action_binding(
     store = ControlStore(data_dir)
     current_revision = research_case_revision(store.research_case_summary(project_id))
     if expected_case_revision != current_revision:
-        raise DataError("research case changed; refresh before requesting Touch ID")
+        raise DataError("research case changed; refresh before requesting confirmation")
     payload_object = _object(payload, "action payload")
     if action_type == "record_semantic_event":
         prepared = store.prepare_semantic_action(
@@ -418,6 +418,95 @@ def verify_action_assertion(
     return {**receipt, "binding": binding}
 
 
+def local_confirmation_options(
+    *, data_dir: Path, binding: Mapping[str, object], now: datetime | None = None
+) -> dict[str, object]:
+    """Issue a single-use local intent token; this does not prove physical presence."""
+    issued = _now() if now is None else now
+    token = secrets.token_bytes(32)
+    result = ControlStore(data_dir).create_owner_auth_challenge(
+        ceremony="action",
+        challenge=token,
+        binding={**binding, "authorization_method": "local_confirmation"},
+        now=issued,
+        expires_at=issued + timedelta(seconds=CHALLENGE_LIFETIME_SECONDS),
+    )
+    return {
+        **result,
+        "confirmation_token": token.hex(),
+        "authorization_method": "local_confirmation",
+    }
+
+
+def verify_local_confirmation(
+    *,
+    data_dir: Path,
+    challenge_id: str,
+    confirmation_token: str,
+    payload: Mapping[str, object],
+    now: datetime | None = None,
+) -> dict[str, object]:
+    """Consume explicit local confirmation while retaining the exact action binding."""
+    verified = _now() if now is None else now
+    store = ControlStore(data_dir)
+    challenge = store.get_owner_action_challenge_snapshot(challenge_id, now=verified)
+    binding = _object(challenge["binding"], "action binding")
+    if binding.get("authorization_method") != "local_confirmation" or not secrets.compare_digest(
+        confirmation_token, cast(bytes, challenge["challenge"]).hex()
+    ):
+        raise DataError("invalid local confirmation token")
+    action_type = str(binding["action_type"])
+    if action_type == "record_semantic_event" and challenge["used_at"] is not None:
+        result = store.recover_semantic_event_authorization(
+            challenge_id=challenge_id, payload=payload
+        )
+        return {**result, "binding": binding, "authorization_method": "local_confirmation"}
+    project_id = str(binding["project_id"])
+    if (
+        research_case_revision(store.research_case_summary(project_id))
+        != binding["expected_case_revision"]
+    ):
+        raise DataError("research case changed; refresh before confirming")
+    payload_hash = hashlib.sha256(
+        _canonical_json(dict(payload), "action payload").encode()
+    ).hexdigest()
+    if payload_hash != binding["request_hash"]:
+        raise DataError("owner action payload changed before confirmation")
+    artifact_hash = derive_action_artifact_hash(
+        data_dir=data_dir,
+        action_type=action_type,
+        project_id=project_id,
+        payload=payload,
+    )
+    if artifact_hash != binding["artifact_hash"]:
+        raise DataError("owner action artifact changed before confirmation")
+    confirmation_hash = hashlib.sha256(confirmation_token.encode()).hexdigest()
+    if action_type == "record_semantic_event":
+        result = store.record_semantic_event_authorization(
+            challenge_id=challenge_id,
+            credential_id=None,
+            previous_sign_count=0,
+            new_sign_count=0,
+            assertion_hash=confirmation_hash,
+            payload=payload,
+            now=verified,
+            receipt_id=str(uuid.uuid4()),
+            confirmation_token=confirmation_token,
+        )
+    else:
+        result = store.record_owner_action_authorization(
+            challenge_id=challenge_id,
+            credential_id=None,
+            previous_sign_count=0,
+            new_sign_count=0,
+            assertion_hash=confirmation_hash,
+            outcome={"status": "local_confirmation_consumed"},
+            now=verified,
+            confirmation_token=confirmation_token,
+        )
+    return {**result, "binding": binding}
+
+
 __all__ = [
     "CHALLENGE_LIFETIME_SECONDS",
     "ENROLLMENT_LIFETIME_SECONDS",
@@ -431,4 +520,6 @@ __all__ = [
     "issue_enrollment",
     "registration_options",
     "verify_action_assertion",
+    "local_confirmation_options",
+    "verify_local_confirmation",
 ]

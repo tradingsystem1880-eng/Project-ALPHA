@@ -882,3 +882,23 @@ _PROTECTED_V5_SCHEMA_OBJECTS: Final = frozenset(
     }
 )
 _EXPECTED_HEALABLE_SCHEMA_OBJECTS: Final = _EXPECTED_SCHEMA_OBJECTS - _PROTECTED_V5_SCHEMA_OBJECTS
+
+# v6 distinguishes local intent from historical verified WebAuthn presence.
+_SCHEMA_V6_RECEIPT = (
+    _SCHEMA_V5_RECEIPT.replace(
+        "credential_id TEXT NOT NULL REFERENCES owner_credentials(credential_id)",
+        "credential_id TEXT REFERENCES owner_credentials(credential_id)",
+    )
+    .replace(
+        "'record_semantic_event'",
+        "'record_semantic_event', 'pause_research', 'resume_research', 'cancel_research'",
+    )
+    .replace(
+        "performed_at TEXT NOT NULL",
+        """performed_at TEXT NOT NULL,
+    authorization_method TEXT NOT NULL DEFAULT 'webauthn'
+        CHECK (authorization_method IN ('webauthn', 'local_confirmation')),
+    CHECK ((authorization_method = 'webauthn' AND credential_id IS NOT NULL)
+        OR (authorization_method = 'local_confirmation' AND credential_id IS NULL))""",
+    )
+)

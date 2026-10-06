@@ -12,6 +12,7 @@ import json
 import math
 import os
 import re
+import secrets
 import sqlite3
 import stat
 import tempfile
@@ -57,6 +58,7 @@ from alpha_cli._control_schema import (
 from alpha_cli._control_schema import (
     _SCHEMA_V5_RECEIPT as _SCHEMA_V5_RECEIPT,
 )
+from alpha_cli._control_schema import _SCHEMA_V6_RECEIPT
 from alpha_cli.artifact_contract import (
     ARTIFACT_CONTRACT_VERSION,
     MANIFEST_SCHEMA_VERSION,
@@ -130,7 +132,8 @@ LEGACY_SCHEMA_VERSION: Final = 1
 OWNER_AUTH_PREVIOUS_SCHEMA_VERSION: Final = 2
 PREVIOUS_SCHEMA_VERSION: Final = 3
 V4_SCHEMA_VERSION: Final = 4
-SCHEMA_VERSION: Final = 5
+V5_SCHEMA_VERSION: Final = 5
+SCHEMA_VERSION: Final = 6
 DATABASE_NAME: Final = "workstation.sqlite3"
 _SEMANTIC_READ_ARTIFACTS: Final = ("d0_acceptance.json", "events.json", "chart-data.json")
 _SEMANTIC_READ_MAX_BYTES: Final = 8 * 1024 * 1024
@@ -1077,8 +1080,14 @@ def _verified_v3_backup(connection: sqlite3.Connection, database: Path) -> None:
 
 
 def _verified_v4_backup(connection: sqlite3.Connection, database: Path) -> None:
-    """Create one atomic, integrity-checked backup before the v4->v5 migration."""
-    backup = database.with_name(f"{database.name}.v4.bak")
+    _verified_receipt_backup(connection, database, V4_SCHEMA_VERSION)
+
+
+def _verified_receipt_backup(
+    connection: sqlite3.Connection, database: Path, source_version: int
+) -> None:
+    """Create one atomic, integrity-checked backup before the receipt-schema migration."""
+    backup = database.with_name(f"{database.name}.v{source_version}.bak")
     if backup.is_symlink():
         raise DataError(f"control store migration backup must not be a symlink: {backup}")
     if backup.exists():
@@ -1091,10 +1100,10 @@ def _verified_v4_backup(connection: sqlite3.Connection, database: Path) -> None:
             fingerprint = _logical_database_fingerprint(existing)
         finally:
             existing.close()
-        if integrity != ("ok",) or version != (V4_SCHEMA_VERSION,):
-            raise DataError("existing control store v4 migration backup is invalid")
+        if integrity != ("ok",) or version != (source_version,):
+            raise DataError("existing control store receipt migration backup is invalid")
         if fingerprint != _logical_database_fingerprint(connection):
-            raise DataError("existing control store v4 migration backup does not match")
+            raise DataError("existing control store receipt migration backup does not match")
         return
     fd, raw_tmp = tempfile.mkstemp(prefix=f".{backup.name}.", suffix=".tmp", dir=backup.parent)
     os.close(fd)
@@ -1109,14 +1118,14 @@ def _verified_v4_backup(connection: sqlite3.Connection, database: Path) -> None:
         target = sqlite3.connect(temporary)
         snapshot.backup(target)
         if target.execute("PRAGMA integrity_check").fetchone() != ("ok",):
-            raise DataError("cannot verify control store v4 migration backup")
-        if target.execute("PRAGMA user_version").fetchone() != (V4_SCHEMA_VERSION,):
-            raise DataError("cannot verify control store v4 migration backup version")
+            raise DataError("cannot verify control store receipt migration backup")
+        if target.execute("PRAGMA user_version").fetchone() != (source_version,):
+            raise DataError("cannot verify control store receipt migration backup version")
         target_fingerprint = _logical_database_fingerprint(target)
         target.close()
         target = None
         if target_fingerprint != _logical_database_fingerprint(connection):
-            raise DataError("control store v4 migration backup does not match")
+            raise DataError("control store receipt migration backup does not match")
         os.replace(temporary, backup)
     finally:
         if target is not None:
@@ -1177,7 +1186,7 @@ def _apply_schema_v5_locked(connection: sqlite3.Connection) -> None:
     _execute_static_sql_script(connection, _SCHEMA_V5)
     if connection.execute("PRAGMA foreign_key_check").fetchall():
         raise DataError("control store v5 foreign-key check failed")
-    connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    connection.execute(f"PRAGMA user_version = {V5_SCHEMA_VERSION}")
 
 
 def _execute_static_sql_script(connection: sqlite3.Connection, script: str) -> None:
@@ -1230,7 +1239,7 @@ def _apply_schema_v5_fresh(connection: sqlite3.Connection) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version == SCHEMA_VERSION:
+        if locked_version in {V5_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != 0:
@@ -1408,7 +1417,7 @@ def _migrate_schema_v1(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
+        if locked_version in {V4_SCHEMA_VERSION, V5_SCHEMA_VERSION, SCHEMA_VERSION}:
             # Another process completed the migration while this connection waited for the lock.
             connection.commit()
             return
@@ -1429,7 +1438,7 @@ def _migrate_schema_v2(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
+        if locked_version in {V4_SCHEMA_VERSION, V5_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != OWNER_AUTH_PREVIOUS_SCHEMA_VERSION:
@@ -1451,7 +1460,7 @@ def _migrate_schema_v3(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
+        if locked_version in {V4_SCHEMA_VERSION, V5_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != PREVIOUS_SCHEMA_VERSION:
@@ -1472,7 +1481,7 @@ def _migrate_schema_v4(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version == SCHEMA_VERSION:
+        if locked_version in {V5_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != V4_SCHEMA_VERSION:
@@ -1484,6 +1493,81 @@ def _migrate_schema_v4(connection: sqlite3.Connection, database: Path) -> None:
         if connection.in_transaction:
             connection.rollback()
         raise
+
+
+def _validate_protected_v6_schema(connection: sqlite3.Connection) -> None:
+    columns = {
+        str(row[1]): row for row in connection.execute("PRAGMA table_info(owner_action_receipts)")
+    }
+    method = columns.get("authorization_method")
+    credential = columns.get("credential_id")
+    row = connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='owner_action_receipts'"
+    ).fetchone()
+    sql = "" if row is None else "".join(str(row[0]).split())
+    required = (
+        "CHECK(authorization_methodIN('webauthn','local_confirmation'))",
+        "CHECK((authorization_method='webauthn'ANDcredential_idISNOTNULL)"
+        "OR(authorization_method='local_confirmation'ANDcredential_idISNULL))",
+    )
+    if (
+        method is None
+        or method[2] != "TEXT"
+        or method[3] != 1
+        or method[4] != "'webauthn'"
+        or credential is None
+        or credential[3] != 0
+        or not all(fragment in sql for fragment in required)
+    ):
+        raise DataError("protected schema object owner_action_receipts v6 is invalid")
+
+
+def _migrate_schema_v5(
+    connection: sqlite3.Connection, database: Path, *, backup: bool = True
+) -> None:
+    """Rebuild the receipt parent without rewriting historical rows or child references."""
+    connection.execute("PRAGMA foreign_keys = OFF")
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+        if version == SCHEMA_VERSION:
+            connection.commit()
+            return
+        if version != V5_SCHEMA_VERSION:
+            raise DataError(f"unsupported control store schema version {version}")
+        _validate_protected_v5_schema(connection)
+        if backup:
+            _verified_receipt_backup(connection, database, V5_SCHEMA_VERSION)
+        before = [
+            tuple(row)
+            for row in connection.execute("SELECT * FROM owner_action_receipts ORDER BY receipt_id")
+        ]
+        _drop_owner_receipt_support(connection)
+        _execute_static_sql_script(
+            connection,
+            _SCHEMA_V6_RECEIPT.replace("owner_action_receipts (", "owner_action_receipts_v6_new ("),
+        )
+        connection.execute("""INSERT INTO owner_action_receipts_v6_new
+            SELECT *, 'webauthn' FROM owner_action_receipts""")
+        connection.execute("DROP TABLE owner_action_receipts")
+        connection.execute(
+            "ALTER TABLE owner_action_receipts_v6_new RENAME TO owner_action_receipts"
+        )
+        _execute_static_sql_script(connection, _SCHEMA_V5)
+        after = [
+            tuple(row)[:-1]
+            for row in connection.execute("SELECT * FROM owner_action_receipts ORDER BY receipt_id")
+        ]
+        if before != after or connection.execute("PRAGMA foreign_key_check").fetchall():
+            raise DataError("local confirmation migration changed historical receipt integrity")
+        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        connection.commit()
+    except Exception:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+    finally:
+        connection.execute("PRAGMA foreign_keys = ON")
 
 
 def _enum_value(value: object, field: str, allowed: frozenset[str]) -> str:
@@ -1619,9 +1703,11 @@ class ControlStore:
                 OWNER_AUTH_PREVIOUS_SCHEMA_VERSION,
                 PREVIOUS_SCHEMA_VERSION,
                 V4_SCHEMA_VERSION,
+                V5_SCHEMA_VERSION,
                 SCHEMA_VERSION,
             }:
                 raise DataError(f"unsupported control store schema version {version}")
+            fresh = version == 0
             if version == 0:
                 _apply_schema_v5_fresh(connection)
             elif version == LEGACY_SCHEMA_VERSION:
@@ -1641,6 +1727,10 @@ class ControlStore:
                 # fail loud, never regenerate from the created_at date rule). Idempotent
                 # DDL healing runs only when a declared object is actually missing.
                 _heal_missing_schema_objects(connection)
+            current_version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+            if current_version == V5_SCHEMA_VERSION:
+                _migrate_schema_v5(connection, database, backup=not fresh)
+            _validate_protected_v6_schema(connection)
             # Journal-mode negotiation is deliberately after the version/migration path.
             # SQLite treats changing the mode as a database-wide write; doing it before the
             # migration lock lets concurrent openers fail with SQLITE_BUSY before BEGIN
@@ -5662,13 +5752,14 @@ class ControlStore:
         self,
         *,
         challenge_id: str,
-        credential_id: str,
+        credential_id: str | None,
         previous_sign_count: int,
         new_sign_count: int,
         assertion_hash: str,
         payload: Mapping[str, object],
         now: datetime,
         receipt_id: str,
+        confirmation_token: str | None = None,
     ) -> dict[str, object]:
         """Atomically consume a semantic Touch ID action and append its ledger event."""
         cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
@@ -5676,7 +5767,7 @@ class ControlStore:
         assertion_digest = _required_text(assertion_hash, "owner assertion hash", max_length=64)
         if _SHA256_RE.fullmatch(assertion_digest) is None:
             raise DataError("invalid control owner assertion hash")
-        if new_sign_count <= previous_sign_count:
+        if credential_id is not None and new_sign_count <= previous_sign_count:
             raise DataError("owner credential signature counter regressed")
         clean_payload = _semantic_payload(payload)
         timestamp = _format_timestamp(now)
@@ -5692,14 +5783,33 @@ class ControlStore:
                 or challenge["ceremony"] != "action"
                 or challenge["used_at"] is not None
                 or str(challenge["expires_at"]) <= timestamp
-                or credential is None
-                or credential["revoked_at"] is not None
-                or int(credential["sign_count"]) != previous_sign_count
             ):
                 raise DataError("owner semantic action is invalid, expired, stale, or already used")
             binding = _decode_json(challenge["binding_json"], "owner action binding")
             if not isinstance(binding, dict):
                 raise DataError("corrupt control store: owner action binding is not an object")
+            method = str(binding.get("authorization_method", "webauthn"))
+            if method == "local_confirmation":
+                if (
+                    credential_id is not None
+                    or confirmation_token is None
+                    or not secrets.compare_digest(
+                        confirmation_token, bytes(challenge["challenge"]).hex()
+                    )
+                ):
+                    raise DataError("invalid local confirmation token")
+                actor = "owner:local-confirmation"
+            elif method == "webauthn":
+                if (
+                    confirmation_token is not None
+                    or credential is None
+                    or credential["revoked_at"] is not None
+                    or int(credential["sign_count"]) != previous_sign_count
+                ):
+                    raise DataError("owner action credential is invalid or stale")
+                actor = str(credential["actor"])
+            else:
+                raise DataError("unsupported owner authorization method")
             action_type = _enum_value(
                 binding.get("action_type"), "owner action type", OWNER_ACTION_TYPES
             )
@@ -5785,7 +5895,6 @@ class ControlStore:
                 definition_id=definition_id,
                 review_id=review_id,
             )
-            actor = str(credential["actor"])
             event_id, _identity = _semantic_event_identity(
                 source=source_map,
                 payload=clean_payload,
@@ -5816,8 +5925,8 @@ class ControlStore:
                 """INSERT INTO owner_action_receipts
                 (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
                  artifact_hash, expected_case_revision, consequence_summary, reason,
-                 request_hash, assertion_hash, outcome_json, performed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 request_hash, assertion_hash, outcome_json, performed_at, authorization_method)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     rid,
                     cid,
@@ -5833,6 +5942,7 @@ class ControlStore:
                     assertion_digest,
                     _canonical_json(outcome, "owner action outcome"),
                     timestamp,
+                    method,
                 ),
             )
             self.append_semantic_event(
@@ -5845,6 +5955,7 @@ class ControlStore:
                 recorded_at=timestamp,
             )
         return {
+            "authorization_method": method,
             "receipt_id": rid,
             "action_type": action_type,
             "project_id": project_id,
@@ -11960,7 +12071,10 @@ class ControlStore:
         if ceremony == "action" and enrollment_id is not None:
             raise DataError("action challenge cannot carry an enrollment request")
         with self._transaction(write=True) as connection:
-            if ceremony == "action":
+            if (
+                ceremony == "action"
+                and clean_binding.get("authorization_method") != "local_confirmation"
+            ):
                 active = int(
                     connection.execute(
                         "SELECT COUNT(*) FROM owner_credentials WHERE revoked_at IS NULL"
@@ -12154,13 +12268,14 @@ class ControlStore:
         self,
         *,
         challenge_id: str,
-        credential_id: str,
+        credential_id: str | None,
         previous_sign_count: int,
         new_sign_count: int,
         assertion_hash: str,
         outcome: Mapping[str, object],
         now: datetime,
         receipt_id: str | None = None,
+        confirmation_token: str | None = None,
     ) -> dict[str, object]:
         """Consume one verified assertion and append its exact action-bound receipt once."""
         cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
@@ -12168,7 +12283,7 @@ class ControlStore:
         assertion_digest = _required_text(assertion_hash, "owner assertion hash", max_length=64)
         if _SHA256_RE.fullmatch(assertion_digest) is None:
             raise DataError("invalid control owner assertion hash")
-        if new_sign_count <= previous_sign_count:
+        if credential_id is not None and new_sign_count <= previous_sign_count:
             raise DataError("owner credential signature counter regressed")
         timestamp = _format_timestamp(now)
         clean_outcome = _json_object(outcome, "owner action outcome")
@@ -12184,9 +12299,6 @@ class ControlStore:
                 or challenge["ceremony"] != "action"
                 or challenge["used_at"] is not None
                 or str(challenge["expires_at"]) <= timestamp
-                or credential is None
-                or credential["revoked_at"] is not None
-                or int(credential["sign_count"]) != previous_sign_count
             ):
                 raise DataError(
                     "owner action assertion is invalid, expired, stale, or already used"
@@ -12194,6 +12306,28 @@ class ControlStore:
             binding = _decode_json(challenge["binding_json"], "owner action binding")
             if not isinstance(binding, dict):
                 raise DataError("corrupt control store: owner action binding is not an object")
+            method = str(binding.get("authorization_method", "webauthn"))
+            if method == "local_confirmation":
+                if (
+                    credential_id is not None
+                    or confirmation_token is None
+                    or not secrets.compare_digest(
+                        confirmation_token, bytes(challenge["challenge"]).hex()
+                    )
+                ):
+                    raise DataError("invalid local confirmation token")
+                actor = "owner:local-confirmation"
+            elif method == "webauthn":
+                if (
+                    confirmation_token is not None
+                    or credential is None
+                    or credential["revoked_at"] is not None
+                    or int(credential["sign_count"]) != previous_sign_count
+                ):
+                    raise DataError("owner action credential is invalid or stale")
+                actor = str(credential["actor"])
+            else:
+                raise DataError("unsupported owner authorization method")
             action_type = _enum_value(
                 binding.get("action_type"), "owner action type", OWNER_ACTION_TYPES
             )
@@ -12209,6 +12343,11 @@ class ControlStore:
             request_hash = _required_text(
                 binding.get("request_hash"), "owner action request_hash", max_length=64
             )
+            if (
+                method == "local_confirmation"
+                and self._research_case_revision_locked(connection, project_id) != revision
+            ):
+                raise DataError("research case changed before confirmation was consumed")
             consequence = _required_text(
                 binding.get("consequence_summary"), "owner action consequence summary"
             )
@@ -12220,7 +12359,6 @@ class ControlStore:
             ):
                 if _SHA256_RE.fullmatch(value) is None:
                     raise DataError(f"invalid control owner action {label}")
-            actor = str(credential["actor"])
             connection.execute(
                 "UPDATE owner_credentials SET sign_count = ? WHERE credential_id = ?",
                 (new_sign_count, credential_id),
@@ -12234,8 +12372,8 @@ class ControlStore:
                 """INSERT INTO owner_action_receipts
                 (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
                  artifact_hash, expected_case_revision, consequence_summary, reason,
-                 request_hash, assertion_hash, outcome_json, performed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 request_hash, assertion_hash, outcome_json, performed_at, authorization_method)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     rid,
                     cid,
@@ -12251,9 +12389,11 @@ class ControlStore:
                     assertion_digest,
                     _canonical_json(clean_outcome, "owner action outcome"),
                     timestamp,
+                    method,
                 ),
             )
         return {
+            "authorization_method": method,
             "receipt_id": rid,
             "action_type": action_type,
             "project_id": project_id,

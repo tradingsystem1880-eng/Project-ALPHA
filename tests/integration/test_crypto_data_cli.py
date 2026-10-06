@@ -1048,7 +1048,7 @@ def test_storage_inventory_rejects_unsized_manifest(
     monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: store)
     monkeypatch.setattr(crypto_data_cmds, "_snapshot_root", lambda: tmp_path / "snapshots")
     monkeypatch.setattr(
-        CryptoBulkStore, "inventory", lambda _self: ({"artifact_kind": "normalized"},)
+        CryptoBulkStore, "inventory", lambda _self, **_kwargs: ({"artifact_kind": "normalized"},)
     )
 
     inventory = runner.invoke(app, ["crypto-data", "storage-inventory", "--json"])

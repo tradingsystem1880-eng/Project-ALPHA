@@ -301,7 +301,7 @@ export function StudyStatusSection({
         </div>
       )}
 
-      <div className="rd-head">Touch-ID-bound semantic state</div>
+      <div className="rd-head">Owner-confirmed semantic state</div>
       <div className="workbench-notice">
         <strong>{status.semantic.state.replaceAll('_', ' ').toUpperCase()}</strong>
         <span>{status.semantic.next_owner_action}</span>
@@ -325,7 +325,7 @@ export function StudyStatusSection({
             {typeof event.payload.review_text === 'string' ? (
               <p>{event.payload.review_text}</p>
             ) : null}
-            <span>{event.actor} · {event.reason} · Touch ID receipt {event.receipt_id}</span>
+            <span>{event.actor} · {event.reason} · Owner action receipt {event.receipt_id}</span>
           </div>
         ))}
         {!events.length ? <span className="muted">No semantic owner event has been recorded.</span> : null}
@@ -335,7 +335,7 @@ export function StudyStatusSection({
       <div className="development-spec">
         <div><span className="eyebrow">Active contract</span><code>{status.active_contract_id}</code></div>
         <div><span className="eyebrow">D1 state</span><strong>{status.d1.status.replaceAll('_', ' ').toUpperCase()}</strong></div>
-        <div><span className="eyebrow">D1 launch</span><strong>{step.kind === 'action' && step.actionType === 'launch_d1' ? 'OWNER · TOUCH ID BELOW' : 'OWNER ONLY'}</strong></div>
+        <div><span className="eyebrow">D1 launch</span><strong>{step.kind === 'action' && step.actionType === 'launch_d1' ? 'OWNER · CONFIRM BELOW' : 'OWNER ONLY'}</strong></div>
         <div><span className="eyebrow">Promotion dossier</span><code>{status.promotion.packet_id ?? 'none'}</code></div>
         <div><span className="eyebrow">Promotion readiness</span><strong>{status.promotion.readiness.state.toUpperCase()}</strong></div>
       </div>
@@ -414,7 +414,7 @@ function ApprovalBoundary({
       <span className="eyebrow">Fresh owner presence required</span>
       <strong>Review and decide this exact immutable {scope} contract</strong>
       <p>
-        Touch ID binds one decision to this project, artifact, current case revision, consequence,
+        Confirmation binds one decision to this project, artifact, current case revision, consequence,
         and your reason. It grants no gate override, holdout, paper, broker, or order authority.
       </p>
       {!canApprove ? (
@@ -440,7 +440,7 @@ function ApprovalBoundary({
           disabled={!reason.trim() || !canApprove || pending !== null}
           onClick={() => void decide('approve')}
         >
-          {pending === `approve_${scope}` ? 'waiting for Touch ID…' : `Touch ID · approve ${scope}`}
+          {pending === `approve_${scope}` ? 'confirming…' : `Confirm · approve ${scope}`}
         </button>
         <button
           className="btn"
@@ -448,7 +448,7 @@ function ApprovalBoundary({
           disabled={!reason.trim() || pending !== null}
           onClick={() => void decide('reject')}
         >
-          {pending === `reject_${scope}` ? 'waiting for Touch ID…' : `Touch ID · reject ${scope}`}
+          {pending === `reject_${scope}` ? 'confirming…' : `Confirm · reject ${scope}`}
         </button>
       </div>
       {error ? <div className="workbench-notice" role="alert"><strong>ACTION BLOCKED</strong><span>{error}</span></div> : null}
@@ -494,7 +494,7 @@ function CanonicalNextAction({ researchCase, onRefresh }: { researchCase: Resear
       ) : step.kind === 'decide' ? (
         <span className="muted">Record the final disposition on the Decision tab.</span>
       ) : step.kind === 'review' ? (
-        <span className="muted">Approve or reject the {step.scope} contract with Touch ID in the review panel below.</span>
+        <span className="muted">Approve or reject the {step.scope} contract with local confirmation in the review panel below.</span>
       ) : step.kind === 'waiting' ? (
         <span className="muted">{step.text}</span>
       ) : null}
@@ -513,7 +513,7 @@ function CanonicalNextAction({ researchCase, onRefresh }: { researchCase: Resear
   )
 }
 
-/** The owner's closing decision (alpha research decide): outcome + disposition, then Touch ID. */
+/** The owner's closing decision (alpha research decide): outcome + disposition, then confirmation. */
 function OwnerDecisionForm({ researchCase, onRefresh }: { researchCase: ResearchCase; onRefresh: () => void }) {
   const [outcome, setOutcome] = useState<string>('')
   const [disposition, setDisposition] = useState<string>('')
@@ -1039,7 +1039,7 @@ export function ResearchCockpit(props: PanelHandleProps) {
         <span className="chip kind">GUIDED RESEARCH</span>
         <span className="muted">question → sources → data → bounded test → decision</span>
         <span className="spacer" />
-        <span className="chip fail">TOUCH ID REQUIRED · NO OVERRIDE · NO TRADING</span>
+        <span className="chip">OWNER CONFIRMATION · NO LIVE TRADING</span>
       </div>
       <div className="panel-body panel-pad workbench research-cockpit" tabIndex={0}>
         {showCapture || !researchCase ? <div className="research-intake-grid">
@@ -1126,7 +1126,7 @@ export function ResearchCockpit(props: PanelHandleProps) {
               <>
                 <DecisionViewSection view={decisionView} busy={busy} />
                 <section className="research-decision-form" aria-label="Owner final disposition">
-                  <div className="rd-head">Final disposition · owner Touch ID</div>
+                  <div className="rd-head">Final disposition · owner confirmation</div>
                   <OwnerDecisionForm researchCase={researchCase} onRefresh={() => void loadCase(researchCase.project_id, 'status')} />
                 </section>
               </>

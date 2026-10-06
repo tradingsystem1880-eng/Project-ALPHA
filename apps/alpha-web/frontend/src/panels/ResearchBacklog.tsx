@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { requestResearchCase } from '../context/researchCase'
 import { api } from '../api/client'
 import { useAreaVersion } from '../state/activity'
 import { Placeholder } from '../components/Placeholder'
@@ -90,7 +91,7 @@ export function ResearchBacklog(props: PanelHandleProps) {
                   <button
                     type="button"
                     className={`backlog-row${selected === row.case_id ? ' selected' : ''}`}
-                    onClick={() => panelLink.setLinked({ projectId: row.case_id })}
+                    onClick={() => { panelLink.setLinked({ projectId: row.case_id }); requestResearchCase(row.case_id) }}
                     title={row.original_idea}
                   >
                     <span className="backlog-title">{row.title}</span>

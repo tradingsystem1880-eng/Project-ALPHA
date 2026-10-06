@@ -71,6 +71,14 @@ an informational finding. Its absence alone is nonblocking for this closure comm
 all other failures, independent review and Git guards remain mandatory. This grants
 no exception for later changes and no application owner or trading authority.
 
+Third owner exception (2026-10-05): asked explicitly about the absent `tests/holdout`
+suite, the owner authorized a scoped exception for the commits made under
+`docs/superpowers/plans/2026-10-05-clean-reconcile-main.md` only (the crypto-terminal
+working-tree commit, the main reconciliation merge and its closing record). Keep the absent
+suite UNVERIFIED and report its attempted execution as an informational finding. Its absence
+alone is nonblocking for those commits; all other failures, independent review, quant
+attestation and Git guards remain mandatory. No exception for any later change.
+
 Your final message must be EXACTLY one JSON object matching the ReviewVerdict
 schema: {"verdict": "APPROVE"|"BLOCK", "findings": [{"severity": "high"|"medium"|"low",
 "file": "...", "line": N, "summary": "..."}], "plan_ref": null|"docs/superpowers/plans/...",

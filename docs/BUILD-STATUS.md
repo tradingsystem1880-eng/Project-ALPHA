@@ -1,5 +1,18 @@
 # Project ALPHA — Build Status (delivery history)
 
+**2026-10-02 crypto provider and archive hygiene work (in progress):** Added DefiLlama public
+reference data for protocol TVL, stablecoin supply, current yield-pool snapshots, and exact-pool
+history across parser, qualification, CLI acquisition, typed API, and Data Manager surfaces. The
+archive's immutable artifact verifier did not complete in the prior audit; no immutable artifacts
+were removed. Existing provider adapters remain reachable in current route/use mapping. Focused
+DefiLlama parser/acquisition/API tests pass; aggregate gates and full archive verification remain
+unverified for this exact shared tree. On 2026-10-02, live acquisitions for Aave TVL (2,328 rows),
+stablecoin id `1` supply (3,230), yield-pool snapshot (17,061), and an Aave/Ethereum pool history
+(902) all qualified and passed recursive manifest/raw-lineage verification. `cache-clean` removed
+2,190 explicitly disposable bytes and zero immutable artifacts. Backend and frontend full component
+gates passed, as did Atlas and eval component checks after Atlas regeneration. The full aggregate
+command must still be rerun on that regenerated tree; a full archive inventory also remains open.
+
 Relocated from `CLAUDE.md` on 2026-08-18; CLAUDE.md keeps only the governing
 current-status paragraph, which is maintained there and may be newer than the copy
 below. With ADR-0027/0028, that paragraph takes precedence over the dated narratives
@@ -338,7 +351,7 @@ The pre-v2 manual line rewritten by edge-first Phase B (universe + knowledge-tim
 
 **Delivery state: Implemented locally; aggregate candidate gate passed.** The accepted plan is
 [`2026-09-16-agent-neutral-reproducible-research.md`](superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md).
-[ADR-0036](adr/0036-agent-neutral-research-engineering.md) changes engineering ceremony only;
+[ADR-0037](adr/0037-agent-neutral-research-engineering.md) changes engineering ceremony only;
 application owner authority and scientific controls remain intact.
 
 Implemented locally: `alpha info commands --all --json` discovers all registered leaves without
@@ -494,6 +507,17 @@ state. Retained-trace Codex scoring and the 15 missing realistic variants are in
 stamp, independent final review and complete campaign conclusions are not claimed at this checkpoint.
 Concurrent UI work in the same checkout is preserved and excluded from benchmark changes.
 
+## 2026-09-29 — Workflow UI repair (verification in progress)
+
+Owner-authorised replacement of the terminal menu/dock shell with full-width workflow pages is
+implemented in the working tree. Existing research and execution authority stays behind the same
+CLI and owner-auth seams. Shared asset selection, navigation/history, independent data-status
+reads, and stale saved-rule protections are under browser regression testing. The web integration
+suite passed 187 tests; this is not a full-gate or live-provider acceptance claim.
+
+Current plan: [workflow UI repair](superpowers/plans/2026-09-29-workflow-ui-repair.md).
+Evidence and external limitations: [UI audit](audit/2026-09-29-workflow-ui.md).
+
 ## 2026-09-29 — Benchmark final evidence checkpoint
 
 Codex-only continuation implementation, bounded campaign and independent review are complete.
@@ -507,6 +531,26 @@ concurrent minimum-width UI scan-deletion browser test failed (188 passed, 1 fai
 Frontend assets also changed that snapshot. No full-gate, hidden-suite or live-provider acceptance
 is claimed; UI repair remains separate. No benchmark commit or push was made.
 
+
+## 2026-09-30 — Workflow UI repair verification checkpoint
+
+Workflow pages and searchable stored-asset selection are delivered in the working tree. Repairs
+cover download clicks, independent storage/provider status, market switches, stale saved rules,
+navigation/history, browser-storage failures and uncertain ML terminal-journal writes. The latter
+uses the existing CLI journal, verifies before retrying and preserves unverified capacity.
+
+Final frontend run: **193 browser tests passed**, **312 unit tests passed**, and build/API/SPA
+freshness checks passed. Every backend component check passed, including coverage (**93.17%**),
+slow oracles and mutation checks. This supersedes the earlier scan-deletion test failure noted in
+the benchmark checkpoint; the trace showed successful deletion followed by a slow refresh.
+Independent review found no remaining production blocker. The integrated app is available at
+localhost:8801; its read-only owner-machine navigation check passed.
+
+Concurrent benchmark documentation/results updates invalidated earlier aggregate stamps despite
+passing repair checks. Use `uv run python scripts/gate.py check --tier full` for current whole-tree
+acceptance. Live vendors, physical Touch ID, model weights and paper-broker acceptance remain
+unverified. Details: [UI audit](audit/2026-09-29-workflow-ui.md) and
+[implementation plan](superpowers/plans/2026-09-29-workflow-ui-repair.md).
 
 ## 2026-09-30 — Benchmark continuation verification closed
 
@@ -532,3 +576,173 @@ Independent delivery review reproduced three offline test failures when Codex wa
 PATH. The scorer unit tests now mock the client-version lookup as well as judging; production
 version fingerprints remain real. The evaluator suite is checked with a Codex-free PATH before
 the refreshed aggregate gate.
+
+
+**2026-09-30 — Terminal usability and external archive charts (implemented; full gate blocked).**
+Owner direction restores compact grey Windows-style chrome, chart docks, square controls and a
+large candle canvas while preserving workflow routes. ADR-0038 replaces mandatory biometric
+ceremonies with explicit bound local confirmation and honest V6 receipts; historical WebAuthn
+receipts remain intact. External archive selection now opens exact verified Binance/Bybit OHLCV
+windows with explicit market, venue, interval and volume units. Metadata-only ordinary discovery
+avoids whole-drive hashing; selected artifacts and raw lineage still require full verification.
+A real owner browser loaded 901 AAVEUSDT daily bars; discovery returned 2,178 compatible datasets.
+
+Final application checks: 4,740 Python tests passed (93.11% coverage), 314 frontend unit tests and
+all 196 browser scenarios passed; strict typing, import contracts, OpenAPI, scoped lint, semgrep
+and wheel smoke passed. Independent UI/backend inspection found no remaining blockers. Global
+`gate.py full` remains blocked by 198 ruff errors in the concurrent benchmark session's untracked
+PDF scratch script; no full-repository acceptance or universal live-provider readiness is claimed.
+See [verification and limitations](audit/2026-09-30-terminal-usability.md) and
+[open-source component decisions](audit/2026-09-30-open-source-component-review.md).
+
+
+**2026-09-30 — Terminal workflow polish.**
+F2 function navigation, task-level search with retry, remembered task tabs, keyboard tab navigation,
+profile-specific chart layout preferences and a shared comparison grid extend the grey Windows
+terminal. Watchlist data scrolls independently of its tabs. Independent review findings on palette
+search carryover and duplicate comparisons were corrected. This is workflow inspiration, not a
+claim of Bloomberg parity. Current verification and cross-session browser isolation findings are
+recorded in [the polish audit](audit/2026-09-30-terminal-workflow-polish.md).
+
+## 2026-09-30 — Connected edge research workspace
+
+Implemented the owner-approved chart/conditions/assistant/results plan. CLI owns condition
+semantics and bounded native Codex context; structured drafts require source freshness and rule
+validation before opening the existing builder. Docked scans/trades/results, indicator search
+and favourites, and case-linked observations connect the research journey. Recorded metrics
+retain costs, baseline and OOS limitations. Deferred-response state races and lost-heartbeat ML
+cancellation classification were fixed with targeted regressions. Aggregate verification pending;
+see [implementation audit](audit/2026-09-30-edge-workspace.md). Separate research branch remains
+unmerged, with shared ownership handoff documented.
+
+**2026-09-30 — Connected edge workspace verification completed.**
+All six canonical full-gate components passed on one stable implementation tree; the full browser
+suite passed all 244 scenarios. Fifty-eight focused assistant tests include exact provider-symbol
+compatibility and retained traversal rejection. Independent review closed the findings. A real
+supervised Codex smoke returned cited, appropriately limited analysis. The delivery plan is
+completed; current-tree acceptance is recorded by the fresh machine gate receipt after documentation
+closeout. See [verification evidence and limitations](audit/2026-09-30-edge-workspace.md).
+
+**2026-10-01 — Stored watchlist and context picker.**
+Market Watch now omits profile starter pairs absent from stored inventory, preserves exact venue/quote
+variants, and opens the selected stored market on Price with stale date/run/snapshot context cleared.
+The working-context picker is anchored to its trigger so it stays inside the viewport. Focused unit and
+browser checks passed; see the frontend terminal workflow guide.
+
+**2026-10-01 — Crypto data discovery and native chart intervals.**
+Crypto Data Center capability discovery now reads immutable manifest metadata rather than hashing the
+entire Expansion archive on every open; selecting a dataset and explicit full storage audits still
+verify artifact bytes and lineage. Data Manager can search the latest qualified local Binance spot
+catalog and distinguishes venue listings from downloaded history. Native Binance spot intervals from
+1m through 1w (including 4h and 3d) are stored as separate frequency identities and can be filtered
+and opened in the archive chart. This does not change the canonical daily strategy/backtest store.
+Focused backend/frontend checks passed; full gate and live browser acceptance remain pending.
+
+**2026-10-02 — Crypto archive and market-discovery verification.**
+Verified archive segments with identical native identity are now charted as a single series. Identical
+overlap bars at file boundaries are coalesced; conflicting OHLCV values fail closed. The mounted
+Expansion catalog exposes 102 chart series, including 50 multi-segment series; a live AAVEUSDT 1h
+chart opened 41,113 unique bars across 43 verified segments (2022-01 through 2026-09). A fresh
+keyless Binance spot listing catalog was acquired on 2026-10-01 and now marks current results fresh.
+Backend full tests passed (4,845; 93.17% coverage); the later catalog-ranking correction passed its
+focused regression test. The full frontend component gate passed, including the 256-scenario
+Playwright matrix. Backend and frontend component receipts were produced on separate trees because
+API types/static assets were synchronized between checks, so no aggregate full-gate stamp is claimed.
+
+
+**2026-10-02 — Agentic research capability program (planning only).**
+The [proposed program](superpowers/plans/2026-10-02-agentic-research-capability-program.md)
+defines autonomous loss/regime investigation, bounded chart-pattern search, typed evidence,
+selective specialist roles, information boundaries, and outcome/cost evaluations. It distinguishes
+current-root work from separate delivery at `73fb2a9`; integration must be reconciled first.
+Independent planning review sharpened the retrospective/predictive handoff, historical-context
+operator, minimal four-action demo, and initiative/ablation metrics. No runtime change, dependency
+installation or agent campaign was performed. Next: isolated integration inventory, minimum safe
+information boundary, then the three-case drawdown investigation demonstration.
+
+
+**2026-10-02 DefiLlama review correction and active-data retirement:** The first stablecoin
+capture used an incorrect USD supply unit label; parser v2 preserves native USD-pegged token
+balances, with no quote asset. That initial capture was revoked from active discovery and new
+snapshot/derived admission, preserving its canonical bytes and lineage. A fresh corrected capture
+`ba8213d45cbe2bf74575ee519839a4432005eee5449c08c15d83a9529c6bfd65` qualified.
+Seven unreferenced quarantined records were also retired after a locked local JSON/SQLite and
+manifest reference audit. Fifty-two referenced quarantines and all five warnings remain; four
+warnings have retained references. Zero immutable artifacts were deleted. Audit receipt:
+`output/data-hygiene/2026-10-02-retirement-applied-audit.json` (sha256
+`aa8cae59a5e73daecda4ba28ef50460eed5a8d4f46b9d8fa9ccebaa6c45972fb`).
+Atomic hash-bound retirement markers distinguish archive integrity from new admission eligibility.
+Current yield-pool search verifies selected catalog and raw lineage before returning bounded
+results; browser testing confirms exact UUID selection and native acquisition cadence. Naive
+history timestamps are rejected, UUID case is canonicalized, and a future-download bias guard
+rejects retroactive availability. Focused tests, typing and independent review passed; the final
+aggregate gate is pending at this delivery-record update. Full archive-wide byte integrity remains
+unverified; the selected live acquisitions and all 64 flagged candidates were individually verified.
+
+
+**2026-10-02 Unified crypto asset picker:** Main context and Market Watch selectors now combine
+canonical symbols with read-only external-drive chart discovery. The current local inventory
+contains 50 coins, 52 grouped pairs and 102 archive series, all represented in the selection model.
+BTC-USD/BTC/USD share a display row; exact feeds, quote currencies, native contracts, intervals
+and manifests remain distinct. No source bytes were deleted or merged. Archive selection opens
+Price from any task with explicit chart identity, preserving canonical strategy context; canonical,
+run, project and profile transitions clear that identity. Failed archive reads never substitute
+canonical candles. Non-price families remain reachable via the typed crypto data inventory link.
+Independent review corrections cover manifest labels, chart heading, supported listbox semantics
+and Escape focus restoration. Focused model/browser checks and live inventory grouping verified
+the behavior; final canonical aggregate gate is pending at this record update.
+
+**2026-10-03 reference quant workstation:** Classic menus and one active-panel toolbar now expose
+existing workflow routes through View/Search, with document tabs/Toolbox below the analytical area.
+ChartWorkspace adds validated per-profile independent sources, five layouts, pointer/keyboard
+splitters, four-panel presets, individual maximize/Escape and local UTC range/cursor linking.
+Lightweight Charts instances persist across options, evidence, selection and composition changes;
+recorded line/area plots, scientific SVG/table projections and static figure exports reuse existing
+APIs. No backend endpoint, estimator or authority changes were made. Independent review corrections
+include source isolation, hidden document retention and asynchronous range application. Frontend
+unit coverage: 340 tests, 94.79% lines. Four 25k-bar panels and existing latency/performance budgets
+passed; 54 final focused viewport/accessibility regressions passed after the minimum-size report
+scroll region gained keyboard focus. Live read-only XRP run 5ca68199f7241db4 showed zero frozen
+price bars with snapshot_unavailable, 2,808 equity points and backend rolling window 126; its other
+three recorded panels remained usable. Aggregate acceptance is represented only by the current
+exact-tree full-gate receipt. See the [delivery report](operations/2026-10-03-reference-quant-workstation.md)
+for architecture, review findings, checks and limitations.
+
+
+**2026-10-03 scientific workstation correction:** Owner retained the classic top bar but corrected the renderer direction: Qbot's actual Bokeh report and Matplotlib integration are scientific references, beyond panel composition. BokehJS now defaults for market observations, recorded series, histograms and QQ plots; optional Lightweight preserves existing market features. The research report preset combines equity, drawdown, diagnostics and genuine backend figures. Visible project selection supports no-project browsing and clears dependent evidence identity while retaining market/archive views. Native-hourly discovery opens an exact venue/market chooser. No backend endpoint, statistical calculation, artifact or domain authority change. Verification is determined by the current exact-tree aggregate receipt; see the [correction report](operations/2026-10-03-scientific-research-workstation.md).
+
+**2026-10-04 workstation performance continuation:** Scientific cursor overlays and a frame-budgeted resize queue preserve real series and chart lifetime; market resizing coalesces while retaining the latest logical range. Revised large-series checks require an actual changed-size settled redraw within the original timing limits. All frontend steps passed; a documentation edit invalidated that component receipt. Current aggregate acceptance still requires the exact-tree canonical full receipt. See the correction report for the methodology and evidence.
+
+The following canonical run passed backend and 302 browser tests but failed the scientific p99 limit (35.6 > 34 ms). Two paint frames between relayouts and a correctly settled preflight baseline now pass focused timing checks and 21 viewport regressions; independent scoped review approves them. Current exact-tree full receipt remains mandatory.
+
+### 2026-10-04 — Chart exploration and readability
+
+Scientific charts now expose direct UTC windows, full-returned coverage/null/extrema summaries and expandable native OHLCV cursor data. Recorded tables have shared exact CSV/page counts; sampling is readable while raw provenance remains. Friendly panel/layout labels preserve enums and empty charts guide source selection without a project. No statistical/backend/data/authority changes. Review caught and tests reproduced zero-width date/singleton ranges; fixed with positive-span guards. Focused 359-unit coverage passed; browser/snapshot verification and exact-tree review are recorded in [delivery report](operations/2026-10-04-chart-exploration-usability.md). Intermediate scientific/market performance failures remain explicit there. Current frozen-tree canonical full receipt governs aggregate acceptance; historical passes never authorize changed source.
+
+The first chart-exploration canonical tree (`2be915e…`) passed backend and 311 browser tests but failed the scientific slow-frame allowance by one frame; no aggregate receipt. Cursor updates now reuse the existing text node and avoid redundant tooltip/closed-disclosure DOM work. Both unchanged focused performance tests pass, including actual resize settlement. Full acceptance still requires the subsequent frozen-tree canonical receipt; boundary timing headroom remains limited.
+
+The second chart-exploration canonical run passed backend and 311 browser tests but missed optional market p99 (36.1 > 34 ms). Both renderers now share cancellable staggered resizing, and linked ranges deliver one latest-value peer per frame while cursors stay together. Unchanged focused performance passed both p99 at 26.3 ms with real changed/settled canvases; independent scoped review approves. Historical failures and range-convergence latency remain in the delivery report. Current exact-tree full receipt remains mandatory.
+
+The third frozen chart-exploration full run passed backend and 311 browser tests but scientific p99 missed by 1 ms (35 > 34). Axis dispatch now coordinates resizing and linked ranges; cursor transforms avoid redundant geometry writes. Native painting may still overlap. Acceptance remains dependent on the current exact-tree full receipt; failures are retained in the delivery report.
+
+**2026-10-05 — Aggregate acceptance recorded for the crypto terminal tree.**
+The canonical `gate.py full` passed all six components on the frozen shared tree (stamp tree
+`54b7f96e5837f47d…`, HEAD `e54aa7a`, 2026-10-04 13:46 UTC, 969 s). That pass supersedes the
+"aggregate receipt pending" and "full gate blocked" statements in the 2026-09-30 through 2026-10-04
+records above, which remain as history. The 198-error ruff blocker was the benchmark session's
+scratch script; it and the benchmark PDFs are archived outside the repository and `tmp/` is now
+ignored. The DefiLlama retirement-audit receipts under `output/data-hygiene/` are committed so the
+sha256 citation above resolves in the repository. Five July research files deleted without record
+(`research/*mizerxbt_eth*`) are restored. ADR numbering is corrected before integration: published
+ADR-0036 belongs to the DefiLlama family on origin/main, agent-neutral engineering becomes ADR-0037
+and local confirmation/terminal archive charts becomes ADR-0038; every reference and the Atlas
+were regenerated. Re-verification on 2026-10-05: pytest 4,879 passed, vitest 361 passed, ruff,
+format, 13/13 import contracts and semgrep clean. Full archive-wide byte integrity remains an
+unclaimed separate inventory. Reconciliation with origin/main follows under
+[the clean-and-reconcile plan](superpowers/plans/2026-10-05-clean-reconcile-main.md).
+
+Performance budgets became an opt-in lane by owner decision on 2026-10-05. Two consecutive frozen-tree
+gate runs each failed exactly one different frame-timing spec by a small margin (25k-bar median frame
+18.4 ms against 18; four scientific panels p99 39 ms against 34) while all other 311 browser tests
+passed. The four `@perf-budget` specs now run only with `ALPHA_PERF_BUDGETS=1`; their thresholds are
+unchanged, and the gate and CI keep every functional browser journey.

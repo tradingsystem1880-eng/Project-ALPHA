@@ -2,8 +2,7 @@
 
 Authority: `docs/governance/capability-authority-matrix.md`.
 
-Private, single-owner, local research platform. Python 3.12; uv workspace.
-No distribution, hosting or multi-user scope.
+Private single-owner research platform: validate edge after costs. Python 3.12; uv. No hosting or distribution.
 
 ## Rules (path-scoped)
 
@@ -36,16 +35,17 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
   Polars is default; pandas only at sanctioned vendor edges. Keep strict typing.
 - Runs, snapshots, receipts and admitted evidence are immutable and hash-bound. Preserve historical
   readers/migrations. Seeds and execution fingerprints are deterministic; D0/D1 protocol seeds
-  are frozen, not settings-derived. Reverify admitted evidence on reads.
+  are frozen, not settings-derived. Reverify reads; retirement preserves bytes.
 - Research precedes strategy. D1 stays in discovery; owner-approved D2 is one-shot. Promotion
   requires verified evidence and owner decision. Screening and Monte Carlo path risk are not proof of edge.
-- Application owner-presence, paper opt-ins, provider/venue/unit boundaries and no-live-capital
+- Explicit local owner confirmation (ADR-0038), paper opt-ins, provider/venue/unit boundaries and no-live-capital
   routing remain mandatory. UI/MCP output, account state and engineering checks confer no authority.
   Existing owner-auth actions remain the bounded path; no inferred approvals.
 - Tests under `tests/holdout/` may run, but agents never read or edit them. Proposed tests go in
   `tests/holdout_seed/`. No owner data, credentials or hidden tests in discovery indexes.
-- REST/MCP/Trader Terminal surfaces remain frozen; new research ships CLI-first. No new surface,
-  paper, broker, order or promotion authority follows from this refactor.
+- Research ships CLI-first. The [edge workspace](docs/superpowers/plans/2026-09-30-edge-workspace.md) connects
+  charts, verified conditions and bounded advisory Codex. Drafts confer no authority. Grey terminal
+  docks, verified archive charts and local click confirmation follow ADR-0038.
 
 ## Commands
 
@@ -61,7 +61,7 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
 Shared checks, discovery, V2 plans and frozen-input screening are implemented. Install thin Git
 guards in new checkouts. Claude adapters provide orientation and native-boundary safety only.
 Require a fresh full stamp; never bypass checks.
-[ADR-0036](docs/adr/0036-agent-neutral-research-engineering.md) separates engineering
+[ADR-0037](docs/adr/0037-agent-neutral-research-engineering.md) separates engineering
 ceremony changes from unchanged application authority.
 [Harness operations](docs/operations/claude-code-harness.md): checks, screening, intake, exceptions.
 
@@ -69,10 +69,12 @@ Benchmark: [Codex-only; preserve history; enforce isolation](tools/alpha-eval/RE
 
 ## Sources of current truth
 
-Before governed changes, read [architecture](docs/ARCHITECTURE.md), the [ADR index](docs/adr/README.md),
-applicable rules and [build record](docs/BUILD-STATUS.md). Contracts:
-[research platform](docs/operations/research-platform-contracts.md). Prefer source and fresh tests
-to historical claims. Provider acceptance requires receipts; missing or failed live evidence is not a pass.
+Before governed work read [architecture](docs/ARCHITECTURE.md), the [ADR index](docs/adr/README.md),
+rules and [build record](docs/BUILD-STATUS.md). Contracts:
+[research platform](docs/operations/research-platform-contracts.md). Use source and fresh tests. Provider acceptance requires receipts; absent/failed live evidence cannot pass.
 
 Update this manual and append `docs/BUILD-STATUS.md` when behavior changes.
-Preserve user work; separate local checks from full acceptance.
+Preserve user work; local checks are not aggregate acceptance.
+
+UI: [terminal guide](apps/alpha-web/frontend/README.md): Bokeh research, optional market charts,
+UTC windows, exact exports and project-free browsing.

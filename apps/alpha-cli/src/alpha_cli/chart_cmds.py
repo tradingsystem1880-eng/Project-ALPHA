@@ -274,6 +274,7 @@ def overlays(
     ),
     end: str = typer.Option(None, help="as-of cutoff YYYY-MM-DD (inclusive)"),
     snapshot: str = typer.Option(None, help="snapshot id for provenance"),
+    manifest_id: str = typer.Option(None, help="exact qualified bulk chart manifest"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Indicator series and pattern annotations over the PIT candle window of SYMBOL.
@@ -291,18 +292,29 @@ def overlays(
     try:
         specs = [parse_indicator(s) for s in indicator]
         names = [parse_pattern(s) for s in pattern]
-        bars, snap = load_bars(
-            symbol, data_dir=AlphaSettings().data_dir, snapshot_id=snapshot, as_of=when
-        )
+        provenance = None
+        if manifest_id:
+            from alpha_cli._chart_data import load_chart_dataset
+            from alpha_cli.crypto_data_cmds import _bulk_store
+
+            if snapshot:
+                raise DataError("choose a canonical snapshot or a bulk manifest, not both")
+            bars, provenance = load_chart_dataset(
+                _bulk_store(), manifest_id, symbol=symbol, as_of=when
+            )
+            snap = None
+        else:
+            bars, snap = load_bars(
+                symbol, data_dir=AlphaSettings().data_dir, snapshot_id=snapshot, as_of=when
+            )
         body = compute_overlays(bars, specs, names)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     payload = {
         "symbol": symbol,
         "snapshot_id": snap,
-        "provenance": _candle_provenance(
-            symbol, snapshot_id=snap, knowledge_cutoff=when or bars[-1].ts
-        ),
+        "provenance": provenance
+        or _candle_provenance(symbol, snapshot_id=snap, knowledge_cutoff=when or bars[-1].ts),
         "authority": "none",
         **body,
     }

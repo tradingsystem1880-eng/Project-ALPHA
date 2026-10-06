@@ -129,7 +129,7 @@ export function runContextForProject(projectId: string | null): RunContextV1 {
     : { schema_version: 1, kind: 'standalone_sandbox' }
 }
 
-async function getJSON<T>(url: string): Promise<T> {
+export async function getJSON<T>(url: string): Promise<T> {
   const res = await fetch(url)
   if (!res.ok) throw await responseError(res)
   return (await res.json()) as T
@@ -210,10 +210,13 @@ export interface OwnerCredentialOptions {
 
 export type OwnerActionChallengeRequest = Omit<
   Schema['OwnerActionChallengeRequest'],
-  'action_type'
+  'action_type' | 'authorization_method'
 > & {
+  authorization_method?: 'webauthn' | 'local_confirmation'
   action_type: OwnerActionType
 }
+
+export type ArchiveChartDataset = Schema['ArchiveChartDataset']
 
 export interface OwnerActionResult {
   authorization: Record<string, unknown>
@@ -254,7 +257,7 @@ export interface LiteratureAcquisitionResult {
   acquisition: Record<string, unknown>
 }
 
-async function postJSON<T>(url: string, body: unknown): Promise<T> {
+export async function postJSON<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -280,6 +283,8 @@ export const api = {
   ownerActionChallenge: (
     body: OwnerActionChallengeRequest,
   ): Promise<OwnerCredentialOptions> => postJSON('/api/owner-auth/actions/challenge', body),
+  ownerLocalChallenge: (body: OwnerActionChallengeRequest): Promise<{ challenge_id: string; confirmation_token: string; binding: Record<string, unknown> }> => postJSON('/api/owner-auth/actions/challenge', { ...body, authorization_method: 'local_confirmation' }),
+  ownerLocalPerform: (challengeId: string, confirmationToken: string, payload: Record<string, unknown>): Promise<OwnerActionResult> => postJSON('/api/owner-auth/actions/perform', { challenge_id: challengeId, confirmation_token: confirmationToken, payload }),
   ownerActionPerform: (
     challengeId: string,
     credential: Record<string, unknown>,
@@ -289,6 +294,15 @@ export const api = {
     credential,
     payload,
   }),
+  chartDatasets: (): Promise<Schema['ArchiveChartDatasets']> => getJSON('/api/chart-datasets'),
+  cryptoYieldPools: (query = '', limit = 50): Promise<Schema['CryptoYieldPoolCatalogResponse']> => {
+    const params = new URLSearchParams({ query, limit: String(limit) })
+    return getJSON(`/api/crypto-data/yield-pools?${params.toString()}`)
+  },
+  cryptoMarketCatalog: (query = '', limit = 25): Promise<Schema['CryptoMarketCatalogResponse']> => {
+    const params = new URLSearchParams({ query, limit: String(limit) })
+    return getJSON(`/api/crypto-data/market-catalog?${params.toString()}`)
+  },
   runs: (query = ''): Promise<RunList> => getJSON(`/api/runs${query}`),
   run: (id: string): Promise<RunDetail> => getImmutableJSON(`/api/runs/${id}`),
   chartBundle(id: string, limit = 2_000, start?: string | null, end?: string | null): Promise<ChartBundle> {
@@ -326,7 +340,7 @@ export const api = {
     ),
   tearsheetUrl: (id: string): string => `/api/runs/${id}/tearsheet`,
   candles: (symbol: string, query = ''): Promise<Candles> =>
-    getJSON(`/api/candles/${encodeURIComponent(symbol)}${query}`),
+    (new URLSearchParams(query).has('manifest_id') || new URLSearchParams(query).has('snapshot') ? getImmutableJSON<Candles> : getJSON<Candles>)(`/api/candles/${encodeURIComponent(symbol)}${query}`),
   overlays: (symbol: string, query = ''): Promise<ChartOverlays> =>
     getJSON(`/api/overlays/${encodeURIComponent(symbol)}${query}`),
   rules: (): Promise<RuleList> => getJSON('/api/rules'),

@@ -41,7 +41,8 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0033](0033-governed-crypto-crowding-research-and-sandbox-basis.md) | Govern crypto crowding research separately from sandbox basis development | Accepted | 2026-08-15 |
 | [0034](0034-agent-operating-system-v2.md) | Agent operating system v2 — owner-token authorization, oracle test tiers, second-model review seam | Accepted | 2026-08-19 |
 | [0035](0035-generic-study-composition-and-external-capability-adapters.md) | Govern generic study composition as a projection layer | Accepted | 2026-08-21 |
-| [0036](0036-agent-neutral-research-engineering.md) | Agent-neutral engineering, shared component gates and reproducible research | Accepted; implementation in progress | 2026-09-16 |
+| [0037](0037-agent-neutral-research-engineering.md) | Agent-neutral engineering, shared component gates and reproducible research | Accepted; implementation in progress | 2026-09-16 |
+| [0038](0038-local-confirmation-and-terminal-archive-charts.md) | Local action confirmation and terminal archive charts | Accepted | 2026-09-30 |
 
 ## Conventions
 

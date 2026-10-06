@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import subprocess
 import sys
 import threading
 import time
@@ -688,6 +690,8 @@ def test_silent_ml_child_heartbeats_and_heartbeat_failure_aborts(
         calls.append(args)
         if args[1:4] == ["job-event", job_id, "heartbeat"]:
             raise RuntimeError("heartbeat CLI unavailable")
+        if args[1] == "job-cancel-requested":
+            return {"status": "running", "cancel_requested": False}
         return {"status": "ok"}
 
     monkeypatch.setattr(_ml, "_journal", failing_journal)
@@ -749,11 +753,13 @@ def test_silent_ml_child_honours_audited_cancellation_and_releases_capacity(
     worker.start()
     # An in-flight heartbeat can precede the request: allow it, the observing
     # heartbeat, and the terminal journal call, each with its unchanged RPC limit.
-    # Cleanup permits TERM, KILL, and leader reap, each with the existing grace.
+    # Cleanup permits TERM, KILL, and leader reap, each with the existing grace;
+    # uncertain terminal writes allow read, one retry, and a verifying read.
     completion_budget = (
         3 * _ml._DURABLE_HEARTBEAT_TIMEOUT_S
         + 3 * DEFAULT_TERMINATE_GRACE_SECONDS
         + _ml._DURABLE_HEARTBEAT_INTERVAL_S
+        + 3 * _ml._DURABLE_TERMINAL_RECOVERY_TIMEOUT_S
     )
     try:
         assert heartbeat_started.wait(timeout=5), "ML lease never started"
@@ -779,6 +785,199 @@ def test_silent_ml_child_honours_audited_cancellation_and_releases_capacity(
     terminal_sequence = row["last_sequence"]
     time.sleep(0.1)
     assert store.get_job(job_id)["last_sequence"] == terminal_sequence
+
+
+@pytest.mark.parametrize("cancel_requested", [True, False])
+def test_lost_heartbeat_response_reconciles_audited_cancellation_after_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cancel_requested: bool
+) -> None:
+    job_id = "77777777-7777-4777-8777-777777777777"
+    store = ControlStore(tmp_path)
+    store.create_job(kind="ml_train", request={"test": "lost heartbeat"}, job_id=job_id)
+    store.set_job_status(job_id, "running")
+    children: list[subprocess.Popen[str]] = []
+    popen = subprocess.Popen
+
+    def spawn(*args: Any, **kwargs: Any) -> subprocess.Popen[str]:
+        child = popen(*args, **kwargs)
+        children.append(child)
+        return child
+
+    def lost_response(job_id: str, *, data_dir: Path) -> bool:
+        del data_dir
+        if cancel_requested:
+            store.request_job_cancellation(job_id, actor="owner", reason="stop test worker")
+        raise _ml.MlError("heartbeat response timed out after owner request")
+
+    journal = _ml._journal
+
+    def after_cleanup(args: list[str], **kwargs: Any) -> dict[str, Any]:
+        # Recovery must never prolong a live child's expired lease.
+        assert children[0].poll() is not None
+        with pytest.raises(ProcessLookupError):
+            os.killpg(children[0].pid, 0)
+        return journal(args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", spawn)
+    monkeypatch.setattr(_ml, "_renew_job_heartbeat", lost_response)
+    monkeypatch.setattr(_ml, "_journal", after_cleanup)
+    monkeypatch.setattr(_ml, "_DURABLE_HEARTBEAT_INTERVAL_S", 0.01)
+    monkeypatch.setattr(
+        _ml,
+        "_command",
+        lambda args: [sys.executable, "-c", "import threading; threading.Event().wait()"],
+    )
+    _ml._execute_job(job_id, "train", ["ml", "train"], data_dir=tmp_path, timeout_seconds=10)
+
+    row = store.get_job(job_id)
+    expected = "cancelled" if cancel_requested else "failed"
+    assert row["status"] == expected
+    transitions = [
+        event["payload"].get("to")
+        for event in cast(list[dict[str, Any]], row["events"])
+        if event["event_type"] == "status"
+    ]
+    assert transitions == ["running", expected]
+    assert store.heavyweight_job_capacity()["active_count"] == 0
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        None,
+        {"status": "running"},
+        {"status": "running", "cancel_requested": "false"},
+        {"cancel_requested": 1},
+    ],
+)
+def test_failed_lease_keeps_capacity_reserved_when_cancellation_state_is_uncertain(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    row: dict[str, object] | None,
+) -> None:
+    calls: list[list[str]] = []
+
+    def journal(args: list[str], **kwargs: object) -> dict[str, object]:
+        del kwargs
+        calls.append(args)
+        if row is None:
+            raise RuntimeError("journal unavailable")
+        return row
+
+    monkeypatch.setattr(_ml, "_journal", journal)
+    with pytest.raises(RuntimeError):
+        _ml._finish_failed_lease_journal("job-1", "heartbeat unavailable", data_dir=tmp_path)
+    assert calls == [["project", "job-cancel-requested", "job-1", "--json"]]
+    assert "terminal state remains unverified" in caplog.text
+
+
+@pytest.mark.parametrize("terminal", ["cancelled", "failed"])
+@pytest.mark.parametrize(
+    "write_failure",
+    [
+        "before_commit",
+        "after_commit",
+        "retry_after_commit",
+        "persistent",
+        "conflict",
+        "read_unavailable",
+    ],
+)
+def test_terminal_journal_recovers_uncertain_writes_without_duplicate_transitions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    terminal: str,
+    write_failure: str,
+) -> None:
+    job_id = "99999999-9999-4999-8999-999999999999"
+    status = "running"
+    writes = 0
+    reads = 0
+
+    def journal(args: list[str], **kwargs: object) -> dict[str, object]:
+        nonlocal status, writes, reads
+        del kwargs
+        if args[1] == "job-event":
+            if terminal == "failed":
+                raise RuntimeError("heartbeat unavailable")
+            return {"cancel_requested": True}
+        if args[1] in {"job-show", "job-cancel-requested"}:
+            reads += 1
+            if write_failure == "read_unavailable":
+                raise RuntimeError("journal read unavailable")
+            return {"job_id": job_id, "status": status, "cancel_requested": terminal == "cancelled"}
+        assert args[1:4] == ["job-status", job_id, terminal]
+        assert status == "running", "terminal transitions must never be duplicated"
+        writes += 1
+        if writes == 1 or write_failure == "persistent":
+            if write_failure == "after_commit":
+                status = terminal
+            if write_failure == "conflict":
+                status = "succeeded"
+            raise RuntimeError("terminal RPC timed out")
+        status = terminal
+        if write_failure == "retry_after_commit":
+            raise RuntimeError("retry committed before timeout")
+        return {"job_id": job_id, "status": status}
+
+    monkeypatch.setattr(_ml, "_journal", journal)
+    monkeypatch.setattr(_ml, "_DURABLE_HEARTBEAT_INTERVAL_S", 0.01)
+    monkeypatch.setattr(
+        _ml,
+        "_command",
+        lambda args: [sys.executable, "-c", "import threading; threading.Event().wait()"],
+    )
+    _ml._execute_job(job_id, "train", ["ml", "train"], data_dir=tmp_path, timeout_seconds=2)
+    assert reads >= 1
+    expected_writes = 1 if write_failure in {"after_commit", "conflict", "read_unavailable"} else 2
+    if terminal == "failed" and write_failure == "read_unavailable":
+        expected_writes = 0  # Do not guess failure vs cancellation when the read is unavailable.
+    assert writes == expected_writes
+    if write_failure in {"persistent", "read_unavailable"}:
+        assert status == "running"  # Capacity stays reserved until persistence is verified.
+        assert "terminal state remains unverified" in caplog.text
+    elif write_failure == "conflict":
+        assert status == "succeeded"  # Never replace another recorded terminal outcome.
+        assert "terminal state remains unverified" in caplog.text
+    else:
+        assert status == terminal
+
+
+@pytest.mark.parametrize("read_duration", [10.0, 15.0])
+def test_failed_lease_shares_existing_terminal_recovery_budget(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, read_duration: float
+) -> None:
+    clock = [100.0]
+    calls: list[tuple[str, float]] = []
+
+    def journal(args: list[str], **kwargs: Any) -> dict[str, object]:
+        timeout = cast(float, kwargs["timeout_seconds"])
+        calls.append((args[1], timeout))
+        if args[1] == "job-cancel-requested":
+            clock[0] += timeout
+            return {"cancel_requested": True}
+        if args[1] == "job-show":
+            clock[0] += min(read_duration, timeout)
+            return {"status": "running"}
+        clock[0] += timeout
+        raise RuntimeError("terminal write unavailable")
+
+    monkeypatch.setattr(_ml, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(_ml, "_journal", journal)
+    with pytest.raises(_ml.MlError):
+        _ml._finish_failed_lease_journal("job-1", "heartbeat unavailable", data_dir=tmp_path)
+    assert clock[0] == 150.0
+    assert calls[:4] == [
+        ("job-cancel-requested", 15.0),
+        ("job-status", 5.0),
+        ("job-show", 15.0),
+        ("job-status", 15.0),
+    ]
+    # A partially available final read gets only the remaining budget; with no
+    # remaining time, no extra CLI process is launched at all.
+    assert calls[4:] == ([("job-show", 5.0)] if read_duration == 10.0 else [])
 
 
 def test_input_generation_uses_cli_owned_snapshot_producer_and_opaque_journal(

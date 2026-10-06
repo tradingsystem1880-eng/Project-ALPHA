@@ -7,11 +7,16 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { RunListItem } from '../api/types'
 import { setLinked } from '../context/linked'
+import type { functionEntries } from '../shell/terminalModel'
+import type { PageId } from '../shell/workflowModel'
+import { symbolFitsProfile } from '../shell/profiles'
 import type { WindowId } from '../shell/profiles'
 import { getSettings, setSettings } from '../state/settings'
 import { shortId } from '../util/format'
 
 interface Props {
+  functions: ReturnType<typeof functionEntries>
+  onNavigate: (page: PageId, pane: string) => void
   open: boolean
   onClose: () => void
   documents: readonly { id: WindowId; title: string }[]
@@ -28,25 +33,37 @@ const PLACEHOLDER: Record<Page, string> = {
   runs: 'Open run…',
 }
 
-export function CommandPalette({ open, onClose, documents, onOpenDocument, onOpenRun, onNewIdea }: Props) {
+export function CommandPalette({ functions, onNavigate, open, onClose, documents, onOpenDocument, onOpenRun, onNewIdea }: Props) {
+  const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const profile = getSettings().profile
   const [page, setPage] = useState<Page>('root')
+  const [search, setSearch] = useState('')
+  const changePage = (next: Page) => { setSearch(''); setPage(next) }
   const [symbols, setSymbols] = useState<string[] | null>(null)
   const [runs, setRuns] = useState<RunListItem[] | null>(null)
 
   useEffect(() => {
-    if (!open) setPage('root')
+    if (!open) { setSearch(''); setPage('root'); setSymbols(null); setRuns(null); setError(null) }
   }, [open])
   useEffect(() => {
-    if (page === 'symbols' && symbols === null)
-      api.symbols().then((s) => setSymbols(s.symbols)).catch(() => setSymbols([]))
-    if (page === 'runs' && runs === null)
-      api.runs('?limit=30').then((r) => setRuns(r.items)).catch(() => setRuns([]))
-  }, [page, symbols, runs])
+    if (!open || page === 'root') return
+    let active = true
+    setError(null)
+    if (page === 'symbols') {
+      setSymbols(null)
+      api.symbols().then(result => { if (active) setSymbols(result.symbols.filter(symbol => symbolFitsProfile(profile, symbol))) }).catch(cause => { if (active) setError(String(cause)) })
+    } else {
+      setRuns(null)
+      api.runs('?limit=30').then(result => { if (active) setRuns(result.items) }).catch(cause => { if (active) setError(String(cause)) })
+    }
+    return () => { active = false }
+  }, [open, page, profile, attempt])
 
   if (!open) return null
 
   const close = () => {
-    setPage('root')
+    changePage('root')
     onClose()
   }
 
@@ -61,14 +78,14 @@ export function CommandPalette({ open, onClose, documents, onOpenDocument, onOpe
               const target = e.target as HTMLInputElement
               if (!target.value) {
                 e.preventDefault()
-                setPage('root')
+                changePage('root')
               }
             }
           }}
         >
-          <Command.Input placeholder={PLACEHOLDER[page]} autoFocus />
+          <Command.Input value={search} onValueChange={setSearch} placeholder={PLACEHOLDER[page]} autoFocus />
           <Command.List>
-            <Command.Empty>No matches.</Command.Empty>
+            {error ? <div role="alert">{error}<button className="btn" onClick={() => setAttempt(value => value + 1)}>Retry search</button></div> : page === 'symbols' && symbols === null || page === 'runs' && runs === null ? <p role="status">Loading {page}…</p> : <Command.Empty>No matches.</Command.Empty>}
 
             {page === 'root' ? (
               <>
@@ -82,10 +99,10 @@ export function CommandPalette({ open, onClose, documents, onOpenDocument, onOpe
                   >
                     New Idea / New Research <span className="hint">capture · no rules asked</span>
                   </Command.Item>
-                  <Command.Item value="set symbol" onSelect={() => setPage('symbols')}>
+                  <Command.Item value="set symbol" onSelect={() => changePage('symbols')}>
                     Set symbol… <span className="hint">linked context</span>
                   </Command.Item>
-                  <Command.Item value="open run" onSelect={() => setPage('runs')}>
+                  <Command.Item value="open run" onSelect={() => changePage('runs')}>
                     Open run… <span className="hint">by id·recent</span>
                   </Command.Item>
                   <Command.Item
@@ -110,6 +127,11 @@ export function CommandPalette({ open, onClose, documents, onOpenDocument, onOpe
                   >
                     Toggle explanations <span className="hint">narrative ↔ terse</span>
                   </Command.Item>
+                </Command.Group>
+                <Command.Group heading="Functions">
+                  {functions.map(item => <Command.Item key={item.code} value={`${item.code} ${item.title} ${item.section}`} onSelect={() => { onNavigate(item.page, item.pane); close() }}>
+                    <span>{item.title}</span><span className="hint">{item.code} · {item.section}</span>
+                  </Command.Item>)}
                 </Command.Group>
                 <Command.Group heading="Open document">
                   {documents.map((item) => (

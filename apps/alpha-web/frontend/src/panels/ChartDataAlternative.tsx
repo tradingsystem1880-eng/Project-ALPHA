@@ -19,11 +19,12 @@ function downloadName(runId: string | null, symbol: string): string {
 }
 
 export function ChartDataAlternative({
-  bars,
+  bars, expanded = false,
   truncated,
   runId,
   symbol,
 }: {
+  expanded?: boolean
   bars: Candle[]
   truncated: boolean
   runId: string | null
@@ -48,7 +49,7 @@ export function ChartDataAlternative({
   }
 
   return (
-    <details className="chart-data-alternative">
+    <details className="chart-data-alternative" open={expanded || undefined}>
       <summary>OHLCV table and exact CSV · UTC · native quote / volume units</summary>
       <div className="chart-data-toolbar mono">
         <button

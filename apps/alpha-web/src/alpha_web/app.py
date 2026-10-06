@@ -29,6 +29,7 @@ from starlette.responses import Response
 
 from alpha_core import AlphaError
 from alpha_web.api import activity as activity_api
+from alpha_web.api import assistant as assistant_api
 from alpha_web.api import candles as candles_api
 from alpha_web.api import catalog as catalog_api
 from alpha_web.api import control as control_api
@@ -112,6 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(runs_api.router)
     app.include_router(jobs_api.router)
     app.include_router(activity_api.router)
+    app.include_router(assistant_api.router)
     app.include_router(catalog_api.router)
     app.include_router(control_api.router)
     app.include_router(crypto_data_api.router)

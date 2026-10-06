@@ -4,8 +4,9 @@
 // The second tab keeps the governed Research Data explorer (Crypto Data Center + research dataset
 // bindings) intact. Every read is a CLI projection; nothing here holds authority.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { AssetSelect } from '../components/AssetSelect'
 import { api } from '../api/client'
 import { useAreaVersion } from '../state/activity'
 import type { CryptoCoverage, CryptoStorage, DataSnapshots, DataSourceStatus, ProviderDefinition } from '../api/types'
@@ -15,6 +16,7 @@ import { Placeholder } from '../components/Placeholder'
 import { setLinked, useLinked } from '../context/linked'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { dockOf } from '../shell/documents'
+import { profile as marketProfile, symbolFitsProfile } from '../shell/profiles'
 import type { Profile } from '../state/settings'
 import { useSettings } from '../state/settings'
 import { buildDataPullArgs, historicalProviders, providerOptionDefault } from './controlPlane'
@@ -23,7 +25,6 @@ import {
   listingHint,
   pullDefaults,
   retryStartFrom,
-  starterSymbols,
   storageRow,
   validateDates,
 } from './dataManagerModel'
@@ -103,22 +104,33 @@ function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' 
   const [retryFrom, setRetryFrom] = useState<string | null>(null)
   const [assets, setAssets] = useState<Record<string, string> | null>(null)
 
+  const loadGeneration = useRef(0)
   const load = useCallback(() => {
+    const generation = ++loadGeneration.current
     setError(null)
-    void Promise.all([api.symbols(), api.providers(), api.cryptoStorage(), api.cryptoCoverage()])
-      .then(([stored, catalog, storageStatus, datasets]) => {
-        setSymbols(stored.symbols)
-        setProviders(catalog)
-        setStorage(storageStatus)
-        setCoverage(datasets)
-        const available = historicalProviders(catalog)
-        setSource((current) => {
-          if (available.some((provider) => provider.id === current)) return current
-          return available[0]?.id ?? ''
-        })
-      })
-      .catch((reason: unknown) => setError(String(reason)))
+    const fail = (label: string, cause: unknown) => {
+      if (generation === loadGeneration.current) setError(previous => `${previous ? `${previous} · ` : ''}${label}: ${String(cause)}`)
+    }
+    void api.symbols().then(stored => {
+      if (generation === loadGeneration.current) setSymbols(stored.symbols)
+    }).catch(cause => fail('Asset inventory unavailable', cause))
+    void api.providers().then(catalog => {
+      if (generation !== loadGeneration.current) return
+      setProviders(catalog)
+      const available = historicalProviders(catalog)
+      setSource(current => available.some(provider => provider.id === current) ? current : available[0]?.id ?? '')
+    }).catch(cause => {
+      if (generation === loadGeneration.current) setProviders([])
+      fail('Provider catalogue unavailable', cause)
+    })
+    void api.cryptoStorage().then(value => {
+      if (generation === loadGeneration.current) setStorage(value)
+    }).catch(cause => fail('Bulk storage unavailable', cause))
+    void api.cryptoCoverage().then(value => {
+      if (generation === loadGeneration.current) setCoverage(value)
+    }).catch(cause => fail('Research coverage unavailable', cause))
   }, [])
+  useEffect(() => () => { loadGeneration.current += 1 }, [])
 
   const barsVersion = useAreaVersion('bars')
   useEffect(() => {
@@ -134,7 +146,7 @@ function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' 
     setRetryFrom(null)
   }, [defaults.symbol, defaults.source, defaults.exchange])
 
-  const availableProviders = historicalProviders(providers ?? [])
+  const availableProviders = historicalProviders(providers ?? []).filter(provider => marketProfile(profile).providers.includes(provider.id))
   const activeProvider = availableProviders.find((provider) => provider.id === source)
   const exchangeOption = activeProvider?.options.exchange
   const symbol = sym.trim()
@@ -203,25 +215,14 @@ function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' 
   const ssd = storageRow(storage)
   return (
     <div className="panel-body panel-pad de">
-      {error ? <div className="leak">⚠ {error}</div> : null}
+      {error ? <div className="leak" role="alert">{error} <button className="btn" onClick={load}>Retry data status</button></div> : null}
       {section === 'pull' ? (
         <>
       <div className="rd-head">Pull OHLC (backtest data)</div>
       <div className="lab-row">
         <label className="field-row">
           <span className="field-label">Symbol</span>
-          <input
-            id="data-manager-symbol"
-            className="field"
-            list="data-manager-symbols"
-            value={sym}
-            onChange={(e) => setSym(e.target.value)}
-          />
-          <datalist id="data-manager-symbols">
-            {[...new Set([...starterSymbols(profile), ...(symbols ?? [])])].map((candidate) => (
-              <option key={candidate} value={candidate} />
-            ))}
-          </datalist>
+          <AssetSelect id="data-manager-symbol" label="Download asset" value={sym} onChange={setSym} allowManual includeBinanceSpot={profile === 'crypto'} onListedSelect={() => { if (availableProviders.some(provider => provider.id === 'ccxt')) chooseSource('ccxt'); setExchange('binance') }} />
         </label>
         <label className="field-row">
           <span className="field-label">Source</span>
@@ -296,12 +297,12 @@ function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' 
 
       <div className="rd-head de-pull">Stored pairs</div>
       {symbols === null ? (
-        <Placeholder>loading…</Placeholder>
+        <Placeholder>{error ? 'Asset inventory unavailable — retry data status above.' : 'Loading stored assets…'}</Placeholder>
       ) : symbols.length === 0 ? (
         <div className="muted">No pairs stored yet — pull one above.</div>
       ) : (
         <div className="sym-chips">
-          {symbols.map((stored) => (
+          {symbols.filter(stored => symbolFitsProfile(profile, stored)).map((stored) => (
             <button key={stored} className="sym-chip" onClick={() => setLinked({ symbol: stored })}>
               {stored}
             </button>

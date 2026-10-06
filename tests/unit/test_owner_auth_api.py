@@ -182,7 +182,9 @@ def test_action_challenge_rejects_caller_actor_and_unknown_action() -> None:
         "reason": "reviewed",
         "payload": {"contract_id": CONTRACT_ID},
     }
-    with TestClient(create_app(), base_url="http://localhost:8801") as client:
+    with TestClient(
+        create_app(), base_url="http://localhost:8801", headers={"Origin": "http://localhost:8801"}
+    ) as client:
         actor = client.post("/api/owner-auth/actions/challenge", json={**base, "actor": "owner"})
         unknown = client.post(
             "/api/owner-auth/actions/challenge",
@@ -193,7 +195,9 @@ def test_action_challenge_rejects_caller_actor_and_unknown_action() -> None:
 
 
 def test_generic_jobs_cannot_reach_owner_auth_cli() -> None:
-    with TestClient(create_app(), base_url="http://localhost:8801") as client:
+    with TestClient(
+        create_app(), base_url="http://localhost:8801", headers={"Origin": "http://localhost:8801"}
+    ) as client:
         response = client.post(
             "/api/jobs",
             json={

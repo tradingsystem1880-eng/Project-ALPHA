@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { api } from '../api/client'
 import type {
   CryptoAcquisitionRequest,
   CryptoCapabilityItem,
@@ -94,7 +96,25 @@ export function CryptoAcquisitionView({
   onEstimate: () => void
   onAcquire: () => void
 }) {
+  const [poolQuery, setPoolQuery] = useState('')
+  const [pools, setPools] = useState<Awaited<ReturnType<typeof api.cryptoYieldPools>> | null>(null)
+  const [poolError, setPoolError] = useState<string | null>(null)
+  const [poolLoading, setPoolLoading] = useState(false)
+  useEffect(() => {
+    if (provider !== 'defillama' || family !== 'yield_history') return
+    let cancelled = false
+    setPoolLoading(true)
+    const timer = setTimeout(() => {
+      void api.cryptoYieldPools(poolQuery).then((result) => {
+        if (!cancelled) { setPools(result); setPoolError(null) }
+      }).catch((error: unknown) => {
+        if (!cancelled) { setPools(null); setPoolError(error instanceof Error ? error.message : String(error)) }
+      }).finally(() => { if (!cancelled) setPoolLoading(false) })
+    }, 250)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [family, provider, poolQuery])
   if (familyRows.length === 0) return null
+  const isDefi = provider === 'defillama'
   const showRange =
     (provider === 'coinmetrics' && family === 'onchain_metrics')
     || provider === 'ccxt:coinbase'
@@ -124,21 +144,32 @@ export function CryptoAcquisitionView({
       ) : null}
       <div className="crypto-form-grid">
         <label><span className="eyebrow">Dataset family</span><select className="field" value={family} onChange={(event) => onFamilyChange(event.target.value as CryptoFamily)}>{familyRows.map((row) => <option key={row.family} value={row.family}>{row.family.replaceAll('_', ' ')}</option>)}</select></label>
-        <label><span className="eyebrow">Instrument</span><input className="field mono" value={instrument} onChange={(event) => onInstrumentChange(event.target.value)} /></label>
-        <label><span className="eyebrow">Base asset</span><input className="field mono" value={base} onChange={(event) => onBaseChange(event.target.value.toUpperCase())} /></label>
+        {isDefi && family === 'yield_history' ? <>
+          <label><span className="eyebrow">Search stored pools</span><input className="field" value={poolQuery} maxLength={80} placeholder="Protocol, chain, symbol or UUID" onChange={(event) => setPoolQuery(event.target.value)} /></label>
+          <label><span className="eyebrow">Pool</span><select className="field" value={instrument} disabled={poolLoading || !pools?.items.length} onChange={(event) => onInstrumentChange(event.target.value)}>
+            <option value="">{poolLoading ? 'Loading verified pools…' : 'Select a pool'}</option>
+            {instrument && !pools?.items.some((pool) => pool.pool_id === instrument) ? <option value={instrument}>{instrument}</option> : null}
+            {pools?.items.map((pool) => <option key={pool.pool_id} value={pool.pool_id}>{pool.project} · {pool.chain} · {pool.symbol} · APY {pool.apy.toFixed(2)}%</option>)}
+          </select></label>
+        </> : null}
+        <label><span className="eyebrow">{family === 'protocol_tvl' ? 'Protocol slug' : family === 'stablecoin_supply' ? 'Stablecoin ID' : family === 'yield_history' ? 'Pool UUID' : 'Instrument'}</span><input className="field mono" value={instrument} onChange={(event) => onInstrumentChange(event.target.value)} /></label>
+        {!isDefi ? <><label><span className="eyebrow">Base asset</span><input className="field mono" value={base} onChange={(event) => onBaseChange(event.target.value.toUpperCase())} /></label>
         <label><span className="eyebrow">Quote asset</span><input className="field mono" value={quote} onChange={(event) => onQuoteChange(event.target.value.toUpperCase())} /></label>
-        <label><span className="eyebrow">Market</span><select className="field" value={category} onChange={(event) => onCategoryChange(event.target.value as CryptoAcquisitionRequest['category'])}>{categoryChoices.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        <label><span className="eyebrow">Market</span><select className="field" value={category} onChange={(event) => onCategoryChange(event.target.value as CryptoAcquisitionRequest['category'])}>{categoryChoices.map((item) => <option key={item} value={item}>{item}</option>)}</select></label></> : null}
         <label><span className="eyebrow">Frequency</span><select className="field" value={frequency} onChange={(event) => onFrequencyChange(event.target.value as CryptoAcquisitionRequest['frequency'])}>{frequencyChoices.map((item) => <option key={item} value={item}>{item === '1d' ? 'daily' : item === '1h' ? 'hourly' : item}</option>)}</select></label>
-        <label><span className="eyebrow">Estimate days</span><input className="field" type="number" min={1} max={3650} value={days} onChange={(event) => onDaysChange(Number(event.target.value))} /></label>
+        {!isDefi ? <label><span className="eyebrow">Estimate days</span><input className="field" type="number" min={1} max={3650} value={days} onChange={(event) => onDaysChange(Number(event.target.value))} /></label> : null}
         {provider === 'binance' ? <label><span className="eyebrow">Archive month</span><input className="field mono" type="month" value={period} onChange={(event) => onPeriodChange(event.target.value)} /></label> : null}
         {provider === 'geckoterminal' ? <><label><span className="eyebrow">Network</span><input className="field mono" value={network} onChange={(event) => onNetworkChange(event.target.value)} /></label><label><span className="eyebrow">Pool address</span><input className="field mono" value={poolAddress} onChange={(event) => onPoolAddressChange(event.target.value)} /></label></> : null}
         {provider === 'coinmetrics' && family === 'onchain_metrics' ? <label><span className="eyebrow">Metrics</span><input className="field mono" value={metrics} onChange={(event) => onMetricsChange(event.target.value)} /></label> : null}
         {showRange ? <><label><span className="eyebrow">Start UTC</span><input className="field mono" value={start} onChange={(event) => onStartChange(event.target.value)} /></label><label><span className="eyebrow">End UTC</span><input className="field mono" value={end} onChange={(event) => onEndChange(event.target.value)} /></label></> : null}
         {caseBoundEvent ? <label><span className="eyebrow">Event-capture reason</span><input className="field" value={eventReason} onChange={(event) => onEventReasonChange(event.target.value)} /></label> : null}
       </div>
+      {isDefi && family === 'yield_history' ? <p className="muted" role="note">{poolError ?? (pools?.state === 'unavailable' ? pools.next_action : 'Search and select a pool from the verified stored catalog, or enter an exact UUID. Historical rates are the pool’s provider-reported history.')}</p> : null}
+      {isDefi ? <p className="muted" role="note">Acquires the provider’s complete returned history or current catalog, bounded to 64 MiB per response. Historical observations become available to this system when retrieved.</p> : null}
+      {provider === 'defillama' && family === 'yield_pools' ? <p className="muted" role="note">Downloads the bounded current pool catalog. It is a snapshot and does not represent historical pool coverage.</p> : null}
       <div className="crypto-actions">
-        <button className="btn" type="button" disabled={busyAction !== null} onClick={onEstimate}>{busyAction === 'estimate' ? 'Estimating…' : 'Estimate storage'}</button>
-        <button className="btn primary" type="button" disabled={!storageReady || !provider || busyAction !== null || !eventCaptureReady} onClick={onAcquire}>{busyAction === 'acquire' ? 'Starting…' : 'Acquire & qualify'}</button>
+        {!isDefi ? <button className="btn" type="button" disabled={busyAction !== null} onClick={onEstimate}>{busyAction === 'estimate' ? 'Estimating…' : 'Estimate storage'}</button> : null}
+        <button className="btn primary" type="button" disabled={!storageReady || !provider || !instrument.trim() || busyAction !== null || !eventCaptureReady} onClick={onAcquire}>{busyAction === 'acquire' ? 'Starting…' : 'Acquire & qualify'}</button>
         {estimate ? <span className="muted">{estimate.estimated_rows.toLocaleString()} rows · about {fmtBytes(estimate.estimated_bytes)}</span> : null}
       </div>
       {caseBoundEvent && !eventCaptureReady ? <div className="workbench-notice" role="note"><strong>SELECT A RESEARCH CASE</strong><span>Derivative trades and books must be bound to the current case revision before any provider request.</span></div> : null}

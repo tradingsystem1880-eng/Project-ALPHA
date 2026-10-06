@@ -2,7 +2,7 @@
 
 # System map
 
-14 components (packages, apps, workers), 307 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+14 components (packages, apps, workers), 319 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
 <!-- nodes: component:alpha-backtest|component:alpha-cli|component:alpha-core|component:alpha-data|component:alpha-forecast|component:alpha-mcp|component:alpha-patterns|component:alpha-research|component:alpha-strategies|component:alpha-study|component:alpha-validation|component:alpha-web|component:literature|component:qlib -->
 ```mermaid
@@ -100,9 +100,9 @@ component:alpha-web -> component:alpha-core
 
 ## Unknowns review queue
 
-47 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
+50 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
 
-<details><summary>47 unknown-level node(s)</summary>
+<details><summary>50 unknown-level node(s)</summary>
 
 - `component:alpha-study`
 - `component:literature`
@@ -113,6 +113,8 @@ component:alpha-web -> component:alpha-core
 - `module:alpha_cli._crypto_acquisition`
 - `module:alpha_cli._crypto_panel`
 - `module:alpha_cli._hypothesis_scan`
+- `module:alpha_cli.assistant_cmds`
+- `module:alpha_cli.assistant_worker`
 - `module:alpha_cli.figures._sources`
 - `module:alpha_core.universe`
 - `module:alpha_data._atomic`
@@ -129,7 +131,6 @@ component:alpha-web -> component:alpha-core
 - `module:alpha_research._arrays`
 - `module:alpha_research.figures.theme`
 - `module:alpha_research.figures.version`
-- `module:alpha_strategies`
 - `module:alpha_study._contracts`
 - `module:alpha_study._operator_registry`
 - `module:alpha_study.adapters`
@@ -140,9 +141,11 @@ component:alpha-web -> component:alpha-core
 - `module:alpha_study.values`
 - `module:alpha_validation._atomic`
 - `module:alpha_validation.conditional`
+- `module:alpha_web._assistant`
 - `module:alpha_web._atomic`
 - `module:alpha_web.api._common`
 - `module:alpha_web.api.errors`
+- `module:alpha_web.api.rule_evaluation_models`
 - `module:literature_worker`
 - `module:literature_worker.__main__`
 - `module:literature_worker._acquisition`

@@ -1,0 +1,1 @@
+import{t as e}from"./sxsy-Cm0vFZD2.js";import{C as t}from"./arrayable-DKyJAG2D.js";var n=class extends e{glyph;constructor(e,t){super(e,t),this.glyph=t}get size(){return this._widths}_set_data(){super._set_data(),this.size.set_from_array(t(this.glyph.sradius,2))}_set_once(){super._set_once(),this._heights.set_from_scalar(0)}};export{n as t};

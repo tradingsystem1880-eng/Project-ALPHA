@@ -33,6 +33,7 @@ _CRYPTO_DATA_SAFE = frozenset(
         "catalog",
         "estimate",
         "capabilities",
+        "yield-pools",
         "storage",
         "storage-inventory",
         "storage-verify",
@@ -61,6 +62,8 @@ def classify_generic_command(argv: list[str]) -> GenericCommandClass:
     This is deliberately conservative for governed project contexts: an unknown command is not
     assumed non-empirical. Research lifecycle mutations stay on their bounded API/CLI surfaces.
     """
+    if argv[:1] == ["assistant"]:
+        return "owner_only"
     if not argv:
         return "unknown"
     root = argv[0]

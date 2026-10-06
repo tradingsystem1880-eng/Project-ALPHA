@@ -31,7 +31,7 @@ def test_only_orientation_and_safety_hooks_are_wired() -> None:
         if (match := re.search(r'python3 "\$h" ([a-z-]+)', hook["command"]))
     }
     assert wired == set(claude_hooks._HOOKS) == set(gate.HOOK_NAMES)
-    assert wired == {"pre-file-guard", "pre-mcp-guard", "session-start"}
+    assert wired == {"pre-file-guard", "pre-mcp-guard", "pre-owner-action-guard", "session-start"}
     assert all(
         hook["type"] == "command"
         for groups in settings["hooks"].values()
@@ -40,11 +40,12 @@ def test_only_orientation_and_safety_hooks_are_wired() -> None:
     )
 
 
-def test_safety_matchers_cover_file_tools_and_alpha_mcp_only() -> None:
+def test_safety_matchers_cover_file_tools_alpha_mcp_and_owner_action_routes() -> None:
     groups = _settings()["hooks"]["PreToolUse"]
     assert {group["matcher"] for group in groups} == {
         "Read|Edit|Write|MultiEdit",
         "mcp__alpha__.*",
+        "Bash|WebFetch|mcp__.*",
     }
     for group in groups:
         for hook in group["hooks"]:

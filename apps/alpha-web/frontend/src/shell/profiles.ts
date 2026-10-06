@@ -113,5 +113,6 @@ export function showsWindow(id: Profile, window: WindowId): boolean {
 
 /** Stored symbols carry no server `market`; a profile's symbol style is the only honest fit test. */
 export function symbolFitsProfile(id: Profile, symbol: string): boolean {
-  return profile(id).symbolStyle === 'pair' ? symbol.includes('/') : !symbol.includes('/')
+  const pair = symbol.includes('/') || /^[A-Z0-9]+-(USD|USDT|USDC)$/i.test(symbol)
+  return profile(id).symbolStyle === 'pair' ? pair : !pair
 }

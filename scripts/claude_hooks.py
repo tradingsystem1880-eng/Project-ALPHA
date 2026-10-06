@@ -1,8 +1,10 @@
 """Thin Claude adapter: orientation and native tool-boundary safety only.
 
 Engineering verification lives in the agent-neutral gate and real Git hooks. This adapter never
-parses shell commands, writes telemetry, consumes acknowledgments or evaluates task completion.
-Native permissions and process sandboxing remain separate controls.
+writes telemetry, consumes acknowledgments or evaluates task completion. Its one inspection of
+tool input text is a fail-closed substring guard that keeps agent tools away from the owner-action
+endpoints (ADR-0038); it is not a shell parser. Native permissions and process sandboxing remain
+separate controls.
 """
 
 from __future__ import annotations
@@ -13,11 +15,27 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 HookResult = tuple[int, str]
 _MCP_OWNER_VERBS = re.compile(
     r"(approve|reject|decide|override_research_gate|reveal_holdout|research_decision)"
 )
+
+
+# Local click confirmation (ADR-0038) is any-local-process confirmable at the HTTP layer, so agent
+# tools must never address the owner-action routes or start the CLI credential ceremonies.
+_OWNER_ACTION_TEXT = re.compile(r"/owner-auth\b|\bowner-auth\s+(enroll|recover)\b")
+
+
+def _strings(value: object) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [text for item in value.values() for text in _strings(item)]
+    if isinstance(value, list):
+        return [text for item in value for text in _strings(item)]
+    return []
 
 
 def _hidden(path: Path) -> bool:
@@ -69,6 +87,20 @@ def hook_pre_mcp_guard(payload: dict[str, Any], root: Path) -> HookResult:
     return (0, "")
 
 
+def hook_pre_owner_action_guard(payload: dict[str, Any], root: Path) -> HookResult:
+    tool_input = payload.get("tool_input")
+    if not isinstance(tool_input, dict):
+        raise ValueError("tool input must be an object")
+    for text in _strings(tool_input):
+        if _OWNER_ACTION_TEXT.search(unquote(unquote(text)).lower()):
+            return (
+                2,
+                "BLOCKED: owner actions (local confirmation, approvals, D1/D2 launch, decisions, "
+                "credential ceremonies) are the owner's own clicks; agent tools may not call them.",
+            )
+    return (0, "")
+
+
 def hook_session_start(payload: dict[str, Any], root: Path) -> HookResult:
     return (
         0,
@@ -83,6 +115,7 @@ def hook_session_start(payload: dict[str, Any], root: Path) -> HookResult:
 _HOOKS: dict[str, Callable[[dict[str, Any], Path], HookResult]] = {
     "pre-file-guard": hook_pre_file_guard,
     "pre-mcp-guard": hook_pre_mcp_guard,
+    "pre-owner-action-guard": hook_pre_owner_action_guard,
     "session-start": hook_session_start,
 }
 

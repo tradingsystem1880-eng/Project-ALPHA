@@ -83,6 +83,17 @@ def test_owner_mcp_denial_does_not_depend_on_git(tmp_path: Path) -> None:
     assert "owner-authority" in result.stderr
 
 
+def test_owner_action_guard_blocks_through_the_adapter_process(tmp_path: Path) -> None:
+    route = "/api/" + "owner-auth" + "/actions/perform"
+    payload = {
+        "tool_name": "Bash",
+        "tool_input": {"command": f"curl -X POST localhost:8801{route}"},
+    }
+    result = _run("pre-owner-action-guard", payload, tmp_path)
+    assert result.returncode == 2
+    assert "BLOCKED" in result.stderr
+
+
 def test_session_orientation_is_bounded_and_side_effect_free(tmp_path: Path) -> None:
     result = _run("session-start", {"cwd": str(tmp_path)}, tmp_path)
     assert result.returncode == 0

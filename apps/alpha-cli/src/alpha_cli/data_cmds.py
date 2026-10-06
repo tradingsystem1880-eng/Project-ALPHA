@@ -434,6 +434,7 @@ def candles(
     start: str = typer.Option(None, help="lower bound YYYY-MM-DD (inclusive)"),
     end: str = typer.Option(None, help="as-of cutoff YYYY-MM-DD (inclusive)"),
     snapshot: str = typer.Option(None, help="snapshot id for provenance"),
+    manifest_id: str = typer.Option(None, help="exact qualified bulk chart manifest"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Point-in-time OHLCV candles for SYMBOL (split-adjusted; ``--end`` is an as-of cutoff).
@@ -449,9 +450,21 @@ def candles(
     except ValueError as exc:
         raise typer.BadParameter(f"--start/--end must be YYYY-MM-DD: {exc}") from exc
     try:
-        bars, snap = load_bars(
-            symbol, data_dir=AlphaSettings().data_dir, snapshot_id=snapshot, as_of=when
-        )
+        provenance = None
+        if manifest_id:
+            from alpha_cli._chart_data import load_chart_dataset
+            from alpha_cli.crypto_data_cmds import _bulk_store
+
+            if snapshot:
+                raise DataError("choose a canonical snapshot or a bulk manifest, not both")
+            bars, provenance = load_chart_dataset(
+                _bulk_store(), manifest_id, symbol=symbol, as_of=when
+            )
+            snap = None
+        else:
+            bars, snap = load_bars(
+                symbol, data_dir=AlphaSettings().data_dir, snapshot_id=snapshot, as_of=when
+            )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     rows = [
@@ -466,7 +479,8 @@ def candles(
                 {
                     "symbol": symbol,
                     "snapshot_id": snap,
-                    "provenance": _candle_provenance(
+                    "provenance": provenance
+                    or _candle_provenance(
                         symbol,
                         snapshot_id=snap,
                         knowledge_cutoff=cutoff,
@@ -630,3 +644,23 @@ def universe_show(
             f"{name} as of {when}: {len(members)} members ({len(later_removed)} later removed)"
         )
         typer.echo(" ".join(members))
+
+
+@data_app.command("chart-datasets")
+def chart_datasets_command(json_out: bool = typer.Option(False, "--json")) -> None:
+    """Discover qualified external archive chart datasets without hashing all artifacts."""
+    from alpha_cli._chart_data import chart_datasets
+    from alpha_cli.crypto_data_cmds import BulkVolumeUnconfigured, _bulk_store
+
+    try:
+        store = _bulk_store()
+        store.verify_readable()
+        result = {"datasets": chart_datasets(store), "authority": "none", "state": "available"}
+    except BulkVolumeUnconfigured:
+        result = {"datasets": [], "authority": "none", "state": "unconfigured"}
+    except (DataError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_out:
+        typer.echo(json.dumps(result))
+    else:
+        typer.echo(f"{len(result['datasets'])} archive chart datasets")

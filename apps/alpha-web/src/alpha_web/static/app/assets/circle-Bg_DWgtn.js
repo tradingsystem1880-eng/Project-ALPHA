@@ -1,0 +1,1 @@
+import{t as e}from"./radial-DyrCXuJq.js";var t=class extends e{glyph;constructor(e,t){super(e,t),this.glyph=t}get marker_type(){return`circle`}_set_once(){super._set_once(),this._angles.set_from_scalar(0)}};export{t as CircleGL};

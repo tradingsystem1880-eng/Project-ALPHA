@@ -606,3 +606,80 @@ def test_macos_volume_uuid_uses_plist_and_redacts_failures(
     with pytest.raises(DataError, match="unable to verify") as caught:
         storage.macos_volume_uuid(tmp_path)
     assert "private-path" not in str(caught.value)
+
+
+def test_retirement_preserves_history_and_blocks_active_discovery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = _store(tmp_path)
+    handle = store.begin_staging(
+        provider="bybit", receipt_id="retire", logical_name="a", expected_bytes=3
+    )
+    handle = store.append_staging(handle, b"raw")
+    manifest = store.publish_staging(handle, expected_sha256=hashlib.sha256(b"raw").hexdigest())
+    dataset = CryptoDatasetIdentityV1(
+        provider="bybit",
+        venue="bybit",
+        market_type="linear",
+        family="funding",
+        instrument="BTCUSDT",
+        base_asset="BTC",
+        quote_asset="USDT",
+        frequency="funding_interval",
+        units="dimensionless_rate",
+        timestamp_convention="provider_event_utc",
+    )
+    quality = CryptoQualityReportV1(
+        dataset_sha256=hashlib.sha256(b"bad").hexdigest(),
+        method_version="crypto-quality-v1",
+        state="quarantined",
+        failures=("duplicate_observation",),
+        warnings=(),
+        observed_start=datetime(2026, 1, 1, tzinfo=UTC),
+        observed_end=datetime(2026, 1, 1, tzinfo=UTC),
+        row_count=2,
+        correction_lineage=(),
+    )
+    manifest = store.publish_normalized(
+        b"bad", dataset=dataset, input_manifest_ids=(str(manifest["manifest_id"]),), quality=quality
+    )
+    ident = str(manifest["manifest_id"])
+    # Retirement never changes canonical manifest or payload bytes.
+    before = (store.manifest_root / f"{ident}.json").read_bytes()
+    with monkeypatch.context() as patched:
+
+        def interrupted(*args: object, **kwargs: object) -> None:
+            raise OSError("interrupted publication")
+
+        patched.setattr("alpha_data.crypto.storage.os.link", interrupted)
+        with pytest.raises(OSError, match="interrupted"):
+            store.retire_manifest(
+                ident,
+                reason="inactive_quarantined",
+                audit_sha256="a" * 64,
+                retired_at=datetime(2026, 10, 2, tzinfo=UTC),
+            )
+    assert store.retirement(ident) is None
+    assert not tuple((store.manifest_root.parent / "retirements").glob(".retirement-*"))
+    store.retire_manifest(
+        ident,
+        reason="inactive_quarantined",
+        audit_sha256="a" * 64,
+        retired_at=datetime(2026, 10, 2, tzinfo=UTC),
+    )
+    assert store.verify_manifest(ident) == manifest
+    assert (store.manifest_root / f"{ident}.json").read_bytes() == before
+    assert len(store.inventory()) == 1
+    assert manifest in store.inventory(include_retired=True)
+    assert len(store.metadata_inventory()) == 1
+    assert manifest in store.metadata_inventory(include_retired=True)
+    with pytest.raises(DataError, match="retired"):
+        store.publish_derived(
+            b"derived", derived_kind="test", input_manifest_ids=(ident,), metadata={}
+        )
+    with pytest.raises(DataError, match="retired"):
+        store.require_active(ident)
+    record = store.manifest_root.parent / "retirements" / f"{ident}.json"
+    record.write_text("{}")
+    with pytest.raises(DataError, match="retirement"):
+        store.metadata_inventory()

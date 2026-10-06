@@ -87,7 +87,7 @@ def test_crypto_storage_projection_covers_ready_and_exact_blocker_states(
     }
 
     invalid_frequency = runner.invoke(
-        app, ["crypto-data", "estimate", "market_bars", "--frequency", "2h"]
+        app, ["crypto-data", "estimate", "market_bars", "--frequency", "2m"]
     )
     assert invalid_frequency.exit_code != 0
     one_minute = runner.invoke(
@@ -572,7 +572,7 @@ def test_non_bybit_acquisition_contract_rejects_ambiguous_or_unbounded_requests(
         ({"period": None}, "require --period"),
         (
             {
-                "frequency": "2h",
+                "frequency": "2m",
                 "period": None,
                 "start": "2026-01-01T00:00:00Z",
                 "end": "2026-01-02T00:00:00Z",
@@ -680,6 +680,66 @@ def test_read_only_projections_answer_honestly_when_no_volume_is_configured(
         assert payload[action_key] == expected_next_action, command
         for key, value in expected.items():
             assert payload[key] == value, (command, key)
+
+
+def test_crypto_capabilities_uses_discovery_metadata_not_full_artifact_inventory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Opening a capability view must not hash every archive artifact on the volume."""
+    from alpha_cli import crypto_data_cmds
+    from alpha_data.crypto.storage import Capacity
+
+    class DiscoveryStore:
+        def verify_ready(self, *, required_bytes: int) -> Capacity:
+            assert required_bytes == 0
+            return Capacity(total_bytes=100, free_bytes=90)
+
+        def metadata_inventory(self) -> tuple[dict[str, object], ...]:
+            return ()
+
+        def inventory(self) -> tuple[dict[str, object], ...]:
+            raise AssertionError("capability discovery must not verify every artifact")
+
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: DiscoveryStore())
+
+    result = runner.invoke(app, ["crypto-data", "capabilities", "--json"])
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.stdout)
+    assert payload["count"] > 0
+    assert payload["provider_probe_performed"] is False
+
+
+def test_storage_inventory_remains_the_explicit_full_verification_command(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Optimizing discovery must not weaken the owner's full artifact audit command."""
+    from alpha_cli import crypto_data_cmds
+
+    calls: list[str] = []
+
+    class AuditStore:
+        staging_root = Path("/missing/staging")
+
+        def verify_ready(self, *, required_bytes: int) -> Capacity:
+            assert required_bytes == 0
+            return Capacity(total_bytes=100, free_bytes=90)
+
+        def inventory(self, *, include_retired: bool = False) -> tuple[dict[str, object], ...]:
+            assert include_retired
+            calls.append("full")
+            return ()
+
+        def cache_size(self) -> int:
+            return 0
+
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", lambda: AuditStore())
+    monkeypatch.setattr(crypto_data_cmds, "_snapshot_root", lambda: Path("/missing/snapshots"))
+
+    result = runner.invoke(app, ["crypto-data", "storage-inventory", "--json"])
+
+    assert result.exit_code == 0, result.output
+    assert calls == ["full"]
 
 
 def test_read_only_projections_still_fail_loud_when_storage_is_unavailable(

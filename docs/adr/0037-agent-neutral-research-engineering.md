@@ -1,4 +1,4 @@
-# ADR-0036: Agent-neutral engineering and reproducible research
+# ADR-0037: Agent-neutral engineering and reproducible research
 
 Status: Accepted; implemented locally (2026-09-16).
 

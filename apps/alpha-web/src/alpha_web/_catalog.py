@@ -65,6 +65,8 @@ def _cli_environment(
 ) -> dict[str, str]:
     """Build the command-scoped environment allowed to cross the web-to-CLI boundary."""
     allowed = _PROCESS_ENV_NAMES | _DATA_ENV_NAMES | _credential_names_for_command(args)
+    if args[:1] == ["assistant"]:
+        allowed = allowed | frozenset({"HOME", "CODEX_HOME", "ALPHA_CODEX_MODEL"})
     environment = {name: value for name, value in os.environ.items() if name in allowed}
     environment["ALPHA_DATA_DIR"] = str(data_dir)
     # Plain Click errors (`Error: ...`), never Rich panels whose box borders would become the

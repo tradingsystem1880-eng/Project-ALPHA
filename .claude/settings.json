@@ -181,6 +181,16 @@
             "timeout": 15
           }
         ]
+      },
+      {
+        "matcher": "Bash|WebFetch|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$CLAUDE_PROJECT_DIR/scripts/claude_hooks.py\"; [ -f \"$h\" ] || h=scripts/claude_hooks.py; [ -f \"$h\" ] || { echo \"Claude safety adapter missing\" >&2; exit 2; }; python3 \"$h\" pre-owner-action-guard",
+            "timeout": 15
+          }
+        ]
       }
     ],
     "SessionStart": [

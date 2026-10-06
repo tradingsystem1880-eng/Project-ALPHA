@@ -320,7 +320,7 @@ def test_cancel_unknown_is_404() -> None:
 
 
 def test_direct_kronos_launches_share_durable_atomic_capacity(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     priorities: list[tuple[int, int, int]] = []
@@ -329,7 +329,9 @@ def test_direct_kronos_launches_share_durable_atomic_capacity(
         "setpriority",
         lambda which, pid, priority: priorities.append((which, pid, priority)),
     )
-    _fake(monkeypatch, "import time; print('started', flush=True); time.sleep(10)")
+    # Hold capacity until cancellation; a ten-second sleep could expire during CLI
+    # startup under parallel test load and turn this into a machine-speed assertion.
+    _fake(monkeypatch, "import threading; print('started', flush=True); threading.Event().wait()")
     client = TestClient(create_app())
 
     first = client.post(
@@ -342,6 +344,7 @@ def test_direct_kronos_launches_share_durable_atomic_capacity(
     )
     assert first.status_code == 200, first.text
     job_id = first.json()["job_id"]
+    request.addfinalizer(_invoke.JOBS[job_id].cancel)
     durable = ControlStore(tmp_path).get_job(job_id)
     assert durable["kind"] == "kronos_forecast"
     assert durable["status"] == "running"
@@ -360,7 +363,7 @@ def test_direct_kronos_launches_share_durable_atomic_capacity(
     assert "heavyweight job capacity is occupied" in blocked.json()["message"]
 
     assert client.delete(f"/api/jobs/{job_id}").status_code == 200
-    assert _wait_status(client, job_id, "cancelled") == "cancelled"
+    assert _wait_status(client, job_id, "cancelled", timeout=30) == "cancelled"
     assert ControlStore(tmp_path).get_job(job_id)["status"] == "cancelled"
 
     released = client.post(
@@ -372,8 +375,9 @@ def test_direct_kronos_launches_share_durable_atomic_capacity(
     )
     assert released.status_code == 200, released.text
     released_job_id = released.json()["job_id"]
+    request.addfinalizer(_invoke.JOBS[released_job_id].cancel)
     assert client.delete(f"/api/jobs/{released_job_id}").status_code == 200
-    assert _wait_status(client, released_job_id, "cancelled") == "cancelled"
+    assert _wait_status(client, released_job_id, "cancelled", timeout=30) == "cancelled"
 
 
 _CLICK_ERROR_MESSAGE = (

@@ -69,6 +69,7 @@ TIER_RANK = {"fast": 1, "full": 2}
 HOOK_NAMES = (
     "pre-file-guard",
     "pre-mcp-guard",
+    "pre-owner-action-guard",
     "session-start",
 )
 

@@ -108,7 +108,10 @@ def _insert_v4_receipt(database: Path) -> list[tuple[object, ...]]:
             ),
         )
         connection.execute(
-            """INSERT INTO owner_action_receipts VALUES (
+            """INSERT INTO owner_action_receipts
+            (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
+             artifact_hash, expected_case_revision, consequence_summary, reason,
+             request_hash, assertion_hash, outcome_json, performed_at) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )""",
             (
@@ -272,7 +275,10 @@ def _insert_semantic_receipt(
             ),
         )
         connection.execute(
-            """INSERT INTO owner_action_receipts VALUES (
+            """INSERT INTO owner_action_receipts
+            (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
+             artifact_hash, expected_case_revision, consequence_summary, reason,
+             request_hash, assertion_hash, outcome_json, performed_at) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )""",
             (
@@ -429,7 +435,10 @@ def test_semantic_ledger_append_and_read_rejects_tamper(
     connection = sqlite3.connect(tmp_path / "control" / control_store_module.DATABASE_NAME)
     try:
         connection.execute(
-            """INSERT INTO owner_action_receipts VALUES (
+            """INSERT INTO owner_action_receipts
+            (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
+             artifact_hash, expected_case_revision, consequence_summary, reason,
+             request_hash, assertion_hash, outcome_json, performed_at) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )""",
             (
@@ -1611,7 +1620,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
     connection.commit()
     connection.close()
 
-    assert SCHEMA_VERSION == 5
+    assert SCHEMA_VERSION == 6
     # The governance backfill drives the derived gate state: pre-launch rows are
     # grandfathered while post-launch v1 rows stay research-governed and open.
     assert ControlStore(tmp_path).list_projects() == [
@@ -1668,7 +1677,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
         )
 
 
-def test_fresh_store_is_v5_with_protected_semantic_ledger_and_closed_receipt_action(
+def test_fresh_store_is_v6_with_protected_semantic_ledger_and_closed_receipt_action(
     tmp_path: Path,
 ) -> None:
     store = ControlStore(tmp_path)
@@ -1676,7 +1685,7 @@ def test_fresh_store_is_v5_with_protected_semantic_ledger_and_closed_receipt_act
     database = tmp_path / "control" / "workstation.sqlite3"
     connection = sqlite3.connect(database)
     try:
-        assert connection.execute("PRAGMA user_version").fetchone() == (5,)
+        assert connection.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
         objects = {
             str(row[0])
             for row in connection.execute(
@@ -1747,10 +1756,12 @@ def test_v4_to_v5_rebuild_is_lossless_and_retains_exact_backup(tmp_path: Path) -
     migrated = sqlite3.connect(database)
     backup = sqlite3.connect(database.with_name("workstation.sqlite3.v4.bak"))
     try:
-        assert migrated.execute("PRAGMA user_version").fetchone() == (5,)
-        after_rows = migrated.execute(
+        assert migrated.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
+        migrated_rows = migrated.execute(
             "SELECT * FROM owner_action_receipts ORDER BY receipt_id"
         ).fetchall()
+        assert all(row[-1] == "webauthn" for row in migrated_rows)
+        after_rows = [row[:-1] for row in migrated_rows]
         after_digest = hashlib.sha256(
             json.dumps(after_rows, separators=(",", ":"), ensure_ascii=False).encode()
         ).hexdigest()
@@ -1825,7 +1836,7 @@ def test_legacy_v1_v2_v3_migrations_commit_common_v4_to_v5_path(
             is None
         )
     with sqlite3.connect(database) as migrated:
-        assert migrated.execute("PRAGMA user_version").fetchone() == (5,)
+        assert migrated.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
         assert (
             migrated.execute(
                 "SELECT 1 FROM sqlite_master WHERE name = 'research_semantic_events'"
@@ -1897,7 +1908,7 @@ def test_concurrent_v4_migrators_have_one_winner_and_one_backup(tmp_path: Path) 
     assert errors == []
     connection = sqlite3.connect(database)
     try:
-        assert connection.execute("PRAGMA user_version").fetchone() == (5,)
+        assert connection.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
     finally:
         connection.close()
     assert database.with_name("workstation.sqlite3.v4.bak").is_file()

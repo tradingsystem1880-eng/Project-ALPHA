@@ -3,6 +3,7 @@
 // receipts); this model only renders what the read plane serves.
 
 import type {
+  CryptoAcquisitionRequest,
   CryptoCoverageItem,
   CryptoFamily,
   CryptoFeatureName,
@@ -16,10 +17,19 @@ export type CryptoDataSection =
   | 'options'
   | 'onchain'
   | 'dex'
+  | 'defi'
   | 'quality'
   | 'storage'
 
 export type CryptoMarketCategory = 'spot' | 'linear' | 'inverse' | 'option'
+
+export function cryptoAcquisitionFrequencies(family: CryptoFamily, provider: string | null): CryptoAcquisitionRequest['frequency'][] {
+  if (family === 'yield_pools') return ['catalog_snapshot']
+  if (family === 'protocol_tvl' || family === 'stablecoin_supply' || family === 'yield_history') return ['1d']
+  if (family === 'market_bars' && provider === 'binance') return ['1m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w']
+  if (family === 'open_interest' || family === 'long_short_ratio') return ['5m', '15m', '30m', '1h', '4h', '1d']
+  return ['1m', '5m', '1h', '1d']
+}
 
 export function cryptoCoverageStateClass(state: CryptoCoverageItem['state']): string {
   if (state === 'qualified') return 'chip pass'
@@ -152,6 +162,12 @@ export function cryptoSectionForFamily(family: CryptoFamily): CryptoDataSection 
   ) return 'options'
   if (family === 'onchain_catalog' || family === 'onchain_metrics') return 'onchain'
   if (family === 'dex_pools' || family === 'dex_ohlcv' || family === 'dex_transactions') return 'dex'
+  if (
+    family === 'protocol_tvl'
+    || family === 'stablecoin_supply'
+    || family === 'yield_pools'
+    || family === 'yield_history'
+  ) return 'defi'
   return 'quality'
 }
 
