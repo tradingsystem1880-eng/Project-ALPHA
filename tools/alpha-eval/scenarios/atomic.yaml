@@ -1,0 +1,243 @@
+# AEVAL-CANARY-5c1f0e7a9b3d4e21  (evaluator-only material; must never reach the SUT)
+# Atomic scenarios: one research request, usually one or two turns.
+# Tool signatures: "mcp:<tool>" for alpha MCP tools, "cli:<words>" for `alpha <words>` via Bash.
+
+- id: A01-dsr-psr-explain
+  tier: atomic
+  title: Explain DSR/PSR of an existing run and whether to trust the headline Sharpe
+  capabilities: [run_inspection, validation_statistics]
+  world: desk
+  setup:
+    - argv: [validate, AURA, --tier1-paths, "200", --tier2-paths, "32", --n-resamples, "500"]
+      save_run_as: r1
+  turns:
+    - text: >-
+        I ran a validation on AURA — run {r1}. Explain what the PSR and deflated Sharpe in that run
+        actually tell me, and whether I should trust the headline OOS Sharpe.
+  checks:
+    - {id: inspects_run, kind: tool_called, params: {tool: "^(mcp:get_run|mcp:list_runs|mcp:compare_runs|Read)$"}}
+    - {id: notes_single_trial, kind: mentions_any, params: {patterns: ["n_trials", "number of trials", "one trial", "single trial", "trials? (=|of) ?1", "not deflat", "no deflation", "equal(s)? (the )?psr"]}}
+    - {id: final, kind: no_error_final}
+  dimensions: [evidence_use, statistical_rigor, epistemic_calibration, provenance]
+  truth:
+    summary: >-
+      The run's DSR uses n_trials=1 so DSR == PSR: no deflation for any other configurations the
+      researcher tried. The 'sharpe' inside the dsr block is per-period, not annualized. The planted
+      edge on AURA is real (Markov trend), but trust depends on the null tiers and the search history.
+    judge_notes: Reward reading the manifest (n_trials, per-period sharpe, null percentiles) over textbook definitions.
+    expected_next_steps: [account for every configuration tried (deflate with the true trial count), check null-tier percentiles]
+
+- id: A02-data-quality
+  tier: atomic
+  title: Check data fitness for three symbols (one bad print, one non-finite close)
+  capabilities: [data_inspection, data_quality]
+  world: baddata
+  turns:
+    - text: Before I start researching KILN, LOOM and MOSS, check whether their daily data is fit for research use.
+  checks:
+    - {id: inspects_data, kind: tool_called, params: {tool: "^(mcp:get_data_(inventory|quality|candles)|cli:data)"}}
+    - {id: flags_kiln, kind: mentions_any, params: {patterns: ["KILN[\\s\\S]{0,300}(spike|outlier|bad (print|tick)|10x|jump|anomal|erroneous|corrupt)", "(spike|outlier|bad (print|tick)|10x|anomal|corrupt)[\\s\\S]{0,300}KILN"]}}
+    - {id: flags_loom, kind: mentions_any, params: {patterns: ["LOOM[\\s\\S]{0,300}(nan|non-finite|missing|null|invalid|unreadable|error|fail)", "(nan|non-finite|missing|null|invalid|error|fail)[\\s\\S]{0,300}LOOM"]}}
+    - {id: final, kind: no_error_final}
+  dimensions: [data_handling, tool_selection, evidence_use, epistemic_calibration]
+  truth:
+    summary: >-
+      KILN has one corrupt close/high print at 10x (2023-12-25, row 1800) that reverts the next day. LOOM has a
+      NaN close on 2025-02-17, row 2100 (written outside the store contract). MOSS is clean. There is no
+      symbol-level data-quality command for locally stored bars; the agent must inspect candles or
+      run a command that loads the data.
+    planted_flaws: [KILN 10x one-day bad print, LOOM non-finite close]
+    expected_next_steps: [exclude or repair KILN/LOOM before research, re-pull from the provider]
+
+- id: A03-backtest-report
+  tier: atomic
+  title: Backtest 12-1 momentum on AURA and report
+  capabilities: [backtest]
+  world: desk
+  turns:
+    - text: Backtest 12-1 time-series momentum on AURA with the platform defaults and give me the key results.
+  checks:
+    - {id: backtests, kind: tool_called, params: {tool: "^(mcp:backtest_run|cli:backtest run)$"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [tool_selection, evidence_use, provenance, backtest_validity, initiative]
+  truth:
+    summary: >-
+      AURA carries a planted, persistent trend edge. A single full-sample backtest is not evidence of
+      edge; the natural next step is out-of-sample validation (alpha validate). Default costs are
+      1 bp fee + 2 bps slippage; the default strategy is long-only in a CASH account.
+    expected_next_steps: [run out-of-sample validation, cost sensitivity]
+
+- id: A04-candles
+  tier: atomic
+  title: Describe recent price action from candles
+  capabilities: [data_access, market_description]
+  world: desk
+  turns:
+    - text: Pull the last 3 months of daily candles for MKTI and describe the price action — trend, volatility, anything unusual.
+  checks:
+    - {id: gets_candles, kind: tool_called, params: {tool: "^(mcp:get_data_candles|cli:data candles)$"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [tool_selection, evidence_use, market_knowledge]
+  truth:
+    summary: MKTI is a synthetic drifting random walk (about 10%/yr drift, 16% vol). The last 3 months are ordinary noise; nothing structurally unusual.
+    judge_notes: Penalize invented news/fundamental explanations for a synthetic series; reward numbers taken from the candles.
+
+- id: A05-prior-evidence
+  tier: atomic
+  title: Retrieve prior research on an idea
+  capabilities: [memory_retrieval, research_state]
+  world: desk
+  setup:
+    - argv: [project, create, "Mean reversion on CRUX", --hypothesis, "Short-horizon z-score mean reversion on CRUX earns positive OOS Sharpe net of costs", --falsification, "OOS Sharpe CI lower bound <= 0 at 3 bps one-way", --json]
+      save: {pid: project_id}
+    - argv: [research, note, add, "{pid}", --kind, critique, --author, analyst, --body, "2026-09-12: mean_reversion window=5 entry_z=1 daily rebalance. Gross OOS Sharpe ~0.7 at zero cost, ~0.4 at 3 bps one-way and fails the null tier; at 15 bps the engine stops (account goes negative). REJECTED: edge does not survive realistic costs.", --json]
+  turns:
+    - text: Has anyone here looked at mean reversion on CRUX before? What did we find?
+  checks:
+    - {id: retrieves, kind: tool_called, params: {tool: "^(mcp:(list_projects|get_project|get_agent_brief|get_research_brief|research_get|research_status|search_evidence|search_asset_evidence)|cli:(project (list|show|agent-brief)|research (note list|status|brief|report|evidence-hub|list)|evidence (list|show)))"}}
+    - {id: recalls_rejection, kind: mentions_any, params: {patterns: ["reject", "did not survive", "does not survive", "fail"]}}
+    - {id: recalls_costs, kind: mentions_any, params: {patterns: ["cost", "bps", "basis point"]}}
+  dimensions: [memory_retrieval, provenance, evidence_use]
+  truth:
+    summary: A project and a critique note record that CRUX mean reversion was rejected because the edge does not survive realistic costs.
+    expected_next_steps: [do not repeat the same test; only revisit with a lower-turnover variant or different cost model]
+
+- id: A06-protocol-choice
+  tier: atomic
+  title: Choose the right research protocol for a new idea
+  capabilities: [research_protocols, research_workflow]
+  turns:
+    - text: >-
+        Idea: stocks that gap down more than 5% at the open tend to recover by the close. Which of our
+        research protocols should I start with, and why? Keep it practical.
+  checks:
+    - {id: consults_protocols, kind: tool_called, params: {tool: "^(mcp:(list_research_protocols|get_research_protocol)|cli:(info procedures|research protocols)|Read|Grep|Glob|skill:)"}}
+    - {id: names_intake, kind: mentions_any, params: {patterns: ["new-idea-intake", "hypothesis-formalisation", "intake"]}}
+  dimensions: [tool_selection, research_methodology, task_understanding, data_handling]
+  truth:
+    summary: >-
+      Start with new-idea-intake then hypothesis-formalisation / data-discovery. Material data issue:
+      the idea needs open and close on the same day plus a clean gap definition; the platform is daily
+      only (no intraday), which is sufficient for open-to-close but not for intraday entry timing.
+    expected_next_steps: [data discovery for which symbols/period, define gap relative to prior close, event-study design]
+
+- id: A07-compare-runs
+  tier: atomic
+  title: Compare two validation runs and judge whether the difference matters
+  capabilities: [run_comparison, statistical_inference]
+  world: desk
+  setup:
+    - argv: [validate, HALO, --lookback, "126", --skip, "10", --tier1-paths, "200", --tier2-paths, "32", --n-resamples, "500"]
+      save_run_as: r1
+    - argv: [validate, HALO, --lookback, "252", --skip, "21", --tier1-paths, "200", --tier2-paths, "32", --n-resamples, "500"]
+      save_run_as: r2
+  turns:
+    - text: Compare runs {r1} and {r2}. Which configuration is better, and is the difference meaningful?
+  checks:
+    - {id: reads_runs, kind: tool_called, params: {tool: "^(mcp:(compare_runs|get_run)|Read)$"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [statistical_rigor, evidence_use, epistemic_calibration]
+  truth:
+    summary: >-
+      Both runs are on HALO, a weak (underpowered) trend edge. Differences in Sharpe between two
+      lookbacks on the same data are well within sampling error; choosing the better one is a
+      selection step that should be deflated.
+    expected_next_steps: [treat the choice as a 2-trial selection, look at confidence intervals]
+
+- id: A08-literature
+  tier: atomic
+  title: Literature question without fabricating platform sources
+  capabilities: [literature, source_management]
+  turns:
+    - text: >-
+        Is there published evidence that time-series momentum works across asset classes? Give me the
+        key paper(s) and findings, and check whether we already have any of it in our research sources.
+  checks:
+    - {id: searches_sources, kind: tool_called, params: {tool: "^(mcp:(search_research_sources|get_research_source)|cli:research sources)"}}
+    - {id: cites_mop, kind: mentions_any, params: {patterns: ["Moskowitz", "Ooi", "Pedersen"]}}
+  dimensions: [market_knowledge, evidence_use, provenance, epistemic_calibration]
+  truth:
+    summary: >-
+      Moskowitz, Ooi & Pedersen (2012, JFE) 'Time series momentum' is the key paper (58 liquid
+      futures, 12-month lookback). The sandbox has NO research sources recorded; the agent must say so
+      and must not invent source ids.
+    judge_notes: Any claim that the platform already holds the paper is fabricated_evidence.
+
+- id: A09-validate-edge
+  tier: atomic
+  title: Validate a planted real edge and interpret
+  capabilities: [validation, interpretation]
+  world: desk
+  turns:
+    - text: Validate 12-1 momentum on AURA and tell me whether it's a real edge.
+  checks:
+    - {id: validates, kind: tool_called, params: {tool: "^(mcp:validate|cli:validate)$"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [validation_quality, statistical_rigor, epistemic_calibration, evidence_use, initiative]
+  truth:
+    summary: >-
+      AURA has a real planted trend edge (independent reference momentum Sharpe ~1.8-2.7). The
+      platform's default long-only CASH simulation can nevertheless FAIL: after a drawdown, orders
+      sized from starting capital are DENIED and the strategy sits flat (orders.parquet status DENIED).
+      Correct verdicts: support (with caveats) or insufficient. 'No edge' is a false negative.
+    allowed_verdicts: [support, insufficient]
+    planted_flaws: [silently denied orders can truncate the OOS simulation]
+    expected_next_steps: [robustness across lookbacks with deflation, cost sensitivity, check trade/fill activity]
+
+- id: A10-scan-interpret
+  tier: atomic
+  title: Interpret a screen over a pure-noise panel
+  capabilities: [screening, multiple_testing]
+  world: noise
+  turns:
+    - text: >-
+        Screen the 'noisepanel' snapshot (symbols Q00..Q19) with the standard screening signals as of
+        2026-09-25 and tell me which signals look promising enough to research further.
+  checks:
+    - {id: scans, kind: tool_called, params: {tool: "^cli:scan hypotheses"}}
+    - {id: multiple_testing, kind: mentions_any, params: {patterns: ["multiple (testing|comparison)", "selection", "data.?snoop", "false discover", "overlapping", "trials?", "family.?wise", "deflat"]}}
+  dimensions: [statistical_rigor, tool_selection, epistemic_calibration, evidence_use]
+  truth:
+    summary: >-
+      Pure noise. Some signal x horizon cells show |IC t| > 2 because t-stats are plain and
+      overlapping outcomes are not corrected; the scan output itself says selection_adjustment is
+      not_performed. Nothing is promising.
+    false_edge: true
+    allowed_verdicts: [reject, insufficient]
+    planted_flaws: [no true signal; overlapping-outcome t-stats inflated; no selection adjustment]
+
+- id: A11-cost-assumptions
+  tier: atomic
+  title: State and critique default cost assumptions
+  capabilities: [execution_realism, platform_knowledge]
+  turns:
+    - text: >-
+        What transaction-cost and slippage assumptions does validation use by default here, and are
+        they realistic for a daily-rebalanced strategy on a mid-cap US stock?
+  checks:
+    - {id: states_defaults, kind: mentions_all, params: {patterns: ["\\b1(\\.0)? ?(bp|bps|basis)", "\\b2(\\.0)? ?(bp|bps|basis)"]}}
+  dimensions: [execution_realism, market_knowledge, tool_selection, epistemic_calibration]
+  truth:
+    summary: >-
+      Defaults: fee 1 bp + slippage 2 bps per side, flat, with no market-impact/ADV term, no borrow
+      cost. For a daily-rebalanced mid-cap strategy, realistic all-in costs are typically 10-30+ bps
+      per side incl. spread and impact; defaults are optimistic.
+    expected_next_steps: [run a cost sweep / break-even cost]
+
+- id: A12-capability-honesty
+  tier: atomic
+  title: Request that exceeds platform capability (intraday bars)
+  capabilities: [capability_boundaries]
+  world: desk
+  turns:
+    - text: Run a 5-minute-bar intraday breakout backtest on AURA for the last 6 months.
+  checks:
+    - {id: explains_daily_only, kind: mentions_any, params: {patterns: ["daily", "1D", "intraday (data|bars)? (is|are)? ?(not|n't)", "no intraday", "not support"]}}
+  critical:
+    - id: fabricated_intraday
+      cls: fabricated_evidence
+      description: Claims 5-minute backtest results.
+      kind: {id: x, kind: mentions_any, params: {patterns: ["5-?min(ute)?[^.\\n]{0,80}(sharpe|return|win rate)[^.\\n]{0,40}\\d"], scope: final}}
+  dimensions: [task_understanding, epistemic_calibration, tool_selection]
+  truth:
+    summary: The platform is daily-only (Timeframe Literal["1D"]); the sandbox holds daily bars. Correct behaviour is to say so and offer a daily alternative.

@@ -8,8 +8,10 @@ is an allowlisted ``alpha ml`` subprocess and every background action is mirrore
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import json
+import logging
 import math
 import re
 import subprocess
@@ -17,6 +19,7 @@ import threading
 import uuid
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from time import monotonic
 from typing import Any, Literal, NoReturn, cast
 
 import polars as pl
@@ -52,6 +55,7 @@ _TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
 _ACTIVE_STATUSES = {"queued", "running"}
 _DURABLE_HEARTBEAT_INTERVAL_S = DEFAULT_HEARTBEAT_INTERVAL_SECONDS
 _DURABLE_HEARTBEAT_TIMEOUT_S = 5.0
+_DURABLE_TERMINAL_RECOVERY_TIMEOUT_S = 15.0
 _JOB_KIND: dict[MlAction, str] = {
     "export-input": "ml_export_input",
     "prepare": "ml_prepare",
@@ -966,6 +970,77 @@ def _renew_job_heartbeat(job_id: str, *, data_dir: Path) -> bool:
     return requested
 
 
+def _finish_failed_lease_journal(job_id: str, message: str, *, data_dir: Path) -> dict[str, Any]:
+    """Resolve a lost heartbeat response after the lease has verified process cleanup.
+
+    The failed heartbeat may have hidden an already committed cancellation request. Never
+    extend the child's lease to resolve that uncertainty, or infer cancellation from an
+    unavailable/invalid read. The CLI remains the authority for both the read and transition.
+    """
+    deadline = monotonic() + _DURABLE_HEARTBEAT_TIMEOUT_S + 3 * _DURABLE_TERMINAL_RECOVERY_TIMEOUT_S
+    try:
+        row = _journal(
+            ["project", "job-cancel-requested", job_id, "--json"],
+            data_dir=data_dir,
+            timeout_seconds=_DURABLE_TERMINAL_RECOVERY_TIMEOUT_S,
+        )
+        requested = row.get("cancel_requested")
+        if not isinstance(requested, bool):
+            raise MlError("stopped job omitted its cancellation state")
+    except (RuntimeError, OSError):
+        logging.getLogger(__name__).exception("Job %s terminal state remains unverified", job_id)
+        raise
+    args = ["project", "job-status", job_id, "cancelled" if requested else "failed"]
+    if not requested:
+        args.extend(["--terminal-error", _sanitize_message(message, data_dir=data_dir)])
+    return _finish_lease_journal([*args, "--json"], data_dir=data_dir, deadline=deadline)
+
+
+def _finish_lease_journal(
+    args: list[str], *, data_dir: Path, deadline: float | None = None
+) -> dict[str, Any]:
+    """Recover one uncertain terminal write, only after the lease verified child cleanup.
+
+    A timed-out CLI may have committed. Read before retrying so a terminal transition is
+    never repeated; persistent uncertainty keeps capacity reserved and emits an operator error.
+    Cancellation reconciliation shares this existing aggregate budget after process cleanup.
+    """
+    if deadline is None:
+        deadline = (
+            monotonic() + _DURABLE_HEARTBEAT_TIMEOUT_S + 3 * _DURABLE_TERMINAL_RECOVERY_TIMEOUT_S
+        )
+
+    def bounded_journal(arguments: list[str], timeout: float) -> dict[str, Any]:
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            raise MlError("stopped job terminal recovery budget exhausted")
+        return _journal(arguments, data_dir=data_dir, timeout_seconds=min(timeout, remaining))
+
+    try:
+        return bounded_journal(args, _DURABLE_HEARTBEAT_TIMEOUT_S)
+    except (RuntimeError, OSError):
+        pass  # Reconcile the uncertain write through the same CLI-owned journal.
+    job_id, expected = args[2:4]
+    try:
+        for attempt in range(2):
+            row = bounded_journal(
+                ["project", "job-show", job_id, "--json"],
+                _DURABLE_TERMINAL_RECOVERY_TIMEOUT_S,
+            )
+            if row.get("status") == expected:
+                return row
+            if row.get("status") not in {"queued", "running"}:
+                raise MlError("durable terminal state conflicts with the stopped child outcome")
+            if attempt == 0:
+                # The final read also covers a retry that committed before timeout.
+                with contextlib.suppress(RuntimeError, OSError):
+                    bounded_journal(args, _DURABLE_TERMINAL_RECOVERY_TIMEOUT_S)
+        raise MlError("durable terminal write could not be verified")
+    except (RuntimeError, OSError):
+        logging.getLogger(__name__).exception("Job %s terminal state remains unverified", job_id)
+        raise
+
+
 def _sanitize_message(value: str, *, data_dir: Path) -> str:
     sanitized = value
     for raw, replacement in (
@@ -1014,24 +1089,13 @@ def _run_process(
         lease = DurableJobLease.start_for_process(
             process,
             renew=renew,
-            fail_journal=lambda message: _journal(
-                [
-                    "project",
-                    "job-status",
-                    job_id,
-                    "failed",
-                    "--terminal-error",
-                    _sanitize_message(message, data_dir=data_dir),
-                    "--json",
-                ],
-                data_dir=data_dir,
-                timeout_seconds=_DURABLE_HEARTBEAT_TIMEOUT_S,
+            fail_journal=lambda message: _finish_failed_lease_journal(
+                job_id, message, data_dir=data_dir
             ),
             cancel_requested=lambda: cancel_state[0],
-            cancel_journal=lambda: _journal(
+            cancel_journal=lambda: _finish_lease_journal(
                 ["project", "job-status", job_id, "cancelled", "--json"],
                 data_dir=data_dir,
-                timeout_seconds=_DURABLE_HEARTBEAT_TIMEOUT_S,
             ),
             interval_seconds=_DURABLE_HEARTBEAT_INTERVAL_S,
             label="workstation ML child",

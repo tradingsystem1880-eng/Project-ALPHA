@@ -220,6 +220,14 @@ def test_archive_parser_preserves_native_kline_fields() -> None:
     assert frame.row(0, named=True)["trade_count"] == 42
 
 
+@pytest.mark.parametrize("interval", ["1h", "4h", "1d", "3d", "1w"])
+def test_binance_public_kline_url_accepts_native_chart_intervals(interval: str) -> None:
+    url = binance_public_api_url(
+        "spot", "klines", {"symbol": "BTCUSDT", "interval": interval, "limit": 1}
+    )
+    assert f"interval={interval}" in url
+
+
 def test_archive_zip_allows_one_bounded_flat_csv_member() -> None:
     csv = b"1704067200000,42000,43000,41000,42500,12.5,1704153599999,531250,42,6.1,259250,0\n"
     output = io.BytesIO()
@@ -830,7 +838,7 @@ def test_closed_binance_url_contract_rejects_unsupported_combinations() -> None:
         binance_public_api_url("spot", "depth", {"symbol": "../BTC", "limit": 1})
     with pytest.raises(DataError, match="interval"):
         binance_public_api_url(
-            "spot", "klines", {"symbol": "BTCUSDT", "interval": "2h", "limit": 1}
+            "spot", "klines", {"symbol": "BTCUSDT", "interval": "2m", "limit": 1}
         )
     with pytest.raises(DataError, match="time range"):
         binance_public_api_url(

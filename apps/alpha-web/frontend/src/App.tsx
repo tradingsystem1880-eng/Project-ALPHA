@@ -1,405 +1,204 @@
-/**
- * The terminal shell (spec 2026-09-01 §4.2): title bar, menu bar, toolbar, docked Market Watch
- * and Navigator on the left, the MDI document area with its bottom tabs, the Toolbox under it,
- * the Data Manager dock on the right and the status bar. Documents come from the registry in
- * `shell/documents.ts`; which ones a profile may open is the manifest's decision. Only the active
- * document mounts, so nothing polls behind a hidden tab.
- */
-
-import { useCallback, useEffect, useState } from 'react'
-
+/** Workflow pages over the existing CLI-backed panels. Only the selected task mounts. */
+import { useCallback, useEffect, useState, useRef, type ReactNode } from 'react'
+import type { ArchiveChartDataset } from './api/client'
+import { createPortal } from 'react-dom'
 import { CommandPalette } from './components/CommandPalette'
+import { IndicatorsDialog } from './components/IndicatorsDialog'
 import { Toasts } from './components/Toasts'
 import { OwnerEnrollment } from './auth/OwnerEnrollment'
-import { clockText, useNow } from './context/clock'
-import { getLinked, setLinked, useLinked } from './context/linked'
+import { getLinked, getLinkedWorkspace, restoreLinked, setLinked, useLinked } from './context/linked'
 import { requestNewIdea } from './context/newIdea'
 import { onResearchCase } from './context/researchCase'
-import { registerNavigator } from './panels/actions'
-import { DataManager } from './panels/DataManager'
-import { MarketWatch } from './panels/MarketWatch'
-import { Navigator } from './panels/Navigator'
-import { DockFrame } from './shell/DockFrame'
-import { IndicatorsDialog } from './components/IndicatorsDialog'
-import { DocumentArea, type PaneFocus } from './shell/DocumentArea'
-import { DOCKS, DOCUMENTS, documentOf } from './shell/documents'
-import { Icon } from './shell/icons'
+import { ChartWorkspace } from './shell/ChartWorkspace'
 import { MenuBar } from './shell/MenuBar'
-import type { WorkspaceMode } from './shell/menuModel'
-import {
-  EMPTY_MDI,
-  activateDocument,
-  closeDocument,
-  openDocument,
-  windowOf,
-  type MdiState,
-} from './shell/mdiModel'
-import { PanelHost } from './shell/PanelHost'
-import { profile as manifest, showsWindow, symbolFitsProfile, type DockId, type WindowId } from './shell/profiles'
-import { StatusBar } from './shell/StatusBar'
-import { Toolbar } from './shell/Toolbar'
-import { chartHeader, windowTitle } from './shell/toolbarModel'
+import { restoreDocumentTabs, type TerminalDocument } from './shell/documentTabs'
 import { Toolbox } from './shell/Toolbox'
-import { useSymbolVenue } from './shell/useSymbolVenue'
-import { initActivity } from './state/activity'
-import { setSettings, useSettings, workspaceModeFor, type Profile } from './state/settings'
+import { ResearchBacklog } from './panels/ResearchBacklog'
+import { registerNavigator } from './panels/actions'
+import { ContextBar } from './shell/ContextBar'
+import { DOCUMENTS } from './shell/documents'
+import { PanelHost } from './shell/PanelHost'
+import { showsWindow, symbolFitsProfile, type WindowId } from './shell/profiles'
+import { StatusChip, WorkspaceModeAttribute } from './shell/Toolbar'
+import { StatusBar } from './shell/StatusBar'
+import { functionEntries } from './shell/terminalModel'
+import { workflowPages, resolveWorkflow, workflowHash, documentRoute, type PageId } from './shell/workflowModel'
+import { initActivity, useActivityField } from './state/activity'
+import { setSettings, useSettings, workspaceModeFor } from './state/settings'
 
-const MDI_KEY = 'alpha.shell.mdi'
-const DOCKS_KEY = 'alpha.shell.docks'
-
-type DockState = Record<DockId, boolean>
-
-/**
- * Every dock open by default; the Toolbox opens only on a window at least as tall as the artboard
- * (991px) so a 900px terminal keeps its documents' room — the strip is one click away.
- */
-function restoreDocks(): DockState {
-  const state = Object.fromEntries(DOCKS.map((dock) => [dock.id, true])) as DockState
-  state.Toolbox = window.innerHeight >= 960
-  try {
-    const parsed = JSON.parse(localStorage.getItem(DOCKS_KEY) ?? '{}') as Partial<Record<string, unknown>>
-    for (const dock of DOCKS) {
-      if (typeof parsed[dock.id] === 'boolean') state[dock.id] = parsed[dock.id] as boolean
-    }
-  } catch {
-    // an unreadable saved state falls back to the defaults above
-  }
-  return state
+const CONTEXT_KEY = 'alpha.workflow.context'
+function restoreContext() {
+  try { const raw = localStorage.getItem(CONTEXT_KEY); if (raw) restoreLinked(JSON.parse(raw)) }
+  catch { /* An unreadable preference must not prevent the app opening. */ }
 }
-
-function runIdFromHash(): string | null {
-  const match = /(?:^|[#&])run=([0-9a-f]{16})\b/.exec(window.location.hash)
-  return match ? match[1] : null
-}
-
-/** Documents the profile can open, in registry order. */
-function availableDocuments(profile: Profile): { id: WindowId; title: string }[] {
-  return DOCUMENTS.filter((item) => showsWindow(profile, item.id)).map((item) => ({
-    id: item.id,
-    title: item.title,
-  }))
-}
-
-/** Restore the saved MDI state, dropping anything the current profile does not show. */
-function restoreMdi(profile: Profile): MdiState {
-  let state: MdiState = EMPTY_MDI
-  try {
-    const raw = localStorage.getItem(MDI_KEY)
-    const parsed = raw ? (JSON.parse(raw) as MdiState) : null
-    if (parsed && Array.isArray(parsed.documents)) {
-      for (const item of parsed.documents) {
-        const window = windowOf(item.key)
-        if (DOCUMENTS.some((doc) => doc.id === window) && showsWindow(profile, window)) {
-          state = openDocument(state, item.key, item.title)
-        }
-      }
-      if (parsed.active && state.documents.some((item) => item.key === parsed.active)) {
-        state = activateDocument(state, parsed.active)
-      }
-    }
-  } catch {
-    state = EMPTY_MDI
-  }
-  if (state.documents.length === 0) {
-    state = openDocument(state, 'chart', documentOf('chart').title)
-    state = openDocument(state, 'research', documentOf('research').title)
-  }
-  return state
-}
+restoreContext()
 
 function WorkstationApp() {
   const linked = useLinked()
   const settings = useSettings()
   const { profile } = settings
-  const [mdi, setMdi] = useState<MdiState>(() => restoreMdi(profile))
-  const [focus, setFocus] = useState<PaneFocus | null>(null)
+  const [hash, setHash] = useState(window.location.hash)
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const [docks, setDocks] = useState<DockState>(restoreDocks)
-  const [maximised, setMaximised] = useState(false)
-  const [tiled, setTiled] = useState(false)
+  const [archiveContext, setArchiveContext] = useState<ArchiveChartDataset | null>(null)
+  const [openTabs, setOpenTabs] = useState<TerminalDocument[]>(() => {
+    try { return (['crypto', 'equities'] as const).flatMap(p => restoreDocumentTabs(JSON.parse(localStorage.getItem(`alpha.documents.v1.${p}`) ?? '[]'), p)) } catch { return [] }
+  })
+  const [toolboxOpen, setToolboxOpen] = useState(window.innerHeight >= 960)
+  const [chartFooter, setChartFooter] = useState<HTMLElement | null>(null)
+  const [workspaceRequest, setWorkspaceRequest] = useState<{ sequence: number; profile: 'crypto' | 'equities'; action: 'canonical' | 'duplicate' | 'tile'; archive?: ArchiveChartDataset } | null>(null)
+  const requestSequence = useRef(0)
+  const requestWorkspace = useCallback((action: 'canonical' | 'duplicate' | 'tile', archive?: ArchiveChartDataset) => setWorkspaceRequest({ sequence: ++requestSequence.current, profile, action, archive }), [profile])
+  const [chartOpened, setChartOpened] = useState(false)
+  const [lastTasks, setLastTasks] = useState<Record<string, string>>(() => {
+    try {
+      const value: unknown = JSON.parse(localStorage.getItem('alpha.last-tasks.v1') ?? '{}')
+      return value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).filter(([, pane]) => typeof pane === 'string')) : {}
+    } catch { return {} }
+  })
   const [indicatorsOpen, setIndicatorsOpen] = useState(false)
-  const now = useNow()
-  const venue = useSymbolVenue(linked.symbol)
-
+  const running = useActivityField('runningJobs')
+  const route = resolveWorkflow(hash, profile)
+  const pages = workflowPages(profile)
+  const page = pages.find(item => item.id === route.page)!
+  const pane = page.panes.find(item => item.name === route.pane)
+  const go = useCallback((page: PageId, pane?: string, runId?: string) => {
+    window.location.hash = workflowHash(page, pane, pane === 'RunDetail' ? runId ?? getLinked().runId ?? undefined : runId)
+    setHash(window.location.hash)
+  }, [])
+  const openRun = useCallback((runId: string) => { go('results', 'RunDetail', runId); setArchiveContext(null); setLinked({ runId }) }, [go])
+  const openDocument = useCallback((id: WindowId) => {
+    if (!showsWindow(profile, id)) setSettings({ profile: profile === 'crypto' ? 'equities' : 'crypto' })
+    const destination = documentRoute(id)
+    go(destination.page, destination.pane)
+  }, [go, profile])
+  const newIdea = useCallback(() => {
+    go('research', 'ResearchCockpit')
+    window.setTimeout(requestNewIdea, 100)
+  }, [go])
+  useEffect(() => { initActivity() }, [])
   useEffect(() => {
-    initActivity()
+    if (route.pane) setLastTasks(previous => previous[`${profile}:${route.page}`] === route.pane ? previous : { ...previous, [`${profile}:${route.page}`]: route.pane! })
+  }, [profile, route.page, route.pane])
+  useEffect(() => {
+    try { localStorage.setItem('alpha.last-tasks.v1', JSON.stringify(lastTasks)) }
+    catch { /* Task navigation remains available without persistence. */ }
+  }, [lastTasks])
+  useEffect(() => {
+    const update = () => setHash(window.location.hash)
+    window.addEventListener('hashchange', update)
+    return () => window.removeEventListener('hashchange', update)
   }, [])
   useEffect(() => {
-    localStorage.setItem(MDI_KEY, JSON.stringify(mdi))
-  }, [mdi])
+    if (route.runId) setLinked({ runId: route.runId })
+  }, [route.runId])
   useEffect(() => {
-    localStorage.setItem(DOCKS_KEY, JSON.stringify(docks))
-  }, [docks])
-  const setDock = useCallback((id: DockId, open: boolean) => {
-    setDocks((current) => (current[id] === open ? current : { ...current, [id]: open }))
-  }, [])
-  const toggleDock = useCallback((id: DockId) => {
-    setDocks((current) => ({ ...current, [id]: !current[id] }))
-  }, [])
+    try { localStorage.setItem(CONTEXT_KEY, JSON.stringify(getLinkedWorkspace())) }
+    catch { /* Private mode or a full browser store must not make the app unusable. */ }
+  }, [linked])
   useEffect(() => {
-    document.documentElement.setAttribute('data-profile', profile)
-    // The linked symbol must fit the active profile: a fresh terminal charts the profile's
-    // default instead of an empty frame, and a switch drops a symbol of the other market (an
-    // equities screener asked about XRP/USDT fails loud). A symbol set later by a run is never
-    // fought, which is why this reads the store once here rather than depending on it. A profile
-    // switch also closes the documents it does not show; nothing is sent to the server.
-    const { symbol } = getLinked()
-    if (!symbol || !symbolFitsProfile(profile, symbol)) {
-      setLinked({ symbol: manifest(profile).defaultSymbol })
-    }
-    setMdi((current) => {
-      let next: MdiState = current
-      for (const item of current.documents) {
-        if (!showsWindow(profile, item.window)) next = closeDocument(next, item.key)
-      }
-      return next
-    })
+    const symbol = getLinked().symbol
+    if (symbol && !symbolFitsProfile(profile, symbol)) setLinked({ symbol: null })
   }, [profile])
-  const active = mdi.documents.find((item) => item.key === mdi.active) ?? null
-  const title = windowTitle(
-    profile,
-    { symbol: linked.symbol, timeframe: 'D1' },
-    active && active.window !== 'chart' ? active.title : null,
-  )
-  useEffect(() => {
-    document.title = title
-  }, [title])
-
-  const activate = useCallback((key: string) => {
-    setMdi((current) => activateDocument(current, key))
-    const [window, instance] = key.split(/:(.*)/s)
-    if (window === 'report' && instance) setLinked({ runId: instance })
-  }, [])
-
-  const openWindow = useCallback(
-    (id: WindowId, instance?: string, title?: string) => {
-      if (!showsWindow(profile, id)) {
-        setSettings({ profile: manifest(profile).id === 'crypto' ? 'equities' : 'crypto' })
-      }
-      const key = instance ? `${id}:${instance}` : id
-      setMdi((current) => openDocument(current, key, title ?? documentOf(id).title))
-      if (id === 'report' && instance) setLinked({ runId: instance })
-    },
-    [profile],
-  )
-
-  const close = useCallback((key: string) => {
-    setMdi((current) => closeDocument(current, key))
-  }, [])
-
-  const openRun = useCallback(
-    (runId: string, title?: string) => {
-      window.location.hash = `run=${runId}`
-      openWindow('report', runId, title ?? `run ${runId.slice(0, 8)}`)
-    },
-    [openWindow],
-  )
-
-  const showPane = useCallback(
-    (id: WindowId, pane: string) => {
-      openWindow(id)
-      setFocus((previous) => ({ pane, seq: (previous?.seq ?? 0) + 1 }))
-    },
-    [openWindow],
-  )
-
-  // Panels raise navigation intents ("show the lab with this command") rather than reaching
-  // into the shell; the shell decides which document and pane that lands on.
+  useEffect(() => { document.title = `ALPHA · ${page.title}` }, [page.title])
   useEffect(() => {
     registerNavigator({
+      showChart: () => { setArchiveContext(null); requestWorkspace('canonical'); go('data', 'PriceChart') },
+      showCryptoData: () => go('data', 'FundingData'),
+      showArchiveChart: dataset => { setArchiveContext(dataset); requestWorkspace('canonical', dataset); go('data', 'PriceChart') },
+      showRules: () => go('strategies', 'StrategyBuilder'),
+      showScanner: () => go('strategies', 'Scanner'),
       showRun: openRun,
-      showStrategyLab: () => showPane('build', 'StrategyLab'),
-      showProjects: () => showPane('build', 'DevelopmentCenter'),
-      showResearchSources: () => showPane('research', 'Literature'),
-      showResearchData: () => setDock('DataManager', true),
-      showDataSymbol: () => {
-        setDock('DataManager', true)
-        window.setTimeout(() => document.getElementById('data-manager-symbol')?.focus(), 50)
-      },
-      showProviders: () => showPane('jobs', 'ProviderSystem'),
-      showCompare: () => openWindow('compare'),
+      showStrategyLab: () => go('strategies', 'StrategyLab'),
+      showProjects: () => go('strategies', 'DevelopmentCenter'),
+      showResearchSources: () => go('research', 'Literature'),
+      showResearchData: () => go('data', 'DataManager'),
+      showDataSymbol: () => { go('data', 'DataManager'); window.setTimeout(() => document.getElementById('data-manager-symbol')?.focus(), 100) },
+      showProviders: () => go('operations', 'ProviderSystem'),
+      showCompare: () => go('results', 'CompareRuns'),
       showIndicators: () => setIndicatorsOpen(true),
     })
-  }, [openRun, openWindow, setDock, showPane])
-
-  // Window › New chart window: a second chart pinned to the linked symbol (`chart:<symbol>`), so
-  // Market Watch can move the plain Chart while the pinned ones stay put; Tile charts lays every
-  // open chart out side by side (at most four).
-  const newChart = useCallback(() => {
-    if (!linked.symbol) return
-    openWindow('chart', linked.symbol, linked.symbol)
-  }, [linked.symbol, openWindow])
-
-  // `#run=<id>` deep-links to a run's report document.
+    return onResearchCase(projectId => { setLinked({ projectId }); go('research', 'ResearchCockpit') })
+  }, [go, openRun, requestWorkspace])
   useEffect(() => {
-    const apply = () => {
-      const runId = runIdFromHash()
-      if (runId) openWindow('report', runId, `run ${runId.slice(0, 8)}`)
+    const key = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setPaletteOpen(value => !value) }
+      if (event.key === 'F2') { event.preventDefault(); setPaletteOpen(true) }
+      if (event.key === 'F1') { event.preventDefault(); setPaletteOpen(true) }
+      if (event.key === 'Escape') setPaletteOpen(false)
     }
-    apply()
-    window.addEventListener('hashchange', apply)
-    return () => window.removeEventListener('hashchange', apply)
-  }, [openWindow])
-
-  // New Idea opens the research case pane and asks the cockpit to focus its capture field.
-  const newIdea = useCallback(() => {
-    showPane('research', 'ResearchCockpit')
-    window.setTimeout(requestNewIdea, 50)
-  }, [showPane])
-
-  // R6h (spec §15): a gated surface's "open research case" link lands on the holding case.
-  useEffect(
-    () =>
-      onResearchCase((projectId) => {
-        setLinked({ projectId })
-        showPane('research', 'ResearchCockpit')
-      }),
-    [showPane],
-  )
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault()
-        setPaletteOpen((open) => !open)
-      } else if (event.key === 'Escape') {
-        setPaletteOpen(false)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
   }, [])
-
-  const available = availableDocuments(profile)
-  const mode = workspaceModeFor(settings, linked.projectId)
-  const chooseMode = (next: WorkspaceMode) => {
-    if (!linked.projectId) return
-    const projectModes = { ...settings.projectModes }
-    if (next === 'guided') delete projectModes[linked.projectId]
-    else projectModes[linked.projectId] = next
-    setSettings({ projectModes })
+  useEffect(() => { if (route.pane !== 'PriceChart') setArchiveContext(null) }, [route.pane])
+  useEffect(() => { setArchiveContext(null) }, [linked.symbol, linked.linkGroup, profile])
+  useEffect(() => { if (linked.runId || linked.snapshotId) setArchiveContext(null) }, [linked.runId, linked.snapshotId])
+  const tabKey = `${profile}:${route.page}:${route.pane ?? ''}:${route.runId ?? ''}`
+  useEffect(() => {
+    if (route.pane === 'PriceChart') setChartOpened(true)
+    setOpenTabs(tabs => tabs.some(t => t.key === tabKey) ? tabs : [...tabs, { key: tabKey, title: route.pane === 'PriceChart' ? 'Price' : pane?.title ?? page.title, page: route.page, pane: route.pane ?? undefined, runId: route.runId ?? undefined }])
+  }, [tabKey, route.page, route.pane, route.runId, pane?.title, page.title])
+  useEffect(() => {
+    try { for (const market of ['crypto', 'equities']) localStorage.setItem(`alpha.documents.v1.${market}`, JSON.stringify(openTabs.filter(t => t.key.startsWith(`${market}:`)))) } catch { /* Tabs work without persistence. */ }
+  }, [openTabs])
+  const visibleTabs = openTabs.filter(t => t.key.startsWith(`${profile}:`))
+  const closeTab = (key: string) => {
+    if (openTabs.find(t => t.key === key)?.pane === 'PriceChart') setChartOpened(false)
+    const index = visibleTabs.findIndex(t => t.key === key)
+    const remaining = visibleTabs.filter(t => t.key !== key)
+    setOpenTabs(tabs => tabs.filter(t => t.key !== key))
+    if (key === tabKey) { const next = remaining[Math.max(0, index - 1)]; go(next?.page ?? 'overview', next?.pane, next?.runId) }
   }
-  const leftOpen = !maximised && (docks.MarketWatch || docks.Navigator)
-  const rightOpen = !maximised && docks.DataManager
-  const header = !active
-    ? ''
-    : active.window === 'chart'
-      ? chartHeader(linked.symbol, venue, linked.start, linked.end)
-      : active.window === 'report' && active.key !== 'report'
-        ? `Strategy Performance Report — ${active.title}`
-        : active.window === 'governance'
-          ? 'Governance — everything the banners used to say, in one window'
-          : active.title
-
-  return (
-    <div className={`shell terminal${leftOpen ? '' : ' terminal--no-left'}${rightOpen ? '' : ' terminal--no-right'}`}>
-      <header className="titlebar">
-        <span className="titlebar-text">{title}</span>
-        <span className="titlebar-glyphs" role="group" aria-label="Window controls">
-          {(['minimise', 'maximise', 'close'] as const).map((glyph) => (
-            <button
-              key={glyph}
-              type="button"
-              className="dock-glyph"
-              disabled
-              aria-label={`${glyph.charAt(0).toUpperCase()}${glyph.slice(1)} window`}
-              title="Window controls belong to the browser"
-            >
-              <Icon name={glyph} size={12} />
-            </button>
-          ))}
-        </span>
+  const mode = workspaceModeFor(settings, linked.projectId)
+  const documentFooter: ReactNode = <><nav className="document-strip" aria-label="Document navigation"><div className="document-tabs" role="tablist" aria-label="Open documents" onKeyDown={event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+        const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=tab]'))
+        const index = tabs.indexOf(document.activeElement as HTMLButtonElement)
+        if (index < 0) return
+        event.preventDefault()
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length
+        tabs[next]?.focus(); tabs[next]?.click()
+      }}>{visibleTabs.map(tab => <button key={tab.key} className="btn" role="tab" tabIndex={tab.key === tabKey ? 0 : -1} aria-selected={tab.key === tabKey} onClick={() => go(tab.page, tab.pane, tab.runId)}>{tab.title}{tab.runId ? ` · ${tab.runId.slice(0, 8)}` : ''}</button>)}</div><button className="btn" aria-label={`Close document ${visibleTabs.find(t => t.key === tabKey)?.title ?? 'active'}`} onClick={() => closeTab(tabKey)}>×</button></nav>
+      <Toolbox open={toolboxOpen && route.pane === 'PriceChart'} onOpenChange={setToolboxOpen}/></>
+  return <div className="workflow-shell shell">
+    <WorkspaceModeAttribute />
+    <a className="workflow-skip" href="#workflow-main" onClick={event => { event.preventDefault(); document.getElementById('workflow-main')?.focus() }}>Skip to content</a>
+    <div role="region" aria-label="Terminal title"><h1 className="terminal-titlebar">ALPHA Terminal — {profile === 'crypto' ? 'Crypto' : 'Equities'}{archiveContext ? ` — [${archiveContext.instrument},${archiveContext.frequency}] — ${archiveContext.venue} ${archiveContext.market_type} archive` : linked.symbol ? ` — [${linked.symbol},${linked.timeframe}]` : ''}</h1></div>
+    <nav aria-label="Terminal navigation"><MenuBar tasks={pages.flatMap(p => p.panes.map(pane => ({ title: `${p.title} › ${pane.title}`, page: p.id, pane: pane.name })))} onTask={(page, pane) => go(page as PageId, pane)} open={visibleTabs.map(t => ({ key: t.key, title: t.title, window: 'chart' as WindowId }))} active={tabKey} available={DOCUMENTS.filter(doc => showsWindow(profile, doc.id))} shell={{ mode: { current: mode, advancedAvailable: Boolean(linked.projectId) } }} onOpenWindow={openDocument} onActivate={key => { const tab = openTabs.find(t => t.key === key); if (tab) go(tab.page, tab.pane, tab.runId) }} onPalette={() => setPaletteOpen(true)} onSettings={() => go('settings', 'Governance')} onNewIdea={newIdea} onIndicators={() => setIndicatorsOpen(true)} onNewChart={() => { go('data', 'PriceChart'); requestWorkspace('duplicate') }} onTile={() => { go('data', 'PriceChart'); requestWorkspace('tile') }} onToggleDock={() => go('data', 'DataManager')} onMode={value => linked.projectId && setSettings({ projectModes: { ...settings.projectModes, [linked.projectId]: value } })} /></nav>
+    <div className="workflow-content">
+      <header className="workflow-topbar" aria-label="Terminal controls">
+        <div id="analytical-toolbar" hidden={route.pane !== 'PriceChart'} /><details className="desk-options" hidden={route.pane !== 'PriceChart'}><summary>Docks</summary><div id="dock-toolbar" /></details>
+        <label>Profile<select aria-label="Market profile" className="field" value={profile} onChange={e => setSettings({ profile: e.target.value as 'crypto' | 'equities' })}><option value="crypto">Crypto</option><option value="equities">Equities</option></select></label>
+        <ContextBar archive={archiveContext} />
+        <button className="btn toolbar-search" onClick={() => setPaletteOpen(true)}>Search · Ctrl+K</button>
+        <StatusChip onOpenGovernance={() => go('settings', 'Governance')} />
+        <button className="btn" onClick={() => go('settings', 'Governance')}>Governance</button>
       </header>
-      <MenuBar
-        open={mdi.documents}
-        active={mdi.active}
-        available={available}
-        shell={{
-          docks: DOCKS.map((dock) => ({ id: dock.id, label: dock.title, open: docks[dock.id] })),
-          mode: { current: mode, advancedAvailable: linked.projectId !== null },
-          tiled,
-        }}
-        onOpenWindow={(id) => openWindow(id)}
-        onActivate={activate}
-        onPalette={() => setPaletteOpen(true)}
-        onSettings={() => document.querySelector<HTMLButtonElement>('.settings-toggle')?.click()}
-        onNewIdea={newIdea}
-        onIndicators={() => setIndicatorsOpen(true)}
-        onNewChart={newChart}
-        onTile={() => setTiled((value) => !value)}
-        onToggleDock={toggleDock}
-        onMode={chooseMode}
-      />
-      <Toolbar
-        onData={() => toggleDock('DataManager')}
-        onResearch={() => showPane('research', 'ResearchCockpit')}
-        onRun={() => showPane('build', 'StrategyLab')}
-        onReport={() => linked.runId && openRun(linked.runId)}
-        onSearch={() => setPaletteOpen(true)}
-        onGovernance={() => openWindow('governance')}
-      />
-      <div className="terminal-body">
-        {leftOpen ? (
-          <aside className="dock dock--left" aria-label="Left docks">
-            {docks.MarketWatch ? (
-              <DockFrame
-                id="MarketWatch"
-                title={
-                  <>
-                    Market Watch: <span className="dock-clock">{clockText(now)}</span>
-                  </>
-                }
-                onClose={() => setDock('MarketWatch', false)}
-              >
-                <MarketWatch />
-              </DockFrame>
-            ) : null}
-            {docks.Navigator ? (
-              <DockFrame id="Navigator" onClose={() => setDock('Navigator', false)}>
-                <Navigator onOpenRun={openRun} />
-              </DockFrame>
-            ) : null}
-          </aside>
-        ) : null}
-        <main className="terminal-centre" aria-label="Documents">
-          <DocumentArea
-            mdi={mdi}
-            focus={focus}
-            contextKey={linked.projectId ?? 'no-project'}
-            header={header}
-            maximised={maximised}
-            tiled={tiled}
-            onActivate={activate}
-            onClose={close}
-            onToggleMaximise={() => setMaximised((value) => !value)}
-          />
-          {indicatorsOpen ? <IndicatorsDialog onClose={() => setIndicatorsOpen(false)} /> : null}
-          {maximised ? null : <Toolbox open={docks.Toolbox} onOpenChange={(open) => setDock('Toolbox', open)} />}
-        </main>
-        {rightOpen ? (
-          <aside className="dock dock--right" aria-label="Data Manager">
-            <DockFrame id="DataManager" onClose={() => setDock('DataManager', false)}>
-              <PanelHost name="DataManager" component={DataManager} />
-            </DockFrame>
-          </aside>
-        ) : null}
-      </div>
-      <StatusBar />
+      <main id="workflow-main" className="workflow-main" tabIndex={-1}>
+        <header className="document-caption" hidden={route.pane === 'PriceChart'}>{pane?.title ?? page.title}{linked.projectId ? <span className="chip" title={linked.projectId}>Project {linked.projectId.slice(0, 12)}</span> : null}</header>
+        {page.id === 'overview' ? <>
+          <div className="workflow-cards">{pages.filter(item => !['overview', 'settings'].includes(item.id)).map(item => <a key={item.id} href={workflowHash(item.id)}><h2>{item.title}</h2><p>{item.description}</p><span>Open {item.title.toLowerCase()} →</span></a>)}</div>
+          <div className="workflow-overview-status"><h2>Continue your work</h2><p>{running} active jobs · {linked.projectId ? `Selected project: ${linked.projectId}` : 'No project selected. Start a research idea or choose a case below.'}</p><button className="btn" onClick={() => go('operations', 'ProviderSystem')}>Check system readiness</button></div>
+          <div className="workflow-panel workflow-overview-panel"><PanelHost name="ResearchBacklog" component={ResearchBacklog} /></div>
+        </> : <>
+          {page.id === 'settings' ? <div className="workflow-preferences">
+            <label>Density<select aria-label="Density" className="field" value={settings.density} onChange={e => setSettings({ density: e.target.value as 'compact' | 'comfortable' })}><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+            <label>Explanations<select aria-label="Explanations" className="field" value={settings.explain} onChange={e => setSettings({ explain: e.target.value as 'terse' | 'narrative' })}><option value="narrative">Detailed notes</option><option value="terse">Concise</option></select></label>
+            <label>Project detail<select aria-label="Project detail" className="field" value={mode} disabled={!linked.projectId} title={!linked.projectId ? 'Select a project to change its detail level' : undefined} onChange={e => linked.projectId && setSettings({ projectModes: { ...settings.projectModes, [linked.projectId]: e.target.value as 'guided' | 'advanced' } })}><option value="guided">Guided</option><option value="advanced">Advanced</option></select></label>
+          </div> : null}
+          {pane && pane.name !== 'PriceChart' ? <section className="workflow-panel" aria-label={pane.title}><PanelHost key={`${pane.name}:${linked.projectId ?? ''}`} name={pane.name} component={pane.component} params={pane.params} /></section> : null}
 
-      <Toasts onOpenRun={openRun} />
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        documents={available}
-        onOpenDocument={(id) => openWindow(id)}
-        onOpenRun={openRun}
-        onNewIdea={newIdea}
-      />
+        </>}
+        {chartOpened ? <div className="chart-document" hidden={route.pane !== 'PriceChart'}><ChartWorkspace key={profile} profile={profile} archive={archiveContext} onArchiveChange={setArchiveContext} visible={route.pane === 'PriceChart'} command={workspaceRequest} onCommandHandled={sequence => setWorkspaceRequest(v => v?.sequence === sequence ? null : v)} onFooterMount={setChartFooter}/></div> : null}
+      </main>
+      {route.pane === 'PriceChart' && chartFooter ? createPortal(documentFooter, chartFooter) : documentFooter}
+      <StatusBar />
     </div>
-  )
+    {indicatorsOpen ? <IndicatorsDialog onClose={() => setIndicatorsOpen(false)} /> : null}
+    <Toasts onOpenRun={openRun} />
+    <CommandPalette functions={functionEntries(profile)} onNavigate={go} open={paletteOpen} onClose={() => setPaletteOpen(false)} documents={DOCUMENTS.filter(doc => showsWindow(profile, doc.id))} onOpenDocument={openDocument} onOpenRun={openRun} onNewIdea={newIdea} />
+  </div>
 }
 
 export function App() {
-  if (window.location.pathname === '/owner-auth/enroll') return <OwnerEnrollment />
-  return <WorkstationApp />
+  return window.location.pathname === '/owner-auth/enroll' ? <OwnerEnrollment /> : <WorkstationApp />
 }

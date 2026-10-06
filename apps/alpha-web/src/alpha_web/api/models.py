@@ -9,6 +9,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
+from alpha_cli.suite_catalog import SuiteActionValue as SuiteActionValue
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -619,10 +621,45 @@ class Candle(StrictModel):
     v: float
 
 
+class ArchiveChartDataset(StrictModel):
+    schema_version: Literal[1]
+    provider: Literal["binance", "bybit"]
+    venue: Literal["binance", "bybit"]
+    market_type: Literal["spot", "linear", "inverse"]
+    family: Literal["market_bars", "derivative_bars"]
+    instrument: str
+    base_asset: str
+    quote_asset: str
+    frequency: Literal[
+        "1m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w"
+    ]
+    units: Literal["provider_native_ohlcv", "quote_price"]
+    timestamp_convention: Literal["interval_start_utc"]
+    manifest_id: str
+    manifest_ids: list[str]
+    manifest_count: int = Field(ge=1)
+    start: str | None
+    end: str | None
+    row_count: int
+    verification: Literal["metadata_only"]
+
+
+class ArchiveChartDatasets(StrictModel):
+    datasets: list[ArchiveChartDataset]
+    authority: Literal["none"]
+    state: Literal["available", "unconfigured"]
+
+
 class CandleProvenance(StrictModel):
     source: str
     venue: str | None
-    timeframe: Literal["1D"]
+    timeframe: Literal[
+        "1MIN", "5MIN", "15MIN", "30MIN", "1H", "2H", "4H", "6H", "8H", "12H", "1D", "3D", "1W"
+    ]
+    manifest_id: str | None = None
+    market_type: str | None = None
+    volume_unit: Literal["base", "quote"] | None = None
+    history_kind: Literal["reconstructed_from_verified_archive"] | None = None
     snapshot_id: str | None
     provenance_sha256: str | None
     receipt_id: str | None
@@ -1064,6 +1101,10 @@ type CryptoFamilyValue = Literal[
     "historical_volatility",
     "asset_metadata",
     "market_reference",
+    "protocol_tvl",
+    "stablecoin_supply",
+    "yield_pools",
+    "yield_history",
     "onchain_catalog",
     "onchain_metrics",
     "dex_pools",
@@ -1073,7 +1114,13 @@ type CryptoFamilyValue = Literal[
     "defi_tvl",
 ]
 type CryptoProviderValue = Literal[
-    "binance", "bybit", "coingecko", "geckoterminal", "coinmetrics", "ccxt:coinbase", "defillama"
+    "binance",
+    "bybit",
+    "coingecko",
+    "geckoterminal",
+    "coinmetrics",
+    "defillama",
+    "ccxt:coinbase",
 ]
 type CryptoQualificationStateValue = Literal[
     "unverified", "unavailable", "qualified", "warning", "quarantined"
@@ -1117,7 +1164,45 @@ class CryptoCapabilitiesResponse(StrictModel):
     canonical_next_action: str
 
 
+class CryptoMarketCatalogItem(StrictModel):
+    pair: str
+    provider_symbol: str
+    base_asset: str
+    quote_asset: str
+    status: str
+
+
+class CryptoMarketCatalogResponse(StrictModel):
+    state: Literal["available", "unavailable"]
+    venue: Literal["binance"]
+    market_type: Literal["spot"]
+    as_of: str | None
+    stale: bool
+    total_matches: int = Field(ge=0)
+    markets: list[CryptoMarketCatalogItem]
+    next_action: str
+
+
+class CryptoYieldPoolItem(StrictModel):
+    pool_id: str
+    project: str
+    chain: str
+    symbol: str
+    tvl_usd: float = Field(ge=0)
+    apy: float
+
+
+class CryptoYieldPoolCatalogResponse(StrictModel):
+    state: Literal["available", "unavailable"]
+    manifest_id: str | None
+    captured_at: str | None
+    total_matches: int = Field(ge=0)
+    items: list[CryptoYieldPoolItem] = Field(max_length=100)
+    next_action: str
+
+
 class CryptoStorageResponse(StrictModel):
+    verification: Literal["not_checked", "metadata_only", "artifact_verified"] = "not_checked"
     state: Literal["ready", "blocked"]
     blocker: str | None
     bulk_root_label: str
@@ -1168,7 +1253,9 @@ class CryptoEstimateRequest(StrictModel):
     family: CryptoFamilyValue
     instruments: int = Field(default=1, ge=1, le=250)
     days: int = Field(default=30, ge=1, le=3_650)
-    frequency: Literal["1d", "4h", "1h", "30m", "15m", "5m", "1m", "tick"] = "1d"
+    frequency: Literal[
+        "1d", "3d", "1w", "12h", "8h", "6h", "4h", "2h", "1h", "30m", "15m", "5m", "1m", "tick"
+    ] = "1d"
 
 
 class CryptoEstimateResponse(StrictModel):
@@ -1208,6 +1295,7 @@ class CryptoCoverageItem(StrictModel):
 
 
 class CryptoCoverageResponse(StrictModel):
+    verification: Literal["not_checked", "metadata_only", "artifact_verified"] = "not_checked"
     items: list[CryptoCoverageItem]
     count: int = Field(ge=0)
     canonical_next_action: str
@@ -1447,7 +1535,22 @@ class CryptoAcquisitionRequest(StrictModel):
     base: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9._-]+$")
     quote: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9._-]+$")
     category: Literal["spot", "linear", "inverse", "option"] = "linear"
-    frequency: Literal["1d", "4h", "1h", "30m", "15m", "5m", "1m"] = "1h"
+    frequency: Literal[
+        "1d",
+        "3d",
+        "1w",
+        "12h",
+        "8h",
+        "6h",
+        "4h",
+        "2h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "1m",
+        "catalog_snapshot",
+    ] = "1h"
     period: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}$")
     network: str | None = Field(default=None, max_length=80, pattern=r"^[A-Za-z0-9._-]+$")
     pool_address: str | None = Field(default=None, max_length=160, pattern=r"^[A-Za-z0-9._:-]+$")
@@ -1580,19 +1683,6 @@ type AttemptStatusValue = Literal[
     "cancelled",
 ]
 type ControlJobStatusValue = Literal["queued", "running", "succeeded", "failed", "cancelled"]
-type SuiteActionValue = Literal[
-    "baseline",
-    "inner_oos",
-    "three_null_families",
-    "monte_carlo",
-    "optimize_grid",
-    "fixed_stress",
-    "portfolio_cross_asset",
-    "qlib",
-    "kronos",
-    "holdout_reveal",
-    "paper_preflight",
-]
 type EvidenceStatusValue = Literal["draft", "corroborated", "rejected", "superseded"]
 type AuthorKindValue = Literal["human", "agent"]
 type ResearchPhaseValue = Literal[

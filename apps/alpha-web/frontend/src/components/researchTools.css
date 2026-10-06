@@ -1,0 +1,11 @@
+.indicator-picker { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.indicator-picker-inline { padding: 6px; overflow: auto; }
+.indicator-choice { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.indicator-choice > label { flex: 1; min-width: 120px; }
+.indicator-choice .mono { overflow-wrap: anywhere; }
+.indicator-parameters { padding: 6px; border: 1px solid var(--line); display: flex; gap: 6px; flex-wrap: wrap; }
+.indicator-parameters label { display: grid; gap: 3px; max-width: 110px; }
+.indicator-parameters input { width: 100%; }
+.edge-review { padding: 8px; overflow: auto; }
+.edge-review dl { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(130px, 2fr); gap: 5px 12px; }
+.edge-review dd { margin: 0; overflow-wrap: anywhere; }

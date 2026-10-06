@@ -77,10 +77,11 @@ export function baseAsset(symbol: string): string {
 
 export function watchSymbols(profileId: Profile, stored: readonly string[]): string[] {
   const { starterWatchlist } = manifest(profileId)
+  const available = new Set(stored)
   const seen = new Set<string>()
   const rows: string[] = []
   for (const symbol of [...starterWatchlist, ...stored]) {
-    if (seen.has(symbol) || !symbolFitsProfile(profileId, symbol)) continue
+    if (!available.has(symbol) || seen.has(symbol) || !symbolFitsProfile(profileId, symbol)) continue
     seen.add(symbol)
     rows.push(symbol)
   }
@@ -185,4 +186,3 @@ export function applyTicker(row: WatchRow, quote: LiveQuote | null | undefined):
   if (!Number.isFinite(quote.last) || quote.last <= 0) return row
   return { ...row, last: priceText(quote.last), asOf: 'live', age: 'live', stale: false }
 }
-

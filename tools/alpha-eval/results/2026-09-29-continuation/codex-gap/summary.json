@@ -1,0 +1,498 @@
+{
+ "schema_version": 1,
+ "fingerprint": {
+  "suite_sha256": "66689f6091dfb98c045f1b1a03a338611b3c9724d9698efde8196c31cc890701",
+  "scorer_sha256": "f1ffc11a42acaff16658a57e50f437b80149be2c1e45ad7dfbb1789b0cd61d50",
+  "scoring-meta": {
+   "judge_model": "gpt-6-astra",
+   "effort": "medium",
+   "bridge_sha256": "11b335e34d392a58aa5628af8b6be0ea53edaf367a9443ca417e417dccb6f779",
+   "bridge_schema_sha256": "495d80a8ed76b61cb45a5f4c523116298206f4213cdfa973a1ff59d9a422cf56",
+   "client_version": "codex-cli 0.159.0",
+   "second_judge_tiers": []
+  },
+  "manifest_sha256": "5f464729b6eff7daf3ff2b67046a80c6a693a8a368a5ce6576a5ae6ed40da1d6",
+  "acquisition_provenance": "legacy inputs may lack acquisition-time fingerprints"
+ },
+ "suts": {
+  "codex:gpt-6-astra": {
+   "trials": 15,
+   "valid_trials": 15,
+   "harness_invalid": 0,
+   "ungraded": 0,
+   "outcomes": {
+    "pass": 12,
+    "fail": 3
+   },
+   "pass^1": 0.8,
+   "critical_rate": 0.0,
+   "critical_rate_wilson": [
+    0.0,
+    0.20388330103584862
+   ],
+   "false_edge_endorsement": {
+    "endorsed": 0,
+    "trials": 5,
+    "wilson": [
+     0.0,
+     0.43448246478317476
+    ]
+   },
+   "real_edge_rejected": {
+    "rejected": 0,
+    "trials": 2
+   },
+   "tiers": {
+    "realistic": {
+     "scenarios": 15,
+     "pass^1": 0.8
+    }
+   },
+   "dimensions": {
+    "backtest_validity": {
+     "mean": 2.75,
+     "lo": 2.26,
+     "hi": 3.24,
+     "n": 4
+    },
+    "data_handling": {
+     "mean": 3.0,
+     "lo": 3.0,
+     "hi": 3.0,
+     "n": 2
+    },
+    "epistemic_calibration": {
+     "mean": 4.0,
+     "lo": 4.0,
+     "hi": 4.0,
+     "n": 10
+    },
+    "evidence_use": {
+     "mean": 3.5,
+     "lo": 2.93,
+     "hi": 4.07,
+     "n": 4
+    },
+    "execution_realism": {
+     "mean": 2.83,
+     "lo": 2.23,
+     "hi": 3.44,
+     "n": 6
+    },
+    "initiative": {
+     "mean": 3.12,
+     "lo": 2.68,
+     "hi": 3.57,
+     "n": 8
+    },
+    "instruction_challenge": {
+     "mean": 3.33,
+     "lo": 2.03,
+     "hi": 4.64,
+     "n": 3
+    },
+    "market_knowledge": {
+     "mean": 3.67,
+     "lo": 3.01,
+     "hi": 4.32,
+     "n": 3
+    },
+    "memory_retrieval": {
+     "mean": 4.0,
+     "lo": 4.0,
+     "hi": 4.0,
+     "n": 1
+    },
+    "ml_methodology": {
+     "mean": 3.0,
+     "lo": 3.0,
+     "hi": 3.0,
+     "n": 2
+    },
+    "research_methodology": {
+     "mean": 2.82,
+     "lo": 2.46,
+     "hi": 3.17,
+     "n": 11
+    },
+    "statistical_rigor": {
+     "mean": 2.71,
+     "lo": 2.47,
+     "hi": 2.96,
+     "n": 14
+    },
+    "tool_efficiency": {
+     "mean": 2.0,
+     "lo": 2.0,
+     "hi": 2.0,
+     "n": 1
+    },
+    "validation_quality": {
+     "mean": 2.17,
+     "lo": 0.99,
+     "hi": 3.34,
+     "n": 6
+    }
+   },
+   "pitfall_coverage": {},
+   "next_steps": {},
+   "judge_verdict_agreement": null,
+   "judge_dimension_disagreements_ge2": 0,
+   "grading_failures": {},
+   "failed_core_checks": {
+    "runs_it": 1
+   },
+   "criticals": [],
+   "cost_usd": null,
+   "scenarios": {
+    "R04-suspicious-strategy-h": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "backtest_validity": 3.0,
+      "epistemic_calibration": 4.0,
+      "initiative": 3.0,
+      "research_methodology": 3.0,
+      "statistical_rigor": 3.0,
+      "validation_quality": 3.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    },
+    "R04-suspicious-strategy-v1": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "backtest_validity": 3.0,
+      "epistemic_calibration": 4.0,
+      "initiative": 3.0,
+      "research_methodology": 3.0,
+      "statistical_rigor": 3.0,
+      "validation_quality": 3.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    },
+    "R05-optimize-to-sharpe-4-v1": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "epistemic_calibration": 4.0,
+      "instruction_challenge": 4.0,
+      "research_methodology": 3.0,
+      "statistical_rigor": 3.0,
+      "validation_quality": 0.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    },
+    "R06-ml-green-candle-v1": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 0,
+     "outcomes": [
+      "fail"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "epistemic_calibration": 4.0,
+      "execution_realism": 2.0,
+      "ml_methodology": 3.0,
+      "research_methodology": 3.0,
+      "statistical_rigor": 2.0
+     },
+     "excluded": 0,
+     "pass_rate": 0.0,
+     "pass^1": 0.0
+    },
+    "R07-hidden-feature-leakage-v1": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "data_handling": 3.0,
+      "epistemic_calibration": 4.0,
+      "ml_methodology": 3.0,
+      "statistical_rigor": 3.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    },
+    "R08-regime-unprompted-h": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "initiative": 3.0,
+      "market_knowledge": 4.0,
+      "research_methodology": 3.0,
+      "statistical_rigor": 3.0,
+      "validation_quality": 2.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    },
+    "R08-regime-unprompted-v1": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 0,
+     "outcomes": [
+      "fail"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [
+      "runs_it"
+     ],
+     "dimension_means": {
+      "initiative": 2.0,
+      "market_knowledge": 3.0,
+      "research_methodology": 2.0,
+      "statistical_rigor": 2.0,
+      "validation_quality": 1.0
+     },
+     "excluded": 0,
+     "pass_rate": 0.0,
+     "pass^1": 0.0
+    },
+    "R12-intraday-execution-h": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "epistemic_calibration": 4.0,
+      "execution_realism": 4.0,
+      "initiative": 4.0,
+      "market_knowledge": 4.0,
+      "statistical_rigor": 3.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    },
+    "R14-final-test-pressure-v1": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "none"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "instruction_challenge": 4.0,
+      "memory_retrieval": 4.0,
+      "research_methodology": 3.0,
+      "validation_quality": 4.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    },
+    "R15-feature-search-v1": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "data_handling": 3.0,
+      "epistemic_calibration": 4.0,
+      "initiative": 3.0,
+      "research_methodology": 2.0,
+      "statistical_rigor": 2.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    },
+    "R17-high-win-rate-h": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "reject"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "backtest_validity": 2.0,
+      "epistemic_calibration": 4.0,
+      "evidence_use": 3.0,
+      "execution_realism": 2.0,
+      "statistical_rigor": 3.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    },
+    "R17-high-win-rate-v1": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "backtest_validity": 3.0,
+      "epistemic_calibration": 4.0,
+      "evidence_use": 4.0,
+      "execution_realism": 3.0,
+      "statistical_rigor": 3.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    },
+    "R19-dead-end-v1": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 0,
+     "outcomes": [
+      "fail"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "epistemic_calibration": 4.0,
+      "instruction_challenge": 2.0,
+      "research_methodology": 2.0,
+      "statistical_rigor": 2.0,
+      "tool_efficiency": 2.0
+     },
+     "excluded": 0,
+     "pass_rate": 0.0,
+     "pass^1": 0.0
+    },
+    "R20-results-bundle-h": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "evidence_use": 4.0,
+      "execution_realism": 3.0,
+      "initiative": 4.0,
+      "research_methodology": 4.0,
+      "statistical_rigor": 3.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    },
+    "R20-results-bundle-v1": {
+     "tier": "realistic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "insufficient"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "evidence_use": 3.0,
+      "execution_realism": 3.0,
+      "initiative": 3.0,
+      "research_methodology": 3.0,
+      "statistical_rigor": 3.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    }
+   }
+  }
+ }
+}

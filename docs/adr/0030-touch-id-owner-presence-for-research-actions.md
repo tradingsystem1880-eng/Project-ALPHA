@@ -1,6 +1,6 @@
 # ADR-0030: Require fresh Touch ID for Workstation research authority
 
-**Status:** Accepted
+**Status:** Partially superseded by [ADR-0038](0038-local-confirmation-and-terminal-archive-charts.md) on 2026-09-30. Mandatory biometric use is replaced by local confirmation; this record remains the legacy WebAuthn design.
 **Date:** 2026-08-13
 **Deciders:** Project ALPHA owner and AI build agents
 

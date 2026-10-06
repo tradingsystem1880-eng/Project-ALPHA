@@ -17,6 +17,7 @@ from typing import Any, Final, NamedTuple, cast
 
 import typer
 
+from alpha_cli._hypothesis_scan import verified_screening_reference
 from alpha_cli.control_store import (
     ControlStore,
     ResearchContractScope,
@@ -848,9 +849,17 @@ def capture(
     draft = draft_exploration_contract(idea)
     questions = cast(list[object], draft["blocking_questions"])
     count = len(questions)
-    if count:
+    if draft["event_definition"]["name"] == "owner_idea_event":
+        next_action = "Define a bounded hypothesis and assess the missing research operator."
+        responsibility: ResearchResponsibility = "codex"
+        blocker = "No registered research operator matches this observation."
+        recovery = (
+            "Clarify the observation without assuming a registered pattern; "
+            "implement and review an exact operator before proposing execution."
+        )
+    elif count:
         next_action = f"Owner answers the {count} material definition questions in one batch."
-        responsibility: ResearchResponsibility = "owner"
+        responsibility = "owner"
         blocker = "The primary chart, event timestamp, or outcome is materially ambiguous."
         recovery = "Answer the single bounded question batch; Codex handles technical defaults."
     else:
@@ -1360,6 +1369,9 @@ def draft(
     answer_bundle: str | None = typer.Option(
         None, "--answer-bundle", help="registered atomic material-answer bundle"
     ),
+    operator: str | None = typer.Option(
+        None, "--operator", help="explicit registered operator id; must agree with material answers"
+    ),
     expected_case_revision: str | None = typer.Option(
         None, "--expected-case-revision", help="proposal-preflight optimistic revision"
     ),
@@ -1413,7 +1425,9 @@ def draft(
             compatible_ids = cast(list[str], registered["compatible_dataset_ids"])
             if dataset is not None and dataset not in compatible_ids:
                 raise DataError("the selected dataset is not qualified for this answer bundle")
-        preview = draft_exploration_contract(str(project["hypothesis"]), resolutions=resolutions)
+        preview = draft_exploration_contract(
+            str(project["hypothesis"]), resolutions=resolutions, operator_id=operator
+        )
         if preview["blocking_questions"]:
             raise DataError("all material research questions must be resolved in the one batch")
         if answer_bundle is not None:
@@ -1421,7 +1435,7 @@ def draft(
         binding: _EmpiricalDataset | CryptoEmpiricalDataset | None
         if dataset is None:
             binding = None
-        elif answer_bundle == "bybit_btcusdt_crowding_reversal_v1":
+        elif preview["event_definition"]["name"] == "bybit_btcusdt_crowding_reversal":
             binding = _crypto_empirical_dataset(store, dataset)
         else:
             binding = _empirical_dataset(store, dataset)
@@ -1551,6 +1565,9 @@ def revise(
     dataset: str | None = typer.Option(
         None, "--dataset", help="registered rd_ research dataset (Gate-4 daily lane only)"
     ),
+    operator: str | None = typer.Option(
+        None, "--operator", help="explicit registered operator id; must agree with material answers"
+    ),
     actor: str = typer.Option(..., help="human owner requesting the bounded revision"),
     reason: str = typer.Option(...),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
@@ -1565,7 +1582,7 @@ def revise(
         if source_pack.get("project_id") != project_id:
             raise DataError("research source pack must belong to the revised project")
         preview = draft_exploration_contract(
-            str(project["hypothesis"]), resolutions=_answers(answers)
+            str(project["hypothesis"]), resolutions=_answers(answers), operator_id=operator
         )
         if preview["blocking_questions"]:
             raise DataError("all material research questions must be resolved in the one batch")
@@ -3003,6 +3020,10 @@ def context_build(
     protocol: str | None = typer.Option(
         None, "--protocol", help="pair a library protocol; its content hash is recorded"
     ),
+    scan: str | None = typer.Option(None, "--scan", help="link verified screening provenance only"),
+    scan_attempt: str | None = typer.Option(
+        None, "--scan-attempt", help="select a completed screening attempt; requires --scan"
+    ),
     created_by: str = typer.Option("codex", "--created-by", help="recording actor"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
@@ -3012,6 +3033,15 @@ def context_build(
         entry = read_research_protocol(protocol)
         protocol_hash = str(entry["sha256"])
     try:
+        if scan_attempt is not None and scan is None:
+            raise DataError("--scan-attempt requires --scan")
+        screening_reference = (
+            None
+            if scan is None
+            else verified_screening_reference(
+                AlphaSettings().data_dir, scan, attempt_id=scan_attempt
+            )
+        )
         packet = _store().build_research_context_packet(
             project_id,
             kind=kind,
@@ -3019,6 +3049,7 @@ def context_build(
             symbol=symbol,
             protocol_id=protocol,
             protocol_content_hash=protocol_hash,
+            screening_reference=screening_reference,
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc

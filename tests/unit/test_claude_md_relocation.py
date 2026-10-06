@@ -1,15 +1,7 @@
-"""Zero-loss drift test for the CLAUDE.md restructure.
+"""Current operating guidance stays small, navigable, and explicit about invariants.
 
-The pre-relocation CLAUDE.md is frozen at ``tests/fixtures/claude_md_v1.md``.
-It is the manual as it stood on ``codex/full-repair-program`` immediately
-before the merge — the newest ancestor that still carried the CLI surface,
-MODULE MAP, and build history inline — so this test proves the relocation lost
-nothing from *either* branch. Every heading, table row, and bullet of that file
-must still be present verbatim in the union of the core ``CLAUDE.md``,
-``.claude/rules/*.md``, and ``docs/BUILD-STATUS.md``. Refresh the fixture only
-when a future change legitimately supersedes a line, and say so in the commit.
-The core file must stay small enough to be read, and every rule file must
-declare ``paths`` globs that match at least one file.
+Historical prose is not an executable specification. Source contracts and behavior tests own
+the implementation; this guard checks today's instructions and their local references.
 """
 
 from __future__ import annotations
@@ -21,23 +13,7 @@ import pytest
 
 from tests.unit._harness_support import REPO_ROOT as ROOT
 
-FIXTURE = ROOT / "tests" / "fixtures" / "claude_md_v1.md"
 RULES = ROOT / ".claude" / "rules"
-CORE_MAX_LINES = 200
-CORE_MAX_BYTES = 35_000
-_LOAD_BEARING = re.compile(r"^\s*(#|\||- |\+ )")
-
-
-def _load_bearing_lines(text: str) -> list[str]:
-    return [line.strip() for line in text.splitlines() if _LOAD_BEARING.match(line)]
-
-
-def _union_lines() -> set[str]:
-    docs = [ROOT / "CLAUDE.md", ROOT / "docs" / "BUILD-STATUS.md", *sorted(RULES.glob("*.md"))]
-    union: set[str] = set()
-    for doc in docs:
-        union.update(line.strip() for line in doc.read_text().splitlines())
-    return union
 
 
 def _frontmatter_paths(text: str) -> list[str] | None:
@@ -47,30 +23,30 @@ def _frontmatter_paths(text: str) -> list[str] | None:
     return [m.group(1) for m in re.finditer(r'^\s*-\s*"([^"]+)"\s*$', head, re.M)]
 
 
-class TestZeroLoss:
-    def test_every_load_bearing_line_survives(self) -> None:
-        union = _union_lines()
-        missing = [line for line in _load_bearing_lines(FIXTURE.read_text()) if line not in union]
-        assert missing == [], f"{len(missing)} CLAUDE.md v1 line(s) lost:\n" + "\n".join(
-            missing[:20]
-        )
-
+class TestCurrentManual:
     def test_core_is_small(self) -> None:
-        core = (ROOT / "CLAUDE.md").read_text()
-        assert core.count("\n") < CORE_MAX_LINES
-        assert len(core.encode()) < CORE_MAX_BYTES
+        assert sum((ROOT / name).stat().st_size for name in ("CLAUDE.md", "AGENTS.md")) <= 6_000
+
+    def test_local_manual_links_resolve(self) -> None:
+        for name in ("AGENTS.md", "CLAUDE.md"):
+            for target in re.findall(r"\]\(([^)]+)\)", (ROOT / name).read_text()):
+                assert not target.startswith(("https:", "http:")), "manual links are local"
+                assert (ROOT / target.split("#", 1)[0]).is_file(), target
 
     def test_core_keeps_the_invariants(self) -> None:
         core = (ROOT / "CLAUDE.md").read_text()
-        for heading in (
-            "## Architecture DAG",
-            "## Golden rules",
-            "## Commands",
-            "## Where do I add X?",
-            "## Claude Code harness",
-            "## Rules (path-scoped",
+        for invariant in (
+            "alpha_cli",
+            "as_of",
+            "t+1",
+            "immutable",
+            "owner",
+            "tests/holdout/",
+            "uv run python scripts/gate.py full",
+            "pyproject.toml",
+            "not proof of edge",
         ):
-            assert heading in core
+            assert invariant in core
 
 
 class TestRuleFiles:

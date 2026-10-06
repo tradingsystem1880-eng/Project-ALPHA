@@ -1,0 +1,60 @@
+{
+ "name": "cryptodesk",
+ "n": 3555,
+ "start": "2017-01-01",
+ "bar_split": "independent",
+ "calendar": "all",
+ "symbols": [
+  {
+   "symbol": "BTC/USD",
+   "family": "trend",
+   "params": {
+    "mu": 0.004,
+    "sigma": 0.032,
+    "switch_p": 0.006
+   }
+  },
+  {
+   "symbol": "ETH/USD",
+   "family": "trend",
+   "params": {
+    "mu": 0.002,
+    "sigma": 0.03,
+    "switch_p": 0.006,
+    "loading": 0.6
+   },
+   "factor": "BTC/USD"
+  },
+  {
+   "symbol": "SOL/USD",
+   "family": "null",
+   "params": {
+    "sigma": 0.035,
+    "loading": 0.7
+   },
+   "factor": "BTC/USD"
+  },
+  {
+   "symbol": "MKTX",
+   "family": "drift",
+   "params": {
+    "mu": 0.0003,
+    "sigma": 0.01
+   },
+   "calendar": "business",
+   "n": 2520,
+   "start": "2017-01-30"
+  },
+  {
+   "symbol": "TRND",
+   "family": "trend",
+   "params": {
+    "mu": 0.0015,
+    "sigma": 0.012
+   },
+   "calendar": "business",
+   "n": 2520,
+   "start": "2017-01-30"
+  }
+ ]
+}

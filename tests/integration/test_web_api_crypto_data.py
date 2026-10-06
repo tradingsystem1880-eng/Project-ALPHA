@@ -57,6 +57,16 @@ def test_crypto_route_functions_cover_closed_validation_and_recovery_edges(
         return args
 
     monkeypatch.setattr(crypto_api, "_project", project)
+    defillama_request = CryptoAcquisitionRequest(
+        provider="defillama",
+        family="protocol_tvl",
+        instrument="aave",
+        base="AAVE",
+        quote="USD",
+        frequency="1d",
+    )
+    assert defillama_request.provider == "defillama"
+    assert defillama_request.family == "protocol_tvl"
     assert crypto_api.storage()[1] == "storage"
     assert crypto_api.coverage()[1] == "coverage"
     crypto_api.profile_create(CryptoCoverageProfileCreateRequest(as_of="2026-08-15T00:00:00Z"))
@@ -865,3 +875,29 @@ def test_crypto_asset_route_resolves_reviewed_xrp_and_rejects_unreviewed_doge(
     assert doge.status_code == 422
     assert doge.json()["code"] == "request_invalid"
     assert "reviewed native mapping" in doge.json()["message"]
+
+
+def test_yield_pool_route_is_bounded_and_cli_backed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    calls: list[list[str]] = []
+
+    def project(args: list[str], **_: object) -> dict[str, object]:
+        calls.append(args)
+        return {
+            "state": "unavailable",
+            "manifest_id": None,
+            "captured_at": None,
+            "total_matches": 0,
+            "items": [],
+            "next_action": "Acquire catalog",
+        }
+
+    monkeypatch.setattr(_catalog, "_run_json", project)
+    client = TestClient(create_app())
+    response = client.get("/api/crypto-data/yield-pools?query=aave&limit=10")
+    assert response.status_code == 200
+    assert calls == [["crypto-data", "yield-pools", "--query", "aave", "--limit", "10", "--json"]]
+    assert client.get("/api/crypto-data/yield-pools?limit=101").status_code == 422
+    assert client.get("/api/crypto-data/yield-pools?query=" + "x" * 81).status_code == 422

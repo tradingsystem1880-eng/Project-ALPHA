@@ -16,12 +16,7 @@ def test_current_entry_docs_retire_cost_layout_and_ai_marketing_claims() -> None
     for retired in ("$0", "dockview", "ai research desk", "screened source pack"):
         assert retired not in text
 
-    manual_head = (
-        (ROOT / "CLAUDE.md")
-        .read_text(encoding="utf-8")
-        .split("## Architecture DAG", maxsplit=1)[0]
-        .lower()
-    )
+    manual_head = (ROOT / "CLAUDE.md").read_text(encoding="utf-8").lower()
     assert "$0" not in manual_head
     assert "capability-authority-matrix.md" in manual_head
 

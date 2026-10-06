@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import type { FigureCatalogueItem, FigureMetadata } from '../api/types'
 import { useSettings } from '../state/settings'
+import { FigureSurface } from './FigureSurface'
 import { FigureOverlay } from './FigureOverlay'
 import { notesVisible } from './figureExport'
 
@@ -99,8 +100,6 @@ export function FigureCard({ runId, runName, item }: Props) {
     )
   }
 
-  const svg = api.figureImageUrl(runId, meta.figure_id, meta.cache_key, 'svg')
-  const png = api.figureImageUrl(runId, meta.figure_id, meta.cache_key, 'png')
 
   return (
     <figure className="figure-card" aria-labelledby={`fig-${meta.figure_id}`}>
@@ -123,12 +122,6 @@ export function FigureCard({ runId, runName, item }: Props) {
           >
             Expand
           </button>
-          <a className="btn ghost" href={svg} download={`${meta.figure_id}.svg`}>
-            SVG
-          </a>
-          <a className="btn ghost" href={png} download={`${meta.figure_id}.png`}>
-            PNG
-          </a>
           <button
             type="button"
             className="btn ghost"
@@ -142,13 +135,7 @@ export function FigureCard({ runId, runName, item }: Props) {
 
       {/* Double-click maximises, like a chart window in a terminal; the Expand button is the
           keyboard route. */}
-      <img
-        className="figure-image"
-        src={svg}
-        alt={meta.alt_text}
-        loading="lazy"
-        onDoubleClick={() => setMaximised(true)}
-      />
+      <FigureSurface runId={runId} meta={meta} onExpand={() => setMaximised(true)}/>
 
       {/* Question, uncertainty and caveat are the only accessible copy of the figure's meaning,
           so they stay in the DOM in both modes and are merely hidden from sight outside Notes. */}

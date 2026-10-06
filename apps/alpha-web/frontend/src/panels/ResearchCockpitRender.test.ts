@@ -111,7 +111,7 @@ describe('Research Cockpit study status', () => {
     expect(html).not.toContain('Touch ID · launch D1')
     expect(html).toContain('bounded reversal')
     expect(html).toContain('Describe only the visible pre-cutoff structure.')
-    expect(html).toContain('Touch ID receipt receipt-1')
+    expect(html).toContain('Owner action receipt receipt-1')
     expect(html).not.toContain('future-point-value')
 
     const staleHtml = renderToStaticMarkup(createElement(StudyStatusSection, {

@@ -1,0 +1,63 @@
+import { expect, test } from '@playwright/test'
+import { preparePage, openTask } from './support/workstationHarness'
+const candles = { 'XRP/USDT': Array.from({ length: 60 }, (_, i) => ({ t: 1700000000 + i * 86400, o: 100 + i, h: 102 + i, l: 99 + i, c: 101 + i, v: 1000 })) }
+test('menus, search and open document tabs preserve working context', async ({ page }) => {
+  await preparePage(page, { candles })
+  await page.keyboard.press('F2')
+  const search = page.getByPlaceholder('Open a document, a run, or a symbol…')
+  await expect(search).toBeFocused(); await search.fill('Literature')
+  await page.getByRole('option', { name: /Literature.*LITERATURE/ }).click()
+  await expect(page.getByRole('tab', { name: 'Literature', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await openTask(page, 'Data & Assets', 'Price')
+  await expect(page.locator('.price-panel .count')).toHaveText('60 bars')
+  await page.getByRole('tab', { name: 'Literature', exact: true }).click()
+  await page.getByRole('tab', { name: 'Price', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Symbol, venue and timeframe' })).toContainText('XRPUSDT')
+  await page.getByRole('tab', { name: 'Literature', exact: true }).click()
+  await page.getByRole('button', { name: 'Close document Literature', exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Literature', exact: true })).toHaveCount(0)
+})
+test('chart layouts persist between visits and comparisons share the viewport', async ({ page }) => {
+  await preparePage(page, { candles }); await openTask(page, 'Data & Assets', 'Price')
+  await expect(page.locator('.price-panel .count')).toHaveText('60 bars')
+  await page.getByRole('button', { name: 'Duplicate panel primary', exact: true }).click()
+  await expect(page.locator('.analytical-panel')).toHaveCount(2)
+  await openTask(page, 'Research', 'Literature'); await openTask(page, 'Data & Assets', 'Price')
+  await expect(page.locator('.analytical-panel')).toHaveCount(2)
+  for (const chart of await page.locator('.analytical-panel').all()) { const bounds = await chart.boundingBox(); expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(page.viewportSize()!.height) }
+  await page.getByRole('button', { name: 'Close panel panel-1', exact: true }).click()
+  await expect(page.locator('.analytical-panel')).toHaveCount(1)
+})
+test('Market Watch only lists stored markets and opens the selected market chart', async ({ page }) => {
+  await preparePage(page, { candles })
+  await page.route('**/api/symbols', route => route.fulfill({ json: { symbols: ['XRP/USDT', 'ETH/USDT'] } }))
+  const unreadable = page.waitForResponse(response => decodeURIComponent(new URL(response.url()).pathname).endsWith('/api/candles/ETH/USDT'))
+  await openTask(page, 'Data & Assets', 'Watchlist')
+  const table = page.getByRole('table', { name: 'Market Watch' }); await unreadable
+  await expect(table.getByRole('button', { name: 'XRP/USDT', exact: true })).toBeVisible()
+  await expect(table.getByRole('button', { name: 'BTC/USDT', exact: true })).toHaveCount(0)
+  await expect(table.getByRole('button', { name: 'ETH/USDT', exact: true })).toHaveCount(0)
+  await table.getByRole('button', { name: 'XRP/USDT', exact: true }).click()
+  await expect(page).toHaveURL(/#page=data&pane=PriceChart/)
+  await expect(page.locator('.price-panel .count')).toHaveText('60 bars')
+})
+test('the working context asset picker remains inside a narrow viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 }); await preparePage(page, { candles })
+  await page.getByRole('button', { name: 'Symbol, venue and timeframe' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Working context' }); const bounds = await dialog.boundingBox()
+  expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1366)
+  await expect(dialog.getByRole('combobox', { name: 'Active asset' })).toBeVisible()
+})
+test('search reaches nested functions and retries failed symbol discovery', async ({ page }) => {
+  await preparePage(page); let attempts = 0
+  await page.route('**/api/symbols', route => { attempts++; return attempts === 1 ? route.fulfill({ status: 503, json: { detail: 'Test inventory unavailable' } }) : route.fulfill({ json: { symbols: ['XRP/USDT', 'SPY'] } }) })
+  await page.getByRole('button', { name: 'Search · Ctrl+K' }).click()
+  await page.getByPlaceholder('Open a document, a run, or a symbol…').fill('Literature')
+  await page.getByRole('option', { name: /Literature.*LITERATURE/ }).click()
+  await page.getByRole('button', { name: 'Search · Ctrl+K' }).click()
+  await page.getByPlaceholder('Open a document, a run, or a symbol…').fill('set symbol'); await page.keyboard.press('Enter')
+  await expect(page.getByRole('alert')).toContainText('503 Service Unavailable')
+  await page.getByRole('button', { name: 'Retry search' }).click()
+  await expect(page.getByRole('option', { name: 'XRP/USDT', exact: true })).toBeVisible()
+  await expect(page.getByRole('option', { name: 'SPY', exact: true })).toHaveCount(0)
+})

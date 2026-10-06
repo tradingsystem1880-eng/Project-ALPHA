@@ -9,8 +9,8 @@ If no plan path was given, use the newest file in `docs/superpowers/plans/`.
 Confirm which plan you are executing before touching code.
 
 Goal contract for this session (state it up front, verify it at the end):
-"every slice `done` AND `gate.py full` stamp valid AND the Stop obligations
-list is empty". Do not claim completion until each part is re-checked on the
+"every slice `done` AND `gate.py full` stamp valid AND independent review
+is complete". Do not claim completion until each part is re-checked on the
 tree, not remembered from the transcript.
 
 0. Run `uv run python scripts/gate.py plan-check <plan doc>`. If it fails,
@@ -36,9 +36,8 @@ Per slice, in order:
    moving on. Update the slice's `status` in the plan's front block
    (`pending` → `in_progress` → `done`) as you go.
 
-If the Stop brief shows a `SCOPE WARNING` (an edit outside the plan's declared
-`files[]`), either add the path to the plan with a reason or revert it — never
-leave it unexplained.
+Review `git diff --stat` against the plan's declared `files[]`. Explain any scope
+adjustment; preserve unrelated owner edits.
 
 Never batch multiple slices into one commit, never skip a failing test, and
 never claim a slice done without the gate output proving it. A check you could

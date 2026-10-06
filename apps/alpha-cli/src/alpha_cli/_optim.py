@@ -43,6 +43,7 @@ from alpha_validation import (
     sharpe_ratio,
     spa_test,
 )
+from alpha_validation.overfitting import selection_sharpe
 
 _SERIAL_THRESHOLD = 8  # below this many configs the pool's spin-up costs more than it saves
 _INT_FIELDS = frozenset({"lookback", "skip", "vol_window", "rebalance_every"})
@@ -192,9 +193,7 @@ def _evaluate_task(task: _ConfigTask) -> _TaskEvaluation:
     )
 
 
-def _safe_period_sharpe(returns: FloatArray) -> float:
-    sd = float(np.std(returns, ddof=1)) if returns.size >= 2 else 0.0
-    return float(np.mean(returns)) / sd if sd > 0.0 else 0.0
+_safe_period_sharpe = selection_sharpe
 
 
 def _annualized_sharpe(returns: FloatArray, periods_per_year: int) -> float:

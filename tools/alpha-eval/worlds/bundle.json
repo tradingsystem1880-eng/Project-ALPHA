@@ -1,0 +1,21 @@
+{
+ "name": "bundle",
+ "n": 10,
+ "symbols": [],
+ "artifacts": [
+  {
+   "kind": "results_bundle",
+   "dir": "inputs/results_2026q3",
+   "params": {
+    "base_bps": 1.5,
+    "hivol_boost_bps": 16,
+    "sector_boost_bps": 38,
+    "focus_sector": "Energy",
+    "decay_months": 12,
+    "decay_delta_bps": -15,
+    "neighbour_ratio": 0.4,
+    "noise_bps": 55
+   }
+  }
+ ]
+}

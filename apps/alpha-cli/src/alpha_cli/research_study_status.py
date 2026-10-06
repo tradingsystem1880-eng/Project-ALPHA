@@ -74,9 +74,9 @@ def _semantic_view(
     else:
         state = "freeze_required"
     next_actions = {
-        "definition_required": "Record a semantic definition with fresh Touch ID.",
-        "review_required": "Review the semantic definition with fresh Touch ID.",
-        "freeze_required": "Freeze the approved semantic definition with fresh Touch ID.",
+        "definition_required": "Record a semantic definition with fresh owner confirmation.",
+        "review_required": "Review the semantic definition with fresh owner confirmation.",
+        "freeze_required": "Freeze the approved semantic definition with fresh owner confirmation.",
         "frozen": "The reviewed semantic definition is frozen; continue through owner CLI.",
         "stale": (
             "The prior semantic cycle is bound to an older case revision; refresh and obtain "

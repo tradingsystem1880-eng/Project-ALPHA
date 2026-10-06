@@ -54,7 +54,12 @@ class TestPromptPack:
         self, real_graph: dict[str, object], repo_root: Path
     ) -> None:
         pack = build_prompt_pack(real_graph, ["wf:research.d1"], load_rule_globs(repo_root))
-        assert "apps/alpha-cli/src/alpha_cli/research_d1.py:1078" in pack
+        relative = "apps/alpha-cli/src/alpha_cli/research_d1.py"
+        lines = (repo_root / relative).read_text().splitlines()
+        line_number = next(
+            i for i, line in enumerate(lines, 1) if line.startswith("def run_deep_research")
+        )
+        assert f"{relative}:{line_number}" in pack
         assert "run_deep_research" in pack
         assert "ADR-0025" in pack
         assert "tests/unit/test_research_d1_executor.py" in pack

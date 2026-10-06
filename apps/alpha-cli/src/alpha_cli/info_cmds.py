@@ -99,14 +99,14 @@ def _launchable(path: str) -> bool:
     return path.split(" ", 1)[0] not in _NON_RUN_COMMAND_PREFIXES
 
 
-def _command_catalog() -> list[dict[str, Any]]:
+def _command_catalog(*, include_all: bool = False) -> list[dict[str, Any]]:
     """Introspect the Typer→Click command tree: id + positional args + options (with defaults)."""
     from alpha_cli.main import app as root_app
 
     group = typer.main.get_command(root_app)
     catalog: list[dict[str, Any]] = []
     for path, cmd in _walk_commands(group, ""):
-        if not _launchable(path):
+        if not include_all and not _launchable(path):
             continue
         args: list[dict[str, Any]] = []
         options: list[dict[str, Any]] = []
@@ -139,9 +139,12 @@ def _command_catalog() -> list[dict[str, Any]]:
 
 
 @info_app.command("commands")
-def commands(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+def commands(
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+    include_all: bool = typer.Option(False, "--all", help="include every CLI leaf command"),
+) -> None:
     """Introspect the CLI command tree (flags + defaults) for the workstation's new-run form."""
-    catalog = _command_catalog()
+    catalog = _command_catalog(include_all=include_all)
     if json_out:
         typer.echo(json.dumps(catalog))
         return
@@ -163,6 +166,34 @@ def providers(json_out: bool = typer.Option(False, "--json", help="emit JSON")) 
             f"{provider['id']}: {provider['configuration_state']}; "
             f"{provider['verification_state']} ({', '.join(provider['capabilities'])})"
         )
+
+
+@info_app.command("procedures")
+def procedures(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+    """Describe registered analysis and research protocols; grants no execution authority."""
+    from alpha_cli.research_analysis_plan import analysis_family_catalog
+    from alpha_cli.research_protocols import load_research_protocols
+
+    families = analysis_family_catalog()
+    protocols = load_research_protocols()
+    payload = {
+        "schema_version": 1,
+        "authority": "none",
+        "analysis_families": families,
+        "protocols": protocols,
+        "scan_commands": [
+            command
+            for command in _command_catalog(include_all=True)
+            if command["id"].startswith("scan ")
+        ],
+    }
+    if json_out:
+        typer.echo(json.dumps(payload, sort_keys=True))
+        return
+    for family in families:
+        typer.echo(f"analysis: {family['id']}")
+    for protocol in protocols:
+        typer.echo(f"protocol: {protocol['id']} — {protocol['title']}")
 
 
 @info_app.command("system")

@@ -220,7 +220,7 @@ function LiteratureSection({
       ) : null}
 
       <OwnerDrafts projectId={projectId} sources={(literature.sources ?? []) as Array<Record<string, unknown>>} contractId={String((literature as Record<string, unknown>)['contract_id'] ?? '')} onDone={onRefresh} />
-      <label className="literature-owner-reason"><span className="eyebrow">Reason bound to each Touch ID action</span><textarea className="field" value={reason} onChange={(event) => setReason(event.target.value)} /></label>
+      <label className="literature-owner-reason"><span className="eyebrow">Reason bound to each confirmed action</span><textarea className="field" value={reason} onChange={(event) => setReason(event.target.value)} /></label>
       {claims.length === 0 ? (
         <Placeholder big="NO CLAIMS RECORDED">Drafts require method, sample, markets, limitations, and a verified text anchor for full-text sources.</Placeholder>
       ) : (
@@ -241,7 +241,7 @@ function LiteratureSection({
                   <dt>Limitations</dt><dd>{String(claim['limitations'] ?? 'Not recorded.')}</dd>
                 </dl>
                 <blockquote>{anchor ? `p. ${String(anchor['page'])}: ${String(anchor['excerpt'] ?? '')}` : String(claim['anchor_state'] ?? 'LEGACY — NO TEXT ANCHOR')}</blockquote>
-                {status === 'draft' ? <div className="literature-claim-actions"><button className="btn primary" type="button" disabled={!reason.trim() || busy !== null || !anchor} onClick={() => void ownerAction('screen_source_claim', claimId)}>Touch ID · screen anchored claim</button><button className="btn" type="button" disabled={!reason.trim() || busy !== null} onClick={() => void ownerAction('reject_source_claim', claimId)}>Touch ID · reject</button><button className="btn" type="button" disabled={!reason.trim() || busy !== null} onClick={() => void ownerAction('revise_source_claim', claimId)}>Touch ID · ask for revision</button></div> : null}
+                {status === 'draft' ? <div className="literature-claim-actions"><button className="btn primary" type="button" disabled={!reason.trim() || busy !== null || !anchor} onClick={() => void ownerAction('screen_source_claim', claimId)}>Confirm · screen anchored claim</button><button className="btn" type="button" disabled={!reason.trim() || busy !== null} onClick={() => void ownerAction('reject_source_claim', claimId)}>Confirm · reject</button><button className="btn" type="button" disabled={!reason.trim() || busy !== null} onClick={() => void ownerAction('revise_source_claim', claimId)}>Confirm · ask for revision</button></div> : null}
               </article>
             )
           })}
@@ -256,7 +256,7 @@ function LiteratureSection({
           </label>
         ))}
       </div>
-      <button className="btn primary" type="button" disabled={!selected.size || !reason.trim() || busy !== null} onClick={() => void freezePack()}>Touch ID · freeze selected source pack</button>
+      <button className="btn primary" type="button" disabled={!selected.size || !reason.trim() || busy !== null} onClick={() => void freezePack()}>Confirm · freeze selected source pack</button>
     </div>
   )
 }
@@ -554,7 +554,7 @@ export function EvidenceHub(props: PanelHandleProps) {
 }
 
 /** Owner-provided sources and owner-drafted claims: recorded as drafts, untrusted until an owner
- *  screens them with Touch ID (the same bar Codex's drafts meet). */
+ *  screens them with local confirmation (the same bar Codex's drafts meet). */
 function OwnerDrafts({ projectId, sources, contractId, onDone }: {
   projectId: string
   sources: Array<Record<string, unknown>>
@@ -585,7 +585,7 @@ function OwnerDrafts({ projectId, sources, contractId, onDone }: {
       <div className="lab-actions">
         <button className="btn" type="button" onClick={() => setOpen(open === 'source' ? null : 'source')}>Add a source</button>
         <button className="btn" type="button" onClick={() => setOpen(open === 'claim' ? null : 'claim')} disabled={!contractId} title={contractId ? undefined : 'No active contract to bear on yet'}>Draft a claim</button>
-        <span className="muted">Drafts only — screening stays a Touch ID step.</span>
+        <span className="muted">Drafts only — screening stays a confirmation step.</span>
       </div>
       {open === 'source' ? (
         <form aria-label="Add source" onSubmit={(e) => { e.preventDefault(); submit(() => api.researchSourceAdd(projectId, source)) }}>

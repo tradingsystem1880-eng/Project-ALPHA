@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Literal, cast
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import Field
 
 from alpha_cli.owner_auth import (
@@ -14,8 +15,10 @@ from alpha_cli.owner_auth import (
     authentication_options,
     derive_action_artifact_hash,
     finish_registration,
+    local_confirmation_options,
     registration_options,
     verify_action_assertion,
+    verify_local_confirmation,
 )
 from alpha_core import DataError
 from alpha_web._catalog import _run_json
@@ -35,6 +38,7 @@ class OwnerRegistrationFinish(OwnerRegistrationStart):
 
 
 class OwnerActionChallengeRequest(StrictModel):
+    authorization_method: Literal["webauthn", "local_confirmation"] = "webauthn"
     action_type: Literal[
         "screen_source_claim",
         "reject_source_claim",
@@ -63,8 +67,23 @@ class OwnerActionChallengeRequest(StrictModel):
 
 class OwnerActionPerformRequest(StrictModel):
     challenge_id: str
-    credential: dict[str, Any]
+    confirmation_token: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    credential: dict[str, Any] = Field(default_factory=dict)
     payload: dict[str, Any]
+
+
+def _require_owner_origin(request: Request) -> None:
+    port = os.environ.get("ALPHA_WEB_PORT") or os.environ.get("PORT") or "8801"
+    expected = f"http://localhost:{int(port)}"
+    if (
+        request.headers.get("origin") != expected
+        or request.headers.get("host") != f"localhost:{int(port)}"
+        or request.headers.get("sec-fetch-site") not in {None, "same-origin"}
+        or request.headers.get("content-type", "").split(";", 1)[0].strip() != "application/json"
+    ):
+        raise HTTPException(
+            status_code=403, detail="Owner confirmation requires the local Workstation origin"
+        )
 
 
 def _bad_request(exc: Exception) -> HTTPException:
@@ -230,7 +249,7 @@ def complete_registration(body: OwnerRegistrationFinish) -> dict[str, object]:
         raise _bad_request(exc) from exc
 
 
-@router.post("/actions/challenge")
+@router.post("/actions/challenge", dependencies=[Depends(_require_owner_origin)])
 def start_action(body: OwnerActionChallengeRequest) -> dict[str, object]:
     try:
         if body.action_type not in OWNER_ACTION_TYPES:  # defensive drift guard
@@ -253,21 +272,33 @@ def start_action(body: OwnerActionChallengeRequest) -> dict[str, object]:
             reason=body.reason,
             payload=body.payload,
         )
+        if body.authorization_method == "local_confirmation":
+            return local_confirmation_options(data_dir=data_dir(), binding=binding)
         return authentication_options(data_dir=data_dir(), binding=binding)
     except (DataError, RuntimeError, OSError) as exc:
         raise _bad_request(exc) from exc
 
 
-@router.post("/actions/perform")
+@router.post("/actions/perform", dependencies=[Depends(_require_owner_origin)])
 def perform_action(body: OwnerActionPerformRequest) -> dict[str, object]:
     """Consume one fresh assertion, then execute only its server-derived closed action."""
     try:
-        authorization = verify_action_assertion(
-            data_dir=data_dir(),
-            challenge_id=body.challenge_id,
-            credential=body.credential,
-            payload=body.payload,
-        )
+        if body.confirmation_token is not None:
+            if body.credential:
+                raise DataError("local confirmation cannot carry a biometric credential")
+            authorization = verify_local_confirmation(
+                data_dir=data_dir(),
+                challenge_id=body.challenge_id,
+                confirmation_token=body.confirmation_token,
+                payload=body.payload,
+            )
+        else:
+            authorization = verify_action_assertion(
+                data_dir=data_dir(),
+                challenge_id=body.challenge_id,
+                credential=body.credential,
+                payload=body.payload,
+            )
         binding = cast(dict[str, object], authorization["binding"])
         action_type = str(binding["action_type"])
         if action_type == "record_semantic_event":

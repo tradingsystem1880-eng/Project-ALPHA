@@ -1,3 +1,6 @@
+import type { ArchiveChartDataset } from '../api/client'
+import { archivePairLabel } from '../components/assetChoices'
+import { openArchiveMarket, openStoredMarket, openCryptoData } from '../panels/actions'
 /**
  * One context control, replacing five.
  *
@@ -11,17 +14,44 @@
  * screen the mechanism cost more comprehension than it bought.
  */
 
+import { AssetSelect } from '../components/AssetSelect'
 import { useEffect, useRef, useState } from 'react'
+import { api } from '../api/client'
+import { useAreaVersion } from '../state/activity'
+import { inventoryPages, projectChoices, projectSelectionPatch, type ProjectChoice } from './projectContextModel'
 
 import { setLinked, useLinked } from '../context/linked'
 import { displaySymbol } from '../panels/marketWatchModel'
-import { useSymbolVenue } from './useSymbolVenue'
+import { useSettings } from '../state/settings'
+import { useStoredVenues } from '../context/storedQuotes'
 
-export function ContextBar() {
+export function ContextBar({ archive = null }: { archive?: ArchiveChartDataset | null }) {
   const linked = useLinked()
-  const venue = useSymbolVenue(linked.symbol)
+  const { profile } = useSettings()
+  const venues = useStoredVenues()
+  const venue = archive?.venue ?? (linked.symbol ? venues[linked.symbol] : null)
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
+  const revision = useAreaVersion('research')
+  const [projects, setProjects] = useState<ProjectChoice[]>([])
+  const [projectError, setProjectError] = useState<string | null>(null)
+  const [projectLoading, setProjectLoading] = useState(false)
+  const [retry, setRetry] = useState(0)
+  useEffect(() => {
+    let live = true
+    setProjectLoading(true); setProjectError(null); setProjects([])
+    Promise.allSettled([
+      inventoryPages(offset => api.projects(50, offset)),
+      inventoryPages(offset => api.researchCases({ limit: 50, offset })),
+    ]).then(([strategy, research]) => {
+      if (!live) return
+      setProjects(projectChoices(strategy.status === 'fulfilled' ? strategy.value : [], research.status === 'fulfilled' ? research.value : [], profile))
+      const failures = [strategy.status === 'rejected' ? `Projects: ${String(strategy.reason)}` : null, research.status === 'rejected' ? `Research cases: ${String(research.reason)}` : null].filter(Boolean)
+      setProjectError(failures.length ? failures.join('; ') : null)
+      setProjectLoading(false)
+    })
+    return () => { live = false }
+  }, [profile, revision, retry])
 
   useEffect(() => {
     if (!open) return
@@ -38,7 +68,18 @@ export function ContextBar() {
   }, [open])
 
   return (
-    <div className="context" ref={wrap}>
+    <div className="context" ref={wrap} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <label className="toolbar-profile">
+        <span>Project</span>
+        <select className="field" aria-label="Project context" value={linked.projectId ?? ''} style={{ maxWidth: 180 }} onChange={event => setLinked(projectSelectionPatch(linked, event.target.value || null))}>
+          <option value="">No project — browse data</option>
+          {linked.projectId && !projects.some(p => p.id === linked.projectId) ? <option value={linked.projectId}>Selected: {linked.projectId}</option> : null}
+          {projects.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+        </select>
+      </label>
+      {linked.projectId ? <button className="btn" title="Clear project, version, run and snapshot; retain the viewed market and date window" onClick={() => setLinked(projectSelectionPatch(linked, null))}>Clear project</button> : null}
+      {projectLoading ? <span role="status">Loading projects…</span> : null}
+      {projectError ? <button className="btn" title={projectError} onClick={() => setOpen(true)}>Project inventory failed</button> : null}
       <button
         className="context-chip"
         aria-expanded={open}
@@ -46,7 +87,7 @@ export function ContextBar() {
         aria-label="Symbol, venue and timeframe"
         title={`What every document is showing · ${linked.start ?? 'start'} → ${linked.end ?? 'latest'}${linked.runId ? ` · run ${linked.runId.slice(0, 8)}` : ''}`}
       >
-        <span className="context-symbol">{linked.symbol ? displaySymbol(linked.symbol) : 'no symbol'}</span>
+        <span className="context-symbol">{archive ? archivePairLabel(archive) : linked.symbol ? displaySymbol(linked.symbol) : 'no symbol'}</span>
         {venue ? (
           <>
             <span className="context-sep">·</span>
@@ -54,23 +95,16 @@ export function ContextBar() {
           </>
         ) : null}
         <span className="context-sep">·</span>
-        <span className="context-tf">D1</span>
+        <span className="context-tf">{archive?.frequency ?? 'D1'}</span>
         <span className="context-caret" aria-hidden="true">▾</span>
       </button>
 
       {open ? (
         <div className="context-pop" role="dialog" aria-label="Working context">
+          {projectError ? <div role="alert"><p>{projectError}</p><button className="btn" onClick={() => setRetry(value => value + 1)}>Retry project inventory</button></div> : null}
           <label>
             <span className="eyebrow">Symbol</span>
-            <input
-              className="field mono"
-              value={linked.symbol ?? ''}
-              spellCheck={false}
-              placeholder="SPY"
-              onChange={(event) =>
-                setLinked({ symbol: event.target.value.toUpperCase() || null })
-              }
-            />
+            <AssetSelect value={archive ? archivePairLabel(archive) : linked.symbol ?? ''} label="Active asset" onChange={symbol => { openStoredMarket(symbol); setOpen(false) }} onArchiveSelect={dataset => { openArchiveMarket(dataset); setOpen(false) }} />
           </label>
           <div className="context-pair">
             <label>
@@ -92,15 +126,6 @@ export function ContextBar() {
               />
             </label>
           </div>
-          <label className="advanced-only">
-            <span className="eyebrow">Project</span>
-            <input
-              className="field mono"
-              value={linked.projectId ?? ''}
-              placeholder="project id"
-              onChange={(event) => setLinked({ projectId: event.target.value || null })}
-            />
-          </label>
           <label className="advanced-only">
             <span className="eyebrow">Strategy version</span>
             <input
@@ -133,9 +158,10 @@ export function ContextBar() {
             />
           </label>
           <p className="context-note muted">
-            Timeframe is daily. Everything above is shared by every screen.
+            {archive ? `Archive chart: ${archive.venue} · ${archive.market_type} · ${archive.frequency}. Strategy context remains ${linked.symbol ?? 'unselected'}.` : 'Stored daily bars. Select a pair and then its source / native interval when offered.'}
           </p>
           <div className="context-actions">
+            {profile === 'crypto' ? <button className="btn" onClick={() => { openCryptoData(); setOpen(false) }}>Browse all crypto datasets</button> : null}
             <button
               className="btn ghost"
               onClick={() => setLinked({ start: null, end: null, runId: null })}

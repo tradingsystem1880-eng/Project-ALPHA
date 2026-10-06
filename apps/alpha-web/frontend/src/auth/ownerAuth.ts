@@ -134,17 +134,17 @@ export async function registerOwnerCredential(token: string): Promise<Record<str
 export async function performOwnerAction(
   request: OwnerActionChallengeRequest,
 ): Promise<OwnerActionResult> {
-  const credentials = requireWebAuthn()
-  const envelope = await api.ownerActionChallenge(request)
-  const asserted = await credentials.get({
-    publicKey: authenticationRequestOptions(envelope.public_key),
-  })
-  if (!(asserted instanceof PublicKeyCredential)) throw new Error('Touch ID verification was cancelled.')
-  return api.ownerActionPerform(
-    envelope.challenge_id,
-    serializeAuthenticationCredential(asserted),
-    request.payload,
-  )
+  const envelope = await api.ownerLocalChallenge(request)
+  const binding = envelope.binding
+  const accepted = window.confirm([
+    String(binding.consequence_summary),
+    `Project: ${String(binding.project_id)}`,
+    `Action: ${String(binding.action_type).replaceAll('_', ' ')}`,
+    `Reason: ${String(binding.reason)}`,
+    'Confirm this action?',
+  ].join('\n\n'))
+  if (!accepted) throw new Error('Action cancelled. No action was performed.')
+  return api.ownerLocalPerform(envelope.challenge_id, envelope.confirmation_token, request.payload)
 }
 
 function canonicalJson(value: unknown): string {

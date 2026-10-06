@@ -9,23 +9,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, cast
 
+from alpha_cli.suite_catalog import SUITE_ACTIONS as _SUITE_ACTIONS
 from alpha_mcp import _invoke
 
-_SUITE_ACTIONS = frozenset(
-    {
-        "baseline",
-        "inner_oos",
-        "three_null_families",
-        "monte_carlo",
-        "optimize_grid",
-        "fixed_stress",
-        "portfolio_cross_asset",
-        "qlib",
-        "kronos",
-        "holdout_reveal",
-        "paper_preflight",
-    }
-)
 _AGENT_RUNNABLE_SUITE_ACTIONS = _SUITE_ACTIONS - {"holdout_reveal"}
 _RESEARCH_ANSWER_KEYS = frozenset({"chart_construction", "event_availability", "primary_outcome"})
 # The D0 pilot computes and publishes a run; a projection-class timeout would kill it

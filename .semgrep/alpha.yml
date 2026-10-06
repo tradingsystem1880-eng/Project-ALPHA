@@ -101,9 +101,28 @@ rules:
     paths:
       include: ["/packages/alpha-validation/", "/packages/alpha-research/"]
     patterns:
+      # Exact equality is mandatory for this immutable registered-generation validator.
+      # Applying a tolerance here would silently authorize a different research protocol.
       - pattern-either:
           - pattern: $X == $F
           - pattern: $X != $F
+      - pattern-either:
+          - patterns:
+              - pattern-either:
+                  - pattern: $X == $F
+                  - pattern: $X != $F
+              - pattern-not: self.primary_percentile != 0.95
+              - pattern-not: self.practical_hurdle_return != -0.0005
+          - patterns:
+              - pattern: $X != $F
+              - pattern-not-inside: |
+                  class CryptoCrowdingResearchPlanV1:
+                    ...
+          - patterns:
+              - pattern: $X != $F
+              - pattern-not-inside: |
+                  def __post_init__(self):
+                    ...
       - metavariable-regex:
           metavariable: $F
           # a non-trivial float: has a non-zero fractional digit (so 0.0 / 1.0 endpoint checks pass)

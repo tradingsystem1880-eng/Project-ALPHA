@@ -7,7 +7,7 @@
 
 import { useEffect } from 'react'
 
-import { setChartControls, useChartControls, zoomStep, type ChartType } from '../context/chartControls'
+import { setChartControls, useChartControls, zoomStep, type ChartType, type ChartControls as Controls } from '../context/chartControls'
 import { useLinked } from '../context/linked'
 import { useLinkedProjectGate } from '../panels/useLinkedProjectGate'
 import { useSelectedRunWatermark } from '../panels/useSelectedRunWatermark'
@@ -34,19 +34,22 @@ const CHART_TYPES: { id: ChartType; icon: IconName; label: string }[] = [
   { id: 'line', icon: 'line', label: 'Line (closes)' },
 ]
 
-function ChartControls() {
-  const controls = useChartControls()
+export function ChartControls({ value, onChange, market = true, disabled = false }: { value?: Controls; onChange?: (patch: Partial<Controls>) => void; market?: boolean; disabled?: boolean } = {}) {
+  const shared = useChartControls()
+  const controls = value ?? shared
+  const update = onChange ?? setChartControls
   return (
     <div className="toolbar-group" role="group" aria-label="Chart">
       {CHART_TYPES.map((item) => (
         <button
           key={item.id}
+          disabled={disabled || !market}
           type="button"
           className={`btn glyph${controls.type === item.id ? ' active' : ''}`}
           aria-label={item.label}
           aria-pressed={controls.type === item.id}
           title={item.label}
-          onClick={() => setChartControls({ type: item.id })}
+          onClick={() => update({ type: item.id })}
         >
           <Icon name={item.icon} />
         </button>
@@ -54,39 +57,43 @@ function ChartControls() {
       <span className="toolbar-sep" />
       <button
         type="button"
+        disabled={disabled}
         className={`btn glyph${controls.crosshair ? ' active' : ''}`}
         aria-label="Crosshair"
         aria-pressed={controls.crosshair}
         title="Crosshair"
-        onClick={() => setChartControls({ crosshair: !controls.crosshair })}
+        onClick={() => update({ crosshair: !controls.crosshair })}
       >
         <Icon name="crosshair" />
       </button>
       <button
         type="button"
+        disabled={disabled}
         className={`btn glyph${controls.grid ? ' active' : ''}`}
         aria-label="Grid"
         aria-pressed={controls.grid}
         title="Grid"
-        onClick={() => setChartControls({ grid: !controls.grid })}
+        onClick={() => update({ grid: !controls.grid })}
       >
         <Icon name="grid" />
       </button>
       <button
         type="button"
         className="btn glyph"
+        disabled={disabled}
         aria-label="Zoom in"
         title="Zoom in"
-        onClick={() => setChartControls({ zoom: zoomStep(controls.zoom, 1) })}
+        onClick={() => update({ zoom: zoomStep(controls.zoom, 1) })}
       >
         <Icon name="zoom-in" />
       </button>
       <button
         type="button"
         className="btn glyph"
+        disabled={disabled}
         aria-label="Zoom out"
         title="Zoom out"
-        onClick={() => setChartControls({ zoom: zoomStep(controls.zoom, -1) })}
+        onClick={() => update({ zoom: zoomStep(controls.zoom, -1) })}
       >
         <Icon name="zoom-out" />
       </button>
@@ -94,7 +101,7 @@ function ChartControls() {
   )
 }
 
-function StatusChip({ onOpenGovernance }: { onOpenGovernance: () => void }) {
+export function StatusChip({ onOpenGovernance }: { onOpenGovernance: () => void }) {
   const gate = useLinkedProjectGate()
   const watermark = useSelectedRunWatermark()
   const chip = statusChip({ watermark, gateLock: gate.lock })
@@ -112,7 +119,7 @@ function StatusChip({ onOpenGovernance }: { onOpenGovernance: () => void }) {
 }
 
 /** Mirrors the detail mode onto the document so `.advanced-only` rules can read it. */
-function WorkspaceModeAttribute() {
+export function WorkspaceModeAttribute() {
   const linked = useLinked()
   const settings = useSettings()
   const mode = workspaceModeFor(settings, linked.projectId)

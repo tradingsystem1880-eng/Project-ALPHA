@@ -58,6 +58,7 @@ from alpha_cli._crypto_coverage import batch_directory as _coverage_batch_direct
 from alpha_cli._crypto_coverage import create_coverage_batch as _create_coverage_batch_at
 from alpha_cli._crypto_coverage import read_coverage_batch as _read_coverage_batch_at
 from alpha_cli._crypto_coverage import write_batch_json as _write_coverage_batch_json
+from alpha_cli._crypto_yield_catalog import empty_yield_catalog, yield_catalog
 from alpha_cli.control_store import ControlStore, research_case_revision
 from alpha_cli.research_crypto_data import load_crypto_crowding_observations
 from alpha_cli.research_crypto_strategy import load_hedged_basis_observations
@@ -123,7 +124,16 @@ from alpha_data.crypto.providers.coinmetrics import (
     parse_asset_metric_catalog,
     parse_asset_metrics,
 )
-from alpha_data.crypto.providers.defillama import defillama_url, fetch_defillama, parse_chain_tvl
+from alpha_data.crypto.providers.defillama import (
+    defillama_url,
+    fetch_defillama,
+    fetch_defillama_public,
+    parse_chain_tvl,
+    parse_protocol_tvl,
+    parse_stablecoin_supply,
+    parse_yield_history,
+    parse_yield_pools,
+)
 from alpha_data.crypto.providers.geckoterminal import (
     fetch_geckoterminal_public,
     geckoterminal_public_url,
@@ -176,6 +186,10 @@ _ROW_BYTES: Final[dict[CryptoFamily, int]] = {
     "historical_volatility": 112,
     "asset_metadata": 1_024,
     "market_reference": 384,
+    "protocol_tvl": 128,
+    "stablecoin_supply": 128,
+    "yield_pools": 256,
+    "yield_history": 128,
     "onchain_catalog": 192,
     "onchain_metrics": 128,
     "dex_pools": 512,
@@ -193,7 +207,13 @@ def _pause_geckoterminal_page() -> None:
 
 _OBSERVATIONS_PER_DAY: Final = {
     "1d": 1,
+    "1w": 1 / 7,
+    "3d": 1 / 3,
+    "12h": 2,
+    "8h": 3,
+    "6h": 4,
     "4h": 6,
+    "2h": 12,
     "1h": 24,
     "30m": 48,
     "15m": 96,
@@ -901,7 +921,7 @@ def estimate(
         raise typer.BadParameter(
             "one-minute acquisition is capped at 50 research-selected instruments"
         )
-    estimated_rows = instruments * days * observations
+    estimated_rows = math.ceil(instruments * days * observations)
     estimated_bytes = math.ceil(estimated_rows * _ROW_BYTES[dataset_family] * 1.25)
     _emit(
         {
@@ -920,9 +940,30 @@ def estimate(
     )
 
 
+@crypto_data_app.command("yield-pools")
+def yield_pools(
+    query: str = typer.Option(""),
+    limit: int = typer.Option(50, min=1, max=100),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Search a bounded selection from the latest verified stored yield-pool catalog."""
+    try:
+        payload = yield_catalog(_bulk_store(), query=query, limit=limit)
+    except BulkVolumeUnconfigured:
+        payload = empty_yield_catalog()
+    except DataError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(payload, json_out=json_out)
+
+
 @crypto_data_app.command("capabilities")
 def capabilities(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
-    """Project support, receipt verification, and qualification without probing providers."""
+    """Project discovered support and recorded qualification without hashing data artifacts.
+
+    The immutable manifests are hash-checked for discovery. Selected artifacts and their raw
+    lineage are fully verified when a user opens or admits them; ``storage-verify`` remains the
+    explicit full-volume integrity audit.
+    """
     try:
         store = _bulk_store()
     except BulkVolumeUnconfigured:
@@ -944,7 +985,7 @@ def capabilities(json_out: bool = typer.Option(False, "--json", help="emit JSON"
         raise typer.BadParameter(str(exc)) from exc
     try:
         store.verify_ready(required_bytes=0)
-        projected = project_provider_capabilities(store.inventory())
+        projected = project_provider_capabilities(store.metadata_inventory())
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     verified = sum(item.verification_state == "receipt_verified" for item in projected)
@@ -968,6 +1009,117 @@ def capabilities(json_out: bool = typer.Option(False, "--json", help="emit JSON"
     )
 
 
+@crypto_data_app.command("market-catalog")
+def market_catalog(
+    query: str = typer.Option("", help="substring in base, quote, or provider symbol"),
+    limit: int = typer.Option(100, min=1, max=500),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Search the latest qualified Binance spot listing catalog without network access."""
+    try:
+        store = _bulk_store()
+    except BulkVolumeUnconfigured:
+        _emit(
+            {
+                "state": "unavailable",
+                "venue": "binance",
+                "market_type": "spot",
+                "as_of": None,
+                "stale": True,
+                "total_matches": 0,
+                "markets": [],
+                "next_action": "Configure storage and acquire Binance spot market membership.",
+            },
+            json_out=json_out,
+        )
+        return
+    candidates: list[tuple[datetime, str]] = []
+    for manifest in store.metadata_inventory():
+        if manifest.get("artifact_kind") != "normalized":
+            continue
+        dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
+        quality = CryptoQualityReportV1.from_dict(manifest.get("quality"))
+        if (
+            dataset.provider == "binance"
+            and dataset.family == "market_membership"
+            and dataset.market_type == "spot"
+            and dataset.instrument == "spot"
+            and quality.state == "qualified"
+        ):
+            candidates.append(
+                (
+                    quality.observed_end
+                    or quality.observed_start
+                    or datetime.min.replace(tzinfo=UTC),
+                    str(manifest["manifest_id"]),
+                )
+            )
+    if not candidates:
+        _emit(
+            {
+                "state": "unavailable",
+                "venue": "binance",
+                "market_type": "spot",
+                "as_of": None,
+                "stale": True,
+                "total_matches": 0,
+                "markets": [],
+                "next_action": "Acquire a qualified Binance spot market_membership catalog.",
+            },
+            json_out=json_out,
+        )
+        return
+    manifest_id = max(candidates)[1]
+    frame, quality = _qualified_normalized_frame(
+        store, manifest_id, family="market_membership", instrument="spot"
+    )
+    needle = query.strip().upper().replace("/", "")
+    if len(needle) > 32 or (needle and not re.fullmatch(r"[A-Z0-9._-]{1,32}", needle)):
+        raise typer.BadParameter("market query must contain letters or digits only")
+    if not {"symbol", "base_asset", "quote_asset", "status"} <= set(frame.columns):
+        raise DataError("verified Binance spot membership has an unsupported schema")
+    listings = frame.filter(pl.col("status") == "TRADING")
+    if "active" in frame.columns:
+        listings = listings.filter(pl.col("active"))
+    matches = [
+        {
+            "pair": f"{row['base_asset']}/{row['quote_asset']}",
+            "provider_symbol": str(row["symbol"]),
+            "base_asset": str(row["base_asset"]),
+            "quote_asset": str(row["quote_asset"]),
+            "status": str(row["status"]),
+        }
+        for row in listings.sort("symbol").iter_rows(named=True)
+        if not needle
+        or needle in str(row["symbol"]).upper()
+        or needle in str(row["base_asset"]).upper()
+        or needle in str(row["quote_asset"]).upper()
+    ]
+    matches.sort(
+        key=lambda row: (
+            row["base_asset"] != needle,
+            {"USDT": 0, "USD": 1, "USDC": 2, "FDUSD": 3, "BUSD": 4}.get(row["quote_asset"], 5),
+            not row["pair"].startswith(f"{needle}/"),
+            row["provider_symbol"] != needle,
+            row["provider_symbol"],
+        )
+    )
+    _emit(
+        {
+            "state": "available",
+            "venue": "binance",
+            "market_type": "spot",
+            "as_of": quality.observed_end.isoformat() if quality.observed_end else None,
+            "stale": quality.observed_end is None
+            or datetime.now(UTC) - quality.observed_end > timedelta(hours=24),
+            "total_matches": len(matches),
+            "markets": matches[:limit],
+            "next_action": "Select a pair, then acquire its exact venue and interval history.",
+        },
+        json_out=json_out,
+    )
+
+
 def _storage_blocker(message: str) -> str:
     if "not mounted" in message:
         return "bulk_volume_not_mounted"
@@ -981,7 +1133,12 @@ def _storage_blocker(message: str) -> str:
 
 
 @crypto_data_app.command("storage")
-def storage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+def storage(
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+    metadata_only: bool = typer.Option(
+        False, "--metadata-only", help="mounted identity and metadata only"
+    ),
+) -> None:
     """Verify the configured external volume and immutable inventory without probing providers."""
     settings = AlphaSettings()
     label = settings.bulk_data_dir.name or "bulk"
@@ -1004,8 +1161,10 @@ def storage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) ->
         expected_volume_uuid=settings.bulk_volume_uuid,
     )
     try:
-        capacity = store.verify_ready(required_bytes=0)
-        inventory = store.inventory()
+        capacity = (
+            store.verify_readable() if metadata_only else store.verify_ready(required_bytes=0)
+        )
+        inventory = store.metadata_inventory() if metadata_only else store.inventory()
     except DataError as exc:
         _emit(
             {
@@ -1022,6 +1181,7 @@ def storage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) ->
     _emit(
         {
             "state": "ready",
+            "verification": "metadata_only" if metadata_only else "artifact_verified",
             "blocker": None,
             "bulk_root_label": label,
             "free_bytes": capacity.free_bytes,
@@ -1030,7 +1190,12 @@ def storage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) ->
             "minimum_free_bytes": store.minimum_free_bytes,
             "manifest_count": len(inventory),
             "cache_bytes": store.cache_size(),
-            "next_action": "Estimate one bounded dataset acquisition.",
+            "next_action": (
+                "Mounted identity and discovery metadata checked; "
+                "run storage-verify for an artifact audit."
+                if metadata_only
+                else "Estimate one bounded dataset acquisition."
+            ),
         },
         json_out=json_out,
     )
@@ -1060,7 +1225,7 @@ def storage_inventory(json_out: bool = typer.Option(False, "--json", help="emit 
         raise typer.BadParameter(str(exc)) from exc
     try:
         store.verify_ready(required_bytes=0)
-        inventory = store.inventory()
+        inventory = store.inventory(include_retired=True)
         counts: dict[str, int] = {}
         artifact_bytes: dict[str, int] = {}
         for manifest in inventory:
@@ -1097,7 +1262,7 @@ def storage_verify(json_out: bool = typer.Option(False, "--json", help="emit JSO
     try:
         store = _bulk_store()
         store.verify_ready(required_bytes=0)
-        inventory = store.inventory()
+        inventory = store.inventory(include_retired=True)
         snapshot_count = 0
         eligible_count = 0
         asset_master_count = 0
@@ -1299,9 +1464,23 @@ def _fetch_binance_tail_pages(
     start_ms: int,
     end_ms: int,
 ) -> tuple[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]], ...]:
-    cadence_ms = {"1d": 86_400_000, "1h": 3_600_000, "5m": 300_000, "1m": 60_000}.get(frequency)
+    cadence_ms = {
+        "1d": 86_400_000,
+        "3d": 259_200_000,
+        "1w": 604_800_000,
+        "12h": 43_200_000,
+        "8h": 28_800_000,
+        "6h": 21_600_000,
+        "4h": 14_400_000,
+        "2h": 7_200_000,
+        "1h": 3_600_000,
+        "30m": 1_800_000,
+        "15m": 900_000,
+        "5m": 300_000,
+        "1m": 60_000,
+    }.get(frequency)
     if cadence_ms is None:
-        raise DataError("Binance REST-tail frequency must be 1m, 5m, 1h, or 1d")
+        raise DataError("Binance REST-tail frequency is unsupported")
     pages: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
     next_start = start_ms
     for page_number in range(1, 101):
@@ -1704,6 +1883,90 @@ def _fetch_geckoterminal(
     )
 
 
+def _fetch_defillama(
+    family: CryptoFamily,
+    instrument: str,
+    *,
+    fetched_at: datetime,
+) -> _FetchedAcquisition:
+    instrument_value = instrument.strip()
+    params: dict[str, str | int] = {}
+    if family == "protocol_tvl":
+        endpoint = "protocol"
+        params["slug"] = instrument_value
+        parser = partial(parse_protocol_tvl, fetched_at=fetched_at)
+        observed_column, key_columns = "timestamp", ("timestamp",)
+        frequency_value, units = "1d", "usd_total_value_locked"
+    elif family == "stablecoin_supply":
+        endpoint = "stablecoin"
+        params["stablecoin_id"] = instrument_value
+        parser = partial(parse_stablecoin_supply, fetched_at=fetched_at)
+        observed_column, key_columns = "timestamp", ("timestamp",)
+        frequency_value, units = "1d", "native_usd_pegged_token_units"
+    elif family == "yield_pools":
+        if instrument_value != "all":
+            raise DataError("DefiLlama yield-pool catalog instrument must be all")
+        endpoint = "yield_pools"
+        parser = partial(parse_yield_pools, fetched_at=fetched_at)
+        observed_column, key_columns = "fetched_at", ("pool_id",)
+        frequency_value, units = "catalog_snapshot", "usd_tvl_and_annualized_percent"
+    elif family == "yield_history":
+        instrument_value = instrument_value.lower()
+        endpoint = "yield_history"
+        params["pool_id"] = instrument_value
+        parser = partial(parse_yield_history, fetched_at=fetched_at)
+        observed_column, key_columns = "timestamp", ("timestamp",)
+        frequency_value, units = "1d", "usd_tvl_and_annualized_percent"
+    else:
+        raise DataError(f"DefiLlama is not authoritative for {family}")
+
+    dataset = CryptoDatasetIdentityV1(
+        provider="defillama",
+        venue="defillama",
+        market_type="reference",
+        family=family,
+        instrument=instrument_value,
+        base_asset=None,
+        quote_asset=None if family == "stablecoin_supply" else "USD",
+        frequency=frequency_value,
+        units=units,
+        timestamp_convention="provider_observation_utc",
+    )
+    plan = _AcquisitionPlan(
+        endpoint=endpoint,
+        params=params,
+        dataset=dataset,
+        parser=parser,
+        observed_column=observed_column,
+        key_columns=key_columns,
+        availability_column="fetched_at",
+        parser_at=lambda completed_at: _defillama_parser_at(family, completed_at),
+    )
+    payload = fetch_defillama_public(defillama_url(endpoint, params))
+    return _FetchedAcquisition(
+        plan=plan,
+        payload=payload,
+        provider_schema="defillama-public-v1",
+        parser_version="defillama-parser-v2",
+        logical_name=f"{family}.json",
+    )
+
+
+def _defillama_parser_at(
+    family: CryptoFamily, fetched_at: datetime
+) -> Callable[[bytes], pl.DataFrame]:
+    parsers = {
+        "protocol_tvl": parse_protocol_tvl,
+        "stablecoin_supply": parse_stablecoin_supply,
+        "yield_pools": parse_yield_pools,
+        "yield_history": parse_yield_history,
+    }
+    parser = parsers.get(family)
+    if parser is None:
+        raise DataError(f"DefiLlama is not authoritative for {family}")
+    return partial(parser, fetched_at=fetched_at)
+
+
 def _fetch_coinmetrics(
     family: CryptoFamily,
     instrument: str,
@@ -1989,12 +2252,21 @@ def _fetch_binance(
     if family == "market_bars":
         cadence_seconds = {
             "1d": 86_400,
+            "1w": 604_800,
+            "3d": 259_200,
+            "12h": 43_200,
+            "8h": 28_800,
+            "6h": 21_600,
+            "4h": 14_400,
+            "2h": 7_200,
             "1h": 3_600,
+            "30m": 1_800,
+            "15m": 900,
             "5m": 300,
             "1m": 60,
         }.get(frequency)
         if cadence_seconds is None:
-            raise DataError("Binance kline frequency must be 1m, 5m, 1h, or 1d")
+            raise DataError("Binance kline frequency is unsupported")
         parser = parse_binance_archive_zip
         observed_column = "open_time"
         keys = ("open_time",)
@@ -2176,7 +2448,14 @@ def _fetch_non_bybit(
         )
 
     if provider == "defillama":
-        return _fetch_defillama(family, instrument, base=base, quote=quote, frequency=frequency)
+        if family == "defi_tvl":
+            return _fetch_defillama_chain_tvl(
+                family, instrument, base=base, quote=quote, frequency=frequency
+            )
+        expected_frequency = "catalog_snapshot" if family == "yield_pools" else "1d"
+        if frequency != expected_frequency:
+            raise DataError(f"DefiLlama {family} requires frequency {expected_frequency}")
+        return _fetch_defillama(family, instrument, fetched_at=fetched_at)
 
     if provider == "binance":
         return _fetch_binance(
@@ -2195,7 +2474,7 @@ def _fetch_non_bybit(
     raise DataError(f"unsupported crypto acquisition provider {provider!r}")
 
 
-def _fetch_defillama(
+def _fetch_defillama_chain_tvl(
     family: CryptoFamily, instrument: str, *, base: str, quote: str, frequency: str
 ) -> _FetchedAcquisition:
     """One bounded chain-TVL series (ADR-0036): keyless, one request, next-day availability."""
@@ -2528,7 +2807,12 @@ def acquire(
 
 
 @crypto_data_app.command("coverage")
-def coverage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -> None:
+def coverage(
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+    metadata_only: bool = typer.Option(
+        False, "--metadata-only", help="discover without artifact verification"
+    ),
+) -> None:
     """Show exact normalized family coverage and qualification without provider probes."""
     try:
         store = _bulk_store()
@@ -2547,9 +2831,11 @@ def coverage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     try:
+        if metadata_only:
+            store.verify_readable()
         items = [
-            _coverage_row(manifest, store=store)
-            for manifest in store.inventory()
+            _coverage_row(manifest, store=None if metadata_only else store)
+            for manifest in (store.metadata_inventory() if metadata_only else store.inventory())
             if manifest.get("artifact_kind") == "normalized"
         ]
     except DataError as exc:
@@ -2560,6 +2846,7 @@ def coverage(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -
     _emit(
         {
             "items": items,
+            "verification": "metadata_only" if metadata_only else "artifact_verified",
             "count": len(items),
             "canonical_next_action": (
                 "Select qualified families for a snapshot."
@@ -2697,8 +2984,8 @@ def features(json_out: bool = typer.Option(False, "--json", help="emit JSON")) -
         raise typer.BadParameter(str(exc)) from exc
     try:
         items = [
-            _feature_projection(store, manifest)
-            for manifest in store.inventory()
+            _feature_projection(store, store.verify_manifest(str(manifest["manifest_id"])))
+            for manifest in store.metadata_inventory()
             if manifest.get("artifact_kind") == "derived"
             and manifest.get("derived_kind") == "crypto-feature"
         ]
@@ -3878,17 +4165,18 @@ def snapshot_create(
         raise typer.BadParameter("--manifest-id must contain unique normalized manifests")
     try:
         store = _bulk_store()
-        if asset_master_version not in REVIEWED_NATIVE_LABELS:
-            _read_asset_master(asset_master_version)
-        resolved = tuple(_normalized_member(store, manifest_id) for manifest_id in manifest_ids)
-        snapshot = CryptoSnapshotV1.create(
-            members=tuple(member for member, _ in resolved),
-            asset_master_version=asset_master_version,
-            qualification_versions=tuple(
-                sorted({quality.method_version for _, quality in resolved})
-            ),
-        )
-        _write_snapshot(snapshot)
+        with store.admission_lock():
+            if asset_master_version not in REVIEWED_NATIVE_LABELS:
+                _read_asset_master(asset_master_version)
+            resolved = tuple(_normalized_member(store, manifest_id) for manifest_id in manifest_ids)
+            snapshot = CryptoSnapshotV1.create(
+                members=tuple(member for member, _ in resolved),
+                asset_master_version=asset_master_version,
+                qualification_versions=tuple(
+                    sorted({quality.method_version for _, quality in resolved})
+                ),
+            )
+            _write_snapshot(snapshot)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(

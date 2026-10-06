@@ -1,3 +1,4 @@
+import type { ArchiveChartDataset } from '../api/client'
 // Navigation intents a panel can raise, without knowing what the shell is.
 //
 // Panels used to reach into the docking container and add windows, which meant every panel
@@ -5,6 +6,9 @@
 // what they want -- show this run, open the lab with this command -- and the shell decides
 // where that lands. Swapping the shell again would touch this file and nothing else.
 
+import { selectDeskRule } from '../state/deskRule'
+import { publishRuleDraft } from '../state/ruleDraft'
+import { scanChartContext } from '../shell/edgeWorkspace'
 import { setLinked } from '../context/linked'
 
 export interface LabPrefill {
@@ -13,6 +17,11 @@ export interface LabPrefill {
 }
 
 export interface Navigator {
+  showChart?(): void
+  showArchiveChart?(dataset: ArchiveChartDataset): void
+  showCryptoData?(): void
+  showRules?(): void
+  showScanner?(): void
   showRun(runId: string): void
   showStrategyLab(prefill?: LabPrefill): void
   showProjects(): void
@@ -53,7 +62,6 @@ export function registerNavigator(navigator: Navigator): void {
  */
 export function openRunDetail(runId: string): void {
   setLinked({ runId })
-  window.location.hash = `run=${runId}`
   active.showRun(runId)
 }
 
@@ -124,3 +132,28 @@ export function openIndicators(): void {
 export function openProviderCenter(): void {
   active.showProviders()
 }
+
+/** Open stored chart at the evaluated bar, clearing unrelated frozen/run context. */
+export function openScannedMarket(symbol: string, barDate: string, rules = '', hash: string | null = null): void {
+  setLinked(scanChartContext(symbol, barDate))
+  selectDeskRule(rules, hash)
+  active.showChart?.()
+}
+/** Open a stored watchlist market on the canonical chart, clearing frozen/run windows. */
+export function openStoredMarket(symbol: string): void {
+  setLinked({ symbol, start: null, end: null, snapshotId: null, runId: null })
+  active.showChart?.()
+}
+export function openRuleBuilder(spec?: Record<string, unknown>): void {
+  if (spec) publishRuleDraft(spec)
+  active.showRules?.()
+}
+export function openScanner(): void { active.showScanner?.() }
+
+/** Archive selection is chart-only; never substitute it for canonical strategy bars. */
+export function openArchiveMarket(dataset: ArchiveChartDataset): void {
+  setLinked({ start: null, end: null, snapshotId: null, runId: null })
+  active.showArchiveChart?.(dataset)
+}
+
+export function openCryptoData(): void { active.showCryptoData?.() }

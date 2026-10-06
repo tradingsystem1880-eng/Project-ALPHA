@@ -1,0 +1,1043 @@
+{
+  "all_archive_bytes_verified": false,
+  "candidate_integrity": {
+    "verified_with_raw_lineage": 64
+  },
+  "candidate_states": {
+    "quarantined": 59,
+    "warning": 5
+  },
+  "counts_by_kind": {
+    "derived": 13,
+    "normalized": 11779,
+    "raw": 21752
+  },
+  "immutable_artifacts_removed": 0,
+  "items": [
+    {
+      "artifact_bytes": 35781,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "0282fa77d6aa6a16d40d12166e61e4072dffbd6524b170750ef10e9910c6ff5a",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 33443,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "035a9c12b41ef52f9480bb897ff56c9bf145f0e582e4204dbc3d135409f730c0",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 29250,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "05c90319cb29433c3cc1f9f158e036a2bdc2b1345a528af0f025f8875bad278e",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 38399,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "0db65dcd69b69c559120a79fd7460fc8a22c4432d2426a2548dbf1c29f8034b8",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 30237,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "1b0f78e003246cc653e5c941df3a5473bb405676ac48d69b84ef33435f3ab1bf",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 15484,
+      "failures": [],
+      "family": "dex_pools",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "212e917c8e54fe3049fbb2f9df37a4f36e550932d9dd0e398c759beeab5890b8",
+      "provider": "geckoterminal",
+      "references": [
+        "json:crypto/coverage-batches/f15c297107a3dcf40e92515be5745a0c751d53ced9093b4aa613c141e19af2f9/checkpoint.json"
+      ],
+      "state": "warning",
+      "warnings": [
+        "dex_volume_reserve_extreme",
+        "thin_dex_liquidity"
+      ]
+    },
+    {
+      "artifact_bytes": 35843,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "216b413f65edd33361ee62be191d5b4f60de6fe68b8b01fef2f7cd6003de6122",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 34460,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "295fb16ea543256fc1014dc6edfea6b9d6a7d64d2c806f0fe0f0f7dcd0098671",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 32724,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "3350b81f2ea59e1722017e36f1f2aab9a7096ac04f30756fb4023ff5cd8db7ae",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 28279,
+      "failures": [
+        "duplicate_observation",
+        "non_monotonic_time"
+      ],
+      "family": "dex_transactions",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "4409cd70fba3625c7fb5fd874af7893fa2ffd6a249c2c9ee1119653a34f8594c",
+      "provider": "geckoterminal",
+      "references": [],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 17222,
+      "failures": [
+        "invalid_dex_liquidity"
+      ],
+      "family": "dex_pools",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "4cad75043cfe8773ebcaa451ec89ba245c2892127aef3b59d5498e762d852b16",
+      "provider": "geckoterminal",
+      "references": [
+        "json:crypto/coverage-batches/f15c297107a3dcf40e92515be5745a0c751d53ced9093b4aa613c141e19af2f9/checkpoint.json"
+      ],
+      "state": "quarantined",
+      "warnings": [
+        "dex_volume_reserve_extreme",
+        "thin_dex_liquidity"
+      ]
+    },
+    {
+      "artifact_bytes": 41397,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "4df33ec9ec747e5dd751ba4fb98ede10b075fa4e5379711c911c8c6a13d39547",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 33113,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "562e77f11d489ceea2ed1727424a844ee8694141872091239af9fecae644c10f",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 30551,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "566b63d5437557a3c1f6d911c030cd4a0205fc15556e5d06fd6286bedc8b11e4",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 32256,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "56752efcdfb0d949311a5a8d50859f67bfe97e653e9a38bf0548105c217a6eaa",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 26186,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "63a149ceb5e846e3acae8bd437a7810b3208e14cc8a719a0fa33f2498520448b",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 34730,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "68c522b02b740d9bc82327346d7ebc44e31cb4d65e011f5de6579033fea6401c",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 16600,
+      "failures": [],
+      "family": "dex_pools",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "71b906a9c776a1a654051e06675a47c0bdaa11d1e8843812d69e4529a8ddf287",
+      "provider": "geckoterminal",
+      "references": [
+        "json:crypto/coverage-batches/f15c297107a3dcf40e92515be5745a0c751d53ced9093b4aa613c141e19af2f9/checkpoint.json"
+      ],
+      "state": "warning",
+      "warnings": [
+        "dex_volume_reserve_extreme",
+        "thin_dex_liquidity"
+      ]
+    },
+    {
+      "artifact_bytes": 38659,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "752a324a391de69d7c9e3c9a7176b3f9dfbfa842a0ff92cfb5afaf24257f2bd0",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 29443,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "75d3bf145c5293fb84215b937dee25e8911e5e26efc422d96ce16b1ece73fb31",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 854420,
+      "failures": [
+        "duplicate_observation",
+        "non_monotonic_time"
+      ],
+      "family": "market_reference",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "77ac31a7e927593e4f35dc5d9d7bec1a646d027517c6d2c76caea6f9d4094cb1",
+      "provider": "coingecko",
+      "references": [],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 38549,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "7fdf315df8d345167f69530e8be887d50605c1b3c3a976a173e822f28e8e776e",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 40465,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "8260e1ce3263f480ad1f5b9ffa614138ae01bedb9378e8c3b7a367894e4c1329",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 28362,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "8337855546bfab595c64af6038a92400778f4a72d971f226d583826962560262",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 15870,
+      "failures": [],
+      "family": "dex_pools",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "835b4c456ea5bd5ceeaf57183ded35b4008be6871d28e8f8857326c6c403c545",
+      "provider": "geckoterminal",
+      "references": [],
+      "state": "warning",
+      "warnings": [
+        "thin_dex_liquidity"
+      ]
+    },
+    {
+      "artifact_bytes": 38087,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "85f7206b23c3278d09cc882ec0c2706ea352d0ae5b49317ee50482ba7e53d3cf",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 29836,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "8631dca0b8062be103d5d71ae8f23c875caa74b7e687dbcb54a35b1db1661aac",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 31936,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "90185ffed73047bcc1af3f6bfbbfcae6dcffc20614151d3856af1a5d3e8996c2",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 39363,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "91c8924ccbfc9c7da097ec59a934fed1265938616c3c410072b999fb193f8683",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 37753,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "9376c809d6f0ac7559a761bfea5ce0f80d2e1234904fb98f35f9f575f721ced6",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 31685,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "95e7cf19f85250d0679a45bd95767389f6daa462199811937c5996a49c397af8",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 29354,
+      "failures": [
+        "non_monotonic_time"
+      ],
+      "family": "dex_ohlcv",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "9756de7753090b3090a88f2412f1683a6bc43ee73499ddf732ff14790ea583ed",
+      "provider": "geckoterminal",
+      "references": [],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 39510,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "98c8e5974982ac509ad613ea7d86f8403d9e0b2f3c2680af3092bf3f0194ec47",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 29825,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "9c5b137fe9bff8eddb0848c5aef970f18e060c61b0f9d32490873934dd7ddf0a",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 28357,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "9d0efc14de4b562901b418bae72f348b633bb4b8fc89dabacdc1c9c2d138be89",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 15296,
+      "failures": [
+        "duplicate_observation"
+      ],
+      "family": "dex_pools",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "a74ed8c057b0b6be7e6383b599c7b85268ccb4f4c56baab264d166f327f86491",
+      "provider": "geckoterminal",
+      "references": [
+        "json:crypto/coverage-batches/f15c297107a3dcf40e92515be5745a0c751d53ced9093b4aa613c141e19af2f9/checkpoint.json"
+      ],
+      "state": "quarantined",
+      "warnings": [
+        "dex_volume_reserve_extreme",
+        "thin_dex_liquidity"
+      ]
+    },
+    {
+      "artifact_bytes": 15918,
+      "failures": [],
+      "family": "dex_pools",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "a7a1dfdf0aec2675f40fb0775ed146867f8a3b6e12a045e017d240ff8467e950",
+      "provider": "geckoterminal",
+      "references": [
+        "json:crypto/coverage-batches/f15c297107a3dcf40e92515be5745a0c751d53ced9093b4aa613c141e19af2f9/checkpoint.json"
+      ],
+      "state": "warning",
+      "warnings": [
+        "thin_dex_liquidity"
+      ]
+    },
+    {
+      "artifact_bytes": 30152,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "aaed9909eb01fb539d811cd10ae85d4fd895a3be2b978f6626638414c3a6f2d4",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 45479,
+      "failures": [
+        "non_monotonic_time"
+      ],
+      "family": "option_quotes",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "abb399eee35c84269be01d2fedf60e69329cb73356a7be43ea02a89bbfde963e",
+      "provider": "bybit",
+      "references": [],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 29192,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "ad76b0a5218f22e120594296c81ecb7f6e0b595d0e290781713c5a6e7d99e3c8",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 8265,
+      "failures": [
+        "non_monotonic_time"
+      ],
+      "family": "option_instruments",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "ae07d76b81085e1c57510109c8c89944f11162c3e3aabf1358ebdfcf3a8319eb",
+      "provider": "bybit",
+      "references": [],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 38572,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "b4ee166de4910964a427d9da5fd8636fe2aad34898ad6f114e9f111c130741b6",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 30114,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "b5090049abeeeb8c11ae3457f42f12ceab496f10011463f9c5d133ba6dba8c74",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 3556,
+      "failures": [],
+      "family": "onchain_metrics",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "b6946816001be02c96107f8e48a7aa13d7b4cde1969135e72a045f27b8371205",
+      "provider": "coinmetrics",
+      "references": [
+        "json:crypto/coverage-batches/50f6b8146f6385b4586dd10c26d8b93cbe17bce6b65437c1d71de06b0a83fa05/checkpoint.json"
+      ],
+      "state": "warning",
+      "warnings": [
+        "missing_onchain_value"
+      ]
+    },
+    {
+      "artifact_bytes": 27511,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "b953920dba7e5ec2e25aa73b001999368ae83b13be7ef74bdcc917e3ffcbd821",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 39686,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "c0325fbada564f856a784843475fe8187237912302222f56b9516106a8fe46b0",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 33030,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "c1b3e3e2e3a431b71b6ea68baede895c0cbb4b301299d7a43cadfc821f353781",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 30188,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "c6c225450cf750dcf7baca14588fc497caa6707bbbbec00a99b990b72c0f2b05",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 35034,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "caf8df50982a6a058cc75795de666b5541c60c51177a637602a2d4c8e017211a",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 15637,
+      "failures": [
+        "future_observation"
+      ],
+      "family": "derivative_book_snapshots",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "d0b6b5aece1f2069b258e67969c162892ee02980473b7b0572b01134422d57ae",
+      "provider": "bybit",
+      "references": [],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 36076,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "d34d663e8452a41640ba3d86b1d568f8522bb5397e92f51db257be3a5e1eb093",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 41450,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "d818ce6c8fec10b93f5e0aaec2f3cff49d285c4ba1d6a6905d7f28a8d43b23bd",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 28267,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "da11a811b34370132a28cea9c744f3135305ea23ad4a3d268801a09a64627beb",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 26889,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "da2cbac57fdd031bed19cce4fe084a20f9267513a67efbdfd2fd087b8e7efb94",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 25060,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "dbc7bb4c1f4afdbec47f3da6cfc90425f253fabd43a1635653fb3bf22bdc3062",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 39390,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "e0050ef0c0e52f3f699a157158006d9a3edcb92e50cbc99800b59949d0b73872",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 36294,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "e5253cc7974eaf5df3233ebf0f764a2b3e866cf955fed828f91e5268c0be0733",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 24975,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "e5c625632204a7f3ab38c6e3deffa4f3d05ede49036ef08359126d2a402f7d54",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 29414,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "e85fc86985c9ca1b6d6eb741af0c46b99995a0f10d322c8fc9ce3d793a5da2d1",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 32652,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "ea5d2612b32bda07793850403d918cfb8e555fd73703f85fb6501934d2e95247",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 31883,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "ea5e52126c523d61d0e80b029bbe9f51a2088be59c1953ed2e7e28865a18cdf8",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 33491,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "ebc5c8a798b1b0061909b9d0dd8797e5be79dd9877752666eb21ffefb6bec1a3",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 27396,
+      "failures": [
+        "partial_period"
+      ],
+      "family": "derivative_bars",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "f0ead0fb138ad3c9fcd6cc34e297d3763c94ed3af47f173d5498c2ee554044eb",
+      "provider": "bybit",
+      "references": [
+        "json:crypto/backfill/b2-bars1d-top50-pre2023.json"
+      ],
+      "state": "quarantined",
+      "warnings": []
+    },
+    {
+      "artifact_bytes": 558,
+      "failures": [
+        "missing_required_column:coingecko_id",
+        "missing_required_column:contract_address",
+        "missing_required_column:network"
+      ],
+      "family": "asset_metadata",
+      "integrity": "verified_with_raw_lineage",
+      "integrity_error": null,
+      "manifest_id": "fd3fc07c9679eee835055b97ea0a41c3be7e0283a1a0a2029674c08c9d711ec9",
+      "provider": "coingecko",
+      "references": [],
+      "state": "quarantined",
+      "warnings": []
+    }
+  ],
+  "manifest_count": 33544,
+  "referenced_candidate_count": 56,
+  "scanned_databases": 1,
+  "scanned_json_files": 1362,
+  "unreadable_reference_files": []
+}

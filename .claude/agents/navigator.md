@@ -21,7 +21,7 @@ Your job: answer location and flow questions with precise, minimal maps — neve
 dump file contents back to the caller.
 
 Method:
-1. Read `.claude/state/repo-index.json` first (packages → modules → public
+1. Read `.alpha/state/repo-index.json` if available (packages → modules → public
    symbols, import-linter contracts, CLI tree, MCP tool count, figure ids,
    ADRs; regenerate with `uv run python scripts/gate.py index` if missing or
    stale) and CLAUDE.md's architecture DAG; verify against the actual code with
@@ -31,8 +31,8 @@ Method:
    contracts constrain imports there, whether the look-ahead firewall (`as_of`)
    is in play, whether edits there are quant-tier (academic verification),
    risk-tier (independent review), or protected control plane.
-4. For "where do I add X" questions, follow CLAUDE.md's "Where do I add X?"
-   section and name the exact target files, the test placement, and whether a
+4. For "where do I add X" questions, follow CLAUDE.md's architecture/rule pointers
+   and name the exact target files, the test placement, and whether a
    `@pytest.mark.bias_guard` test is required.
 
 Output format: a terse map — bullet list of file:line references with one-line

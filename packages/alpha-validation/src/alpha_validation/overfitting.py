@@ -38,7 +38,18 @@ class PBOResult:
     passed: bool  # pbo <= threshold
 
 
-def _safe_sharpe(returns: FloatArray) -> float:
+def selection_sharpe(returns: FloatArray) -> float:
+    """Per-period sample Sharpe for already-validated finite selection streams.
+
+    Sharpe (1994), "The Sharpe Ratio", Journal of Portfolio Management 21(1),
+    Ex Post section: https://web.stanford.edu/~wfsharpe/art/sr/SR.htm.
+    Nonannualized per-observation mean divided by sample standard deviation.
+    The caller supplies excess/differential returns; raw returns imply a zero
+    benchmark. The historical ALPHA
+    selection convention assigns zero to short/flat streams; this is not an
+    inference that their population Sharpe equals zero. Published metrics retain
+    their separate strict failure policy. No annualization or risk-free adjustment.
+    """
     sd = float(np.std(returns, ddof=1)) if returns.size >= 2 else 0.0
     return float(np.mean(returns)) / sd if sd > 0.0 else 0.0
 
@@ -76,7 +87,7 @@ def probability_of_backtest_overfitting(
     if not bool(np.all(np.isfinite(m))):
         raise DataError("perf_matrix must be finite")
 
-    stat = statistic if statistic is not None else _safe_sharpe
+    stat = statistic if statistic is not None else selection_sharpe
     rows_per_block = n_obs // n_blocks
     blocks = [
         np.arange(b * rows_per_block, (b + 1) * rows_per_block, dtype=np.intp)

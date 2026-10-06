@@ -1,0 +1,15 @@
+{
+ "name": "features_v1",
+ "n": 10,
+ "symbols": [],
+ "artifacts": [
+  {
+   "kind": "feature_table",
+   "dir": "inputs/kest_research",
+   "params": {
+    "symbol": "KEST",
+    "leak_set": "B"
+   }
+  }
+ ]
+}

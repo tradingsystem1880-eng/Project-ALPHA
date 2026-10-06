@@ -1,5 +1,13 @@
 import { defineConfig } from '@playwright/test'
 
+const port = Number(process.env.ALPHA_PLAYWRIGHT_PORT ?? '8802')
+if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Invalid ALPHA_PLAYWRIGHT_PORT')
+const baseURL = `http://localhost:${port}/`
+// Frame-timing budgets measure the host machine, so they are an opt-in lane (owner decision
+// 2026-10-05): run them with ALPHA_PERF_BUDGETS=1 on an idle reference machine. The gate and CI
+// keep every functional browser test.
+const perfBudgets = process.env.ALPHA_PERF_BUDGETS === '1'
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -13,7 +21,7 @@ export default defineConfig({
   snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{-projectName}{ext}',
   expect: { timeout: 5_000 },
   use: {
-    baseURL: 'http://localhost:8802/',
+    baseURL,
     browserName: 'chromium',
     colorScheme: 'dark',
     contextOptions: { reducedMotion: 'reduce' },
@@ -28,7 +36,7 @@ export default defineConfig({
     {
       name: 'chromium-reference',
       grepInvert: /@reference-only/,
-      use: { viewport: { width: 1440, height: 900 } },
+      use: { viewport: { width: 1585, height: 991 } },
     },
     {
       name: 'chromium-wide',
@@ -39,14 +47,15 @@ export default defineConfig({
       name: 'chromium-reference-only',
       dependencies: ['chromium-minimum', 'chromium-reference', 'chromium-wide'],
       grep: /@reference-only/,
-      use: { viewport: { width: 1440, height: 900 } },
+      ...(perfBudgets ? {} : { grepInvert: /@perf-budget/ }),
+      use: { viewport: { width: 1585, height: 991 } },
     },
   ],
   webServer: {
     command: 'uv run python scripts/run_playwright_backend.py',
     cwd: '../../..',
-    url: 'http://localhost:8802/',
-    reuseExistingServer: !process.env.CI,
+    url: baseURL,
+    reuseExistingServer: false,
     timeout: 60_000,
   },
 })

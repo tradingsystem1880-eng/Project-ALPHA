@@ -1,0 +1,24 @@
+{
+ "name": "bundle_v1",
+ "n": 10,
+ "symbols": [],
+ "artifacts": [
+  {
+   "kind": "results_bundle",
+   "dir": "inputs/results_latest",
+   "params": {
+    "strategy_name": "Cross-sectional 1-week momentum",
+    "signal": "buy the strongest and short the weakest 1-week movers, hold 1-5 days",
+    "base_bps": 2.0,
+    "symbol_boost_bps": 120,
+    "focus_symbol": "TEC3",
+    "focus_sector": "none",
+    "decay_months": 15,
+    "decay_delta_bps": -6,
+    "recent_short_boost_bps": 10,
+    "neighbour_ratio": 0.45,
+    "noise_bps": 50
+   }
+  }
+ ]
+}

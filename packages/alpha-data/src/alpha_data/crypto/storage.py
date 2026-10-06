@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
@@ -10,8 +11,10 @@ import re
 import shutil
 import subprocess
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from alpha_core import DataError
@@ -22,6 +25,7 @@ from .contracts import (
     CryptoQualityReportV1,
     CryptoRawReceiptV1,
     canonical_bytes,
+    require_utc,
 )
 
 _SAFE = re.compile(r"^[A-Za-z0-9._:-]+$")
@@ -159,6 +163,14 @@ class CryptoBulkStore:
     @property
     def staging_root(self) -> Path:
         return self.bulk_root / "staging"
+
+    def verify_readable(self) -> Capacity:
+        """Verify mounted identity and capacity without a write probe or artifact scan."""
+        if not self.bulk_root.is_dir() or self.bulk_root.is_symlink():
+            raise DataError("configured crypto bulk volume is not mounted")
+        if self._volume_uuid(self.bulk_root).strip().upper() != self.expected_volume_uuid:
+            raise DataError("configured crypto bulk volume UUID does not match")
+        return self._capacity(self.bulk_root)
 
     def verify_ready(self, *, required_bytes: int) -> Capacity:
         if (
@@ -446,7 +458,124 @@ class CryptoBulkStore:
             body["acquisition_scope"] = acquisition_scope.to_dict()
         return self._publish_manifest(body)
 
+    @contextmanager
+    def admission_lock(self) -> Iterator[None]:
+        """Serialize retirement with snapshot and derived-input admission."""
+        self.manifest_root.mkdir(parents=True, exist_ok=True)
+        lock = self.manifest_root.parent / "admission.lock"
+        _reject_symlink_path(self.manifest_root.parent, lock)
+        with lock.open("a+b") as stream:
+            fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+    def retirement(self, manifest_id: str) -> dict[str, object] | None:
+        """Verify append-only receipt while preserving canonical history."""
+        manifest = self._manifest_metadata(manifest_id)
+        path = self.manifest_root.parent / "retirements" / f"{manifest_id}.json"
+        _reject_symlink_path(self.manifest_root.parent, path)
+        if not path.exists():
+            return None
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(record, dict):
+                raise ValueError("not an object")
+            body = {key: value for key, value in record.items() if key != "record_id"}
+            stamp = datetime.fromisoformat(str(record.get("retired_at")))
+            if not (
+                record.get("schema_version") == 1
+                and record.get("manifest_id") == manifest_id
+                and record.get("artifact_sha256") == manifest.get("artifact_sha256")
+                and record.get("reason") in ("inactive_quarantined", "revoked_units_error")
+                and re.fullmatch(r"[0-9a-f]{64}", str(record.get("audit_sha256")))
+                and stamp.tzinfo is not None
+                and record.get("record_id") == hashlib.sha256(canonical_bytes(body)).hexdigest()
+            ):
+                raise ValueError("invalid receipt")
+        except (OSError, ValueError, TypeError) as exc:
+            raise DataError("crypto retirement receipt is unavailable or corrupt") from exc
+        return record
+
+    def require_active(self, manifest_id: str) -> None:
+        if self.retirement(manifest_id) is not None:
+            raise DataError("crypto manifest is retired from new research admission")
+
+    def retire_manifest(
+        self, manifest_id: str, *, reason: str, audit_sha256: str, retired_at: datetime
+    ) -> None:
+        """Record retirement under admission_lock after caller audits retained references."""
+        manifest = self.verify_manifest(manifest_id)
+        if reason not in {"inactive_quarantined", "revoked_units_error"} or not re.fullmatch(
+            r"[0-9a-f]{64}", audit_sha256
+        ):
+            raise DataError("invalid crypto retirement reason or audit digest")
+        dataset, quality = manifest.get("dataset"), manifest.get("quality")
+        if (
+            not isinstance(dataset, dict)
+            or not isinstance(quality, dict)
+            or manifest.get("artifact_kind") != "normalized"
+        ):
+            raise DataError("retirement requires normalized provider data")
+        if reason == "inactive_quarantined" and quality.get("state") != "quarantined":
+            raise DataError("inactive retirement requires quarantined data")
+        if reason == "revoked_units_error" and not (
+            dataset.get("provider") == "defillama"
+            and dataset.get("family") == "stablecoin_supply"
+            and dataset.get("units") == "usd_circulating_supply"
+        ):
+            raise DataError("unit revocation requires the known DefiLlama native-supply unit error")
+        if self.retirement(manifest_id) is not None:
+            raise DataError("crypto manifest is already retired")
+        body: dict[str, object] = {
+            "schema_version": 1,
+            "manifest_id": manifest_id,
+            "artifact_sha256": manifest["artifact_sha256"],
+            "reason": reason,
+            "audit_sha256": audit_sha256,
+            "retired_at": require_utc(retired_at, "retirement time").isoformat(),
+        }
+        record = {**body, "record_id": hashlib.sha256(canonical_bytes(body)).hexdigest()}
+        root = self.manifest_root.parent / "retirements"
+        _mkdir_confined(self.manifest_root.parent, root)
+        path = root / f"{manifest_id}.json"
+        _reject_symlink_path(self.manifest_root.parent, path)
+        with tempfile.NamedTemporaryFile(dir=root, prefix=".retirement-", delete=False) as stream:
+            temporary = Path(stream.name)
+            try:
+                stream.write(canonical_bytes(record))
+                stream.flush()
+                os.fsync(stream.fileno())
+                # A hard link exposes complete bytes atomically and refuses overwrites.
+                os.link(temporary, path)
+                directory_fd = os.open(root, os.O_RDONLY)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
+            finally:
+                temporary.unlink(missing_ok=True)
+
     def publish_derived(
+        self,
+        payload: bytes,
+        *,
+        derived_kind: str,
+        input_manifest_ids: tuple[str, ...],
+        metadata: dict[str, object],
+    ) -> dict[str, object]:
+        with self.admission_lock():
+            for manifest_id in input_manifest_ids:
+                self.require_active(manifest_id)
+            return self._publish_derived_active(
+                payload,
+                derived_kind=derived_kind,
+                input_manifest_ids=input_manifest_ids,
+                metadata=metadata,
+            )
+
+    def _publish_derived_active(
         self,
         payload: bytes,
         *,
@@ -503,7 +632,7 @@ class CryptoBulkStore:
             }
         )
 
-    def verify_manifest(self, manifest_id: object) -> dict[str, object]:
+    def _manifest_metadata(self, manifest_id: object) -> dict[str, object]:
         if not isinstance(manifest_id, str):
             raise DataError("invalid crypto manifest id")
         _safe_component(manifest_id, "manifest id")
@@ -517,6 +646,10 @@ class CryptoBulkStore:
         body = {key: value for key, value in raw.items() if key != "manifest_id"}
         if hashlib.sha256(canonical_bytes(body)).hexdigest() != manifest_id:
             raise DataError("crypto manifest integrity failure")
+        return raw
+
+    def verify_manifest(self, manifest_id: object) -> dict[str, object]:
+        raw = self._manifest_metadata(manifest_id)
         artifact_key = raw.get("artifact_key")
         artifact_hash = raw.get("artifact_sha256")
         artifact_bytes = raw.get("artifact_bytes")
@@ -561,11 +694,25 @@ class CryptoBulkStore:
                     raise DataError("crypto manifest input lineage has the wrong artifact kind")
         return raw
 
-    def inventory(self) -> tuple[dict[str, object], ...]:
+    def metadata_inventory(self, *, include_retired: bool = False) -> tuple[dict[str, object], ...]:
+        """Hash-verified discovery metadata, NOT verified artifact or lineage evidence.
+
+        Consumers must fully verify selected manifests before admitting their data.
+        Unrelated metadata corruption still fails closed instead of hiding candidates.
+        """
+        return tuple(
+            self._manifest_metadata(path.stem)
+            for path in sorted(self.manifest_root.glob("*.json"))
+            if self.retirement(path.stem) is None or include_retired
+        )
+
+    def inventory(self, *, include_retired: bool = False) -> tuple[dict[str, object], ...]:
         if not self.manifest_root.exists():
             return ()
         return tuple(
-            self.verify_manifest(path.stem) for path in sorted(self.manifest_root.glob("*.json"))
+            self.verify_manifest(path.stem)
+            for path in sorted(self.manifest_root.glob("*.json"))
+            if self.retirement(path.stem) is None or include_retired
         )
 
     def clean_cache(self) -> int:

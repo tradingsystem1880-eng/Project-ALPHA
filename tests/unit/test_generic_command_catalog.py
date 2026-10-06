@@ -33,6 +33,8 @@ def test_empty_generic_command_is_unknown() -> None:
         (["data", "audit"], "safe"),
         (["data", "repair"], "owner_only"),
         (["paper", "run"], "owner_only"),
+        (["options", "price"], "unknown"),
+        (["screener", "run"], "unknown"),
     ],
 )
 def test_roots_classify_by_subcommand(argv: list[str], expected: str) -> None:

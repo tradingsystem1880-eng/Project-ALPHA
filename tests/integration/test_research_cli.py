@@ -34,6 +34,53 @@ def _invoke(*args: str) -> dict[str, object]:
     return value
 
 
+def test_generic_capture_reports_operator_gap_not_owner_answer_batch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "Crypto momentum may predict later returns")
+    case = cast(dict[str, object], captured["case"])
+    assert case["phase"] == "triage"
+    assert case["responsibility"] == "codex"
+    assert "operator" in str(case["blocker"]).lower()
+    assert "answers" not in str(case["next_action"])
+
+
+def test_explicit_operator_draft_preserves_prose_and_freezes_v2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "Support is revisited")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    store = ControlStore(tmp_path)
+    source = store.create_research_source(
+        project_id,
+        title="Synthetic fixture protocol",
+        locator="owner:explicit-operator",
+        provider="owner",
+        access_mode="owner_provided",
+    )
+    pack = store.create_research_source_pack(project_id, source_ids=[str(source["source_id"])])
+    draft = _invoke(
+        "draft",
+        project_id,
+        "--source-pack-id",
+        str(pack["pack_id"]),
+        "--operator",
+        "double_bottom.v1",
+        "--answer",
+        "chart_construction=spy_rth_60m_four_hour_window",
+        "--answer",
+        "event_availability=second_trough_confirmable",
+        "--answer",
+        "primary_outcome=four_trading_hour_return_25bp",
+    )
+    payload = cast(dict[str, object], cast(dict[str, object], draft["contract"])["payload"])
+    assert payload["raw_idea"] == "Support is revisited"
+    assert payload["approval_ready"] is True
+    assert cast(dict[str, object], payload["analysis_plan"])["schema"] == "ResearchAnalysisPlanV2"
+
+
 def _rewrite_d0_acceptance_and_manifest(data_dir: Path, run_id: str) -> None:
     run_dir = data_dir / "runs" / run_id
     acceptance_path = run_dir / "d0_acceptance.json"
@@ -488,7 +535,7 @@ def test_raw_idea_reaches_bounded_contract_review_and_synthetic_pilot(
             "definition": None,
             "review": None,
             "freeze": None,
-            "next_owner_action": "Record a semantic definition with fresh Touch ID.",
+            "next_owner_action": "Record a semantic definition with fresh owner confirmation.",
         },
         "d1": {
             "launch_authority": "owner_cli_only",
@@ -1041,11 +1088,6 @@ def test_postlaunch_v1_project_attaches_to_research_through_public_cli(
 @pytest.mark.parametrize(
     ("idea", "chart", "availability"),
     [
-        (
-            "A generic owner research event may predict returns",
-            "spy_rth_60m_four_hour_window",
-            "second_trough_confirmable",
-        ),
         (
             "SPY double bottom neckline variants may predict returns",
             "spy_rth_60m_four_hour_window",
@@ -1656,10 +1698,10 @@ def test_research_list_projects_bounded_backlog_rows_newest_activity_first(
     assert row["phase"] == "triage"
     assert row["execution_state"] == "idle"
     assert row["outcome"] is None and row["disposition"] is None
-    assert row["responsibility"] == "owner"
+    assert row["responsibility"] == "codex"
     assert (
-        row["recovery_action"]
-        == "Answer the single bounded question batch; Codex handles technical defaults."
+        row["recovery_action"] == "Clarify the observation without assuming a registered pattern; "
+        "implement and review an exact operator before proposing execution."
     )
     assert row["completed_milestones"] == 2  # captured + triage phase events
     assert row["total_milestones"] == 9  # the nine research phases
@@ -1687,6 +1729,99 @@ def test_research_list_projects_bounded_backlog_rows_newest_activity_first(
 
     rejected = runner.invoke(app, ["research", "list", "--limit", "0", "--json"])
     assert rejected.exit_code != 0
+
+
+@pytest.mark.parametrize("damage", [None, "digest", "missing", "spec"])
+def test_context_build_links_only_verified_screening(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    damage: str | None,
+) -> None:
+    from tests.fixtures.hypothesis_scan_fixtures import frozen_equities
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    frozen_equities(tmp_path)
+    captured = _invoke("capture", "Screening provenance remains exploratory")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    screened = runner.invoke(
+        app,
+        [
+            "scan",
+            "hypotheses",
+            "--symbols",
+            "A,B,C,D,E",
+            "--snapshot",
+            "frozen",
+            "--as-of",
+            "2020-04-09",
+            "--signals",
+            "rev_1m",
+            "--horizons",
+            "1",
+            "--json",
+        ],
+    )
+    assert screened.exit_code == 0, screened.output
+    scan = json.loads(screened.stdout)
+    result_path = (
+        tmp_path / "scans" / "hypotheses" / "attempts" / scan["attempt_id"] / "result.json"
+    )
+    if damage == "missing":
+        result_path.unlink()
+    elif damage == "digest":
+        result = json.loads(result_path.read_text())
+        result["result_digest"] = "0" * 64
+        result_path.write_text(json.dumps(result))
+    elif damage == "spec":
+        spec_path = tmp_path / "scans" / "hypotheses" / "specs" / f"{scan['scan_id']}.json"
+        spec = json.loads(spec_path.read_text())
+        spec["authority"] = "approved"
+        spec_path.write_text(json.dumps(spec))
+    built = runner.invoke(
+        app,
+        [
+            "research",
+            "context",
+            "build",
+            project_id,
+            "--kind",
+            "research_case",
+            "--scan",
+            scan["scan_id"],
+            "--scan-attempt",
+            scan["attempt_id"],
+            "--json",
+        ],
+    )
+    if damage is not None:
+        assert built.exit_code == 2, built.output
+        assert _invoke("context", "list", project_id)["items"] == []
+    else:
+        assert built.exit_code == 0, built.output
+        reference = json.loads(built.stdout)["payload"]["screening_reference"]
+        assert reference["authority"] == "none"
+        assert reference["scan_id"] == scan["scan_id"]
+        assert reference["attempt_id"] == scan["attempt_id"]
+        assert reference["result_digest"] == scan["result_digest"]
+        implicit = _invoke(
+            "context", "build", project_id, "--kind", "research_case", "--scan", scan["scan_id"]
+        )
+        assert implicit["packet_id"] == json.loads(built.stdout)["packet_id"]
+        orphan_attempt = runner.invoke(
+            app,
+            [
+                "research",
+                "context",
+                "build",
+                project_id,
+                "--kind",
+                "research_case",
+                "--scan-attempt",
+                scan["attempt_id"],
+            ],
+        )
+        assert orphan_attempt.exit_code == 2
+        assert "requires --scan" in orphan_attempt.output
 
 
 def test_context_packets_notes_protocols_and_brief_cli_round_trip(

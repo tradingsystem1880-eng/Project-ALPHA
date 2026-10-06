@@ -26,9 +26,7 @@ _EMPIRICAL_ROOTS = frozenset(
     {"backtest", "validate", "optim", "propfirm", "forecast", "ml", "monte-carlo"}
 )
 _OWNER_ONLY_ROOTS = frozenset({"owner-auth", "project", "suite", "provider"})
-_SAFE_ROOTS = frozenset(
-    {"info", "options", "screener", "risk", "report", "figures", "chart", "rules", "scan"}
-)
+_SAFE_ROOTS = frozenset({"info", "risk", "report", "figures", "chart", "rules", "scan"})
 # Governed crypto data house (ADR-0032): reads and verifications are safe; anything that
 # acquires, freezes, selects, batches, creates or cleans is owner authority.
 _CRYPTO_DATA_SAFE = frozenset(
@@ -36,6 +34,7 @@ _CRYPTO_DATA_SAFE = frozenset(
         "catalog",
         "estimate",
         "capabilities",
+        "yield-pools",
         "storage",
         "storage-inventory",
         "storage-verify",
@@ -64,6 +63,8 @@ def classify_generic_command(argv: list[str]) -> GenericCommandClass:
     This is deliberately conservative for governed project contexts: an unknown command is not
     assumed non-empirical. Research lifecycle mutations stay on their bounded API/CLI surfaces.
     """
+    if argv[:1] == ["assistant"]:
+        return "owner_only"
     if not argv:
         return "unknown"
     root = argv[0]

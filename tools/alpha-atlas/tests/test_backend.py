@@ -83,13 +83,18 @@ class TestProjections:
     def test_unknown_node_is_404(self, client: TestClient) -> None:
         assert client.get("/api/node/wf:research.nope").status_code == 404
 
-    def test_excerpt_serves_the_d1_runner(self, client: TestClient) -> None:
+    def test_excerpt_serves_the_d1_runner(self, client: TestClient, repo_root: Path) -> None:
+        relative = "apps/alpha-cli/src/alpha_cli/research_d1.py"
+        lines = (repo_root / relative).read_text().splitlines()
+        start = next(
+            i for i, line in enumerate(lines, 1) if line.startswith("def run_deep_research")
+        )
         response = client.get(
             "/api/excerpt",
             params={
-                "path": "apps/alpha-cli/src/alpha_cli/research_d1.py",
-                "start": 1078,
-                "end": 1082,
+                "path": relative,
+                "start": start,
+                "end": start + 4,
             },
         )
         assert response.status_code == 200

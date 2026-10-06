@@ -1,0 +1,130 @@
+{
+  "active_manifest_count": 33538,
+  "total_manifest_count": 33546,
+  "retired_manifest_ids": [
+    "307e827d7c11255e329a79a9b80b4720a609e885204d5c928e226fd93690c4e9",
+    "4409cd70fba3625c7fb5fd874af7893fa2ffd6a249c2c9ee1119653a34f8594c",
+    "77ac31a7e927593e4f35dc5d9d7bec1a646d027517c6d2c76caea6f9d4094cb1",
+    "9756de7753090b3090a88f2412f1683a6bc43ee73499ddf732ff14790ea583ed",
+    "abb399eee35c84269be01d2fedf60e69329cb73356a7be43ea02a89bbfde963e",
+    "ae07d76b81085e1c57510109c8c89944f11162c3e3aabf1358ebdfcf3a8319eb",
+    "d0b6b5aece1f2069b258e67969c162892ee02980473b7b0572b01134422d57ae",
+    "fd3fc07c9679eee835055b97ea0a41c3be7e0283a1a0a2029674c08c9d711ec9"
+  ],
+  "selected_verified_with_raw_lineage": [
+    {
+      "manifest_id": "c586f1b2f4e2617ddecc858b42b3c009d0754e353e56f3f93ada63c51b81c3f4",
+      "dataset": {
+        "base_asset": null,
+        "family": "protocol_tvl",
+        "frequency": "1d",
+        "instrument": "aave",
+        "market_type": "reference",
+        "provider": "defillama",
+        "quote_asset": "USD",
+        "schema_version": 1,
+        "timestamp_convention": "provider_observation_utc",
+        "units": "usd_total_value_locked",
+        "venue": "defillama"
+      },
+      "quality": {
+        "correction_lineage": [],
+        "dataset_sha256": "55700a5f8ec7cb85685390197085285613d5fd85ad97a6a169b7bf3705a59f66",
+        "failures": [],
+        "method_version": "crypto-quality-v1",
+        "observed_end": "2026-10-02T09:15:59+00:00",
+        "observed_start": "2020-05-20T00:00:00+00:00",
+        "row_count": 2328,
+        "schema_version": 1,
+        "state": "qualified",
+        "warnings": []
+      }
+    },
+    {
+      "manifest_id": "ba8213d45cbe2bf74575ee519839a4432005eee5449c08c15d83a9529c6bfd65",
+      "dataset": {
+        "base_asset": null,
+        "family": "stablecoin_supply",
+        "frequency": "1d",
+        "instrument": "1",
+        "market_type": "reference",
+        "provider": "defillama",
+        "quote_asset": null,
+        "schema_version": 1,
+        "timestamp_convention": "provider_observation_utc",
+        "units": "native_usd_pegged_token_units",
+        "venue": "defillama"
+      },
+      "quality": {
+        "correction_lineage": [],
+        "dataset_sha256": "0aa524ca642c77cc9b34e901182db56da3da20ecc9bdff5e17b9fc871bf2082d",
+        "failures": [],
+        "method_version": "crypto-quality-v1",
+        "observed_end": "2026-10-02T00:00:00+00:00",
+        "observed_start": "2017-11-29T00:00:00+00:00",
+        "row_count": 3230,
+        "schema_version": 1,
+        "state": "qualified",
+        "warnings": []
+      }
+    },
+    {
+      "manifest_id": "13898472649d24672150c7a0eaa55a7ffbe15d4f7c7aa55d4c9990da452ace7f",
+      "dataset": {
+        "base_asset": null,
+        "family": "yield_pools",
+        "frequency": "catalog_snapshot",
+        "instrument": "all",
+        "market_type": "reference",
+        "provider": "defillama",
+        "quote_asset": "USD",
+        "schema_version": 1,
+        "timestamp_convention": "provider_observation_utc",
+        "units": "usd_tvl_and_annualized_percent",
+        "venue": "defillama"
+      },
+      "quality": {
+        "correction_lineage": [],
+        "dataset_sha256": "db875cb2a7e937a18013a9979542d5d3ea3817f720432a37d1d7076d0212a15d",
+        "failures": [],
+        "method_version": "crypto-quality-v1",
+        "observed_end": "2026-10-02T10:45:05.486303+00:00",
+        "observed_start": "2026-10-02T10:45:05.486303+00:00",
+        "row_count": 17061,
+        "schema_version": 1,
+        "state": "qualified",
+        "warnings": []
+      }
+    },
+    {
+      "manifest_id": "938f2907f1b6517fe0f73d88ca61817cc4ec484f82533c447641041e555ca121",
+      "dataset": {
+        "base_asset": null,
+        "family": "yield_history",
+        "frequency": "1d",
+        "instrument": "db678df9-3281-4bc2-a8bb-01160ffd6d48",
+        "market_type": "reference",
+        "provider": "defillama",
+        "quote_asset": "USD",
+        "schema_version": 1,
+        "timestamp_convention": "provider_observation_utc",
+        "units": "usd_tvl_and_annualized_percent",
+        "venue": "defillama"
+      },
+      "quality": {
+        "correction_lineage": [],
+        "dataset_sha256": "1b064fee920ff2d5d113b3fa02a294708b9d342c8a40463dc463c8c2a7c8ac94",
+        "failures": [],
+        "method_version": "crypto-quality-v1",
+        "observed_end": "2026-10-02T10:02:28.984000+00:00",
+        "observed_start": "2024-04-14T22:01:13.921000+00:00",
+        "row_count": 902,
+        "schema_version": 1,
+        "state": "qualified",
+        "warnings": []
+      }
+    }
+  ],
+  "retired_bytes_reverified": 8,
+  "all_archive_bytes_verified": false
+}

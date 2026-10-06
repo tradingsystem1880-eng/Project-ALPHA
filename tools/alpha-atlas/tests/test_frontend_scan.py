@@ -33,17 +33,26 @@ class TestClientJoin:
 
 
 class TestFrontendScan:
-    def test_screens_and_panels_from_the_screens_literal(self, repo_root: Path) -> None:
+    def test_documents_and_panels_from_current_registry(self, repo_root: Path) -> None:
         fragment, inputs = extract(repo_root)
-        explore = next(n for n in fragment.nodes if n.id == "screen:explore")
+        explore = next(n for n in fragment.nodes if n.id == "screen:research")
         assert explore.meta["label"] == "Research"
         assert any(
             e.type == "part_of"
             and e.source == "panel:ResearchCockpit"
-            and e.target == "screen:explore"
+            and e.target == "screen:research"
             for e in fragment.edges
         )
-        assert "apps/alpha-web/frontend/src/shell/screens.tsx" in inputs
+        assert "apps/alpha-web/frontend/src/shell/documents.ts" in inputs
+        assert not any(path.endswith("screens.tsx") for path in inputs)
+        assert any(n.id == "screen:ml-lab" for n in fragment.nodes)
+
+    def test_import_aliases_and_directory_components_resolve(self, repo_root: Path) -> None:
+        fragment, _ = extract(repo_root)
+        nodes = {node.id: node for node in fragment.nodes}
+        assert nodes["panel:RunDetail"].path.endswith("panels/rundetail/index.tsx")
+        assert nodes["panel:DevelopmentCenter"].path.endswith("panels/V3Workbenches.tsx")
+        assert nodes["panel:GovernanceDocument"].path.endswith("panels/Governance.tsx")
 
     def test_panels_are_anchored_to_their_component_file(self, repo_root: Path) -> None:
         fragment, _ = extract(repo_root)

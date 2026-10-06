@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { openDocument } from './support/workstationHarness'
+import { openDocument, openTask } from './support/workstationHarness'
 
 // Every step here is a cold `alpha …` subprocess on the real backend; a CI runner can take
 // well over the default 5 s expect / 30 s test budget for capture and workspace sync.
@@ -34,8 +34,8 @@ test('real backend captures a case and renders all material questions without ve
 
   await page.goto('')
   // New Idea lives at the top of the Research menu (artboard: no titlebar button).
-  await page.getByRole('menubar').getByRole('menuitem', { name: 'Research', exact: true }).click()
-  await page.getByRole('menu', { name: 'Research' }).getByRole('menuitem', { name: 'New Idea…' }).click()
+  await page.getByRole('menuitem', { name: 'Research', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'New Idea…', exact: true }).click()
   await page
     .getByLabel('Raw research idea')
     .fill('SPY may bounce after a point-in-time double bottom on equal daily sessions.')
@@ -51,7 +51,7 @@ test('real backend captures a case and renders all material questions without ve
   await expect(
     page.getByRole('region', { name: 'Governance', exact: true }).getByText(/SYNTHETIC D0 IS NOT REAL-MARKET EVIDENCE/),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Close Governance' }).click()
+  await openDocument(page, 'Research')
   expect(externalRequests).toEqual([])
 })
 
@@ -72,7 +72,7 @@ test('generated project workspace is visible and refreshes without authority esc
 
   await page.goto('')
   await openDocument(page, 'Build')
-  await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
+  await openTask(page, 'Strategies & Tests', 'Development Center')
   await page.getByLabel('Strategy project').selectOption(project.project_id)
 
   const workspace = page.getByRole('region', { name: 'Project workspace' })
@@ -116,7 +116,7 @@ test('late workspace refresh cannot overwrite a newly selected project', async (
 
   await page.goto('')
   await openDocument(page, 'Build')
-  await page.getByRole('tab', { name: 'Development Center', exact: true }).click()
+  await openTask(page, 'Strategies & Tests', 'Development Center')
   const selector = page.getByLabel('Strategy project')
   const workspace = page.getByRole('region', { name: 'Project workspace' })
   const firstWorkspaceResponse = page.waitForResponse((response) => (

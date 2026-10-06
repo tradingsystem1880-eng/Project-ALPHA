@@ -450,13 +450,17 @@ _HUB_SECTIONS = [
 ]
 
 
+@pytest.mark.parametrize(
+    ("idea", "falsifier_count"),
+    [("SPY drifts into month-end rebalancing", 0), ("SPY double bottom", 5)],
+)
 def test_evidence_hub_renders_honest_empty_states_for_a_fresh_case(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, idea: str, falsifier_count: int
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     captured = CliRunner().invoke(
         app,
-        ["research", "capture", "SPY drifts into month-end rebalancing", "--json"],
+        ["research", "capture", idea, "--json"],
     )
     assert captured.exit_code == 0, captured.output
     project_id = str(json.loads(captured.output)["project"]["project_id"])
@@ -469,7 +473,7 @@ def test_evidence_hub_renders_honest_empty_states_for_a_fresh_case(
     # CLI JSON is emitted with sorted keys; section ordering is the panel's concern.
     assert set(sections) == set(_HUB_SECTIONS)
     overview = sections["overview"]
-    assert overview["original_idea"] == "SPY drifts into month-end rebalancing"
+    assert overview["original_idea"] == idea
     assert overview["phase"] == "triage"
     assert overview["hypothesis_card"]["card_schema"] == "HypothesisCardV1"
     assert overview["scorecard"]["scorecard_schema"] == "ResearchReadinessScorecardV1"
@@ -489,7 +493,8 @@ def test_evidence_hub_renders_honest_empty_states_for_a_fresh_case(
     assert sections["evidence_for"] == {"findings": []}
     assert sections["evidence_against"] == {"findings": []}
     falsification = sections["falsification"]
-    assert len(falsification["falsifiers"]) == 5
+    # Generic observations must not inherit a registered pattern's falsifiers.
+    assert len(falsification["falsifiers"]) == falsifier_count
     assert all(entry["result"] == "NOT_TESTED" for entry in falsification["falsifiers"])
     assert len(falsification["stop_rules"]) == 6
     assert sections["robustness"] == {"findings": [], "status": "NOT_TESTED"}

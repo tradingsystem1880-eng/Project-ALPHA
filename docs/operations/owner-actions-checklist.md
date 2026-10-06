@@ -127,7 +127,7 @@ diskutil info /Volumes/Expansion | grep 'Volume UUID'
 
 | What | Why it matters | How | Verify |
 |---|---|---|---|
-| Claude Code project MCP servers | `~/.claude.json` has `enabledMcpjsonServers: []` for the repo root and every worktree, and the root has `hasTrustDialogAccepted: false`. This is why the `codex` MCP tools attach and then drop mid-session. | In an interactive `claude` session in the repo, accept the trust dialog and run `/mcp` to enable `alpha` and `codex` | `/mcp` lists both as connected |
+| Claude Code project MCP servers | `~/.claude.json` has `enabledMcpjsonServers: []` for the repo root and every worktree, and the root has `hasTrustDialogAccepted: false`. (The former `codex` MCP entry was removed 2026-09-28: codex-cli 0.154 has no `mcp-server`; Codex is reached via `codex-liaison` only.) | In an interactive `claude` session in the repo, accept the trust dialog and run `/mcp` to enable `alpha` | `/mcp` lists `alpha` as connected |
 | Codex project trust | lets Codex run in this directory without re-prompting | already set — `trust_level = "trusted"` for `/Users/hunternovotny/Desktop/Project-ALPHA` in `~/.codex/config.toml` | `grep -A2 'Project-ALPHA' ~/.codex/config.toml` |
 | Codex ChatGPT login | the optional second-model seam | see `codex-second-model-runbook.md` | `python3 scripts/codex_bridge.py probe` |
 | claude.ai connectors (Linear, Slack, Notion, …) | 14 plugin MCP servers await OAuth | authorize in claude.ai connector settings, or `/mcp` in an interactive session | those tools stop reporting as unauthenticated |

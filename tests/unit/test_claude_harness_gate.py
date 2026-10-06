@@ -21,6 +21,26 @@ from tests.unit._harness_support import git as _git
 
 
 class TestTreeHash:
+    def test_status_preserves_spaces_and_both_rename_paths(self, repo: Path) -> None:
+        _git(repo, "mv", "tracked.py", "renamed file.py")
+        assert set(gate._status_entries(repo)) == {
+            ("tracked.py", False),
+            ("renamed file.py", False),
+        }
+
+    def test_tracked_ignored_content_is_still_hashed(self, repo: Path) -> None:
+        (repo / ".git" / "info" / "exclude").write_text("tracked.py\n")
+        before = gate.compute_tree_hash(repo)
+        (repo / "tracked.py").write_text("x = 99\n")
+        assert gate.compute_tree_hash(repo) != before
+
+    def test_force_added_ignored_content_is_hashed(self, repo: Path) -> None:
+        (repo / ".git" / "info" / "exclude").write_text("ignored.py\n")
+        before = gate.compute_tree_hash(repo)
+        (repo / "ignored.py").write_text("x = 1\n")
+        _git(repo, "add", "-f", "ignored.py")
+        assert gate.compute_tree_hash(repo) != before
+
     def test_deterministic(self, repo: Path) -> None:
         assert gate.compute_tree_hash(repo) == gate.compute_tree_hash(repo)
 
@@ -233,6 +253,14 @@ class TestStamp:
         assert not gate.stamp_is_valid(repo, "fast")
         assert not gate.stamp_is_valid(repo, "full")
 
+    def test_run_gate_rejects_tree_changed_during_checks(self, repo: Path) -> None:
+        def runner(cmd: list[str]) -> tuple[bool, float, str]:
+            (repo / "tracked.py").write_text("x = 99\n")
+            return (True, 0.1, "")
+
+        assert gate.run_gate(repo, "fast", runner=runner) != 0
+        assert not (repo / gate.STATE_DIR / gate.STAMP_FILE).exists()
+
 
 class TestAttest:
     def _quant_report(self, **overrides: Any) -> dict[str, Any]:
@@ -401,7 +429,7 @@ class TestAudit:
         gate.write_stamp(repo, "fast", steps=[("ruff", 1.0, True)], duration=1.0)
         gate.write_override(repo, reason="r1")
         gate.consume_override(repo)
-        journal = repo / ".claude" / "state" / "harness-audit.jsonl"
+        journal = repo / gate.STATE_DIR / "harness-audit.jsonl"
         lines = [json.loads(line) for line in journal.read_text().splitlines()]
         events = [line["event"] for line in lines]
         assert "stamp_written" in events
@@ -474,6 +502,11 @@ def _wire_minimal_harness(repo: Path) -> None:
     scripts.mkdir(exist_ok=True)
     for name in (
         "gate.py",
+        "gate_components.py",
+        "git_guard.py",
+        "wheel_smoke.py",
+        "check_semgrep_contracts.py",
+        "repo_orientation.py",
         "claude_hooks.py",
         "harness_awareness.py",
         "harness_models.py",
@@ -707,7 +740,7 @@ class TestBrief:
     def test_brief_cached_by_tree_hash(self, repo: Path) -> None:
         _brief_repo(repo)
         first = harness_awareness.repo_brief(repo)
-        cache = repo / ".claude" / "state" / harness_awareness.BRIEF_FILE
+        cache = repo / gate.STATE_DIR / harness_awareness.BRIEF_FILE
         assert cache.exists()
         (repo / "CLAUDE.md").write_text("see ADR-0001 and ADR-0002\n")
         second = harness_awareness.repo_brief(repo)
@@ -796,7 +829,7 @@ class TestIndex:
         assert index["adrs"] == ["0001-first.md", "0002-second.md"]
         assert index["cli_commands"] == {"unavailable": "cli=False"}
         path = harness_awareness.write_index(repo, cli=False)
-        assert path == repo / ".claude" / "state" / harness_awareness.INDEX_FILE
+        assert path == repo / gate.STATE_DIR / harness_awareness.INDEX_FILE
         assert json.loads(path.read_text())["tree_hash"] == gate.compute_tree_hash(repo)
 
 
