@@ -1,0 +1,114 @@
+{
+ "name": "noise",
+ "n": 2520,
+ "symbols": [
+  {
+   "symbol": "Q00",
+   "family": "null"
+  },
+  {
+   "symbol": "Q01",
+   "family": "null"
+  },
+  {
+   "symbol": "Q02",
+   "family": "null"
+  },
+  {
+   "symbol": "Q03",
+   "family": "null"
+  },
+  {
+   "symbol": "Q04",
+   "family": "null"
+  },
+  {
+   "symbol": "Q05",
+   "family": "null"
+  },
+  {
+   "symbol": "Q06",
+   "family": "null"
+  },
+  {
+   "symbol": "Q07",
+   "family": "null"
+  },
+  {
+   "symbol": "Q08",
+   "family": "null"
+  },
+  {
+   "symbol": "Q09",
+   "family": "null"
+  },
+  {
+   "symbol": "Q10",
+   "family": "null"
+  },
+  {
+   "symbol": "Q11",
+   "family": "null"
+  },
+  {
+   "symbol": "Q12",
+   "family": "null"
+  },
+  {
+   "symbol": "Q13",
+   "family": "null"
+  },
+  {
+   "symbol": "Q14",
+   "family": "null"
+  },
+  {
+   "symbol": "Q15",
+   "family": "null"
+  },
+  {
+   "symbol": "Q16",
+   "family": "null"
+  },
+  {
+   "symbol": "Q17",
+   "family": "null"
+  },
+  {
+   "symbol": "Q18",
+   "family": "null"
+  },
+  {
+   "symbol": "Q19",
+   "family": "null"
+  }
+ ],
+ "snapshots": [
+  {
+   "id": "noisepanel",
+   "symbols": [
+    "Q00",
+    "Q01",
+    "Q02",
+    "Q03",
+    "Q04",
+    "Q05",
+    "Q06",
+    "Q07",
+    "Q08",
+    "Q09",
+    "Q10",
+    "Q11",
+    "Q12",
+    "Q13",
+    "Q14",
+    "Q15",
+    "Q16",
+    "Q17",
+    "Q18",
+    "Q19"
+   ],
+   "created_at": "2026-09-26T00:00:00+00:00"
+  }
+ ]
+}

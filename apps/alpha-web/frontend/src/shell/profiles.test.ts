@@ -22,7 +22,7 @@ describe('PROFILES', () => {
 
   it('crypto shows only crypto data, functions and vocabulary', () => {
     const crypto = profile('crypto')
-    for (const hidden of ['options', 'screener', 'corporate-actions'] as const) {
+    for (const hidden of ['corporate-actions'] as const) {
       expect(crypto.windows).not.toContain(hidden)
     }
     expect(crypto.paperVenues).not.toContain('ibkr')
@@ -54,7 +54,7 @@ describe('PROFILES', () => {
       }
     }
     expect(showsWindow('equities', 'funding')).toBe(false)
-    expect(showsWindow('crypto', 'options')).toBe(false)
+    expect(showsWindow('crypto', 'corporate-actions')).toBe(false)
   })
 
   it('pullDefaults and starterSymbols are derived from the manifest', () => {
@@ -86,7 +86,9 @@ describe('symbolFitsProfile', () => {
     expect(symbolFitsProfile('crypto', 'XRP/USDT')).toBe(true)
     expect(symbolFitsProfile('crypto', 'AAPL')).toBe(false)
     expect(symbolFitsProfile('equities', 'AAPL')).toBe(true)
-    expect(symbolFitsProfile('equities', 'BTC-USD')).toBe(true)
+    expect(symbolFitsProfile('equities', 'BTC-USD')).toBe(false)
+    expect(symbolFitsProfile('crypto', 'BTC-USD')).toBe(true)
+    expect(symbolFitsProfile('equities', 'BRK-B')).toBe(true)
     expect(symbolFitsProfile('equities', 'XRP/USDT')).toBe(false)
   })
 })

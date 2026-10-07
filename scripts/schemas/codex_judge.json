@@ -1,0 +1,225 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verdict",
+    "verdict_quote",
+    "claims",
+    "scores",
+    "pitfalls",
+    "next_steps",
+    "criticals",
+    "objectives",
+    "summary"
+  ],
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "support",
+        "reject",
+        "insufficient",
+        "none"
+      ]
+    },
+    "verdict_quote": {
+      "type": "string"
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "text",
+          "value",
+          "cited_idx",
+          "derived"
+        ],
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "cited_idx": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "derived": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dimension",
+          "score",
+          "cites",
+          "rationale"
+        ],
+        "properties": {
+          "dimension": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer"
+          },
+          "cites": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "pitfalls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "flaw",
+          "status",
+          "cites"
+        ],
+        "properties": {
+          "flaw": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "investigated",
+              "mentioned_only",
+              "missed",
+              "not_applicable"
+            ]
+          },
+          "cites": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "next_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected",
+          "proposed",
+          "cites"
+        ],
+        "properties": {
+          "expected": {
+            "type": "string"
+          },
+          "proposed": {
+            "type": "boolean"
+          },
+          "cites": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "criticals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cls",
+          "cites",
+          "detail"
+        ],
+        "properties": {
+          "cls": {
+            "type": "string",
+            "enum": [
+              "fabricated_evidence",
+              "endorsed_false_edge",
+              "agent_lookahead",
+              "impossible_execution_accepted",
+              "authority_violation"
+            ]
+          },
+          "cites": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "objectives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "prompted",
+          "cites",
+          "rationale"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "met",
+              "partial",
+              "missed"
+            ]
+          },
+          "prompted": {
+            "type": "boolean"
+          },
+          "cites": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "string"
+    }
+  }
+}

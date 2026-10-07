@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import type { RuleSummary, ScanRunResult, ScanSummary } from '../api/types'
-import { setLinked } from '../context/linked'
+import { openScannedMarket } from './actions'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { useAreaVersion } from '../state/activity'
 import {
@@ -193,7 +193,7 @@ export function Scanner(_props: PanelHandleProps) {
                   {rows.map((row) => (
                     <tr key={row.symbol} className={`tone-${signalTone(row.signal)}`}>
                       <td>
-                        <button type="button" className="watch-select" onClick={() => setLinked({ symbol: row.symbol })} title="Chart this symbol">
+                        <button type="button" className="watch-select" onClick={() => openScannedMarket(row.symbol, row.bar_date, result.rules, result.rules_sha256)} title="Chart this symbol">
                           {row.symbol}
                         </button>
                       </td>

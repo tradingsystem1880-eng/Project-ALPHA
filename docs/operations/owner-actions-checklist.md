@@ -27,14 +27,11 @@ scripts/alpha-with-keychain-provider tiingo check
 | Tiingo | `project-alpha-tiingo` | `ALPHA_TIINGO_API_KEY` | authoritative stock/ETF EOD — the receipt→candidate→quality→canonical promotion path, and the daily scheduler | `scripts/alpha-with-keychain-provider tiingo check` |
 | QuantPad | `project-alpha-quantpad` | `QUANTPAD_API_KEY` | research-only bulk daily bars (`rd_` dataset registration) and the archive lane | `scripts/alpha-with-keychain-provider quantpad check` |
 | CoinGecko | `project-alpha-coingecko` | `ALPHA_COINGECKO_API_KEY` | crypto reference/catalog acquisition | `scripts/alpha-with-keychain-provider coingecko check` |
-| Finnhub | `project-alpha-finnhub` | `ALPHA_FINNHUB_API_KEY` | `alpha screener quote/news` | `scripts/alpha-with-keychain-provider finnhub quote` |
 | IBKR | `project-alpha-ibkr-paper-account` | `ALPHA_IBKR_PAPER_ACCOUNT`, `ALPHA_IBKR_GATEWAY_IMAGE`, `TWS_USERNAME`, `TWS_PASSWORD` | native IBKR Paper boundary | `uv run alpha provider check ibkr` |
 
 `alpha provider check` is registered for `tiingo`, `quantpad`, `coingecko`, and `ibkr`, and writes
-a redacted `ProviderCheckReceiptV1` under `data_dir`. Finnhub has no receipted readiness
-path, so the launcher rejects `finnhub check` with exit 64 rather than pretending. Use
-`finnhub quote` instead: it is a bounded live probe — fixed provider, fixed SPY symbol, no
-arguments accepted — so it verifies the credential without becoming a general data tool.
+a redacted `ProviderCheckReceiptV1` under `data_dir`. Finnhub was retired on 2026-09-10 together
+with `alpha_screener` (edge-first audit F6); the launcher no longer accepts it.
 
 `yfinance`, `ccxt`, `stooq`, `binance`, `bybit`, `geckoterminal`, and `coinmetrics` need no
 credential and already report `configured: true`.
@@ -57,6 +54,11 @@ quote. IBKR returned `connectivity_failed`; see below.
 A Finnhub API key was pasted in plaintext into an agent session on 2026-08-19. It is in the
 session transcript and in the on-disk session JSONL, so it must be treated as public. No agent
 used it and none will.
+
+**Retired 2026-09-10:** nothing in ALPHA reads `ALPHA_FINNHUB_API_KEY` any more, so the
+`project-alpha-finnhub` Keychain item is unused. The owner may delete it
+(`security delete-generic-password -s project-alpha-finnhub`) or leave it; the record below is
+kept as history of the rotation decision.
 
 **The owner was told and chose not to rotate it (2026-08-19).** That is a reasonable call for
 this key specifically — Finnhub here is read-only market data on a free tier, the blast
@@ -125,7 +127,7 @@ diskutil info /Volumes/Expansion | grep 'Volume UUID'
 
 | What | Why it matters | How | Verify |
 |---|---|---|---|
-| Claude Code project MCP servers | `~/.claude.json` has `enabledMcpjsonServers: []` for the repo root and every worktree, and the root has `hasTrustDialogAccepted: false`. This is why the `codex` MCP tools attach and then drop mid-session. | In an interactive `claude` session in the repo, accept the trust dialog and run `/mcp` to enable `alpha` and `codex` | `/mcp` lists both as connected |
+| Claude Code project MCP servers | `~/.claude.json` has `enabledMcpjsonServers: []` for the repo root and every worktree, and the root has `hasTrustDialogAccepted: false`. (The former `codex` MCP entry was removed 2026-09-28: codex-cli 0.154 has no `mcp-server`; Codex is reached via `codex-liaison` only.) | In an interactive `claude` session in the repo, accept the trust dialog and run `/mcp` to enable `alpha` | `/mcp` lists `alpha` as connected |
 | Codex project trust | lets Codex run in this directory without re-prompting | already set — `trust_level = "trusted"` for `/Users/hunternovotny/Desktop/Project-ALPHA` in `~/.codex/config.toml` | `grep -A2 'Project-ALPHA' ~/.codex/config.toml` |
 | Codex ChatGPT login | the optional second-model seam | see `codex-second-model-runbook.md` | `python3 scripts/codex_bridge.py probe` |
 | claude.ai connectors (Linear, Slack, Notion, …) | 14 plugin MCP servers await OAuth | authorize in claude.ai connector settings, or `/mcp` in an interactive session | those tools stop reporting as unauthenticated |

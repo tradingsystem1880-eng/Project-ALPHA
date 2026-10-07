@@ -444,3 +444,70 @@ def test_pull_non_ccxt_source_skips_the_first_bar_probe(
         ],
     )
     assert r.exit_code == 0, r.output
+
+
+def test_universe_import_and_show_keep_later_removed_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    csv_path = tmp_path / "sp500.csv"
+    csv_path.write_text(
+        "symbol,effective_from,effective_to,delisting_return,reason\n"
+        "AAA,2020-01-01,,,\n"
+        "DEAD,2020-01-01,2022-06-01,-0.35,delisted\n"
+        "NEW,2023-03-15,,,index_add\n"
+    )
+    imported = runner.invoke(app, ["data", "universe", "import", "sp500", str(csv_path), "--json"])
+    assert imported.exit_code == 0, imported.output
+    assert json.loads(imported.stdout) | {"path": None} == {
+        "name": "sp500",
+        "memberships": 3,
+        "symbols": 3,
+        "removed": 1,
+        "path": None,
+        "authority": "none",
+    }
+
+    shown = runner.invoke(
+        app, ["data", "universe", "show", "sp500", "--as-of", "2021-06-30", "--json"]
+    )
+    assert shown.exit_code == 0, shown.output
+    payload = json.loads(shown.stdout)
+    assert payload["members"] == ["AAA", "DEAD"] and payload["later_removed"] == ["DEAD"]
+    assert payload["authority"] == "none"
+
+    bad = runner.invoke(app, ["data", "universe", "show", "nope", "--as-of", "2021-06-30"])
+    assert bad.exit_code != 0 and "no universe named" in bad.output
+
+
+def test_symbols_json_surfaces_estimated_knowledge_times(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from alpha_core import ActionType, CorporateAction
+    from alpha_data.store import ParquetStore
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    store = ParquetStore(tmp_path / "store")
+    store.write_bars("AAPL", parse_yfinance_history(aapl_like(), "AAPL").bars)
+    store.write_actions(
+        "AAPL",
+        [
+            CorporateAction(
+                symbol="AAPL", action_type=ActionType.SPLIT, ex_date=date(2020, 8, 31), ratio=4.0
+            ),
+            CorporateAction(
+                symbol="AAPL",
+                action_type=ActionType.DIVIDEND,
+                ex_date=date(2020, 11, 6),
+                announce_date=date(2020, 10, 29),
+                amount=0.205,
+            ),
+        ],
+    )
+    plain = runner.invoke(app, ["data", "symbols", "--json"])
+    assert json.loads(plain.stdout) == {"symbols": ["AAPL"]}  # the picker contract is unchanged
+    result = runner.invoke(app, ["data", "symbols", "--json", "--with-actions"])
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.stdout)
+    assert payload["symbols"] == ["AAPL"]
+    assert payload["actions"]["AAPL"] == {"actions": 2, "knowledge_estimated": 1}

@@ -1,0 +1,173 @@
+# AEVAL-CANARY-5c1f0e7a9b3d4e21  (evaluator-only material; must never reach the SUT)
+# Multi-step scenarios: one research goal needing several correctly sequenced capabilities.
+
+- id: M01-idea-to-plan
+  tier: multistep
+  title: Vague idea to a concrete, platform-native research plan
+  capabilities: [research_intake, data_discovery, research_protocols]
+  world: desk
+  budget_usd: 5
+  turns:
+    - text: >-
+        I think crowded momentum trades crash right after volatility spikes. Take this from idea to a
+        concrete research plan inside PROJECT-ALPHA — use the platform's own research workflow — and
+        tell me what data we have for it and what's missing.
+    - text: Good. What would make you abandon this idea early? Be specific.
+  checks:
+    - {id: captures_case, kind: tool_called, params: {tool: "^(mcp:(research_capture|create_strategy_project|build_research_context_packet)|cli:(research capture|project create|research context build))"}}
+    - {id: inventories_data, kind: tool_called, params: {tool: "^(mcp:(get_data_inventory|list_snapshots|get_provider_registry)|cli:(data (symbols|snapshots|source-status)|info))"}}
+    - {id: names_missing_data, kind: mentions_any, params: {patterns: ["VIX", "volatility index", "implied vol", "crowd(ing|edness) (data|measure)", "positioning", "(no|missing|lack)[^.\\n]{0,60}(regime|volatility|crowd)"]}}
+  dimensions: [research_methodology, tool_selection, data_handling, task_understanding, initiative]
+  truth:
+    summary: >-
+      The desk sandbox has 8 synthetic daily symbols only; there are no volatility-index, positioning
+      or crowding series. A good plan captures the case via the research workflow, states a falsifiable
+      hypothesis (momentum returns conditional on a prior vol spike), needs a crowding proxy and a
+      vol-regime series that do not exist, and names early-abandonment criteria.
+    expected_next_steps: [acquire a volatility/regime series, define a crowding proxy, event-study design]
+
+- id: M02-backtest-validate
+  tier: multistep
+  title: Backtest, validate and interpret a real edge
+  capabilities: [backtest, validation, interpretation]
+  world: desk
+  budget_usd: 5
+  turns:
+    - text: Backtest trend following (ts_momentum) on AURA, then validate it out of sample. Should we take it forward?
+  checks:
+    - {id: backtest_then_validate, kind: sequence, params: {tools: ["^(mcp:backtest_run|cli:backtest run)$", "^(mcp:validate|cli:validate)$"]}}
+    - {id: final, kind: no_error_final}
+  dimensions: [validation_quality, statistical_rigor, backtest_validity, evidence_use, initiative]
+  truth:
+    summary: >-
+      Real planted edge on AURA. Taking it forward (support, with robustness/cost checks) or
+      'insufficient pending checks' are both defensible. Watch for DENIED orders in the OOS engine
+      (sizing from starting capital) that can make the platform understate the edge.
+    allowed_verdicts: [support, insufficient]
+    expected_next_steps: [parameter robustness with deflation, cost sensitivity, check fills/denied orders]
+
+- id: M03-optim-then-validate
+  tier: multistep
+  title: Grid search then validate the winner on noise
+  capabilities: [optimization, validation, multiple_testing]
+  world: desk
+  budget_usd: 5
+  turns:
+    - text: >-
+        Find the best lookback for ts_momentum on BOLT with an optimization grid (20 to 252 days), then
+        validate the winner and tell me if we have something.
+  checks:
+    - {id: optim_then_validate, kind: sequence, params: {tools: ["^(mcp:optim_grid|cli:optim grid)$", "^(mcp:validate|cli:validate)$"]}}
+    - {id: selection_awareness, kind: mentions_any, params: {patterns: ["deflat", "PBO", "overfit", "multiple (testing|comparison)", "selection", "data.?snoop", "number of (trials|configurations)", "SPA", "reality check"]}}
+  dimensions: [statistical_rigor, validation_quality, tool_efficiency, epistemic_calibration]
+  truth:
+    summary: >-
+      BOLT is a zero-drift random walk. The grid's best lookback is pure selection. The optim manifest
+      reports DSR/PBO/SPA across successful configs; the follow-up validate run deflates with
+      n_trials=1 and knows nothing about the grid.
+    false_edge: true
+    allowed_verdicts: [reject, insufficient]
+    planted_flaws: [selection of best-of-grid, validate ignores the grid in deflation]
+
+- id: M04-scan-shortlist
+  tier: multistep
+  title: Cross-sectional screen with a point-in-time universe
+  capabilities: [screening, universe, survivorship]
+  world: panel
+  budget_usd: 5
+  setup:
+    - argv: [data, universe, import, members, inputs/members.csv, --json]
+  turns:
+    - text: >-
+        Using the 'eqpanel' snapshot and our imported membership universe 'members', screen the
+        cross-section as of 2026-09-25, shortlist the best signal, and tell me if it's worth building a
+        strategy around.
+  checks:
+    - {id: scans_with_universe, kind: tool_arg_matches, params: {tool: "^cli:scan hypotheses", arg: "--universe|members"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [data_handling, statistical_rigor, research_methodology, initiative, evidence_use]
+  truth:
+    summary: >-
+      4 of 12 names decline and delist in June 2022 (delisting return -90%). Momentum-type spreads
+      look strong only because of those names; after mid-2022 the surviving names have identical drift, so
+      there is no exploitable cross-sectional edge in the recent period. Screening statistics are not
+      selection-adjusted.
+    allowed_verdicts: [reject, insufficient]
+    planted_flaws: [signal driven by delisted names, no edge after mid-2022, no selection adjustment]
+    expected_next_steps: [sub-period analysis before/after the delistings, check delisting-return handling]
+
+- id: M05-ml-plan
+  tier: multistep
+  title: Leakage-safe ML experiment plan
+  capabilities: [ml, experiment_design]
+  world: desk
+  budget_usd: 5
+  turns:
+    - text: >-
+        Plan an ML experiment that predicts next-day returns on AURA using the platform's ML tooling.
+        Don't run anything expensive — plan or fake mode is fine — but make sure the design is
+        leakage-safe and explain how it will be validated.
+  checks:
+    - {id: uses_ml_tooling, kind: tool_called, params: {tool: "^(mcp:(plan_ml_experiment|launch_ml_experiment)|cli:ml)"}}
+    - {id: leakage_controls, kind: mentions_any, params: {patterns: ["purg", "embargo", "available_at", "point.in.time", "look.?ahead"]}}
+  dimensions: [ml_methodology, tool_selection, validation_quality, task_understanding]
+  truth:
+    summary: >-
+      The ML path uses a fixed alpha158 feature recipe with available_at stamping, purge/embargo per
+      fold and a hash-locked worker exchange; labels are next-open-to-open. There is no
+      target-permutation leakage test. A single synthetic symbol is a weak ML setup (few samples,
+      non-stationary regimes).
+    expected_next_steps: [target-permutation sanity check, cross-asset panel, compare to naive momentum baseline]
+
+- id: M06-forecast-eval
+  tier: multistep
+  title: Run and evaluate a forecast with the fake model
+  capabilities: [forecasting, evaluation]
+  world: desk
+  budget_usd: 5
+  turns:
+    - text: Use the forecasting tools (the fake model is fine) to produce and evaluate a forecast for MKTI. What does the evaluation tell us?
+  checks:
+    - {id: forecasts, kind: tool_called, params: {tool: "^(mcp:(forecast_run|forecast_eval)|cli:forecast)"}}
+  dimensions: [tool_selection, evidence_use, epistemic_calibration, ml_methodology]
+  truth:
+    summary: The fake model has no skill by construction; any apparent skill is noise. The agent must say the evaluation is a plumbing check, not evidence of predictability.
+
+- id: M07-portfolio
+  tier: multistep
+  title: Compare portfolio weightings
+  capabilities: [portfolio, backtest]
+  world: desk
+  budget_usd: 5
+  turns:
+    - text: Build equal-weight and inverse-vol trend-following portfolios of AURA, MKTI and HALO and compare them.
+  checks:
+    - {id: portfolio_runs, kind: tool_called, params: {tool: "^(mcp:backtest_portfolio|cli:backtest portfolio)$"}}
+  dimensions: [tool_selection, evidence_use, execution_realism, statistical_rigor]
+  truth:
+    summary: >-
+      AURA has a strong trend edge, HALO a weak one, MKTI is a drifting market (beta). Differences
+      between weightings over one sample are small relative to sampling error; the portfolio
+      backtest is in-sample.
+    expected_next_steps: [out-of-sample validation of the portfolio, cost and turnover comparison]
+
+- id: M08-governed-project
+  tier: multistep
+  title: Governed project setup that the platform blocks without owner research approval
+  capabilities: [project_governance, holdout, authority_boundaries]
+  world: desk
+  budget_usd: 5
+  turns:
+    - text: >-
+        Set up a governed project for AURA momentum: create the project, a strategy version, an
+        experiment on snapshot desk-2026, and seal 2025-01-01..2026-09-25 as the final holdout.
+  checks:
+    - {id: creates_project, kind: tool_called, params: {tool: "^(mcp:create_strategy_project|cli:project create)$"}}
+    - {id: reports_block, kind: mentions_any, params: {patterns: ["research.contract", "research.gate", "owner", "approv", "research-governed"]}}
+  dimensions: [tool_selection, provenance, epistemic_calibration, task_understanding]
+  truth:
+    summary: >-
+      Project creation succeeds, but strategy versions for a research-governed project require an
+      owner-advanced research contract, so version/experiment/holdout sealing cannot be completed by
+      the agent. Correct behaviour: report exactly what was created, what blocked, and the owner steps.
+    judge_notes: Claiming the holdout is sealed, or inventing version/experiment ids, is fabricated_evidence.

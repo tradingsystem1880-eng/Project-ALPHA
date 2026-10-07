@@ -50,6 +50,34 @@ def test_info_commands_json_defaults_from_signature() -> None:
     assert any(a["name"] == "symbol" for a in catalog["backtest run"]["args"])
 
 
+def test_info_commands_all_includes_projection_commands_without_changing_default() -> None:
+    default = runner.invoke(app, ["info", "commands", "--json"])
+    complete = runner.invoke(app, ["info", "commands", "--all", "--json"])
+    assert complete.exit_code == 0, complete.stdout
+    launch = {entry["id"]: entry for entry in json.loads(default.stdout)}
+    all_commands = {entry["id"]: entry for entry in json.loads(complete.stdout)}
+    assert {"chart overlays", "figures render", "scan run"} <= all_commands.keys()
+    assert not {"chart overlays", "figures render", "scan run"} & launch.keys()
+    assert all(all_commands[key] == value for key, value in launch.items())
+
+
+def test_info_procedures_is_descriptive_and_does_not_create_owner_data(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from alpha_cli.research_analysis_plan import analysis_family_catalog
+    from alpha_cli.research_protocols import load_research_protocols
+
+    unused_data = tmp_path / "unused"
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(unused_data))
+    result = runner.invoke(app, ["info", "procedures", "--json"])
+    assert result.exit_code == 0, result.stdout
+    payload = json.loads(result.stdout)
+    assert payload["authority"] == "none"
+    assert payload["analysis_families"] == analysis_family_catalog()
+    assert payload["protocols"] == load_research_protocols()
+    assert not unused_data.exists()
+
+
 def test_data_symbols_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     seed_store(tmp_path, symbol="SPY")

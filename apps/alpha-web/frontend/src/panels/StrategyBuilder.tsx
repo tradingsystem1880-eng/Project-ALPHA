@@ -4,13 +4,18 @@
 // judges a rule: the CLI's validation report is shown verbatim, and a governed run goes through
 // the Strategy Lab like any other backtest.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { consumeRuleDraft, onRuleDraft } from '../state/ruleDraft'
+import { useDeskRule } from '../state/deskRule'
+import { draftToForm } from './ruleBuilderModel'
+import { AssetSelect } from '../components/AssetSelect'
 
 import { api, runContextForProject } from '../api/client'
 import type { RuleRecord, RuleSummary, RuleValidation } from '../api/types'
 import { JobConsole } from '../components/JobConsole'
 import { useLinked } from '../context/linked'
 import type { PanelHandleProps } from '../context/panelHandle'
+import { symbolFitsProfile } from '../shell/profiles'
 import { useSettings } from '../state/settings'
 import { openRunDetail, openStrategyLab } from './actions'
 import {
@@ -94,13 +99,36 @@ function RowEditor({
 export function StrategyBuilder(_props: PanelHandleProps) {
   const linked = useLinked()
   const { profile } = useSettings()
-  const [form, setForm] = useState<BuilderForm>({ ...EMPTY_FORM, longRows: [{ ...EMPTY_ROW }] })
+  const [form, commitForm] = useState<BuilderForm>({ ...EMPTY_FORM, longRows: [{ ...EMPTY_ROW }] })
   const [saved, setSaved] = useState<RuleSummary[]>([])
   const [check, setCheck] = useState<RuleValidation | { valid: false; error: string } | null>(null)
+  const [savedForm, setSavedForm] = useState<string | null>(null)
   const [savedRecord, setSavedRecord] = useState<RuleRecord | null>(null)
   const [symbol, setSymbol] = useState(linked.symbol ?? '')
   const [jobId, setJobId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // A newer edit, load, or draft owns the editor; late reads cannot replace it.
+  const editorRevision = useRef(0)
+  const invalidateEditor = useCallback(() => { editorRevision.current++ }, [])
+  const setForm = useCallback((value: BuilderForm) => { invalidateEditor(); commitForm(value) }, [invalidateEditor])
+  const deskRule = useDeskRule()
+  useEffect(() => {
+    const accept = () => {
+      const draft = consumeRuleDraft()
+      if (draft) { setForm(draftToForm(draft)); setSavedRecord(null); setSavedForm(null) }
+    }
+    const draft = consumeRuleDraft()
+    const revision = ++editorRevision.current
+    if (draft) { setForm(draftToForm(draft)); setSavedRecord(null); setSavedForm(null) }
+    else if (deskRule.id) api.rule(deskRule.id).then(record => {
+      if (editorRevision.current !== revision) return
+      if (deskRule.hash && deskRule.hash !== record.sha256) { setError('Saved rules changed since this scan. Reload and review before testing.'); return }
+      const loaded = recordToForm(record); setForm(loaded); setSavedRecord(record); setSavedForm(JSON.stringify(loaded))
+    }).catch(cause => { if (editorRevision.current === revision) setError(String(cause)) })
+    const unsubscribe = onRuleDraft(accept)
+    return () => { invalidateEditor(); unsubscribe() }
+  }, [deskRule.id, deskRule.hash, invalidateEditor, setForm])
 
   const refresh = useCallback(() => {
     api
@@ -110,8 +138,8 @@ export function StrategyBuilder(_props: PanelHandleProps) {
   }, [])
   useEffect(refresh, [refresh])
   useEffect(() => {
-    if (linked.symbol) setSymbol(linked.symbol)
-  }, [linked.symbol])
+    setSymbol(linked.symbol && symbolFitsProfile(profile, linked.symbol) ? linked.symbol : '')
+  }, [linked.symbol, profile])
 
   // Live validation: the rows are mapped to the spec here (a typo fails locally with its
   // message), then the CLI's strict parser has the final word.
@@ -151,20 +179,25 @@ export function StrategyBuilder(_props: PanelHandleProps) {
       .ruleSave(form.id.trim(), formToSpec(form))
       .then((record) => {
         setSavedRecord(record)
+        setSavedForm(JSON.stringify(form))
         refresh()
       })
       .catch((cause: unknown) => setError(String(cause)))
   }
 
   const load = (name: string) => {
+    const revision = ++editorRevision.current
     setError(null)
     api
       .rule(name)
       .then((record) => {
-        setForm(recordToForm(record))
+        if (editorRevision.current !== revision) return
+        const loaded = recordToForm(record)
+        setForm(loaded)
         setSavedRecord(record)
+        setSavedForm(JSON.stringify(loaded))
       })
-      .catch((cause: unknown) => setError(String(cause)))
+      .catch((cause: unknown) => { if (editorRevision.current === revision) setError(String(cause)) })
   }
 
   const remove = (name: string) => {
@@ -178,9 +211,9 @@ export function StrategyBuilder(_props: PanelHandleProps) {
       .catch((cause: unknown) => setError(String(cause)))
   }
 
-  const savedIsCurrent = savedRecord !== null && savedRecord.name === form.id.trim()
+  const savedIsCurrent = savedRecord !== null && savedRecord.name === form.id.trim() && savedForm === JSON.stringify(form)
   const testInSandbox = () => {
-    if (!savedIsCurrent || !symbol.trim()) return
+    if (!savedIsCurrent || !symbol.trim() || !symbolFitsProfile(profile, symbol)) return
     setError(null)
     api
       .launch('backtest run', sandboxArgs(symbol, form.id, profile === 'crypto'), runContextForProject(null))
@@ -243,16 +276,16 @@ export function StrategyBuilder(_props: PanelHandleProps) {
             </button>
             <label className="field-row builder-symbol">
               <span className="field-label">Test symbol</span>
-              <input className="field mono" value={symbol} onChange={(event) => setSymbol(event.target.value)} placeholder="BTC/USDT" />
+              <AssetSelect value={symbol} onChange={setSymbol} label="Test asset" />
             </label>
             <button
               type="button"
               className="btn"
-              disabled={!savedIsCurrent || !symbol.trim()}
+              disabled={!savedIsCurrent || !symbol.trim() || !symbolFitsProfile(profile, symbol)}
               title={
                 savedIsCurrent
                   ? 'alpha backtest run --strategy rules in the standalone sandbox (permanently unqualified)'
-                  : 'Save the rule set first'
+                  : 'Save the current rule set before testing'
               }
               onClick={testInSandbox}
             >

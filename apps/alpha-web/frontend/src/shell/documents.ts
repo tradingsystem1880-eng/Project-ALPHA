@@ -22,7 +22,6 @@ import { GovernanceDocument } from '../panels/Governance'
 import { JobMonitor } from '../panels/JobMonitor'
 import { KronosStudio } from '../panels/KronosStudio'
 import { MlDiagnostics } from '../panels/MlDiagnostics'
-import { OptionsGreeks } from '../panels/OptionsGreeks'
 import { PaperMonitor } from '../panels/PaperMonitor'
 import { Pipeline } from '../panels/Pipeline'
 import { PriceChart } from '../panels/PriceChart'
@@ -31,7 +30,6 @@ import { ResearchBacklog } from '../panels/ResearchBacklog'
 import { ResearchCockpit } from '../panels/ResearchCockpit'
 import { ResearchDataExplorer } from '../panels/ResearchDataExplorer'
 import { RiskMonitor } from '../panels/RiskMonitor'
-import { Screener } from '../panels/Screener'
 import { Scanner } from '../panels/Scanner'
 import { StrategyBuilder } from '../panels/StrategyBuilder'
 import { StrategyLab } from '../panels/StrategyLab'
@@ -190,18 +188,6 @@ export const DOCUMENTS: readonly DocumentDefinition[] = [
     panes: [{ name: 'PaperMonitor', title: 'Paper sessions', component: PaperMonitor }],
   },
   // Equities-only windows.
-  {
-    id: 'options',
-    kind: 'tools',
-    title: 'Options Calculator',
-    panes: [{ name: 'OptionsGreeks', title: 'Options Calculator', component: OptionsGreeks }],
-  },
-  {
-    id: 'screener',
-    kind: 'tools',
-    title: 'Market Overview',
-    panes: [{ name: 'Screener', title: 'Market Overview', component: Screener }],
-  },
   {
     // Split/dividend actions arrive with a Tiingo pull; the Data Manager is where they are pulled
     // and where the stored history that carries them is listed.

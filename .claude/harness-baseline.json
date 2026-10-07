@@ -1,5 +1,4 @@
 {
-  "bias_guard_tests": 35,
   "coverage_fail_under": 93,
   "deny_rules": [
     "Bash(.venv/bin/alpha owner-auth enroll*)",
@@ -58,23 +57,16 @@
     "Bash(uv run alpha research decide*)",
     "Bash(uv run alpha research reject*)",
     "Read(.env)",
-    "Read(.env.*)"
+    "Read(.env.*)",
+    "Read(tests/holdout/**)",
+    "Edit(tests/holdout/**)",
+    "Write(tests/holdout/**)"
   ],
   "hook_events": [
-    "ConfigChange",
-    "PostCompact",
-    "PostToolUse",
-    "PostToolUseFailure",
-    "PreCompact",
     "PreToolUse",
-    "SessionStart",
-    "Stop",
-    "SubagentStop",
-    "TaskCompleted",
-    "UserPromptSubmit"
+    "SessionStart"
   ],
-  "importlinter_contracts": 14,
   "quant_suppressions": 5,
-  "schema_version": 1,
+  "schema_version": 2,
   "strict_markers": true
 }

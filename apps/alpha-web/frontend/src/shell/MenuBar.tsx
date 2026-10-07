@@ -13,6 +13,8 @@ import { MENUS, commandHome, menuBar, type MenuItem, type MenuName, type ShellMe
 import type { DockId, WindowId } from './profiles'
 
 interface Props {
+  tasks?: readonly { title: string; page: string; pane: string }[]
+  onTask?: (page: string, pane: string) => void
   open: readonly OpenDocument[]
   active: string | null
   available: readonly { id: WindowId; title: string }[]
@@ -35,6 +37,7 @@ function checkedOf(item: MenuItem): boolean | undefined {
 }
 
 export function MenuBar({
+  tasks = [], onTask,
   open,
   active,
   available,
@@ -183,6 +186,7 @@ export function MenuBar({
                   </button>
                 ))
               )}
+              {name === 'View' ? tasks.map(task => <button key={task.pane} role="menuitem" className="menu-item" onKeyDown={onItemKey(name)} onClick={() => { setOpenMenu(null); onTask?.(task.page, task.pane) }}>{task.title}</button>) : null}
             </div>
           ) : null}
         </div>

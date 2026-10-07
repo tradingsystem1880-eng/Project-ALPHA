@@ -42,6 +42,9 @@ _COLUMNS: Final = (
     "taker_buy_quote_volume",
 )
 _SAFE = re.compile(r"^[A-Za-z0-9_-]+$")
+_KLINE_INTERVALS = frozenset(
+    {"1m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w"}
+)
 _PUBLIC_API_ROOTS: Final = {
     "spot": "https://api.binance.com/api/v3",
     "linear": "https://fapi.binance.com/fapi/v1",
@@ -460,7 +463,7 @@ def archive_url(
     root = "spot" if market == "spot" else f"futures/{market}"
     encoded_symbol = quote(symbol, safe="")
     if family == "klines":
-        if _SAFE.fullmatch(interval) is None:
+        if interval not in _KLINE_INTERVALS:
             raise DataError("invalid Binance archive interval")
         name = f"{encoded_symbol}-{interval}-{period}.zip"
         return (
@@ -499,7 +502,7 @@ def binance_public_api_url(
         raise DataError("Binance public API limit must be between 1 and 1000")
     if resource == "klines":
         interval = params.get("interval")
-        if interval not in {"1m", "5m", "1h", "1d"}:
+        if interval not in _KLINE_INTERVALS:
             raise DataError("Binance public API kline interval is invalid")
         start, end = params.get("startTime"), params.get("endTime")
         for value in (start, end):

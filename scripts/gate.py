@@ -1,4 +1,4 @@
-"""Claude Code harness gate runner for Project ALPHA.
+"""Agent-neutral verification runner for Project ALPHA.
 
 One source of truth for: the tree-hash stamp protocol, the three path tiers
 (quant / risk / protected control plane), attestation artifacts, owner-token
@@ -14,15 +14,15 @@ CLI:
     python3 scripts/gate.py fast|full          # run the tiered gate, stamp on success
     python3 scripts/gate.py check --tier fast  # exit 0 iff a valid stamp covers the tier
     python3 scripts/gate.py attest --kind quant|review   # JSON report on stdin
-    python3 scripts/gate.py override --reason "..."      # one-shot commit-gate override
-    python3 scripts/gate.py ack --reason "..." [--path P] # one-shot control-plane edit ack
+    python3 scripts/gate.py override --reason "..."      # legacy token; Git guards ignore it
+    python3 scripts/gate.py ack --reason "..." [--path P] # legacy baseline authorization only
     python3 scripts/gate.py owner-init         # owner sets the escape-hatch token (interactive)
     python3 scripts/gate.py audit --digest     # escape logbook: who authorized what, last 7d
     python3 scripts/gate.py lint-harness       # weakening scanner vs .claude/harness-baseline.json
     python3 scripts/gate.py baseline --reason  # rewrite the baseline (owner/ack authorized)
     python3 scripts/gate.py audit [--json --since ISO --kind K --verify]  # journal reader
     python3 scripts/gate.py brief [--refresh]  # generated repo brief (cached by tree hash)
-    python3 scripts/gate.py index [--no-cli]   # regenerate .claude/state/repo-index.json
+    python3 scripts/gate.py index [--no-cli]   # regenerate .alpha/state/repo-index.json
     python3 scripts/gate.py plan-check PLAN.md # validate a plan's ```json FeaturePlan front block
     python3 scripts/gate.py doctor [--json]    # verify the harness wiring itself
     python3 scripts/gate.py mutate [MODULES|--all] [--json --write-baseline REASON]  # mutmut gate
@@ -49,7 +49,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-STATE_DIR = Path(".claude") / "state"
+STATE_DIR = Path(".alpha") / "state"
+LEGACY_STATE_DIR = Path(".claude") / "state"
 STAMP_FILE = "gate-stamp.json"
 AUDIT_FILE = "harness-audit.jsonl"
 OVERRIDE_FILE = "commit-override.json"
@@ -66,22 +67,10 @@ TIER_RANK = {"fast": 1, "full": 2}
 
 # claude_hooks.py subcommands; doctor verifies every one is wired in settings.json.
 HOOK_NAMES = (
-    "post-edit",
-    "post-bash",
-    "post-tool-failure",
-    "pre-edit-guard",
-    "pre-read-guard",
-    "pre-bash-guard",
+    "pre-file-guard",
     "pre-mcp-guard",
-    "tool-log",
-    "subagent-stop",
-    "task-completed",
-    "config-change",
-    "stop-guard",
+    "pre-owner-action-guard",
     "session-start",
-    "prompt-context",
-    "pre-compact",
-    "post-compact",
 )
 
 _QUANT_NAME_RE = re.compile(
@@ -97,6 +86,10 @@ _PYPROJECT_GUARDED = ("[tool.importlinter]", "fail_under", "strict", "addopts")
 _PROTECTED_EXACT = frozenset(
     {
         "scripts/gate.py",
+        "scripts/gate_components.py",
+        "scripts/git_guard.py",
+        "scripts/wheel_smoke.py",
+        "scripts/repo_orientation.py",
         "scripts/claude_hooks.py",
         "scripts/harness_awareness.py",
         "scripts/harness_models.py",
@@ -113,6 +106,8 @@ _PROTECTED_EXACT = frozenset(
     }
 )
 _PROTECTED_PREFIXES = (
+    ".githooks/",
+    ".agents/skills/",
     ".claude/skills/",
     ".claude/agents/",
     ".claude/commands/",
@@ -170,11 +165,18 @@ def _status_entries(root: Path) -> list[tuple[str, bool]]:
     """``(path, untracked)`` for every changed or untracked working-tree entry."""
     status = _git(root, "status", "--porcelain=v2", "-z", "--untracked-files=all")
     entries: list[tuple[str, bool]] = []
-    for entry in status.split("\0"):
+    records = iter(status.split("\0"))
+    for entry in records:
         if not entry:
             continue
-        untracked = entry.startswith("? ")
-        entries.append((entry[2:] if untracked else entry.split(" ")[-1], untracked))
+        kind = entry[0]
+        if kind == "?":
+            entries.append((entry[2:], True))
+        elif kind in {"1", "2", "u"}:
+            fields = {"1": 8, "2": 9, "u": 10}[kind]
+            entries.append((entry.split(" ", fields)[fields], False))
+            if kind == "2":
+                entries.append((next(records), False))
     return entries
 
 
@@ -189,6 +191,25 @@ def compute_tree_hash(root: Path) -> str:
     """
     with tempfile.TemporaryDirectory() as tmp:
         env = {**os.environ, "GIT_INDEX_FILE": str(Path(tmp) / "index")}
+        # Seed tracked paths before add: an empty index silently omits tracked files
+        # covered by local excludes. Include HEAD and force-added index entries;
+        # then read their current worktree bytes without touching the real index.
+        head = _git(root, "rev-parse", "--verify", "HEAD", check=False).strip()
+        subprocess.run(
+            ["git", "-C", str(root), "read-tree", head if head else "--empty"],
+            capture_output=True,
+            check=True,
+            env=env,
+        )
+        entries = _git(root, "ls-files", "--stage", "-z")
+        subprocess.run(
+            ["git", "-C", str(root), "update-index", "-z", "--index-info"],
+            input=entries,
+            text=True,
+            capture_output=True,
+            check=True,
+            env=env,
+        )
         subprocess.run(
             ["git", "-C", str(root), "add", "-A"],
             capture_output=True,
@@ -378,9 +399,9 @@ def append_audit(
 
 
 def read_audit(
-    root: Path, *, since: str | None = None, kind: str | None = None
+    root: Path, *, since: str | None = None, kind: str | None = None, legacy: bool = False
 ) -> list[dict[str, Any]]:
-    journal = _state_dir(root) / AUDIT_FILE
+    journal = root / (LEGACY_STATE_DIR if legacy else STATE_DIR) / AUDIT_FILE
     events: list[dict[str, Any]] = []
     try:
         lines = journal.read_text().splitlines()
@@ -413,7 +434,7 @@ def _audit_ts(item: dict[str, Any]) -> float | None:
         return None
 
 
-def verify_audit_chain(root: Path) -> tuple[bool, str]:
+def verify_audit_chain(root: Path, *, legacy: bool = False) -> tuple[bool, str]:
     """Recompute the hash chain; a truncated/rewritten line breaks it loudly.
 
     Two hooks that fired concurrently before ``append_audit`` took its file lock
@@ -423,7 +444,7 @@ def verify_audit_chain(root: Path) -> tuple[bool, str]:
     not treated as tampering. Limitation (documented): deleting exactly one sibling
     of a fork is undetectable by this check.
     """
-    journal = _state_dir(root) / AUDIT_FILE
+    journal = root / (LEGACY_STATE_DIR if legacy else STATE_DIR) / AUDIT_FILE
     try:
         raw_lines = [ln for ln in journal.read_bytes().split(b"\n") if ln.strip()]
     except OSError:
@@ -461,7 +482,9 @@ BLOCK_PREFIX = "blocked_"
 DIGEST_DEFAULT_DAYS = 7
 
 
-def audit_digest(root: Path, *, since: str | None = None, days: int = DIGEST_DEFAULT_DAYS) -> str:
+def audit_digest(
+    root: Path, *, since: str | None = None, days: int = DIGEST_DEFAULT_DAYS, legacy: bool = False
+) -> str:
     """One screen of who authorized what, from the hash-chained journal.
 
     Counts and paths only — never file contents. Acks are rolled up *by path*
@@ -470,7 +493,7 @@ def audit_digest(root: Path, *, since: str | None = None, days: int = DIGEST_DEF
     """
     if since is None:
         since = (datetime.now(UTC) - timedelta(days=days)).isoformat()
-    events = read_audit(root, since=since)
+    events = read_audit(root, since=since, legacy=legacy)
     escapes = [e for e in events if str(e.get("event")) in ESCAPE_EVENTS]
     blocks = [e for e in events if str(e.get("event", "")).startswith(BLOCK_PREFIX)]
     lines = [
@@ -602,7 +625,12 @@ def authorize_escape(root: Path, *, kind: str, path: str | None = None) -> tuple
 
 
 def write_stamp(
-    root: Path, tier: str, *, steps: list[tuple[str, float, bool]], duration: float
+    root: Path,
+    tier: str,
+    *,
+    steps: list[tuple[str, float, bool]],
+    duration: float,
+    tested_tree: str | None = None,
 ) -> None:
     from harness_models import GateStamp, GateStep
 
@@ -610,7 +638,7 @@ def write_stamp(
         tier=tier,
         created_at=_now(),
         head=_git(root, "rev-parse", "HEAD", check=False).strip() or "EMPTY",
-        tree_hash=compute_tree_hash(root),
+        tree_hash=tested_tree if tested_tree is not None else compute_tree_hash(root),
         duration_seconds=duration,
         steps=[GateStep(name=name, seconds=seconds, ok=ok) for name, seconds, ok in steps],
     )
@@ -819,7 +847,7 @@ def consume_ack(root: Path, *, path: str | None = None) -> dict[str, Any] | None
 
 
 def harness_metrics(root: Path) -> dict[str, Any]:
-    """Current guardrail counts; compared against .claude/harness-baseline.json."""
+    """Explicit safety configuration; file/contract counts are not behavioral evidence."""
     settings = read_json(root / ".claude" / "settings.json") or {}
     permissions = settings.get("permissions") or {}
     deny = sorted(str(rule) for rule in permissions.get("deny") or [])
@@ -829,10 +857,7 @@ def harness_metrics(root: Path) -> dict[str, Any]:
     match = re.search(r"^fail_under\s*=\s*(\d+)", pyproject, re.MULTILINE)
     if match:
         fail_under = int(match.group(1))
-    contracts = len(re.findall(r"^\[\[tool\.importlinter\.contracts\]\]", pyproject, re.MULTILINE))
     strict_markers = "--strict-markers" in pyproject
-    bias_dir = root / "tests" / "bias_guards"
-    bias_tests = len(list(bias_dir.glob("test_*.py"))) if bias_dir.is_dir() else 0
     suppressions = 0
     for base in ("packages/alpha-validation/src", "packages/alpha-research/src"):
         directory = root / base
@@ -842,12 +867,10 @@ def harness_metrics(root: Path) -> dict[str, Any]:
             text = file.read_text(errors="replace")
             suppressions += text.count("# noqa") + text.count("# type: ignore")
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "deny_rules": deny,
         "hook_events": hook_events,
         "coverage_fail_under": fail_under,
-        "importlinter_contracts": contracts,
-        "bias_guard_tests": bias_tests,
         "strict_markers": strict_markers,
         "quant_suppressions": suppressions,
     }
@@ -869,10 +892,6 @@ def lint_harness(root: Path) -> list[str]:
             f"coverage fail_under lowered: {baseline.get('coverage_fail_under')} -> "
             f"{current['coverage_fail_under']}"
         )
-    if current["importlinter_contracts"] < int(baseline.get("importlinter_contracts", 0)):
-        problems.append("import-linter contract deleted")
-    if current["bias_guard_tests"] < int(baseline.get("bias_guard_tests", 0)):
-        problems.append("bias-guard test file deleted")
     if baseline.get("strict_markers") and not current["strict_markers"]:
         problems.append("--strict-markers disabled")
     if current["quant_suppressions"] > int(baseline.get("quant_suppressions", 0)):
@@ -911,19 +930,13 @@ def _env_runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
     return (result.returncode == 0, time.monotonic() - started, output)
 
 
-# Mirrors CI's "Import built wheels" step byte-for-byte (14 wheels incl. alpha_study).
-_WHEEL_SMOKE_SH = (
-    "uv pip install --python .venv/bin/python --reinstall --no-deps dist/*.whl && "
-    ".venv/bin/python -c 'import alpha_core, alpha_data, alpha_strategies, alpha_backtest, "
-    "alpha_validation, alpha_forecast, alpha_options, alpha_screener, alpha_research, "
-    "alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web; "
-    'assert all(m.__version__ == "1.0.0" for m in (alpha_core, alpha_data, alpha_strategies, '
-    "alpha_backtest, alpha_validation, alpha_forecast, alpha_options, alpha_screener, "
-    "alpha_research, alpha_patterns, alpha_study, alpha_cli, alpha_mcp, alpha_web))'"
-)
-
 HARNESS_SCRIPTS = (
     "scripts/gate.py",
+    "scripts/gate_components.py",
+    "scripts/git_guard.py",
+    "scripts/wheel_smoke.py",
+    "scripts/check_semgrep_contracts.py",
+    "scripts/repo_orientation.py",
     "scripts/claude_hooks.py",
     "scripts/harness_awareness.py",
     "scripts/harness_models.py",
@@ -946,22 +959,53 @@ def gate_steps(tier: str, root: Path | None = None) -> list[tuple[str, list[str]
     ]
     if (base / SEMGREP_RULES).is_file():
         fast.append(("semgrep", [sys.executable, "scripts/gate.py", "semgrep", "--changed"]))
+        fast.append(("semgrep contracts", [sys.executable, "scripts/check_semgrep_contracts.py"]))
+    # The alpha tier: everything not marked ``platform`` (tests/conftest.py classifies by path),
+    # in parallel and without coverage, so a Stop stamp proves the edge-relevant tests pass.
+    fast.append(
+        (
+            "pytest fast",
+            [
+                "uv",
+                "run",
+                "pytest",
+                "-q",
+                "-n",
+                "auto",
+                "-p",
+                "no:cacheprovider",
+                "-m",
+                "not platform and not network and not slow_oracle",
+            ],
+        )
+    )
     if tier == "fast":
         return fast
     full = [
         ("uv lock", ["uv", "lock", "--check"]),
         ("uv sync", ["uv", "sync", "--locked"]),
-        *fast,
+        *[step for step in fast if step[0] != "pytest fast"],
         (
             "pytest + coverage",
-            ["uv", "run", "pytest", "-q", "-m", "not network and not slow_oracle", "--cov"],
+            [
+                "uv",
+                "run",
+                "pytest",
+                "-q",
+                "-n",
+                "auto",
+                "-m",
+                "not network and not slow_oracle",
+                "--cov",
+            ],
         ),
         (
             "openapi freshness",
             ["uv", "run", "python", "scripts/generate_web_openapi.py", "--check"],
         ),
+        ("openapi authority", ["uv", "run", "python", "scripts/check_openapi_operations.py"]),
         ("build wheels", ["uv", "build", "--all-packages"]),
-        ("wheel smoke", ["bash", "-c", _WHEEL_SMOKE_SH]),
+        ("wheel smoke", ["uv", "run", "python", "scripts/wheel_smoke.py"]),
     ]
     # On-touch of quant-tier SOURCE (not tests): the slow known-truth oracles and the mutation
     # gate join the full gate, so a statistical edit cannot be stamped on fast tests alone.
@@ -975,6 +1019,7 @@ def run_gate(root: Path, tier: str, *, runner: Runner | None = None) -> int:
     """Run the tiered gate; stamp only on full success. Mirrors CI's check job."""
     run = runner or _env_runner
     clear_stamp(root)
+    tested_tree = compute_tree_hash(root)
     started = time.monotonic()
     steps: list[tuple[str, float, bool]] = []
     for name, cmd in gate_steps(tier, root):
@@ -988,7 +1033,13 @@ def run_gate(root: Path, tier: str, *, runner: Runner | None = None) -> int:
             append_audit(root, "gate_failed", f"tier={tier} step={name}")
             print(f"[gate:{tier}] FAILED at {name!r}; no stamp written.", file=sys.stderr)
             return 1
-    write_stamp(root, tier, steps=steps, duration=time.monotonic() - started)
+    if compute_tree_hash(root) != tested_tree:
+        append_audit(root, "gate_failed", f"tier={tier} tree changed during verification")
+        print(f"[gate:{tier}] Tree changed during verification; no stamp written.", file=sys.stderr)
+        return 1
+    write_stamp(
+        root, tier, steps=steps, duration=time.monotonic() - started, tested_tree=tested_tree
+    )
     print(f"[gate:{tier}] PASS — stamp written for current tree.")
     return 0
 
@@ -1224,6 +1275,13 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("fast")
     sub.add_parser("full")
+    component_p = sub.add_parser("component")
+    component_p.add_argument(
+        "name", choices=("backend", "frontend", "literature", "qlib", "atlas", "eval")
+    )
+    orient_p = sub.add_parser("orient")
+    orient_p.add_argument("--component")
+    orient_p.add_argument("--json", action="store_true")
     check = sub.add_parser("check")
     check.add_argument("--tier", choices=("fast", "full"), default="fast")
     attest_p = sub.add_parser("attest")
@@ -1246,6 +1304,7 @@ def build_parser() -> argparse.ArgumentParser:
     audit_p.add_argument("--since", default=None)
     audit_p.add_argument("--kind", default=None)
     audit_p.add_argument("--verify", action="store_true")
+    audit_p.add_argument("--legacy", action="store_true", help="read preserved Claude audit only")
     audit_p.add_argument(
         "--digest",
         action="store_true",
@@ -1279,8 +1338,18 @@ def main(argv: list[str] | None = None) -> int:
     root = repo_root()
     if args.command in ("attest", "override", "ack", "baseline", "plan-check"):
         _reexec_with_pydantic(root)
-    if args.command in ("fast", "full"):
-        return run_gate(root, args.command)
+    if args.command == "fast":
+        return run_gate(root, "fast")
+    if args.command in ("full", "component"):
+        from gate_components import run_component, run_full
+
+        return run_full(root) if args.command == "full" else run_component(root, args.name)
+    if args.command == "orient":
+        from repo_orientation import orientation, render_orientation
+
+        payload = orientation(root, component=args.component)
+        print(json.dumps(payload, sort_keys=True) if args.json else render_orientation(payload))
+        return 0
     if args.command == "check":
         if stamp_is_valid(root, args.tier):
             print(f"stamp valid for tier {args.tier}")
@@ -1343,13 +1412,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "audit":
         if args.digest:
-            print(audit_digest(root, since=args.since))
+            print(audit_digest(root, since=args.since, legacy=args.legacy))
             return 0
         if args.verify:
-            ok, detail = verify_audit_chain(root)
+            ok, detail = verify_audit_chain(root, legacy=args.legacy)
             print(f"[audit] {'ok' if ok else 'FAIL'} {detail}")
             return 0 if ok else 1
-        events = read_audit(root, since=args.since, kind=args.kind)
+        events = read_audit(root, since=args.since, kind=args.kind, legacy=args.legacy)
         if args.json:
             print(json.dumps(events, indent=2, sort_keys=True))
         else:

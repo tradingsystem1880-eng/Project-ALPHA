@@ -21,7 +21,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Final, Literal, cast
+from typing import Final, cast
 
 from alpha_cli._schemas import specs_for
 from alpha_cli.control_store import AttemptStatus, ControlStore, StageState
@@ -30,37 +30,9 @@ from alpha_cli.strategy_candidate import (
     registered_hedged_basis_candidate,
     validate_hedged_basis_definition,
 )
+from alpha_cli.suite_catalog import SUITE_ACTIONS
+from alpha_cli.suite_catalog import SuiteActionValue as SuiteAction
 from alpha_core import DataError
-
-type SuiteAction = Literal[
-    "baseline",
-    "inner_oos",
-    "three_null_families",
-    "monte_carlo",
-    "optimize_grid",
-    "fixed_stress",
-    "portfolio_cross_asset",
-    "qlib",
-    "kronos",
-    "holdout_reveal",
-    "paper_preflight",
-]
-
-SUITE_ACTIONS: Final = frozenset(
-    {
-        "baseline",
-        "inner_oos",
-        "three_null_families",
-        "monte_carlo",
-        "optimize_grid",
-        "fixed_stress",
-        "portfolio_cross_asset",
-        "qlib",
-        "kronos",
-        "holdout_reveal",
-        "paper_preflight",
-    }
-)
 
 _ACTION_STAGE: Final[dict[str, str]] = {
     "baseline": "baseline",
@@ -251,6 +223,23 @@ def _cutoff_preview(
     if cutoff is None or marker is None:
         return tuple(argv)
     return tuple(marker if value == cutoff else value for value in argv)
+
+
+@dataclass(frozen=True)
+class _ResearchWindow:
+    """Resolved private/public cutoff pair, shared without repeating redaction assembly."""
+
+    cutoff: str
+    public_cutoff: str
+
+    def step(self, label: str, argv: tuple[str, ...], evidence_role: str) -> SuiteStep:
+        return SuiteStep(
+            label,
+            argv,
+            _cutoff_preview(argv, cutoff=self.cutoff, marker=self.public_cutoff),
+            evidence_role,
+            ((self.cutoff, self.public_cutoff),),
+        )
 
 
 def _safe_id(value: object, label: str) -> str:
@@ -691,6 +680,69 @@ def _candidate_step(
     )
 
 
+def _null_family_steps(
+    research_common: Sequence[str],
+    split: Mapping[str, object],
+    seeds: Mapping[str, object],
+    config: Mapping[str, object],
+    window: _ResearchWindow,
+) -> list[SuiteStep]:
+    """Build headline and sensitivity commands in the established validation order."""
+    steps: list[SuiteStep] = []
+    validation = [
+        "validate",
+        *research_common,
+        *_split_options(split),
+        "--seed",
+        str(_seed(seeds)),
+        "--tier1-paths",
+        str(_stage_int(config, "tier1_paths", 1000, minimum=100, maximum=100_000)),
+        "--tier2-paths",
+        str(_stage_int(config, "tier2_paths", 64, minimum=1, maximum=10_000)),
+        "--tier3-paths",
+        str(_stage_int(config, "tier3_paths", 64, minimum=1, maximum=10_000)),
+        "--n-resamples",
+        str(_stage_int(config, "n_resamples", 2000, minimum=100, maximum=100_000)),
+        "--mean-block",
+        _float_text(_stage_float(config, "mean_block", 5.0, minimum=1.0, maximum=10_000.0)),
+        "--threshold",
+        _float_text(_stage_float(config, "null_threshold", 0.95, minimum=0.0, maximum=1.0)),
+        "--tier1-divergence-tol",
+        _float_text(
+            _stage_float(
+                config,
+                "tier1_divergence_tol",
+                0.25,
+                minimum=0.0,
+                maximum=100.0,
+            )
+        ),
+    ]
+    if "max_workers" in config:
+        validation.extend(
+            [
+                "--max-workers",
+                str(_stage_int(config, "max_workers", 1, minimum=1, maximum=64)),
+            ]
+        )
+    for family, label, role in (
+        ("bootstrap", "Stationary bootstrap headline", "headline_tier1_plus_tier2"),
+        (
+            "student_t",
+            "Student-t sensitivity",
+            "tier1_sensitivity_tier2_repeated_non_governing",
+        ),
+        (
+            "garch",
+            "GARCH sensitivity",
+            "tier1_sensitivity_tier2_repeated_non_governing",
+        ),
+    ):
+        args = (*validation, "--null-model", family)
+        steps.append(window.step(label, args, role))
+    return steps
+
+
 def build_suite_plan(
     store: ControlStore,
     project_id: str,
@@ -819,6 +871,7 @@ def build_suite_plan(
     )
     cutoff_value = research_cutoff or "<sealed-research-cutoff-required>"
     public_cutoff = cutoff_marker or "<sealed-research-cutoff-required>"
+    window = _ResearchWindow(cutoff_value, public_cutoff)
     research_common = [*common]
     if action in _PRE_REVEAL_RESEARCH_ACTIONS:
         research_common.extend(["--as-of", cutoff_value])
@@ -903,15 +956,7 @@ def build_suite_plan(
                 "--as-of",
                 cutoff_value,
             )
-            steps.append(
-                SuiteStep(
-                    label,
-                    args,
-                    _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                    role,
-                    ((cutoff_value, public_cutoff),),
-                )
-            )
+            steps.append(window.step(label, args, role))
         governance.update(
             {
                 "aggregation": "no_majority_vote",
@@ -1019,89 +1064,15 @@ def build_suite_plan(
         workload = _workload(action, commands=0, canonical_runs=0)
     elif action == "baseline":
         args = ("backtest", "run", *research_common)
-        steps.append(
-            SuiteStep(
-                "Baseline discovery",
-                args,
-                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                "discovery_only",
-                ((cutoff_value, public_cutoff),),
-            )
-        )
+        steps.append(window.step("Baseline discovery", args, "discovery_only"))
         workload = _workload(action, commands=1, canonical_runs=1)
     elif action == "inner_oos":
         args = ("backtest", "oos", *research_common, *_split_options(split))
-        steps.append(
-            SuiteStep(
-                "Inner walk-forward OOS",
-                args,
-                _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                "fixed_rule_no_refit",
-                ((cutoff_value, public_cutoff),),
-            )
-        )
+        steps.append(window.step("Inner walk-forward OOS", args, "fixed_rule_no_refit"))
         governance["oos_semantics"] = "fixed_rule_evaluation_no_refit"
         workload = _workload(action, commands=1, canonical_runs=1)
     elif action == "three_null_families":
-        validation = [
-            "validate",
-            *research_common,
-            *_split_options(split),
-            "--seed",
-            str(_seed(seeds)),
-            "--tier1-paths",
-            str(_stage_int(config, "tier1_paths", 1000, minimum=100, maximum=100_000)),
-            "--tier2-paths",
-            str(_stage_int(config, "tier2_paths", 64, minimum=1, maximum=10_000)),
-            "--tier3-paths",
-            str(_stage_int(config, "tier3_paths", 64, minimum=1, maximum=10_000)),
-            "--n-resamples",
-            str(_stage_int(config, "n_resamples", 2000, minimum=100, maximum=100_000)),
-            "--mean-block",
-            _float_text(_stage_float(config, "mean_block", 5.0, minimum=1.0, maximum=10_000.0)),
-            "--threshold",
-            _float_text(_stage_float(config, "null_threshold", 0.95, minimum=0.0, maximum=1.0)),
-            "--tier1-divergence-tol",
-            _float_text(
-                _stage_float(
-                    config,
-                    "tier1_divergence_tol",
-                    0.25,
-                    minimum=0.0,
-                    maximum=100.0,
-                )
-            ),
-        ]
-        if "max_workers" in config:
-            validation.extend(
-                [
-                    "--max-workers",
-                    str(_stage_int(config, "max_workers", 1, minimum=1, maximum=64)),
-                ]
-            )
-        for family, label, role in (
-            ("bootstrap", "Stationary bootstrap headline", "headline_tier1_plus_tier2"),
-            (
-                "student_t",
-                "Student-t sensitivity",
-                "tier1_sensitivity_tier2_repeated_non_governing",
-            ),
-            (
-                "garch",
-                "GARCH sensitivity",
-                "tier1_sensitivity_tier2_repeated_non_governing",
-            ),
-        ):
-            args = (*validation, "--null-model", family)
-            steps.append(
-                SuiteStep(
-                    label,
-                    args,
-                    _cutoff_preview(args, cutoff=cutoff_value, marker=public_cutoff),
-                    role,
-                    ((cutoff_value, public_cutoff),),
-                )
-            )
+        steps.extend(_null_family_steps(research_common, split, seeds, config, window))
         governance.update(
             {
                 "aggregation": "no_majority_vote",
@@ -1318,20 +1289,8 @@ def build_suite_plan(
         cross_args = ("backtest", "cross-sectional", *base)
         steps.extend(
             [
-                SuiteStep(
-                    "Portfolio OOS analysis",
-                    portfolio_args,
-                    _cutoff_preview(portfolio_args, cutoff=cutoff_value, marker=public_cutoff),
-                    "portfolio_allocation",
-                    ((cutoff_value, public_cutoff),),
-                ),
-                SuiteStep(
-                    "Cross-asset OOS analysis",
-                    cross_args,
-                    _cutoff_preview(cross_args, cutoff=cutoff_value, marker=public_cutoff),
-                    "cross_asset_association",
-                    ((cutoff_value, public_cutoff),),
-                ),
+                window.step("Portfolio OOS analysis", portfolio_args, "portfolio_allocation"),
+                window.step("Cross-asset OOS analysis", cross_args, "cross_asset_association"),
             ]
         )
         workload = _workload(action, commands=2, canonical_runs=2)
@@ -1545,20 +1504,8 @@ def build_suite_plan(
         )
         steps.extend(
             [
-                SuiteStep(
-                    "Kronos forecast cone",
-                    forecast,
-                    _cutoff_preview(forecast, cutoff=cutoff_value, marker=public_cutoff),
-                    "forecast_samples",
-                    ((cutoff_value, public_cutoff),),
-                ),
-                SuiteStep(
-                    "Kronos rolling evaluation",
-                    evaluate,
-                    _cutoff_preview(evaluate, cutoff=cutoff_value, marker=public_cutoff),
-                    "rolling_evaluation",
-                    ((cutoff_value, public_cutoff),),
-                ),
+                window.step("Kronos forecast cone", forecast, "forecast_samples"),
+                window.step("Kronos rolling evaluation", evaluate, "rolling_evaluation"),
             ]
         )
         governance["pretraining_overlap_warning_permanent"] = True

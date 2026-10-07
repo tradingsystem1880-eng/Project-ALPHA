@@ -40,6 +40,7 @@ import { CryptoCoverageView } from './CryptoCoverageView'
 import { CryptoQualityView } from './CryptoQualityView'
 import {
   cryptoCanonicalAction,
+  cryptoAcquisitionFrequencies,
   cryptoFeatureInputSelection,
   cryptoMarketChoicesForFamily,
   cryptoSectionForFamily,
@@ -54,11 +55,20 @@ const SECTIONS: { id: CryptoDataSection; label: string }[] = [
   { id: 'options', label: 'Options & Volatility' },
   { id: 'onchain', label: 'On-chain Metrics' },
   { id: 'dex', label: 'DEX Pools & Liquidity' },
+  { id: 'defi', label: 'DeFi Fundamentals' },
   { id: 'quality', label: 'Coverage & Quality' },
   { id: 'storage', label: 'Storage & Jobs' },
 ]
 
-const PROVIDERS = new Set(['binance', 'bybit', 'coingecko', 'geckoterminal', 'coinmetrics', 'ccxt:coinbase'])
+const PROVIDERS = new Set([
+  'binance',
+  'bybit',
+  'coingecko',
+  'geckoterminal',
+  'coinmetrics',
+  'defillama',
+  'ccxt:coinbase',
+])
 const BYBIT_RANGED_FAMILIES = new Set<CryptoFamily>([
   'funding',
   'open_interest',
@@ -96,6 +106,10 @@ function defaultInstrument(family: CryptoFamily): string {
   if (family === 'onchain_catalog') return 'community'
   if (family === 'onchain_metrics') return 'btc'
   if (family === 'defi_tvl') return 'ethereum'
+  if (family === 'protocol_tvl') return 'aave'
+  if (family === 'stablecoin_supply') return '1'
+  if (family === 'yield_pools') return 'all'
+  if (family === 'yield_history') return ''
   if (family.startsWith('option_') || family === 'historical_volatility') return 'BTC'
   return 'BTCUSDT'
 }
@@ -125,7 +139,7 @@ export function CryptoDataCenter({
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [family, setFamily] = useState<CryptoFamily>(initialFamily ?? 'funding')
-  const [instrument, setInstrument] = useState('BTCUSDT')
+  const [instrument, setInstrument] = useState(() => defaultInstrument(initialFamily ?? 'funding'))
   const [base, setBase] = useState('BTC')
   const [quote, setQuote] = useState('USDT')
   const [category, setCategory] = useState<CryptoAcquisitionRequest['category']>('linear')
@@ -292,6 +306,10 @@ export function CryptoDataCenter({
     setRegistration(null)
   }, [family, instrument, base, quote, category, frequency, days])
 
+  const provider = acquisitionProvider(
+    catalog?.families.find((row) => row.family === family)?.provider ?? '',
+  )
+
   useEffect(() => {
     if (family === 'comparison_bars') {
       if (category !== 'spot') setCategory('spot')
@@ -303,11 +321,9 @@ export function CryptoDataCenter({
     }
     const marketChoices = cryptoMarketChoicesForFamily(family)
     if (!marketChoices.includes(category)) setCategory(marketChoices[0])
-    if (
-      !['open_interest', 'long_short_ratio'].includes(family)
-      && ['15m', '30m', '4h'].includes(frequency)
-    ) setFrequency('1h')
-  }, [base, category, family, frequency, instrument, quote])
+    const supported = cryptoAcquisitionFrequencies(family, provider)
+    if (!supported.includes(frequency)) setFrequency(supported.includes('1h') ? '1h' : supported[0])
+  }, [base, category, family, frequency, instrument, quote, provider])
 
   useEffect(() => {
     if (!BYBIT_RANGED_FAMILIES.has(family)) return
@@ -318,16 +334,10 @@ export function CryptoDataCenter({
     setEnd(recentEnd.toISOString())
   }, [family])
 
-  const provider = acquisitionProvider(
-    catalog?.families.find((row) => row.family === family)?.provider ?? '',
-  )
   const capability = capabilities?.items.find((item) => item.family === family) ?? null
   const categoryChoices: CryptoAcquisitionRequest['category'][] =
     cryptoMarketChoicesForFamily(family)
-  const frequencyChoices: CryptoAcquisitionRequest['frequency'][] =
-    family === 'open_interest' || family === 'long_short_ratio'
-      ? ['5m', '15m', '30m', '1h', '4h', '1d']
-      : ['1m', '5m', '1h', '1d']
+  const frequencyChoices = cryptoAcquisitionFrequencies(family, provider)
   const qualifiedCount = coverage?.items.filter((item) => item.state === 'qualified').length ?? 0
   const caseBoundEvent = family === 'derivative_trades' || family === 'derivative_book_snapshots'
   const eventCaptureReady = !caseBoundEvent || Boolean(projectId && caseRevision && eventReason.trim())
@@ -375,6 +385,7 @@ export function CryptoDataCenter({
   }
 
   async function estimateAcquisition(): Promise<void> {
+    if (frequency === 'catalog_snapshot') return
     setBusyAction('estimate')
     setError(null)
     try {

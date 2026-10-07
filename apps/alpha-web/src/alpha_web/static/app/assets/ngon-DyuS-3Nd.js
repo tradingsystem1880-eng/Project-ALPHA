@@ -1,0 +1,1 @@
+import{t as e}from"./radial-DyrCXuJq.js";var t=class extends e{glyph;constructor(e,t){super(e,t),this.glyph=t}get marker_type(){return`ngon`}_set_data(){super._set_data(),this._angles.set_from_prop(this.glyph.angle),this._auxs.set_from_prop(this.glyph.n)}};export{t as NgonGL};

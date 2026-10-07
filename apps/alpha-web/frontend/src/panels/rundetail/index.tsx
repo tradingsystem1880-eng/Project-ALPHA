@@ -15,6 +15,8 @@ import type { ValidateManifest } from '../../explain/types'
 import { Placeholder } from '../../components/Placeholder'
 import { usePanelLinked } from '../../context/usePanelLinked'
 import { researchGateWatermark } from '../researchGateModel'
+import { RecordedPanel } from '../RecordedPanel'
+import { FigureCard } from '../../components/FigureCard'
 import { FigureSection } from '../FigureReport'
 import { reportTree, summaryRows, tradesCsv, watermarkChip } from '../reportModel'
 import { Icon } from '../../shell/icons'
@@ -125,7 +127,7 @@ export function RunDetail(props: PanelHandleProps) {
     switch (leaf.id) {
       case 'summary':
         return (
-          <table className="blotter summary-table">
+          <div className="report-summary-composition"><table className="blotter summary-table">
             <caption>Summary — what this run recorded</caption>
             <tbody>
               {summaryRows(manifest as Record<string, unknown>).map((row) => (
@@ -135,7 +137,7 @@ export function RunDetail(props: PanelHandleProps) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table><div><RecordedPanel runId={runId} kind="equity" panelId="report-equity"/><RecordedPanel runId={runId} kind="drawdown" panelId="report-drawdown"/></div><div className="report-summary-figures">{(catalogue?.items ?? []).filter(item => item.available && !item.figure_id.includes('equity') && !item.figure_id.includes('price')).slice(0, 2).map(item => <FigureCard key={`${runId}:${item.figure_id}`} runId={runId} runName={detail.display_name} item={item}/>)}</div></div>
         )
       case 'gates':
         return <Gates manifest={manifest as ValidateManifest} />
@@ -254,7 +256,7 @@ export function RunDetail(props: PanelHandleProps) {
             ))}
           </ul>
         </nav>
-        <div className="figure-scroll">
+        <div className="figure-scroll" tabIndex={0} role="region" aria-label="Report analytical content">
           {body}
           <p className="report-hint muted">Double-click any chart to open it full-screen · Save PNG / SVG / Copy from there</p>
         </div>

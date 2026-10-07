@@ -12,11 +12,11 @@ import {
 
 const PROVIDERS: ProviderDefinition[] = [
   {
-    id: 'finnhub',
-    label: 'Finnhub',
+    id: 'newsfeed',
+    label: 'Newsfeed',
     capabilities: ['live_quote', 'news'],
     network_required: true,
-    credential_env: [{ name: 'ALPHA_FINNHUB_API_KEY', present: false }],
+    credential_env: [{ name: 'ALPHA_NEWSFEED_API_KEY', present: false }],
     options: {},
     limitations: ['API key required'],
     asset_classes: ['stock', 'etf'],
@@ -92,7 +92,7 @@ describe('provider-driven Data Explorer', () => {
   })
 
   it('reports missing credential names without carrying any secret values', () => {
-    expect(missingCredentialNames(PROVIDERS[0])).toEqual(['ALPHA_FINNHUB_API_KEY'])
+    expect(missingCredentialNames(PROVIDERS[0])).toEqual(['ALPHA_NEWSFEED_API_KEY'])
     expect(providerReadinessLabel(PROVIDERS[0])).toBe('OPTIONAL DISABLED')
     expect(providerReadinessLabel(PROVIDERS[2])).toBe('NOT INSTALLED')
     expect(providerReadinessLabel(PROVIDERS[1])).toBe('UNVERIFIED')

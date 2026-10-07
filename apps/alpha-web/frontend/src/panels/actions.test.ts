@@ -16,12 +16,15 @@ import {
   openResearchData,
   openResearchSources,
   openStrategyLab,
+  openStoredMarket,
   registerNavigator,
   takeLabPrefill,
 } from './actions'
+import { DEFAULT_LINKED, getLinked, restoreLinked } from '../context/linked'
 
 function stub() {
   const navigator = {
+    showChart: vi.fn(),
     showRun: vi.fn(),
     showStrategyLab: vi.fn(),
     showProjects: vi.fn(),
@@ -38,6 +41,7 @@ function stub() {
 
 beforeEach(() => {
   takeLabPrefill()
+  restoreLinked(DEFAULT_LINKED)
 })
 
 describe('navigation intents', () => {
@@ -53,6 +57,29 @@ describe('navigation intents', () => {
     expect(navigator.showResearchSources).toHaveBeenCalledTimes(1)
     expect(navigator.showResearchData).toHaveBeenCalledTimes(1)
     expect(navigator.showProviders).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens the stored market chart and clears unrelated window and run context', () => {
+    const navigator = stub()
+    restoreLinked({
+      ...DEFAULT_LINKED,
+      symbol: 'SPY',
+      start: '2020-01-01',
+      end: '2020-12-31',
+      snapshotId: 'snapshot-1',
+      runId: '0123456789abcdef',
+    })
+
+    openStoredMarket('XRP/USD')
+
+    expect(getLinked()).toMatchObject({
+      symbol: 'XRP/USD',
+      start: null,
+      end: null,
+      snapshotId: null,
+      runId: null,
+    })
+    expect(navigator.showChart).toHaveBeenCalledOnce()
   })
 
   it('holds a prefill for a lab that has not mounted yet', () => {

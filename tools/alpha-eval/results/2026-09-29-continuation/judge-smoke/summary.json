@@ -1,0 +1,100 @@
+{
+ "schema_version": 1,
+ "fingerprint": {
+  "suite_sha256": "66689f6091dfb98c045f1b1a03a338611b3c9724d9698efde8196c31cc890701",
+  "scorer_sha256": "5a8adfa2e9a3dab56862d88f3cc05a6b0e4eb0a7aeecef1a963ff257a0e17016",
+  "scoring-meta": {
+   "judge_model": "gpt-6-astra",
+   "effort": "medium",
+   "bridge_sha256": null,
+   "bridge_schema_sha256": null,
+   "client_version": null,
+   "second_judge_tiers": []
+  },
+  "manifest_sha256": "678c3581f3f853272c855d27083015a29499452e5c6e720a3cf1e68f66310e02",
+  "acquisition_provenance": "legacy inputs may lack acquisition-time fingerprints"
+ },
+ "suts": {
+  "codex:gpt-6-astra": {
+   "trials": 1,
+   "valid_trials": 1,
+   "harness_invalid": 0,
+   "ungraded": 0,
+   "outcomes": {
+    "pass": 1
+   },
+   "pass^1": 1.0,
+   "critical_rate": 0.0,
+   "critical_rate_wilson": [
+    0.0,
+    0.7934506856227626
+   ],
+   "false_edge_endorsement": {
+    "endorsed": 0,
+    "trials": 0,
+    "wilson": null
+   },
+   "real_edge_rejected": {
+    "rejected": 0,
+    "trials": 0
+   },
+   "tiers": {
+    "atomic": {
+     "scenarios": 1,
+     "pass^1": 1.0
+    }
+   },
+   "dimensions": {
+    "evidence_use": {
+     "mean": 3.0,
+     "lo": 3.0,
+     "hi": 3.0,
+     "n": 1
+    },
+    "market_knowledge": {
+     "mean": 2.0,
+     "lo": 2.0,
+     "hi": 2.0,
+     "n": 1
+    },
+    "tool_selection": {
+     "mean": 4.0,
+     "lo": 4.0,
+     "hi": 4.0,
+     "n": 1
+    }
+   },
+   "pitfall_coverage": {},
+   "next_steps": {},
+   "judge_verdict_agreement": null,
+   "judge_dimension_disagreements_ge2": 0,
+   "grading_failures": {},
+   "failed_core_checks": {},
+   "criticals": [],
+   "cost_usd": null,
+   "scenarios": {
+    "A04-candles": {
+     "tier": "atomic",
+     "n": 1,
+     "passes": 1,
+     "outcomes": [
+      "pass"
+     ],
+     "verdicts": [
+      "none"
+     ],
+     "criticals": [],
+     "failed_checks": [],
+     "dimension_means": {
+      "evidence_use": 3.0,
+      "market_knowledge": 2.0,
+      "tool_selection": 4.0
+     },
+     "excluded": 0,
+     "pass_rate": 1.0,
+     "pass^1": 1.0
+    }
+   }
+  }
+ }
+}

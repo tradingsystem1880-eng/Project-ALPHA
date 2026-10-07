@@ -8,6 +8,7 @@ and the harness doctor. Everything here runs against throwaway git repos.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,26 @@ from tests.unit._harness_support import git as _git
 
 
 class TestTreeHash:
+    def test_status_preserves_spaces_and_both_rename_paths(self, repo: Path) -> None:
+        _git(repo, "mv", "tracked.py", "renamed file.py")
+        assert set(gate._status_entries(repo)) == {
+            ("tracked.py", False),
+            ("renamed file.py", False),
+        }
+
+    def test_tracked_ignored_content_is_still_hashed(self, repo: Path) -> None:
+        (repo / ".git" / "info" / "exclude").write_text("tracked.py\n")
+        before = gate.compute_tree_hash(repo)
+        (repo / "tracked.py").write_text("x = 99\n")
+        assert gate.compute_tree_hash(repo) != before
+
+    def test_force_added_ignored_content_is_hashed(self, repo: Path) -> None:
+        (repo / ".git" / "info" / "exclude").write_text("ignored.py\n")
+        before = gate.compute_tree_hash(repo)
+        (repo / "ignored.py").write_text("x = 1\n")
+        _git(repo, "add", "-f", "ignored.py")
+        assert gate.compute_tree_hash(repo) != before
+
     def test_deterministic(self, repo: Path) -> None:
         assert gate.compute_tree_hash(repo) == gate.compute_tree_hash(repo)
 
@@ -232,6 +253,14 @@ class TestStamp:
         assert not gate.stamp_is_valid(repo, "fast")
         assert not gate.stamp_is_valid(repo, "full")
 
+    def test_run_gate_rejects_tree_changed_during_checks(self, repo: Path) -> None:
+        def runner(cmd: list[str]) -> tuple[bool, float, str]:
+            (repo / "tracked.py").write_text("x = 99\n")
+            return (True, 0.1, "")
+
+        assert gate.run_gate(repo, "fast", runner=runner) != 0
+        assert not (repo / gate.STATE_DIR / gate.STAMP_FILE).exists()
+
 
 class TestAttest:
     def _quant_report(self, **overrides: Any) -> dict[str, Any]:
@@ -400,7 +429,7 @@ class TestAudit:
         gate.write_stamp(repo, "fast", steps=[("ruff", 1.0, True)], duration=1.0)
         gate.write_override(repo, reason="r1")
         gate.consume_override(repo)
-        journal = repo / ".claude" / "state" / "harness-audit.jsonl"
+        journal = repo / gate.STATE_DIR / "harness-audit.jsonl"
         lines = [json.loads(line) for line in journal.read_text().splitlines()]
         events = [line["event"] for line in lines]
         assert "stamp_written" in events
@@ -473,6 +502,11 @@ def _wire_minimal_harness(repo: Path) -> None:
     scripts.mkdir(exist_ok=True)
     for name in (
         "gate.py",
+        "gate_components.py",
+        "git_guard.py",
+        "wheel_smoke.py",
+        "check_semgrep_contracts.py",
+        "repo_orientation.py",
         "claude_hooks.py",
         "harness_awareness.py",
         "harness_models.py",
@@ -706,7 +740,7 @@ class TestBrief:
     def test_brief_cached_by_tree_hash(self, repo: Path) -> None:
         _brief_repo(repo)
         first = harness_awareness.repo_brief(repo)
-        cache = repo / ".claude" / "state" / harness_awareness.BRIEF_FILE
+        cache = repo / gate.STATE_DIR / harness_awareness.BRIEF_FILE
         assert cache.exists()
         (repo / "CLAUDE.md").write_text("see ADR-0001 and ADR-0002\n")
         second = harness_awareness.repo_brief(repo)
@@ -795,7 +829,7 @@ class TestIndex:
         assert index["adrs"] == ["0001-first.md", "0002-second.md"]
         assert index["cli_commands"] == {"unavailable": "cli=False"}
         path = harness_awareness.write_index(repo, cli=False)
-        assert path == repo / ".claude" / "state" / harness_awareness.INDEX_FILE
+        assert path == repo / gate.STATE_DIR / harness_awareness.INDEX_FILE
         assert json.loads(path.read_text())["tree_hash"] == gate.compute_tree_hash(repo)
 
 
@@ -991,6 +1025,25 @@ class TestQuantRigorTooling:
         assert entry["kill_rate"] == round(1 / 47, 4)
         assert 5400.0 in seen_timeouts
 
+    def test_mutate_runs_mutmut_with_single_threaded_accelerate(self, repo: Path) -> None:
+        # mutmut isolates each mutant with os.fork(); Apple's Accelerate BLAS is not fork-safe
+        # once its thread pool exists, so every mutant reaching numpy/scipy linear algebra is
+        # recorded as "segfault" (never credited as a kill) unless the pool is pinned to one thread.
+        rel = self._quant_module(repo)
+        (repo / "packages/alpha-validation/src/alpha_validation/__init__.py").write_text("")
+        (repo / "tests").mkdir()
+        (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\nmarkers = []\n")
+        envs: dict[str, dict[str, str] | None] = {}
+
+        def runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+            envs[cmd[-1]] = kwargs.get("env")
+            return (False, 0.0, "")
+
+        harness_quant.mutate(repo, [rel], runner=runner)
+        assert envs["run"] is not None
+        assert envs["run"]["VECLIB_MAXIMUM_THREADS"] == "1"
+        assert envs["run"]["PATH"] == os.environ["PATH"]  # the rest of the environment is kept
+
     def test_semgrep_command_and_scope(self, repo: Path) -> None:
         for rel in ("packages/x.py", "docs/a.md", "tests/t.py"):
             (repo / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -1077,6 +1130,23 @@ class TestQuantRigorTooling:
         (repo / ".semgrep").mkdir()
         (repo / ".semgrep" / "alpha.yml").write_text("rules: []\n")
         assert "semgrep" in [name for name, _ in gate.gate_steps("fast", repo)]
+
+    def test_full_gate_pytest_runs_in_parallel_with_coverage(self, repo: Path) -> None:
+        """Phase A S1: the sequential pytest step was 609 s of a 616 s gate; xdist runs the
+        same selection in parallel and coverage is still combined across workers."""
+        argv = dict(gate.gate_steps("full", repo))["pytest + coverage"]
+        assert "-n" in argv and argv[argv.index("-n") + 1] == "auto"
+        assert "--cov" in argv
+        assert argv[argv.index("-m") + 1] == "not network and not slow_oracle"
+
+    def test_fast_gate_runs_the_alpha_tier_without_platform_tests(self, repo: Path) -> None:
+        """Phase A S2: a Stop stamp must prove the alpha-relevant tests pass, so the fast tier
+        runs everything not marked ``platform`` in parallel and without coverage."""
+        argv = dict(gate.gate_steps("fast", repo))["pytest fast"]
+        assert "-n" in argv and argv[argv.index("-n") + 1] == "auto"
+        assert argv[argv.index("-m") + 1] == "not platform and not network and not slow_oracle"
+        assert "--cov" not in argv
+        assert "no:cacheprovider" in argv
 
 
 class TestAuditDigest:

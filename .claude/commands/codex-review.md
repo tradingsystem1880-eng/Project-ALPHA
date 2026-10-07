@@ -1,5 +1,5 @@
 ---
-description: Optional second-opinion code review by Codex (gpt-5.3-codex-spark via the ChatGPT-authenticated CLI); graceful skip if unavailable
+description: Optional second-opinion code review by Codex (gpt-6-astra via the ChatGPT-authenticated CLI); graceful skip if unavailable
 argument-hint: [--uncommitted (default) | --diff <file>] [--effort low|medium|high]
 ---
 

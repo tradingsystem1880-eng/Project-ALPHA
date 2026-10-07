@@ -47,7 +47,7 @@ must remain derived, content-hashed references to existing authoritative records
 The package may depend only on the approved lower-layer inputs recorded in the root
 import-linter contract: `alpha_core`, `alpha_data`, `alpha_patterns`, and
 `alpha_research`. The package must not import strategy, backtest, validation,
-forecast, options, screener, CLI, MCP, or web surfaces. Lower layers and the two
+forecast, CLI, MCP, or web surfaces. Lower layers and the two
 top-of-DAG surfaces must not import `alpha_study`.
 
 Only an existing-authority CLI/ControlStore verifier may upgrade a reference into

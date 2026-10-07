@@ -1,0 +1,24 @@
+.edge-dock { flex: 0 0 auto; min-width: 280px; max-width: 42%; display: flex; flex-direction: column; overflow: hidden; }
+.edge-dock > nav, .edge-results > nav { display: flex; flex-shrink: 0; flex-wrap: wrap; gap: 2px; background: #d4d4d4; padding: 2px; }
+.edge-dock .btn[aria-selected=true], .edge-results .btn[aria-selected=true] { background: #2e64b9; color: white; }
+.edge-dock-body { overflow: auto; min-height: 0; flex: 1; padding: 8px; background: #f0f0f0; }
+.edge-dock-body h2 { font-size: 13px; margin: 0 0 7px; }
+.edge-dock-body label { display: grid; gap: 4px; margin: 8px 0; }
+.edge-dock-body textarea { width: 100%; min-height: 70px; resize: vertical; }
+.edge-dock-body .field { max-width: 100%; }
+.edge-actions { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.condition-rows { padding: 0; list-style: none; }
+.condition-rows li { border-bottom: 1px solid #bbb; padding: 7px 0; display: grid; gap: 4px; }
+.condition-rows small, .edge-dock-body code { overflow-wrap: anywhere; }
+.assistant-transcript article, .desk-notes article { border-top: 1px solid #bbb; padding: 8px 0; }
+.assistant-answer { white-space: pre-wrap; overflow-wrap: anywhere; }
+.edge-results { flex: 0 0 250px; min-height: 160px; max-height: 45%; display: flex; flex-direction: column; border: 1px solid #999; resize: vertical; overflow: hidden; }
+.edge-results-body { min-height: 0; flex: 1; overflow: auto; background: #f0f0f0; }
+.edge-results-body > section { padding: 8px; }
+.edge-results-body .panel { height: auto; min-height: 100%; }
+.edge-dock-body .indicator-picker-inline { padding: 0; }
+@media (max-width: 1000px) { .edge-dock { max-width: 100%; width: 100% !important; max-height: 350px; } }
+/* Specificity preserves explicit dock width against the shared terminal pane flex rule. */
+.market-desk .edge-dock { flex: 0 0 auto; }
+.edge-dock-body .indicators-row { display: flex; gap: 5px; margin: 4px 0; }
+.edge-results { flex: 0 0 auto; height: 200px; min-height: 140px; max-height: 45%; }

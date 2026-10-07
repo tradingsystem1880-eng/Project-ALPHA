@@ -414,3 +414,75 @@ def alerts(
             )
         if not rows:
             typer.echo("no alerts")
+
+
+@scan_app.command("hypotheses")
+def hypotheses(
+    as_of: str = typer.Option(
+        ..., "--as-of", help="Frozen YYYY-MM-DD cutoff; crypto uses midnight UTC"
+    ),
+    lane: str = typer.Option("equity", help="equity or crypto"),
+    symbols: str | None = typer.Option(None, help="Comma-separated exact symbols"),
+    universe: str | None = typer.Option(
+        None, help="Equity PIT membership name, frozen in the spec"
+    ),
+    snapshot: str | None = typer.Option(None, help="Required immutable equity snapshot"),
+    signals: str | None = typer.Option(None, help="Comma-separated registered screening signals"),
+    horizons: str = typer.Option(
+        "1,5,10,21", help="Forward observed-row horizons (crypto: UTC days)"
+    ),
+    min_names: int = typer.Option(5, help="Minimum names in each scored cross-section"),
+    quantiles: int = typer.Option(5, help="Equal-count ranking buckets"),
+    cost_bps: float = typer.Option(0.0, help="One-way illustrative turnover cost"),
+    category: str = typer.Option("linear", help="Exact Bybit market: linear or inverse"),
+    json_out: bool = typer.Option(False, "--json", help="Emit exploratory results and provenance"),
+) -> None:
+    """Screen frozen inputs; record each attempt. No research, validation or execution authority."""
+    from alpha_cli._hypothesis_scan import CRYPTO_SIGNALS, EQUITY_SIGNALS, run_hypotheses
+
+    try:
+        horizon_values = [int(value.strip()) for value in horizons.split(",")]
+    except ValueError as exc:
+        raise typer.BadParameter("horizons must be comma-separated integers") from exc
+    names = (
+        signals.split(",")
+        if signals
+        else list(EQUITY_SIGNALS if lane == "equity" else CRYPTO_SIGNALS)
+    )
+    request = {
+        "lane": lane,
+        "symbols": symbols.split(",") if symbols else [],
+        "universe": universe,
+        "snapshot": snapshot,
+        "as_of": as_of,
+        "signals": [name.strip() for name in names],
+        "horizons": horizon_values,
+        "min_names": min_names,
+        "quantiles": quantiles,
+        "cost_bps": cost_bps,
+        "category": category,
+    }
+    try:
+        result = run_hypotheses(AlphaSettings().data_dir, request)
+    except DataError as exc:
+        raise _bad(exc) from exc
+    _emit(
+        result,
+        json_out,
+        f"exploratory screen {result['scan_id']}: {result['trials']} trials; authority none",
+    )
+
+
+@scan_app.command("replay")
+def replay_hypotheses_command(
+    scan_id: str,
+    json_out: bool = typer.Option(False, "--json", help="Emit replay results and a new attempt id"),
+) -> None:
+    """Re-evaluate an exact frozen screen after code, lock and input integrity verification."""
+    from alpha_cli._hypothesis_scan import replay_hypotheses
+
+    try:
+        result = replay_hypotheses(AlphaSettings().data_dir, scan_id)
+    except DataError as exc:
+        raise _bad(exc) from exc
+    _emit(result, json_out, f"replayed {scan_id}; attempt {result['attempt_id']}; authority none")

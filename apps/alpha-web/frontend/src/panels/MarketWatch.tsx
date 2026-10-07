@@ -1,3 +1,5 @@
+import { AssetSelect } from '../components/AssetSelect'
+import { openArchiveMarket } from './actions'
 // Market Watch dock (spec 2026-09-01 §4.2 item 4): one row per stored pair on one venue —
 // symbol · venue · last · daily % · age — red/green, for the profile's watchlist and stored pairs.
 // Prices are the last two daily bars of the candles projection (`?tail=2`, so a pair whose
@@ -9,11 +11,11 @@ import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import { useNow } from '../context/clock'
-import { setLinked, useLinked } from '../context/linked'
+import { useLinked } from '../context/linked'
 import { setStoredVenue } from '../context/storedQuotes'
 import { useAreaVersion } from '../state/activity'
 import { setSettings, useSettings } from '../state/settings'
-import { openDataSymbol } from './actions'
+import { openDataSymbol, openStoredMarket } from './actions'
 import {
   MARKET_WATCH_TABS,
   TICKER_POLL_MS,
@@ -112,7 +114,14 @@ export function MarketWatch() {
     }
   }, [liveTicker, tickerKey])
 
-  const rows = storedRows.map((row) => (liveTicker ? applyTicker(row, live[row.symbol]) : row))
+  const readableRows = storedRows.filter((row) => {
+    const bars = quotes[row.symbol]?.bars
+    const last = bars?.[bars.length - 1]
+    return Boolean(last && Number.isFinite(last.t) && Number.isFinite(last.c))
+  })
+  const quotesReady = storedRows.every((row) => Object.hasOwn(quotes, row.symbol))
+  const unavailableCount = quotesReady ? storedRows.length - readableRows.length : 0
+  const rows = readableRows.map((row) => (liveTicker ? applyTicker(row, live[row.symbol]) : row))
   const selected = linked.symbol ? relatedRows(linked.symbol, rows) : []
   return (
     <div className="dock-panel market-watch">
@@ -128,9 +137,14 @@ export function MarketWatch() {
           <span>Live</span>
         </label>
       </div>
+      {profile === 'crypto' ? <details className="watch-available-markets"><summary>Browse all available markets</summary><AssetSelect label="Available market" value={linked.symbol ?? ''} onChange={openStoredMarket} onArchiveSelect={openArchiveMarket} /></details> : null}
       {error ? <p className="muted">{error}</p> : null}
       {tab === 'Symbols' ? (
-        <table className="blotter market-watch-table" aria-label="Market Watch">
+        <>
+        {storedRows.length === 0 ? <p className="muted" role="status">No stored markets are available for this profile.</p> : null}
+        {storedRows.length > 0 && readableRows.length === 0 ? <p className="muted" role="status">{quotesReady ? 'No stored markets have readable daily bars.' : 'Checking stored daily bars…'}</p> : null}
+        {unavailableCount > 0 ? <p className="muted" role="status">{unavailableCount} stored market{unavailableCount === 1 ? '' : 's'} hidden because daily bars are unavailable.</p> : null}
+        <div className="market-watch-scroll"><table className="blotter market-watch-table" aria-label="Market Watch">
           <thead>
             <tr>
               <th>Symbol</th>
@@ -159,10 +173,10 @@ export function MarketWatch() {
                     className="watch-select"
                     aria-label={row.symbol}
                     aria-pressed={linked.symbol === row.symbol}
-                    onClick={() => setLinked({ symbol: row.symbol })}
+                    onClick={() => openStoredMarket(row.symbol)}
                   >
                     <span className="watch-glyph" aria-hidden="true">{TONE_GLYPH[row.tone]}</span>
-                    {row.label}
+                    {row.symbol}
                   </button>
                 </td>
                 <td className="watch-venue">{row.venue ?? '—'}</td>
@@ -184,7 +198,8 @@ export function MarketWatch() {
               </td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
+        </>
       ) : tab === 'Details' ? (
         <div className="market-watch-details-wrap">
           <dl className="market-watch-details">
@@ -208,7 +223,7 @@ export function MarketWatch() {
               <tbody>
                 {selected.map((row) => (
                   <tr key={row.symbol} className={row.stale ? 'stale' : ''}>
-                    <td className="mono">{row.label}</td>
+                    <td className="mono">{row.symbol}</td>
                     <td>{row.venue ?? '—'}</td>
                     <td className="num mono">{row.last}</td>
                     <td className="num mono">{row.asOf ?? '—'}</td>

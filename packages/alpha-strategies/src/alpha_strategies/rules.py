@@ -28,7 +28,7 @@ import json
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypedDict
 
 import numpy as np
 
@@ -428,7 +428,7 @@ def operand_series(series: OHLCV, operand: Operand) -> FloatArray:
     return values
 
 
-def _holds(condition: Condition, series: OHLCV) -> bool:
+def _condition_result(condition: Condition, series: OHLCV) -> tuple[float, float, bool]:
     left = float(operand_series(series, condition.left)[-1])
     right = float(operand_series(series, condition.right)[-1])
     if not (math.isfinite(left) and math.isfinite(right)):
@@ -438,12 +438,97 @@ def _holds(condition: Condition, series: OHLCV) -> bool:
             "on this window (one-signed runs, a zero range, absent ordinal patterns)"
         )
     if condition.op == ">":
-        return left > right
-    if condition.op == "<":
-        return left < right
-    if condition.op == ">=":
-        return left >= right
-    return left <= right
+        passed = left > right
+    elif condition.op == "<":
+        passed = left < right
+    elif condition.op == ">=":
+        passed = left >= right
+    else:
+        passed = left <= right
+    return left, right, passed
+
+
+def _holds(condition: Condition, series: OHLCV) -> bool:
+    return _condition_result(condition, series)[2]
+
+
+class ConditionExplanation(TypedDict):
+    side: Literal["long", "short"]
+    index: int
+    label: str
+    left: float | None
+    right: float | None
+    status: Literal["pass", "fail", "unavailable"]
+    reason: str | None
+
+
+class RuleExplanation(TypedDict):
+    signal: int | None
+    conditions: list[ConditionExplanation]
+    error: str | None
+
+
+def explain_rules(
+    spec: RuleSpec, series: OHLCV | None, *, unavailable_reason: str | None = None
+) -> RuleExplanation:
+    """Trace execution comparisons in order, without evaluating short-circuited conditions.
+
+    Missing history or a reached invalid operand yields an unavailable signal, never flat.
+    Indicator formulas, exact trailing-window convention, and conflict-flat semantics are
+    identical to :func:`evaluate_rules`; skipped conditions are explicitly unavailable.
+    """
+    error = unavailable_reason
+    if series is None:
+        error = error or "No bars available for rule evaluation"
+    elif len(series) != spec.history:
+        error = f"rules evaluate over exactly {spec.history} trailing bars, got {len(series)}"
+    sides: tuple[tuple[Literal["long", "short"], tuple[Condition, ...]], ...] = (
+        ("long", spec.long_when),
+        ("short", spec.short_when),
+    )
+    rows: list[ConditionExplanation] = [
+        {
+            "side": side,
+            "index": index,
+            "label": condition.label,
+            "left": None,
+            "right": None,
+            "status": "unavailable",
+            "reason": error or "Evaluation stopped before this condition",
+        }
+        for side, conditions in sides
+        for index, condition in enumerate(conditions)
+    ]
+    result: RuleExplanation = {"signal": None, "conditions": rows, "error": error}
+    if error is not None or series is None:
+        return result
+    offset = 0
+    outcomes = []
+    for _, conditions in sides:
+        passed = bool(conditions)
+        for index, condition in enumerate(conditions):
+            row = rows[offset + index]
+            if not passed:
+                row["reason"] = "Not evaluated: side short-circuited after a failed condition"
+                continue
+            try:
+                left, right, passed = _condition_result(condition, series)
+            except DataError as exc:
+                result["error"] = row["reason"] = str(exc)
+                return result
+            row.update(
+                {
+                    "left": left,
+                    "right": right,
+                    "status": "pass" if passed else "fail",
+                    "reason": None,
+                }
+            )
+        outcomes.append(passed)
+        offset += len(conditions)
+    long, short = outcomes
+    result["signal"] = 0 if long == short else 1 if long else -1
+    return result
 
 
 def evaluate_rules(spec: RuleSpec, series: OHLCV) -> int:

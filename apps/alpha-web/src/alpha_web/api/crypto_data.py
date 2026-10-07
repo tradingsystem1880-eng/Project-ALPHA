@@ -33,6 +33,7 @@ from alpha_web.api.models import (
     CryptoFeatureResponse,
     CryptoLiquidityFreezeRequest,
     CryptoLiquidityFreezeResponse,
+    CryptoMarketCatalogResponse,
     CryptoOneMinuteSelectionRequest,
     CryptoOneMinuteSelectionResponse,
     CryptoQualityResponse,
@@ -45,6 +46,7 @@ from alpha_web.api.models import (
     CryptoStorageInventoryResponse,
     CryptoStorageResponse,
     CryptoStorageVerifyResponse,
+    CryptoYieldPoolCatalogResponse,
     JobStatus,
 )
 
@@ -84,9 +86,29 @@ def capabilities() -> Any:
     return _project(["crypto-data", "capabilities", "--json"])
 
 
+@router.get("/market-catalog", response_model=CryptoMarketCatalogResponse)
+def market_catalog(
+    query: str = Query(default="", max_length=32),
+    limit: int = Query(default=100, ge=1, le=500),
+) -> Any:
+    return _project(
+        ["crypto-data", "market-catalog", "--query", query, "--limit", str(limit), "--json"]
+    )
+
+
 @router.get("/storage", response_model=CryptoStorageResponse)
 def storage() -> Any:
-    return _project(["crypto-data", "storage", "--json"])
+    return _project(["crypto-data", "storage", "--metadata-only", "--json"])
+
+
+@router.get("/yield-pools", response_model=CryptoYieldPoolCatalogResponse)
+def yield_pools(
+    query: str = Query(default="", max_length=80),
+    limit: int = Query(default=50, ge=1, le=100),
+) -> Any:
+    return _project(
+        ["crypto-data", "yield-pools", "--query", query, "--limit", str(limit), "--json"]
+    )
 
 
 @router.get("/storage/inventory", response_model=CryptoStorageInventoryResponse)
@@ -108,7 +130,7 @@ def cache_clean(req: CryptoCacheCleanRequest) -> Any:
 
 @router.get("/coverage", response_model=CryptoCoverageResponse)
 def coverage() -> Any:
-    return _project(["crypto-data", "coverage", "--json"])
+    return _project(["crypto-data", "coverage", "--metadata-only", "--json"])
 
 
 @router.get("/profiles", response_model=CryptoCoverageProfileListResponse)

@@ -110,12 +110,12 @@ class TestKarpathyTextIsCanonical:
             "repo karpathy-guidelines body drifted from the plugin copy — re-sync it"
         )
 
-    def test_hook_block_mirrors_the_four_sections(self) -> None:
+    def test_session_adapter_points_to_canonical_skill_without_duplicating_it(self) -> None:
         import claude_hooks
 
-        for heading in KARPATHY_SECTIONS:
-            title = heading.split(". ", 1)[1]
-            assert title in claude_hooks.KARPATHY_BLOCK, f"KARPATHY_BLOCK lost {title!r}"
+        code, message = claude_hooks.hook_session_start({}, REPO_ROOT)
+        assert code == 0
+        assert ".agents/skills/karpathy-guidelines" in message
 
     def test_every_agent_preloads_karpathy(self) -> None:
         agents = sorted((REPO_ROOT / ".claude" / "agents").glob("*.md"))

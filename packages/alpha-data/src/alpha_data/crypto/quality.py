@@ -314,6 +314,24 @@ def _family_checks(
     elif dataset.family == "market_reference":
         if "current_price" in frame.columns and frame["current_price"].null_count() > 0:
             warnings.add("missing_reference_price")
+    elif dataset.family == "protocol_tvl":
+        if any(value < 0 for value in numbers("tvl_usd")):
+            failures.add("negative_protocol_tvl")
+    elif dataset.family == "stablecoin_supply":
+        if any(value < 0 for value in numbers("circulating_supply")):
+            failures.add("negative_stablecoin_supply")
+    elif dataset.family == "yield_pools":
+        values("pool_id")
+        values("chain")
+        values("project")
+        values("symbol")
+        if any(value < 0 for value in numbers("tvl_usd")):
+            failures.add("negative_yield_tvl")
+        numbers("apy")
+    elif dataset.family == "yield_history":
+        if any(value < 0 for value in numbers("tvl_usd")):
+            failures.add("negative_yield_tvl")
+        numbers("apy")
     return failures, warnings
 
 

@@ -141,8 +141,9 @@ describe('governancePages', () => {
     ])
   })
 
-  it('offers Touch ID enrolment from the Touch ID page', () => {
-    expect(page(governancePages(EMPTY), 'touchid').link).toEqual({ label: 'Enroll Touch ID', href: '/owner-auth/enroll' })
+  it('explains local confirmation without requiring biometric enrolment', () => {
+    expect(page(governancePages(EMPTY), 'touchid').label).toBe('Owner confirmation')
+    expect(page(governancePages(EMPTY), 'touchid').link).toBeUndefined()
     expect(page(governancePages(EMPTY), 'authority').link).toBeUndefined()
   })
 

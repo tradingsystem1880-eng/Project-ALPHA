@@ -240,7 +240,7 @@ def research_source_add(project_id: str, body: ResearchSourceAddRequest) -> dict
 
 @router.post("/research/cases/{project_id}/claims")
 def research_claim_add(project_id: str, body: ResearchClaimAddRequest) -> dict[str, Any]:
-    """Draft one claim; screening or rejecting it stays a Touch ID owner action."""
+    """Draft one claim; screening or rejecting it stays an explicitly confirmed owner action."""
     try:
         return _research.claim_add(
             project_id,

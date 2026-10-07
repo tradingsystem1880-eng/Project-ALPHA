@@ -12,7 +12,7 @@ import polars as pl
 
 from alpha_core import CorporateAction, DataError
 
-type AssetClass = Literal["stock", "etf", "crypto", "future"]
+type AssetClass = Literal["stock", "etf", "crypto", "future", "index"]
 type Timeframe = Literal["1D"]
 type PriceBasis = Literal["raw"]
 
@@ -45,7 +45,7 @@ class DatasetIdentity:
         )
         if any(not isinstance(value, str) or not value.strip() for value in strings):
             raise DataError("dataset identity values must be non-empty strings")
-        if self.asset_class not in {"stock", "etf", "crypto", "future"}:
+        if self.asset_class not in {"stock", "etf", "crypto", "future", "index"}:
             raise DataError(f"unsupported asset class {self.asset_class!r}")
         if self.timeframe != "1D":
             raise DataError(f"unsupported timeframe {self.timeframe!r}; ALPHA is daily-only")

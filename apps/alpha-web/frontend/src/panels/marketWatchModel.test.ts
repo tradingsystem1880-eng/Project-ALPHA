@@ -22,15 +22,22 @@ const NOW = Date.UTC(2023, 10, 16) // 2023-11-16
 const quote = (bars: Candle[], source: string | null = 'ccxt:binance') => ({ bars, provenance: { source } })
 
 describe('marketWatchModel', () => {
-  it('lists the watchlist first, then stored pairs, de-duplicated and same style only', () => {
+  it('lists available starter markets first, then other stored pairs of the same style', () => {
     expect(watchSymbols('crypto', ['SOL/USDT', 'AAPL', 'DOGE/USDT', 'BTC/USDT'])).toEqual([
       'BTC/USDT',
-      'ETH/USDT',
-      'XRP/USDT',
       'SOL/USDT',
       'DOGE/USDT',
     ])
-    expect(watchSymbols('equities', ['BTC/USDT', 'MSFT', 'SPY'])).toEqual(['SPY', 'AAPL', 'MSFT'])
+    expect(watchSymbols('equities', ['BTC/USDT', 'MSFT', 'SPY'])).toEqual(['SPY', 'MSFT'])
+  })
+
+  it('keeps stored quote-currency variants distinct while excluding unavailable starter pairs', () => {
+    expect(watchSymbols('crypto', ['BTC-USD', 'BTC/USD', 'XRP/USD', 'XRP/USDT'])).toEqual([
+      'XRP/USDT',
+      'BTC-USD',
+      'BTC/USD',
+      'XRP/USD',
+    ])
   })
 
   it('reads red/green from the last two bars and names the venue and bar date', () => {
@@ -106,7 +113,7 @@ describe('marketWatchModel', () => {
     expect(baseAsset('AAPL')).toBe('AAPL')
     const rows = watchRows(
       'crypto',
-      ['BTC/USD', 'XRP/USD'],
+      ['BTC/USDT', 'BTC/USD', 'XRP/USD'],
       { 'BTC/USDT': quote([bar(100), bar(110)]), 'BTC/USD': quote([bar(100), bar(90)], 'ccxt:coinbase') },
       NOW,
     )

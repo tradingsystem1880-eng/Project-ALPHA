@@ -8,7 +8,7 @@ from pathlib import Path
 import polars as pl
 from pydantic import ValidationError
 
-from alpha_core import CorporateAction, DataError
+from alpha_core import CorporateAction, DataError, UniverseMembership
 from alpha_data._atomic import publish, write_text
 from alpha_data.adapters.base import DatasetIdentity, FetchReceipt
 
@@ -125,6 +125,37 @@ class ParquetStore:
             raise DataError(f"corrupt actions JSON for {symbol!r} at {path}") from exc
         except ValidationError as exc:
             raise DataError(f"invalid action data for {symbol!r} at {path}: {exc}") from exc
+
+    def _universe_path(self, name: str) -> Path:
+        if not name or ".." in name or "/" in name or "\\" in name:
+            raise DataError(f"invalid universe name for storage: {name!r}")
+        return self.root / "universe" / f"{name}.json"
+
+    def write_universe(self, name: str, memberships: list[UniverseMembership]) -> Path:
+        """Write a point-in-time universe. REPLACES the universe wholesale (no append/merge)."""
+        path = self._universe_path(name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = [m.model_dump(mode="json") for m in memberships]
+        write_text(path, json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
+        return path
+
+    def read_universe(self, name: str) -> list[UniverseMembership]:
+        path = self._universe_path(name)
+        if not path.exists():
+            raise DataError(f"no universe named {name!r} at {path}")
+        try:
+            raw = json.loads(path.read_text())
+            return [UniverseMembership.model_validate(d) for d in raw]
+        except json.JSONDecodeError as exc:
+            raise DataError(f"corrupt universe JSON for {name!r} at {path}") from exc
+        except ValidationError as exc:
+            raise DataError(f"invalid universe data for {name!r} at {path}: {exc}") from exc
+
+    def list_universes(self) -> list[str]:
+        universe_dir = self.root / "universe"
+        if not universe_dir.exists():
+            return []
+        return sorted(p.stem for p in universe_dir.glob("*.json"))
 
     def _provenance_path(self, symbol: str) -> Path:
         if not symbol or ".." in symbol or "\\" in symbol or symbol.startswith("/"):

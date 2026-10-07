@@ -1,5 +1,6 @@
-"""The import-linter extractor captures all 15 contracts with their module lists."""
+"""The import-linter extractor captures declared contracts with their module lists."""
 
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -8,10 +9,13 @@ from alpha_atlas.generators.importlinter import extract
 
 
 class TestImportLinterExtractor:
-    def test_all_fifteen_contracts_become_nodes(self, repo_root: Path) -> None:
+    def test_all_declared_contracts_become_nodes(self, repo_root: Path) -> None:
         fragment, inputs = extract(repo_root)
         contracts = [n for n in fragment.nodes if n.kind == "contract"]
-        assert len(contracts) == 15
+        config = tomllib.loads((repo_root / "pyproject.toml").read_text())
+        assert {node.label for node in contracts} == {
+            contract["name"] for contract in config["tool"]["importlinter"]["contracts"]
+        }
         assert fragment.edges == []
         assert "pyproject.toml" in inputs
 

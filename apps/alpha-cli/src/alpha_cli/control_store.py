@@ -12,6 +12,7 @@ import json
 import math
 import os
 import re
+import secrets
 import sqlite3
 import stat
 import tempfile
@@ -24,6 +25,40 @@ from typing import Any, Final, Literal, cast
 
 import polars as pl
 
+from alpha_cli._control_schema import (
+    _DDL_OBJECT_NAME as _DDL_OBJECT_NAME,
+)
+from alpha_cli._control_schema import (
+    _EXPECTED_HEALABLE_SCHEMA_OBJECTS as _EXPECTED_HEALABLE_SCHEMA_OBJECTS,
+)
+from alpha_cli._control_schema import (
+    _EXPECTED_SCHEMA_OBJECTS as _EXPECTED_SCHEMA_OBJECTS,
+)
+from alpha_cli._control_schema import (
+    _GOVERNANCE_BACKFILL as _GOVERNANCE_BACKFILL,
+)
+from alpha_cli._control_schema import (
+    _PROTECTED_V5_SCHEMA_OBJECTS as _PROTECTED_V5_SCHEMA_OBJECTS,
+)
+from alpha_cli._control_schema import (
+    _SCHEMA as _SCHEMA,
+)
+from alpha_cli._control_schema import (
+    _SCHEMA_V2 as _SCHEMA_V2,
+)
+from alpha_cli._control_schema import (
+    _SCHEMA_V3 as _SCHEMA_V3,
+)
+from alpha_cli._control_schema import (
+    _SCHEMA_V4 as _SCHEMA_V4,
+)
+from alpha_cli._control_schema import (
+    _SCHEMA_V5 as _SCHEMA_V5,
+)
+from alpha_cli._control_schema import (
+    _SCHEMA_V5_RECEIPT as _SCHEMA_V5_RECEIPT,
+)
+from alpha_cli._control_schema import _SCHEMA_V6_RECEIPT
 from alpha_cli.artifact_contract import (
     ARTIFACT_CONTRACT_VERSION,
     MANIFEST_SCHEMA_VERSION,
@@ -97,7 +132,8 @@ LEGACY_SCHEMA_VERSION: Final = 1
 OWNER_AUTH_PREVIOUS_SCHEMA_VERSION: Final = 2
 PREVIOUS_SCHEMA_VERSION: Final = 3
 V4_SCHEMA_VERSION: Final = 4
-SCHEMA_VERSION: Final = 5
+V5_SCHEMA_VERSION: Final = 5
+SCHEMA_VERSION: Final = 6
 DATABASE_NAME: Final = "workstation.sqlite3"
 _SEMANTIC_READ_ARTIFACTS: Final = ("d0_acceptance.json", "events.json", "chart-data.json")
 _SEMANTIC_READ_MAX_BYTES: Final = 8 * 1024 * 1024
@@ -438,884 +474,6 @@ _D1_RESEARCH_KIND: Final = "d1-deep-research"
 _D1_MAX_LAUNCHES: Final = 3
 _D2_RESEARCH_KIND: Final = "sealed-confirmation"
 _RESEARCH_CAPTURE_NAMESPACE: Final = uuid.UUID("9df1357d-30fe-5c03-9f26-c7d594fdd91e")
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS projects (
-    project_id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    hypothesis TEXT NOT NULL,
-    falsification_criterion TEXT NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('active', 'accepted', 'rejected', 'archived')),
-    current_version_id TEXT,
-    current_experiment_id TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS strategy_versions (
-    version_id TEXT PRIMARY KEY,
-    strategy_name TEXT NOT NULL,
-    source_fingerprint TEXT NOT NULL,
-    definition_json TEXT NOT NULL,
-    parameter_space_json TEXT NOT NULL,
-    created_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS project_versions (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    version_id TEXT NOT NULL REFERENCES strategy_versions(version_id),
-    linked_at TEXT NOT NULL,
-    PRIMARY KEY (project_id, version_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS experiment_specs (
-    experiment_id TEXT PRIMARY KEY,
-    strategy_version_id TEXT NOT NULL REFERENCES strategy_versions(version_id),
-    snapshot_id TEXT NOT NULL,
-    universe_json TEXT NOT NULL,
-    split_policy_json TEXT NOT NULL,
-    costs_json TEXT NOT NULL,
-    seeds_json TEXT NOT NULL,
-    stage_config_json TEXT NOT NULL,
-    created_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS project_experiments (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    experiment_id TEXT NOT NULL REFERENCES experiment_specs(experiment_id),
-    linked_at TEXT NOT NULL,
-    PRIMARY KEY (project_id, experiment_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS project_scope_events (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    sequence INTEGER NOT NULL,
-    current_version_id TEXT REFERENCES strategy_versions(version_id),
-    current_experiment_id TEXT REFERENCES experiment_specs(experiment_id),
-    occurred_at TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    PRIMARY KEY (project_id, sequence)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS stage_run_links (
-    link_id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    experiment_id TEXT NOT NULL REFERENCES experiment_specs(experiment_id),
-    stage TEXT NOT NULL,
-    run_id TEXT NOT NULL,
-    linked_at TEXT NOT NULL,
-    UNIQUE (project_id, experiment_id, stage, run_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS stage_state_events (
-    link_id TEXT NOT NULL REFERENCES stage_run_links(link_id),
-    sequence INTEGER NOT NULL,
-    state TEXT NOT NULL,
-    occurred_at TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    PRIMARY KEY (link_id, sequence)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS experiment_stage_events (
-    project_id TEXT NOT NULL,
-    experiment_id TEXT NOT NULL,
-    stage TEXT NOT NULL,
-    sequence INTEGER NOT NULL,
-    state TEXT NOT NULL,
-    occurred_at TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    PRIMARY KEY (project_id, experiment_id, stage, sequence),
-    FOREIGN KEY (project_id, experiment_id)
-        REFERENCES project_experiments(project_id, experiment_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS attempt_records (
-    attempt_id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    experiment_id TEXT NOT NULL REFERENCES experiment_specs(experiment_id),
-    stage TEXT NOT NULL,
-    status TEXT NOT NULL,
-    config_fingerprint TEXT NOT NULL,
-    run_id TEXT,
-    error TEXT,
-    details_json TEXT NOT NULL,
-    recorded_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS holdout_state (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    experiment_id TEXT NOT NULL REFERENCES experiment_specs(experiment_id),
-    sealed_at TEXT NOT NULL,
-    sealed_by TEXT NOT NULL,
-    sealed_version_id TEXT NOT NULL REFERENCES strategy_versions(version_id),
-    seal_reason TEXT NOT NULL,
-    revealed_at TEXT,
-    revealed_by TEXT,
-    revealed_version_id TEXT REFERENCES strategy_versions(version_id),
-    reveal_reason TEXT,
-    contaminated_at TEXT,
-    contamination_reason TEXT,
-    PRIMARY KEY (project_id, experiment_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS holdout_specs (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    experiment_id TEXT NOT NULL REFERENCES experiment_specs(experiment_id),
-    spec_hash TEXT NOT NULL UNIQUE,
-    start_date TEXT NOT NULL,
-    end_date TEXT NOT NULL,
-    PRIMARY KEY (project_id, experiment_id),
-    FOREIGN KEY (project_id, experiment_id)
-        REFERENCES project_experiments(project_id, experiment_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS holdout_audit (
-    audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    experiment_id TEXT NOT NULL REFERENCES experiment_specs(experiment_id),
-    event TEXT NOT NULL CHECK (event IN ('sealed', 'revealed', 'contaminated')),
-    actor TEXT NOT NULL,
-    occurred_at TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    version_id TEXT NOT NULL REFERENCES strategy_versions(version_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS decision_packets (
-    packet_id TEXT PRIMARY KEY,
-    packet_hash TEXT NOT NULL UNIQUE,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    experiment_id TEXT NOT NULL REFERENCES experiment_specs(experiment_id),
-    strategy_version_id TEXT NOT NULL REFERENCES strategy_versions(version_id),
-    verdict TEXT NOT NULL CHECK (verdict IN ('accept', 'reject', 'revise')),
-    packet_json TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    UNIQUE (project_id, experiment_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS jobs (
-    job_id TEXT PRIMARY KEY,
-    kind TEXT NOT NULL,
-    status TEXT NOT NULL,
-    project_id TEXT REFERENCES projects(project_id),
-    experiment_id TEXT REFERENCES experiment_specs(experiment_id),
-    request_json TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    heartbeat_at TEXT NOT NULL,
-    result_run_id TEXT,
-    terminal_error TEXT,
-    last_sequence INTEGER NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS job_events (
-    job_id TEXT NOT NULL REFERENCES jobs(job_id),
-    sequence INTEGER NOT NULL,
-    event_type TEXT NOT NULL,
-    occurred_at TEXT NOT NULL,
-    payload_json TEXT NOT NULL,
-    PRIMARY KEY (job_id, sequence)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS evidence_items (
-    evidence_id TEXT PRIMARY KEY,
-    created_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS evidence_revisions (
-    evidence_id TEXT NOT NULL REFERENCES evidence_items(evidence_id),
-    revision INTEGER NOT NULL,
-    parent_revision INTEGER,
-    status TEXT NOT NULL,
-    claim TEXT NOT NULL,
-    assets_json TEXT NOT NULL,
-    frozen_universe_json TEXT NOT NULL,
-    timeframe TEXT NOT NULL,
-    method TEXT NOT NULL,
-    market_data_cutoff TEXT,
-    knowledge_at TEXT NOT NULL,
-    project_id TEXT REFERENCES projects(project_id),
-    strategy_version_id TEXT,
-    experiment_id TEXT,
-    metric_name TEXT,
-    metric_value REAL,
-    metric_unit TEXT,
-    source_run_id TEXT,
-    source_artifact TEXT,
-    source_field TEXT,
-    row_selector_json TEXT NOT NULL,
-    counterevidence_json TEXT NOT NULL,
-    contradiction_ids_json TEXT NOT NULL,
-    author TEXT NOT NULL,
-    author_kind TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    PRIMARY KEY (evidence_id, revision)
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_project_versions_project ON project_versions(project_id);
-CREATE INDEX IF NOT EXISTS idx_project_experiments_project ON project_experiments(project_id);
-CREATE INDEX IF NOT EXISTS idx_project_scope_project
-    ON project_scope_events(project_id, occurred_at, sequence);
-CREATE INDEX IF NOT EXISTS idx_attempt_project ON attempt_records(project_id, recorded_at);
-CREATE INDEX IF NOT EXISTS idx_experiment_stage
-    ON experiment_stage_events(project_id, experiment_id, stage, sequence);
-CREATE INDEX IF NOT EXISTS idx_job_project ON jobs(project_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_evidence_knowledge ON evidence_revisions(knowledge_at, created_at);
-"""
-
-_SCHEMA_V2 = """
-CREATE TABLE IF NOT EXISTS project_research_governance (
-    project_id TEXT PRIMARY KEY REFERENCES projects(project_id),
-    research_required INTEGER NOT NULL CHECK (research_required IN (0, 1)),
-    origin TEXT NOT NULL CHECK (
-        origin IN ('strategy_development', 'research_capture', 'legacy_import')
-    ),
-    recorded_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_source_records (
-    source_id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    title TEXT NOT NULL,
-    locator TEXT NOT NULL,
-    provider TEXT NOT NULL,
-    access_mode TEXT NOT NULL
-        CHECK (access_mode IN ('metadata_only', 'open_access', 'owner_provided')),
-    content_hash TEXT,
-    metadata_json TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    doi TEXT,
-    year INTEGER,
-    authors_json TEXT
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_source_claims (
-    claim_id TEXT NOT NULL,
-    revision INTEGER NOT NULL,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    source_id TEXT NOT NULL REFERENCES research_source_records(source_id),
-    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    claim_text TEXT NOT NULL,
-    direction TEXT NOT NULL CHECK (direction IN (
-        'supports', 'contradicts', 'contextualizes', 'method'
-    )),
-    strength TEXT NOT NULL CHECK (strength IN ('weak', 'moderate', 'strong')),
-    method_summary TEXT NOT NULL,
-    sample_summary TEXT NOT NULL,
-    markets_json TEXT NOT NULL,
-    limitations TEXT NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('draft', 'screened')),
-    author TEXT NOT NULL,
-    author_kind TEXT NOT NULL CHECK (author_kind IN ('owner', 'agent')),
-    screened_by TEXT,
-    created_at TEXT NOT NULL,
-    PRIMARY KEY (claim_id, revision)
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_research_source_claims_project
-    ON research_source_claims(project_id, created_at, claim_id);
-
-CREATE TABLE IF NOT EXISTS research_source_packs (
-    pack_id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    source_ids_json TEXT NOT NULL,
-    definition_json TEXT NOT NULL,
-    created_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_contracts (
-    contract_id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    scope TEXT NOT NULL CHECK (scope IN ('exploration', 'confirmation')),
-    parent_contract_id TEXT REFERENCES research_contracts(contract_id),
-    payload_json TEXT NOT NULL,
-    created_by TEXT NOT NULL,
-    author_kind TEXT NOT NULL CHECK (author_kind IN ('human', 'agent')),
-    created_at TEXT NOT NULL,
-    UNIQUE (project_id, contract_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_contract_review_events (
-    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    sequence INTEGER NOT NULL,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    scope TEXT NOT NULL CHECK (scope IN ('exploration', 'confirmation')),
-    decision TEXT NOT NULL CHECK (decision IN ('approve', 'reject')),
-    actor TEXT NOT NULL,
-    actor_kind TEXT NOT NULL CHECK (actor_kind IN ('human', 'agent')),
-    occurred_at TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    PRIMARY KEY (contract_id, sequence)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_phase_events (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    sequence INTEGER NOT NULL,
-    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    phase TEXT NOT NULL CHECK (phase IN (
-        'captured', 'triage', 'exploration_review', 'pilot', 'deep_research',
-        'confirmation_review', 'sealed_confirmation', 'research_decision', 'closed'
-    )),
-    occurred_at TEXT NOT NULL,
-    actor TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    next_action TEXT NOT NULL,
-    responsibility TEXT NOT NULL CHECK (responsibility IN ('owner', 'codex')),
-    blocker TEXT,
-    recovery TEXT,
-    PRIMARY KEY (project_id, sequence)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_execution_events (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    sequence INTEGER NOT NULL,
-    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    state TEXT NOT NULL CHECK (state IN (
-        'idle', 'queued', 'running', 'paused', 'blocked', 'failed'
-    )),
-    occurred_at TEXT NOT NULL,
-    actor TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    next_action TEXT NOT NULL,
-    responsibility TEXT NOT NULL CHECK (responsibility IN ('owner', 'codex')),
-    active_job_id TEXT,
-    checkpoint TEXT,
-    blocker TEXT,
-    recovery TEXT,
-    PRIMARY KEY (project_id, sequence)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_d2_events (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    sequence INTEGER NOT NULL,
-    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    state TEXT NOT NULL CHECK (state IN ('sealed', 'authorized', 'consumed', 'contaminated')),
-    boundary_hash TEXT NOT NULL,
-    actor TEXT NOT NULL,
-    occurred_at TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    PRIMARY KEY (project_id, sequence)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_launch_reservations (
-    reservation_id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    phase TEXT NOT NULL CHECK (phase = 'pilot'),
-    kind TEXT NOT NULL,
-    launch_number INTEGER NOT NULL CHECK (launch_number BETWEEN 1 AND 3),
-    config_fingerprint TEXT NOT NULL,
-    budget_reserved_json TEXT NOT NULL,
-    execution_sequence INTEGER NOT NULL,
-    reserved_at TEXT NOT NULL,
-    UNIQUE (project_id, contract_id, kind, launch_number),
-    UNIQUE (project_id, execution_sequence),
-    FOREIGN KEY (project_id, execution_sequence)
-        REFERENCES research_execution_events(project_id, sequence)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_attempt_records (
-    attempt_id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    phase TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    status TEXT NOT NULL,
-    config_fingerprint TEXT NOT NULL,
-    budget_used_json TEXT NOT NULL,
-    run_id TEXT,
-    error TEXT,
-    details_json TEXT NOT NULL,
-    recorded_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_launch_attempt_links (
-    reservation_id TEXT PRIMARY KEY
-        REFERENCES research_launch_reservations(reservation_id),
-    attempt_id TEXT NOT NULL UNIQUE REFERENCES research_attempt_records(attempt_id),
-    linked_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_decision_events (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    sequence INTEGER NOT NULL,
-    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    outcome TEXT NOT NULL CHECK (
-        outcome IN ('SUPPORTED', 'CONTRADICTED', 'INCONCLUSIVE', 'INVALID')
-    ),
-    disposition TEXT NOT NULL CHECK (
-        disposition IN ('advance_to_strategy', 'revise', 'park', 'reject')
-    ),
-    actor TEXT NOT NULL,
-    actor_kind TEXT NOT NULL CHECK (actor_kind IN ('human', 'agent')),
-    occurred_at TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    PRIMARY KEY (project_id, sequence),
-    UNIQUE (project_id, contract_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_gate_override_events (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    sequence INTEGER NOT NULL,
-    actor TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    recorded_at TEXT NOT NULL,
-    PRIMARY KEY (project_id, sequence)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_contract_strategy_links (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    version_id TEXT NOT NULL REFERENCES strategy_versions(version_id),
-    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    linked_at TEXT NOT NULL,
-    PRIMARY KEY (project_id, version_id),
-    UNIQUE (project_id, contract_id, version_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_contract_experiment_links (
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    experiment_id TEXT NOT NULL REFERENCES experiment_specs(experiment_id),
-    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    linked_at TEXT NOT NULL,
-    PRIMARY KEY (project_id, experiment_id),
-    UNIQUE (project_id, contract_id, experiment_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_context_packets (
-    packet_id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    packet_kind TEXT NOT NULL CHECK (packet_kind IN (
-        'asset', 'research_case', 'experiment', 'chart', 'validation', 'strategy_promotion'
-    )),
-    protocol_id TEXT,
-    protocol_content_hash TEXT,
-    payload_json TEXT NOT NULL,
-    created_by TEXT NOT NULL,
-    created_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_case_notes (
-    note_id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    sequence INTEGER NOT NULL,
-    note_kind TEXT NOT NULL CHECK (note_kind IN (
-        'critique', 'confounder_review', 'test_design', 'completeness_review', 'synthesis'
-    )),
-    body TEXT NOT NULL,
-    author TEXT NOT NULL,
-    author_kind TEXT NOT NULL CHECK (author_kind IN ('owner', 'agent')),
-    context_packet_id TEXT REFERENCES research_context_packets(packet_id),
-    created_at TEXT NOT NULL,
-    UNIQUE (project_id, sequence)
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_research_context_packets_project
-    ON research_context_packets(project_id, created_at, packet_id);
-CREATE INDEX IF NOT EXISTS idx_research_case_notes_project
-    ON research_case_notes(project_id, sequence);
-
-CREATE TABLE IF NOT EXISTS research_dataset_refs (
-    ref_id TEXT PRIMARY KEY,
-    dataset_kind TEXT NOT NULL CHECK (dataset_kind IN (
-        'store_slice', 'snapshot', 'quantpad_receipt'
-    )),
-    instrument TEXT NOT NULL,
-    provider TEXT NOT NULL,
-    start_ts TEXT NOT NULL,
-    end_ts TEXT NOT NULL,
-    bar_duration_minutes INTEGER,
-    origin_json TEXT NOT NULL,
-    research_only INTEGER NOT NULL CHECK (research_only = 1),
-    registered_by TEXT NOT NULL,
-    registered_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_dataset_audits (
-    ref_id TEXT NOT NULL REFERENCES research_dataset_refs(ref_id),
-    sequence INTEGER NOT NULL,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    run_id TEXT NOT NULL,
-    summary_json TEXT NOT NULL,
-    recorded_at TEXT NOT NULL,
-    PRIMARY KEY (ref_id, sequence)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS monte_carlo_reviews (
-    review_id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    experiment_id TEXT NOT NULL REFERENCES experiment_specs(experiment_id),
-    decision TEXT NOT NULL CHECK (decision IN ('continue', 'revise', 'reject')),
-    actor TEXT NOT NULL,
-    rationale TEXT NOT NULL,
-    evidence_hashes_json TEXT NOT NULL,
-    recorded_at TEXT NOT NULL,
-    UNIQUE (project_id, experiment_id)
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_monte_carlo_reviews_project
-    ON monte_carlo_reviews(project_id, recorded_at, review_id);
-
-CREATE INDEX IF NOT EXISTS idx_research_dataset_refs_instrument
-    ON research_dataset_refs(instrument, registered_at, ref_id);
-CREATE INDEX IF NOT EXISTS idx_research_dataset_audits_project
-    ON research_dataset_audits(project_id, recorded_at);
-
-CREATE INDEX IF NOT EXISTS idx_research_source_records_project
-    ON research_source_records(project_id, created_at, source_id);
-CREATE INDEX IF NOT EXISTS idx_research_packs_project
-    ON research_source_packs(project_id, created_at, pack_id);
-CREATE INDEX IF NOT EXISTS idx_research_contracts_project
-    ON research_contracts(project_id, created_at, contract_id);
-CREATE INDEX IF NOT EXISTS idx_research_phase_project
-    ON research_phase_events(project_id, occurred_at, sequence);
-CREATE INDEX IF NOT EXISTS idx_research_attempt_records_project
-    ON research_attempt_records(project_id, recorded_at, attempt_id);
-CREATE INDEX IF NOT EXISTS idx_research_launch_reservations_project
-    ON research_launch_reservations(project_id, reserved_at, reservation_id);
-CREATE INDEX IF NOT EXISTS idx_research_launch_attempt_links_attempt
-    ON research_launch_attempt_links(attempt_id);
-"""
-
-_SCHEMA_V3 = """
-CREATE TABLE IF NOT EXISTS owner_enrollment_requests (
-    request_id TEXT PRIMARY KEY,
-    token_hash TEXT NOT NULL UNIQUE,
-    replace_existing INTEGER NOT NULL CHECK (replace_existing IN (0, 1)),
-    reason TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    used_at TEXT
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS owner_credentials (
-    credential_id TEXT PRIMARY KEY,
-    public_key BLOB NOT NULL,
-    sign_count INTEGER NOT NULL CHECK (sign_count >= 0),
-    actor TEXT NOT NULL,
-    transports_json TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    revoked_at TEXT
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS owner_credential_events (
-    event_id TEXT PRIMARY KEY,
-    credential_id TEXT REFERENCES owner_credentials(credential_id),
-    event_type TEXT NOT NULL CHECK (event_type IN (
-        'enrollment_requested', 'enrolled', 'revoked', 'replaced', 'recovery_failed'
-    )),
-    reason TEXT NOT NULL,
-    occurred_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS owner_auth_challenges (
-    challenge_id TEXT PRIMARY KEY,
-    ceremony TEXT NOT NULL CHECK (ceremony IN ('registration', 'action')),
-    challenge BLOB NOT NULL,
-    enrollment_request_id TEXT REFERENCES owner_enrollment_requests(request_id),
-    binding_json TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    used_at TEXT,
-    verified_credential_id TEXT REFERENCES owner_credentials(credential_id)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS owner_action_receipts (
-    receipt_id TEXT PRIMARY KEY,
-    challenge_id TEXT NOT NULL UNIQUE REFERENCES owner_auth_challenges(challenge_id),
-    credential_id TEXT NOT NULL REFERENCES owner_credentials(credential_id),
-    actor TEXT NOT NULL,
-    action_type TEXT NOT NULL CHECK (action_type IN (
-        'screen_source_claim', 'reject_source_claim', 'revise_source_claim',
-        'freeze_source_pack', 'approve_exploration', 'reject_exploration',
-        'revise_exploration', 'launch_d1', 'approve_confirmation',
-        'reject_confirmation', 'launch_d2', 'record_final_disposition'
-    )),
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    artifact_hash TEXT NOT NULL,
-    expected_case_revision TEXT NOT NULL,
-    consequence_summary TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    request_hash TEXT NOT NULL,
-    assertion_hash TEXT NOT NULL,
-    outcome_json TEXT NOT NULL,
-    performed_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_source_claim_owner_events (
-    claim_id TEXT NOT NULL,
-    sequence INTEGER NOT NULL,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    decision TEXT NOT NULL CHECK (decision IN ('reject', 'revise')),
-    actor TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    payload_json TEXT NOT NULL,
-    occurred_at TEXT NOT NULL,
-    PRIMARY KEY (claim_id, sequence)
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_owner_credentials_active
-    ON owner_credentials(revoked_at, created_at, credential_id);
-CREATE INDEX IF NOT EXISTS idx_owner_auth_challenges_expiry
-    ON owner_auth_challenges(ceremony, expires_at, used_at);
-CREATE INDEX IF NOT EXISTS idx_owner_action_receipts_project
-    ON owner_action_receipts(project_id, performed_at, receipt_id);
-CREATE INDEX IF NOT EXISTS idx_source_claim_owner_events_project
-    ON research_source_claim_owner_events(project_id, occurred_at, claim_id);
-
-CREATE TRIGGER IF NOT EXISTS owner_action_receipts_no_update
-BEFORE UPDATE ON owner_action_receipts
-BEGIN SELECT RAISE(ABORT, 'owner action receipts are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS owner_action_receipts_no_delete
-BEFORE DELETE ON owner_action_receipts
-BEGIN SELECT RAISE(ABORT, 'owner action receipts are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS owner_credential_events_no_update
-BEFORE UPDATE ON owner_credential_events
-BEGIN SELECT RAISE(ABORT, 'owner credential events are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS owner_credential_events_no_delete
-BEFORE DELETE ON owner_credential_events
-BEGIN SELECT RAISE(ABORT, 'owner credential events are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS research_source_claim_owner_events_no_update
-BEFORE UPDATE ON research_source_claim_owner_events
-BEGIN SELECT RAISE(ABORT, 'source claim owner events are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS research_source_claim_owner_events_no_delete
-BEFORE DELETE ON research_source_claim_owner_events
-BEGIN SELECT RAISE(ABORT, 'source claim owner events are append-only'); END;
-"""
-
-_SCHEMA_V4 = """
-CREATE TABLE IF NOT EXISTS literature_discoveries (
-    discovery_id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    query TEXT NOT NULL,
-    artifact_sha256 TEXT NOT NULL,
-    artifact_relpath TEXT NOT NULL,
-    budget_json TEXT NOT NULL,
-    created_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_document_texts (
-    extraction_id TEXT PRIMARY KEY,
-    source_id TEXT NOT NULL UNIQUE REFERENCES research_source_records(source_id),
-    source_sha256 TEXT NOT NULL,
-    artifact_sha256 TEXT NOT NULL,
-    artifact_relpath TEXT NOT NULL,
-    status TEXT NOT NULL CHECK (status IN (
-        'extracted', 'encrypted', 'image_only', 'truncated', 'parser_failed'
-    )),
-    page_count INTEGER NOT NULL CHECK (page_count >= 0),
-    character_count INTEGER NOT NULL CHECK (character_count >= 0),
-    parser_version TEXT NOT NULL,
-    config_hash TEXT NOT NULL,
-    warnings_json TEXT NOT NULL,
-    created_at TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS research_source_claim_anchors (
-    claim_id TEXT NOT NULL,
-    revision INTEGER NOT NULL,
-    extraction_id TEXT NOT NULL REFERENCES research_document_texts(extraction_id),
-    page INTEGER NOT NULL CHECK (page >= 1),
-    char_start INTEGER NOT NULL CHECK (char_start >= 0),
-    char_end INTEGER NOT NULL CHECK (char_end > char_start),
-    exact_text_sha256 TEXT NOT NULL,
-    PRIMARY KEY (claim_id, revision),
-    FOREIGN KEY (claim_id, revision) REFERENCES research_source_claims(claim_id, revision)
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_literature_discoveries_project
-    ON literature_discoveries(project_id, created_at, discovery_id);
-CREATE INDEX IF NOT EXISTS idx_research_document_texts_source
-    ON research_document_texts(source_id, created_at, extraction_id);
-CREATE INDEX IF NOT EXISTS idx_research_claim_anchors_extraction
-    ON research_source_claim_anchors(extraction_id, claim_id, revision);
-
-CREATE TRIGGER IF NOT EXISTS literature_discoveries_no_update
-BEFORE UPDATE ON literature_discoveries
-BEGIN SELECT RAISE(ABORT, 'literature discoveries are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS literature_discoveries_no_delete
-BEFORE DELETE ON literature_discoveries
-BEGIN SELECT RAISE(ABORT, 'literature discoveries are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS research_document_texts_no_update
-BEFORE UPDATE ON research_document_texts
-BEGIN SELECT RAISE(ABORT, 'research document texts are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS research_document_texts_no_delete
-BEFORE DELETE ON research_document_texts
-BEGIN SELECT RAISE(ABORT, 'research document texts are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS research_source_claim_anchors_no_update
-BEFORE UPDATE ON research_source_claim_anchors
-BEGIN SELECT RAISE(ABORT, 'research source claim anchors are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS research_source_claim_anchors_no_delete
-BEFORE DELETE ON research_source_claim_anchors
-BEGIN SELECT RAISE(ABORT, 'research source claim anchors are append-only'); END;
-"""
-
-_SCHEMA_V5_RECEIPT = """
-CREATE TABLE IF NOT EXISTS owner_action_receipts (
-    receipt_id TEXT PRIMARY KEY,
-    challenge_id TEXT NOT NULL UNIQUE REFERENCES owner_auth_challenges(challenge_id),
-    credential_id TEXT NOT NULL REFERENCES owner_credentials(credential_id),
-    actor TEXT NOT NULL,
-    action_type TEXT NOT NULL CHECK (action_type IN (
-        'screen_source_claim', 'reject_source_claim', 'revise_source_claim',
-        'freeze_source_pack', 'approve_exploration', 'reject_exploration',
-        'revise_exploration', 'launch_d1', 'approve_confirmation',
-        'reject_confirmation', 'launch_d2', 'record_final_disposition',
-        'record_semantic_event'
-    )),
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    artifact_hash TEXT NOT NULL,
-    expected_case_revision TEXT NOT NULL,
-    consequence_summary TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    request_hash TEXT NOT NULL,
-    assertion_hash TEXT NOT NULL,
-    outcome_json TEXT NOT NULL,
-    performed_at TEXT NOT NULL
-) STRICT;
-"""
-
-_SCHEMA_V5 = (
-    _SCHEMA_V5_RECEIPT
-    + """
-CREATE TABLE IF NOT EXISTS research_semantic_events (
-    event_id TEXT PRIMARY KEY,
-    event_sha256 TEXT NOT NULL UNIQUE,
-    project_id TEXT NOT NULL REFERENCES projects(project_id),
-    sequence INTEGER NOT NULL CHECK (sequence >= 1),
-    event_type TEXT NOT NULL CHECK (event_type IN ('definition', 'review', 'freeze')),
-    case_contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    source_contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
-    case_revision TEXT NOT NULL,
-    prior_semantic_head_sha256 TEXT NOT NULL,
-    semantic_artifact_id TEXT NOT NULL,
-    semantic_artifact_sha256 TEXT NOT NULL,
-    verified_read_sha256 TEXT NOT NULL,
-    projection_sha256 TEXT NOT NULL,
-    run_id TEXT NOT NULL,
-    cutoff_confirmed_at TEXT NOT NULL,
-    definition_id TEXT NOT NULL,
-    review_id TEXT,
-    review_decision TEXT CHECK (review_decision IN ('approve', 'reject')),
-    payload_json TEXT NOT NULL,
-    payload_sha256 TEXT NOT NULL,
-    receipt_id TEXT NOT NULL UNIQUE REFERENCES owner_action_receipts(receipt_id),
-    actor TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    recorded_at TEXT NOT NULL,
-    UNIQUE (project_id, sequence),
-    UNIQUE (project_id, semantic_artifact_id),
-    FOREIGN KEY (project_id, case_contract_id)
-        REFERENCES research_contracts(project_id, contract_id),
-    FOREIGN KEY (project_id, source_contract_id)
-        REFERENCES research_contracts(project_id, contract_id),
-    FOREIGN KEY (project_id, definition_id)
-        REFERENCES research_semantic_events(project_id, semantic_artifact_id),
-    FOREIGN KEY (project_id, review_id)
-        REFERENCES research_semantic_events(project_id, semantic_artifact_id),
-    CHECK (event_id = 'se_' || event_sha256),
-    CHECK (length(event_sha256) = 64),
-    CHECK (length(case_revision) = 64),
-    CHECK (length(prior_semantic_head_sha256) = 64),
-    CHECK (length(semantic_artifact_sha256) = 64),
-    CHECK (length(verified_read_sha256) = 64),
-    CHECK (length(projection_sha256) = 64),
-    CHECK (length(payload_sha256) = 64),
-    CHECK (length(run_id) = 16),
-    CHECK (
-        (event_type = 'definition'
-            AND substr(semantic_artifact_id, 1, 3) = 'sd_'
-            AND definition_id = semantic_artifact_id
-            AND review_id IS NULL AND review_decision IS NULL)
-        OR
-        (event_type = 'review'
-            AND substr(semantic_artifact_id, 1, 3) = 'sr_'
-            AND substr(definition_id, 1, 3) = 'sd_'
-            AND review_id = semantic_artifact_id
-            AND review_decision IS NOT NULL)
-        OR
-        (event_type = 'freeze'
-            AND substr(semantic_artifact_id, 1, 3) = 'sf_'
-            AND substr(definition_id, 1, 3) = 'sd_'
-            AND substr(review_id, 1, 3) = 'sr_'
-            AND review_id IS NOT NULL
-            AND review_decision IS NULL)
-    ),
-    CHECK (semantic_artifact_sha256 = substr(semantic_artifact_id, 4))
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_owner_action_receipts_project
-    ON owner_action_receipts(project_id, performed_at, receipt_id);
-CREATE TRIGGER IF NOT EXISTS owner_action_receipts_no_update
-BEFORE UPDATE ON owner_action_receipts
-BEGIN SELECT RAISE(ABORT, 'owner action receipts are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS owner_action_receipts_no_delete
-BEFORE DELETE ON owner_action_receipts
-BEGIN SELECT RAISE(ABORT, 'owner action receipts are append-only'); END;
-
-CREATE INDEX IF NOT EXISTS idx_research_semantic_events_contract
-    ON research_semantic_events(project_id, case_contract_id, sequence);
-CREATE INDEX IF NOT EXISTS idx_research_semantic_events_source
-    ON research_semantic_events(project_id, source_contract_id, sequence);
-CREATE INDEX IF NOT EXISTS idx_research_semantic_events_artifact
-    ON research_semantic_events(project_id, verified_read_sha256, sequence);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_research_semantic_events_one_review
-    ON research_semantic_events(project_id, definition_id)
-    WHERE event_type = 'review';
-CREATE UNIQUE INDEX IF NOT EXISTS idx_research_semantic_events_one_freeze
-    ON research_semantic_events(project_id, definition_id)
-    WHERE event_type = 'freeze';
-
-CREATE TRIGGER IF NOT EXISTS research_semantic_events_no_update
-BEFORE UPDATE ON research_semantic_events
-BEGIN SELECT RAISE(ABORT, 'research semantic events are append-only'); END;
-CREATE TRIGGER IF NOT EXISTS research_semantic_events_no_delete
-BEFORE DELETE ON research_semantic_events
-BEGIN SELECT RAISE(ABORT, 'research semantic events are append-only'); END;
-"""
-)
-
-# Executed exactly once, inside the schema-v2 writer transaction (migration or fresh creation).
-# It must never run on a steady-state open: a re-executed backfill would silently re-derive a
-# lost governance row from the caller-controlled ``created_at`` date rule, and the write lock it
-# takes would make read-only projections contend with concurrent writers.
-_GOVERNANCE_BACKFILL = """
-INSERT OR IGNORE INTO project_research_governance (
-    project_id, research_required, origin, recorded_at
-)
-SELECT
-    project_id,
-    CASE WHEN created_at < '2026-08-06T00:00:00.000000Z' THEN 0 ELSE 1 END,
-    CASE
-        WHEN created_at < '2026-08-06T00:00:00.000000Z' THEN 'legacy_import'
-        ELSE 'strategy_development'
-    END,
-    created_at
-FROM projects;
-"""
-
-_DDL_OBJECT_NAME = re.compile(r"CREATE (?:TABLE|INDEX|TRIGGER) IF NOT EXISTS (\w+)")
-_EXPECTED_SCHEMA_OBJECTS: Final = frozenset(
-    _DDL_OBJECT_NAME.findall(_SCHEMA)
-    + _DDL_OBJECT_NAME.findall(_SCHEMA_V2)
-    + _DDL_OBJECT_NAME.findall(_SCHEMA_V3)
-    + _DDL_OBJECT_NAME.findall(_SCHEMA_V4)
-)
-_PROTECTED_V5_SCHEMA_OBJECTS: Final = frozenset(
-    {
-        "owner_action_receipts",
-        "idx_owner_action_receipts_project",
-        "owner_action_receipts_no_update",
-        "owner_action_receipts_no_delete",
-        "research_semantic_events",
-        "idx_research_semantic_events_contract",
-        "idx_research_semantic_events_source",
-        "idx_research_semantic_events_artifact",
-        "idx_research_semantic_events_one_review",
-        "idx_research_semantic_events_one_freeze",
-        "research_semantic_events_no_update",
-        "research_semantic_events_no_delete",
-    }
-)
-_EXPECTED_HEALABLE_SCHEMA_OBJECTS: Final = _EXPECTED_SCHEMA_OBJECTS - _PROTECTED_V5_SCHEMA_OBJECTS
 
 
 def _required_text(value: object, field: str, *, max_length: int = _MAX_TEXT) -> str:
@@ -1922,8 +1080,14 @@ def _verified_v3_backup(connection: sqlite3.Connection, database: Path) -> None:
 
 
 def _verified_v4_backup(connection: sqlite3.Connection, database: Path) -> None:
-    """Create one atomic, integrity-checked backup before the v4->v5 migration."""
-    backup = database.with_name(f"{database.name}.v4.bak")
+    _verified_receipt_backup(connection, database, V4_SCHEMA_VERSION)
+
+
+def _verified_receipt_backup(
+    connection: sqlite3.Connection, database: Path, source_version: int
+) -> None:
+    """Create one atomic, integrity-checked backup before the receipt-schema migration."""
+    backup = database.with_name(f"{database.name}.v{source_version}.bak")
     if backup.is_symlink():
         raise DataError(f"control store migration backup must not be a symlink: {backup}")
     if backup.exists():
@@ -1936,10 +1100,10 @@ def _verified_v4_backup(connection: sqlite3.Connection, database: Path) -> None:
             fingerprint = _logical_database_fingerprint(existing)
         finally:
             existing.close()
-        if integrity != ("ok",) or version != (V4_SCHEMA_VERSION,):
-            raise DataError("existing control store v4 migration backup is invalid")
+        if integrity != ("ok",) or version != (source_version,):
+            raise DataError("existing control store receipt migration backup is invalid")
         if fingerprint != _logical_database_fingerprint(connection):
-            raise DataError("existing control store v4 migration backup does not match")
+            raise DataError("existing control store receipt migration backup does not match")
         return
     fd, raw_tmp = tempfile.mkstemp(prefix=f".{backup.name}.", suffix=".tmp", dir=backup.parent)
     os.close(fd)
@@ -1954,14 +1118,14 @@ def _verified_v4_backup(connection: sqlite3.Connection, database: Path) -> None:
         target = sqlite3.connect(temporary)
         snapshot.backup(target)
         if target.execute("PRAGMA integrity_check").fetchone() != ("ok",):
-            raise DataError("cannot verify control store v4 migration backup")
-        if target.execute("PRAGMA user_version").fetchone() != (V4_SCHEMA_VERSION,):
-            raise DataError("cannot verify control store v4 migration backup version")
+            raise DataError("cannot verify control store receipt migration backup")
+        if target.execute("PRAGMA user_version").fetchone() != (source_version,):
+            raise DataError("cannot verify control store receipt migration backup version")
         target_fingerprint = _logical_database_fingerprint(target)
         target.close()
         target = None
         if target_fingerprint != _logical_database_fingerprint(connection):
-            raise DataError("control store v4 migration backup does not match")
+            raise DataError("control store receipt migration backup does not match")
         os.replace(temporary, backup)
     finally:
         if target is not None:
@@ -2022,7 +1186,7 @@ def _apply_schema_v5_locked(connection: sqlite3.Connection) -> None:
     _execute_static_sql_script(connection, _SCHEMA_V5)
     if connection.execute("PRAGMA foreign_key_check").fetchall():
         raise DataError("control store v5 foreign-key check failed")
-    connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    connection.execute(f"PRAGMA user_version = {V5_SCHEMA_VERSION}")
 
 
 def _execute_static_sql_script(connection: sqlite3.Connection, script: str) -> None:
@@ -2075,7 +1239,7 @@ def _apply_schema_v5_fresh(connection: sqlite3.Connection) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version == SCHEMA_VERSION:
+        if locked_version in {V5_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != 0:
@@ -2253,7 +1417,7 @@ def _migrate_schema_v1(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
+        if locked_version in {V4_SCHEMA_VERSION, V5_SCHEMA_VERSION, SCHEMA_VERSION}:
             # Another process completed the migration while this connection waited for the lock.
             connection.commit()
             return
@@ -2274,7 +1438,7 @@ def _migrate_schema_v2(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
+        if locked_version in {V4_SCHEMA_VERSION, V5_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != OWNER_AUTH_PREVIOUS_SCHEMA_VERSION:
@@ -2296,7 +1460,7 @@ def _migrate_schema_v3(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version in {V4_SCHEMA_VERSION, SCHEMA_VERSION}:
+        if locked_version in {V4_SCHEMA_VERSION, V5_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != PREVIOUS_SCHEMA_VERSION:
@@ -2317,7 +1481,7 @@ def _migrate_schema_v4(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version == SCHEMA_VERSION:
+        if locked_version in {V5_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != V4_SCHEMA_VERSION:
@@ -2329,6 +1493,81 @@ def _migrate_schema_v4(connection: sqlite3.Connection, database: Path) -> None:
         if connection.in_transaction:
             connection.rollback()
         raise
+
+
+def _validate_protected_v6_schema(connection: sqlite3.Connection) -> None:
+    columns = {
+        str(row[1]): row for row in connection.execute("PRAGMA table_info(owner_action_receipts)")
+    }
+    method = columns.get("authorization_method")
+    credential = columns.get("credential_id")
+    row = connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='owner_action_receipts'"
+    ).fetchone()
+    sql = "" if row is None else "".join(str(row[0]).split())
+    required = (
+        "CHECK(authorization_methodIN('webauthn','local_confirmation'))",
+        "CHECK((authorization_method='webauthn'ANDcredential_idISNOTNULL)"
+        "OR(authorization_method='local_confirmation'ANDcredential_idISNULL))",
+    )
+    if (
+        method is None
+        or method[2] != "TEXT"
+        or method[3] != 1
+        or method[4] != "'webauthn'"
+        or credential is None
+        or credential[3] != 0
+        or not all(fragment in sql for fragment in required)
+    ):
+        raise DataError("protected schema object owner_action_receipts v6 is invalid")
+
+
+def _migrate_schema_v5(
+    connection: sqlite3.Connection, database: Path, *, backup: bool = True
+) -> None:
+    """Rebuild the receipt parent without rewriting historical rows or child references."""
+    connection.execute("PRAGMA foreign_keys = OFF")
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+        if version == SCHEMA_VERSION:
+            connection.commit()
+            return
+        if version != V5_SCHEMA_VERSION:
+            raise DataError(f"unsupported control store schema version {version}")
+        _validate_protected_v5_schema(connection)
+        if backup:
+            _verified_receipt_backup(connection, database, V5_SCHEMA_VERSION)
+        before = [
+            tuple(row)
+            for row in connection.execute("SELECT * FROM owner_action_receipts ORDER BY receipt_id")
+        ]
+        _drop_owner_receipt_support(connection)
+        _execute_static_sql_script(
+            connection,
+            _SCHEMA_V6_RECEIPT.replace("owner_action_receipts (", "owner_action_receipts_v6_new ("),
+        )
+        connection.execute("""INSERT INTO owner_action_receipts_v6_new
+            SELECT *, 'webauthn' FROM owner_action_receipts""")
+        connection.execute("DROP TABLE owner_action_receipts")
+        connection.execute(
+            "ALTER TABLE owner_action_receipts_v6_new RENAME TO owner_action_receipts"
+        )
+        _execute_static_sql_script(connection, _SCHEMA_V5)
+        after = [
+            tuple(row)[:-1]
+            for row in connection.execute("SELECT * FROM owner_action_receipts ORDER BY receipt_id")
+        ]
+        if before != after or connection.execute("PRAGMA foreign_key_check").fetchall():
+            raise DataError("local confirmation migration changed historical receipt integrity")
+        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        connection.commit()
+    except Exception:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+    finally:
+        connection.execute("PRAGMA foreign_keys = ON")
 
 
 def _enum_value(value: object, field: str, allowed: frozenset[str]) -> str:
@@ -2464,9 +1703,11 @@ class ControlStore:
                 OWNER_AUTH_PREVIOUS_SCHEMA_VERSION,
                 PREVIOUS_SCHEMA_VERSION,
                 V4_SCHEMA_VERSION,
+                V5_SCHEMA_VERSION,
                 SCHEMA_VERSION,
             }:
                 raise DataError(f"unsupported control store schema version {version}")
+            fresh = version == 0
             if version == 0:
                 _apply_schema_v5_fresh(connection)
             elif version == LEGACY_SCHEMA_VERSION:
@@ -2486,6 +1727,10 @@ class ControlStore:
                 # fail loud, never regenerate from the created_at date rule). Idempotent
                 # DDL healing runs only when a declared object is actually missing.
                 _heal_missing_schema_objects(connection)
+            current_version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+            if current_version == V5_SCHEMA_VERSION:
+                _migrate_schema_v5(connection, database, backup=not fresh)
+            _validate_protected_v6_schema(connection)
             # Journal-mode negotiation is deliberately after the version/migration path.
             # SQLite treats changing the mode as a database-wide write; doing it before the
             # migration lock lets concurrent openers fail with SQLITE_BUSY before BEGIN
@@ -5606,6 +4851,22 @@ class ControlStore:
             approved_payload: dict[str, object] | None = None
             if clean_decision == "approve":
                 approved_payload = self._validate_research_contract_for_approval(connection, row)
+                # New exploration approvals use resolved family parameters. This policy
+                # must not run in shared validators used by historical launch/admission.
+                # Confirmation and the separate crypto plan retain their contracts.
+                plan = approved_payload.get("analysis_plan")
+                if clean_scope == "exploration" and not isinstance(plan, Mapping):
+                    raise DataError(
+                        "new exploration approval requires ResearchAnalysisPlanV2; "
+                        "create a new draft"
+                    )
+                if clean_scope == "exploration" and isinstance(plan, Mapping):
+                    from alpha_cli.research_analysis_plan import (
+                        validate_new_exploration_plan,
+                    )
+
+                    budget = _budget_values(approved_payload.get("budget"), require_minimum=True)
+                    validate_new_exploration_plan(plan, max_grid_cells=int(budget["variants"]))
                 if clean_scope == "confirmation":
                     parent_id = row["parent_contract_id"]
                     if not isinstance(parent_id, str):
@@ -6491,13 +5752,14 @@ class ControlStore:
         self,
         *,
         challenge_id: str,
-        credential_id: str,
+        credential_id: str | None,
         previous_sign_count: int,
         new_sign_count: int,
         assertion_hash: str,
         payload: Mapping[str, object],
         now: datetime,
         receipt_id: str,
+        confirmation_token: str | None = None,
     ) -> dict[str, object]:
         """Atomically consume a semantic Touch ID action and append its ledger event."""
         cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
@@ -6505,7 +5767,7 @@ class ControlStore:
         assertion_digest = _required_text(assertion_hash, "owner assertion hash", max_length=64)
         if _SHA256_RE.fullmatch(assertion_digest) is None:
             raise DataError("invalid control owner assertion hash")
-        if new_sign_count <= previous_sign_count:
+        if credential_id is not None and new_sign_count <= previous_sign_count:
             raise DataError("owner credential signature counter regressed")
         clean_payload = _semantic_payload(payload)
         timestamp = _format_timestamp(now)
@@ -6521,14 +5783,33 @@ class ControlStore:
                 or challenge["ceremony"] != "action"
                 or challenge["used_at"] is not None
                 or str(challenge["expires_at"]) <= timestamp
-                or credential is None
-                or credential["revoked_at"] is not None
-                or int(credential["sign_count"]) != previous_sign_count
             ):
                 raise DataError("owner semantic action is invalid, expired, stale, or already used")
             binding = _decode_json(challenge["binding_json"], "owner action binding")
             if not isinstance(binding, dict):
                 raise DataError("corrupt control store: owner action binding is not an object")
+            method = str(binding.get("authorization_method", "webauthn"))
+            if method == "local_confirmation":
+                if (
+                    credential_id is not None
+                    or confirmation_token is None
+                    or not secrets.compare_digest(
+                        confirmation_token, bytes(challenge["challenge"]).hex()
+                    )
+                ):
+                    raise DataError("invalid local confirmation token")
+                actor = "owner:local-confirmation"
+            elif method == "webauthn":
+                if (
+                    confirmation_token is not None
+                    or credential is None
+                    or credential["revoked_at"] is not None
+                    or int(credential["sign_count"]) != previous_sign_count
+                ):
+                    raise DataError("owner action credential is invalid or stale")
+                actor = str(credential["actor"])
+            else:
+                raise DataError("unsupported owner authorization method")
             action_type = _enum_value(
                 binding.get("action_type"), "owner action type", OWNER_ACTION_TYPES
             )
@@ -6614,7 +5895,6 @@ class ControlStore:
                 definition_id=definition_id,
                 review_id=review_id,
             )
-            actor = str(credential["actor"])
             event_id, _identity = _semantic_event_identity(
                 source=source_map,
                 payload=clean_payload,
@@ -6645,8 +5925,8 @@ class ControlStore:
                 """INSERT INTO owner_action_receipts
                 (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
                  artifact_hash, expected_case_revision, consequence_summary, reason,
-                 request_hash, assertion_hash, outcome_json, performed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 request_hash, assertion_hash, outcome_json, performed_at, authorization_method)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     rid,
                     cid,
@@ -6662,6 +5942,7 @@ class ControlStore:
                     assertion_digest,
                     _canonical_json(outcome, "owner action outcome"),
                     timestamp,
+                    method,
                 ),
             )
             self.append_semantic_event(
@@ -6674,6 +5955,7 @@ class ControlStore:
                 recorded_at=timestamp,
             )
         return {
+            "authorization_method": method,
             "receipt_id": rid,
             "action_type": action_type,
             "project_id": project_id,
@@ -8117,6 +7399,7 @@ class ControlStore:
         symbol: str | None = None,
         protocol_id: str | None = None,
         protocol_content_hash: str | None = None,
+        screening_reference: Mapping[str, str] | None = None,
         at: datetime | None = None,
     ) -> dict[str, object]:
         """Assemble and append-only-record one content-addressed Codex context packet.
@@ -8136,6 +7419,25 @@ class ControlStore:
             raise DataError("research packet protocol_content_hash must be a sha256 hex digest")
         if (clean_protocol is None) != (clean_protocol_hash is None):
             raise DataError("research packet protocol id and content hash travel together")
+        clean_screening = None
+        if screening_reference is not None:
+            clean_screening = dict(screening_reference)
+            digest_keys = {"scan_id", "spec_sha256", "result_sha256", "result_digest"}
+            if (
+                set(clean_screening) != digest_keys | {"authority", "attempt_id"}
+                or clean_screening.get("authority") != "none"
+                or any(
+                    not isinstance(clean_screening.get(key), str)
+                    or _SHA256_RE.fullmatch(clean_screening[key]) is None
+                    for key in digest_keys
+                )
+                or not isinstance(clean_screening.get("attempt_id"), str)
+                or re.fullmatch(r"[0-9a-f]{32}", clean_screening["attempt_id"]) is None
+            ):
+                raise DataError(
+                    "research packet screening reference must contain only "
+                    "non-authoritative identifiers and hashes"
+                )
         clean_symbol = None
         if clean_kind == "asset":
             if symbol is None:
@@ -8245,6 +7547,8 @@ class ControlStore:
                     "dataset_refs": "registered research datasets arrive with the data plane",
                 },
             }
+            if clean_screening is not None:
+                payload["screening_reference"] = clean_screening
             packet_id = _content_id("cp", payload)
             existing = connection.execute(
                 "SELECT * FROM research_context_packets WHERE packet_id = ?",
@@ -12767,7 +12071,10 @@ class ControlStore:
         if ceremony == "action" and enrollment_id is not None:
             raise DataError("action challenge cannot carry an enrollment request")
         with self._transaction(write=True) as connection:
-            if ceremony == "action":
+            if (
+                ceremony == "action"
+                and clean_binding.get("authorization_method") != "local_confirmation"
+            ):
                 active = int(
                     connection.execute(
                         "SELECT COUNT(*) FROM owner_credentials WHERE revoked_at IS NULL"
@@ -12961,13 +12268,14 @@ class ControlStore:
         self,
         *,
         challenge_id: str,
-        credential_id: str,
+        credential_id: str | None,
         previous_sign_count: int,
         new_sign_count: int,
         assertion_hash: str,
         outcome: Mapping[str, object],
         now: datetime,
         receipt_id: str | None = None,
+        confirmation_token: str | None = None,
     ) -> dict[str, object]:
         """Consume one verified assertion and append its exact action-bound receipt once."""
         cid = _canonical_uuid(challenge_id, "owner auth challenge_id")
@@ -12975,7 +12283,7 @@ class ControlStore:
         assertion_digest = _required_text(assertion_hash, "owner assertion hash", max_length=64)
         if _SHA256_RE.fullmatch(assertion_digest) is None:
             raise DataError("invalid control owner assertion hash")
-        if new_sign_count <= previous_sign_count:
+        if credential_id is not None and new_sign_count <= previous_sign_count:
             raise DataError("owner credential signature counter regressed")
         timestamp = _format_timestamp(now)
         clean_outcome = _json_object(outcome, "owner action outcome")
@@ -12991,9 +12299,6 @@ class ControlStore:
                 or challenge["ceremony"] != "action"
                 or challenge["used_at"] is not None
                 or str(challenge["expires_at"]) <= timestamp
-                or credential is None
-                or credential["revoked_at"] is not None
-                or int(credential["sign_count"]) != previous_sign_count
             ):
                 raise DataError(
                     "owner action assertion is invalid, expired, stale, or already used"
@@ -13001,6 +12306,28 @@ class ControlStore:
             binding = _decode_json(challenge["binding_json"], "owner action binding")
             if not isinstance(binding, dict):
                 raise DataError("corrupt control store: owner action binding is not an object")
+            method = str(binding.get("authorization_method", "webauthn"))
+            if method == "local_confirmation":
+                if (
+                    credential_id is not None
+                    or confirmation_token is None
+                    or not secrets.compare_digest(
+                        confirmation_token, bytes(challenge["challenge"]).hex()
+                    )
+                ):
+                    raise DataError("invalid local confirmation token")
+                actor = "owner:local-confirmation"
+            elif method == "webauthn":
+                if (
+                    confirmation_token is not None
+                    or credential is None
+                    or credential["revoked_at"] is not None
+                    or int(credential["sign_count"]) != previous_sign_count
+                ):
+                    raise DataError("owner action credential is invalid or stale")
+                actor = str(credential["actor"])
+            else:
+                raise DataError("unsupported owner authorization method")
             action_type = _enum_value(
                 binding.get("action_type"), "owner action type", OWNER_ACTION_TYPES
             )
@@ -13016,6 +12343,11 @@ class ControlStore:
             request_hash = _required_text(
                 binding.get("request_hash"), "owner action request_hash", max_length=64
             )
+            if (
+                method == "local_confirmation"
+                and self._research_case_revision_locked(connection, project_id) != revision
+            ):
+                raise DataError("research case changed before confirmation was consumed")
             consequence = _required_text(
                 binding.get("consequence_summary"), "owner action consequence summary"
             )
@@ -13027,7 +12359,6 @@ class ControlStore:
             ):
                 if _SHA256_RE.fullmatch(value) is None:
                     raise DataError(f"invalid control owner action {label}")
-            actor = str(credential["actor"])
             connection.execute(
                 "UPDATE owner_credentials SET sign_count = ? WHERE credential_id = ?",
                 (new_sign_count, credential_id),
@@ -13041,8 +12372,8 @@ class ControlStore:
                 """INSERT INTO owner_action_receipts
                 (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
                  artifact_hash, expected_case_revision, consequence_summary, reason,
-                 request_hash, assertion_hash, outcome_json, performed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 request_hash, assertion_hash, outcome_json, performed_at, authorization_method)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     rid,
                     cid,
@@ -13058,9 +12389,11 @@ class ControlStore:
                     assertion_digest,
                     _canonical_json(clean_outcome, "owner action outcome"),
                     timestamp,
+                    method,
                 ),
             )
         return {
+            "authorization_method": method,
             "receipt_id": rid,
             "action_type": action_type,
             "project_id": project_id,

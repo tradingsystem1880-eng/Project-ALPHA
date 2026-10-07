@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Any
 
@@ -90,6 +91,71 @@ def _spec_text(file: Path | None, spec: str | None) -> str:
 
 def _emit(payload: dict[str, Any], json_out: bool, text: str) -> None:
     typer.echo(json.dumps(payload) if json_out else text)
+
+
+def explain_saved_rule(
+    name: str, symbol: str, *, data_dir: Path, as_of: date | None = None
+) -> dict[str, Any]:
+    """Explain the saved rule on canonical PIT bars; unavailable is never a flat signal."""
+    from alpha_cli._runner import load_bars
+    from alpha_strategies.rules import (
+        explain_rules,
+        rule_spec_from_json,
+        spec_sha256,
+        trailing_ohlcv,
+    )
+
+    result: dict[str, Any] = {
+        "schema_version": 1,
+        "rules_id": name,
+        "rules_sha256": None,
+        "symbol": symbol,
+        "as_of": as_of.isoformat() if as_of else None,
+        "bar_ts": None,
+        "signal": None,
+        "conditions": [],
+        "error": None,
+        "authority": "none",
+    }
+    try:
+        spec = rule_spec_from_json(load_rule_text(data_dir, name))
+    except (DataError, OSError) as exc:
+        return {**result, "error": str(exc)}
+    result["rules_sha256"] = spec_sha256(spec)
+    try:
+        cutoff = datetime.combine(as_of, time.max, tzinfo=UTC) if as_of else None
+        bars, _ = load_bars(symbol, data_dir=data_dir, as_of=cutoff)
+        result["bar_ts"] = bars[-1].ts.timestamp()
+        if len(bars) < spec.history:
+            raise DataError(f"{len(bars)} bars stored, the rule set needs {spec.history}")
+        window = trailing_ohlcv(
+            [bar.high for bar in bars],
+            [bar.low for bar in bars],
+            [bar.close for bar in bars],
+            history=spec.history,
+            symbol=symbol,
+        )
+    except (DataError, OSError) as exc:
+        return {**result, **explain_rules(spec, None, unavailable_reason=str(exc))}
+    return {**result, **explain_rules(spec, window)}
+
+
+@rules_app.command("explain")
+def explain(
+    name: str,
+    symbol: str,
+    as_of: str | None = typer.Option(None, "--as-of", help="canonical bars cutoff YYYY-MM-DD"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Explain saved conditions on canonical bars without saving or running a strategy."""
+    try:
+        if as_of is not None and re.fullmatch(r"\d{4}-\d{2}-\d{2}", as_of) is None:
+            raise ValueError("invalid date format")
+        cutoff = date.fromisoformat(as_of) if as_of is not None else None
+    except ValueError as exc:
+        raise typer.BadParameter("--as-of must be YYYY-MM-DD") from exc
+    result = explain_saved_rule(name, symbol, data_dir=AlphaSettings().data_dir, as_of=cutoff)
+    _emit(result, json_out, f"{name} / {symbol}: {result['error'] or result['signal']}")
 
 
 @rules_app.command("save")

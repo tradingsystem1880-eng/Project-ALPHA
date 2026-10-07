@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import typer
 
+from alpha_cli.assistant_cmds import assistant_app
 from alpha_cli.backtest_cmds import backtest_app
 from alpha_cli.chart_cmds import chart_app
 from alpha_cli.crypto_data_cmds import crypto_data_app
@@ -15,7 +16,6 @@ from alpha_cli.info_cmds import info_app
 from alpha_cli.ml_cmds import ml_app
 from alpha_cli.monte_carlo_cmds import monte_carlo_app
 from alpha_cli.optim_cmds import optim_app
-from alpha_cli.options_cmds import options_app
 from alpha_cli.owner_auth_cmds import owner_auth_app
 from alpha_cli.paper_cmds import paper_app
 from alpha_cli.project_cmds import project_app
@@ -27,7 +27,6 @@ from alpha_cli.research_cmds import research_app
 from alpha_cli.risk_cmds import risk_app
 from alpha_cli.rules_cmds import rules_app
 from alpha_cli.scan_cmds import scan_app
-from alpha_cli.screener_cmds import screener_app
 from alpha_cli.strategy_candidate_cmds import strategy_candidate_app
 from alpha_cli.suite_cmds import suite_app
 from alpha_cli.validate_cmds import validate as _validate
@@ -43,10 +42,8 @@ app.add_typer(propfirm_app, name="propfirm")
 app.add_typer(provider_app, name="provider")
 app.add_typer(quantpad_data_app, name="quantpad-data")
 app.add_typer(info_app, name="info")
-app.add_typer(options_app, name="options")
 app.add_typer(owner_auth_app, name="owner-auth")
 app.add_typer(risk_app, name="risk")
-app.add_typer(screener_app, name="screener")
 app.add_typer(research_app, name="research")
 app.add_typer(figures_app, name="figures")
 app.add_typer(project_app, name="project")
@@ -55,6 +52,7 @@ app.add_typer(ml_app, name="ml")
 app.add_typer(monte_carlo_app, name="monte-carlo")
 app.add_typer(chart_app, name="chart")
 app.add_typer(rules_app, name="rules")
+app.add_typer(assistant_app, name="assistant")
 app.add_typer(scan_app, name="scan")
 app.add_typer(suite_app, name="suite")
 app.add_typer(strategy_candidate_app, name="strategy-candidate")

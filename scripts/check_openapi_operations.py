@@ -38,7 +38,8 @@ def _classification(method: str, path: str, operation: dict[str, Any]) -> tuple[
     if path.startswith("/api/owner-auth/"):
         return (
             "fixture_backed",
-            "WebAuthn ceremony uses deterministic authenticator fixtures; real Touch ID is an "
+            "Local confirmation uses isolated token, origin, replay and receipt fixtures; "
+            "legacy WebAuthn is an "
             "owner walkthrough checkpoint.",
         )
     if "/literature/" in path:
@@ -116,7 +117,8 @@ def rendered_matrix() -> str:
     )
     workstation = (
         f"| Workstation REST/UI | {len(rows)} operations | Yes, bounded | Yes, only typed routes; "
-        f"{modes['fixture_backed']} fixture-backed | Only the closed Touch ID research-action "
+        f"{modes['fixture_backed']} fixture-backed | Only the closed locally confirmed "
+        "research-action "
         "service | None; generic jobs deny paper/broker/order commands |"
     )
     cli = (
@@ -126,7 +128,8 @@ def rendered_matrix() -> str:
     )
     mcp = (
         f"| MCP | {len(tools)} tools | Yes, bounded | Drafts, notes, projects, and jobs within "
-        "their typed contracts | None: no Touch ID credential/challenge access and no research "
+        "their typed contracts | None: no owner credential/confirmation challenge access "
+        "and no research "
         "approve/decide/D2 authority | None |"
     )
     return f"""# Capability and authority matrix
@@ -140,6 +143,12 @@ changes; CI runs the same command without `--write`.
 {workstation}
 {cli}
 {mcp}
+
+Local confirmation is a loopback REST ceremony, not a proof of a human click: any process running
+as the owner on this machine can request and answer a confirmation challenge. Agent tools are
+blocked from those routes and from `owner-auth enroll|recover` by the fail-closed
+`pre-owner-action-guard` Claude hook and the native deny rules. That guard matches text in tool
+inputs; it cannot see Python-level imports of the CLI or automated clicks in the browser UI.
 
 OpenAPI release classification: {modes["automatic"]} automatic safe reads,
 {modes["fixture_backed"]} fixture-backed operations, and {modes["excluded"]} explicitly excluded

@@ -29,6 +29,7 @@ from starlette.responses import Response
 
 from alpha_core import AlphaError
 from alpha_web.api import activity as activity_api
+from alpha_web.api import assistant as assistant_api
 from alpha_web.api import candles as candles_api
 from alpha_web.api import catalog as catalog_api
 from alpha_web.api import control as control_api
@@ -37,7 +38,6 @@ from alpha_web.api import development as development_api
 from alpha_web.api import figures as figures_api
 from alpha_web.api import jobs as jobs_api
 from alpha_web.api import ml as ml_api
-from alpha_web.api import options as options_api
 from alpha_web.api import owner_auth as owner_auth_api
 from alpha_web.api import paper as paper_api
 from alpha_web.api import research as research_api
@@ -45,7 +45,6 @@ from alpha_web.api import risk as risk_api
 from alpha_web.api import rules as rules_api
 from alpha_web.api import runs as runs_api
 from alpha_web.api import scans as scans_api
-from alpha_web.api import screener as screener_api
 from alpha_web.api import v3 as v3_api
 from alpha_web.api import workspaces as workspaces_api
 from alpha_web.api.errors import api_error_response, request_id, validation_field_errors
@@ -114,6 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(runs_api.router)
     app.include_router(jobs_api.router)
     app.include_router(activity_api.router)
+    app.include_router(assistant_api.router)
     app.include_router(catalog_api.router)
     app.include_router(control_api.router)
     app.include_router(crypto_data_api.router)
@@ -122,13 +122,11 @@ def create_app() -> FastAPI:
     app.include_router(candles_api.router)
     app.include_router(figures_api.router)
     app.include_router(workspaces_api.router)
-    app.include_router(options_api.router)
     app.include_router(owner_auth_api.router)
     app.include_router(paper_api.router)
     app.include_router(risk_api.router)
     app.include_router(rules_api.router)
     app.include_router(scans_api.router)
-    app.include_router(screener_api.router)
     app.include_router(research_api.router)
     app.include_router(v3_api.router)
 

@@ -40,10 +40,13 @@ You do not refresh anything by hand.
 
 ## 3. Model resolution
 
-`--model` > `$ALPHA_CODEX_MODEL` > `gpt-5.3-codex-spark` (`resolve_model`,
+`--model` > `$ALPHA_CODEX_MODEL` > `gpt-6-astra` (`resolve_model`,
 `scripts/codex_bridge.py:84`). Whatever wins **must appear in `models_cache.json`**, otherwise
 the bridge reports `unavailable: model '<name>' not in models cache (...)` and lists what is
-available. Reasoning effort defaults to `xhigh`.
+available. Reasoning effort defaults to `medium` (owner decision 2026-09-28). The cache is shared with the Codex desktop apps,
+which bundle their own (older) CLI and rewrite it with their model list; since 2026-09-28 the
+bridge ignores a cache whose `client_version` differs from `codex --version` rather than
+reporting a false unavailable.
 
 If you change the default model in `~/.codex/config.toml`, the bridge does *not* follow it — set
 `ALPHA_CODEX_MODEL` instead, or pass `--model`.
@@ -65,9 +68,12 @@ from `scripts/schemas/`, under a wall-clock cap (review 900 s, research 600 s). 
 at 200 000 bytes and prompt-injection patterns in the reviewed text are neutralised before the
 model sees them.
 
-**`.mcp.json` `codex` server** — the interactive path, for talking to Codex from a Claude Code
-session as MCP tools. Unrelated to the bridge; it needs the project MCP servers to be enabled
-(see `owner-actions-checklist.md`).
+**Interactive path.** Until 2026-09-28 `.mcp.json` also registered `codex mcp-server` as an
+MCP server for Claude Code. codex-cli 0.154 removed that subcommand (the CLI now falls through
+to the interactive TUI and exits with `stdin is not a terminal`), so the entry was dropped; it
+had made every Claude Code session report `codex (CONNECTION_CLOSED)`. From Claude Code, Codex
+is reached only through the `codex-liaison` agent (`/codex-review`, `/codex-research`), which
+wraps the bridge above.
 
 ## 5. Verify
 
@@ -78,12 +84,12 @@ uv run python scripts/gate.py doctor
 ```
 
 Expected: `login status` says logged in using ChatGPT; `probe` prints
-`{"available": true, "model": "gpt-5.3-codex-spark", ...}`; `doctor` shows an `ok` row for
+`{"available": true, "model": "gpt-6-astra", ...}`; `doctor` shows an `ok` row for
 `codex second model`. For an end-to-end check that actually calls the model, run
 `python3 scripts/codex_bridge.py review --uncommitted` on a branch with real changes and confirm
 you get `"available": true` with a `findings` list.
 
-To check the MCP path instead, start a Codex session and run `/mcp`.
+To check Codex's own view of this repo's MCP servers, start a Codex session and run `/mcp`.
 
 ## 6. When it is unavailable
 

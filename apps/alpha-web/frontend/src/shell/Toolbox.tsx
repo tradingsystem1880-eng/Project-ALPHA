@@ -35,6 +35,7 @@ export function Toolbox({ open, onOpenChange }: { open: boolean; onOpenChange: (
   if (!panel) throw new Error(`toolbox tab ${tab} has no panel`)
   return (
     <section className={`toolbox${open ? ' toolbox--open' : ''}`} aria-label="Toolbox">
+      {open ? <header className="toolbox-title">Toolbox</header> : null}
       {open ? (
         <div className="area-body">
           <PanelHost key={panel.name} name={panel.name} component={panel.component} />

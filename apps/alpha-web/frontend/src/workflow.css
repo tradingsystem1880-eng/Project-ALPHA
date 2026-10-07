@@ -1,0 +1,170 @@
+/* Reference terminal: one compact grey chrome theme over the shared canvas tokens. */
+.workflow-shell.shell { display: flex; flex-direction: column; height: 100%; font: 12px Tahoma, 'Segoe UI', Arial, sans-serif; --font-size: 12px; --r: 0px; --r-lg: 0px; --panel: #f2f2f2; --panel-2: #e0e0e0; --bg: #d4d4d4; background: var(--bg); }
+.terminal-titlebar { height: 23px; padding: 3px 7px; box-sizing: border-box; margin: 0; font-weight: 400; font-size: 12px; background: var(--title); border-bottom: 1px solid var(--line-strong); flex-shrink: 0; }
+.workflow-content { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+.workflow-topbar { display: flex; align-items: center; gap: 4px; min-height: 30px; padding: 2px 5px; background: var(--panel); border-bottom: 1px solid var(--line-strong); flex-wrap: wrap; }
+.workflow-topbar .field { flex: 0 0 auto; width: 100px; }
+.native-timeframes { display: inline-flex; gap: 2px; white-space: nowrap; }
+.workflow-topbar .btn { flex-shrink: 0; white-space: nowrap; }
+.workflow-topbar > label { display: flex; gap: 4px; align-items: center; }
+#analytical-toolbar { min-width: 0; max-width: 100%; flex-wrap: wrap; flex-shrink: 0; display: flex; align-items: center; gap: 2px; }
+[hidden], #analytical-toolbar[hidden], .chart-document[hidden] { display: none !important; }
+.workflow-topbar .context { margin-right: auto; }
+.workflow-topbar .toolbar-group { flex-shrink: 0; }
+.workflow-shell .btn, .workflow-shell .field, .workflow-shell .context-chip { min-height: 24px; padding: 2px 6px; font-size: 11px; border-radius: 0; }
+.workflow-shell .btn { min-width: 24px; background: var(--panel-2); border: 1px solid; border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light); box-shadow: none; color: var(--ink); }
+.workflow-shell .btn.primary, .workflow-shell .btn[aria-pressed=true], .workflow-shell .btn[aria-selected=true] { background: var(--selection); color: var(--selection-ink); }
+.workflow-shell .btn:disabled { color: var(--muted); }
+.workflow-shell .field { background: var(--field-bg); border: 1px solid var(--line-strong); }
+.workflow-shell .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.workflow-main { flex: 1; min-height: 0; overflow: auto; padding: 2px; display: flex; flex-direction: column; gap: 2px; }
+.document-caption { padding: 3px 5px; background: var(--panel-2); border: 1px solid var(--line-strong); font-weight: 700; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.workflow-panel { flex: 1; min-height: 0; border: 1px solid var(--line-strong); overflow: auto; display: flex; flex-direction: column; background: var(--panel); }
+.workflow-panel > .panel { flex: 1; min-height: 0; }
+.workflow-panel .panel-head { padding: 5px 7px; gap: 5px; flex-wrap: wrap; }
+.workflow-panel .panel-body { padding: 8px; }
+.workflow-preferences { display: flex; gap: 14px; padding: 6px; }
+.workflow-preferences label { display: grid; gap: 4px; }
+.workflow-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.workflow-cards a { padding: 12px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--ink); }
+.workflow-cards h2 { font-size: 14px; margin: 0 0 6px; }
+.workflow-cards p { color: var(--muted); }
+.workflow-overview-status { padding: 8px; }
+.workflow-overview-status h2 { font-size: 14px; }
+.workflow-overview-panel { flex: none; min-height: 240px; }
+.workflow-skip { position: absolute; top: -80px; z-index: 1000; padding: 12px; background: var(--panel); }
+.workflow-skip:focus { top: 0; }
+.workflow-shell .context-pop { left: 0; right: auto; width: min(480px, calc(100vw - 12px)); max-width: calc(100vw - 12px); max-height: 75vh; overflow: auto; }
+.workflow-shell .chip { border-radius: 0; }
+.workflow-shell .watch-row.active td, .workflow-shell .watch-row.active .num, .workflow-shell .watch-row.active .watch-glyph { color: var(--selection-ink); opacity: 1; }
+.workflow-shell .chip.fail { color: #781b19; background: #f4dddd; }
+.workflow-shell .num, .workflow-shell .blotter { font-variant-numeric: tabular-nums; }
+.chart-document { flex: 1; min-height: 0; display: flex; }
+.market-desk { display: flex; flex-direction: column; flex: 1; min-height: 0; position: relative; }
+.market-desk-tools { display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 2px 3px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
+.market-desk-windows { display: flex; flex: 1; min-height: 0; gap: 2px; }
+.market-desk-left { flex-shrink: 0; min-width: 230px; max-width: 35%; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.market-desk-right { width: 310px; min-width: 240px; max-width: 40%; overflow: auto; }
+.market-desk-chart { flex-direction: column; flex: 1; min-width: 0; min-height: 0; display: flex; }
+.terminal-dock { border: 1px solid var(--line-strong); background: var(--panel); display: flex; flex-direction: column; min-height: 100px; flex: 1; overflow: auto; }
+.terminal-dock > h2 { font: bold 12px Tahoma, sans-serif; background: var(--panel-2); padding: 3px 5px; margin: 0; border-bottom: 1px solid var(--line-strong); }
+.terminal-dock > .panel { flex: 1; min-height: 0; }
+.desk-tool-divider { height: 20px; border-left: 1px solid var(--line-strong); margin: 0 3px; }
+.desk-options { position: relative; }
+.desk-options summary { padding: 4px 6px; border: 1px solid var(--line-strong); cursor: pointer; font-size: 11px; }
+.desk-options > div { position: absolute; right: 0; top: 100%; z-index: 40; width: 250px; padding: 6px; background: var(--panel); border: 1px solid var(--line-strong); display: grid; gap: 4px; box-shadow: 2px 2px 0 var(--bevel-dark); }
+.desk-options label { display: flex; gap: 4px; }
+.document-strip { display: flex; flex-shrink: 0; min-height: 23px; }
+.document-tabs { flex: 1; display: flex; overflow: auto; flex-shrink: 0; min-height: 23px; background: var(--panel-2); border-top: 1px solid var(--line-strong); }
+.document-tabs > button { flex-shrink: 0; }
+.document-tabs .btn { min-height: 22px; padding: 2px 7px; }
+.toolbox-title { background: var(--panel-2); padding: 2px 5px; border-bottom: 1px solid var(--line-strong); font-size: 12px; }
+.workflow-shell .toolbox { flex-shrink: 0; }
+.workflow-shell .toolbox--open { height: 190px; }
+.workflow-shell .statusbar { height: 22px; flex-shrink: 0; z-index: 81; }
+.chart-document-footer { flex-shrink: 0; }
+.analytical-workspace { flex: 1; position: relative; min-width: 0; min-height: 0; background: var(--line-strong); }
+.analytical-panel { contain: layout style; position: absolute; display: flex; flex-direction: column; min-width: 0; min-height: 0; border: 1px solid var(--line-strong); background: var(--panel); overflow: hidden; }
+.analytical-title { display: flex; align-items: center; gap: 2px; min-height: 23px; background: var(--panel-2); padding: 1px 3px; flex-shrink: 0; }
+.analytical-title > span { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; font-size: 11px; }
+.analytical-title .field { flex: 0 0 120px; width: 120px; }
+.analytical-title .btn, .analytical-title .field { min-height: 24px; padding: 1px 3px; font-size: 10px; }
+.active-panel > .analytical-title { box-shadow: inset 0 -2px var(--selection); }
+.analytical-content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; }
+.analytical-content > .panel { flex: 1; min-height: 0; }
+.analytical-content .price-toolbar { padding: 2px 5px; gap: 3px; flex-wrap: wrap; min-height: 0; }
+.analytical-content .price-toolbar > .title, .analytical-content .price-toolbar > .sym-input { display: none; }
+.analytical-content .price-toolbar .chip { font-size: 10px; white-space: normal; }
+.analytical-content .price-toolbar .btn { min-height: 24px; padding: 1px 4px; }
+.analytical-content .price-body { padding: 0; }
+.analytical-content .price-chart-canvas-wrap { min-height: 120px; }
+.analytical-content .price-chart-frame { min-height: 160px; }
+.analytical-content .chart-foot { font-size: 9px; padding: 2px 5px; }
+.analytical-content .trace-evidence-panel { max-height: 120px; overflow: auto; }
+.panel-maximized { position: fixed; inset: 23px 2px 23px; z-index: 80; }
+.panel-maximized .analytical-title { min-height: 24px; }
+.workspace-splitter { position: absolute; z-index: 3; background: var(--line-strong); touch-action: none; }
+.splitter-vertical { top: 0; bottom: 0; width: 5px; transform: translateX(-50%); cursor: col-resize; }
+.splitter-horizontal { left: 0; right: 0; height: 5px; transform: translateY(-50%); cursor: row-resize; }
+.workspace-splitter:focus-visible { outline: 2px solid var(--accent); }
+.panel-source-editor { position: absolute; z-index: 90; right: 8px; top: 8px; width: min(460px, calc(100vw - 20px)); max-height: 80vh; overflow: auto; padding: 8px; background: var(--panel); border: 1px solid var(--line-strong); box-shadow: 2px 2px 0 var(--bevel-dark); }
+.panel-source-editor header { display: flex; justify-content: space-between; font-weight: bold; }
+.panel-source-editor label { display: grid; gap: 4px; margin: 8px 0; }
+.recorded-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.recorded-provenance { padding: 3px 5px; font-size: 10px; overflow-wrap: anywhere; }
+.recorded-provenance span { margin-left: 8px; }
+.recorded-series { flex: 1; min-height: 160px; display: flex; flex-direction: column; background: var(--canvas-bg); color: var(--canvas-ink); }
+.recorded-series-host { flex: 1; min-height: 130px; }
+.plot-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 5px; font-size: 10px; }
+.plot-legend .btn { margin-left: auto; }
+.recorded-series details, .scientific-plot details { background: var(--panel); color: var(--ink); max-height: 240px; overflow: auto; padding: 3px; }
+.recorded-bounds { padding: 3px 5px; }
+.recorded-bounds pre { font-size: 10px; overflow: auto; max-height: 180px; }
+.scientific-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; overflow: auto; }
+.scientific-plot { margin: 0; min-width: 0; background: var(--canvas-bg); color: var(--canvas-ink); }
+.scientific-plot figcaption { font-size: 11px; padding: 5px; text-align: center; }
+.scientific-plot svg { width: 100%; display: block; }
+.scientific-plot svg text { fill: var(--canvas-ink); font: 10px 'JetBrains Mono Variable', monospace; }
+.report-summary-composition { display: grid; grid-template-columns: minmax(250px, 0.9fr) minmax(350px, 1.8fr); gap: 4px; align-items: start; }
+.report-summary-composition .recorded-panel { min-height: 320px; }
+.report-summary-figures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; grid-column: 1 / -1; }
+.workflow-shell .figure-scroll { padding: 4px; }
+.workflow-shell .figure-card { border: 1px solid var(--line-strong); border-radius: 0; margin: 0; padding: 0; }
+.figure-surface { display: flex; flex-direction: column; min-height: 0; background: var(--canvas-bg); color: var(--canvas-ink); }
+.figure-surface .figure-image { max-width: 100%; }
+.figure-surface-title { padding: 2px 5px; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+.figure-surface-title > span { margin-right: auto; }
+@media (max-width: 1000px) { .workflow-topbar { gap: 2px; } #analytical-toolbar { flex-wrap: wrap; } .market-desk-left { min-width: 200px; } .market-desk-right { max-width: 40%; width: 260px; } .workflow-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 800px) { .market-desk-windows { flex-wrap: wrap; overflow: auto; } .market-desk-left { display: none; } .market-desk-right { max-width: 100%; width: 100%; max-height: 300px; } .analytical-workspace { display: flex; flex-direction: column; overflow: auto; min-height: 0; } .analytical-panel:not(.panel-maximized) { position: relative; inset: auto !important; visibility: visible !important; min-height: 330px; flex-shrink: 0; pointer-events: auto !important; } .workspace-splitter { display: none; } .scientific-grid, .report-summary-composition, .report-summary-figures { grid-template-columns: 1fr; } .workflow-cards { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .workflow-shell button { transition: none; } }
+.asset-select { position: relative; min-width: 0; }
+.asset-select-control { display: flex; }
+.asset-select-control input { min-width: 0; width: 100%; }
+.asset-select-popup { position: relative; min-width: 300px; width: 100%; max-height: 340px; overflow: auto; background: #fff; border: 1px solid var(--line-strong); border-radius: 0; box-shadow: 0 8px 28px #18263826; z-index: 80; padding: 8px; }
+.asset-select-popup [role=option] { display: flex; flex-direction: column; width: 100%; align-items: flex-start; background: transparent; border: 0; padding: 10px; color: var(--ink); text-align: left; cursor: pointer; }
+.asset-select-popup [role=option][aria-selected=true] { background: var(--accent-soft); }
+.asset-select-popup [role=option] span, .asset-select-caption { color: var(--muted); font-size: 12px; }
+.asset-select-popup p { padding: 8px; white-space: normal; }
+
+.market-watch-scroll { flex: 1; min-height: 0; overflow: auto; }
+.market-watch > .dock-toolbar, .market-watch > .dock-tabs { flex-shrink: 0; }
+.market-watch-scroll thead { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+
+.asset-source-choices { display: grid; gap: 3px; padding: 4px 8px 8px; }
+.asset-source-choices .btn { white-space: normal; text-align: left; }
+.watch-available-markets { padding: 4px; border-bottom: 1px solid var(--line); }
+.watch-available-markets summary { cursor: pointer; }
+
+
+/* Scientific plotting surfaces use Qbot's paper-like axes within the terminal frame. */
+.scientific-series { contain: layout style; display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; overflow: auto; background: #fafafa; color: #333; }
+.scientific-series-host { flex: 1 0 100px; min-height: 100px; min-width: 0; overflow: hidden; }
+.plot-readout { contain: strict; display: flex; flex: 0 0 20px; height: 20px; overflow: hidden; white-space: nowrap; gap: 12px; min-height: 20px; padding: 2px 8px; font-size: 10px; background: #ececec; color: #333; }
+.recorded-series > .scientific-series { min-height: 200px; height: auto; }
+
+.scientific-market { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: auto; background: #fafafa; color: #333; }
+.scientific-market-price { flex: 1; min-height: 200px; overflow: hidden; contain: strict; }
+.scientific-market-details { flex: none; padding: 3px 8px; background: #ececec; font-size: 11px; }
+.scientific-market-details[open] { flex: none; }
+.scientific-indicator { height: 230px; margin-top: 4px; }
+.scientific-market-details .plot-legend { color: #333; background: #ececec; }
+
+.price-chart-frame .plot-readout.mono { color: #333; }
+
+.scientific-cartesian-host { min-height: 270px; background: #fafafa; overflow: hidden; }
+/* Compact plot exploration; expanded controls scroll rather than cover neighboring panels. */
+.scientific-explore { flex: 0 0 auto; background: #ececec; color: #333; border-bottom: 1px solid #ccc; }
+.scientific-range-buttons { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; padding: 2px 5px; font-size: 11px; }
+.scientific-range-buttons .btn { min-height: 24px; padding: 1px 6px; font-size: 11px; }
+.scientific-range-buttons details { padding: 0; max-height: 180px; overflow: auto; background: #ececec; color: #333; }
+.scientific-range-buttons details[open] { flex-basis: 100%; }
+.scientific-range-buttons summary { cursor: pointer; padding: 3px 5px; }
+.scientific-range-buttons form { display: flex; flex-wrap: wrap; align-items: end; gap: 5px; padding: 5px; }
+.scientific-range-buttons label { display: flex; flex-direction: column; gap: 3px; }
+.scientific-coverage dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; padding: 5px; margin: 0; }
+.scientific-coverage dd { margin: 0; overflow-wrap: anywhere; font-family: 'JetBrains Mono Variable', monospace; }
+.scientific-coverage p { padding: 5px; margin: 0; }
+.scientific-cursor-data { flex: 0 0 auto; background: #ececec; color: #333; font-size: 11px; max-height: 120px; overflow: auto; }
+.scientific-cursor-data summary { padding: 2px 5px; cursor: pointer; }
+.scientific-cursor-data .cursor-values { display: block; padding: 5px; font-family: 'JetBrains Mono Variable', monospace; overflow-wrap: anywhere; }
+.scientific-cursor-data p { padding: 0 5px 5px; margin: 0; }

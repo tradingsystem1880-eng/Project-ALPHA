@@ -11,6 +11,7 @@ build/
 .pytest_cache/
 .ruff_cache/
 .coverage
+.coverage.*
 htmlcov/
 
 # uv
@@ -33,6 +34,8 @@ apps/alpha-web/frontend/test-results/
 # Data is large + reproducible from snapshots; never commit it
 data/
 .quantpad/
+# Local scratch (benchmark renders, throwaway scripts); archive outside the repo
+tmp/
 
 # Claude Code harness: local overrides + machine-local state (stamps, audit, session
 # journals) stay out of the tree; .claude/settings.json and skills/agents/commands ARE
@@ -43,3 +46,6 @@ data/
 .claude/worktrees/
 .claude/agent-memory/
 .claude/agent-memory-local/
+
+# Agent-neutral local verification receipts; historical Claude state stays ignored.
+.alpha/state/

@@ -14,6 +14,7 @@ let state: ChartHover = { bar: null, barsLoaded: 0 }
 const listeners = new Set<() => void>()
 
 export function setChartHover(patch: Partial<ChartHover>): void {
+  if ((patch.bar === undefined || patch.bar === state.bar) && (patch.barsLoaded === undefined || patch.barsLoaded === state.barsLoaded)) return
   state = { ...state, ...patch }
   for (const listener of listeners) listener()
 }

@@ -66,6 +66,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assistant/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readiness */
+        get: operations["readiness_api_assistant_readiness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create */
+        post: operations["create_api_assistant_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Show */
+        get: operations["show_api_assistant_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/sessions/{session_id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check */
+        post: operations["check_api_assistant_sessions__session_id__check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/sessions/{session_id}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn */
+        post: operations["turn_api_assistant_sessions__session_id__turns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/candles/{symbol}": {
         parameters: {
             query?: never;
@@ -82,6 +167,23 @@ export interface paths {
          *     Watch's ``tail=2`` reads are cheap after the first.
          */
         get: operations["candles_api_candles__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chart-datasets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chart Datasets */
+        get: operations["chart_datasets_api_chart_datasets_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -333,6 +435,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/crypto-data/market-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Market Catalog */
+        get: operations["market_catalog_api_crypto_data_market_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/crypto-data/profiles": {
         parameters: {
             query?: never;
@@ -549,6 +668,23 @@ export interface paths {
         put?: never;
         /** Storage Verify */
         post: operations["storage_verify_api_crypto_data_storage_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crypto-data/yield-pools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Yield Pools */
+        get: operations["yield_pools_api_crypto_data_yield_pools_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1215,66 +1351,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/options/curve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Options Curve
-         * @description Price + greeks across a spot range for the greeks-vs-spot chart.
-         */
-        get: operations["options_curve_api_options_curve_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/options/greeks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Options Greeks
-         * @description Price + delta/gamma/vega/theta/rho for one European option.
-         */
-        get: operations["options_greeks_api_options_greeks_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/options/iv": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Options Iv
-         * @description The implied volatility that reprices the option to ``price`` (+ greeks at that vol).
-         */
-        get: operations["options_iv_api_options_iv_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/overlays/{symbol}": {
         parameters: {
             query?: never;
@@ -1888,7 +1964,7 @@ export interface paths {
         put?: never;
         /**
          * Research Claim Add
-         * @description Draft one claim; screening or rejecting it stays a Touch ID owner action.
+         * @description Draft one claim; screening or rejecting it stays an explicitly confirmed owner action.
          */
         post: operations["research_claim_add_api_research_cases__project_id__claims_post"];
         delete?: never;
@@ -2299,6 +2375,26 @@ export interface paths {
          * @description Validate and save (or overwrite) ``data_dir/rules/<name>.json`` through the CLI.
          */
         post: operations["save_rule_api_rules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Evaluate Rule
+         * @description Relay canonical condition results; never infer a signal or execute a strategy.
+         */
+        post: operations["evaluate_rule_api_rules_evaluate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2782,46 +2878,6 @@ export interface paths {
          * @description Evaluate the scan on point-in-time bars (optionally as of a date); writes nothing.
          */
         post: operations["run_scan_api_scans__name__run_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/screener/news": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Screener News
-         * @description Recent company news for ``symbol`` (503 when unconfigured).
-         */
-        get: operations["screener_news_api_screener_news_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/screener/quote": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Screener Quote
-         * @description A live quote for ``symbol`` (503 when the finnhub key/network is missing).
-         */
-        get: operations["screener_quote_api_screener_quote_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4197,6 +4253,207 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** ArchiveChartDataset */
+        ArchiveChartDataset: {
+            /** Base Asset */
+            base_asset: string;
+            /** End */
+            end: string | null;
+            /**
+             * Family
+             * @enum {string}
+             */
+            family: "market_bars" | "derivative_bars";
+            /**
+             * Frequency
+             * @enum {string}
+             */
+            frequency: "1m" | "5m" | "15m" | "30m" | "1h" | "2h" | "4h" | "6h" | "8h" | "12h" | "1d" | "3d" | "1w";
+            /** Instrument */
+            instrument: string;
+            /** Manifest Count */
+            manifest_count: number;
+            /** Manifest Id */
+            manifest_id: string;
+            /** Manifest Ids */
+            manifest_ids: string[];
+            /**
+             * Market Type
+             * @enum {string}
+             */
+            market_type: "spot" | "linear" | "inverse";
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "binance" | "bybit";
+            /** Quote Asset */
+            quote_asset: string;
+            /** Row Count */
+            row_count: number;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /** Start */
+            start: string | null;
+            /**
+             * Timestamp Convention
+             * @constant
+             */
+            timestamp_convention: "interval_start_utc";
+            /**
+             * Units
+             * @enum {string}
+             */
+            units: "provider_native_ohlcv" | "quote_price";
+            /**
+             * Venue
+             * @enum {string}
+             */
+            venue: "binance" | "bybit";
+            /**
+             * Verification
+             * @constant
+             */
+            verification: "metadata_only";
+        };
+        /** ArchiveChartDatasets */
+        ArchiveChartDatasets: {
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Datasets */
+            datasets: components["schemas"]["ArchiveChartDataset"][];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "available" | "unconfigured";
+        };
+        /** AssistantAnswer */
+        AssistantAnswer: {
+            /** Citations */
+            citations: string[];
+            /** Rule Draft */
+            rule_draft: {
+                [key: string]: unknown;
+            } | null;
+            /** Text */
+            text: string;
+        };
+        /** AssistantAttachment */
+        AssistantAttachment: {
+            /** Content Hash */
+            content_hash: string;
+            /** Label */
+            label: string;
+            /** Ref */
+            ref: string;
+        };
+        /** AssistantContext */
+        AssistantContext: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Manifest Id */
+            manifest_id?: string | null;
+            /** Project Id */
+            project_id?: string | null;
+            /** Rules Name */
+            rules_name?: string | null;
+            /** Rules Sha256 */
+            rules_sha256?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+            /** Snapshot Id */
+            snapshot_id?: string | null;
+            /** Symbol */
+            symbol: string;
+        };
+        /** AssistantContextCheck */
+        AssistantContextCheck: {
+            /** Context Hash */
+            context_hash: string;
+            /**
+             * Valid
+             * @constant
+             */
+            valid: true;
+        };
+        /** AssistantReadiness */
+        AssistantReadiness: {
+            /** Available */
+            available: boolean;
+            /** Isolation Verified */
+            isolation_verified: boolean;
+            /** Model */
+            model: string;
+            /** Reason */
+            reason: string | null;
+        };
+        /** AssistantSession */
+        AssistantSession: {
+            /** Active Job Id */
+            active_job_id?: string | null;
+            /** Attachments */
+            attachments: components["schemas"]["AssistantAttachment"][];
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            context: components["schemas"]["AssistantContext"];
+            /** Context Hash */
+            context_hash: string;
+            /** Created At */
+            created_at: string;
+            /** Session Id */
+            session_id: string;
+            /** Turns */
+            turns: components["schemas"]["AssistantTurn"][];
+        };
+        /** AssistantSessionRequest */
+        AssistantSessionRequest: {
+            context: components["schemas"]["AssistantContext"];
+        };
+        /** AssistantTurn */
+        AssistantTurn: {
+            /** Action */
+            action: string;
+            answer: components["schemas"]["AssistantAnswer"] | null;
+            /** Context Hash */
+            context_hash: string;
+            /** Error */
+            error: string | null;
+            /** Message */
+            message: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "completed" | "failed" | "cancelled" | "interrupted";
+            /** Turn Id */
+            turn_id: string;
+        };
+        /** AssistantTurnRequest */
+        AssistantTurnRequest: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "explain_chart" | "explain_signal" | "challenge_thesis" | "explain_results" | "draft_rules";
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+        };
         /** AttemptCreateRequest */
         AttemptCreateRequest: {
             /** Config Fingerprint */
@@ -4302,8 +4559,14 @@ export interface components {
         };
         /** CandleProvenance */
         CandleProvenance: {
+            /** History Kind */
+            history_kind?: "reconstructed_from_verified_archive" | null;
             /** Knowledge Cutoff */
             knowledge_cutoff: string | null;
+            /** Manifest Id */
+            manifest_id?: string | null;
+            /** Market Type */
+            market_type?: string | null;
             /** Provenance Sha256 */
             provenance_sha256: string | null;
             /**
@@ -4319,11 +4582,13 @@ export interface components {
             source: string;
             /**
              * Timeframe
-             * @constant
+             * @enum {string}
              */
-            timeframe: "1D";
+            timeframe: "1MIN" | "5MIN" | "15MIN" | "30MIN" | "1H" | "2H" | "4H" | "6H" | "8H" | "12H" | "1D" | "3D" | "1W";
             /** Venue */
             venue: string | null;
+            /** Volume Unit */
+            volume_unit?: ("base" | "quote") | null;
         };
         /** Candles */
         Candles: {
@@ -4757,7 +5022,7 @@ export interface components {
              * @default 1h
              * @enum {string}
              */
-            frequency: "1d" | "4h" | "1h" | "30m" | "15m" | "5m" | "1m";
+            frequency: "1d" | "3d" | "1w" | "12h" | "8h" | "6h" | "4h" | "2h" | "1h" | "30m" | "15m" | "5m" | "1m" | "catalog_snapshot";
             /** Instrument */
             instrument: string;
             /** Metrics */
@@ -5256,6 +5521,12 @@ export interface components {
             execution_authority: false;
             /** Items */
             items: components["schemas"]["CryptoCoverageItem"][];
+            /**
+             * Verification
+             * @default not_checked
+             * @enum {string}
+             */
+            verification: "not_checked" | "metadata_only" | "artifact_verified";
         };
         /** CryptoCoverageTaskResponse */
         CryptoCoverageTaskResponse: {
@@ -5330,7 +5601,7 @@ export interface components {
              * @default 1d
              * @enum {string}
              */
-            frequency: "1d" | "4h" | "1h" | "30m" | "15m" | "5m" | "1m" | "tick";
+            frequency: "1d" | "3d" | "1w" | "12h" | "8h" | "6h" | "4h" | "2h" | "1h" | "30m" | "15m" | "5m" | "1m" | "tick";
             /**
              * Instruments
              * @default 1
@@ -5366,7 +5637,7 @@ export interface components {
             provider: string;
         };
         /** @enum {string} */
-        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "market_membership" | "instrument_catalog" | "derivative_bars" | "derivative_trades" | "derivative_book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "onchain_catalog" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars" | "defi_tvl";
+        CryptoFamilyValue: "market_bars" | "trades" | "aggregate_trades" | "book_snapshots" | "market_membership" | "instrument_catalog" | "derivative_bars" | "derivative_trades" | "derivative_book_snapshots" | "funding" | "open_interest" | "long_short_ratio" | "mark_bars" | "index_bars" | "premium_bars" | "option_instruments" | "option_quotes" | "historical_volatility" | "asset_metadata" | "market_reference" | "protocol_tvl" | "stablecoin_supply" | "yield_pools" | "yield_history" | "onchain_catalog" | "onchain_metrics" | "dex_pools" | "dex_ohlcv" | "dex_transactions" | "comparison_bars" | "defi_tvl";
         /** CryptoFeatureCreateRequest */
         CryptoFeatureCreateRequest: {
             feature_name: components["schemas"]["CryptoFeatureNameValue"];
@@ -5486,6 +5757,47 @@ export interface components {
             /** Universe Count */
             universe_count: number;
         };
+        /** CryptoMarketCatalogItem */
+        CryptoMarketCatalogItem: {
+            /** Base Asset */
+            base_asset: string;
+            /** Pair */
+            pair: string;
+            /** Provider Symbol */
+            provider_symbol: string;
+            /** Quote Asset */
+            quote_asset: string;
+            /** Status */
+            status: string;
+        };
+        /** CryptoMarketCatalogResponse */
+        CryptoMarketCatalogResponse: {
+            /** As Of */
+            as_of: string | null;
+            /**
+             * Market Type
+             * @constant
+             */
+            market_type: "spot";
+            /** Markets */
+            markets: components["schemas"]["CryptoMarketCatalogItem"][];
+            /** Next Action */
+            next_action: string;
+            /** Stale */
+            stale: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "available" | "unavailable";
+            /** Total Matches */
+            total_matches: number;
+            /**
+             * Venue
+             * @constant
+             */
+            venue: "binance";
+        };
         /** CryptoOneMinuteSelectionRequest */
         CryptoOneMinuteSelectionRequest: {
             /** Case Id */
@@ -5535,7 +5847,7 @@ export interface components {
             state: "frozen";
         };
         /** @enum {string} */
-        CryptoProviderValue: "binance" | "bybit" | "coingecko" | "geckoterminal" | "coinmetrics" | "ccxt:coinbase" | "defillama";
+        CryptoProviderValue: "binance" | "bybit" | "coingecko" | "geckoterminal" | "coinmetrics" | "defillama" | "ccxt:coinbase";
         /** @enum {string} */
         CryptoQualificationStateValue: "unverified" | "unavailable" | "qualified" | "warning" | "quarantined";
         /** CryptoQualityReportResponse */
@@ -5732,6 +6044,12 @@ export interface components {
             state: "ready" | "blocked";
             /** Total Bytes */
             total_bytes?: number | null;
+            /**
+             * Verification
+             * @default not_checked
+             * @enum {string}
+             */
+            verification: "not_checked" | "metadata_only" | "artifact_verified";
         };
         /** CryptoStorageVerifyResponse */
         CryptoStorageVerifyResponse: {
@@ -5757,6 +6075,39 @@ export interface components {
              * @constant
              */
             state: "verified";
+        };
+        /** CryptoYieldPoolCatalogResponse */
+        CryptoYieldPoolCatalogResponse: {
+            /** Captured At */
+            captured_at: string | null;
+            /** Items */
+            items: components["schemas"]["CryptoYieldPoolItem"][];
+            /** Manifest Id */
+            manifest_id: string | null;
+            /** Next Action */
+            next_action: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "available" | "unavailable";
+            /** Total Matches */
+            total_matches: number;
+        };
+        /** CryptoYieldPoolItem */
+        CryptoYieldPoolItem: {
+            /** Apy */
+            apy: number;
+            /** Chain */
+            chain: string;
+            /** Pool Id */
+            pool_id: string;
+            /** Project */
+            project: string;
+            /** Symbol */
+            symbol: string;
+            /** Tvl Usd */
+            tvl_usd: number;
         };
         /** DataSnapshotRow */
         DataSnapshotRow: {
@@ -7925,67 +8276,6 @@ export interface components {
             /** Trials */
             trials: components["schemas"]["OptimTrial"][];
         };
-        /** OptionCurve */
-        OptionCurve: {
-            /** Days */
-            days: number;
-            /** Kind */
-            kind: string;
-            /** Points */
-            points: components["schemas"]["OptionCurvePoint"][];
-            /** Rate */
-            rate: number;
-            /** Strike */
-            strike: number;
-            /** Vol */
-            vol: number;
-        };
-        /** OptionCurvePoint */
-        OptionCurvePoint: {
-            /** Delta */
-            delta: number;
-            /** Gamma */
-            gamma: number;
-            /** Price */
-            price: number;
-            /** Spot */
-            spot: number;
-            /** Theta */
-            theta: number;
-            /** Vega */
-            vega: number;
-        };
-        /** OptionGreeks */
-        OptionGreeks: {
-            /** Days */
-            days: number;
-            /** Delta */
-            delta: number;
-            /** Gamma */
-            gamma: number;
-            /** Implied Vol */
-            implied_vol?: number | null;
-            /** Kind */
-            kind: string;
-            /** Market Price */
-            market_price?: number | null;
-            /** Price */
-            price: number;
-            /** Rate */
-            rate: number;
-            /** Rho */
-            rho: number;
-            /** Spot */
-            spot: number;
-            /** Strike */
-            strike: number;
-            /** Theta */
-            theta: number;
-            /** Vega */
-            vega: number;
-            /** Vol */
-            vol: number;
-        };
         /** OverlaySeries */
         OverlaySeries: {
             /** Id */
@@ -8013,6 +8303,12 @@ export interface components {
             action_type: "screen_source_claim" | "reject_source_claim" | "revise_source_claim" | "freeze_source_pack" | "approve_exploration" | "reject_exploration" | "revise_exploration" | "launch_d1" | "approve_confirmation" | "reject_confirmation" | "launch_d2" | "record_final_disposition" | "record_semantic_event" | "pause_research" | "resume_research" | "cancel_research";
             /** Artifact Hash */
             artifact_hash: string;
+            /**
+             * Authorization Method
+             * @default webauthn
+             * @enum {string}
+             */
+            authorization_method: "webauthn" | "local_confirmation";
             /** Consequence Summary */
             consequence_summary: string;
             /** Expected Case Revision */
@@ -8030,8 +8326,10 @@ export interface components {
         OwnerActionPerformRequest: {
             /** Challenge Id */
             challenge_id: string;
+            /** Confirmation Token */
+            confirmation_token?: string | null;
             /** Credential */
-            credential: {
+            credential?: {
                 [key: string]: unknown;
             };
             /** Payload */
@@ -10002,12 +10300,73 @@ export interface components {
             /** Value At Risk */
             value_at_risk: number;
         };
+        /** RuleConditionEvaluation */
+        RuleConditionEvaluation: {
+            /** Index */
+            index: number;
+            /** Label */
+            label: string;
+            /** Left */
+            left: number | null;
+            /** Reason */
+            reason: string | null;
+            /** Right */
+            right: number | null;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "long" | "short";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "fail" | "unavailable";
+        };
         /** RuleDeleted */
         RuleDeleted: {
             /** Deleted */
             deleted: boolean;
             /** Name */
             name: string;
+        };
+        /** RuleEvaluationRequest */
+        RuleEvaluationRequest: {
+            /** As Of */
+            as_of?: string | null;
+            /** Rules Id */
+            rules_id: string;
+            /** Symbol */
+            symbol: string;
+        };
+        /** RuleEvaluationResponse */
+        RuleEvaluationResponse: {
+            /** As Of */
+            as_of: string | null;
+            /**
+             * Authority
+             * @constant
+             */
+            authority: "none";
+            /** Bar Ts */
+            bar_ts: number | null;
+            /** Conditions */
+            conditions: components["schemas"]["RuleConditionEvaluation"][];
+            /** Error */
+            error: string | null;
+            /** Rules Id */
+            rules_id: string;
+            /** Rules Sha256 */
+            rules_sha256: string | null;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /** Signal */
+            signal: (-1 | 0 | 1) | null;
+            /** Symbol */
+            symbol: string;
         };
         /** RuleList */
         RuleList: {
@@ -10425,45 +10784,6 @@ export interface components {
             kind: "stored" | "list";
             /** Symbols */
             symbols?: string[] | null;
-        };
-        /** ScreenerNews */
-        ScreenerNews: {
-            /** Items */
-            items: components["schemas"]["ScreenerNewsItem"][];
-            /** Symbol */
-            symbol: string;
-        };
-        /** ScreenerNewsItem */
-        ScreenerNewsItem: {
-            /** Datetime */
-            datetime: number;
-            /** Headline */
-            headline: string;
-            /** Source */
-            source: string;
-            /** Summary */
-            summary: string;
-            /** Url */
-            url: string;
-        };
-        /** ScreenerQuote */
-        ScreenerQuote: {
-            /** Change */
-            change: number;
-            /** Current */
-            current: number;
-            /** High */
-            high: number;
-            /** Low */
-            low: number;
-            /** Open */
-            open: number;
-            /** Percent Change */
-            percent_change: number;
-            /** Prev Close */
-            prev_close: number;
-            /** Symbol */
-            symbol: string;
         };
         /** SemanticPointV1 */
         SemanticPointV1: {
@@ -11010,12 +11330,172 @@ export interface operations {
             };
         };
     };
+    readiness_api_assistant_readiness_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantReadiness"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    create_api_assistant_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantSession"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    show_api_assistant_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantSession"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    check_api_assistant_sessions__session_id__check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantContextCheck"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    turn_api_assistant_sessions__session_id__turns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantTurnRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     candles_api_candles__symbol__get: {
         parameters: {
             query?: {
                 start?: string | null;
                 end?: string | null;
                 snapshot?: string | null;
+                manifest_id?: string | null;
                 tail?: number | null;
             };
             header?: never;
@@ -11033,6 +11513,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Candles"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    chart_datasets_api_chart_datasets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArchiveChartDatasets"];
                 };
             };
             /** @description Stable, redacted Workstation error */
@@ -11546,6 +12055,38 @@ export interface operations {
             };
         };
     };
+    market_catalog_api_crypto_data_market_catalog_get: {
+        parameters: {
+            query?: {
+                query?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoMarketCatalogResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     profiles_api_crypto_data_profiles_get: {
         parameters: {
             query?: never;
@@ -11993,6 +12534,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CryptoStorageVerifyResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    yield_pools_api_crypto_data_yield_pools_get: {
+        parameters: {
+            query?: {
+                query?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CryptoYieldPoolCatalogResponse"];
                 };
             };
             /** @description Stable, redacted Workstation error */
@@ -13271,115 +13844,6 @@ export interface operations {
             };
         };
     };
-    options_curve_api_options_curve_get: {
-        parameters: {
-            query: {
-                strike: number;
-                vol: number;
-                days?: number;
-                rate?: number;
-                kind?: string;
-                width?: number;
-                points?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OptionCurve"];
-                };
-            };
-            /** @description Stable, redacted Workstation error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorV1"];
-                };
-            };
-        };
-    };
-    options_greeks_api_options_greeks_get: {
-        parameters: {
-            query: {
-                spot: number;
-                strike: number;
-                vol: number;
-                days?: number;
-                rate?: number;
-                kind?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OptionGreeks"];
-                };
-            };
-            /** @description Stable, redacted Workstation error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorV1"];
-                };
-            };
-        };
-    };
-    options_iv_api_options_iv_get: {
-        parameters: {
-            query: {
-                spot: number;
-                strike: number;
-                price: number;
-                days?: number;
-                rate?: number;
-                kind?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OptionGreeks"];
-                };
-            };
-            /** @description Stable, redacted Workstation error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorV1"];
-                };
-            };
-        };
-    };
     overlays_api_overlays__symbol__get: {
         parameters: {
             query?: {
@@ -13387,6 +13851,7 @@ export interface operations {
                 pattern?: string[] | null;
                 end?: string | null;
                 snapshot?: string | null;
+                manifest_id?: string | null;
             };
             header?: never;
             path: {
@@ -15201,6 +15666,39 @@ export interface operations {
             };
         };
     };
+    evaluate_rule_api_rules_evaluate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleEvaluationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleEvaluationResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     validate_rule_api_rules_validate_post: {
         parameters: {
             query?: never;
@@ -16060,70 +16558,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScanRunResult"];
-                };
-            };
-            /** @description Stable, redacted Workstation error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorV1"];
-                };
-            };
-        };
-    };
-    screener_news_api_screener_news_get: {
-        parameters: {
-            query: {
-                symbol: string;
-                days?: number;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScreenerNews"];
-                };
-            };
-            /** @description Stable, redacted Workstation error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorV1"];
-                };
-            };
-        };
-    };
-    screener_quote_api_screener_quote_get: {
-        parameters: {
-            query: {
-                symbol: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScreenerQuote"];
                 };
             };
             /** @description Stable, redacted Workstation error */

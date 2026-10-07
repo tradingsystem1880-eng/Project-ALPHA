@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "scope": "unauthenticated public endpoint reachability only; not all-family qualification",
+  "providers": [
+    {
+      "provider": "binance",
+      "state": "reachable_public_endpoint",
+      "status": 200,
+      "bytes": 2,
+      "provider_code": null,
+      "endpoint": "https://api.binance.com/api/v3/ping"
+    },
+    {
+      "provider": "bybit",
+      "state": "reachable_public_endpoint",
+      "status": 200,
+      "bytes": 134,
+      "provider_code": 0,
+      "endpoint": "https://api.bybit.com/v5/market/time"
+    },
+    {
+      "provider": "coingecko",
+      "state": "reachable_public_endpoint",
+      "status": 200,
+      "bytes": 34,
+      "provider_code": null,
+      "endpoint": "https://api.coingecko.com/api/v3/ping"
+    },
+    {
+      "provider": "geckoterminal",
+      "state": "reachable_public_endpoint",
+      "status": 200,
+      "bytes": 11172,
+      "provider_code": null,
+      "endpoint": "https://api.geckoterminal.com/api/v2/networks?page=1"
+    },
+    {
+      "provider": "defillama",
+      "state": "reachable_public_endpoint",
+      "status": 200,
+      "bytes": 66564,
+      "provider_code": null,
+      "endpoint": "https://api.llama.fi/chains"
+    },
+    {
+      "provider": "coinmetrics",
+      "state": "reachable_public_endpoint",
+      "bytes": 606,
+      "parsed_rows": 3,
+      "endpoint": "https://community-api.coinmetrics.io/v4/catalog-all-v2/asset-metrics?assets=btc&metrics=TxCnt&page_size=1"
+    }
+  ],
+  "superseded_probe": {
+    "endpoint": "https://community-api.coinmetrics.io/v4/catalog/assets?page_size=1",
+    "status": 400,
+    "reason": "probe used unsupported catalog query; current adapter uses catalog-all-v2 asset-metrics"
+  }
+}

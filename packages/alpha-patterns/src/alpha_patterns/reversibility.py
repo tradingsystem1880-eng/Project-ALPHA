@@ -58,9 +58,10 @@ def async_index(first: FloatArray, second: FloatArray) -> float:
     b = np.asarray(second, dtype=np.float64)
     if a.shape != b.shape or a.ndim != 1 or a.size < 2:
         raise DataError("async index needs two 1-D arrays of equal length >= 2")
-    order = np.argsort(
-        a
-    )  # default sort as upstream: tie order among equal degrees is part of the measure
+    # Tie order among equal degrees is part of the measure. Upstream's default argsort
+    # orders ties differently across numpy SIMD backends (x86 vs arm64), so ALPHA pins a
+    # stable sort: index order breaks ties on every platform.
+    order = np.argsort(a, kind="stable")
     ranked = b[order]
     inversions = 0
     for i in range(ranked.size):

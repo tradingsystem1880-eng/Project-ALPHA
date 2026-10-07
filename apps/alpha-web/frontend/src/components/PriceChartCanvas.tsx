@@ -13,18 +13,27 @@ import {
   type MouseEventParams,
   type SeriesMarker,
   type UTCTimestamp,
+  type IChartApi, type LogicalRange,
+  type ISeriesMarkersPluginApi, type Time,
+  type ISeriesApi,
 } from 'lightweight-charts'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { scheduleChartResize, cancelChartResize } from './chartResize'
 
-import { barSpacingFor, useChartControls } from '../context/chartControls'
+import { barSpacingFor, useChartControls, type ChartControls } from '../context/chartControls'
 import { setChartHover } from '../context/chartHover'
 import type { Candle, ChartAnnotation, ChartOverlays, ChartTraceEvent } from '../api/types'
 import { drawableAnnotations, lineData, splitPanes, swingMarkers } from '../panels/chartOverlaysModel'
 import type { EvidenceMarker } from '../panels/v3Models'
+import { logicalRangeForUTC, type ChartLinkRegistry } from '../shell/chartLinkRegistry'
 import { CHART } from '../util/chartTheme'
 import { createChartAnnotationPrimitive } from './ChartAnnotationPrimitive'
 
 interface Props {
+  controls?: ChartControls
+  reset?: number
+  panelId?: string
+  registry?: ChartLinkRegistry
   bars: Candle[]
   evidence?: EvidenceMarker[]
   annotations?: ChartAnnotation[]
@@ -37,6 +46,7 @@ interface Props {
 
 const OVERLAY_COLORS = [CHART.accent, CHART.gold, CHART.up, CHART.down, CHART.muted]
 const SUB_PANE_HEIGHT = 90
+const EMPTY: never[] = []
 
 function markerColor(marker: EvidenceMarker): string {
   if (marker.tone === 'selection') return CHART.accent
@@ -67,8 +77,9 @@ function seriesMarker(marker: EvidenceMarker, selected: boolean): SeriesMarker<U
 
 export function PriceChartCanvas({
   bars,
-  evidence = [],
-  annotations = [],
+  controls: panelControls, reset = 0, panelId = "chart", registry,
+  evidence = EMPTY,
+  annotations = EMPTY,
   selectedSequenceId = null,
   selectedTrade = null,
   onSelectEvidence,
@@ -76,15 +87,29 @@ export function PriceChartCanvas({
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const crosshairRef = useRef<HTMLDivElement>(null)
-  const controls = useChartControls()
+  const sharedControls = useChartControls()
+  const controls = panelControls ?? sharedControls
+  const chartRef = useRef<IChartApi | null>(null)
+  const seriesRef = useRef<ISeriesApi<'Line' | 'Bar' | 'Candlestick'> | null>(null)
+  const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
+  const byTime = useRef(new Map<number, Candle>())
+  useEffect(() => { byTime.current = new Map(bars.map(b => [b.t, b])) }, [bars])
+  const latest = useRef({ bars, evidence, onSelectEvidence })
+  latest.current = { bars, evidence, onSelectEvidence }
+  const savedRange = useRef<LogicalRange | null>(null)
+  const remoteRange = useRef(true)
+  const timestamps = useMemo(() => bars.map(b => b.t), [bars])
+  const times = useRef(timestamps); times.current = timestamps
+  const zoomRef = useRef(0)
 
   useEffect(() => {
     const host = hostRef.current
     const crosshair = crosshairRef.current
     if (!host || !crosshair) return
+    let renderedWidth = host.clientWidth, renderedHeight = host.clientHeight
     const chart = createChart(host, {
-      width: host.clientWidth,
-      height: host.clientHeight,
+      width: renderedWidth,
+      height: renderedHeight,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
         textColor: CHART.muted,
@@ -92,13 +117,73 @@ export function PriceChartCanvas({
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: CHART.grid, visible: controls.grid },
-        horzLines: { color: CHART.grid, visible: controls.grid },
+        vertLines: { color: CHART.grid, visible: true },
+        horzLines: { color: CHART.grid, visible: true },
       },
       rightPriceScale: { borderColor: CHART.line },
       timeScale: { borderColor: CHART.line },
-      crosshair: { mode: controls.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden },
+      crosshair: { mode: CrosshairMode.Normal },
     })
+    chartRef.current = chart
+    zoomRef.current = 0
+    let resizeTimer: ReturnType<typeof setTimeout> | undefined
+    const resize = () => {
+      const width = host.clientWidth, height = host.clientHeight
+      if (!width || !height || (width === renderedWidth && height === renderedHeight)) return
+      const range = chart.timeScale().getVisibleLogicalRange()
+      chart.resize(width, height)
+      renderedWidth = width; renderedHeight = height
+      if (range) chart.timeScale().setVisibleLogicalRange(range)
+    }
+    const ro = new ResizeObserver(() => {
+      clearTimeout(resizeTimer); cancelChartResize(resize)
+      resizeTimer = setTimeout(() => scheduleChartResize(resize), 80)
+    })
+    ro.observe(host)
+    const barAt = (time: unknown) => typeof time === 'number' ? byTime.current.get(time) : undefined
+    const handleCrosshair = (param: MouseEventParams) => {
+      const candle = barAt(param.time)
+      crosshair.textContent = candle ? `${new Date(candle.t * 1000).toISOString()} O ${candle.o.toFixed(4)} H ${candle.h.toFixed(4)} L ${candle.l.toFixed(4)} C ${candle.c.toFixed(4)} V ${candle.v.toFixed(0)}` : 'CROSSHAIR —'
+      setChartHover({ bar: candle ?? null })
+      registry?.publish(panelId, 'cursor', ...(candle ? [candle.t] : []))
+    }
+    const handleClick = (param: MouseEventParams) => {
+      const id = param.hoveredInfo?.objectId ?? param.hoveredObjectId
+      const marker = latest.current.evidence.find(row => row.id === id)
+      if (marker) latest.current.onSelectEvidence?.(marker.sequenceId)
+    }
+    const handleRange = () => {
+      host.dataset.visibleRange = JSON.stringify(chart.timeScale().getVisibleLogicalRange())
+      const r = chart.timeScale().getVisibleRange()
+      host.dataset.utcRange = JSON.stringify(r)
+      if (!remoteRange.current && r && typeof r.from === 'number' && typeof r.to === 'number') registry?.publish(panelId, 'range', r.from, r.to)
+    }
+    const unregister = registry?.register(panelId, {
+      range(from, to) { const logical = logicalRangeForUTC(times.current, from, to); if (logical) { remoteRange.current = true; chart.timeScale().setVisibleLogicalRange(logical) } },
+      cursor(time) { const bar = barAt(time); if (bar && seriesRef.current) chart.setCrosshairPosition(bar.c, bar.t as UTCTimestamp, seriesRef.current); else chart.clearCrosshairPosition() },
+    })
+    const localGesture = () => { remoteRange.current = false }
+    host.addEventListener('pointerdown', localGesture, true); host.addEventListener('wheel', localGesture, { passive: true, capture: true }); host.addEventListener('keydown', localGesture, true)
+    chart.subscribeCrosshairMove(handleCrosshair); chart.subscribeClick(handleClick)
+    chart.timeScale().subscribeVisibleTimeRangeChange(handleRange)
+    return () => { unregister?.(); host.removeEventListener('pointerdown', localGesture, true); host.removeEventListener('wheel', localGesture, true); host.removeEventListener('keydown', localGesture, true); clearTimeout(resizeTimer); cancelChartResize(resize); ro.disconnect(); chart.remove(); chartRef.current = null }
+  }, [panelId, registry])
+
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    chart.applyOptions({ grid: { vertLines: { visible: controls.grid }, horzLines: { visible: controls.grid } }, crosshair: { mode: controls.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden } })
+    const delta = controls.zoom - zoomRef.current
+    if (delta) remoteRange.current = false
+    if (delta) chart.timeScale().applyOptions({ barSpacing: barSpacingFor(chart.timeScale().options().barSpacing, delta) })
+    zoomRef.current = controls.zoom
+  }, [controls.grid, controls.crosshair, controls.zoom])
+  useEffect(() => { if (reset) { remoteRange.current = false; chartRef.current?.timeScale().fitContent() } }, [reset])
+
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    const range = savedRange.current ?? chart.timeScale().getVisibleLogicalRange()
     const ohlc = bars.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }))
     const series =
       controls.type === 'line'
@@ -114,7 +199,6 @@ export function PriceChartCanvas({
             })
     if (controls.type === 'line') series.setData(ohlc.map((b) => ({ time: b.time, value: b.close })))
     else series.setData(ohlc)
-    const byTime = new Map(bars.map((b) => [b.t, b]))
     // volume underlay on its own scale, bottom 18% of the pane
     const volume = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
@@ -168,114 +252,34 @@ export function PriceChartCanvas({
       ...drawableAnnotations(overlays?.annotations ?? []),
     ])
     series.attachPrimitive(annotationPrimitive)
-    if (
-      selectedTrade?.event_type === 'trade' &&
-      selectedTrade.entry_ts !== null &&
-      selectedTrade.exit_ts !== null &&
-      selectedTrade.entry_price !== null &&
-      selectedTrade.exit_price !== null
-    ) {
-      const holding = chart.addSeries(LineSeries, {
-        color:
-          selectedTrade.realized_return !== null && selectedTrade.realized_return < 0
-            ? CHART.down
-            : CHART.up,
-        lineWidth: 2,
-        lineStyle: LineStyle.Dashed,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        title:
-          selectedTrade.realized_return === null
-            ? 'HOLDING'
-            : `HOLDING ${(selectedTrade.realized_return * 100).toFixed(2)}%`,
-      })
-      holding.setData([
-        {
-          time: selectedTrade.entry_ts as UTCTimestamp,
-          value: selectedTrade.entry_price,
-        },
-        {
-          time: selectedTrade.exit_ts as UTCTimestamp,
-          value: selectedTrade.exit_price,
-        },
-      ])
-    }
-    const markerRows = evidence.map((marker) => ({ marker, id: marker.id }))
-    const swings: SeriesMarker<UTCTimestamp>[] = swingMarkers(overlays?.annotations ?? [])
-      .filter((marker) => marker.time >= firstBar)
-      .map((marker) => ({
-        id: marker.id,
-        time: marker.time as UTCTimestamp,
-        position: marker.position,
-        shape: marker.shape,
-        color: CHART.gold,
-        size: 0.6,
-        text: marker.text,
-      }))
-    const markerPlugin = createSeriesMarkers(
-      series,
-      [...swings, ...evidence.map((marker) => seriesMarker(marker, marker.sequenceId === selectedSequenceId))],
-      { zOrder: 'top' },
-    )
-    const handleClick = (param: MouseEventParams) => {
-      const objectId = param.hoveredInfo?.objectId ?? param.hoveredObjectId
-      if (typeof objectId !== 'string') return
-      const row = markerRows.find((candidate) => candidate.id === objectId)
-      if (row) onSelectEvidence?.(row.marker.sequenceId)
-    }
-    chart.subscribeClick(handleClick)
-    const handleCrosshair = (param: MouseEventParams) => {
-      const candle = typeof param.time === 'number' ? byTime.get(param.time) : undefined
-      if (!candle) {
-        crosshair.textContent = 'CROSSHAIR —'
-        setChartHover({ bar: null })
-        return
-      }
-      setChartHover({ bar: candle })
-      crosshair.textContent =
-        `${new Date(candle.t * 1_000).toISOString()}  ` +
-        `O ${candle.o.toFixed(4)}  H ${candle.h.toFixed(4)}  ` +
-        `L ${candle.l.toFixed(4)}  C ${candle.c.toFixed(4)}  ` +
-        `V ${candle.v.toFixed(0)}`
-    }
-    chart.subscribeCrosshairMove(handleCrosshair)
-
-    const selectedMarkers = evidence.filter(
-      (marker) =>
-        marker.sequenceId === selectedSequenceId ||
-        (selectedTrade !== null && marker.sequenceId === selectedTrade.sequence_id),
-    )
-    const selectedIndexes = selectedMarkers
-      .map((marker) => bars.findIndex((bar) => bar.t === marker.barTs))
-      .filter((index) => index >= 0)
-    if (selectedIndexes.length) {
-      const firstIndex = Math.min(...selectedIndexes)
-      const lastIndex = Math.max(...selectedIndexes)
-      const from = bars[Math.max(0, firstIndex - 5)]?.t
-      const to = bars[Math.min(bars.length - 1, lastIndex + 5)]?.t
-      if (from !== undefined && to !== undefined) {
-        chart.timeScale().setVisibleRange({ from: from as UTCTimestamp, to: to as UTCTimestamp })
-      }
-    } else {
-      chart.timeScale().fitContent()
-    }
-    if (controls.zoom !== 0) {
-      const base = chart.timeScale().options().barSpacing
-      chart.timeScale().applyOptions({ barSpacing: barSpacingFor(base, controls.zoom) })
-    }
-    const ro = new ResizeObserver(() =>
-      chart.applyOptions({ width: host.clientWidth, height: host.clientHeight }),
-    )
-    ro.observe(host)
+    seriesRef.current = series
+    const markerPlugin = createSeriesMarkers(series, [], { zOrder: 'top' })
+    markersRef.current = markerPlugin
+    if (range) chart.timeScale().setVisibleLogicalRange(range)
+    else { chart.timeScale().fitContent(); if (zoomRef.current) chart.timeScale().applyOptions({ barSpacing: barSpacingFor(chart.timeScale().options().barSpacing, zoomRef.current) }) }
+    const composition = chart.panes().flatMap(p => p.getSeries())
     return () => {
-      ro.disconnect()
-      chart.unsubscribeClick(handleClick)
-      chart.unsubscribeCrosshairMove(handleCrosshair)
+      if (chartRef.current !== chart) return
+      savedRange.current = chart.timeScale().getVisibleLogicalRange()
+      markerPlugin.detach(); markersRef.current = null; seriesRef.current = null
       series.detachPrimitive(annotationPrimitive)
-      markerPlugin.detach()
-      chart.remove()
+      for (const item of composition) chart.removeSeries(item)
     }
-  }, [annotations, bars, controls, evidence, onSelectEvidence, overlays, selectedSequenceId, selectedTrade])
+  }, [bars, overlays, annotations, controls.type])
+
+  useEffect(() => {
+    const firstBar = bars[0]?.t ?? -Infinity
+    const swings: SeriesMarker<UTCTimestamp>[] = swingMarkers(overlays?.annotations ?? []).filter(m => m.time >= firstBar).map(m => ({ id: m.id, time: m.time as UTCTimestamp, position: m.position, shape: m.shape, color: CHART.gold, size: 0.6, text: m.text }))
+    markersRef.current?.setMarkers([...swings, ...evidence.map(m => seriesMarker(m, m.sequenceId === selectedSequenceId))].sort((a, b) => Number(a.time) - Number(b.time)))
+  }, [bars, overlays, annotations, controls.type, evidence, selectedSequenceId])
+
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart || !selectedTrade || selectedTrade.entry_ts === null || selectedTrade.exit_ts === null || selectedTrade.entry_price === null || selectedTrade.exit_price === null || selectedTrade.entry_ts >= selectedTrade.exit_ts) return
+    const holding = chart.addSeries(LineSeries, { color: (selectedTrade.realized_return ?? 0) < 0 ? CHART.down : CHART.up, lineWidth: 2, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false, title: 'HOLDING' })
+    holding.setData([{ time: selectedTrade.entry_ts as UTCTimestamp, value: selectedTrade.entry_price }, { time: selectedTrade.exit_ts as UTCTimestamp, value: selectedTrade.exit_price }])
+    return () => { if (chartRef.current === chart) chart.removeSeries(holding) }
+  }, [selectedTrade, bars, overlays, annotations, controls.type])
 
   return (
     <>

@@ -1,0 +1,9 @@
+{
+  "name": "baddata",
+  "n": 2520,
+  "symbols": [
+    {"symbol": "KILN", "family": "spike", "params": {"at": 1800}},
+    {"symbol": "LOOM", "family": "nonfinite", "params": {"at": 2100}},
+    {"symbol": "MOSS", "family": "null"}
+  ]
+}

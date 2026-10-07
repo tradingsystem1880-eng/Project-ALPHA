@@ -1,0 +1,54 @@
+{
+  "captured": "2026-09-29",
+  "inventory_sha256": "bc233bbbe4c0d596c5d2195050d86d5c8bf88f8ac4a53cdb1e206b8cc7b6e0e9",
+  "totals": {
+    "baseline-2026-09-28": {
+      "files": 6927,
+      "bytes": 463134894
+    },
+    "baseline-controlled": {
+      "files": 3,
+      "bytes": 602820
+    },
+    "realistic-2026-09-29": {
+      "files": 7648,
+      "bytes": 515648938
+    },
+    "smoke": {
+      "files": 38605,
+      "bytes": 1636988034
+    },
+    "smoke-codex": {
+      "files": 23,
+      "bytes": 1505473
+    },
+    "evidence": {
+      "files": 41,
+      "bytes": 2846973
+    },
+    "layer_a_final": {
+      "files": 4411,
+      "bytes": 283888605
+    },
+    "report-baseline": {
+      "files": 2,
+      "bytes": 41671
+    },
+    "report-partial": {
+      "files": 2,
+      "bytes": 19785
+    },
+    "analysis-partial": {
+      "files": 2,
+      "bytes": 35148
+    }
+  },
+  "policy": "Original bytes retained. New scoring revisions and trials use new paths.",
+  "inventory_artifact": "historical-inventory.json.gz",
+  "compressed_sha256": "3f7d09e48ccaae85652b59637687d2ab1baa510103bd125617ba718a6f02b410",
+  "verification": {
+    "date": "2026-09-29",
+    "files_verified": 57664,
+    "mismatches": 0
+  }
+}

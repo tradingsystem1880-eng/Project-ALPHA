@@ -8,7 +8,8 @@ description: Verify statistical and quantitative-finance code against primary ac
 SR 11-7 conceptual soundness, mechanized. A statistical formula that "looks right" is
 not evidence; the primary source is. This skill produces the `QuantVerificationReport`
 that `scripts/gate.py attest --kind quant` validates and binds to the current
-quant-scope diff. The Stop guard demands it whenever quant paths were edited.
+quant-scope diff. Installed Git guards require this evidence for quant changes;
+there is no Stop guard. Evidence never grants application owner authority.
 
 ## Protocol
 

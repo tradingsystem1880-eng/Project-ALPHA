@@ -30,15 +30,13 @@ from alpha_atlas.core.model import (
     validate_graph,
 )
 from alpha_atlas.core.paths import GRAPH_PATH, INPUTS_PATH, UNKNOWNS_PATH, find_repo_root
+from alpha_atlas.developer_index import computed_fragments
 from alpha_atlas.generators import (
     api_routes,
     cli_tree,
-    components,
     docs_scan,
-    frontend_scan,
     importlinter,
     mcp_tools,
-    python_modules,
     tests_map,
     workflow,
 )
@@ -64,12 +62,13 @@ def build_outputs(root: Path) -> dict[str, str]:
 
     add(importlinter.extract(root))
     add(docs_scan.extract(root))
-    add(components.extract(root))
-    modules_fragment = add(python_modules.extract(root))
+    component_result, module_result, frontend_result = computed_fragments(root)
+    add(component_result)
+    modules_fragment = add(module_result)
     cli_fragment = add(cli_tree.extract(root))
     add(mcp_tools.extract(root, cli_ids={n.id for n in cli_fragment.nodes}))
     add(api_routes.extract(root))
-    add(frontend_scan.extract(root))
+    add(frontend_result)
     workflow_fragment = add(workflow.extract(root))
     module_ids = {n.id for n in modules_fragment.nodes}
     add(tests_map.extract(root, workflow_fragment=workflow_fragment, module_ids=module_ids))
@@ -114,7 +113,7 @@ def refresh_cli_cache(root: Path) -> None:
     import subprocess
 
     result = subprocess.run(
-        ["uv", "run", "alpha", "info", "commands", "--json"],
+        ["uv", "run", "alpha", "info", "commands", "--all", "--json"],
         cwd=root,
         capture_output=True,
         text=True,
@@ -135,7 +134,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--refresh-cli",
         action="store_true",
-        help="re-run `alpha info commands --json` into the committed cache first",
+        help="re-run `alpha info commands --all --json` into the committed cache first",
     )
     args = parser.parse_args(argv)
     root = args.repo.resolve() if args.repo is not None else discover_repo_root()

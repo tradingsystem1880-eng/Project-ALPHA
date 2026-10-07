@@ -12,6 +12,7 @@ from pathlib import Path
 
 import harness_awareness
 import pytest
+from repo_orientation import orientation
 
 from tests.unit._harness_support import REPO_ROOT as ROOT
 
@@ -41,20 +42,15 @@ class TestModuleMapAwareness:
         ids=lambda p: p.name,
     )
     def test_top_level_modules_have_a_row(self, src: Path) -> None:
-        """Every top-level public module of a package is named in CLAUDE.md or a rule.
-
-        Private helpers (``_x.py``) and vendored code are exempt; new modules
-        must land with a MODULE MAP row in the layer's rule file.
-        """
-        docs = _docs_text()
+        """Current modules are discoverable without a duplicated handwritten module map."""
+        index = orientation(ROOT, component=src.name.replace("_", "-"))
+        paths = {row["path"] for row in index["modules"]}
         missing = [
             py.name
             for py in sorted(src.glob("*.py"))
-            if not py.name.startswith("_")
-            and f"`{py.name}`" not in docs
-            and f"`{py.stem}" not in docs
+            if not py.name.startswith("_") and str(py.relative_to(ROOT)) not in paths
         ]
-        assert missing == [], f"{src.name}: modules without a MODULE MAP row: {missing}"
+        assert missing == [], f"{src.name}: modules absent from source index: {missing}"
 
 
 class TestCliAwareness:
@@ -74,22 +70,10 @@ class TestMcpAwareness:
         match = re.search(r"assert len\(names\) == (\d+)", pin)
         assert match is not None
         assert decorated == int(match.group(1))
-        assert f"pinned at {decorated} tools" in (ROOT / "CLAUDE.md").read_text()
+        assert "capability-authority-matrix.md" in (ROOT / "CLAUDE.md").read_text()
 
 
 class TestHarnessAwareness:
-    def test_commands_listed_in_harness_doc(self) -> None:
-        doc = (ROOT / "docs/operations/claude-code-harness.md").read_text()
-        for cmd in sorted((ROOT / ".claude" / "commands").glob("*.md")):
-            assert cmd.stem in doc, (
-                f"/{cmd.stem} missing from docs/operations/claude-code-harness.md"
-            )
-
-    def test_agents_listed_in_harness_doc(self) -> None:
-        doc = (ROOT / "docs/operations/claude-code-harness.md").read_text()
-        for agent in sorted((ROOT / ".claude" / "agents").glob("*.md")):
-            assert agent.stem in doc, f"{agent.stem} agent missing from the harness doc"
-
     def test_rules_paths_point_at_existing_dirs(self) -> None:
         for rule in RULES.glob("*.md"):
             text = rule.read_text()

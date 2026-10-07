@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import './theme.generated.css'
 import './index.css'
+import './workflow.css'
 import { initSettings } from './state/settings'
 
 initSettings()

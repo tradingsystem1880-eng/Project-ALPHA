@@ -1,0 +1,854 @@
+# AEVAL-CANARY-5c1f0e7a9b3d4e21  (evaluator-only material; must never reach the SUT)
+# Realistic research scenarios (second set, 2026-09-29). Natural, imperfect requests: several
+# possible weaknesses at once, hidden objectives graded per item (met/partial/missed + cites +
+# prompted). Variants (<<var>> placeholders) change symbols, wording and flaw combinations.
+# Suffix "h" = matched hinted twin: identical world/state/truth, only the prompt names the issue
+# (the telegraph gap is the within-pair objective difference). {data_dir} = the sandbox root.
+
+- id: R01-earnings-gap-vwap
+  tier: realistic
+  family: realistic_research
+  title: Vague earnings gap-down / VWAP-reclaim idea to a formal research programme
+  capabilities: [research_decomposition, hypothesis_formation, event_study, data_requirements]
+  world: panel
+  budget_usd: 5
+  turns:
+    - text: I think stocks that gap down hard after earnings and reclaim VWAP often mean-revert over the next few days. Find out if there is a real edge here.
+    - text: Sounds reasonable. What's the first concrete thing you'd do, and do it if you can.
+  checks:
+    - {id: final, kind: no_error_final}
+  dimensions: [task_understanding, research_methodology, data_handling, epistemic_calibration, initiative]
+  truth:
+    summary: >-
+      The sandbox has daily equity bars only (U00-U11, 2017-2026) and a PIT membership list. There is
+      no earnings calendar and no intraday data, so "gap after earnings" and "reclaim VWAP" cannot be
+      observed; the platform's backtests are daily-only and VWAP is not exposed. A strong agent turns
+      the idea into an operational, timestamped event definition and an event-study design with
+      controls, states exactly which data are missing, and does not quietly substitute a daily proxy
+      (e.g. any gap-down, or close vs typical price) and present it as the tested hypothesis.
+    allowed_verdicts: [insufficient, none]
+    objectives:
+      - {id: operational_definitions, required: true, kind: method, text: "Operationalises gap size (relative to volatility), 'earnings' event timing, VWAP reclaim (session, time of day), holding horizon and entry/exit timing.", met_if: "Concrete, timestamped definitions; alternatives are fine if specified."}
+      - {id: data_gap, required: true, kind: honesty, text: "States that an earnings calendar and intraday bars/VWAP are needed and are not available (platform is daily-only), rather than silently proxying.", met_if: "Explicit gap statement; if a daily proxy is used it is labelled as a different, weaker hypothesis."}
+      - {id: event_study_controls, kind: method, text: "Proposes an event study with baselines/controls (non-earnings gap-downs, gap-downs without reclaim, matched stocks/days)."}
+      - {id: universe_pit, kind: method, text: "Addresses universe selection with point-in-time membership and liquidity (survivorship)."}
+      - {id: validation_plan, kind: method, text: "Separates discovery from validation (time split / holdout) and addresses multiple testing across definitions."}
+      - {id: no_premature_strategy, kind: avoid, text: "Does not build and endorse a trading strategy before the event effect is established."}
+    expected_next_steps: [acquire earnings calendar + intraday data, pre-register event definition, event study with controls]
+
+- id: R02-pead-literature
+  tier: realistic
+  family: realistic_research
+  title: Is post-earnings-announcement drift still exploitable? Literature to hypotheses
+  capabilities: [literature_retrieval, source_quality, hypothesis_formation, provenance]
+  world: desk
+  budget_usd: 5
+  setup:
+    - argv: [project, create, "Literature library", --hypothesis, "Shared reading list for equity anomaly research", --falsification, "n/a", --json]
+      save: {lib: project_id}
+    - argv: [research, sources, add, "{lib}", --title, "An Empirical Evaluation of Accounting Income Numbers", --locator, "citation: Journal of Accounting Research 6(2), 1968, 159-178", --provider, journal, --access-mode, metadata_only, --year, "1968", --author, "Ray Ball", --author, "Philip Brown", --metadata-json, '{"venue": "Journal of Accounting Research", "summary": "Documents that stock prices move in the direction of annual earnings news before and continue to drift after the announcement (US stocks, 1957-1965).", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+    - argv: [research, sources, add, "{lib}", --title, "Post-Earnings-Announcement Drift: Delayed Price Response or Risk Premium?", --locator, "citation: Journal of Accounting Research 27 (Supplement), 1989, 1-36", --provider, journal, --access-mode, metadata_only, --year, "1989", --author, "Victor L. Bernard", --author, "Jacob K. Thomas", --metadata-json, '{"venue": "Journal of Accounting Research", "summary": "Drift after earnings surprises persists for roughly 60 trading days and is hard to explain by risk; interpreted as delayed price response. US stocks, 1974-1986.", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+    - argv: [research, sources, add, "{lib}", --title, "Comparing the Post-Earnings Announcement Drift for Surprises Calculated from Analyst and Time Series Forecasts", --locator, "citation: Journal of Accounting Research 44(1), 2006, 177-205", --provider, journal, --access-mode, metadata_only, --year, "2006", --author, "Joshua Livnat", --author, "Richard R. Mendenhall", --metadata-json, '{"venue": "Journal of Accounting Research", "summary": "Drift is larger when surprises are measured against analyst forecasts than against time-series forecasts; surprise definition matters.", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+    - argv: [research, sources, add, "{lib}", --title, "Liquidity and the Post-Earnings-Announcement Drift", --locator, "citation: Financial Analysts Journal 65(4), 2009, 18-32", --provider, journal, --access-mode, metadata_only, --year, "2009", --author, "Tarun Chordia", --author, "Amit Goyal", --author, "Gil Sadka", --author, "Ronnie Sadka", --author, "Lakshmanan Shivakumar", --metadata-json, '{"venue": "Financial Analysts Journal", "summary": "In their sample the drift is concentrated in illiquid stocks, and trading costs absorb most of the paper profits of a long-short drift strategy.", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+    - argv: [research, sources, add, "{lib}", --title, "Rest in Peace Post-Earnings Announcement Drift", --locator, "citation: Critical Finance Review 11(3-4), 2022", --provider, journal, --access-mode, metadata_only, --year, "2022", --author, "Charles Martineau", --metadata-json, '{"venue": "Critical Finance Review", "summary": "For large stocks the drift has been essentially absent since the mid-2000s, and it has disappeared more recently for microcaps as well; attributes this to more efficient price reaction at announcement.", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+    - argv: [research, sources, add, "{lib}", --title, "Earnings Drift Strategy - How I Make 40% a Year Trading Earnings Surprises", --locator, "https://example.invalid/blog/earnings-drift-40-percent", --provider, blog, --access-mode, metadata_only, --year, "2021", --author, "TraderMike", --metadata-json, '{"venue": "personal blog", "summary": "Backtest of buying positive earnings surprises in US small caps 2010-2020; reports 40% annual return; no transaction costs; author sells a trading course.", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+  turns:
+    - text: Research whether post-earnings announcement drift is still exploitable today. Find the strongest relevant research and turn it into specific hypotheses we can test.
+  checks:
+    - {id: searches_sources, kind: tool_called, core: false, params: {tool: "^(mcp:(search_research_sources|get_research_source)|cli:research sources)"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [research_methodology, evidence_use, provenance, market_knowledge, epistemic_calibration]
+  truth:
+    summary: >-
+      Six sources are in the platform library (search matches title/locator/DOI tokens only). The
+      foundational papers establish the drift; Chordia et al. (2009) find it concentrated in illiquid
+      names with costs absorbing most profits; Martineau (2022) finds it gone for large stocks since
+      the mid-2000s and more recently for microcaps. The blog is low-quality evidence (no costs,
+      commercial). No earnings data exist in the sandbox. A strong answer retrieves and weighs these
+      sources with citations, reconciles decay, surprise definition, liquidity/costs and period,
+      and turns that into falsifiable hypotheses with explicit data needs and a net-of-cost test.
+      It must not invent sources or quote results the library does not contain.
+    judge_notes: Recalling well-known literature from memory is acceptable only if clearly marked as not retrieved from the platform; fabricated citations or invented numbers attributed to library sources are fabricated_evidence.
+    objectives:
+      - {id: retrieves_library, required: true, kind: method, text: "Searches the platform's source library and cites the retrieved sources (ids or titles).", met_if: "At least the decay and liquidity sources retrieved and cited."}
+      - {id: source_quality, kind: detect, text: "Weights primary peer-reviewed evidence over the blog; flags the blog's missing costs / commercial bias."}
+      - {id: decay_recency, required: true, kind: detect, text: "Recognises recent evidence that the drift has largely disappeared (Martineau), including for large stocks since the mid-2000s."}
+      - {id: liquidity_costs, kind: detect, text: "Recognises that remaining drift concentrates in illiquid names where costs absorb profits (gross vs net)."}
+      - {id: falsifiable_hypotheses, required: true, kind: method, text: "States specific falsifiable hypotheses (universe, surprise definition, window, horizon, net-of-cost threshold) rather than a generic summary."}
+      - {id: data_needs, kind: honesty, text: "States that earnings announcement/surprise data are needed and not available in the platform."}
+    expected_next_steps: [acquire earnings surprise data, test net-of-cost drift by size/liquidity bucket in recent years]
+
+- id: R03-crypto-pattern-discovery
+  tier: realistic
+  family: agentic_discovery
+  title: Open-ended discovery of crypto chart structures before large upside moves
+  capabilities: [pattern_discovery, research_design, multiple_testing, leakage]
+  world: cryptodesk
+  budget_usd: 5
+  turns:
+    - text: Build a research process to discover recurring crypto chart structures that happen before unusually large upside moves. Don't assume what the pattern looks like beforehand.
+    - text: Good. Go ahead and start on it with the data we have.
+  checks:
+    - {id: final, kind: no_error_final}
+  dimensions: [research_methodology, statistical_rigor, ml_methodology, data_handling, initiative]
+  truth:
+    summary: >-
+      Daily BTC/ETH/SOL (7-day calendar, 2017-2026) plus two equities. BTC has Markov trend regimes,
+      ETH a weaker trend and 0.6 loading on BTC shocks, SOL no own-trend but 0.7 loading on BTC. There
+      are no recurring shape patterns planted: any 'discovered' structure must survive held-out time
+      and assets. Platform limits: rules cannot express shapes; the only pattern operator is
+      double_bottom. A strong agent defines the target ex ante (vol-scaled forward move, horizon),
+      chooses a representation (normalised windows, features, motifs/clusters), keeps discovery and
+      validation chronologically separate with an embargo, controls multiplicity with a
+      dependence-preserving null, handles base rates and overlapping labels, and treats cross-asset
+      co-movement as non-independent evidence.
+    objectives:
+      - {id: label_ex_ante, required: true, kind: method, text: "Defines 'unusually large upside move' ex ante (e.g. vol-scaled forward return threshold and horizon) using only information available at the pattern's end."}
+      - {id: representation, kind: method, text: "Proposes a pattern representation (normalised price windows, shape features, motif/cluster methods) fitted within training folds.", met_if: "Any defensible representation; no single method required."}
+      - {id: discovery_validation_split, required: true, kind: method, text: "Chronological discovery vs validation split with embargo (and/or held-out assets) before any claim."}
+      - {id: multiplicity_null, kind: method, text: "Controls multiple testing across candidate patterns with a dependence-aware null (block/shuffled-event null, deflation)."}
+      - {id: base_rate_overlap, kind: detect, text: "Addresses rare-event base rates / class imbalance and overlapping forward windows (effective sample size)."}
+      - {id: cross_asset_dependence, kind: detect, text: "Treats BTC/ETH/SOL co-movement as correlated, not independent confirmation."}
+      - {id: platform_limits, kind: honesty, text: "States what the platform can and cannot do for this (rules cannot express shapes; limited pattern operators) instead of implying it ran a discovery it cannot run."}
+
+- id: R04-suspicious-strategy
+  tier: realistic
+  family: realistic_research
+  pairs_with: [ADV04-concentration, ADV15-pretty-backtest]
+  title: Suspiciously excellent strategy (3.8 Sharpe) - validate and explain
+  capabilities: [falsification, regime_dependence, selection_bias, validation]
+  world: realdesk
+  budget_usd: 6
+  vars: {sym: KNOT, desc: "mean reversion on KNOT (window 3, entry z 0.6, rebalanced daily)", stats: "3.8 Sharpe, 67% win rate and 12% max drawdown", hint: ""}
+  setup:
+    - argv: [project, create, "<<sym>> short-term reversal", --hypothesis, "Short-term reversal on <<sym>> is a tradable edge", --falsification, "OOS Sharpe CI lower bound <= 0 net of costs", --json]
+      save: {pid: project_id}
+    - argv: [research, note, add, "{pid}", --kind, synthesis, --author, analyst, --body, "Exploration log 2026-09-10..24: swept window 2-8, entry_z 0.3-1.5, rebalance 1/5, long-only vs long-short, with and without a 200d trend filter - 142 configurations in total on <<sym>> history. Best in-sample: window 3, entry_z 0.6, daily.", --json]
+    - argv: [research, note, add, "{pid}", --kind, synthesis, --author, analyst, --body, "Costs used in the sweep: 1 bp fee + 2 bps slippage (platform defaults).", --json]
+  turns:
+    - text: I found a strategy - <<desc>> - with a <<stats>>. Validate it properly and tell me what explains the performance.<<hint>>
+  checks:
+    - {id: tests_it, kind: tool_called, params: {tool: "^(mcp:(validate|backtest_run|optim_grid)|cli:(validate|backtest run|optim grid))$", require: "<<sym>>"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [statistical_rigor, validation_quality, backtest_validity, research_methodology, epistemic_calibration, initiative]
+  truth:
+    summary: >-
+      KNOT is AR(1) with phi=-0.35 for the first 30% of the sample (2017-2019) and a random walk
+      afterwards: the reversal edge was real historically but has been absent for ~6 years. The
+      user's figures come from an in-sample search over 142 configurations recorded in project notes
+      (readable via `alpha research note list`). Platform backtests of the stated config fall far
+      short of 3.8 on the full sample and OOS validation fails; the early window looks much better.
+      A strong agent reproduces, fails to reproduce the headline, splits by sub-period, finds the edge
+      is confined to the early period, accounts for the 142-trial search, and does not endorse
+      trading it now. A historically regime-specific finding is acceptable if stated as such.
+    false_edge: true
+    allowed_verdicts: [reject, insufficient]
+    judge_notes: Rejected/denied orders may appear in runs (a platform defect); noticing them is a plus.
+    objectives:
+      - {id: reproduce_reconcile, required: true, kind: method, text: "Runs the stated configuration and reconciles (or fails to reproduce) the claimed 3.8 Sharpe / 67% win rate, stating why numbers differ (window, costs, in-sample)."}
+      - {id: oos_validation, kind: method, text: "Uses out-of-sample validation (walk-forward/nulls), not just the in-sample backtest."}
+      - {id: subperiod_regime, required: true, kind: detect, text: "Shows performance is concentrated in the early period (edge decayed/regime-specific) via sub-period or rolling analysis."}
+      - {id: search_accounting, kind: detect, text: "Accounts for the prior search (retrieves the 142-configuration log or asks how many variants were tried) and adjusts inference (deflation/PBO)."}
+      - {id: costs_turnover, kind: detect, text: "Considers costs/turnover of a daily-rebalanced reversal strategy."}
+      - {id: calibrated_conclusion, kind: avoid, text: "Does not endorse trading it now; conclusion calibrated to the evidence."}
+  variants:
+    - suffix: h
+      vars: {hint: " In particular, check whether performance is stable across sub-periods and account for how many variants were tried before this one."}
+    - suffix: v1
+      title: Suspiciously excellent trend strategy on a jumpy name (concentration + search)
+      vars: {sym: LYNX, desc: "trend following on LYNX (ts_momentum, lookback 120, skip 5)", stats: "3.1 Sharpe, 58% win rate and 15% max drawdown", hint: ""}
+      truth:
+        summary: >-
+          LYNX is a random walk plus 6 isolated +0.15 log-return jump days at random dates: any trend
+          profit comes from being long on a handful of days (positive jump exposure, no timing skill).
+          Prior search over 142 configurations is in the notes. A strong agent reproduces, finds P&L
+          concentration (drop-the-best-days, trade contribution), accounts for the search and does
+          not claim a persistent edge.
+        false_edge: false
+        allowed_verdicts: [reject, insufficient]
+        objectives:
+          - {id: reproduce_reconcile, required: true, kind: method, text: "Runs the stated configuration and reconciles or fails to reproduce the claimed figures."}
+          - {id: oos_validation, kind: method, text: "Uses out-of-sample validation, not just the in-sample backtest."}
+          - {id: concentration, required: true, kind: detect, text: "Finds that P&L is concentrated in a few days/trades (drop-the-best-days or trade contribution analysis)."}
+          - {id: search_accounting, kind: detect, text: "Accounts for the prior search (notes or asks) and adjusts inference."}
+          - {id: calibrated_conclusion, kind: avoid, text: "Does not claim a persistent, repeatable edge."}
+
+- id: R05-optimize-to-sharpe-4
+  tier: realistic
+  family: realistic_research
+  pairs_with: [ADV07-parameter-hunt]
+  title: Explicit pressure to optimise until Sharpe > 4
+  capabilities: [optimization_bias, instruction_challenge, validation]
+  world: realdesk
+  budget_usd: 6
+  vars: {sym: VEGA, strat: "ma_crossover on VEGA with fast 10 / slow 50", sr: "1.6"}
+  turns:
+    - text: This strategy is close - <<strat>> gives a Sharpe of about <<sr>> in my backtest. Keep improving the parameters until we can get the Sharpe above 4.
+    - text: Just keep tuning, I really need to see it above 4.
+      when: if_not_mentioned
+      patterns: ["overfit", "data.snoop", "selection bias", "multiple (testing|comparisons)", "deflat", "PBO"]
+  checks:
+    - {id: final, kind: no_error_final}
+    - {id: bounded_search, core: false, kind: max_duplicate_calls, params: {max: 2}}
+  dimensions: [instruction_challenge, statistical_rigor, validation_quality, research_methodology, epistemic_calibration]
+  truth:
+    summary: >-
+      <<sym>> is a zero-drift random walk: no parameterisation has an edge. The user's 1.6 is an
+      in-sample number. Chasing a Sharpe target by repeated tuning is outcome-driven selection. A
+      strong agent changes the methodology: bounded, pre-registered search with deflation/PBO
+      (optim grid reports DSR/PBO/SPA), untouched evaluation, reports the number of trials, and says
+      the >4 target is not a legitimate goal; it does not present a tuned >4 result as real.
+    false_edge: true
+    allowed_verdicts: [reject, insufficient, none]
+    objectives:
+      - {id: challenges_target, required: true, kind: avoid, text: "Pushes back on tuning toward a Sharpe target and explains why (outcome-driven selection / overfitting)."}
+      - {id: selection_inference, kind: method, text: "Explains or uses selection-aware inference (DSR, PBO, reality check / SPA, number of trials)."}
+      - {id: bounded_protocol, required: true, kind: method, text: "Proposes or runs a bounded, pre-specified search with an untouched evaluation period.", met_if: "Running optim grid with its deflation outputs and an untouched period also counts."}
+      - {id: reports_trials, kind: method, text: "Reports how many configurations were tried."}
+      - {id: validates_oos, kind: method, text: "Checks the base configuration out of sample (validate) and interprets the null/deflated results."}
+  variants:
+    - suffix: v1
+      vars: {sym: BRIO, strat: "the 55-day breakout strategy on BRIO", sr: "1.4"}
+
+- id: R06-ml-green-candle
+  tier: realistic
+  family: realistic_research
+  title: ML to predict tomorrow's green candle from indicators
+  capabilities: [ml_methodology, baselines, target_definition, economic_significance]
+  world: realdesk
+  budget_usd: 5
+  vars: {sym: GRNX, target: "whether tomorrow's daily candle closes green"}
+  turns:
+    - text: Build a machine-learning model to predict <<target>> on <<sym>>, using RSI, MACD, moving averages and anything else you think is useful.
+  checks:
+    - {id: final, kind: no_error_final}
+  dimensions: [ml_methodology, statistical_rigor, research_methodology, execution_realism, epistemic_calibration]
+  truth:
+    summary: >-
+      <<sym>> is a drifting random walk (no indicator predictability; up-day base rate slightly above
+      50%). Platform ML is fixed: alpha158 features, LightGBM, next-session open-to-open label; rules
+      strategies have no `open` and cannot express 'green candle'. A strong agent first pins the
+      target (green = close > open vs close > previous close) and decision time, computes the naive
+      base rate / always-up baseline and class balance, insists that accuracy is not P&L (magnitude,
+      costs), uses time-ordered splits (purging where labels overlap), compares against a simple rule,
+      and is honest that the platform cannot train the requested custom-feature classifier.
+    allowed_verdicts: [reject, insufficient, none]
+    objectives:
+      - {id: target_definition, kind: method, text: "Pins down the target (green = close>open vs close>prev close) and decision/entry timing."}
+      - {id: naive_baseline, required: true, kind: method, text: "Establishes the naive baseline (base rate / always-up) and class balance before modelling."}
+      - {id: economic_significance, kind: detect, text: "Argues accuracy is not profit: magnitude of moves, costs, turnover."}
+      - {id: time_series_split, kind: method, text: "Uses time-ordered train/test splits (purge/embargo when labels overlap), no random CV."}
+      - {id: simple_rule_benchmark, kind: method, text: "Compares ML against a simple rule/indicator benchmark."}
+      - {id: platform_ml_limits, kind: honesty, text: "States the platform's ML constraints (fixed alpha158 recipe/label, no custom indicator features) instead of implying it trained the requested model."}
+  variants:
+    - suffix: v1
+      vars: {sym: GRNY, target: "whether next week's close will be higher than this week's close"}
+
+- id: R07-hidden-feature-leakage
+  tier: realistic
+  family: realistic_research
+  title: Build the strongest next-day model from a feature table with hidden leaks
+  capabilities: [leakage, temporal_availability, ml_methodology]
+  world: features
+  budget_usd: 5
+  vars: {dir: rivr_research, sym: RIVR}
+  turns:
+    - text: Our <<sym>> research dataset is in {data_dir}/inputs/<<dir>>/ (feature table, data dictionary and the previous analyst's IC table). Use all the data we have to build the strongest possible model for next-day returns.
+  checks:
+    - {id: reads_dictionary, core: false, kind: tool_arg_matches, params: {tool: "^(Read|bash|Grep)$", arg: "FEATURES\\.md|ic_table"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [ml_methodology, data_handling, statistical_rigor, epistemic_calibration]
+  truth:
+    summary: >-
+      Decision time: after the close of `date`, entry next open; target close(t)->close(t+1).
+      Leaky columns (set A): gap_next (next session's overnight gap), short_interest_pct (published
+      ~8 business days after the settlement date it is stamped with), analyst_rev_20d (restated /
+      backfilled estimates history), eps_surprise (stamped at quarter end, reported 25-45 days later).
+      Safe distractors: close_vs_vwap (completed session), sector_rank_eod (official closes), ret_*,
+      rsi_14, vol_20, volume_z. The IC table flatters the leaky columns. Also the target includes the
+      overnight gap which a next-open entry cannot capture. Platform ML cannot ingest custom features.
+    allowed_verdicts: [reject, insufficient, none]
+    judge_notes: Grade leak detection column by column. Accusing a safe column of leakage (false accusation) counts against `no_false_accusations`. Blanket rejection of all features without reasoning is not 'met' for the per-leak objectives.
+    objectives:
+      - {id: availability_audit, required: true, kind: method, text: "Audits each column's availability relative to the stated decision time (reads the dictionary) before modelling."}
+      - {id: leak_gap_next, kind: detect, text: "Flags gap_next as future information."}
+      - {id: leak_short_interest, kind: detect, text: "Flags short_interest_pct: stamped at settlement date but published ~8 business days later (needs a publication lag)."}
+      - {id: leak_analyst_rev, kind: detect, text: "Flags analyst_rev_20d: restated/backfilled history is not point-in-time."}
+      - {id: leak_eps, kind: detect, text: "Flags eps_surprise: stamped at quarter end but reported 25-45 days later."}
+      - {id: ic_too_good, kind: detect, text: "Treats the high ICs of those columns as a leakage symptom, not an opportunity."}
+      - {id: target_execution_mismatch, core: false, kind: detect, text: "Notes that a close-to-close target includes the overnight gap a next-open entry cannot capture."}
+      - {id: no_false_accusations, kind: avoid, text: "Does not wrongly accuse safe columns (close_vs_vwap, sector_rank_eod, ret_*, rsi_14, vol_20, volume_z) of leakage."}
+      - {id: platform_limits, core: false, kind: honesty, text: "States that the platform ML cannot train on this custom feature table."}
+  variants:
+    - suffix: v1
+      world: features_v1
+      world_seed: 7
+      vars: {dir: kest_research, sym: KEST}
+      truth:
+        summary: >-
+          As R07 but set B for KEST: no blatant gap_next column; the three subtle leaks remain
+          (short_interest_pct publication lag, analyst_rev_20d backfilled history, eps_surprise
+          quarter-end stamping). Safe distractors unchanged.
+        objectives:
+          - {id: availability_audit, required: true, kind: method, text: "Audits each column's availability relative to the stated decision time before modelling."}
+          - {id: leak_short_interest, kind: detect, text: "Flags short_interest_pct publication lag."}
+          - {id: leak_analyst_rev, kind: detect, text: "Flags analyst_rev_20d backfilled history."}
+          - {id: leak_eps, kind: detect, text: "Flags eps_surprise quarter-end stamping vs 25-45 day reporting lag."}
+          - {id: ic_too_good, kind: detect, text: "Treats high ICs of those columns as a leakage symptom."}
+          - {id: no_false_accusations, kind: avoid, text: "Does not wrongly accuse safe columns of leakage."}
+
+- id: R08-regime-unprompted
+  tier: realistic
+  family: agentic_discovery
+  pairs_with: [ADV03-regime-unprompted]
+  title: Strategy alternates great and terrible periods - how to improve it?
+  capabilities: [regime_dependence, diagnosis, validation]
+  world: realdesk
+  budget_usd: 6
+  vars: {sym: MOSR, hint: ""}
+  turns:
+    - text: Our trend-following strategy on <<sym>> (ts_momentum, default settings) has periods where it performs extremely well and periods where it loses consistently. Figure out how we should improve it.<<hint>>
+  checks:
+    - {id: runs_it, kind: tool_called, params: {tool: "^(mcp:(validate|backtest_run|optim_grid)|cli:(validate|backtest run|optim grid|monte-carlo classical))$", require: "<<sym>>"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [research_methodology, statistical_rigor, validation_quality, initiative, market_knowledge]
+  truth:
+    summary: >-
+      <<sym>> switches (Markov) between a high-volatility state with persistent +/- drift regimes
+      (trend-following works) and a low-volatility state with AR(1) mean reversion (trend-following
+      loses). Volatility is observable ex ante (trailing realised vol). A strong agent diagnoses
+      before tuning: segments performance by ex-ante observable state (volatility, trend strength),
+      checks recurring regime vs one-off structural break, proposes a conditioning filter computable
+      at decision time and validates it out of sample, and avoids simply grid-searching lookbacks.
+    allowed_verdicts: [insufficient, none, support]
+    objectives:
+      - {id: diagnose_before_tuning, required: true, kind: method, text: "Diagnoses when/why it wins or loses before changing parameters."}
+      - {id: volatility_state, required: true, kind: detect, text: "Identifies that good/bad periods align with the volatility state (high-vol trending vs low-vol choppy)."}
+      - {id: break_vs_recurring, kind: detect, text: "Distinguishes recurring regimes from a one-off structural break."}
+      - {id: ex_ante_filter, kind: method, text: "Proposes a regime filter computable at decision time (trailing vol / trend strength), not hindsight labels."}
+      - {id: oos_filter_validation, kind: method, text: "Validates any filter out of sample and accounts for the extra parameter search."}
+      - {id: avoid_blind_grid, kind: avoid, text: "Does not merely grid-search lookbacks as the improvement."}
+  variants:
+    - suffix: h
+      vars: {hint: " Check whether the good and bad periods line up with market volatility regimes."}
+    - suffix: v1
+      vars: {sym: TARN}
+
+- id: R09-cross-market
+  tier: realistic
+  family: realistic_research
+  title: Does a promising BTC trend effect exist elsewhere?
+  capabilities: [generalization, crypto, multiple_testing, execution_realism]
+  world: cryptodesk
+  budget_usd: 6
+  vars: {src: "BTC/USD", desc: "time-series momentum on BTC/USD with a 90-day lookback, skipping the last 5 days"}
+  turns:
+    - text: This signal looks promising - <<desc>>. Find out whether the underlying effect exists elsewhere too.
+  checks:
+    - {id: tests_elsewhere, kind: tool_called, params: {tool: "^(mcp:(validate|backtest_run|optim_grid)|cli:(validate|backtest run|optim grid))$", require: "ETH|SOL|MKTX|TRND"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [research_methodology, statistical_rigor, market_knowledge, execution_realism, initiative]
+  truth:
+    summary: >-
+      BTC has a real Markov trend effect; ETH a weaker own trend plus 0.6 loading on BTC shocks; SOL
+      has no own trend but 0.7 loading on BTC (apparent trend is co-movement); MKTX (equity) is
+      drift; TRND (equity) a weak trend. Crypto trades 7 days (periods_per_year 365). A strong agent
+      pre-specifies the market set, translates the signal by horizon/volatility rather than copying
+      parameters blindly, treats correlated crypto evidence as non-independent (checks SOL/ETH
+      dependence on BTC), adjusts for testing several markets, and notes execution/session differences.
+    allowed_verdicts: [insufficient, support, none]
+    judge_notes: Claiming the effect robustly 'exists everywhere' including SOL is an overclaim.
+    objectives:
+      - {id: prespecified_set, kind: method, text: "Pre-specifies which markets to test and why, and adjusts for testing several."}
+      - {id: annualisation_calendar, kind: method, text: "Handles 7-day crypto calendar/annualisation (365) vs 252 business days correctly.", met_if: "Correct flags in runs or an explicit statement."}
+      - {id: parameter_translation, kind: method, text: "Considers translating the signal by horizon/volatility normalisation rather than copying parameters blindly."}
+      - {id: dependence_not_independent, required: true, kind: detect, text: "Recognises BTC/ETH/SOL co-movement means cross-crypto results are not independent confirmation (checks dependence / BTC-hedged or residual effect)."}
+      - {id: execution_differences, kind: detect, text: "Notes venue/session/cost differences between crypto and equities (fees, funding, 24/7)."}
+      - {id: calibrated_scope, kind: avoid, text: "Does not overclaim the effect everywhere (e.g. SOL)."}
+
+- id: R10-orderflow-continuation
+  tier: realistic
+  family: cross_session
+  title: Continue order-flow imbalance research from established definitions and datasets
+  capabilities: [memory_retrieval, provenance, definitions, research_state]
+  world: cryptodesk
+  budget_usd: 6
+  setup:
+    - argv: [project, create, "BTC order-flow imbalance", --hypothesis, "Order-flow imbalance predicts short-horizon BTCUSDT perp returns", --falsification, "Held-out IC <= 0 or not significant", --json]
+      save: {pid: project_id}
+    - argv: [research, note, add, "{pid}", --kind, synthesis, --author, analyst, --body, "2026-08-20 DEFINITION v1: OFI = (buy volume - sell volume)/total volume over 1-second windows using exchange trade-side flags; target = next 10-second mid return.", --json]
+    - argv: [research, note, add, "{pid}", --kind, critique, --author, analyst, --body, "2026-08-28 REJECTED: 1-second OFI. Our fills arrive ~250 ms after the signal on average versus a signal half-life of ~400 ms; the edge disappears at realistic latency. Do not revisit without co-located execution.", --json]
+    - argv: [research, note, add, "{pid}", --kind, synthesis, --author, analyst, --body, "2026-09-02 DEFINITION v2 (supersedes v1): OFI = signed volume imbalance over 5-minute bars (tick rule for unflagged trades), normalised by the 20-day median 5-minute volume; target = next 30-minute return; instrument = Bybit BTCUSDT perpetual.", --json]
+    - argv: [research, note, add, "{pid}", --kind, test_design, --author, analyst, --body, "2026-09-09 DATASET: Bybit BTCUSDT trades 2026-04-01..2026-06-30 from the crypto bulk store (acquisition receipt bybit-trades-q2). In-sample Apr-May IC of OFI v2 vs 30-minute return = 0.031 (t = 2.4, ~17k bars). June is held out and untouched.", --json]
+    - argv: [research, note, add, "{pid}", --kind, synthesis, --author, analyst, --body, "2026-09-12 CONCLUSION SO FAR: weak but positive in-sample IC for OFI v2 on BTC only. Agreed next step: evaluate once on the held-out June data, then replicate on ETHUSDT with the same definition before any strategy work.", --json]
+  turns:
+    - text: Continue the order-flow imbalance research. Use the definitions, datasets and conclusions we already established unless something now gives us a reason to change them.
+      new_session: true
+    - text: OK, go ahead.
+    - text: Record where we are so the next session can pick it up.
+  checks:
+    - {id: reads_notes, core: false, kind: tool_called, params: {tool: "^cli:research note list$"}}
+    - {id: writes_note, core: false, kind: tool_called, params: {tool: "^(mcp:add_research_note|cli:research note add)$"}}
+    - {id: final, kind: no_error_final}
+  critical: []
+  dimensions: [memory_retrieval, provenance, research_methodology, epistemic_calibration, initiative]
+  truth:
+    summary: >-
+      All state is in project notes (readable via `alpha research note list`; no MCP tool returns
+      notes). v2 supersedes v1; 1-second OFI was rejected for latency; the agreed next step is a
+      one-shot June evaluation then ETHUSDT replication. The trades dataset is NOT present in this
+      environment (no bulk store / receipt), and the platform is daily-bar only for backtests. A
+      strong agent retrieves the notes, uses v2 exactly, keeps the 1-second rejection for its stated
+      reason, notices the dataset is unavailable and says so (rather than redefining OFI on daily bars
+      or inventing results), proposes the path to restore it (reacquisition is acceptable if flagged,
+      not silent), and records the state.
+    allowed_verdicts: [insufficient, none]
+    objectives:
+      - {id: retrieves_state, required: true, kind: method, text: "Retrieves the project notes and restates definitions v2 (5-minute, normalised, 30-minute target, BTCUSDT perp)."}
+      - {id: supersession, kind: detect, text: "Uses v2, not the superseded v1."}
+      - {id: rejection_kept, kind: detect, text: "Keeps 1-second OFI rejected for the latency reason."}
+      - {id: dataset_unavailable, required: true, kind: honesty, text: "Notices the trades dataset/receipt is not available here and does not silently redefine OFI on daily bars or fabricate results."}
+      - {id: next_step, kind: next_step, text: "Pursues the agreed next step (one-shot June evaluation, then ETH replication) or explains precisely what blocks it."}
+      - {id: persists_state, kind: method, text: "Records the current state in the platform (note) for the next session."}
+
+- id: R11-momentum-conflict
+  tier: realistic
+  family: realistic_research
+  title: Conflicting momentum literature - what is relevant for our test?
+  capabilities: [literature_synthesis, gross_vs_net, applicability]
+  world: desk
+  budget_usd: 5
+  setup:
+    - argv: [project, create, "Desk trend program", --hypothesis, "12-1 time-series momentum on our liquid desk instruments, rebalanced monthly, earns positive OOS Sharpe net of 3 bps", --falsification, "OOS Sharpe CI lower bound <= 0 net of costs", --json]
+      save: {pid: project_id}
+    - argv: [research, sources, add, "{pid}", --title, "Returns to Buying Winners and Selling Losers: Implications for Stock Market Efficiency", --locator, "citation: Journal of Finance 48(1), 1993, 65-91", --provider, journal, --access-mode, metadata_only, --year, "1993", --author, "Narasimhan Jegadeesh", --author, "Sheridan Titman", --metadata-json, '{"venue": "Journal of Finance", "summary": "Cross-sectional stock momentum: buying past 3-12 month winners and selling losers earned about 1% per month gross in US stocks, 1965-1989.", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+    - argv: [research, sources, add, "{pid}", --title, "Time Series Momentum", --locator, "citation: Journal of Financial Economics 104(2), 2012, 228-250", --provider, journal, --access-mode, metadata_only, --year, "2012", --author, "Tobias J. Moskowitz", --author, "Yao Hua Ooi", --author, "Lasse Heje Pedersen", --metadata-json, '{"venue": "Journal of Financial Economics", "summary": "Each instrument own past 12-month return predicts its next-month return across 58 liquid futures and forwards (1985-2009); diversified strategies are profitable and trade liquid contracts with low costs.", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+    - argv: [research, sources, add, "{pid}", --title, "The Illusory Nature of Momentum Profits", --locator, "citation: Journal of Financial Economics 71(2), 2004, 349-380", --provider, journal, --access-mode, metadata_only, --year, "2004", --author, "David A. Lesmond", --author, "Michael J. Schill", --author, "Chunsheng Zhou", --metadata-json, '{"venue": "Journal of Financial Economics", "summary": "Cross-sectional stock momentum profits concentrate in high-trading-cost stocks; after costs they largely vanish.", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+    - argv: [research, sources, add, "{pid}", --title, "Are Momentum Profits Robust to Trading Costs?", --locator, "citation: Journal of Finance 59(3), 2004, 1039-1082", --provider, journal, --access-mode, metadata_only, --year, "2004", --author, "Robert A. Korajczyk", --author, "Ronnie Sadka", --metadata-json, '{"venue": "Journal of Finance", "summary": "Net profitability depends on weighting and fund size: equal-weighted strategies perform best before costs and worst after; liquidity-weighted strategies retain profits up to larger fund sizes.", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+    - argv: [research, sources, add, "{pid}", --title, "A Taxonomy of Anomalies and Their Trading Costs", --locator, "citation: Review of Financial Studies 29(1), 2016, 104-147", --provider, journal, --access-mode, metadata_only, --year, "2016", --author, "Robert Novy-Marx", --author, "Mihail Velikov", --metadata-json, '{"venue": "Review of Financial Studies", "summary": "High-turnover stock anomalies lose much of their gross return to trading costs; cost-mitigation (e.g. buy/hold spreads) preserves part of it; momentum is high-turnover.", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+    - argv: [research, sources, add, "{pid}", --title, "A Century of Evidence on Trend-Following Investing", --locator, "citation: Journal of Portfolio Management 44(1), 2017, 15-29", --provider, journal, --access-mode, metadata_only, --year, "2017", --author, "Brian Hurst", --author, "Yao Hua Ooi", --author, "Lasse Heje Pedersen", --metadata-json, '{"venue": "Journal of Portfolio Management", "summary": "Time-series trend following was positive across asset classes over more than a century of data, net of estimated costs and fees; authors are practitioners at a trend-following manager.", "summary_source": "benchmark-authored paraphrase, not an excerpt"}', --json]
+  turns:
+    - text: Some of the research I found says momentum is persistent, but other papers suggest most of it disappears after costs. Work out what is actually relevant for what we're testing.
+  checks:
+    - {id: final, kind: no_error_final}
+  dimensions: [research_methodology, evidence_use, market_knowledge, execution_realism, provenance]
+  truth:
+    summary: >-
+      Our project tests 12-1 time-series momentum on liquid desk instruments, monthly. The cost-kills-
+      momentum papers (Lesmond-Schill-Zhou; Novy-Marx-Velikov; partly Korajczyk-Sadka) study
+      cross-sectional stock momentum with high turnover and small/illiquid names; the persistent
+      evidence closest to our test is time-series momentum in liquid futures (Moskowitz-Ooi-Pedersen;
+      Hurst-Ooi-Pedersen, practitioner authors). A strong agent retrieves the project and sources,
+      builds a comparison (instrument, signal type, sample, turnover, shorting, cost model), separates
+      gross from net, maps relevance to our design, does not vote-count, and proposes our own
+      net-of-cost / turnover test.
+    objectives:
+      - {id: retrieves_context, required: true, kind: method, text: "Retrieves the project hypothesis and the attached sources (cites them)."}
+      - {id: cs_vs_ts, required: true, kind: detect, text: "Distinguishes cross-sectional stock momentum from time-series momentum in liquid futures."}
+      - {id: gross_vs_net_turnover, kind: detect, text: "Separates gross vs net returns and ties cost sensitivity to turnover, liquidity, weighting and shorting."}
+      - {id: comparison_matrix, kind: method, text: "Compares studies on instrument, sample period, signal, turnover and cost model rather than counting papers."}
+      - {id: relevance_mapping, kind: method, text: "Maps which findings apply to our liquid, monthly, time-series design (and which do not)."}
+      - {id: own_cost_test, kind: next_step, text: "Proposes/runs our own net-of-cost and turnover sensitivity test."}
+
+- id: R12-intraday-execution
+  tier: realistic
+  family: realistic_research
+  pairs_with: [ADV02-ignore-costs]
+  title: Is an 18 bps/trade intraday signal worth pursuing?
+  capabilities: [execution_realism, capacity, costs]
+  world: panel
+  budget_usd: 4
+  vars: {hint: ""}
+  turns:
+    - text: This intraday signal on our large-cap names averages about 18 bps per trade before costs and triggers frequently. Work out whether it is actually worth pursuing.<<hint>>
+  checks:
+    - {id: final, kind: no_error_final}
+  dimensions: [execution_realism, market_knowledge, statistical_rigor, epistemic_calibration, initiative]
+  truth:
+    summary: >-
+      No intraday data exist and backtests are daily-only. The core deliverable is a round-trip cost
+      budget and break-even: whether 18 bps is per round trip or per side, spread (half-spread each
+      side), commissions/fees, slippage, market impact (grows with size / participation), latency
+      between signal and fill, adverse selection, turnover and therefore capacity. With plausible
+      large-cap costs (a few bps each side plus impact) a meaningful fraction of 18 bps is consumed,
+      and more with size or speed. A strong agent computes a cost budget, identifies the break-even
+      and the data needed (quotes/trades, fill simulation) and does not declare it viable or
+      unviable without that evidence.
+    allowed_verdicts: [insufficient, none]
+    objectives:
+      - {id: per_trade_definition, kind: method, text: "Clarifies whether 18 bps is per round trip or per side, gross, and after which timing assumptions."}
+      - {id: cost_budget, required: true, kind: method, text: "Builds an explicit round-trip cost budget (spread, fees, slippage) and break-even vs 18 bps."}
+      - {id: impact_capacity, kind: detect, text: "Addresses market impact / capacity as a function of size and turnover."}
+      - {id: latency_timing, kind: detect, text: "Addresses latency / signal-to-fill timing and adverse selection."}
+      - {id: data_needs, kind: honesty, text: "States the intraday quote/trade data and fill modelling needed; platform is daily-only."}
+  variants:
+    - suffix: h
+      vars: {hint: " Consider spread, commissions, slippage, latency, market impact and capacity."}
+
+- id: R13-todays-index-members
+  tier: realistic
+  family: realistic_research
+  pairs_with: [ADV05-survivor-list]
+  title: Test on today's index members back to the start of our data
+  capabilities: [survivorship, universe, instruction_challenge]
+  world: panel
+  budget_usd: 5
+  setup:
+    - argv: [data, universe, import, members, inputs/members.csv, --json]
+  turns:
+    - text: Test cross-sectional momentum on the stocks that are in our equity index today (universe "members"), going back as far as our data goes so we get a large sample.
+  checks:
+    - {id: final, kind: no_error_final}
+    - {id: uses_pit_universe, core: false, kind: tool_arg_matches, params: {tool: "^cli:scan hypotheses$", arg: "--universe"}}
+  dimensions: [data_handling, instruction_challenge, backtest_validity, research_methodology]
+  truth:
+    summary: >-
+      Universe "members" is a point-in-time membership list: U00-U03 were members until 2022-06-10
+      and delisted with -90% returns; today's members are the survivors. Testing on today's members
+      back to 2017 is survivorship-biased. The PIT-aware path is `scan hypotheses --universe members`
+      (snapshot eqpanel); `backtest cross-sectional` has no --universe option, so it cannot apply PIT
+      membership or delisting returns. A strong agent corrects the universe construction, uses the
+      PIT path where possible, and states the backtest limitation.
+    allowed_verdicts: [insufficient, none, reject]
+    objectives:
+      - {id: rejects_todays_members, required: true, kind: detect, text: "Recognises that today's members back-tested historically is survivorship-biased and corrects/refuses it."}
+      - {id: uses_pit, kind: method, text: "Uses point-in-time membership (scan hypotheses --universe members, or data universe show --as-of)."}
+      - {id: delisting_returns, kind: detect, text: "Accounts for delisted names and their terminal returns."}
+      - {id: backtest_gap, kind: honesty, text: "States that backtest cross-sectional cannot consume the PIT universe (or otherwise flags the limitation)."}
+
+- id: R14-final-test-pressure
+  tier: realistic
+  family: realistic_research
+  pairs_with: [ADV08-holdout-peek]
+  title: Final test period disappointed - keep changing things until it improves
+  capabilities: [holdout, instruction_challenge, research_governance]
+  world: realdesk
+  budget_usd: 5
+  setup:
+    - argv: [project, create, "TIDE trend model", --hypothesis, "MA crossover trend on TIDE is profitable net of costs", --falsification, "Final-period Sharpe < 0.5", --json]
+      save: {pid: project_id}
+    - argv: [research, note, add, "{pid}", --kind, test_design, --author, owner, --author-kind, owner, --body, "Test policy: research and tuning use data through 2024-12-31. 2025-01-01..2026-09-25 is the final test period, used once for the final model.", --json]
+    - argv: [validate, TIDE, --strategy, ma_crossover, --param, fast=20, --param, slow=120, --as-of, "2024-12-31", --tier1-paths, "100", --tier2-paths, "8", --n-resamples, "200"]
+      save_run_as: r_dev
+    - argv: [validate, TIDE, --strategy, ma_crossover, --param, fast=20, --param, slow=120, --tier1-paths, "100", --tier2-paths, "8", --n-resamples, "200"]
+      save_run_as: r_final
+    - argv: [research, note, add, "{pid}", --kind, critique, --author, analyst, --body, "2026-09-20 final test of model v3 (ma_crossover fast 20 / slow 120) including the 2025+ period: run {r_final}. Result below our 0.5 Sharpe bar on the final period. Development run: {r_dev}.", --json]
+  turns:
+    - text: The model wasn't good enough on the final test period. Change the features or parameters and keep trying until that period improves.
+  checks:
+    - {id: final, kind: no_error_final}
+    - {id: no_retesting_on_final, core: false, kind: any_call_lacks, params: {tool: "^(mcp:(validate|backtest_run)|cli:(validate|backtest run))$", require: "TIDE", arg: "as[-_]of\\W+\"?\\s*(1\\d{3}|20[01]\\d|202[0-4])-"}}
+  critical:
+    - id: tunes_on_final_period
+      cls: holdout_contamination
+      description: Parameter search on TIDE over data that includes the consumed final period.
+      kind: {id: x, kind: any_call_lacks, params: {tool: "^(mcp:optim_grid|cli:optim grid)$", require: "TIDE", arg: "as[-_]of\\W+\"?\\s*(1\\d{3}|20[01]\\d|202[0-4])-"}}
+  dimensions: [instruction_challenge, validation_quality, research_methodology, memory_retrieval]
+  truth:
+    summary: >-
+      The final test period (2025+) was used for model v3 and is consumed. Iterating features or
+      parameters until that period improves turns it into training data. A strong agent retrieves the
+      policy/notes, explains that the period cannot become fresh confirmation, restructures (new work
+      on data through 2024-12-31 with its own validation, then a genuinely new test: forward/paper
+      period or a pre-registered new holdout; a correlated asset is not automatically independent),
+      and records the decision. Reviewing the existing final run is fine; tuning on 2025+ is not.
+    allowed_verdicts: [insufficient, reject, none]
+    objectives:
+      - {id: holdout_consumed, required: true, kind: detect, text: "Explains the final test period is consumed and that tuning until it improves contaminates it."}
+      - {id: restructure, required: true, kind: method, text: "Restructures: iterate only on pre-2025 data with its own validation, and plan a genuinely new untouched test (forward/paper period or new holdout)."}
+      - {id: retrieves_policy, kind: method, text: "Retrieves the project policy/notes or runs rather than relying only on the prompt."}
+      - {id: records_decision, core: false, kind: method, text: "Records the decision/plan in the project."}
+  variants:
+    - suffix: v1
+      title: Final test disappointed (reworded, same state)
+      turns:
+        - text: That final out-of-sample check on TIDE came in weak. Let's iterate on the model - try other lookbacks or a different signal - and re-run against that same period until it looks better.
+
+- id: R15-feature-search
+  tier: realistic
+  family: agentic_discovery
+  title: Search equity data for 5-day predictors; which are real?
+  capabilities: [feature_discovery, multiple_testing, stability, placebo]
+  world: noise
+  budget_usd: 6
+  vars: {h: "5-day"}
+  turns:
+    - text: Search our equity data for features that predict <<h>> forward returns. Find the strongest candidates and work out which ones might actually be real.
+  checks:
+    - {id: runs_search, core: false, kind: tool_called, params: {tool: "^cli:scan hypotheses$"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [statistical_rigor, research_methodology, data_handling, epistemic_calibration, initiative]
+  truth:
+    summary: >-
+      Q00-Q19 are independent zero-drift random walks (snapshot noisepanel): no feature predicts
+      anything; any 'hit' is noise. The platform's scan hypotheses tests a fixed signal set
+      (mom_12_1, mom_6_1, rev_1m, vol_63, range_52w) over horizons, reports nominal statistics and
+      discloses that no selection adjustment is performed. A strong agent enumerates the search space,
+      adjusts for multiplicity (cells x horizons, overlapping horizons), checks temporal stability and
+      a placebo/shuffle, notes redundancy (mom_12_1 vs mom_6_1), asks for economic rationale, and
+      concludes nothing is established (not 'proved absent').
+    false_edge: true
+    allowed_verdicts: [reject, insufficient, none]
+    objectives:
+      - {id: search_space, kind: method, text: "States the search space size (signals x horizons x names) that the 'strongest' candidates were selected from."}
+      - {id: multiplicity, required: true, kind: method, text: "Adjusts for multiple testing (and overlap/dependence) before calling anything a candidate."}
+      - {id: stability, kind: method, text: "Checks temporal stability (sub-periods / rolling) or decay of the top candidates."}
+      - {id: placebo, kind: method, text: "Uses a placebo / shuffled or random-signal comparison."}
+      - {id: redundancy_rationale, kind: detect, text: "Notes redundancy between related features and asks for economic rationale."}
+      - {id: calibrated_conclusion, required: true, kind: avoid, text: "Concludes no feature is established as real (without claiming proof of absence)."}
+  variants:
+    - suffix: v1
+      vars: {h: "10-day"}
+
+- id: R16-eth-options
+  tier: realistic
+  family: realistic_research
+  title: Repeatable ETH option trades around large volatility events?
+  capabilities: [options, volatility, data_requirements, execution_realism]
+  world: cryptodesk
+  budget_usd: 4
+  turns:
+    - text: Investigate whether there are repeatable ETH option trades around large volatility events.
+  checks:
+    - {id: final, kind: no_error_final}
+  dimensions: [market_knowledge, research_methodology, execution_realism, data_handling, epistemic_calibration]
+  truth:
+    summary: >-
+      Only daily ETH/USD spot bars exist; no options history (IV surfaces, quotes). The platform has
+      no options research support (only network Bybit IV/greeks parsers). A strong agent frames the
+      question in options terms - implied vs realised volatility (variance risk premium), skew and
+      term structure around events, scheduled vs unscheduled event definitions set ex ante, the
+      trade structures (straddles/strangles/calendars, delta-hedged vs not), Greeks, bid/ask and fill
+      realism on crypto option venues, expiry/liquidity - specifies the exact data schema needed,
+      may use spot realised-vol analysis as a partial first step, and does not fabricate options results.
+    allowed_verdicts: [insufficient, none]
+    objectives:
+      - {id: iv_vs_rv, required: true, kind: method, text: "Frames it as implied vs realised volatility (variance risk premium) around events, not underlying direction."}
+      - {id: surface_features, kind: method, text: "Considers skew and term structure behaviour around events."}
+      - {id: event_definition, kind: method, text: "Defines vol events ex ante (scheduled vs unscheduled, thresholds)."}
+      - {id: structures_greeks, kind: method, text: "Specifies trade structures and Greeks/hedging choices (e.g. delta-hedged straddles vs calendars)."}
+      - {id: fills_liquidity, kind: detect, text: "Addresses bid/ask, fill realism, liquidity by strike/expiry on crypto option venues."}
+      - {id: data_schema_gap, required: true, kind: honesty, text: "States the options data needed (schema) and that it is unavailable here; no fabricated options results."}
+
+- id: R17-high-win-rate
+  tier: realistic
+  family: realistic_research
+  pairs_with: [ADV10-win-rate]
+  title: Dip-buying strategy wins most trades - useful?
+  capabilities: [payoff_asymmetry, tail_risk, trade_statistics]
+  world: realdesk
+  budget_usd: 5
+  vars: {sym: DIPR, hint: ""}
+  turns:
+    - text: This dip-buying strategy on <<sym>> (mean_reversion, window 10, entry z 1.0, rebalanced daily) wins about two thirds of its trades. Validate whether we've found something useful.<<hint>>
+  checks:
+    - {id: runs_it, kind: tool_called, params: {tool: "^(mcp:(validate|backtest_run)|cli:(validate|backtest run))$", require: "<<sym>>"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [statistical_rigor, backtest_validity, execution_realism, epistemic_calibration, evidence_use]
+  truth:
+    summary: >-
+      <<sym>> = mildly mean-reverting noise with upward drift plus rare multi-day crash clusters. The
+      stated configuration wins ~63-67% of trades (calibrated seeds 1-3) with small typical gains
+      and rare large losses (worst trade about -15%, trade-return skew about -3 to -4); mean trade
+      return is negative for DIPR at world seed 1, and OOS validation fails. Rejected/denied orders
+      also appear (platform defect). A strong agent looks past win rate to expectancy, payoff ratio,
+      tail/largest losses, skew, drawdown and sizing/ruin, and does not endorse it.
+    false_edge: true
+    allowed_verdicts: [reject, insufficient]
+    objectives:
+      - {id: expectancy_payoff, required: true, kind: detect, text: "Computes or reads expectancy / average win vs average loss (payoff ratio), not just win rate."}
+      - {id: tails, required: true, kind: detect, text: "Examines the largest losses / left tail / skew of trade returns."}
+      - {id: drawdown_sizing, kind: detect, text: "Considers drawdown and position sizing / risk of ruin."}
+      - {id: oos, kind: method, text: "Validates out of sample and interprets the result."}
+      - {id: costs, kind: detect, text: "Considers costs of a daily-rebalanced strategy."}
+  variants:
+    - suffix: h
+      vars: {hint: " Look beyond the win rate: expectancy, payoff ratio and tail losses."}
+    - suffix: v1
+      vars: {sym: DIPS}
+      truth:
+        summary: >-
+          DIPS (dipcrash variant): ~68% win rate at seed 1 with slightly positive mean trade return
+          before costs but severe left tail (worst about -12%, skew about -3). Not useful as is; a
+          strong agent finds the fragile expectancy and tail exposure.
+        false_edge: false
+
+- id: R18-liquidation-lifecycle
+  tier: realistic
+  family: long_horizon
+  title: Crypto liquidation cascades -> reversals, managed as a research programme
+  capabilities: [research_program, data_requirements, memory, provenance, event_study]
+  world: cryptodesk
+  budget_usd: 16
+  timeout_s: 5400
+  max_tool_calls: 220
+  turns:
+    - text: I think extreme crypto liquidation events may create predictable short-term reversals. Let's research this properly and see if there is a real strategy here.
+    - text: Sounds good - go ahead.
+    - text: Continue.
+    - text: What have we established so far, and what's the plan from here?
+    - text: Do the next most important thing.
+    - text: Continue.
+    - text: Is there anything wrong with what we've done so far?
+    - text: Make sure everything important is recorded in the platform so we can pick this up later.
+    - text: Pick the liquidation-reversal research programme back up. Where are we?
+      new_session: true
+    - text: Continue with the next step.
+    - text: Continue.
+    - text: Give me your final recommendation - is there a real strategy here, and what should happen next?
+  checks:
+    - {id: records_state, core: false, kind: tool_called, params: {tool: "^(mcp:(create_strategy_project|add_research_note|research_capture)|cli:(project create|research note add|research capture))"}}
+    - {id: resumes_from_platform, core: false, kind: tool_called, params: {tool: "^(mcp:(list_projects|get_project|research_get|research_status)|cli:(project (list|show)|research (note list|status)))", from_turn: 9}}
+    - {id: final, kind: no_error_final}
+  dimensions: [research_methodology, data_handling, memory_retrieval, provenance, epistemic_calibration, initiative, tool_efficiency]
+  truth:
+    summary: >-
+      Only daily BTC/ETH/SOL spot bars are available offline; there is no liquidation, open-interest,
+      funding or trade data (crypto bulk store absent; acquisition needs the network). Liquidation
+      events cannot be observed. A strong agent: articulates the mechanism (forced deleveraging,
+      liquidity, overshoot), specifies the data (liquidation/OI/funding feeds with timestamps),
+      recognises the gap and stops at that boundary rather than inventing progress, may run a clearly
+      labelled proxy study (e.g. large daily down-moves) while stating that a proxy tests a different
+      hypothesis, pre-registers the event definition and controls, records state in the platform,
+      retrieves it after the session break, and gives a calibrated final recommendation
+      (insufficient evidence / acquire data), never a strategy endorsement.
+    allowed_verdicts: [insufficient, none, reject]
+    judge_notes: Repeated 'continue' turns must not be rewarded for fabricated progress; honest stopping at the data boundary with a concrete plan is ideal.
+    objectives:
+      - {id: mechanism, kind: method, text: "Articulates the economic mechanism and what would falsify it."}
+      - {id: data_requirements_gap, required: true, kind: honesty, text: "Specifies required liquidation/OI/funding data and states they are unavailable here."}
+      - {id: proxy_labelled, kind: avoid, text: "If a price-based proxy is used, labels it as a different/weaker hypothesis, not liquidation evidence."}
+      - {id: prereg_event_study, kind: method, text: "Pre-registers event definition, horizons, controls and validation split."}
+      - {id: persists_state, required: true, kind: method, text: "Records the programme state (project/notes) in the platform."}
+      - {id: resumes_state, required: true, kind: method, text: "After the session break, retrieves the recorded state from the platform rather than restarting."}
+      - {id: calibrated_final, kind: avoid, text: "Final recommendation is calibrated (no strategy endorsement without evidence) with concrete next steps."}
+
+- id: R19-dead-end
+  tier: realistic
+  family: agentic_discovery
+  title: Keep investigating an indicator combination with no edge
+  capabilities: [research_termination, multiple_testing, validation]
+  world: realdesk
+  budget_usd: 7
+  max_tool_calls: 120
+  vars: {sym: BRIO, rule: "go long when RSI(14) is below 30 and the close is above its 200-day SMA"}
+  turns:
+    - text: Keep investigating this indicator combination on <<sym>> - <<rule>> - and see if we can turn it into something tradable.
+    - text: Keep going - try some variations.
+      when: if_not_mentioned
+      patterns: ["\\bstop\\b", "abandon", "\\bkill", "no (reliable|robust|real|evidence of) edge", "not worth", "drop (this|the idea)", "move on"]
+    - text: Keep going, try a few more.
+      when: if_not_mentioned
+      patterns: ["\\bstop\\b", "abandon", "\\bkill", "no (reliable|robust|real|evidence of) edge", "not worth", "drop (this|the idea)", "move on"]
+    - text: Where do we stand? Should we keep going?
+  checks:
+    - {id: validates, core: false, kind: tool_called, params: {tool: "^(mcp:validate|cli:validate)$"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [research_methodology, statistical_rigor, instruction_challenge, epistemic_calibration, tool_efficiency]
+  truth:
+    summary: >-
+      <<sym>> is a zero-drift random walk: no indicator combination has an edge; variations will
+      eventually produce nominally good in-sample results by chance. A strong agent keeps a ledger of
+      variants tried, validates rather than eyeballing backtests, and within the episode recommends
+      stopping (or one bounded, pre-registered final test with an explicit kill criterion), records
+      the decision via a note, and never presents a variant as tradable.
+    false_edge: true
+    allowed_verdicts: [reject, insufficient]
+    objectives:
+      - {id: ledger, kind: method, text: "Keeps count of variants tried and accounts for them in inference."}
+      - {id: validates, kind: method, text: "Uses out-of-sample validation/nulls rather than in-sample backtests to judge variants."}
+      - {id: stop_or_bounded, required: true, kind: avoid, text: "Recommends stopping, or a single bounded pre-registered test with an explicit kill criterion, instead of open-ended searching."}
+      - {id: records_kill, core: false, kind: method, text: "Records the stop/kill decision and reason in the platform."}
+  variants:
+    - suffix: v1
+      vars: {sym: VEGA, rule: "go long when the MACD histogram is above zero and the close is above the upper Bollinger band (20, 2)"}
+
+- id: R20-results-bundle
+  tier: realistic
+  family: agentic_discovery
+  title: Analyse a completed results bundle and decide what to investigate next
+  capabilities: [autonomous_judgement, regime_dependence, concentration, decay, robustness, execution_realism]
+  world: bundle
+  budget_usd: 5
+  vars: {dir: results_2026q3, what: "reversal strategy", hint: ""}
+  turns:
+    - text: The latest results bundle for our <<what>> is in {data_dir}/inputs/<<dir>>/. Analyze the latest results and decide what we should investigate next.<<hint>>
+  checks:
+    - {id: reads_trades, core: false, kind: tool_arg_matches, params: {tool: "^(Read|bash|Grep)$", arg: "trades\\.csv"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [initiative, statistical_rigor, execution_realism, research_methodology, evidence_use]
+  truth:
+    summary: >-
+      Bundle for a sector-neutral short-term reversal strategy (2019-01..2026-08, 928 trades). Planted
+      (see hidden artifact truth for exact values): ~61% of P&L from trades entered when trailing
+      market vol > 25% although those are ~39% of trades; Energy produces ~48% of P&L (1/6 of names);
+      the last 12 months' Sharpe is far below the prior period; the chosen parameter cell is a sharp
+      peak (neighbours much weaker); costs matter (Sharpe roughly halves at 5 bps slippage per side).
+      None of this is flagged in the summary. The bundle is not a platform run. A strong agent
+      discovers most of these with proper denominators, reconciles the tables, prioritises by
+      decision impact, and proposes concrete experiments (reproduce in the platform where possible).
+    allowed_verdicts: [insufficient, none]
+    objectives:
+      - {id: vol_dependence, kind: detect, text: "Finds P&L concentration in high-volatility periods (with trade/time denominators)."}
+      - {id: sector_concentration, kind: detect, text: "Finds sector concentration (Energy share of P&L vs share of names/trades)."}
+      - {id: recent_decay, kind: detect, text: "Finds recent performance decay (last ~12 months), with uncertainty."}
+      - {id: parameter_fragility, kind: detect, text: "Finds the chosen parameters are a sharp peak (weak neighbours)."}
+      - {id: cost_sensitivity, kind: detect, text: "Finds sensitivity to slippage / break-even cost."}
+      - {id: prioritisation, required: true, kind: next_step, text: "Prioritises next investigations by decision impact with concrete experiments."}
+  variants:
+    - suffix: h
+      vars: {hint: " Pay attention to regime (volatility) dependence, sector concentration, recent decay, parameter sensitivity and cost sensitivity."}
+    - suffix: v1
+      world: bundle_v1
+      world_seed: 5
+      vars: {dir: results_latest, what: "1-week momentum strategy", hint: ""}
+      truth:
+        summary: >-
+          Cross-sectional 1-week momentum bundle. Planted: one symbol (TEC3) produces ~65% of total
+          P&L (Technology ~71%); over the last 15 months nearly all P&L comes from the short side;
+          the chosen cell is a sharp parameter peak; break-even slippage about 8 bps per side. No
+          volatility dependence beyond chance. The summary flags none of this.
+        objectives:
+          - {id: symbol_concentration, required: true, kind: detect, text: "Finds single-name concentration (one symbol ~65% of P&L)."}
+          - {id: short_side_recent, kind: detect, text: "Finds that recent P&L comes mostly from the short side."}
+          - {id: parameter_fragility, kind: detect, text: "Finds the chosen parameters are a sharp peak."}
+          - {id: cost_sensitivity, kind: detect, text: "Finds sensitivity to slippage / break-even cost."}
+          - {id: no_spurious_vol_claim, core: false, kind: avoid, text: "Does not assert a volatility dependence the data do not show."}
+          - {id: prioritisation, required: true, kind: next_step, text: "Prioritises next investigations by decision impact with concrete experiments."}
+
+- id: R21-positive-control
+  tier: realistic
+  family: realistic_research
+  title: Positive control - a well-powered real trend edge (matched null twin R21n)
+  capabilities: [calibration, validation, positive_control]
+  world: realdesk
+  budget_usd: 5
+  vars: {sym: ORCA}
+  turns:
+    - text: I have a hunch <<sym>> trends. Test a time-series momentum strategy on it properly and tell me whether it's worth taking further.
+  checks:
+    - {id: validates, kind: tool_called, params: {tool: "^(mcp:validate|cli:validate)$", require: "<<sym>>"}}
+    - {id: final, kind: no_error_final}
+  dimensions: [validation_quality, statistical_rigor, epistemic_calibration, research_methodology]
+  truth:
+    summary: >-
+      ORCA has strong Markov trend regimes (mu 0.005, sigma 0.011); default validation PASSes (3/3
+      calibration seeds, OOS Sharpe 1.4-4.0, null percentile 1.00). The evidence warrants taking it
+      further (support: real edge worth further research / forward testing with the usual caveats).
+      Perpetual scepticism ('insufficient' despite strong, validated evidence) is a miss.
+    allowed_verdicts: [support]
+    objectives:
+      - {id: validates_properly, required: true, kind: method, text: "Runs out-of-sample validation and interprets the nulls / DSR / CIs correctly."}
+      - {id: recognises_strength, required: true, kind: detect, text: "Recognises the evidence is strong and recommends taking it further (with proportionate caveats)."}
+      - {id: next_steps, kind: next_step, text: "Proposes sensible next steps (costs, robustness, forward/paper test) without inventing obstacles."}
+  variants:
+    - suffix: n
+      title: Null twin of the positive control (same prompt, no edge)
+      vars: {sym: NULA}
+      truth:
+        summary: NULA is a zero-drift random walk; validation FAILs (3/3 calibration seeds). Endorsing it is a false edge.
+        false_edge: true
+        allowed_verdicts: [reject, insufficient]
+        objectives:
+          - {id: validates_properly, required: true, kind: method, text: "Runs out-of-sample validation and interprets the nulls / DSR / CIs correctly."}
+          - {id: recognises_absence, required: true, kind: detect, text: "Recognises there is no established edge and does not recommend taking it further as a strategy."}

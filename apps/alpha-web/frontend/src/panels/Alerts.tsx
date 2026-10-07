@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { api } from '../api/client'
 import type { ScanAlert } from '../api/types'
-import { setLinked } from '../context/linked'
+import { openScannedMarket } from './actions'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { useAreaVersion } from '../state/activity'
 import { alertTransition, newestFirst, signalTone } from './scannerModel'
@@ -78,7 +78,7 @@ export function Alerts(_props: PanelHandleProps) {
                 <td className="mono">{alert.ts.slice(0, 19).replace('T', ' ')}</td>
                 <td className="mono">{alert.scan}</td>
                 <td>
-                  <button type="button" className="watch-select" onClick={() => setLinked({ symbol: alert.symbol })} title="Chart this symbol">
+                  <button type="button" className="watch-select" onClick={() => openScannedMarket(alert.symbol, alert.bar_date)} title="Chart this symbol">
                     {alert.symbol}
                   </button>
                 </td>

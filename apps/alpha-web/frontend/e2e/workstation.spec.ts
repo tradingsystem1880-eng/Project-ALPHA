@@ -1,5 +1,6 @@
 import {
   registerReferenceTests,
+  registerLifecycleTests,
   registerWorkstationFeatureTests,
   registerWorkstationTests,
 } from './support/workstationHarness'
@@ -7,3 +8,4 @@ import {
 registerWorkstationTests()
 registerWorkstationFeatureTests()
 registerReferenceTests()
+registerLifecycleTests()

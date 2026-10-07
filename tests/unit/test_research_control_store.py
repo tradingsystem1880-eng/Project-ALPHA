@@ -108,7 +108,10 @@ def _insert_v4_receipt(database: Path) -> list[tuple[object, ...]]:
             ),
         )
         connection.execute(
-            """INSERT INTO owner_action_receipts VALUES (
+            """INSERT INTO owner_action_receipts
+            (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
+             artifact_hash, expected_case_revision, consequence_summary, reason,
+             request_hash, assertion_hash, outcome_json, performed_at) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )""",
             (
@@ -272,7 +275,10 @@ def _insert_semantic_receipt(
             ),
         )
         connection.execute(
-            """INSERT INTO owner_action_receipts VALUES (
+            """INSERT INTO owner_action_receipts
+            (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
+             artifact_hash, expected_case_revision, consequence_summary, reason,
+             request_hash, assertion_hash, outcome_json, performed_at) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )""",
             (
@@ -429,7 +435,10 @@ def test_semantic_ledger_append_and_read_rejects_tamper(
     connection = sqlite3.connect(tmp_path / "control" / control_store_module.DATABASE_NAME)
     try:
         connection.execute(
-            """INSERT INTO owner_action_receipts VALUES (
+            """INSERT INTO owner_action_receipts
+            (receipt_id, challenge_id, credential_id, actor, action_type, project_id,
+             artifact_hash, expected_case_revision, consequence_summary, reason,
+             request_hash, assertion_hash, outcome_json, performed_at) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )""",
             (
@@ -961,6 +970,11 @@ def _payload(
             },
         }
     else:
+        from alpha_cli.research_analysis_plan import default_analysis_plan_v2
+
+        # This helper creates current contracts; historical compatibility fixtures
+        # explicitly select their pre-cutover plan and seed the old approval policy.
+        payload["analysis_plan"] = default_analysis_plan_v2(horizon_bars=4)
         protocol = cast(dict[str, object], payload["protocol"])
         protocol["d0_operator"] = registered_d0_operator(payload)
     return payload
@@ -1606,7 +1620,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
     connection.commit()
     connection.close()
 
-    assert SCHEMA_VERSION == 5
+    assert SCHEMA_VERSION == 6
     # The governance backfill drives the derived gate state: pre-launch rows are
     # grandfathered while post-launch v1 rows stay research-governed and open.
     assert ControlStore(tmp_path).list_projects() == [
@@ -1663,7 +1677,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
         )
 
 
-def test_fresh_store_is_v5_with_protected_semantic_ledger_and_closed_receipt_action(
+def test_fresh_store_is_v6_with_protected_semantic_ledger_and_closed_receipt_action(
     tmp_path: Path,
 ) -> None:
     store = ControlStore(tmp_path)
@@ -1671,7 +1685,7 @@ def test_fresh_store_is_v5_with_protected_semantic_ledger_and_closed_receipt_act
     database = tmp_path / "control" / "workstation.sqlite3"
     connection = sqlite3.connect(database)
     try:
-        assert connection.execute("PRAGMA user_version").fetchone() == (5,)
+        assert connection.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
         objects = {
             str(row[0])
             for row in connection.execute(
@@ -1742,10 +1756,12 @@ def test_v4_to_v5_rebuild_is_lossless_and_retains_exact_backup(tmp_path: Path) -
     migrated = sqlite3.connect(database)
     backup = sqlite3.connect(database.with_name("workstation.sqlite3.v4.bak"))
     try:
-        assert migrated.execute("PRAGMA user_version").fetchone() == (5,)
-        after_rows = migrated.execute(
+        assert migrated.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
+        migrated_rows = migrated.execute(
             "SELECT * FROM owner_action_receipts ORDER BY receipt_id"
         ).fetchall()
+        assert all(row[-1] == "webauthn" for row in migrated_rows)
+        after_rows = [row[:-1] for row in migrated_rows]
         after_digest = hashlib.sha256(
             json.dumps(after_rows, separators=(",", ":"), ensure_ascii=False).encode()
         ).hexdigest()
@@ -1820,7 +1836,7 @@ def test_legacy_v1_v2_v3_migrations_commit_common_v4_to_v5_path(
             is None
         )
     with sqlite3.connect(database) as migrated:
-        assert migrated.execute("PRAGMA user_version").fetchone() == (5,)
+        assert migrated.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
         assert (
             migrated.execute(
                 "SELECT 1 FROM sqlite_master WHERE name = 'research_semantic_events'"
@@ -1892,7 +1908,7 @@ def test_concurrent_v4_migrators_have_one_winner_and_one_backup(tmp_path: Path) 
     assert errors == []
     connection = sqlite3.connect(database)
     try:
-        assert connection.execute("PRAGMA user_version").fetchone() == (5,)
+        assert connection.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
     finally:
         connection.close()
     assert database.with_name("workstation.sqlite3.v4.bak").is_file()
@@ -3192,15 +3208,29 @@ def test_approval_validates_a_declared_analysis_plan(tmp_path: Path, mutation: s
         )
 
 
-def test_approval_accepts_the_registered_default_analysis_plan(tmp_path: Path) -> None:
-    from alpha_cli.research_analysis_plan import default_analysis_plan
+@pytest.mark.parametrize("plan_kind", ["v2", "v1", "omitted", "null", "omitted_event"])
+def test_approval_accepts_only_current_registered_analysis_plan(
+    tmp_path: Path, plan_kind: str
+) -> None:
+    from alpha_cli.research_analysis_plan import default_analysis_plan_v2
 
     store = ControlStore(tmp_path)
     _project(store)
     payload = _payload(_source_pack(store))
-    payload["analysis_plan"] = default_analysis_plan(horizon_bars=4)
+    payload["analysis_plan"] = default_analysis_plan_v2(horizon_bars=4)
+    if plan_kind == "v1":
+        from alpha_cli.research_analysis_plan import default_analysis_plan
+
+        payload["analysis_plan"] = default_analysis_plan(horizon_bars=4)
+    elif plan_kind == "omitted":
+        del payload["analysis_plan"]
+    elif plan_kind == "null":
+        payload["analysis_plan"] = None
     protocol = cast(dict[str, object], payload["protocol"])
     protocol["d0_operator"] = registered_d0_operator(payload)
+    if plan_kind == "omitted_event":
+        del payload["analysis_plan"]
+        del payload["event_definition"]
     contract = store.create_research_contract(
         PROJECT_ID,
         scope="exploration",
@@ -3221,6 +3251,41 @@ def test_approval_accepts_the_registered_default_analysis_plan(tmp_path: Path) -
             responsibility="owner" if phase == "exploration_review" else "codex",
             at=START + timedelta(minutes=minute),
         )
+    if plan_kind != "v2":
+        with pytest.raises(DataError, match="requires ResearchAnalysisPlanV2"):
+            store.review_research_contract(
+                PROJECT_ID,
+                contract_id,
+                scope="exploration",
+                decision="approve",
+                actor="owner",
+                actor_kind="human",
+                reason="A new V1 approval is forbidden.",
+                at=START + timedelta(minutes=6),
+            )
+        # Model an already-approved pre-cutover record without weakening the
+        # current approval path. Historical validation and idempotent reads stay valid.
+        with store._transaction(write=True) as connection:
+            row = store._require_research_contract(connection, PROJECT_ID, contract_id)
+            assert store._validate_research_contract_for_approval(connection, row) == payload
+            connection.execute(
+                """INSERT INTO research_contract_review_events
+                (contract_id, sequence, project_id, scope, decision, actor, actor_kind,
+                 occurred_at, reason) VALUES (?, 1, ?, 'exploration', 'approve',
+                 'owner', 'human', ?, 'Pre-cutover approval fixture')""",
+                (contract_id, PROJECT_ID, START.isoformat()),
+            )
+        prior = store.review_research_contract(
+            PROJECT_ID,
+            contract_id,
+            scope="exploration",
+            decision="approve",
+            actor="owner",
+            actor_kind="human",
+            reason="Read existing approval",
+        )
+        assert prior["reason"] == "Pre-cutover approval fixture"
+        return
     review = store.review_research_contract(
         PROJECT_ID,
         contract_id,
@@ -3236,11 +3301,11 @@ def test_approval_accepts_the_registered_default_analysis_plan(tmp_path: Path) -
 
 def _approved_deep_case(store: ControlStore) -> tuple[str, dict[str, object]]:
     """Approve a plan-bearing exploration contract and advance it into deep_research."""
-    from alpha_cli.research_analysis_plan import default_analysis_plan
+    from alpha_cli.research_analysis_plan import default_analysis_plan_v2
 
     pack_id = _source_pack(store)
     payload = _payload(pack_id)
-    payload["analysis_plan"] = default_analysis_plan(horizon_bars=4)
+    payload["analysis_plan"] = default_analysis_plan_v2(horizon_bars=4)
     contract = store.create_research_contract(
         PROJECT_ID,
         scope="exploration",
@@ -5167,6 +5232,63 @@ def test_context_packet_build_is_content_addressed_append_only_and_deterministic
         store.build_research_context_packet(project_id, kind="asset", created_by="codex")
     with pytest.raises(DataError, match="unknown research context packet"):
         store.get_research_context_packet("cp_" + "0" * 64)
+
+
+def test_context_screening_reference_is_optional_content_bound_and_non_authoritative(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    baseline = store.build_research_context_packet(
+        project_id, kind="research_case", created_by="codex", at=START
+    )
+    assert isinstance(baseline["payload"], dict)
+    assert "screening_reference" not in baseline["payload"]
+    reference = {
+        "authority": "none",
+        "scan_id": "a" * 64,
+        "spec_sha256": "b" * 64,
+        "attempt_id": "c" * 32,
+        "result_sha256": "d" * 64,
+        "result_digest": "e" * 64,
+    }
+    before = store.research_gate_packet_inputs(project_id)
+    linked = store.build_research_context_packet(
+        project_id,
+        kind="research_case",
+        created_by="codex",
+        at=START,
+        screening_reference=reference,
+    )
+    assert isinstance(linked["payload"], dict)
+    assert linked["payload"]["screening_reference"] == reference
+    assert {
+        key: value for key, value in linked["payload"].items() if key != "screening_reference"
+    } == baseline["payload"]
+    assert linked["packet_id"] != baseline["packet_id"]
+    assert store.research_gate_packet_inputs(project_id) == before
+    assert (
+        store.build_research_context_packet(
+            project_id,
+            kind="research_case",
+            created_by="codex",
+            at=START,
+            screening_reference=None,
+        )
+        == baseline
+    )
+    for bad in (
+        {**reference, "authority": "approved"},
+        {**reference, "path": "/tmp/a"},
+        {**reference, "scan_id": "../bad"},
+    ):
+        with pytest.raises(DataError, match="screening reference"):
+            store.build_research_context_packet(
+                project_id,
+                kind="research_case",
+                created_by="codex",
+                screening_reference=bad,
+            )
 
 
 def test_research_notes_are_append_only_and_structurally_outside_evidence(

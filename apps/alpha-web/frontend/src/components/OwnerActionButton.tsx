@@ -1,9 +1,4 @@
-// One owner step, completable where it is announced: a reason field and a `Touch ID · <verb>`
-// button that binds this exact project, artifact, case revision, consequence and reason through
-// the existing owner-auth challenge/perform routes (owner_auth.py). It grants nothing the CLI
-// would not: the server re-verifies presence and dispatches the closed action vocabulary. When
-// the step cannot be offered, the button is disabled with the reason; when Touch ID is not
-// enrolled, the error carries a link to enrol.
+// Explicit local confirmation binds one closed action and records intent, not biometric presence.
 
 import { useState } from 'react'
 
@@ -14,7 +9,7 @@ import { contentAddressHash, performOwnerAction, researchCaseRevision } from '..
 interface Props {
   researchCase: ResearchCase
   actionType: OwnerActionType
-  /** The verb after `Touch ID ·`, e.g. `launch D1`. */
+  /** The verb after `Confirm ·`, e.g. `launch D1`. */
   label: string
   consequence: string
   payload: Record<string, unknown>
@@ -28,11 +23,6 @@ interface Props {
 function describe(cause: unknown): string {
   if (cause instanceof Error) return cause.message
   return String(cause)
-}
-
-/** Errors that mean "no credential yet" rather than "refused". */
-function needsEnrollment(message: string): boolean {
-  return /enrol|no owner credential|not registered|credential/i.test(message)
 }
 
 export function OwnerActionButton({
@@ -93,18 +83,14 @@ export function OwnerActionButton({
         title={blocked ?? consequence}
         onClick={() => void perform()}
       >
-        {pending ? 'waiting for Touch ID…' : `Touch ID · ${label}`}
+        {pending ? 'confirming…' : `Confirm · ${label}`}
       </button>
       {blocked ? <span className="muted owner-action-blocked">{blocked}</span> : null}
       {error ? (
         <div className="workbench-notice" role="alert">
           <strong>ACTION BLOCKED</strong>
           <span>{error}</span>
-          {needsEnrollment(error) ? (
-            <a className="btn" href="/owner-auth/enroll">
-              Enroll Touch ID
-            </a>
-          ) : null}
+
         </div>
       ) : null}
     </div>

@@ -1,4 +1,4 @@
-"""Session brief, repo index and plan checks — imported lazily by gate.py and by claude_hooks."""
+"""Optional legacy brief/index and plan checks, imported lazily by gate.py."""
 
 from __future__ import annotations
 

@@ -1,15 +1,10 @@
 # Project ALPHA agent instructions
 
-Read [`CLAUDE.md`](CLAUDE.md) before changing this repository. It is the single authoritative
-operating manual for architecture, invariants, commands, package ownership, and current phase
-state.
+Read [CLAUDE.md](CLAUDE.md) before repository work; it is the authoritative operating manual.
+Use current facts and evidence. Read applicable `.claude/rules/` and required skills. Keep domain
+authority separate from engineering checks; second-opinion bridge output is advisory.
 
-Do not duplicate those instructions here. If behavior changes, update `CLAUDE.md` and the relevant
-current-state documentation in the same change.
-
-Canonical agent-agnostic quality gate: `uv run python scripts/gate.py full` (mirrors CI, stamps the
-tree). Claude Code sessions run under a mechanical hook harness (v2, ADR-0034) — see
-`docs/operations/claude-code-harness.md`. Path-scoped rules live in `.claude/rules/*.md`; any agent
-(including Codex reviewing this repo via `scripts/codex_bridge.py` or the `.mcp.json` `codex`
-server) reads the same rules directory. Codex is an optional second opinion only: it never
-attests, writes, or approves.
+Canonical quality gate: `uv run python scripts/gate.py full`. Update the manual and current-state
+documentation when operating behavior changes. Preserve user work and report unverified results
+honestly. See [the active plan](docs/superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md)
+for the delivered agent-neutral transition.
