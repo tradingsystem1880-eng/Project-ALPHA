@@ -49,6 +49,8 @@
 - Holdout exception: `tests/holdout` is absent from this checkout. The owner authorized
   proceeding without it for this plan's commits only; the reviewer records it as UNVERIFIED and
   every other check remains mandatory.
+- Per-platform document screenshot baselines (2026-10-07): `*-darwin.png` re-taken on macOS
+  against the current build and `*-linux.png` rendered in the Playwright container, both at 2%.
 
 ## ADR numbering
 

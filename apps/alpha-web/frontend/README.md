@@ -27,6 +27,8 @@ grid, crosshair and series-type changes. Fit/reset is explicit. Narrow screens s
 
 **Performance budgets are an opt-in lane** (owner decision 2026-10-05). The four `@perf-budget` browser specs measure the host machine's frame timing, so the gate and CI skip them. Run them on an idle reference machine with `ALPHA_PERF_BUDGETS=1 npx playwright test --project chromium-reference-only`; the budgets themselves are unchanged.
 
+**Document screenshots keep one baseline per platform** (owner decision 2026-10-07): `*-darwin.png` for macOS and `*-linux.png` for CI's Linux runners, both at the same 2% pixel tolerance. Re-take Linux baselines in the `mcr.microsoft.com/playwright:v<version>-noble` container (`--platform linux/amd64`) against a locally started backend, never by copying macOS images.
+
 The toolbar controls the active panel. Native timeframe buttons select exact compatible archive
 sources. From stored markets, interval buttons open a venue/market source chooser; unavailable intervals explain why and never resample in the browser. Price series types
 are unavailable for recorded line plots; static scientific surfaces disable interactive controls.

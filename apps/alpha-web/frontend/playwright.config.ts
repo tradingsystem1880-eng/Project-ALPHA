@@ -18,7 +18,9 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   timeout: 30_000,
-  snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{-projectName}{ext}',
+  // Each platform keeps its own baselines (owner decision 2026-10-07): system UI fonts and canvas
+  // antialiasing differ between macOS and CI's Linux runners. Re-take both after UI changes.
+  snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{-projectName}{-platform}{ext}',
   expect: { timeout: 5_000 },
   use: {
     baseURL,

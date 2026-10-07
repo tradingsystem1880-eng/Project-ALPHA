@@ -761,3 +761,12 @@ acquisition path; the compact CLAUDE.md stands and ADR-0036 (DefiLlama), ADR-003
 are all indexed; the chart keeps origin's per-shape swing markers inside the terminal canvas.
 OpenAPI, the TypeScript client, `static/app`, the operation ledger and the Atlas were regenerated
 rather than hand-merged. The web rule no longer calls the UI frozen at Phase 5.
+
+**2026-10-07 — Per-platform screenshot baselines.** PR #53's CI frontend job failed the Chart and
+Strategy Builder document screenshots at 3% pixel difference. About half of that was stale
+content: the baselines had been carried over from before the current chart controls landed; the
+rest is macOS-versus-Linux font and canvas rendering. By owner decision every document screenshot
+now keeps a `-darwin` baseline re-taken on macOS against the current build and a `-linux` baseline
+rendered in the `mcr.microsoft.com/playwright:v1.61.1-noble` container (linux/amd64), both under the
+unchanged 2% tolerance. The CI frontend job's timeout rose from 15 to 40 minutes for the 308-test
+browser suite.
