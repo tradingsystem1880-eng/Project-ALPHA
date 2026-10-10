@@ -513,6 +513,7 @@ def _wire_minimal_harness(repo: Path) -> None:
         "harness_quant.py",
         "mutation_sweep.py",
         "mutation_legacy.py",
+        "mutation_fragment.py",
         "check_mutation_report.py",
         "codex_bridge.py",
     ):

@@ -13,10 +13,75 @@ from typing import Any
 
 import gate
 import harness_quant
+import mutation_fragment
 import mutation_sweep as sweep
 import pytest
 
 MODULE = "packages/alpha-validation/src/alpha_validation/dsr.py"
+
+
+def fragment_runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+    if "export" in cmd:
+        assignment = json.loads(Path(cmd[cmd.index("--assignment") + 1]).read_text())
+        keys = assignment["expected"]
+        assigned = assignment["assigned"]
+        codes = {
+            key: (1 if keys.index(key) % 2 == 0 else 36) if key in assigned else None
+            for key in keys
+        }
+        stats = mutation_fragment.fragment_stats(codes, keys, assigned)
+        (Path(kwargs["cwd"]) / "mutants").mkdir()
+        gate.write_json_atomic(Path(kwargs["cwd"]) / "mutants/mutmut-cicd-stats.json", stats)
+    return True, 0.1, "test log"
+
+
+def test_fragment_inventory_and_aggregate_cover_exact_original_mutants(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    keys = sorted(f"alpha_validation.dsr.x_f__mutmut_{i}" for i in range(11))
+    plan = sweep.inventory(root, "commit", "run", {MODULE: keys})
+    assert len(plan["jobs"]) == 4
+    assert plan["tools"][MODULE] == "mutmut==3.8.0"
+    assert sorted(k for job in plan["jobs"] for k in job["mutants"]) == sorted(keys)
+    sweep.validate_inventory(root, plan, "commit", "run")
+    output = tmp_path / "output"
+    for job in plan["jobs"]:
+        assert sweep.run_module(root, plan, job["index"], output, runner=fragment_runner) == 0
+    summary = sweep.aggregate(plan, output)
+    result = summary["modules"][MODULE]
+    assert result["total"] == 11 and result["killed"] == 6 and result["timeout"] == 5
+    assert result["kill_rate"] == round(6 / 11, 4) and result["status"] == "fail"
+    assert len(result["mutant_results"]) == 11 and summary["infrastructure_complete"]
+    (root / MODULE).write_text("def f(): return 2\n")
+    with pytest.raises(ValueError, match="Inventory"):
+        sweep.validate_inventory(root, plan, "commit", "run")
+
+
+@pytest.mark.parametrize("mutation", ["assigned", "complete", "counts", "verdict", "exclusions"])
+def test_fragment_aggregate_rejects_corrupt_or_inconsistent_evidence(
+    tmp_path: Path, mutation: str
+) -> None:
+    root = repo(tmp_path)
+    keys = [f"alpha_validation.dsr.x_f__mutmut_{i}" for i in range(8)]
+    plan = sweep.inventory(root, "commit", "run", {MODULE: keys})
+    output = tmp_path / "output"
+    for job in plan["jobs"]:
+        sweep.run_module(root, plan, job["index"], output, runner=fragment_runner)
+    path = next(output.glob("module-0-*.json"))
+    record = sweep.load_json(path)
+    entry = record["report"]["modules"][MODULE]
+    if mutation == "assigned":
+        record["mutants"] = keys
+    elif mutation == "complete":
+        entry["mutant_inventory"] = keys[:-1]
+    elif mutation == "counts":
+        entry["mutant_results"] = dict.fromkeys(entry["mutant_results"], "timeout")
+    elif mutation == "verdict":
+        entry["mutant_results"] = dict.fromkeys(entry["mutant_results"], "unfinished")
+    else:
+        entry["excluded_tests"] = ["tests/other.py"]
+    gate.write_json_atomic(path, record)
+    with pytest.raises(ValueError):
+        sweep.aggregate(plan, output)
 
 
 def repo(tmp_path: Path) -> Path:
@@ -271,6 +336,7 @@ def test_workflow_bounds_isolation_and_failure_artifacts() -> None:
     assert "mutation-result-${{ env.SWEEP_RUN_ID }}-${{ matrix.index }}" in text
     assert "mutation-summary-${{ env.SWEEP_RUN_ID }}" in text
     assert text.count("if: always()") >= 5
+    assert text.index("> /dev/null") < text.index("uv run --with mutmut==3.8.0")
 
 
 def test_concurrent_same_module_has_independent_staging(
@@ -311,3 +377,63 @@ def test_existing_dispatcher_can_verify_new_sweep_before_merge() -> None:
     assert "github.ref" in nightly and "inputs.mutation_sweep || false" in nightly
     assert 'cron: "17 3 * * *"' in nightly
     assert 'cron: "17 4 * * 0"' in weekly
+
+
+@pytest.mark.parametrize(
+    "corrupt", [None, "source", "config", "tests", "hits", "origin", "verdict"]
+)
+def test_aggregate_certified_no_tests_retains_proof_and_rejects_corruption(
+    tmp_path: Path, corrupt: str | None
+) -> None:
+    root = repo(tmp_path)
+    keys = [f"alpha_validation.dsr.x_f__mutmut_{i}" for i in range(4)]
+    plan = sweep.inventory(root, "commit", "run", {MODULE: keys})
+    output = tmp_path / "output"
+    for job in plan["jobs"]:
+        sweep.run_module(root, plan, job["index"], output, runner=fragment_runner)
+    for path in sorted(output.glob("module-*.json")):
+        record = sweep.load_json(path)
+        entry = record["report"]["modules"][MODULE]
+        results = dict.fromkeys(entry["mutant_results"], "no_tests")
+        entry.update({name: 0 for name in mutation_fragment.COUNTS})
+        entry.update(
+            killed=0, no_tests=len(results), kill_rate=0.0, status="fail", mutant_results=results
+        )
+        entry["mutation_config_sha256"] = "c" * 64
+        entry["no_tests_proof"] = {
+            "tool": mutation_fragment.TOOL,
+            "source_sha256": plan["source_hashes"][MODULE],
+            "config_sha256": "c" * 64,
+            "inventory": keys,
+            "collection_exit": 0,
+            "durations": {"test_public": 0.1},
+            "associations": {},
+            "tracer_hits": [],
+            "import_origins": {},
+        }
+        gate.write_json_atomic(path, record)
+    path = next(output.glob("module-0-*.json"))
+    record = sweep.load_json(path)
+    entry = record["report"]["modules"][MODULE]
+    if corrupt:
+        proof = entry["no_tests_proof"]
+        if corrupt == "source":
+            proof["source_sha256"] = "b" * 64
+        elif corrupt == "config":
+            proof["config_sha256"] = "b" * 64
+        elif corrupt == "tests":
+            proof["durations"] = {}
+        elif corrupt == "hits":
+            proof["tracer_hits"] = ["wrong.f"]
+        elif corrupt == "origin":
+            proof["import_origins"] = {"wrong": "staged"}
+        else:
+            entry["mutant_results"] = dict.fromkeys(entry["mutant_results"], "killed")
+        gate.write_json_atomic(path, record)
+        with pytest.raises(ValueError):
+            sweep.aggregate(plan, output)
+    else:
+        result = sweep.aggregate(plan, output)["modules"][MODULE]
+        assert result["total"] == 4 and result["no_tests"] == 4 and result["killed"] == 0
+        assert result["status"] == "fail" and result["kill_rate"] == 0.0
+        assert len(result["no_tests_proofs"]) == 4

@@ -69,8 +69,9 @@
 }
 ```
 
-Preserve the owner-selected weekly cadence and existing staged cleanup changes. One isolated
-job per module is the deterministic exhaustive partition; eight jobs at most, two mutmut
+Preserve the owner-selected weekly cadence and existing staged cleanup changes. Complete generated
+mutant inventories now partition into up to four isolated jobs per functional module after measured
+singleton deadlines failed; eight concurrent jobs at most, two mutmut
 children per job. Preserve all module/test selection and mutation floors.
 
 Slices: (1) isolated harness staging and checked export; verify existing quant tooling tests;
@@ -105,3 +106,36 @@ fallback preserves tests/exclusions, timeouts, process cleanup and scoring. Its 
 rejects empty, wrong-module, unknown and unfinished records. Inventory freezes the backend.
 Fresh final full/review and complete hosted validation are required for the repaired tree;
 the prior run does not prove it. No source-module, baseline or private-suite changes.
+
+## Hosted deadline repair — 2026-10-10 (in progress)
+
+Candidate `1605b5b` passed all six local full components, 213 public focused tests, fresh independent
+review and all seven required hosted CI checks. Its hosted constant-only module measured four
+actual mutants successfully. Run `38052927037-1` then hit the unchanged 5400-second mutation limit
+on data (224/239 measured), boundary (1083/1810) and crypto crowding (971/1333); retained valid error
+checkpoints and logs confirm process-group cleanup. These unfinished results cannot authorize merge.
+The owner explicitly authorized complete deterministic mutant-level partitioning on this evidence.
+
+Pinned 3.8.0 uses its same source generator and canonical identities, with sorted round-robin
+fragments (at most four per functional module, at most 205 jobs). Every fresh stage checks the full
+regenerated inventory before measuring exact assigned identities. Aggregate rejects incomplete,
+overlapping, stale or inconsistent results and recomputes original module scores from full coverage.
+The constant-only pinned legacy backend remains isolated and exhaustive. Setup/test-statistics costs
+repeat up to four times per module, while eight-job/two-worker concurrency and all deadlines remain.
+No test selection, baseline, mutation operator, timeout/no-tests verdict or score standard changes.
+Verify focused adapter/aggregate tests, actual failed-module reproduction, final canonical full,
+fresh independent review, then new exact-head hosted CI and complete sweep before normal merge.
+
+The no-association case requires a dedicated certificate from successful fresh full collection,
+bound to source/tool/inventory/effective configuration and staged imports. It preserves real mutant
+identities, assigns only conservative no-tests verdicts and never catches generic upstream failures.
+Verify actual pinned-tool collection and negative proof regressions before final acceptance.
+
+Actual final-code diagnostics completed locally: data accounted for all 239 canonical mutants
+in four disjoint fragments (176 killed, five survived, 58 timeout; 0.7364 score fails its unchanged
+0.8182 floor). Complete collection certified the 30 generated `_atomic` mutants as conservative
+no-tests, zero kills and score failure at the unchanged 0.90 floor, with 527 real test records.
+The first two data fragments used the initial exact-name CLI adapter; the last two and `_atomic`
+used the final pinned adapter. These are diagnostic receipts, never full hosted acceptance.
+The old hosted head also retained gate-packet timeout progress 2250/3019. New exact-head hosted
+completion, final canonical full and fresh bound review remain acceptance requirements.

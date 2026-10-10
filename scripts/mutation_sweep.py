@@ -15,13 +15,16 @@ from typing import Any
 
 import gate
 import harness_quant
+import mutation_fragment
 from check_mutation_report import validate_report
 from harness_quant import command_run as command_run
 
-SCHEMA = 1
+SCHEMA = 2
 
 
-def inventory(root: Path, commit: str, run_id: str) -> dict[str, Any]:
+def inventory(
+    root: Path, commit: str, run_id: str, mutants: dict[str, list[str]] | None = None
+) -> dict[str, Any]:
     modules = gate.all_quant_source_modules(root)
     if not modules or len(modules) != len(set(modules)) or not commit or not run_id:
         raise ValueError("Empty or duplicate inventory / identity")
@@ -30,22 +33,51 @@ def inventory(root: Path, commit: str, run_id: str) -> dict[str, Any]:
         module: harness_quant.mutation_required(module, baseline.get("kill_rates", {}))
         for module in modules
     }
+    tools = {module: harness_quant.mutation_backend(root / module) for module in modules}
+    jobs: list[dict[str, Any]] = [
+        {"index": i, "module": module} for i, module in enumerate(modules)
+    ]
+    extra: dict[str, Any] = {}
+    if mutants is not None:
+        if set(mutants) != {module for module, tool in tools.items() if tool == "mutmut"}:
+            raise ValueError("Complete functional module inventories required")
+        if any(keys != sorted(keys) for keys in mutants.values()):
+            raise ValueError("Canonical sorted mutant inventories required")
+        jobs = []
+        for module in modules:
+            parts = mutation_fragment.partitions(mutants[module]) if module in mutants else [None]
+            for fragment, names in enumerate(parts):
+                jobs.append(
+                    {"index": len(jobs), "module": module, "fragment": fragment, "mutants": names}
+                )
+            if module in mutants:
+                tools[module] = mutation_fragment.TOOL
+        if len(jobs) > 256:
+            raise ValueError("Complete matrix exceeds hosted job limit")
+        extra = {
+            "mutants": mutants,
+            "source_hashes": {
+                m: hashlib.sha256((root / m).read_bytes()).hexdigest() for m in modules
+            },
+        }
     return {
         "floors": floors,
-        "tools": {module: harness_quant.mutation_backend(root / module) for module in modules},
+        "tools": tools,
         "schema_version": SCHEMA,
         "commit": commit,
         "run_id": run_id,
         "expected": modules,
-        "jobs": [{"index": i, "module": module} for i, module in enumerate(modules)],
+        "jobs": jobs,
+        **extra,
     }
 
 
 def validate_inventory(root: Path, plan: dict[str, Any], commit: str, run_id: str) -> None:
     if (
         type(plan.get("schema_version")) is not int
-        or plan != inventory(root, commit, run_id)
+        or plan != inventory(root, commit, run_id, plan.get("mutants"))
         or any(type(job.get("index")) is not int for job in plan["jobs"])
+        or any("fragment" in job and type(job["fragment"]) is not int for job in plan["jobs"])
     ):
         raise ValueError("Inventory or commit/run identity mismatch")
 
@@ -68,6 +100,7 @@ def run_module(
     if timeout <= 0 or budget <= 5 or workers < 1:
         raise ValueError("Positive timeout, budget and workers required")
     module = plan["jobs"][index]["module"]
+    job = plan["jobs"][index]
     output.mkdir(parents=True, exist_ok=True)
     checkpoint = output / f"module-{index}-{module_key(module)}.json"
     # Exclusive creation prevents accidental reuse of measurements or competing writers.
@@ -86,6 +119,7 @@ def run_module(
         "timings": [],
         "report": None,
         "workers": workers,
+        **({"fragment": job["fragment"], "mutants": job["mutants"]} if "fragment" in job else {}),
     }
 
     def save() -> None:
@@ -99,7 +133,12 @@ def run_module(
             "export"
             if cmd[-1] == "export-cicd-stats"
             or any(Path(arg).name == "mutation_legacy.py" for arg in cmd)
-            else ("mutation" if "mutmut" in cmd else "preflight")
+            or (any(Path(arg).name == "mutation_fragment.py" for arg in cmd) and "export" in cmd)
+            else (
+                "mutation"
+                if "mutmut" in cmd or any(Path(arg).name == "mutation_fragment.py" for arg in cmd)
+                else "preflight"
+            )
         )
         record["phase"] = phase
         log = output / f"{checkpoint.stem}-{phase}.log"
@@ -122,8 +161,13 @@ def run_module(
         return result
 
     try:
+        fragment_args = (
+            {"mutant_inventory": plan["mutants"][module], "mutant_names": job["mutants"]}
+            if job.get("mutants") is not None
+            else {}
+        )
         _, report = harness_quant.mutate(
-            root, [module], timeout=timeout, workers=workers, runner=execute
+            root, [module], timeout=timeout, workers=workers, runner=execute, **fragment_args
         )
         record["report"] = report
         validate_report(report, module)
@@ -159,6 +203,8 @@ def load_json(path: Path) -> dict[str, Any]:
 
 def aggregate(plan: dict[str, Any], directory: Path) -> dict[str, Any]:
     reports: dict[str, Any] = {}
+    fragments: dict[str, list[dict[str, Any]]] = {}
+    seen: set[int] = set()
     for path in sorted(directory.rglob("*.json")):
         if path.name == "mutation-summary.json":
             continue
@@ -167,6 +213,7 @@ def aggregate(plan: dict[str, Any], directory: Path) -> dict[str, Any]:
         if type(index) is not int or not 0 <= index < len(plan["jobs"]):
             raise ValueError("Unexpected job index")
         module = plan["jobs"][index]["module"]
+        job = plan["jobs"][index]
         expected = {
             "schema_version": SCHEMA,
             "commit": plan["commit"],
@@ -176,11 +223,19 @@ def aggregate(plan: dict[str, Any], directory: Path) -> dict[str, Any]:
             "module": module,
             "state": "complete",
             "phase": "finished",
+            **(
+                {"fragment": job["fragment"], "mutants": job["mutants"]}
+                if "fragment" in job
+                else {}
+            ),
         }
         if any(record.get(k) != v for k, v in expected.items()):
             raise ValueError(f"Stale, mismatched or unfinished record: {path}")
-        if module in reports:
+        if "fragment" in job and type(record.get("fragment")) is not int:
+            raise ValueError("Invalid fragment identity")
+        if index in seen:
             raise ValueError(f"Duplicate result: {module}")
+        seen.add(index)
         if type(record.get("schema_version")) is not int:
             raise ValueError("Invalid checkpoint schema")
         workers = record.get("workers")
@@ -228,9 +283,72 @@ def aggregate(plan: dict[str, Any], directory: Path) -> dict[str, Any]:
         status = "fail" if rate + harness_quant.MUTATION_TOLERANCE < floor else "pass"
         if entry["required"] != round(floor, 4) or entry["status"] != status:
             raise ValueError("Mutation floor or verdict mismatched with frozen baseline")
-        reports[module] = entry
+        if job.get("mutants") is not None:
+            results = entry.get("mutant_results")
+            if (
+                entry.get("mutant_inventory") != plan["mutants"][module]
+                or not isinstance(results, dict)
+                or set(results) != set(job["mutants"])
+            ):
+                raise ValueError("Fragment mutant identities mismatch")
+            if any(status not in mutation_fragment.COUNTS for status in results.values()):
+                raise ValueError("Unknown fragment verdict")
+            if "no_tests_proof" in entry:
+                mutation_fragment.validate_no_tests_proof(
+                    entry["no_tests_proof"],
+                    plan["source_hashes"][module],
+                    plan["mutants"][module],
+                    entry.get("mutation_config_sha256", ""),
+                    module.partition("/src/")[2].removesuffix(".py").replace("/", "."),
+                )
+                if any(value != "no_tests" for value in results.values()):
+                    raise ValueError("Certified no-tests fragment contains other verdicts")
+            if entry["total"] != len(results) or any(
+                entry.get(name, 0) != sum(v == name for v in results.values())
+                for name in mutation_fragment.COUNTS
+            ):
+                raise ValueError("Fragment counts differ from measured verdicts")
+            fragments.setdefault(module, []).append(entry)
+        else:
+            reports[module] = entry
+    if seen != set(range(len(plan["jobs"]))):
+        raise ValueError(f"Missing results: jobs {sorted(set(range(len(plan['jobs']))) - seen)}")
+    for module, entries in fragments.items():
+        results = {
+            key: status for entry in entries for key, status in entry["mutant_results"].items()
+        }
+        if len(results) != sum(len(entry["mutant_results"]) for entry in entries) or set(
+            results
+        ) != set(plan["mutants"][module]):
+            raise ValueError("Duplicated or missing complete mutant coverage")
+        exclusions = entries[0].get("excluded_tests", [])
+        if any(entry.get("excluded_tests", []) != exclusions for entry in entries):
+            raise ValueError("Fragment test exclusion audit differs")
+        merged = {
+            **{
+                name: sum(status == name for status in results.values())
+                for name in mutation_fragment.COUNTS
+            },
+            "total": len(results),
+            "check_was_interrupted_by_user": 0,
+            "seconds": round(sum(entry["seconds"] for entry in entries), 1),
+            "required": round(plan["floors"][module], 4),
+            "tool": plan["tools"][module],
+            "excluded_tests": exclusions,
+            "mutant_results": results,
+            "no_tests_proofs": [
+                entry["no_tests_proof"] for entry in entries if "no_tests_proof" in entry
+            ],
+        }
+        rate = harness_quant.mutation_kill_rate(merged)
+        merged["kill_rate"] = round(rate, 4)
+        merged["status"] = (
+            "fail" if rate + harness_quant.MUTATION_TOLERANCE < plan["floors"][module] else "pass"
+        )
+        reports[module] = merged
     if set(reports) != set(plan["expected"]):
         raise ValueError(f"Missing results: {sorted(set(plan['expected']) - set(reports))}")
+    reports = {module: reports[module] for module in plan["expected"]}
     return {
         "schema_version": SCHEMA,
         "commit": plan["commit"],
@@ -251,12 +369,17 @@ def main() -> int:
     parser.add_argument("--plan", type=Path, default=Path("mutation-inventory.json"))
     parser.add_argument("--output", type=Path, default=Path("mutation-results"))
     parser.add_argument("--index", type=int)
+    parser.add_argument("--mutants", type=Path)
     args = parser.parse_args()
     root = gate.repo_root()
     if args.action == "plan":
-        plan = inventory(root, args.commit, args.run_id)
+        plan = inventory(
+            root, args.commit, args.run_id, load_json(args.mutants) if args.mutants else None
+        )
         gate.write_json_atomic(args.plan, plan)
-        print(json.dumps(plan["jobs"]))
+        print(
+            json.dumps([{k: v for k, v in job.items() if k != "mutants"} for job in plan["jobs"]])
+        )
         return 0
     if args.action == "run":
         plan = load_json(args.plan)

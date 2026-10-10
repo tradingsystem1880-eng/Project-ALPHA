@@ -1,6 +1,6 @@
 name: Weekly mutation sweep
 
-# Owner-selected weekly cadence. Exhaustive deterministic singleton shards retain all modules,
+# Owner-selected weekly cadence. Exhaustive deterministic mutant fragments retain all modules,
 # eight isolated jobs at most, each with two mutmut workers. Scores remain report-only.
 on:
   schedule:
@@ -27,10 +27,17 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
       - id: list
         name: Freeze complete source inventory and run identity
         run: |
-          list=$(python scripts/mutation_sweep.py plan --commit "$GITHUB_SHA" --run-id "$SWEEP_RUN_ID")
+          # Preserve expected source/identity even if tool setup or generation fails.
+          python scripts/mutation_sweep.py plan --commit "$GITHUB_SHA" --run-id "$SWEEP_RUN_ID" > /dev/null
+          uv run --with mutmut==3.8.0 python scripts/mutation_fragment.py inventory
+          list=$(python scripts/mutation_sweep.py plan --commit "$GITHUB_SHA" --run-id "$SWEEP_RUN_ID" --mutants mutation-keys.json)
           echo "list=$list" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         if: always()

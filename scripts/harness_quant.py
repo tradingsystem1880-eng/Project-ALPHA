@@ -5,6 +5,7 @@ imported lazily by gate.py.
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import os
 import re
@@ -231,6 +232,8 @@ def mutate(
     runner: gate.EnvRunner | None = None,
     timeout: float = 1800.0,
     workers: int | None = None,
+    mutant_inventory: list[str] | None = None,
+    mutant_names: list[str] | None = None,
 ) -> tuple[int, dict[str, Any]]:
     """Mutation-test each quant module in isolation; block on a kill-rate below its floor.
 
@@ -243,6 +246,10 @@ def mutate(
         if modules is None
         else gate.quant_source_modules(root, modules)
     )
+    if (mutant_inventory is None) != (mutant_names is None) or (
+        mutant_inventory is not None and len(targets) != 1
+    ):
+        raise ValueError("Fragment requires one module and complete inventory plus assignment")
     baseline_raw = gate.read_json(root / MUTATION_BASELINE_FILE) or {}
     baseline = {k: float(v) for k, v in baseline_raw.get("kill_rates", {}).items()}
     report: dict[str, Any] = {"modules": {}, "min_kill": MUTATION_MIN_KILL}
@@ -267,6 +274,10 @@ def mutate(
                     )
                 )
             backend = mutation_backend(root / rel)
+            if mutant_inventory is not None:
+                if backend != "mutmut":
+                    raise ValueError("Constant-only backend cannot use function fragments")
+                backend = "mutmut==3.8.0"
             entry["tool"] = backend
             mutmut = ["uv", "run", "--project", str(root), "--with", backend, "mutmut"]
             # mutmut isolates each mutant with os.fork(); Apple's Accelerate BLAS is not fork-safe
@@ -275,7 +286,32 @@ def mutate(
             fork_safe_env = {**os.environ, "VECLIB_MAXIMUM_THREADS": "1"}
             command = [*mutmut, "run"]
             export = [*mutmut, "export-cicd-stats"]
-            if backend == "mutmut==2.5.1":
+            if mutant_inventory is not None:
+                assignment = staging / "assignment.json"
+                gate.write_json_atomic(
+                    assignment, {"expected": mutant_inventory, "assigned": mutant_names}
+                )
+                adapter = [
+                    "uv",
+                    "run",
+                    "--project",
+                    str(root),
+                    "--with",
+                    backend,
+                    "python",
+                    str(root / "scripts/mutation_fragment.py"),
+                ]
+                options = [
+                    "--module",
+                    f"src/{rel.partition('/src/')[2]}",
+                    "--assignment",
+                    str(assignment),
+                    "--workers",
+                    str(workers or 2),
+                ]
+                command = [*adapter, "run", *options]
+                export = [*adapter, "export", *options]
+            elif backend == "mutmut==2.5.1":
                 # Legacy mutmut measures module-scope constants serially. --CI preserves
                 # report-only scores but still returns nonzero for infrastructure errors.
                 test_command = shlex.join(
@@ -337,6 +373,14 @@ def mutate(
                         "required": round(required, 4),
                     }
                 )
+                if mutant_inventory is not None:
+                    entry["mutant_inventory"] = stats.get("mutant_inventory")
+                    entry["mutant_results"] = stats.get("mutant_results")
+                    if "no_tests_proof" in stats:
+                        entry["no_tests_proof"] = stats["no_tests_proof"]
+                        entry["mutation_config_sha256"] = hashlib.sha256(
+                            (staging / "pyproject.toml").read_bytes()
+                        ).hexdigest()
                 if rate + MUTATION_TOLERANCE < required:
                     entry["status"] = "fail"
                     blocking = True

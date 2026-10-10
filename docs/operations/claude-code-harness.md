@@ -136,8 +136,13 @@ tests remain UNVERIFIED; every other check stays mandatory; no extension to late
 
 ## Checkpointed weekly mutation execution (2026-10-10)
 
-`scripts/mutation_sweep.py plan --commit SHA --run-id RUN-ATTEMPT` freezes the entire
-`all_quant_source_modules` inventory into deterministic singleton jobs. Weekly scheduling and
+`scripts/mutation_fragment.py inventory` under pinned `mutmut==3.8.0` generates every functional
+module's canonical mutant identity with the backend's original generator. Then
+`scripts/mutation_sweep.py plan --commit SHA --run-id RUN-ATTEMPT --mutants mutation-keys.json`
+freezes the entire `all_quant_source_modules` inventory, source hashes and complete mutant lists.
+Sorted identities are partitioned round-robin into at most four disjoint fragments per module;
+constant-only modules retain a singleton job. The current matrix is bounded by 205 jobs and
+planning rejects matrices over GitHub's 256-job limit. Weekly scheduling and
 on-touch local mutation requirements are preserved. Each hosted job uses unique temporary
 staging, at most two `mutmut run --max-children` workers and eight matrix jobs concurrently.
 Modules without functions use pinned `mutmut==2.5.1` serially because mutmut 3 cannot mutate
@@ -146,6 +151,13 @@ Inventory freezes the backend; checkpoints identify it. Legacy export requires a
 rows for the assigned source, known terminal statuses and a test hash; empty or unfinished
 measurements fail completeness. `--CI` makes legacy score findings report-only while fatal
 errors still fail. No constants are dropped or reclassified as successful empty measurements.
+Each functional fragment regenerates and verifies the complete frozen identity set before
+executing its exact assigned names with the unchanged associated tests. Its export requires
+every assigned verdict terminal and every unassigned verdict untouched. Aggregate reconstructs
+counts from disjoint per-mutant verdicts, requires their exact complete union and identical
+excluded-test audits, then computes each module's original floor verdict. Partial backend
+whole-module exports are never accepted. Setup, preflight and test statistics repeat up to four
+times per module; no mutant executes more than once. Concurrency and worker bounds are unchanged.
 Checkpoints initialize before dependency installation and atomically record module, full expected
 inventory, commit, run/attempt, phase, elapsed time, command timings and terminal measurement.
 Command logs persist separately during execution. SIGTERM/interruption records an unfinished
@@ -170,3 +182,9 @@ new reusable sweep: `gh workflow run nightly.yml --ref BRANCH -f mutation_sweep=
 The explicit input defaults false; scheduled nightlies retain their ordinary non-mutation checks.
 Manual mutation callers use a separate concurrency group and cannot be cancelled by a scheduled
 nightly. The reusable sweep's own concurrency still prevents overlapping mutation batches.
+
+The pinned functional adapter explicitly certifies successful fresh full test-statistics collection
+when no mutant has associated tests. The certificate binds source, generated inventory and effective
+staged configuration, records executed test IDs/durations and staged import origins, and requires
+empty tracer hits plus untouched metadata. Only assigned mutants receive conservative `no_tests`
+verdicts (zero kills); generic tool failures and invalid certificates still block completeness.

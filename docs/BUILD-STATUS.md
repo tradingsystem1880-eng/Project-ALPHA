@@ -800,3 +800,32 @@ selected tests and audited exclusions. A narrow serial fallback and strict compl
 export retain this module, freeze backend identity and reject empty/unfinished records.
 Fresh full gate, independent review and complete hosted sweep remain required on the repaired
 tree. Mutation baselines, thresholds and private-source boundaries remain unchanged.
+
+## 2026-10-10 — Hosted mutation deadline repair (verification pending)
+
+PR #54 head `1605b5b` passed fresh local full, independent review, 213 focused tests and all seven
+hosted CI checks; its actual hosted constant-only fallback measured four killed of four mutants.
+Run `38052927037-1` retained explicit 5400-second failures for data (224/239), boundary (1083/1810)
+and crypto crowding (971/1333), with error checkpoints and terminated descendant process groups.
+Singleton module jobs therefore cannot establish full hosted completion. Owner-authorized repair
+partitions complete pinned-backend canonical mutant inventories into up to four exact-name fragments
+per functional module, with exact per-mutant aggregation and unchanged test/floor/verdict semantics.
+Up to 205 jobs repeat setup/preflight/statistics at most four times, retaining eight concurrent jobs
+and two workers each. Failed and successful evidence is retained; no partial run is acceptance.
+The repaired tree still requires real failed-module reproduction, final full/review and a new
+complete hosted sweep/required CI. Private engineering coverage remains UNVERIFIED under the same
+scoped exception; original shared work and unrelated reconciliation lanes remain untouched.
+
+The same run also retained event-study (233/580) and renderer (651/1778) deadline failures.
+`alpha_validation/_atomic.py` failed separately after successful stats collection found no associated tests
+for its 30 generated mutants. The scoped adapter adds explicit successful-collection certification
+for conservative no-tests accounting, with negative regressions; actual-tool validation is pending.
+
+Actual final-code diagnostics completed locally: data accounted for all 239 canonical mutants
+in four disjoint fragments (176 killed, five survived, 58 timeout; 0.7364 score fails its unchanged
+0.8182 floor). Complete collection certified the 30 generated `_atomic` mutants as conservative
+no-tests, zero kills and score failure at the unchanged 0.90 floor, with 527 real test records.
+The first two data fragments used the initial exact-name CLI adapter; the last two and `_atomic`
+used the final pinned adapter. These are diagnostic receipts, never full hosted acceptance.
+The old hosted head also retained gate-packet timeout progress 2250/3019. New exact-head hosted
+completion, final canonical full and fresh bound review remain acceptance requirements.
