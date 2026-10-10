@@ -1,0 +1,102 @@
+name: Weekly mutation sweep
+
+# Owner-selected weekly cadence. Exhaustive deterministic singleton shards retain all modules,
+# eight isolated jobs at most, each with two mutmut workers. Scores remain report-only.
+on:
+  schedule:
+    - cron: "17 4 * * 0"
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: mutation-weekly
+  cancel-in-progress: false
+
+env:
+  SWEEP_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+  UV_LOCKED: "true"
+
+jobs:
+  modules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      list: ${{ steps.list.outputs.list }}
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - id: list
+        name: Freeze complete source inventory and run identity
+        run: |
+          list=$(python scripts/mutation_sweep.py plan --commit "$GITHUB_SHA" --run-id "$SWEEP_RUN_ID")
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-inventory-${{ env.SWEEP_RUN_ID }}
+          path: mutation-inventory.json
+          if-no-files-found: error
+
+  mutate:
+    needs: modules
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        include: ${{ fromJSON(needs.modules.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: mutation-inventory-${{ env.SWEEP_RUN_ID }}
+      # Initialize before uv installs anything: uv run performs locked dependency setup in
+      # the measured preflight. Two 5400s phases + export fit the 11100s budget, reserving
+      # 15 minutes before the job deadline for cleanup and artifact upload.
+      - name: Checkpoint and measure assigned module
+        run: python scripts/mutation_sweep.py run --commit "$GITHUB_SHA" --run-id "$SWEEP_RUN_ID" --index '${{ matrix.index }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-result-${{ env.SWEEP_RUN_ID }}-${{ matrix.index }}
+          path: mutation-results/
+          if-no-files-found: error
+
+  aggregate:
+    needs: [modules, mutate]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: mutation-inventory-${{ env.SWEEP_RUN_ID }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mutation-result-${{ env.SWEEP_RUN_ID }}-*
+          path: mutation-results
+      - name: Require exactly the expected completed measurements
+        if: always()
+        run: python scripts/mutation_sweep.py aggregate --commit "$GITHUB_SHA" --run-id "$SWEEP_RUN_ID"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-summary-${{ env.SWEEP_RUN_ID }}
+          path: mutation-results/mutation-summary.json
+          if-no-files-found: error

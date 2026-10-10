@@ -511,6 +511,9 @@ def _wire_minimal_harness(repo: Path) -> None:
         "harness_awareness.py",
         "harness_models.py",
         "harness_quant.py",
+        "mutation_sweep.py",
+        "mutation_legacy.py",
+        "check_mutation_report.py",
         "codex_bridge.py",
     ):
         (scripts / name).write_text("# stub\n")
@@ -1002,7 +1005,7 @@ class TestQuantRigorTooling:
     def test_mutate_report_surfaces_unattributed_mutants_and_forwards_timeout(
         self, repo: Path
     ) -> None:
-        rel = self._quant_module(repo)
+        rel = self._quant_module(repo, body="def value(): return 1\n")
         (repo / "packages/alpha-validation/src/alpha_validation/__init__.py").write_text("")
         (repo / "tests").mkdir()
         (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\nmarkers = []\n")
@@ -1029,7 +1032,7 @@ class TestQuantRigorTooling:
         # mutmut isolates each mutant with os.fork(); Apple's Accelerate BLAS is not fork-safe
         # once its thread pool exists, so every mutant reaching numpy/scipy linear algebra is
         # recorded as "segfault" (never credited as a kill) unless the pool is pinned to one thread.
-        rel = self._quant_module(repo)
+        rel = self._quant_module(repo, body="def value(): return 1\n")
         (repo / "packages/alpha-validation/src/alpha_validation/__init__.py").write_text("")
         (repo / "tests").mkdir()
         (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\nmarkers = []\n")

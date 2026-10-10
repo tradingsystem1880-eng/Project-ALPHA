@@ -8,9 +8,15 @@ import ast
 import json
 import os
 import re
+import shlex
 import shutil
+import signal
+import subprocess
 import sys
+import tempfile
+import time
 import tomllib
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -154,19 +160,84 @@ def mutation_required(module: str, baseline: dict[str, float]) -> float:
     return MUTATION_MIN_KILL if recorded is None else min(MUTATION_MIN_KILL, float(recorded))
 
 
+def mutation_backend(module: Path) -> str:
+    """mutmut 3 has no executable mutant keys when a module has no functions."""
+    tree = ast.parse(module.read_text())
+    if any(
+        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda))
+        for node in ast.walk(tree)
+    ):
+        return "mutmut"
+    return "mutmut==2.5.1"
+
+
+def stop_group(process: subprocess.Popen[Any]) -> None:
+    """Terminate the dedicated session, including children that outlive their parent."""
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    # Give ordinary workers a small grace period, then kill even if the parent exited.
+    with suppress(subprocess.TimeoutExpired):
+        process.wait(timeout=2)
+    with suppress(ProcessLookupError):
+        os.killpg(process.pid, signal.SIGKILL)
+    process.wait()
+
+
+def command_run(
+    cmd: list[str], *, cwd: Path, timeout: float, log: Path, env: dict[str, str] | None = None
+) -> tuple[bool, float, str]:
+    started = time.monotonic()
+    with log.open("w") as stream:
+        stream.write(json.dumps({"command": cmd, "timeout": timeout}) + "\n")
+        stream.flush()
+        try:
+            process = subprocess.Popen(
+                cmd,
+                cwd=cwd,
+                env=env,
+                stdout=stream,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+        except OSError as exc:
+            stream.write(f"OSError: {exc}\n")
+            return False, time.monotonic() - started, f"OSError: {exc}"
+        try:
+            code = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            stop_group(process)
+            stream.write("TimeoutExpired: process group terminated\n")
+            code = -1
+        except BaseException:
+            stop_group(process)
+            raise
+        else:
+            # No background worker may survive a successful or failed command.
+            stop_group(process)
+    return code == 0, time.monotonic() - started, log.read_text(errors="replace")
+
+
+def _mutation_runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+    with tempfile.TemporaryDirectory(prefix="alpha-mutation-log-") as directory:
+        return command_run(cmd, log=Path(directory) / "command.log", **kwargs)
+
+
 def mutate(
     root: Path,
     modules: list[str] | None = None,
     *,
     runner: gate.EnvRunner | None = None,
     timeout: float = 1800.0,
+    workers: int | None = None,
 ) -> tuple[int, dict[str, Any]]:
     """Mutation-test each quant module in isolation; block on a kill-rate below its floor.
 
     Tooling absence (no ``uvx``/network for mutmut, staged clean-run failure) is reported as
     ``unavailable:<reason>`` and never blocks — but it is printed and audited, never silent.
     """
-    run = runner or gate._env_runner
+    run = runner or _mutation_runner
     targets = (
         gate.quant_source_modules(root)
         if modules is None
@@ -177,60 +248,104 @@ def mutate(
     report: dict[str, Any] = {"modules": {}, "min_kill": MUTATION_MIN_KILL}
     blocking = False
     for rel in targets:
-        staging = gate._state_dir(root) / "mutation" / Path(rel).stem
-        stage_mutation_tree(root, [rel], staging)
-        entry: dict[str, Any] = {}
-        # staged clean run: exclude tests that fail only because of the flattened layout
-        preflight = ["uv", "run", "--project", str(root), "pytest", "-q", "-rfE"]
-        preflight += ["-p", "no:cacheprovider", "--continue-on-collection-errors", "tests"]
-        pre_ok, pre_seconds, pre_out = run(preflight, cwd=staging, timeout=timeout)
-        excluded = [] if pre_ok else staging_only_failures(pre_out)
-        if excluded:
-            entry["excluded_tests"] = sorted({t.split("[", 1)[0] for t in excluded[1::2]})
-            pyproject_path = staging / "pyproject.toml"
-            pyproject_path.write_text(
-                pyproject_path.read_text().replace(
-                    json.dumps(_MUTATION_PYTEST_ARGS),
-                    json.dumps([*_MUTATION_PYTEST_ARGS, *excluded]),
+        staging = Path(tempfile.mkdtemp(prefix="alpha-mutation-"))
+        try:
+            stage_mutation_tree(root, [rel], staging)
+            entry: dict[str, Any] = {}
+            # staged clean run: exclude tests that fail only because of the flattened layout
+            preflight = ["uv", "run", "--project", str(root), "pytest", "-q", "-rfE"]
+            preflight += ["-p", "no:cacheprovider", "--continue-on-collection-errors", "tests"]
+            pre_ok, pre_seconds, pre_out = run(preflight, cwd=staging, timeout=timeout)
+            excluded = [] if pre_ok else staging_only_failures(pre_out)
+            if excluded:
+                entry["excluded_tests"] = sorted({t.split("[", 1)[0] for t in excluded[1::2]})
+                pyproject_path = staging / "pyproject.toml"
+                pyproject_path.write_text(
+                    pyproject_path.read_text().replace(
+                        json.dumps(_MUTATION_PYTEST_ARGS),
+                        json.dumps([*_MUTATION_PYTEST_ARGS, *excluded]),
+                    )
                 )
-            )
-        mutmut = ["uv", "run", "--project", str(root), "--with", "mutmut", "mutmut"]
-        # mutmut isolates each mutant with os.fork(); Apple's Accelerate BLAS is not fork-safe
-        # once its thread pool exists, so mutants reaching numpy/scipy linear algebra die as
-        # "segfault" (never a kill) unless the pool is pinned to one thread.
-        fork_safe_env = {**os.environ, "VECLIB_MAXIMUM_THREADS": "1"}
-        ok, seconds, output = run([*mutmut, "run"], cwd=staging, timeout=timeout, env=fork_safe_env)
-        entry["seconds"] = round(seconds + pre_seconds, 1)
-        stats_path = staging / "mutants" / "mutmut-cicd-stats.json"
-        if ok:
-            run([*mutmut, "export-cicd-stats"], cwd=staging, timeout=120)
-        stats = gate.read_json(stats_path) if ok else None
-        if stats is None:
-            entry["status"] = f"unavailable:{output[-300:] or 'mutmut produced no stats'}"
-        else:
-            rate = mutation_kill_rate(stats)
-            required = mutation_required(rel, baseline)
-            entry.update(
-                {
-                    "killed": stats.get("killed"),
-                    "survived": stats.get("survived"),
-                    "total": stats.get("total"),
-                    # module-scope mutants (constants, catalog data) that mutmut's function
-                    # tracer cannot attribute to a test; counted as NOT killed (conservative)
-                    "no_tests": stats.get("no_tests"),
-                    "timeout": stats.get("timeout"),
-                    "kill_rate": round(rate, 4),
-                    "required": round(required, 4),
-                }
-            )
-            if rate + MUTATION_TOLERANCE < required:
-                entry["status"] = "fail"
-                blocking = True
+            backend = mutation_backend(root / rel)
+            entry["tool"] = backend
+            mutmut = ["uv", "run", "--project", str(root), "--with", backend, "mutmut"]
+            # mutmut isolates each mutant with os.fork(); Apple's Accelerate BLAS is not fork-safe
+            # once its thread pool exists, so mutants reaching numpy/scipy linear algebra die as
+            # "segfault" (never a kill) unless the pool is pinned to one thread.
+            fork_safe_env = {**os.environ, "VECLIB_MAXIMUM_THREADS": "1"}
+            command = [*mutmut, "run"]
+            export = [*mutmut, "export-cicd-stats"]
+            if backend == "mutmut==2.5.1":
+                # Legacy mutmut measures module-scope constants serially. --CI preserves
+                # report-only scores but still returns nonzero for infrastructure errors.
+                test_command = shlex.join(
+                    [*preflight[:5], *_MUTATION_PYTEST_ARGS, *excluded, "tests"]
+                )
+                command += [
+                    "--paths-to-mutate",
+                    f"src/{rel.partition('/src/')[2]}",
+                    "--tests-dir",
+                    "tests",
+                    "--runner",
+                    test_command,
+                    "--CI",
+                    "--no-progress",
+                ]
+                export = [
+                    sys.executable,
+                    str(root / "scripts/mutation_legacy.py"),
+                    "--module",
+                    f"src/{rel.partition('/src/')[2]}",
+                ]
+            elif workers is not None:
+                if workers < 1:
+                    raise ValueError("workers must be positive")
+                command += ["--max-children", str(workers)]
+            ok, seconds, output = run(command, cwd=staging, timeout=timeout, env=fork_safe_env)
+            entry["seconds"] = round(seconds + pre_seconds, 1)
+            stats_path = staging / "mutants" / "mutmut-cicd-stats.json"
+            if ok:
+                ok, export_seconds, export_output = run(export, cwd=staging, timeout=120)
+                entry["seconds"] += round(export_seconds, 1)
+                if not ok:
+                    output = export_output
+            stats = gate.read_json(stats_path) if ok else None
+            if stats is None:
+                entry["status"] = f"unavailable:{output[-300:] or 'mutmut produced no stats'}"
             else:
-                entry["status"] = "pass"
-        report["modules"][rel] = entry
-        gate.append_audit(root, "mutation_gate", f"module={rel} status={entry['status']}")
-        shutil.rmtree(staging, ignore_errors=True)
+                rate = mutation_kill_rate(stats)
+                required = mutation_required(rel, baseline)
+                entry.update(
+                    {
+                        "killed": stats.get("killed"),
+                        "survived": stats.get("survived"),
+                        "total": stats.get("total"),
+                        # module-scope mutants (constants, catalog data) that mutmut's function
+                        # tracer cannot attribute to a test; counted as NOT killed (conservative)
+                        "no_tests": stats.get("no_tests"),
+                        "timeout": stats.get("timeout"),
+                        **{
+                            name: stats.get(name, 0)
+                            for name in (
+                                "skipped",
+                                "suspicious",
+                                "segfault",
+                                "check_was_interrupted_by_user",
+                            )
+                        },
+                        "kill_rate": round(rate, 4),
+                        "required": round(required, 4),
+                    }
+                )
+                if rate + MUTATION_TOLERANCE < required:
+                    entry["status"] = "fail"
+                    blocking = True
+                else:
+                    entry["status"] = "pass"
+            report["modules"][rel] = entry
+            gate.append_audit(root, "mutation_gate", f"module={rel} status={entry['status']}")
+        finally:
+            shutil.rmtree(staging)
     return (1 if blocking else 0), report
 
 
