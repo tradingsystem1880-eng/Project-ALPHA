@@ -770,3 +770,22 @@ now keeps a `-darwin` baseline re-taken on macOS against the current build and a
 rendered in the `mcr.microsoft.com/playwright:v1.61.1-noble` container (linux/amd64), both under the
 unchanged 2% tolerance. The CI frontend job's timeout rose from 15 to 40 minutes for the 308-test
 browser suite.
+
+
+**2026-10-10 mutation sweep durability (isolated publication):** Serial nightly sweeps were
+cancelled near six hours. The owner selected weekly exhaustive singleton jobs; nightly Semgrep,
+determinism and raise-site coverage remain. Identity-bound atomic checkpoints, persisted logs,
+unique staging, bounded matrix/internal workers, deadline process-group cleanup and exact aggregate
+validation separate complete infrastructure from report-only hosted scores. Floors, tolerance,
+module/test scope, excluded-test audit and local tooling-unavailable semantics are unchanged.
+The shared-tree implementation passed 225 focused tests, four Atlas consistency tests and the
+six-component canonical full gate. This focused branch requires its own fresh full verification,
+independent review and hosted evidence. Private engineering coverage remains UNVERIFIED; main's
+review policy must be satisfied before any protected commit. After an explicit question,
+the owner answered "yes" to a one-time absent-private-suite exception for the mutation fix
+under `docs/superpowers/plans/2026-10-10-mutation-checkpoints.md` only. Its absence remains
+UNVERIFIED; the denied private execution will not be retried. No actual failure, public
+check, independent review, hosted mutation completeness or Git protection is waived, and
+no private-source access or future exception is granted. The isolated pre-exception tree
+passed all six full-gate components; the updated tree requires fresh full verification
+and independent review before guarded publication.

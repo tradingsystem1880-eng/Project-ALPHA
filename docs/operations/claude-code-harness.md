@@ -132,3 +132,35 @@ checks; it does not automatically extend the earlier exception to future work.
 A third explicit owner resolution on 2026-10-05 covers only the commits made under the
 [clean-and-reconcile plan](../superpowers/plans/2026-10-05-clean-reconcile-main.md). Hidden
 tests remain UNVERIFIED; every other check stays mandatory; no extension to later work.
+
+
+## Checkpointed weekly mutation execution (2026-10-10)
+
+`scripts/mutation_sweep.py plan --commit SHA --run-id RUN-ATTEMPT` freezes the entire
+`all_quant_source_modules` inventory into deterministic singleton jobs. Weekly scheduling and
+on-touch local mutation requirements are preserved. Each hosted job uses unique temporary
+staging, two `mutmut run --max-children` workers and at most eight matrix jobs concurrently.
+Checkpoints initialize before dependency installation and atomically record module, full expected
+inventory, commit, run/attempt, phase, elapsed time, command timings and terminal measurement.
+Command logs persist separately during execution. SIGTERM/interruption records an unfinished
+checkpoint; hard runner loss can still prevent upload and is detected as missing aggregation.
+
+Preflight and mutation retain their 5400-second limits; export retains 120 seconds. A shared
+11100-second elapsed budget bounds commands, with process-group TERM/KILL cleanup and upload
+headroom inside the 200-minute job limit. Setup/staging filesystem time remains outside command
+timeouts and is included in elapsed-budget accounting before each command. Local mutation also
+cleans descendant processes and uses unique staging. Tooling absence remains locally nonblocking.
+
+Always-upload artifacts include run/attempt and module index; `aggregate` runs even when a shard
+fails. It rejects missing, duplicate, malformed, stale, mismatched or unfinished records and
+unaccounted/interrupted mutant counts, and writes a success or failure summary artifact. Low kill
+rates remain report-only hosted findings. Minimum 0.90, tolerance 0.005, baseline floors, selected
+tests, excluded-test audit, and conservative timeout/no-tests accounting are unchanged. No
+baseline writes or hosted dispatch occurred. Local mocked checks do not prove hosted completion.
+
+
+Before merge, the existing default-branch `nightly.yml` dispatcher can run the candidate branch's
+new reusable sweep: `gh workflow run nightly.yml --ref BRANCH -f mutation_sweep=true`.
+The explicit input defaults false; scheduled nightlies retain their ordinary non-mutation checks.
+Manual mutation callers use a separate concurrency group and cannot be cancelled by a scheduled
+nightly. The reusable sweep's own concurrency still prevents overlapping mutation batches.

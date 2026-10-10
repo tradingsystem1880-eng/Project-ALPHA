@@ -511,6 +511,8 @@ def _wire_minimal_harness(repo: Path) -> None:
         "harness_awareness.py",
         "harness_models.py",
         "harness_quant.py",
+        "mutation_sweep.py",
+        "check_mutation_report.py",
         "codex_bridge.py",
     ):
         (scripts / name).write_text("# stub\n")

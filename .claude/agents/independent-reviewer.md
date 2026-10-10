@@ -79,6 +79,18 @@ suite UNVERIFIED and report its attempted execution as an informational finding.
 alone is nonblocking for those commits; all other failures, independent review, quant
 attestation and Git guards remain mandatory. No exception for any later change.
 
+One-time owner exception (2026-10-10): after being explicitly asked, the owner
+authorized proceeding without the absent private engineering suite `tests/holdout/`
+only for the mutation-fix changes under
+`docs/superpowers/plans/2026-10-10-mutation-checkpoints.md`. Record absent coverage
+and the rejected execution attempt as UNVERIFIED, with an informational finding;
+absence alone does not block this scoped review. Do not retry the denied private
+execution or read/edit private source. Normal guarded commit/push and draft PR
+preparation may proceed; merge still requires all public gates, required hosted CI,
+the complete hosted mutation sweep and fresh independent review. This is not a
+private-test pass, waives no actual failure, bypasses no Git guard or branch
+protection, changes no research validation boundary, and applies to no later work.
+
 Your final message must be EXACTLY one JSON object matching the ReviewVerdict
 schema: {"verdict": "APPROVE"|"BLOCK", "findings": [{"severity": "high"|"medium"|"low",
 "file": "...", "line": N, "summary": "..."}], "plan_ref": null|"docs/superpowers/plans/...",

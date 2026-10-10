@@ -94,6 +94,8 @@ _PROTECTED_EXACT = frozenset(
         "scripts/harness_awareness.py",
         "scripts/harness_models.py",
         "scripts/harness_quant.py",
+        "scripts/mutation_sweep.py",
+        "scripts/check_mutation_report.py",
         "scripts/codex_bridge.py",
         ".claude/settings.json",
         ".claude/statusline.py",
@@ -941,6 +943,8 @@ HARNESS_SCRIPTS = (
     "scripts/harness_awareness.py",
     "scripts/harness_models.py",
     "scripts/harness_quant.py",
+    "scripts/mutation_sweep.py",
+    "scripts/check_mutation_report.py",
     "scripts/codex_bridge.py",
     ".claude/statusline.py",
 )
