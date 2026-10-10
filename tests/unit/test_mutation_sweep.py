@@ -87,6 +87,19 @@ def test_interrupt_leaves_valid_unfinished_checkpoint(tmp_path: Path) -> None:
         sweep.aggregate(plan, output)
 
 
+def test_aggregate_rejects_backend_identity_mismatch(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    plan = sweep.inventory(root, "commit", "run")
+    output = tmp_path / "output"
+    assert sweep.run_module(root, plan, 0, output, runner=stats_runner) == 0
+    checkpoint = next(output.glob("module-*.json"))
+    record = sweep.load_json(checkpoint)
+    record["report"]["modules"][MODULE]["tool"] = "mutmut==2.5.1"
+    gate.write_json_atomic(checkpoint, record)
+    with pytest.raises(ValueError, match="backend"):
+        sweep.aggregate(plan, output)
+
+
 @pytest.mark.parametrize(
     "field,value",
     [

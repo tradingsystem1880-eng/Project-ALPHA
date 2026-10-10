@@ -139,7 +139,13 @@ tests remain UNVERIFIED; every other check stays mandatory; no extension to late
 `scripts/mutation_sweep.py plan --commit SHA --run-id RUN-ATTEMPT` freezes the entire
 `all_quant_source_modules` inventory into deterministic singleton jobs. Weekly scheduling and
 on-touch local mutation requirements are preserved. Each hosted job uses unique temporary
-staging, two `mutmut run --max-children` workers and at most eight matrix jobs concurrently.
+staging, at most two `mutmut run --max-children` workers and eight matrix jobs concurrently.
+Modules without functions use pinned `mutmut==2.5.1` serially because mutmut 3 cannot mutate
+their module-level constants. Both backends retain exactly the selected tests and exclusions.
+Inventory freezes the backend; checkpoints identify it. Legacy export requires actual mutant
+rows for the assigned source, known terminal statuses and a test hash; empty or unfinished
+measurements fail completeness. `--CI` makes legacy score findings report-only while fatal
+errors still fail. No constants are dropped or reclassified as successful empty measurements.
 Checkpoints initialize before dependency installation and atomically record module, full expected
 inventory, commit, run/attempt, phase, elapsed time, command timings and terminal measurement.
 Command logs persist separately during execution. SIGTERM/interruption records an unfinished
@@ -156,7 +162,7 @@ fails. It rejects missing, duplicate, malformed, stale, mismatched or unfinished
 unaccounted/interrupted mutant counts, and writes a success or failure summary artifact. Low kill
 rates remain report-only hosted findings. Minimum 0.90, tolerance 0.005, baseline floors, selected
 tests, excluded-test audit, and conservative timeout/no-tests accounting are unchanged. No
-baseline writes or hosted dispatch occurred. Local mocked checks do not prove hosted completion.
+baseline writes occurred. Local mocked checks do not prove hosted completion.
 
 
 Before merge, the existing default-branch `nightly.yml` dispatcher can run the candidate branch's

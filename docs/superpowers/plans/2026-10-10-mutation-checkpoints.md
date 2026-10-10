@@ -39,14 +39,14 @@
       "verify": "uv run python scripts/gate.py full",
       "expected": "Fresh full verification or explicit blocker; hosted completion separately unverified",
       "rollback": "Revert only new weekly workflow edits",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "title": "Publish focused PR, prove hosted completeness and merge under normal policy",
       "verify": "Required CI plus complete mutation sweep, normal merge and exact merged-SHA post-merge CI",
       "expected": "Verified exact commit, expected module artifacts and honest score/infrastructure distinction",
       "rollback": "Revert focused PR through normal protections",
-      "status": "pending"
+      "status": "in_progress"
     }
   ],
   "tier_impact": [
@@ -92,3 +92,16 @@ The owner answered "yes". This applies only to changes under this plan. Metadata
 no private source was read. Record that coverage UNVERIFIED; absence alone is nonblocking
 for this fix. The receipt is in `.claude/agents/independent-reviewer.md`; all public gates,
 fresh review, hosted completeness and normal Git/branch protections remain required.
+
+## Hosted constant-module repair — 2026-10-10
+
+Initial candidate `2c90f008` passed all seven required hosted CI checks (harness required one
+retry after an ephemeral copied `.git/objects/maintenance.lock` disappeared). Complete run
+`38048650465-1` preserved its failed `figures/version.py` checkpoint: mutmut 3 produced no
+executable mutants for this constant-only module and exited during test association. Its
+official README recommends mutmut 2 for module-level code. A bounded local reproduction
+with pinned 2.5.1 generated and executed four mutations; all four were killed. The narrow
+fallback preserves tests/exclusions, timeouts, process cleanup and scoring. Its strict export
+rejects empty, wrong-module, unknown and unfinished records. Inventory freezes the backend.
+Fresh final full/review and complete hosted validation are required for the repaired tree;
+the prior run does not prove it. No source-module, baseline or private-suite changes.

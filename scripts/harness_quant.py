@@ -8,6 +8,7 @@ import ast
 import json
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -159,6 +160,17 @@ def mutation_required(module: str, baseline: dict[str, float]) -> float:
     return MUTATION_MIN_KILL if recorded is None else min(MUTATION_MIN_KILL, float(recorded))
 
 
+def mutation_backend(module: Path) -> str:
+    """mutmut 3 has no executable mutant keys when a module has no functions."""
+    tree = ast.parse(module.read_text())
+    if any(
+        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda))
+        for node in ast.walk(tree)
+    ):
+        return "mutmut"
+    return "mutmut==2.5.1"
+
+
 def stop_group(process: subprocess.Popen[Any]) -> None:
     """Terminate the dedicated session, including children that outlive their parent."""
     try:
@@ -254,13 +266,38 @@ def mutate(
                         json.dumps([*_MUTATION_PYTEST_ARGS, *excluded]),
                     )
                 )
-            mutmut = ["uv", "run", "--project", str(root), "--with", "mutmut", "mutmut"]
+            backend = mutation_backend(root / rel)
+            entry["tool"] = backend
+            mutmut = ["uv", "run", "--project", str(root), "--with", backend, "mutmut"]
             # mutmut isolates each mutant with os.fork(); Apple's Accelerate BLAS is not fork-safe
             # once its thread pool exists, so mutants reaching numpy/scipy linear algebra die as
             # "segfault" (never a kill) unless the pool is pinned to one thread.
             fork_safe_env = {**os.environ, "VECLIB_MAXIMUM_THREADS": "1"}
             command = [*mutmut, "run"]
-            if workers is not None:
+            export = [*mutmut, "export-cicd-stats"]
+            if backend == "mutmut==2.5.1":
+                # Legacy mutmut measures module-scope constants serially. --CI preserves
+                # report-only scores but still returns nonzero for infrastructure errors.
+                test_command = shlex.join(
+                    [*preflight[:5], *_MUTATION_PYTEST_ARGS, *excluded, "tests"]
+                )
+                command += [
+                    "--paths-to-mutate",
+                    f"src/{rel.partition('/src/')[2]}",
+                    "--tests-dir",
+                    "tests",
+                    "--runner",
+                    test_command,
+                    "--CI",
+                    "--no-progress",
+                ]
+                export = [
+                    sys.executable,
+                    str(root / "scripts/mutation_legacy.py"),
+                    "--module",
+                    f"src/{rel.partition('/src/')[2]}",
+                ]
+            elif workers is not None:
                 if workers < 1:
                     raise ValueError("workers must be positive")
                 command += ["--max-children", str(workers)]
@@ -268,9 +305,7 @@ def mutate(
             entry["seconds"] = round(seconds + pre_seconds, 1)
             stats_path = staging / "mutants" / "mutmut-cicd-stats.json"
             if ok:
-                ok, export_seconds, export_output = run(
-                    [*mutmut, "export-cicd-stats"], cwd=staging, timeout=120
-                )
+                ok, export_seconds, export_output = run(export, cwd=staging, timeout=120)
                 entry["seconds"] += round(export_seconds, 1)
                 if not ok:
                     output = export_output

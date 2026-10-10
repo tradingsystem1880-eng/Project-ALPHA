@@ -789,3 +789,14 @@ check, independent review, hosted mutation completeness or Git protection is wai
 no private-source access or future exception is granted. The isolated pre-exception tree
 passed all six full-gate components; the updated tree requires fresh full verification
 and independent review before guarded publication.
+
+## 2026-10-10 — Hosted mutation constant-module repair (verification pending)
+
+PR #54 candidate `2c90f008` passed required CI after one documented harness fixture-race
+retry. The exhaustive hosted sweep exposed mutmut 3's unsupported constant-only
+`alpha_research/figures/version.py`: its failed checkpoint and command logs survived.
+Pinned mutmut 2.5.1 measured four actual mutations locally, all killed, with the unchanged
+selected tests and audited exclusions. A narrow serial fallback and strict completed-cache
+export retain this module, freeze backend identity and reject empty/unfinished records.
+Fresh full gate, independent review and complete hosted sweep remain required on the repaired
+tree. Mutation baselines, thresholds and private-source boundaries remain unchanged.

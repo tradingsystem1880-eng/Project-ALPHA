@@ -32,6 +32,7 @@ def inventory(root: Path, commit: str, run_id: str) -> dict[str, Any]:
     }
     return {
         "floors": floors,
+        "tools": {module: harness_quant.mutation_backend(root / module) for module in modules},
         "schema_version": SCHEMA,
         "commit": commit,
         "run_id": run_id,
@@ -97,6 +98,7 @@ def run_module(
         phase = (
             "export"
             if cmd[-1] == "export-cicd-stats"
+            or any(Path(arg).name == "mutation_legacy.py" for arg in cmd)
             else ("mutation" if "mutmut" in cmd else "preflight")
         )
         record["phase"] = phase
@@ -218,6 +220,8 @@ def aggregate(plan: dict[str, Any], directory: Path) -> dict[str, Any]:
                 raise ValueError("Missing command log")
         validate_report(record.get("report"), module)
         entry = record["report"]["modules"][module]
+        if entry.get("tool") != plan["tools"][module]:
+            raise ValueError("Mutation backend mismatched with frozen inventory")
         floor = plan["floors"][module]
         denominator = entry["total"] - entry.get("skipped", 0)
         rate = entry["killed"] / denominator if denominator > 0 else 0.0
