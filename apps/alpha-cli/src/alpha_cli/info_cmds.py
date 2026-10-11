@@ -96,7 +96,9 @@ _NON_RUN_COMMAND_PREFIXES: Final = ("figures", "chart", "scan")
 
 
 def _launchable(path: str) -> bool:
-    return path.split(" ", 1)[0] not in _NON_RUN_COMMAND_PREFIXES
+    return path.split(" ", 1)[0] not in _NON_RUN_COMMAND_PREFIXES and not path.startswith(
+        "research diagnostic "
+    )
 
 
 def _command_catalog(*, include_all: bool = False) -> list[dict[str, Any]]:
@@ -111,6 +113,8 @@ def _command_catalog(*, include_all: bool = False) -> list[dict[str, Any]]:
         args: list[dict[str, Any]] = []
         options: list[dict[str, Any]] = []
         for param in cmd.params:
+            if param.name in {"rules_file", "rules_sha256"}:
+                continue  # Local immutable inputs are not launch-form capabilities.
             if param.param_type_name == "argument":
                 args.append(
                     {

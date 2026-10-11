@@ -1,0 +1,1 @@
+{"returncode": 0, "stderr_tail": "Reading additional input from stdin...\n", "stop": "completed", "turn_completed": true, "unexpected_or_failed_event": false, "usage": [{"cache_write_input_tokens": 0, "cached_input_tokens": 9344, "input_tokens": 9974, "output_tokens": 36, "reasoning_output_tokens": 0}]}

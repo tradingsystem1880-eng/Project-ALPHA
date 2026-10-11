@@ -2,6 +2,10 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import type { components } from '../../src/api/generated'
+import { studySeries } from './technicalFixture'
+
+/** A CLI refusal the API relays as 400 with its message (e.g. a study longer than the window). */
+class Refusal { readonly detail: string; constructor(detail: string) { this.detail = detail } }
 
 // The market-neutral documents every profile can open (shell/documents.ts), reached from the
 // View menu, the Navigator or the toolbar rather than from a fixed tab strip.
@@ -1579,6 +1583,8 @@ const CANDIDATE_DETAIL = {
 
 interface MockOptions {
   initialSymbol?: string | null
+  /** Persisted `alpha.settings` written before the app boots (e.g. `{ chartStyle: 'default' }`). */
+  settings?: Record<string, unknown>
   chartBundle?: unknown
   trades?: unknown[]
   mlDiagnostics?: boolean
@@ -2274,14 +2280,12 @@ function responseFor(route: Route, options: MockOptions): unknown {
     if (!bars) return undefined
     options.capturedOverlays?.(url.search)
     const t = bars.map((row) => row.t)
-    const indicators = url.searchParams.getAll('indicator').map((id) => ({
-      id,
-      name: id.toUpperCase().replace(':', ' '),
-      pane: id.startsWith('rsi') ? 'rsi' : 'price',
-      style: 'line',
-      values: bars.map((row, index) => (index === 0 ? null : row.c)),
-      warmup: 1,
-    }))
+    const indicators = []
+    for (const id of url.searchParams.getAll('indicator')) {
+      const result = studySeries(id, bars)
+      if ('refusal' in result) return new Refusal(result.refusal)
+      indicators.push(...result.series)
+    }
     const annotations = url.searchParams.getAll('pattern').includes('swings')
       ? [
           {
@@ -2433,9 +2437,10 @@ function responseFor(route: Route, options: MockOptions): unknown {
 
 export async function preparePage(page: Page, options: MockOptions = {}): Promise<void> {
   page.on('dialog', dialog => void dialog.accept())
-  await page.addInitScript((initialSymbol: string | null) => {
+  await page.addInitScript(([initialSymbol, settings]: [string | null, Record<string, unknown> | null]) => {
     localStorage.clear()
     localStorage.setItem('alpha.workflow.context', JSON.stringify({ symbol: initialSymbol }))
+    if (settings) localStorage.setItem('alpha.settings', JSON.stringify(settings))
 
     class DeterministicEventSource extends EventTarget {
       static readonly CONNECTING = 0
@@ -2503,7 +2508,7 @@ export async function preparePage(page: Page, options: MockOptions = {}): Promis
         get: async () => new DeterministicPublicKeyCredential(),
       },
     })
-  }, options.initialSymbol === undefined ? 'XRP/USDT' : options.initialSymbol)
+  }, [options.initialSymbol === undefined ? 'XRP/USDT' : options.initialSymbol, options.settings ?? null] as [string | null, Record<string, unknown> | null])
 
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url())
@@ -2559,6 +2564,10 @@ export async function preparePage(page: Page, options: MockOptions = {}): Promis
       return
     }
     const body = responseFor(route, options)
+    if (body instanceof Refusal) {
+      await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ schema_version: 1, code: 'bad_request', message: `Invalid value: ${body.detail}`, recovery_action: 'Review the request and try again.', field_errors: [], request_id: 'test' }) })
+      return
+    }
     await route.fulfill({
       status: body === undefined ? 404 : 200,
       contentType: 'application/json',
@@ -2737,13 +2746,16 @@ test('Insert › Indicators draws CLI-computed overlays and chart windows tile',
   const overlayQueries: string[] = []
   await preparePage(page, {
     candles: {
-      'XRP/USDT': [bar(1_700_000_000, 100), bar(1_700_086_400, 110), bar(1_700_172_800, 105)],
+      // 25 bars: the stand-in refuses a study longer than the window, exactly like the CLI.
+      'XRP/USDT': Array.from({ length: 25 }, (_, i) => bar(1_700_000_000 + i * 86_400, 100 + (i % 7))),
     },
     capturedOverlays: (query) => overlayQueries.push(query),
+    // An owner who cleared the default studies template: nothing selected.
+    settings: { chartTemplate: 1, overlays: { crypto: { indicators: [], patterns: [] } } },
   })
   await openDocument(page, 'Chart')
   const price = page.getByRole('region', { name: 'Price' })
-  await expect(price.locator('.count')).toHaveText('3 bars')
+  await expect(price.locator('.count')).toHaveText('25 bars')
   // Nothing selected: the chart asks the CLI for nothing.
   await expect(price.getByRole('button', { name: 'Indicators…', exact: true })).toBeVisible()
   expect(overlayQueries).toEqual([])

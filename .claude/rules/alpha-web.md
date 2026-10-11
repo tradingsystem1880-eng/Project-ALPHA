@@ -104,4 +104,26 @@ Server = thin JSON+SSE orchestrator; all composition stays behind `alpha`. Actio
 
 Current owner direction (ADR-0038): compact grey Windows-style terminal chrome, chart watchlist/navigation docks and optional data dock; workflow/task routes remain. Archive metadata discovery is read-only and opening a selected dataset verifies its artifact and raw lineage through CLI. Archive instrument/venue/market/interval stays explicit and separate from strategy context. Never label local confirmation as verified physical presence.
 
+Owner direction 2026-10-07 (technical chart language): the default price renderer is the StockCharts
+Classic/Default grammar in `frontend/src/components/technical/` — one BokehJS document per chart with an
+RSI / price+volume / MACD shared-border stack on an observation-spaced axis, gap marks for weekdays or
+intervals without an observation (series' own calendar), dense right value axes, bold month/year date strip, coloured value legends and
+axis tags, no toolbar, x-only pan/zoom with visible-window autoscale. Study values come only from
+`alpha chart overlays`; a study the CLI refuses as too long for the window is dropped by name, never
+estimated. Classic is the default `chartStyle`; recorded series and histogram/QQ plots share the chrome.
+See the [plan](../../docs/superpowers/plans/2026-10-07-technical-chart-language.md).
+
 Owner correction 2026-10-03: scientific rendering is default; keep the approved classic top bar. Bokeh views own standalone documents and must release both views and document/model registries on cancellation, failure and disposal. Price annotations must retain unit isolation. The visible project selector permits no-project market/archive browsing; project inventory errors stay explicit. Native interval discovery offers exact sources without automatic venue/market substitution. See [correction report](../../docs/operations/2026-10-03-scientific-research-workstation.md).
+
+## Authorized investigation extension (2026-10-04)
+
+The owner authorized the narrow managed advisory investigation controls inside RunDetail.
+`research investigations` remains the CLI-owned public seam; typed web relays never import
+engines. Opaque IDs, immutable evidence, durable budgets and explicit comparison preview apply.
+This exception does not reopen research admission, D2, paper, broker or order authority.
+See `docs/superpowers/plans/2026-10-04-workstation-investigations.md`.
+
+Volume painting uses exact native-index viewport intersections and complementary previous-close
+up/down views with scalar colors; retain the full x/volume source. Include partially intersecting
+edge bars and unchanged-close classification. Never aggregate bars or change timing budgets to
+obtain acceptance. Partition model tests and unchanged screenshots/export guard this boundary.

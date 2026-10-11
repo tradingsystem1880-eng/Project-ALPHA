@@ -7,6 +7,7 @@
 // oscillator, swing markers, drawable multi-anchor annotations).
 
 import type { ChartAnnotation, OverlaySeries } from '../api/types'
+import { studyLabel } from '../components/technical/technicalModel'
 
 /** The same closed list as `alpha_cli.chart_cmds.PATTERNS` (drift-tested). */
 export const PATTERNS = [
@@ -44,6 +45,27 @@ export const EMPTY_OVERLAYS: OverlayConfig = Object.freeze({
   indicators: Object.freeze([]) as readonly string[],
   patterns: Object.freeze([]) as readonly PatternName[],
 })
+
+/** The StockCharts Classic studies template: MA(50), MA(200), RSI(14) above, MACD(12,26,9) below. */
+export const CLASSIC_TEMPLATE: OverlayConfig = Object.freeze({
+  indicators: Object.freeze(['sma:50', 'sma:200', 'rsi:14', 'macd:12:26:9']) as readonly string[],
+  patterns: Object.freeze([]) as readonly PatternName[],
+})
+
+export interface ShortStudy { spec: string; needs: number; has: number }
+/**
+ * The study the CLI rejected because the as-of window is too short, read from its own message
+ * (`alpha_cli.chart_cmds.indicator_series`: "<spec> needs more than <n> bars, the window has <m>").
+ */
+export function shortStudy(message: string): ShortStudy | null {
+  const match = /([a-z_0-9]+(?::[-0-9.]+)*) needs more than (\d+) bars, the window has (\d+)/.exec(message)
+  return match ? { spec: match[1], needs: Number(match[2]) + 1, has: Number(match[3]) } : null
+}
+
+/** One disclosure line for the studies the CLI refused, shared by every price renderer. */
+export function skippedText(skipped: readonly ShortStudy[]): string {
+  return skipped.map(s => `${studyLabel(s.spec)} needs ${s.needs} bars (window ${s.has})`).join(' · ')
+}
 
 /** The same arity table as `alpha_cli.chart_cmds.INDICATORS` (drift-tested). */
 export const ARITY: Readonly<Record<string, number>> = Object.freeze({

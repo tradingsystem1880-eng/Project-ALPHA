@@ -1950,7 +1950,8 @@
               "decision",
               "order",
               "fill",
-              "trade"
+              "trade",
+              "execution_rejection"
             ],
             "title": "Event Type",
             "type": "string"
@@ -2362,6 +2363,137 @@
           "choices"
         ],
         "title": "CommandOption",
+        "type": "object"
+      },
+      "ComparisonAcquireRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "plan_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Plan Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_sha256"
+        ],
+        "title": "ComparisonAcquireRequest",
+        "type": "object"
+      },
+      "ComparisonDraft": {
+        "additionalProperties": false,
+        "properties": {
+          "calendar": {
+            "const": "XNYS",
+            "default": "XNYS",
+            "title": "Calendar",
+            "type": "string"
+          },
+          "currency": {
+            "const": "USD",
+            "default": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "limitation": {
+            "default": "Instrument metadata and benchmark suitability are operator-declared.",
+            "title": "Limitation",
+            "type": "string"
+          },
+          "plan_sha256": {
+            "title": "Plan Sha256",
+            "type": "string"
+          },
+          "provider": {
+            "const": "tiingo",
+            "default": "tiingo",
+            "title": "Provider",
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonProxy"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "venue": {
+            "const": "US",
+            "default": "US",
+            "title": "Venue",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_sha256",
+          "start",
+          "end",
+          "series"
+        ],
+        "title": "ComparisonDraft",
+        "type": "object"
+      },
+      "ComparisonDraftRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonProxy"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Series",
+            "type": "array"
+          }
+        },
+        "required": [
+          "series"
+        ],
+        "title": "ComparisonDraftRequest",
+        "type": "object"
+      },
+      "ComparisonProxy": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_class": {
+            "enum": [
+              "stock",
+              "etf"
+            ],
+            "title": "Asset Class",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "asset",
+              "market",
+              "sector",
+              "other"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "symbol": {
+            "maxLength": 40,
+            "pattern": "^[A-Z][A-Z0-9]*(?:[.-][A-Z0-9]+)*$",
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "asset_class",
+          "role"
+        ],
+        "title": "ComparisonProxy",
         "type": "object"
       },
       "ControlJob": {
@@ -8686,6 +8818,366 @@
           "multiplicity"
         ],
         "title": "HypothesisCardPlanFamily",
+        "type": "object"
+      },
+      "InvestigationCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "parent_id": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "question": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Question",
+            "type": "string"
+          },
+          "run_id": {
+            "pattern": "^[0-9a-f]{16}$",
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "question"
+        ],
+        "title": "InvestigationCreate",
+        "type": "object"
+      },
+      "InvestigationEligibility": {
+        "additionalProperties": false,
+        "properties": {
+          "cutoff": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutoff"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "eligible"
+        ],
+        "title": "InvestigationEligibility",
+        "type": "object"
+      },
+      "InvestigationFinding": {
+        "additionalProperties": false,
+        "properties": {
+          "observation": {
+            "title": "Observation",
+            "type": "string"
+          },
+          "receipt_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Receipt Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "observation",
+          "receipt_ids"
+        ],
+        "title": "InvestigationFinding",
+        "type": "object"
+      },
+      "InvestigationFindings": {
+        "additionalProperties": false,
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "hypotheses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hypotheses",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "next_tests": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Next Tests",
+            "type": "array"
+          }
+        },
+        "required": [
+          "findings",
+          "hypotheses",
+          "next_tests",
+          "limitations"
+        ],
+        "title": "InvestigationFindings",
+        "type": "object"
+      },
+      "InvestigationProgress": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "stage": {
+            "enum": [
+              "preparing",
+              "tool_started",
+              "tool_completed",
+              "verifying",
+              "acquiring"
+            ],
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stage",
+          "message"
+        ],
+        "title": "InvestigationProgress",
+        "type": "object"
+      },
+      "InvestigationTurnRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "followup": {
+            "anyOf": [
+              {
+                "maxLength": 8000,
+                "minLength": 1,
+                "pattern": "\\S",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Followup"
+          }
+        },
+        "title": "InvestigationTurnRequest",
+        "type": "object"
+      },
+      "InvestigationView": {
+        "additionalProperties": false,
+        "properties": {
+          "acquisition_status": {
+            "default": "not_started",
+            "enum": [
+              "not_started",
+              "succeeded",
+              "failed",
+              "incomplete"
+            ],
+            "title": "Acquisition Status",
+            "type": "string"
+          },
+          "active_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Job Id"
+          },
+          "admitted": {
+            "const": false,
+            "default": false,
+            "title": "Admitted",
+            "type": "boolean"
+          },
+          "authority": {
+            "const": "none",
+            "default": "none",
+            "title": "Authority",
+            "type": "string"
+          },
+          "can_followup": {
+            "title": "Can Followup",
+            "type": "boolean"
+          },
+          "can_resume": {
+            "title": "Can Resume",
+            "type": "boolean"
+          },
+          "case_id": {
+            "title": "Case Id",
+            "type": "string"
+          },
+          "comparison_child_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison Child Id"
+          },
+          "comparison_draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComparisonDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "cutoff": {
+            "title": "Cutoff",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "progress": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationProgress"
+            },
+            "title": "Progress",
+            "type": "array"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "receipts": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Receipts",
+            "type": "array"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestigationFindings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requests_remaining": {
+            "title": "Requests Remaining",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "running",
+              "completed",
+              "failed",
+              "interrupted",
+              "blocked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "turns_remaining": {
+            "title": "Turns Remaining",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "case_id",
+          "question",
+          "cutoff",
+          "created_at",
+          "status",
+          "requests_remaining",
+          "turns_remaining",
+          "can_resume",
+          "can_followup"
+        ],
+        "title": "InvestigationView",
         "type": "object"
       },
       "JobDetail": {
@@ -24290,6 +24782,337 @@
         "summary": "Review Evidence",
         "tags": [
           "development"
+        ]
+      }
+    },
+    "/api/investigations": {
+      "get": {
+        "operationId": "listing_api_investigations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{16}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InvestigationView"
+                  },
+                  "title": "Response Listing Api Investigations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Listing",
+        "tags": [
+          "investigations"
+        ]
+      },
+      "post": {
+        "operationId": "create_api_investigations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestigationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/investigations/eligibility/{run_id}": {
+      "get": {
+        "operationId": "eligibility_api_investigations_eligibility__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{16}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationEligibility"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Eligibility",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/investigations/{identifier}": {
+      "get": {
+        "operationId": "show_api_investigations__identifier__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Show",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/investigations/{identifier}/comparison-plan": {
+      "post": {
+        "operationId": "draft_api_investigations__identifier__comparison_plan_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComparisonDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonDraft"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Draft",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/investigations/{identifier}/comparisons": {
+      "post": {
+        "operationId": "acquire_api_investigations__identifier__comparisons_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComparisonAcquireRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Acquire",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/investigations/{identifier}/turns": {
+      "post": {
+        "operationId": "turn_api_investigations__identifier__turns_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Identifier",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestigationTurnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Turn",
+        "tags": [
+          "investigations"
         ]
       }
     },

@@ -25,6 +25,10 @@ SECTORS = ["Energy", "Technology", "Health", "Financials", "Industrials", "Consu
 
 def build_artifact(kind: str, out: Path, params: dict[str, Any], seed: int) -> dict[str, Any]:
     out.mkdir(parents=True, exist_ok=True)
+    if kind == "results_bundle_v2":
+        from results_v2 import build_results_bundle
+
+        return build_results_bundle(out, params, seed)
     if kind == "results_bundle":
         return _results_bundle(out, params, seed)
     if kind == "feature_table":

@@ -5,6 +5,12 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
 
 ## Unreleased
 
+- Prepared repository cleanup (unmerged): finish technical chart exports and weekly mutation
+  report validation, enforce the research import boundary, recover fee-aware CASH buy
+  rejection evidence, and reconcile current documentation. Available engineering checks
+  and absent hidden-suite acceptance are recorded separately in the
+  [cleanup plan](docs/superpowers/plans/2026-10-08-repository-hygiene.md).
+
 - Add the Claude Code harness v2 agent operating system (ADR-0034): owner-token-gated
   `gate.py override|ack|baseline` (agent self-serve and hash-chain-audited while the token is
   unset), oracle test tiers for statistical code, a `< 200`-line `CLAUDE.md` core plus

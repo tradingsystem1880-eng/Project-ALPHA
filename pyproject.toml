@@ -213,7 +213,7 @@ forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_
 name = "alpha_research depends only on core"
 type = "forbidden"
 source_modules = ["alpha_research"]
-forbidden_modules = ["alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_study", "alpha_cli", "alpha_mcp", "alpha_web"]
+forbidden_modules = ["alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_study", "alpha_cli", "alpha_mcp", "alpha_web"]
 
 [[tool.importlinter.contracts]]
 name = "alpha_mcp sits atop the DAG (nothing imports it)"

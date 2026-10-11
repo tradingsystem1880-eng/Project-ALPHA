@@ -309,6 +309,7 @@ def run_ml_replay(
         "orders": replay.backtest.orders,
         "fills": replay.backtest.fills,
         "rejected": replay.backtest.rejected,
+        "pretrade_rejections": len(replay.backtest.execution_rejections),
         "n_trades": len(replay.backtest.trades),
         "starting_equity": replay.backtest.starting_equity,
         "final_equity": replay.backtest.final_equity,

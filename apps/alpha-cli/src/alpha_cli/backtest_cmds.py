@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
+from pathlib import Path
 
 import numpy as np
 import typer
@@ -196,6 +197,8 @@ def holdout(
             },
             "n_scored_sessions": len(equity),
             "n_trades": len(scoped_trades),
+            "rejected": scoped.rejected,
+            "pretrade_rejections": len(scoped.execution_rejections),
             **_artifacts.research_gate_override_fields(research_gate_override),
             **identity.manifest_fields(),
         }
@@ -330,6 +333,8 @@ def oos(
                 "sharpe": sharpe,
                 "max_drawdown": max_drawdown(equity_values),
             },
+            "rejected": scoped.rejected,
+            "pretrade_rejections": len(scoped.execution_rejections),
             **_artifacts.research_gate_override_fields(research_gate_override),
             **identity.manifest_fields(),
         }
@@ -373,6 +378,12 @@ def run(
     rules: str | None = typer.Option(
         None, "--rules", help="saved rule set for --strategy rules (alpha rules save NAME)"
     ),
+    rules_file: Path | None = typer.Option(  # noqa: B008
+        None, "--rules-file", help="canonical frozen rule file (local path)"
+    ),
+    rules_sha256: str | None = typer.Option(
+        None, "--rules-sha256", help="SHA-256 of exact frozen rule file bytes"
+    ),
     snapshot: str | None = None,
     as_of: str | None = typer.Option(None, "--as-of", help="inclusive research cutoff YYYY-MM-DD"),
     research_gate_override: bool = typer.Option(
@@ -387,7 +398,9 @@ def run(
     """
     settings = AlphaSettings()
     try:
-        rules_spec = rules_cmds.resolve_rules_spec(strategy, rules, settings.data_dir)
+        rules_spec = rules_cmds.resolve_rules_spec(
+            strategy, rules, settings.data_dir, rules_file=rules_file, rules_sha256=rules_sha256
+        )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     # walk-forward fields are unused by a plain backtest; carry coherent defaults
@@ -470,6 +483,7 @@ def run(
         "orders": result.orders,
         "fills": result.fills,
         "rejected": result.rejected,
+        "pretrade_rejections": len(result.execution_rejections),
         "n_trades": len(result.trades),
         "starting_equity": result.starting_equity,
         "final_equity": result.final_equity,

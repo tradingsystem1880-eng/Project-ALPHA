@@ -1,0 +1,27 @@
+{
+  "controller_sha256": "6754d92b472bf4aa77c6142f4528a7e1bec86217210288eda213934b66569d97",
+  "digest_sha256": "1125ad3361ca781ec7797a6ee0e867c412246e0e094a905f10ad078f9b39c35e",
+  "execution_fingerprint": "dc4d70d6e4c9a0e1c64785c3fd9e1794445e5117262edea566c1440c801341d8",
+  "plan": {
+    "as_of": "2022-10-17",
+    "embargo": 5,
+    "fee_bps": 1.0,
+    "lookback": 252,
+    "max_leverage": 1.0,
+    "rebalance_every": 21,
+    "schema_version": 1,
+    "seconds": 900,
+    "seed": 42,
+    "skip": 21,
+    "slippage_bps": 2.0,
+    "snapshot": "realdesk-2026",
+    "starting_cash": 1000000.0,
+    "strategy": "ts_momentum",
+    "symbol": "ORCA",
+    "target_vol": 0.15,
+    "test_size": 63,
+    "train_size": 504,
+    "vol_window": 63
+  },
+  "snapshot_hash": "2afc2e72b8a2615db9d7beb063e4be5c6b5057c8c3d626acb443c73664c8dd3f"
+}

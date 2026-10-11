@@ -7,7 +7,8 @@
 
 import { useSyncExternalStore } from 'react'
 
-import { EMPTY_OVERLAYS, parseOverlayConfig, type OverlayConfig } from '../panels/chartOverlaysModel'
+import { CLASSIC_TEMPLATE, parseOverlayConfig, type OverlayConfig } from '../panels/chartOverlaysModel'
+import type { ChartStyleName } from '../components/technical/technicalTokens'
 
 export type Density = 'comfortable' | 'compact'
 export type ExplainMode = 'narrative' | 'terse'
@@ -23,7 +24,14 @@ export interface Settings {
   liveTicker: boolean
   /** Chart overlays (indicator specs + pattern names) the price chart requests, per profile. */
   overlays: Record<Profile, OverlayConfig>
+  /** Technical chart palette: StockCharts Classic (default) or Default. */
+  chartStyle: ChartStyleName
+  /** Version of the default studies template already offered to saved settings. */
+  chartTemplate: number
 }
+
+/** Bump to offer a new default studies template once to profiles with no studies selected. */
+export const CHART_TEMPLATE_VERSION = 1
 
 const STORAGE_KEY = 'alpha.settings'
 const DEFAULTS: Settings = {
@@ -32,7 +40,14 @@ const DEFAULTS: Settings = {
   profile: 'crypto',
   projectModes: {},
   liveTicker: false,
-  overlays: { crypto: EMPTY_OVERLAYS, equities: EMPTY_OVERLAYS },
+  overlays: { crypto: CLASSIC_TEMPLATE, equities: CLASSIC_TEMPLATE },
+  chartStyle: 'classic',
+  chartTemplate: CHART_TEMPLATE_VERSION,
+}
+
+/** Saved settings from before the template was offered get it only where no studies were chosen. */
+function withTemplate(config: OverlayConfig, offered: boolean): OverlayConfig {
+  return offered || config.indicators.length ? config : { indicators: CLASSIC_TEMPLATE.indicators, patterns: config.patterns }
 }
 
 let state: Settings = DEFAULTS
@@ -43,15 +58,18 @@ export function parseSettings(raw: string | null): Settings {
   if (!raw) return DEFAULTS
   try {
     const parsed = JSON.parse(raw) as Partial<Settings>
+    const offered = typeof parsed.chartTemplate === 'number' && parsed.chartTemplate >= CHART_TEMPLATE_VERSION
     return {
       density: parsed.density === 'compact' ? 'compact' : 'comfortable',
       explain: parsed.explain === 'terse' ? 'terse' : 'narrative',
       profile: parsed.profile === 'equities' ? 'equities' : 'crypto',
       liveTicker: parsed.liveTicker === true,
       overlays: {
-        crypto: parseOverlayConfig(parsed.overlays?.crypto),
-        equities: parseOverlayConfig(parsed.overlays?.equities),
+        crypto: withTemplate(parseOverlayConfig(parsed.overlays?.crypto), offered),
+        equities: withTemplate(parseOverlayConfig(parsed.overlays?.equities), offered),
       },
+      chartStyle: parsed.chartStyle === 'default' ? 'default' : 'classic',
+      chartTemplate: CHART_TEMPLATE_VERSION,
       projectModes: Object.fromEntries(
         Object.entries(parsed.projectModes ?? {}).filter(
           (entry): entry is [string, WorkspaceMode] =>

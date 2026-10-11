@@ -1,0 +1,68 @@
+{
+  "claims": [
+    {
+      "claim": "Summed Bernoulli negative log likelihood and gradient match ESL equations 4.20-4.21; the fixed 0.5 squared L2 penalty excluding intercept is a declared design choice with the correct derivative.",
+      "source": "Hastie, Tibshirani, Friedman (2009), ESL 4.20-4.21; primary book text indexed at https://www.cifasis-conicet.gov.ar/granitto/ECI2014/book_Hastie%20-%20ESLII.pdf",
+      "location": "packages/alpha-research/src/alpha_research/weekly_diagnostic.py:38",
+      "verdict": "VERIFIED"
+    },
+    {
+      "claim": "Binary Brier loss mean((p-y)^2) is minus half the two-category reward score.",
+      "source": "Gneiting and Raftery (2007), Example 1 p363: https://sites.stat.washington.edu/people/raftery/Research/PDF/Gneiting2007jasa.pdf",
+      "location": "packages/alpha-research/src/alpha_research/weekly_diagnostic.py:72",
+      "verdict": "VERIFIED"
+    },
+    {
+      "claim": "Trailing features, train-only population scaling, 60/20/20 chronological partitions and boundary label purge implement declared fixed diagnostic choices; independent closed-form and chronology oracles pass.",
+      "source": "CLAUDE.md PIT invariant; declared protocol design; tests/oracles/test_research_diagnostic.py",
+      "location": "packages/alpha-research/src/alpha_research/weekly_diagnostic.py:98",
+      "verdict": "VERIFIED"
+    },
+    {
+      "claim": "Derived-return, training-scaler, evaluation-design/logit and metric non-finiteness now fail loudly; prior overflow reproductions have regression coverage.",
+      "source": "CLAUDE.md finite-data invariant; tests/unit/test_research_diagnostic.py",
+      "location": "packages/alpha-research/src/alpha_research/weekly_diagnostic.py:116",
+      "verdict": "VERIFIED"
+    },
+    {
+      "claim": "Next-open long/cash episode arithmetic charges both sides on entry notional, with explicit exclusions for dividends, financing and engine portfolio simulation.",
+      "source": "Declared diagnostic design; independent prediction/metric reconciliation tests",
+      "location": "packages/alpha-research/src/alpha_research/weekly_diagnostic.py:167",
+      "verdict": "VERIFIED"
+    },
+    {
+      "claim": "Synthetic fixed-notional trade P&L reconciles with daily equity changes and compounded monthly returns; entry/exit use XNYS sessions.",
+      "source": "Accounting identities; tests/unit/test_eval_fixture_v2.py",
+      "location": "tools/alpha-eval/worlds/results_v2.py:136",
+      "verdict": "VERIFIED"
+    },
+    {
+      "claim": "Monthly mean/sample-SD times sqrt(12) is explicitly disclosed as a zero-benchmark descriptive annualization heuristic without serial-dependence correction, not an inferential annual Sharpe.",
+      "source": "Sharpe (1994), Time Dependence: https://www-leland.stanford.edu/~wfsharpe/art/sr/sr.htm",
+      "location": "tools/alpha-eval/worlds/results_v2.py:20",
+      "verdict": "VERIFIED"
+    }
+  ],
+  "docstring_citations": {
+    "ok": true,
+    "missing": []
+  },
+  "overall": "PASS",
+  "files_reviewed": [
+    "packages/alpha-research/src/alpha_research/weekly_diagnostic.py",
+    "tools/alpha-eval/worlds/results_v2.py",
+    "tests/oracles/test_research_diagnostic.py",
+    "tests/unit/test_research_diagnostic.py",
+    "tests/unit/test_eval_fixture_v2.py"
+  ],
+  "oracles_present": true,
+  "numeric_spot_checks": [
+    {
+      "description": "Intercept-only Bernoulli MLE for labels [0,1,1,1] equals log(3)",
+      "expected": 1.0986122886681098,
+      "observed": 1.0986122885073026,
+      "tolerance": 1e-8,
+      "ok": true
+    }
+  ]
+}

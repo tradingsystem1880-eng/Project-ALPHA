@@ -1,11 +1,12 @@
 import { defineConfig } from '@playwright/test'
 
-const port = Number(process.env.ALPHA_PLAYWRIGHT_PORT ?? '8802')
-if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Invalid ALPHA_PLAYWRIGHT_PORT')
+const rawPort = process.env.ALPHA_PLAYWRIGHT_PORT ?? '8802'
+const port = Number(rawPort)
+if (!/^[0-9]{4,5}$/.test(rawPort) || port < 1024 || port > 65535 || port === 8801) {
+  throw new Error('ALPHA_PLAYWRIGHT_PORT must be 1024..65535, excluding owner port 8801')
+}
 const baseURL = `http://localhost:${port}/`
-// Frame-timing budgets measure the host machine, so they are an opt-in lane (owner decision
-// 2026-10-05): run them with ALPHA_PERF_BUDGETS=1 on an idle reference machine. The gate and CI
-// keep every functional browser test.
+// Owner-approved host timing lane remains opt-in; functional journeys always run.
 const perfBudgets = process.env.ALPHA_PERF_BUDGETS === '1'
 
 export default defineConfig({

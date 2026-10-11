@@ -337,6 +337,9 @@ def _scope_execution(
             start=1,
         )
     )
+    scoped_rejections = tuple(
+        row for row in result.execution_rejections if row.ts.date() in execution_dates
+    )
     trades = [
         trade
         for trade in result.trades
@@ -350,7 +353,8 @@ def _scope_execution(
         result,
         orders=len(scoped_orders),
         fills=len(scoped_fills),
-        rejected=sum(row.status.upper() == "REJECTED" for row in scoped_orders),
+        rejected=sum(row.status.upper() in {"DENIED", "REJECTED"} for row in scoped_orders)
+        + len(scoped_rejections),
         trades=trades,
         equity_curve=list(equity),
         decision_trace=tuple(
@@ -364,6 +368,7 @@ def _scope_execution(
         ),
         order_trace=scoped_orders,
         fill_trace=scoped_fills,
+        execution_rejections=scoped_rejections,
         portfolio_state_trace=tuple(
             row for row in result.portfolio_state_trace if row.ts.date() in execution_dates
         ),

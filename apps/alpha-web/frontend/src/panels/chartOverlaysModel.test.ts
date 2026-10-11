@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import type { ChartAnnotation, OverlaySeries } from '../api/types'
 import {
+  shortStudy,
+  skippedText,
   ARITY,
   EMPTY_OVERLAYS,
   INDICATOR_PRESETS,
@@ -154,5 +156,16 @@ describe('response → chart data', () => {
       'OVERLAYS · VG path 12 · 2 swings · 2 extremes · 1 trendline · 1 fib levels · 1 profile levels · 1 pattern · computed by alpha chart overlays',
     )
     expect(overlayLegend([], [])).toBe('')
+  })
+})
+
+describe('shortStudy', () => {
+  it('reads the CLI short-window refusal', () => {
+    expect(shortStudy('400 Bad Request — sma:200 needs more than 200 bars, the window has 60')).toEqual({ spec: 'sma:200', needs: 201, has: 60 })
+    expect(shortStudy('macd:12:26:9 needs more than 35 bars, the window has 30')).toEqual({ spec: 'macd:12:26:9', needs: 36, has: 30 })
+    expect(shortStudy('500 Internal Server Error')).toBeNull()
+  })
+  it('names every refused study in one disclosure line', () => {
+    expect(skippedText([{ spec: 'sma:200', needs: 201, has: 60 }, { spec: 'macd:12:26:9', needs: 36, has: 30 }])).toBe('MA(200) needs 201 bars (window 60) · MACD(12,26,9) needs 36 bars (window 30)')
   })
 })

@@ -5,12 +5,12 @@ test('direct UTC windows link without source requests or chart reconstruction', 
   await preparePage(page, { candles: { 'XRP/USDT': bars } })
   let requests = 0; page.on('request', r => { if (r.url().includes('/api/candles/')) requests++ })
   await page.goto('/#page=data&pane=PriceChart')
-  const primary = page.locator('[data-panel-id=primary]'), host = primary.locator('.scientific-series-host').first()
+  const primary = page.locator('[data-panel-id=primary]'), host = primary.locator('.technical-host').first()
   await expect(host.locator('canvas').first()).toBeVisible()
   await host.locator('canvas').first().evaluate(n => n.setAttribute('data-explore-lifetime', 'retained'))
   await page.getByLabel('Analytical layout').selectOption('side-by-side')
   await page.getByText('Panels', { exact: true }).click(); await page.getByLabel('Link UTC ranges').check(); await page.getByText('Panels', { exact: true }).click()
-  const peer = page.locator('[data-panel-id=panel-1] .scientific-series-host').first()
+  const peer = page.locator('[data-panel-id=panel-1] .technical-host').first()
   await expect(peer.locator('canvas').first()).toBeVisible()
   const before = requests
   await primary.getByRole('button', { name: '30D', exact: true }).first().click()
@@ -24,19 +24,25 @@ test('direct UTC windows link without source requests or chart reconstruction', 
   await primary.locator('.scientific-window > summary').first().click()
   await primary.getByLabel('Chart start date UTC').fill('2024-01-01'); await primary.getByLabel('Chart end date UTC').fill('2024-01-31')
   await primary.getByRole('button', { name: 'Apply window' }).click()
-  await expect.poll(() => host.getAttribute('data-visible-range')).toBe(JSON.stringify({ from: Date.parse('2024-01-01T00:00:00Z') / 1000, to: Date.parse('2024-01-31T23:59:59Z') / 1000 }))
+  // The technical chart reports the observations it shows: first and last bar inside the UTC window.
+  const inWindow = bars.filter(b => b.t >= Date.parse('2024-01-01T00:00:00Z') / 1000 && b.t <= Date.parse('2024-01-31T23:59:59Z') / 1000)
+  await expect.poll(() => host.getAttribute('data-visible-range')).toBe(JSON.stringify({ from: inWindow[0].t, to: inWindow.at(-1)!.t }))
   await primary.locator('.scientific-window > summary').first().click()
   await primary.getByRole('button', { name: 'All data', exact: true }).first().click()
   await expect.poll(async () => JSON.parse((await host.getAttribute('data-visible-range'))!).from).toBe(bars[0].t)
   await expect(host.locator('canvas[data-explore-lifetime=retained]')).toHaveCount(1)
   expect(requests).toBe(before)
-  await primary.locator('.scientific-cursor-data > summary').first().click()
   const bounds = (await host.boundingBox())!
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
-  await expect(primary.locator('.scientific-cursor-data .cursor-values').first()).toContainText(' · O ')
-  await expect(primary.locator('.scientific-cursor-data .cursor-values').first()).toContainText(' · V 1000')
-  await expect.poll(async () => Math.abs((await host.locator('canvas').first().boundingBox())!.height - (await host.boundingBox())!.height)).toBeLessThanOrEqual(2)
-  for (const plot of await page.locator('.scientific-series-host').all()) await expect(plot).toHaveAttribute('data-native-lod', 'idle')
+  await expect(primary.locator('.technical-ohlc')).toContainText('Open ')
+  await expect(primary.locator('.technical-ohlc')).toContainText('Volume 1,000')
+  // The panel stack fills the host: the lowest canvas ends at the host's bottom edge.
+  await expect.poll(async () => {
+    const box = (await host.boundingBox())!
+    const bottom = Math.max(...await host.locator('canvas').evaluateAll(nodes => nodes.map(n => n.getBoundingClientRect().bottom)))
+    return Math.abs(box.y + box.height - bottom)
+  }).toBeLessThanOrEqual(4)
+  for (const plot of await page.locator('.technical-host').all()) await expect(plot).toHaveAttribute('data-native-lod', 'idle')
   await page.screenshot({ path: `/tmp/alpha-chart-exploration-${test.info().project.name}.png` })
 })
 test('recorded tables expose missing values, pages and exact full-series export', async ({ page }) => {

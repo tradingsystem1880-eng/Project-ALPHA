@@ -102,7 +102,7 @@
 
 ## Decision and status
 
-**Delivery state:** Proposed program; planning artifact only. Implementation has not started.
+**Delivery state:** Broad program pending; initial advisory teammate slice implemented in an isolated branch, with acceptance subject to review and fresh gate receipts.
 **Date:** 2026-10-02. **Recommended first product:** an agent that investigates a suspicious backtest, produces a measured loss/regime diagnosis, runs one justified discovery experiment, and returns a complete, evidence-linked decision without step-by-step prompting.
 
 Better means finding more defensible opportunities, detecting invalid ones, and producing useful completed research with less owner intervention at an explicit resource cost. It does not mean more trades, higher selected in-sample Sharpe, longer reports, more agents, or more tool calls. No model can be promised always correct. The enforceable promise is narrower: bounded access and actions, independently checked measurements, transparent uncertainty, complete accounting, and reliable stopping/recovery.
@@ -385,4 +385,46 @@ A fresh reviewer challenged this document on 2026-10-02. Five findings were inco
 
 ## Current handoff
 
-Next action is Phase 0 integration inventory followed by the physical information boundary and the first loss/regime investigation journey. Pattern search follows that foundation. The first success demonstration must be an executed, evidence-grounded answer to a vague research request, with critical negative controls and a complete final report. A team or SDK is adopted for measured improvement, not for its name.
+After advisory-slice verification, continue Phase 0 integration inventory followed by the physical information boundary and the first loss/regime investigation journey. Pattern search follows that foundation. The first success demonstration must be an executed, evidence-grounded answer to a vague research request, with critical negative controls and a complete final report. A team or SDK is adopted for measured improvement, not for its name.
+
+
+## Implementation refinement — owner clarification, 2026-10-02
+
+The owner explicitly values a teammate suggesting unprompted investigations without automatically
+executing them. Start with a read-only advisory slice over verified retained runs: deterministic
+question floor, typed novel proposals, exact evidence binding and an exploratory protocol update.
+This precedes the autonomous four-action demo; physical information boundaries remain a
+prerequisite for that demo. It does not establish better model reasoning or complete this program.
+Implementation is isolated in `feat/research-teammate` on the delivered `73fb2a9` foundation.
+
+
+## Synthetic demo implementation — 2026-10-02
+
+[Closed investigation demo](2026-10-02-closed-investigation-demo.md) implements a restricted
+four-action development path after the advisory slice. It uses designed synthetic panels, not
+real-data exports or engine backtests. The negative control is specifically a frozen-indicator
+null. Worker enforcement and tools-disabled Codex transport have distinct evidence; no broad
+agent isolation, predictive confirmation, model-team uplift or program completion is claimed.
+
+
+## Efficiency comparison — 2026-10-02
+
+The closed demo passed review and the full gate in `d5f3cd4`. The next isolated slice is
+[the frozen efficiency comparison](2026-10-02-investigation-efficiency.md): legacy adaptive,
+prechecked adaptive, and fixed-evidence advisory synthesis on the same three designed cases.
+It measures orchestration cost without changing models, actions or isolation. Automatic checks
+are controller behavior, not independent model initiative. Real-data reconciliation, richer
+negative controls and repeated held-back evaluations remain program work; no team or SDK
+migration follows merely from completing this comparison.
+
+
+## Judgment evidence and next handoff — 2026-10-02
+
+After the efficiency comparison (`77d6e94`), the [judgment slice](2026-10-02-research-judgment-cases.md)
+adds six designed cases covering misleading context, benchmark divergence, hindsight labels,
+missing evidence and source failure. Original and recovery cohorts remain separate; the
+[report](../../../tools/alpha-eval/results/research-judgment-20261002/report.md) records limitations.
+The next useful owner journey is a verified read-only real-run brief plus execution reconciliation,
+connected to the existing advisory path. Prioritize useful questions and decision-changing evidence;
+neither agent count nor synthetic completion establishes expert trading competence. Repeated
+held-back evaluation and production integration remain outstanding. No team/SDK migration is implied.

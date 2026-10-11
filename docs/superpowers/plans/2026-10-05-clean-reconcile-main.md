@@ -23,7 +23,7 @@
   ],
   "slices": [
     {"title": "Finalize and commit the crypto-terminal working tree", "verify": "uv run python scripts/gate.py full", "expected": "6/6 components pass; review verdict APPROVE; one commit on feat/crypto-terminal-ui with an empty working tree", "rollback": "git tag pre-clean-2026-10-05 marks the prior HEAD; scratch archived at ~/Desktop/alpha-scratch-2026-10-05", "status": "done"},
-    {"title": "Integration branch from PR #51 head with local main and crypto-terminal merged; superseding PR green", "verify": "gh pr checks <new> --watch", "expected": "check, harness, frontend, qlib-worker, literature-worker, atlas, eval all SUCCESS; PR merged; local main == origin/main", "rollback": "Close the new PR; origin/main is untouched until merge", "status": "in_progress"},
+    {"title": "Integration branch from PR #51 head with local main and crypto-terminal merged; superseding PR green", "verify": "gh pr checks <new> --watch", "expected": "check, harness, frontend, qlib-worker, literature-worker, atlas, eval all SUCCESS; PR merged; local main == origin/main", "rollback": "Close the new PR; origin/main is untouched until merge", "status": "done"},
     {"title": "Post-merge hardening: nightly green, main protected, workstation restarted, closing record", "verify": "gh api repos/tradingsystem1880-eng/Project-ALPHA/branches/main/protection --jq '.required_status_checks.contexts'", "expected": "Seven required contexts; nightly semgrep/determinism pass; workstation serves merged code against the v6 store", "rollback": "gh api -X DELETE .../branches/main/protection", "status": "pending"}
   ],
   "tier_impact": ["protected", "quant", "dag"],
@@ -67,3 +67,7 @@ engineering becomes ADR-0037. Local confirmation and terminal archive charts bec
 | Worktree `.claude/worktrees/research-triple-tap-inverse-hs` | No commits; research restarts from main |
 | Remote `claude/integrate-trader-github-xy6rxs`, `backup/local-main-2026-09-28` | Ancestors of the reconciled main |
 | PR #52 (draft) | Cloud harness setup; will conflict on `scripts/claude_hooks.py` and the harness doc; owner to rebase |
+
+## Reconciliation checkpoint (2026-10-08)
+
+PR #53 merged as `454c940f`; regular main CI run 37611319452 passed. Main branch protection was verified with the seven named checks required (admin enforcement is false). Nightly run 37611439271 passed semgrep, determinism and raise-site coverage, then its serial mutation sweep was cancelled after six hours. Weekly per-module scheduling is being finished in the October 8 cleanup. Workstation restart and complete scheduled-workflow acceptance remain unverified; the final hardening slice stays pending.

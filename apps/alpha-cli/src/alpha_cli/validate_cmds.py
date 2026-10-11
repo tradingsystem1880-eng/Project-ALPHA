@@ -7,6 +7,8 @@ sheet under ``data_dir/runs/<run_id>/``.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 from alpha_cli import _artifacts, _forecast_cache, _gauntlet, _runner, rules_cmds
@@ -42,6 +44,12 @@ def validate(
     rules: str | None = typer.Option(
         None, "--rules", help="saved rule set for --strategy rules (alpha rules save NAME)"
     ),
+    rules_file: Path | None = typer.Option(  # noqa: B008
+        None, "--rules-file", help="canonical frozen rule file (local path)"
+    ),
+    rules_sha256: str | None = typer.Option(
+        None, "--rules-sha256", help="SHA-256 of exact frozen rule file bytes"
+    ),
     tier1_paths: int = 1000,
     tier2_paths: int = 64,
     tier3_paths: int = 64,
@@ -75,7 +83,9 @@ def validate(
     settings = AlphaSettings()
     resolved_seed = seed if seed is not None else settings.random_seed
     try:
-        rules_spec = rules_cmds.resolve_rules_spec(strategy, rules, settings.data_dir)
+        rules_spec = rules_cmds.resolve_rules_spec(
+            strategy, rules, settings.data_dir, rules_file=rules_file, rules_sha256=rules_sha256
+        )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     spec = _runner.RunSpec(
@@ -182,6 +192,8 @@ def validate(
     manifest["folds"] = [_runner.fold_manifest(fold, bars) for fold in out.oos.folds]
     manifest["oos_execution_boundary"] = "fresh_portfolio_after_causal_indicator_priming"
     manifest["oos_trace_scope"] = "scored_test_sessions_plus_originating_prior_close_decision"
+    manifest["rejected"] = out.result.rejected
+    manifest["pretrade_rejections"] = len(out.result.execution_rejections)
     if spec.rules_spec is not None:
         # the owner's exact rule set, so the report can show what was validated (identity
         # already includes these bytes through ``vars(spec)``)

@@ -2,11 +2,11 @@
 
 Authority: `docs/governance/capability-authority-matrix.md`.
 
-Private single-owner research platform: validate edge after costs. Python 3.12; uv. No hosting or distribution.
+Private owner research: validate edge after costs. Python 3.12; uv. No hosting or distribution.
 
 ## Rules (path-scoped)
 
-Before edits, read applicable `.claude/rules/`. Load `karpathy-guidelines` for code work,
+Read `.claude/rules/` before edits. Load `karpathy-guidelines` for code work,
 `incremental-implementation` for multi-file changes, `code-simplification` for refactors,
 `code-review-and-quality` before merge, and `verification-before-completion` before success claims.
 Use `alpha-feature-workflow` for nontrivial changes; quant changes also require primary-source
@@ -20,7 +20,7 @@ Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`
 ## Architecture DAG
 
 [pyproject.toml](pyproject.toml) import-linter contracts are executable boundaries:
-core imports nothing internal; data/patterns/research/validation/forecast depend on core;
+core imports nothing internal; data/patterns/research/validation/forecast import only core;
 strategies on core+patterns; backtest on core+data; study on core+data+patterns+research.
 Only `alpha_cli` composes engine and validation. Web/MCP sit above core and supported public CLI
 seams; actions and engine-backed projections subprocess CLI, never the engine in-process.
@@ -58,23 +58,23 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
   `uv run pytest -q -m bias_guard`. Component definitions own exact gate steps.
 
 **2026-09-16:** [delivery record](docs/superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md).
-Shared checks, discovery, V2 plans and frozen-input screening are implemented. Install thin Git
-guards in new checkouts. Claude adapters provide orientation and native-boundary safety only.
-Require a fresh full stamp; never bypass checks.
-[ADR-0037](docs/adr/0037-agent-neutral-research-engineering.md) separates engineering
-ceremony changes from unchanged application authority.
+Install Git guards in new checkouts; require a fresh full stamp and never bypass checks.
+Claude adapters provide orientation and native-boundary safety only.
+[ADR-0037](docs/adr/0037-agent-neutral-research-engineering.md): engineering is separate from application authority.
 [Harness operations](docs/operations/claude-code-harness.md): checks, screening, intake, exceptions.
 
 Benchmark: [Codex-only; preserve history; enforce isolation](tools/alpha-eval/README.md).
+Research: [bounded CLI workflow](docs/operations/bounded-research-workflow.md);
+[Codex investigations](docs/operations/codex-investigations.md). Advisory only.
 
 ## Sources of current truth
 
-Before governed work read [architecture](docs/ARCHITECTURE.md), the [ADR index](docs/adr/README.md),
+Read [architecture](docs/ARCHITECTURE.md), the [ADR index](docs/adr/README.md),
 rules and [build record](docs/BUILD-STATUS.md). Contracts:
-[research platform](docs/operations/research-platform-contracts.md). Use source and fresh tests. Provider acceptance requires receipts; absent/failed live evidence cannot pass.
+[research platform](docs/operations/research-platform-contracts.md). Use fresh source/tests. Provider acceptance requires receipts; absent/failed live evidence cannot pass.
 
 Update this manual and append `docs/BUILD-STATUS.md` when behavior changes.
-Preserve user work; local checks are not aggregate acceptance.
+Preserve user work; checks are not aggregate acceptance.
 
-UI: [terminal guide](apps/alpha-web/frontend/README.md): Bokeh research, optional market charts,
+UI: [terminal guide](apps/alpha-web/frontend/README.md): technical charts, optional market charts,
 UTC windows, exact exports and project-free browsing.

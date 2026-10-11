@@ -243,10 +243,23 @@ def build(spec: dict[str, Any], out: Path, seed: int) -> dict[str, Any]:
         family = sym["family"]
         params = {k: float(v) for k, v in sym.get("params", {}).items()}
         length = int(sym.get("n", n))
-        all_days = sym.get("calendar", spec.get("calendar", "business")) == "all"
-        days = business_days(
-            date.fromisoformat(sym.get("start", start.isoformat())), length, all_days
-        )
+        calendar = sym.get("calendar", spec.get("calendar", "business"))
+        first = date.fromisoformat(sym.get("start", start.isoformat()))
+        if calendar == "XNYS":
+            import exchange_calendars as xcals
+
+            cal = xcals.get_calendar(
+                "XNYS",
+                start=(first - timedelta(days=7)).isoformat(),
+                end=(first + timedelta(days=length * 2 + 30)).isoformat(),
+            )
+            days = [
+                datetime.combine(d.date(), datetime.min.time(), UTC)
+                for d in cal.sessions
+                if d.date() >= first
+            ][:length]
+        else:
+            days = business_days(first, length, calendar == "all")
         ref = sym.get("market") or sym.get("factor")
         market = generated[ref].log_returns[:length] if ref else None
         series = generate(family, params, length, rng, market)
