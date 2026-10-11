@@ -188,3 +188,14 @@ when no mutant has associated tests. The certificate binds source, generated inv
 staged configuration, records executed test IDs/durations and staged import origins, and requires
 empty tracer hits plus untouched metadata. Only assigned mutants receive conservative `no_tests`
 verdicts (zero kills); generic tool failures and invalid certificates still block completeness.
+
+
+### Collection-time SQLite contention
+
+Unmutated collection can expose the public concurrent-control-store migration test. Preserve
+its assertions, timing and test selection; retain chained errors and SQLite codes before diagnosis.
+WAL negotiation retries only exact `SQLITE_BUSY` outside a transaction within the configured
+busy-timeout budget, with remaining milliseconds applied per attempt and the original timeout
+restored. The normal five-second WAL budget is not an overall `_open` deadline; migration waits
+are unchanged. Other errors and exhausted budgets still fail. Complete fresh hosted results remain
+mandatory; retries never manufacture mutation measurements or bypass the aggregate.

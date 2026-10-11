@@ -829,3 +829,26 @@ The first two data fragments used the initial exact-name CLI adapter; the last t
 used the final pinned adapter. These are diagnostic receipts, never full hosted acceptance.
 The old hosted head also retained gate-packet timeout progress 2250/3019. New exact-head hosted
 completion, final canonical full and fresh bound review remain acceptance requirements.
+
+
+## 2026-10-11 — bounded WAL negotiation during hosted mutation collection
+
+Final fragment head `31e64420` generated the complete hosted inventory (52 modules, 205 jobs,
+21,555 functional mutants), independently validated against commit/run identity and source hashes.
+One `_arrays` fragment failed unmutated collection at the existing public concurrent v1 migration
+test with `DataError("cannot initialize control store")`; other fragments passed. The initial
+assertion omitted the chained cause. A real temporary-database contention reproduction captured
+`SQLITE_BUSY` (code 5) at `PRAGMA journal_mode = WAL`, wrapped by the same error.
+
+The bounded follow-up retries only exact `SQLITE_BUSY` outside a transaction, within the existing
+configured busy-timeout budget for WAL negotiation (normally five seconds). Each attempt receives
+only the remaining budget, and the original timeout is restored. This is not a bound on all of
+`_open`; migrations retain their separate existing waits. Non-BUSY errors and exhausted budgets
+still fail loudly. Migration ordering, backups, protected schema and owner authority are unchanged.
+The existing migration assertions/timeouts/test selection remain; failure-only diagnostics retain
+chained traceback, statement and SQLite code. A real contention regression failed before and passed
+after the fix; budget exhaustion, read-only failure and timeout restoration also passed.
+
+Fresh public full verification, independent review and new exact-head complete hosted acceptance
+remain pending for this follow-up. No partial/stale hosted verdict, score floor or private-suite
+exception is reused or broadened. SQLite reference: https://www.sqlite.org/c3ref/busy_handler.html.
