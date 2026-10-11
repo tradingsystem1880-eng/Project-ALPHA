@@ -17,7 +17,7 @@ import gate
 import harness_quant
 
 TOOL = "mutmut==3.8.0"
-FRAGMENTS = 4
+MAX_MUTANTS_PER_FRAGMENT = 96
 COUNTS = ("killed", "survived", "timeout", "no_tests", "skipped", "suspicious", "segfault")
 STATUSES = {
     1: "killed",
@@ -186,9 +186,8 @@ def partitions(keys: list[str]) -> list[list[str]]:
     ):
         raise ValueError("Empty, duplicate or non-exact mutant inventory")
     ordered = sorted(keys)
-    return [
-        ordered[index :: min(FRAGMENTS, len(keys))] for index in range(min(FRAGMENTS, len(keys)))
-    ]
+    count = (len(ordered) + MAX_MUTANTS_PER_FRAGMENT - 1) // MAX_MUTANTS_PER_FRAGMENT
+    return [ordered[index::count] for index in range(count)]
 
 
 def generated_keys(module: str, source: str) -> list[str]:

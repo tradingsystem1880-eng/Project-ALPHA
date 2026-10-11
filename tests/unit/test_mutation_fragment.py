@@ -8,13 +8,17 @@ import pytest
 from mutation_fragment import fragment_stats, partitions, read_object
 
 
-def test_partitions_exhaustive_deterministic_disjoint() -> None:
-    keys = [f"pkg.x_f__mutmut_{i}" for i in range(23)]
+@pytest.mark.parametrize(
+    ("total", "fragments"), [(1, 1), (96, 1), (97, 2), (192, 2), (193, 3), (1778, 19), (3019, 32)]
+)
+def test_partitions_exhaustive_deterministic_disjoint(total: int, fragments: int) -> None:
+    keys = [f"pkg.x_f__mutmut_{i}" for i in range(total)]
     parts = partitions(keys)
     assert parts == partitions(list(reversed(keys)))
-    assert len(parts) == 4 and max(map(len, parts)) - min(map(len, parts)) <= 1
+    assert len(parts) == fragments and max(map(len, parts)) <= 96
+    assert max(map(len, parts)) - min(map(len, parts)) <= 1
     assert sorted(key for part in parts for key in part) == sorted(keys)
-    assert partitions(keys[:2]) == [[keys[0]], [keys[1]]]
+    assert all(part == sorted(part) for part in parts)
 
 
 @pytest.mark.parametrize("keys", [[], ["same", "same"], ["pkg.*__mutmut_1"]])

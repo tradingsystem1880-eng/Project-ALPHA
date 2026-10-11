@@ -140,8 +140,8 @@ tests remain UNVERIFIED; every other check stays mandatory; no extension to late
 module's canonical mutant identity with the backend's original generator. Then
 `scripts/mutation_sweep.py plan --commit SHA --run-id RUN-ATTEMPT --mutants mutation-keys.json`
 freezes the entire `all_quant_source_modules` inventory, source hashes and complete mutant lists.
-Sorted identities are partitioned round-robin into at most four disjoint fragments per module;
-constant-only modules retain a singleton job. The current matrix is bounded by 205 jobs and
+Sorted identities are partitioned round-robin into balanced, disjoint fragments of at most
+96 mutants each; constant-only modules retain a singleton job. The current inventory has 250 jobs and
 planning rejects matrices over GitHub's 256-job limit. Weekly scheduling and
 on-touch local mutation requirements are preserved. Each hosted job uses unique temporary
 staging, at most two `mutmut run --max-children` workers and eight matrix jobs concurrently.
@@ -156,8 +156,8 @@ executing its exact assigned names with the unchanged associated tests. Its expo
 every assigned verdict terminal and every unassigned verdict untouched. Aggregate reconstructs
 counts from disjoint per-mutant verdicts, requires their exact complete union and identical
 excluded-test audits, then computes each module's original floor verdict. Partial backend
-whole-module exports are never accepted. Setup, preflight and test statistics repeat up to four
-times per module; no mutant executes more than once. Concurrency and worker bounds are unchanged.
+whole-module exports are never accepted. Setup, preflight and test statistics repeat per fragment;
+no mutant executes more than once. Concurrency and worker bounds are unchanged.
 Checkpoints initialize before dependency installation and atomically record module, full expected
 inventory, commit, run/attempt, phase, elapsed time, command timings and terminal measurement.
 Command logs persist separately during execution. SIGTERM/interruption records an unfinished

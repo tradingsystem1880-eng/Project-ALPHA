@@ -70,8 +70,8 @@
 ```
 
 Preserve the owner-selected weekly cadence and existing staged cleanup changes. Complete generated
-mutant inventories now partition into up to four isolated jobs per functional module after measured
-singleton deadlines failed; eight concurrent jobs at most, two mutmut
+mutant inventories now partition into balanced isolated jobs of at most 96 mutants after measured
+singleton and four-way deadlines failed; eight concurrent jobs at most, two mutmut
 children per job. Preserve all module/test selection and mutation floors.
 
 Slices: (1) isolated harness staging and checked export; verify existing quant tooling tests;
@@ -162,3 +162,25 @@ after the fix; budget exhaustion, read-only failure and timeout restoration also
 Fresh public full verification, independent review and new exact-head complete hosted acceptance
 remain pending for this follow-up. No partial/stale hosted verdict, score floor or private-suite
 exception is reused or broadened. SQLite reference: https://www.sqlite.org/c3ref/busy_handler.html.
+
+
+### 2026-10-11: measured fragment sizing follow-up
+
+At `da463cee`, hosted sweep `38136100567` failed rendering fragment 46 at the unchanged
+5400-second mutation budget: 441 of 444 assigned mutants reached terminal status. The checkpoint
+remained an error and strict aggregation did not accept its three unfinished mutants. The run was
+explicitly cancelled after retaining its failure and all 69 started checkpoint/log artifacts;
+60 fragments completed, eight were interrupted and 136 never started. None is reused for acceptance.
+
+Cross-group sizing considered every started fragment, including event's 5198.5-second completed
+phase and conservative elapsed/progress estimates for interrupted leadlag jobs. Balanced sorted
+round-robin partitions now cap each fragment at 96 mutants. The same complete 52-module inventory
+produces 250 jobs, below the unchanged 256-job hard limit. Exhaustive keys, module/test scopes,
+associated tests, worker/concurrency limits, timeouts, floors and report-only score semantics remain
+unchanged. More setup and test-statistics runs are the explicit cost. Timing projections are estimates;
+never-started groups and a fresh complete hosted sweep remain unverified.
+
+Focused red regressions reproduced the old partition failure before implementation. Fresh focused
+checks, canonical full verification, independent review and exact-head hosted CI/complete sweep
+are required before this follow-up can be accepted or merged. Private suites remain unverified under
+the existing scoped owner exception; standing policy is unchanged.

@@ -37,9 +37,10 @@ def fragment_runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
 
 def test_fragment_inventory_and_aggregate_cover_exact_original_mutants(tmp_path: Path) -> None:
     root = repo(tmp_path)
-    keys = sorted(f"alpha_validation.dsr.x_f__mutmut_{i}" for i in range(11))
+    keys = sorted(f"alpha_validation.dsr.x_f__mutmut_{i}" for i in range(193))
     plan = sweep.inventory(root, "commit", "run", {MODULE: keys})
-    assert len(plan["jobs"]) == 4
+    assert len(plan["jobs"]) == 3
+    assert max(len(job["mutants"]) for job in plan["jobs"]) <= 96
     assert plan["tools"][MODULE] == "mutmut==3.8.0"
     assert sorted(k for job in plan["jobs"] for k in job["mutants"]) == sorted(keys)
     sweep.validate_inventory(root, plan, "commit", "run")
@@ -48,9 +49,9 @@ def test_fragment_inventory_and_aggregate_cover_exact_original_mutants(tmp_path:
         assert sweep.run_module(root, plan, job["index"], output, runner=fragment_runner) == 0
     summary = sweep.aggregate(plan, output)
     result = summary["modules"][MODULE]
-    assert result["total"] == 11 and result["killed"] == 6 and result["timeout"] == 5
-    assert result["kill_rate"] == round(6 / 11, 4) and result["status"] == "fail"
-    assert len(result["mutant_results"]) == 11 and summary["infrastructure_complete"]
+    assert result["total"] == 193 and result["killed"] == 97 and result["timeout"] == 96
+    assert result["kill_rate"] == round(97 / 193, 4) and result["status"] == "fail"
+    assert len(result["mutant_results"]) == 193 and summary["infrastructure_complete"]
     (root / MODULE).write_text("def f(): return 2\n")
     with pytest.raises(ValueError, match="Inventory"):
         sweep.validate_inventory(root, plan, "commit", "run")
@@ -61,7 +62,7 @@ def test_fragment_aggregate_rejects_corrupt_or_inconsistent_evidence(
     tmp_path: Path, mutation: str
 ) -> None:
     root = repo(tmp_path)
-    keys = [f"alpha_validation.dsr.x_f__mutmut_{i}" for i in range(8)]
+    keys = sorted(f"alpha_validation.dsr.x_f__mutmut_{i}" for i in range(193))
     plan = sweep.inventory(root, "commit", "run", {MODULE: keys})
     output = tmp_path / "output"
     for job in plan["jobs"]:
@@ -82,6 +83,15 @@ def test_fragment_aggregate_rejects_corrupt_or_inconsistent_evidence(
     gate.write_json_atomic(path, record)
     with pytest.raises(ValueError):
         sweep.aggregate(plan, output)
+
+
+def test_size_bounded_inventory_rejects_matrix_overflow_without_dropping_mutants(
+    tmp_path: Path,
+) -> None:
+    root = repo(tmp_path)
+    keys = sorted(f"alpha_validation.dsr.x_f__mutmut_{i}" for i in range(24_577))
+    with pytest.raises(ValueError, match="matrix exceeds hosted job limit"):
+        sweep.inventory(root, "commit", "run", {MODULE: keys})
 
 
 def repo(tmp_path: Path) -> Path:
@@ -386,7 +396,7 @@ def test_aggregate_certified_no_tests_retains_proof_and_rejects_corruption(
     tmp_path: Path, corrupt: str | None
 ) -> None:
     root = repo(tmp_path)
-    keys = [f"alpha_validation.dsr.x_f__mutmut_{i}" for i in range(4)]
+    keys = sorted(f"alpha_validation.dsr.x_f__mutmut_{i}" for i in range(193))
     plan = sweep.inventory(root, "commit", "run", {MODULE: keys})
     output = tmp_path / "output"
     for job in plan["jobs"]:
@@ -434,6 +444,6 @@ def test_aggregate_certified_no_tests_retains_proof_and_rejects_corruption(
             sweep.aggregate(plan, output)
     else:
         result = sweep.aggregate(plan, output)["modules"][MODULE]
-        assert result["total"] == 4 and result["no_tests"] == 4 and result["killed"] == 0
+        assert result["total"] == 193 and result["no_tests"] == 193 and result["killed"] == 0
         assert result["status"] == "fail" and result["kill_rate"] == 0.0
-        assert len(result["no_tests_proofs"]) == 4
+        assert len(result["no_tests_proofs"]) == 3
