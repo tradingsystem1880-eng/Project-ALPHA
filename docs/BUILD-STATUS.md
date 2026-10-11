@@ -1050,3 +1050,14 @@ and preserves recorded investigation/report, immutable-rule, budget and authorit
 Regenerate contracts/assets and obtain fresh full/source/quant/independent review plus exact-target
 hosted CI before merge. Live Codex0.161/Tiingo acceptance remains UNVERIFIED; no live credentials,
 private data, new strategy authority or standing policy is introduced.
+
+
+**2026-10-11 — Hosted research configuration-test portability repair.** Research PR #56's
+first hosted backend gate failed three public configuration tests because their executable
+lookup relied on Codex being installed on the test machine. The same failures reproduce locally
+with Codex removed from PATH. Those tests now discover a synthetic executable in a fixture-only
+PATH, assert its exact launch argv, and retain configuration/auth-reference/isolation assertions.
+A new negative test removes the fixture executable and verifies the production unavailable error
+before runtime-directory creation. All ten environment tests pass with no installed executable;
+production behavior and live-provider acceptance are unchanged. Fresh exact-tree independent
+review, canonical full and hosted checks follow this bounded test-only repair.

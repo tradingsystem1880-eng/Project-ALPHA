@@ -655,7 +655,7 @@
     "tests/unit/test_claude_md_relocation.py": "97e8807b3c41ff2a76a2a19e8cd3b183733b63711520229811ed72d7bb973aba",
     "tests/unit/test_cli_data_ticker.py": "0ebec2f84f368b0fa933fef72eec649112327a9d00fd2a2ec31edabf1f49123e",
     "tests/unit/test_cmma.py": "fa8dddaf61d222fba54e9cb977d4bfa77cddbc4849f2145cc019d02bee711c19",
-    "tests/unit/test_codex_environment.py": "f8e2801312d1d68b3cb1c568abe8ba844a6e518e5a0c813dbbc7e7900067d0e4",
+    "tests/unit/test_codex_environment.py": "c1a404fb5490c89aaeefef21350d82abb8eb30dc9432b561ebdf8c928f2519bd",
     "tests/unit/test_codex_investigation.py": "741966b61bea786a74e05b1ee357fc1f0c32d0f2fe6a323517c08201cfbbcc26",
     "tests/unit/test_codex_rpc.py": "ef645e315de813d342f29fcc6f7121e6561ba4f248fa6eb264df694123d71d66",
     "tests/unit/test_codex_session.py": "2117d43beaf16555f12236c681f3e9ca3e57a36e8dec81820fccf6ca148d5db3",

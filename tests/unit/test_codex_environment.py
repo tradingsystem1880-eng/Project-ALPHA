@@ -16,6 +16,18 @@ def isolated_owner_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
 
+@pytest.fixture
+def synthetic_codex(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Exercise executable discovery without using an installed Codex runtime."""
+    directory = tmp_path / "test-bin"
+    directory.mkdir()
+    executable = directory / "codex"
+    executable.write_text("#!/bin/sh\nexit 99\n")
+    executable.chmod(0o700)
+    monkeypatch.setenv("PATH", str(directory))
+    return executable
+
+
 def credential(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     source = tmp_path / "source-home"
     source.mkdir()
@@ -26,7 +38,7 @@ def credential(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_prepare_isolated_configuration_and_credential_reference(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, synthetic_codex: Path
 ) -> None:
     import sys
 
@@ -34,7 +46,7 @@ def test_prepare_isolated_configuration_and_credential_reference(
     case = tmp_path / "case"
     case.mkdir()
     argv, workspace, env = prepare(case)
-    assert argv[1:] == ["app-server"]
+    assert argv == [str(synthetic_codex), "app-server"]
     assert workspace == case / "workspace"
     assert set(env) == {"HOME", "PATH", "TMPDIR", "LANG", "CODEX_HOME"}
     assert env["CODEX_HOME"] == str(case / "codex-home")
@@ -57,8 +69,19 @@ def test_missing_credentials_block_without_leaking(
         prepare(tmp_path / "case")
 
 
+def test_missing_executable_blocks_before_creating_runtime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, synthetic_codex: Path
+) -> None:
+    credential(tmp_path, monkeypatch)
+    synthetic_codex.unlink()
+    case = tmp_path / "case"
+    with pytest.raises(DataError, match="executable is unavailable"):
+        prepare(case)
+    assert not case.exists()
+
+
 def test_config_drift_and_directory_symlink_rejected(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, synthetic_codex: Path
 ) -> None:
     credential(tmp_path, monkeypatch)
     case = tmp_path / "case"
@@ -121,7 +144,7 @@ def test_preflight_failure_is_redacted_and_cleans_up(
 
 
 def test_existing_workspace_contents_and_wrong_auth_are_rejected(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, synthetic_codex: Path
 ) -> None:
     credential(tmp_path, monkeypatch)
     case = tmp_path / "case"
