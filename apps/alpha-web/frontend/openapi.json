@@ -1950,7 +1950,8 @@
               "decision",
               "order",
               "fill",
-              "trade"
+              "trade",
+              "execution_rejection"
             ],
             "title": "Event Type",
             "type": "string"

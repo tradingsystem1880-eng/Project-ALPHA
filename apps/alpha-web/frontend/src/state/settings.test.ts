@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { Settings } from './settings'
-import { initSettings, parseSettings, setSettings, workspaceModeFor } from './settings'
+import { CHART_TEMPLATE_VERSION, initSettings, parseSettings, setSettings, workspaceModeFor } from './settings'
+import { CLASSIC_TEMPLATE } from '../panels/chartOverlaysModel'
 
 const settings: Settings = {
   density: 'comfortable',
@@ -9,6 +10,8 @@ const settings: Settings = {
   profile: 'crypto',
   projectModes: { advanced_project: 'advanced' },
   liveTicker: false,
+  chartStyle: 'classic',
+  chartTemplate: CHART_TEMPLATE_VERSION,
   overlays: { crypto: { indicators: [], patterns: [] }, equities: { indicators: [], patterns: [] } },
 }
 
@@ -62,7 +65,19 @@ describe('chart overlays setting', () => {
       }),
     )
     expect(parsed.overlays.crypto).toEqual({ indicators: ['sma:20'], patterns: ['swings'] })
-    expect(parsed.overlays.equities).toEqual({ indicators: [], patterns: [] })
-    expect(parseSettings(null).overlays.crypto).toEqual({ indicators: [], patterns: [] })
+    expect(parsed.overlays.equities).toEqual({ indicators: CLASSIC_TEMPLATE.indicators, patterns: [] })
+    expect(parseSettings(null).overlays.crypto).toEqual(CLASSIC_TEMPLATE)
+  })
+  it('offers the Classic studies template once, only where no studies were chosen', () => {
+    const before = parseSettings(JSON.stringify({ overlays: { crypto: { indicators: [], patterns: ['swings'] }, equities: { indicators: ['ema:9'], patterns: [] } } }))
+    expect(before.overlays.crypto).toEqual({ indicators: CLASSIC_TEMPLATE.indicators, patterns: ['swings'] })
+    expect(before.overlays.equities.indicators).toEqual(['ema:9'])
+    const cleared = parseSettings(JSON.stringify({ chartTemplate: CHART_TEMPLATE_VERSION, overlays: { crypto: { indicators: [], patterns: [] } } }))
+    expect(cleared.overlays.crypto).toEqual({ indicators: [], patterns: [] })
+  })
+  it('defaults the chart style to StockCharts Classic', () => {
+    expect(parseSettings(null).chartStyle).toBe('classic')
+    expect(parseSettings(JSON.stringify({ chartStyle: 'default' })).chartStyle).toBe('default')
+    expect(parseSettings(JSON.stringify({ chartStyle: 'neon' })).chartStyle).toBe('classic')
   })
 })

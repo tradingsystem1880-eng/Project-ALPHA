@@ -344,6 +344,12 @@ def run_backtest(
         fee_model=BpsFeeModel(fee_bps) if fee_bps > 0 else None,
         bar_execution=False,  # bars decide; quotes fill (t+1 open) — see module docstring
     )
+    # Strategies with the shared vol-target lifecycle can enforce fee-aware CASH affordability
+    # at their next-open callback. Keep the dependency one-way: the engine uses this narrow hook
+    # without importing the strategies package.
+    configure_cash_execution = getattr(strategy, "configure_cash_execution", None)
+    if callable(configure_cash_execution):
+        configure_cash_execution(fee_bps=fee_bps, account_type=account_type)
     recorder = _EquityRecorder(instrument.id, instrument.id.venue, starting_cash, dividends)
     engine.add_instrument(instrument)
     engine.add_data(list(data))
@@ -382,6 +388,7 @@ def run_backtest(
             equity_curve=recorder.curve,
             rejected=int(getattr(strategy, "rejections", 0)),
             decision_trace=tuple(getattr(strategy, "decision_trace", ())),
+            execution_rejections=tuple(getattr(strategy, "execution_rejections", ())),
             indicator_trace=tuple(getattr(strategy, "indicator_trace", ())),
             chart_annotations=tuple(getattr(strategy, "chart_annotations", ())),
             order_trace=order_trace,

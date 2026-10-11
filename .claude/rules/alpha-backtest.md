@@ -11,9 +11,18 @@ RISK TIER: every edit under `packages/alpha-backtest/src` requires an APPROVE `R
 | Module | Responsibility | Key public symbols |
 |---|---|---|
 | `feed.py` | Bar → nautilus feed (t+1-fill encoding) | `to_execution_feed(bars, bar_type, *, slippage_bps=...)`, `daily_bar_type(symbol, venue="SIM")` |
-| `engine.py` | `BacktestEngine` harness (`bar_execution=False`; credits dividend cash at pay_date) | `run_backtest(instrument, data, strategy, *, starting_cash, account_type, leverage, fee_bps, dividends)` → `BacktestResult` |
+| `engine.py` | `BacktestEngine` harness (`bar_execution=False`; credits dividend cash at pay_date; configures the shared strategy's next-open fee-affordability check) | `run_backtest(instrument, data, strategy, *, starting_cash, account_type, leverage, fee_bps, dividends)` → `BacktestResult` |
 | `instruments.py` | Per-asset instruments (slash pairs → 5-decimal crypto) | `instrument_for(symbol)`, `equity_instrument`, `crypto_instrument` |
 | `frictions.py` | Per-notional fee model | `BpsFeeModel(fee_bps)` (slippage modeled separately in `feed`) |
-| `results.py` | Canonical result + causal trace schema | `BacktestResult(orders, fills, trades, equity_curve, decision_trace, indicator_trace, chart_annotations, order_trace, fill_trace, portfolio_state_trace, benchmark_curve)`, `Trade`, `OrderTrace`, `FillTrace`, `PortfolioStateTrace` |
+| `results.py` | Canonical result + causal trace schema | `BacktestResult(orders, fills, trades, equity_curve, decision_trace, execution_rejections, indicator_trace, chart_annotations, order_trace, fill_trace, portfolio_state_trace, benchmark_curve)`, `Trade`, `OrderTrace`, `FillTrace`, `PortfolioStateTrace` |
 | `portfolio_replay.py` | Deterministic synchronized long-only target-weight replay with ONE cash ledger across symbols (the Nautilus harness is single-instrument; per-symbol engines cannot reconcile a rotating cross-sectional book) | `WeightTarget`, `ReplayPeriod`, `PortfolioReplayResult`, `run_weight_replay` |
 
+For the shared `VolTargetStrategy` lifecycle, a CASH buy is rejected before submission when the
+actual next-open ask notional plus the currency-rounded commission exceeds the account's free
+quote-currency balance. The check preserves the close-t target and uses the same opening quote as the
+fill convention; `BacktestResult.execution_rejections` records the rejected quantity, price, cash,
+fee, and reason. The CLI persists this separately in `pretrade_rejections.parquet`, records the
+pretrade and total rejection counts in the manifest, and includes rejections in the consolidated
+execution trace. Generic strategies without this shared hook
+retain the engine's fail-loud truncation check. MARGIN orders and sells are not constrained by this
+CASH-only rule.

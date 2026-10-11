@@ -295,7 +295,7 @@ class ChartTrade(StrictModel):
 
 class ChartTraceEvent(StrictModel):
     sequence_id: int
-    event_type: Literal["decision", "order", "fill", "trade"]
+    event_type: Literal["decision", "order", "fill", "trade", "execution_rejection"]
     ts: float
     parent_sequence_id: int | None
     instrument_id: str

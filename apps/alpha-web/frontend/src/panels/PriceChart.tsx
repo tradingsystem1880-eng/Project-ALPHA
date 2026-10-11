@@ -12,7 +12,8 @@ import { api, type ArchiveChartDataset } from '../api/client'
 import { ArchiveChartSelect } from '../components/ArchiveChartSelect'
 import type { Candle, CandleProvenance, ChartBundle, ChartOverlays, PaperCandleMarker } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
-import { ScientificMarketCanvas } from '../components/ScientificMarketCanvas'
+import { TechnicalChart } from '../components/technical/TechnicalChart'
+import { cssVars, technicalStyle } from '../components/technical/technicalTokens'
 import type { PlotRenderer } from '../shell/chartWorkspaceModel'
 import { PriceChartCanvas } from '../components/PriceChartCanvas'
 import { usePanelLinked } from '../context/usePanelLinked'
@@ -25,7 +26,7 @@ import {
 import { useSettings } from '../state/settings'
 import { openArchiveMarket, openDevelopmentCenter, openIndicators } from './actions'
 import { ChartDataAlternative } from './ChartDataAlternative'
-import { hasOverlays, overlayLegend, overlayQuery } from './chartOverlaysModel'
+import { hasOverlays, overlayLegend, overlayQuery, shortStudy, skippedText, type ShortStudy } from './chartOverlaysModel'
 import { TraceEvidencePanel } from './TraceEvidencePanel'
 import {
   buildEvidenceMarkers,
@@ -54,7 +55,7 @@ export function PriceChart(props: PanelHandleProps) {
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [storedSymbol, setSymbol] = useState(pinned ?? linked.symbol ?? '')
   const symbol = archive?.instrument ?? storedSymbol
-  const { profile, overlays: overlaySettings } = useSettings()
+  const { profile, overlays: overlaySettings, chartStyle } = useSettings()
   const overlayConfig = overlaySettings[profile]
   const [overlays, setOverlays] = useState<ChartOverlays | null>(null)
   const [overlayError, setOverlayError] = useState<string | null>(null)
@@ -80,7 +81,9 @@ export function PriceChart(props: PanelHandleProps) {
   // own annotations instead.
   const overlayQueryText = overlayQuery(overlayConfig, { end: linked.end ?? null, snapshotId: archive ? null : linked.snapshotId ?? null }) + (archive ? `&manifest_id=${archive.manifest_id}` : '')
   const wantOverlays = !linked.runId && Boolean(symbol) && hasOverlays(overlayConfig)
+  const [skippedStudies, setSkippedStudies] = useState<ShortStudy[]>([])
   useEffect(() => {
+    setSkippedStudies([])
     if (!wantOverlays) {
       setOverlays(null)
       setOverlayError(null)
@@ -89,21 +92,29 @@ export function PriceChart(props: PanelHandleProps) {
     let live = true
     setOverlays(null)
     setOverlayError(null)
-    api
-      .overlays(symbol, overlayQueryText)
-      .then((result) => {
+    // A study longer than the as-of window is refused by the CLI; drop exactly that study (named
+    // in the header) and ask again rather than losing every overlay. Any other failure is shown.
+    const request = async (skipped: ShortStudy[]): Promise<void> => {
+      const indicators = overlayConfig.indicators.filter(spec => !skipped.some(s => s.spec === spec))
+      if (!indicators.length && !overlayConfig.patterns.length) { setOverlays(null); setSkippedStudies(skipped); return }
+      const query = overlayQuery({ ...overlayConfig, indicators }, { end: linked.end ?? null, snapshotId: archive ? null : linked.snapshotId ?? null }) + (archive ? `&manifest_id=${archive.manifest_id}` : '')
+      try {
+        const result = await api.overlays(symbol, query)
+        if (live) { setOverlays(result); setSkippedStudies(skipped) }
+      } catch (cause: unknown) {
         if (!live) return
-        setOverlays(result)
-        setOverlayError(null)
-      })
-      .catch((cause: unknown) => {
-        if (!live) return
+        const short = shortStudy(String(cause))
+        if (short && indicators.includes(short.spec)) return request([...skipped, short])
         setOverlays(null)
         setOverlayError(String(cause))
-      })
+      }
+    }
+    void request([])
     return () => {
       live = false
     }
+    // overlayQueryText is the identity of config + window + archive
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantOverlays, symbol, overlayQueryText])
 
   useEffect(() => {
@@ -212,7 +223,8 @@ export function PriceChart(props: PanelHandleProps) {
     if (event) selectTraceEvent(bundle.run_id, event, bundle.trace)
   }, [bundle])
 
-  const PriceCanvas = workspace?.renderer === 'market' ? PriceChartCanvas : ScientificMarketCanvas
+  const interval = candleProvenance?.timeframe ?? archive?.frequency ?? null
+  const chartTitle = `${symbol}${interval ? ` (${interval})` : ''}`
   return (
     <div className="panel price-panel">
       <div className="panel-toolbar price-toolbar">
@@ -243,6 +255,12 @@ export function PriceChart(props: PanelHandleProps) {
         {overlayError ? (
           <span className="chip fail" role="status" title={overlayError}>
             overlays unavailable · {overlayError}
+          </span>
+        ) : null}
+        {/* The technical chart names skipped studies in its header; the market renderer has none. */}
+        {workspace?.renderer === 'market' && skippedStudies.length ? (
+          <span className="chip fail" role="status" title="The as-of window is shorter than these studies read; alpha chart overlays refused them, so they are not drawn.">
+            studies skipped · {skippedText(skippedStudies)}
           </span>
         ) : null}
         {bundle ? (
@@ -277,9 +295,9 @@ export function PriceChart(props: PanelHandleProps) {
         ) : bars.length === 0 ? (
           <Placeholder>{linked.runId ? bundle?.bars_status === 'not_applicable' ? "Price is not applicable to this recorded run." : `Frozen price snapshot unavailable or no recorded bars in this window (${bundle?.bars_status ?? 'unavailable'}). Current market data is never substituted.` : "no bars in window"}</Placeholder>
         ) : (
-          <div className="price-chart-frame">
+          <div className="price-chart-frame" style={workspace?.renderer === 'market' ? undefined : cssVars(technicalStyle(chartStyle)) as React.CSSProperties}>
             <div className="price-chart-canvas-wrap" hidden={workspace?.table}>
-              <PriceCanvas
+              {workspace?.renderer === 'market' ? <PriceChartCanvas
                 bars={bars}
                 controls={workspace?.controls} reset={workspace?.reset} panelId={workspace?.panelId} registry={workspace?.registry}
                 evidence={visibleEvidence}
@@ -288,7 +306,18 @@ export function PriceChart(props: PanelHandleProps) {
                 selectedTrade={selectedTrade}
                 onSelectEvidence={selectEvidence}
                 overlays={overlays}
-              />
+              /> : <TechnicalChart
+                bars={bars}
+                title={chartTitle}
+                styleName={chartStyle}
+                controls={workspace?.controls} reset={workspace?.reset} panelId={workspace?.panelId} registry={workspace?.registry}
+                evidence={visibleEvidence}
+                annotations={bundle?.annotations}
+                selectedSequenceId={selectedSequenceId}
+                onSelectEvidence={selectEvidence}
+                overlays={overlays}
+                skipped={skippedStudies}
+              />}
             </div>
             <div className="chart-foot mono">
               <span>PRICE · NATIVE QUOTE UNITS</span>

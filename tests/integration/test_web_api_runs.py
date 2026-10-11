@@ -638,6 +638,55 @@ def test_chart_bundle_is_bounded_and_old_runs_report_trace_unavailable(
     assert [anchor["anchor_index"] for anchor in body["annotations"][0]["anchors"]] == [0, 1]
 
 
+def test_chart_bundle_preserves_cash_execution_rejection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    run_id = "dddd000000000004"
+    _write_trace_run(tmp_path, run_id)
+    rdir = tmp_path / "runs" / run_id
+    trace_path = rdir / "execution_trace.parquet"
+    trace = pl.read_parquet(trace_path).filter(pl.col("sequence_id") <= 2)
+    trace = trace.with_columns(
+        pl.when(pl.col("sequence_id") == 2)
+        .then(pl.lit("execution_rejection"))
+        .otherwise(pl.col("event_type"))
+        .alias("event_type"),
+        pl.when(pl.col("sequence_id") == 2)
+        .then(pl.lit("insufficient_cash"))
+        .otherwise(pl.col("status"))
+        .alias("status"),
+        pl.when(pl.col("sequence_id") == 2)
+        .then(pl.lit("insufficient_cash"))
+        .otherwise(pl.col("decision_reason"))
+        .alias("decision_reason"),
+        pl.lit(0.0).alias("filled_quantity"),
+        pl.when(pl.col("sequence_id") == 2)
+        .then(pl.lit(102.0))
+        .otherwise(pl.col("price"))
+        .alias("price"),
+    )
+    trace.write_parquet(trace_path)
+    manifest_path = rdir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["artifacts"] = artifact_contract(rdir)
+    manifest_path.write_text(json.dumps(manifest))
+
+    response = client.get(f"/api/runs/{run_id}/chart-bundle")
+    assert response.status_code == 200
+    body = response.json()
+    rejection = body["trace"][1]
+    assert rejection["event_type"] == "execution_rejection"
+    assert rejection["parent_sequence_id"] == 1
+    assert rejection["quantity"] == 10.0
+    assert rejection["filled_quantity"] == 0.0
+    assert rejection["price"] == 102.0
+    assert rejection["status"] == "insufficient_cash"
+    assert rejection["decision_reason"] == "insufficient_cash"
+    assert body["orders"] == []
+    assert body["fills"] == []
+
+
 def test_chart_bundle_windows_bars_and_every_causal_overlay(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

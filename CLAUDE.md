@@ -20,7 +20,7 @@ Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`
 ## Architecture DAG
 
 [pyproject.toml](pyproject.toml) import-linter contracts are executable boundaries:
-core imports nothing internal; data/patterns/research/validation/forecast depend on core;
+core imports nothing internal; data/patterns/research/validation/forecast import only core;
 strategies on core+patterns; backtest on core+data; study on core+data+patterns+research.
 Only `alpha_cli` composes engine and validation. Web/MCP sit above core and supported public CLI
 seams; actions and engine-backed projections subprocess CLI, never the engine in-process.
@@ -76,5 +76,5 @@ rules and [build record](docs/BUILD-STATUS.md). Contracts:
 Update this manual and append `docs/BUILD-STATUS.md` when behavior changes.
 Preserve user work; local checks are not aggregate acceptance.
 
-UI: [terminal guide](apps/alpha-web/frontend/README.md): Bokeh research, optional market charts,
+UI: [terminal guide](apps/alpha-web/frontend/README.md): technical charts, optional market charts,
 UTC windows, exact exports and project-free browsing.

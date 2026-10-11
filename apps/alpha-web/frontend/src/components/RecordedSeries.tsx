@@ -3,6 +3,8 @@ import { AreaSeries, ColorType, CrosshairMode, LineSeries, createChart, type ICh
 import { logicalRangeForUTC, type ChartLinkRegistry } from '../shell/chartLinkRegistry'
 import { barSpacingFor, type ChartControls } from '../context/chartControls'
 import { ScientificSeriesCanvas } from './ScientificSeriesCanvas'
+import { cssVars, technicalStyle } from './technical/technicalTokens'
+import { useSettings } from '../state/settings'
 import { RecordedValuesTable } from './RecordedValuesTable'
 import type { PlotRenderer } from '../shell/chartWorkspaceModel'
 import { CHART } from '../util/chartTheme'
@@ -57,6 +59,7 @@ function MarketRecordedSeries({ points, label, unit, panelId, registry, area = f
 }
 
 export function RecordedSeries(props: { points: RecordedPoint[]; label: string; unit: string; panelId: string; registry?: ChartLinkRegistry; area?: boolean; controls?: ChartControls; reset?: number; renderer?: PlotRenderer }) {
+  const { chartStyle } = useSettings()
   if (props.renderer === 'market') return <MarketRecordedSeries {...props}/>
-  return <div className="recorded-series"><div className="plot-legend">{props.label} · {props.unit} · UTC</div><ScientificSeriesCanvas {...props}/><RecordedValuesTable {...props}/></div>
+  return <div className="recorded-series" style={cssVars(technicalStyle(chartStyle)) as React.CSSProperties}><div className="plot-legend">{props.label} · {props.unit} · UTC</div><ScientificSeriesCanvas {...props}/><RecordedValuesTable {...props}/></div>
 }

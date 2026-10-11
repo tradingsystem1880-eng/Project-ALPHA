@@ -770,3 +770,59 @@ now keeps a `-darwin` baseline re-taken on macOS against the current build and a
 rendered in the `mcr.microsoft.com/playwright:v1.61.1-noble` container (linux/amd64), both under the
 unchanged 2% tolerance. The CI frontend job's timeout rose from 15 to 40 minutes for the 308-test
 browser suite.
+
+
+**2026-10-07 — Technical chart language (StockCharts Classic/Default grammar).** Owner request:
+make the primary analytical chart read as market-analysis software rather than a web component.
+The default Bokeh price renderer is replaced by `frontend/src/components/technical/`: one BokehJS
+document per chart with an RSI / price + volume underlay / MACD shared-border stack on an
+observation-spaced axis (weekdays or intervals without an observation are marked on the date strip), candles
+coloured by prior close and filled by open, dense 1/2/2.5/5 right value axes, a weekly date strip
+with bold months and years, coloured in-panel legends with values, right-axis value tags, one dense
+OHLC/Chg header line, no toolbar, x-only pan/zoom and visible-window autoscale. Classic is the default
+`chartStyle`, Default the alternate (workspace toolbar select). The studies template (MA 50/200,
+RSI 14, MACD 12/26/9) is offered once to profiles with no studies; the SPA still computes no study —
+a study the CLI refuses as longer than the window is dropped by name (the CLI sentence is pinned in
+`tests/unit/test_chart_overlays.py`). Recorded equity/drawdown/Sharpe series and histogram/QQ plots
+share the chrome; the orphaned Bokeh market path (`ScientificMarketCanvas`) is removed. No backend or
+API change. New `e2e/technical-chart.spec.ts` (Classic/Default baselines, hover, x-zoom autoscale,
+skipped study, gap marks); chart document and technical-chart baselines taken for darwin and, in the
+Playwright 1.61.1 noble container, for Linux (Linux falls back to DejaVu Sans; geometry unchanged).
+Recorded series, cartesian plots and the price footnote read the same `--tc-*` tokens, so Default
+applies everywhere. The opt-in perf budget spec was
+measured against `main` on the same machine: both exceed the 34 ms p99 intermittently there (main
+27–35 ms, branch 28–47 ms; medians ~10 ms each). [Plan](superpowers/plans/2026-10-07-technical-chart-language.md).
+
+**2026-10-08 — Technical-chart cleanup review correction (unmerged).** PNG exports now composite the DOM calendar, legends, tags and gaps plus the title/OHLC header over the native Bokeh canvases. Original downloads omitted these layers. Download regression and fresh full verification govern acceptance of this correction; the earlier full stamp is invalid after source edits. Opt-in performance limitations remain recorded in the chart plan.
+
+**2026-10-08 — Repository cleanup checkpoint (in progress).** Outstanding chart and weekly-mutation changes are being completed in their existing worktrees. Initial main regular CI passed; nightly mutation cancelled after six hours while preceding checks passed. Independent review reproduced report-validation holes and a chart PNG export omitting DOM calendar/legend layers. The research import contract omitted the patterns prohibition; a failing regression reproduced it and the corrected boundary passes. Current README and architecture guidance is reconciled to source. No final combined gate, merge, hidden-suite acceptance or scheduled-workflow completion is claimed. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+
+**2026-10-08 — Expanded repository and GitHub cleanup (in progress).** Three merged clean worktrees, five merged local branches, three merged remote branches and two superseded stash entries were retired after preserving full history, working-tree patches and byte-verified local state. Six undelivered research checkpoints are consolidated under `backlog/research-runtime` with original tips archived. Obsolete draft PR #52 is closed and preserved under a GitHub archive tag. The missing CASH fee-affordability fix is being ported separately; no unfinished research features are promoted. The prior combined tree passed all six canonical components; the expanded tree requires fresh verification and hidden-suite acceptance remains blocked. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+
+**2026-10-08 — Primary checkout consolidated; final acceptance pending.** The primary integration checkout is the only remaining worktree. Original changed source/workflow paths and the transferred staged Git tree were verified exactly before removing duplicate checkouts. Eight redundant merged/preparation local branches, four obsolete/merged remote branches, six research checkpoint branch names and two superseded stash entries are retired with recovery refs/archives; the unique research lineage remains under `backlog/research-runtime`. GitHub has no open PRs. The recovered CASH affordability fix reproduced seven failures before the port and passes 41 focused tests plus one existing expected failure afterward, including a deliberately leaky bias control. A fresh primary aggregate gate and independent risk review remain required; absent hidden tests continue to block final acceptance, commit and merge. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+
+**2026-10-08 — Exact viewport volume mask and orphan recovery.** The volume renderer now restricts painting to every original bar rectangle intersecting the observation-index viewport, including partial edge bars, while preserving the full native source and colors. Four failing-first geometry tests are covered by 23 passing model tests; seven focused browser tests pass with unchanged screenshots and actual PNG export. An isolated timing run passed at 28.5 ms p99; repeats were 26.3/26.2/43.0 ms, so intermittent timing remains unresolved under unchanged limits. A discovered unregistered worktree folder was retired after byte-verifying an archive of all 181 noncache files; its partial source is preserved, not assumed delivered. Final aggregate and hidden-suite acceptance remain required. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+
+
+**2026-10-09 — Malformed PIT bar error boundary corrected (unmerged).** Visible malformed bars now raise chained `DataError` with symbol, timestamp and original validation reason instead of leaking Pydantic errors past CLI handlers. Point-in-time filtering remains first; invalid rows are neither dropped nor coerced. Twenty failures were reproduced before the source fix; all 27 focused source/bias/public-seed tests pass, including future exclusion, a deliberately leaky twin, and CLI exit 2 with no run publication. The previous primary tree passed all six canonical components; this changed tree requires fresh aggregate verification and independent review. Hidden-suite acceptance remains UNVERIFIED/BLOCK; no commit, merge or scheduled-workflow deployment is claimed. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+
+
+**2026-10-09 — Exact volume color views (unmerged).** Post-mask profiling exposed full-source CSS color materialization on every view update. Complementary up/down views now share the full native x/volume source with scalar style colors, retaining previous-close classification, equal-close bars, partial viewport intersections, width, scales, cursor and exports. Three failing-first partition tests are covered by 26 passing model tests; seven focused browser tests pass with unchanged screenshots and PNG export. The new profile recorded zero `_from_css_array` samples, versus about 165.5 ms directly before the change. Profiled/ordinary p99 passed at 27.2/27.3 ms; a fixed three-repeat run passed at 27.2/27.3/27.2 ms against the unchanged 34 ms limit. This evidence improves the previously intermittent timing lane without promising every future machine/run will pass. Fresh final aggregate and independent acceptance remain required; hidden-suite execution stays UNVERIFIED/BLOCK. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+
+
+**2026-10-10 — Preserved feature reconciliation (local, unaccepted).** Recovered intended technical charts, exact PNG layers and volume views, CASH fee-affordability rejection evidence, typed PIT errors and core-only research import hygiene into an isolated checkout. Standing engineering holdout policy and active mutation/maintainability work are excluded. Original index/source bytes remain preserved and unchanged. Focused verification and final aggregate acceptance are pending; no publication or integration is claimed.
+
+
+**2026-10-10 — Preserved feature focused verification (local).** CASH/PIT/core/artifact/boundary regressions:69 passed. The chart PNG lost its visible outside-window annotation warning and gradient-based volume swatch; two failing browser regressions reproduced both omissions, then eight technical-chart tests passed after sharing the warning text and painting the same three swatch rectangles in DOM/export. Classic/Default screenshots are unchanged. Frontend lint/type/build/unit-coverage and Python import/lint/format checks pass. Packaged SPA rebuilt from this source. Fresh aggregate and independent release acceptance remain pending; no new private-suite exception or standing policy is adopted.
+
+
+**2026-10-10 — Preserved feature integration corrections (local, unaccepted).** Independent review reproduced a strict chart API response failure for CASH pretrade `execution_rejection` events and a native recorded-series PNG export missing its visible value tag. Backend/OpenAPI/frontend event contracts now include rejection events; an artifact-bound response regression fails before and passes after correction, and all 42 chart API integration tests pass. The native Save export now composites the recorded tag while preserving Save/Copy/Open controls and prompt; its browser regression fails before and passes after repair. Empty export headers retain image dimensions. Independent source review found no remaining issue in those repairs; the pixel placement of the recorded tag is not separately asserted. Type/lint and both lifecycle unit tests pass. Packaged assets are rebuilt. A new exact-tree canonical full run follows these final sources; release acceptance remains blocked by the unchanged absent-private-suite rule. No scoped exception has been extended, no feature committed or published, and the original shared index/source remain byte-identical.
+
+
+**2026-10-11 — Recovered-work scoped delivery authorized.** The owner approved separate
+chart/CASH/PIT/hygiene and existing research-runtime PRs/merges after all available checks,
+with the [one-time private-suite exception](operations/2026-10-11-recovered-work-private-suite-exception.md).
+Private coverage remains UNVERIFIED; the standing policy is excluded. Recovered feature source
+previously passed all six components on f54af6df. Refresh exact-tree validation and independent
+review for this delivery record; exact-target hosted CI and legitimate dependency order remain
+required. No live-provider acceptance, strategy admission or trading authority is conferred.

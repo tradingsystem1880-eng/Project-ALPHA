@@ -3,9 +3,11 @@
 ``VolTargetStrategy`` factors out the execution lifecycle every signal-based strategy in ALPHA
 shares: accumulate OHLC history, rebalance on a fixed cadence, turn a ``{-1,0,1}`` signal into a
 vol-targeted position, decide on the close of bar ``t`` and fill at the open of ``t+1`` (the
-look-ahead-free convention enforced by ``alpha_backtest.feed`` + ``bar_execution=False``). Concrete
-strategies implement only the pure ``_signal`` hook. (``TimeSeriesMomentum`` predates this base and
-remains the standalone reference implementation; this base is the template for the rest.)
+look-ahead-free convention enforced by ``alpha_backtest.feed`` + ``bar_execution=False``). CASH
+buys in backtests are checked against free cash plus fees at the opening quote after the close-time
+target is fixed. Concrete strategies implement only the pure ``_signal`` hook.
+(``TimeSeriesMomentum`` predates this base and remains the standalone reference implementation;
+this base is the template for the rest.)
 """
 
 from __future__ import annotations
@@ -19,10 +21,10 @@ from typing import Any
 
 from nautilus_trader.model.data import Bar as NautilusBar
 from nautilus_trader.model.data import BarType, QuoteTick
-from nautilus_trader.model.enums import OrderSide, TimeInForce
+from nautilus_trader.model.enums import AccountType, OrderSide, TimeInForce
 from nautilus_trader.model.events import OrderCanceled, OrderExpired, OrderFilled
 from nautilus_trader.model.identifiers import AccountId, ClientOrderId, InstrumentId
-from nautilus_trader.model.objects import Quantity
+from nautilus_trader.model.objects import Money, Quantity
 from nautilus_trader.trading.strategy import Strategy
 
 from alpha_core import (
@@ -31,7 +33,9 @@ from alpha_core import (
     DataError,
     DecisionTrace,
     ExecutionEventSink,
+    ExecutionRejectionTrace,
     IndicatorTrace,
+    bps_rate,
 )
 from alpha_strategies.sizing import realized_volatility, vol_target_size
 
@@ -164,6 +168,9 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         self.net_units = 0.0
         self.fills = 0
         self.rejections = 0  # orders denied (risk/buying-power) or rejected by the venue
+        self.execution_rejections: list[ExecutionRejectionTrace] = []
+        self._cash_fee_rate: float | None = None
+        self._backtest_account_type: AccountType | None = None
         self._event_sink: ExecutionEventSink | None = None
         self._paper_risk: PaperRiskLimits | None = None
         self._paper_reconciled = False
@@ -246,6 +253,11 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
     def set_execution_event_sink(self, sink: ExecutionEventSink | None) -> None:
         """Attach the operational paper journal; deterministic backtests leave this unset."""
         self._event_sink = sink
+
+    def configure_cash_execution(self, *, fee_bps: float, account_type: AccountType) -> None:
+        """Configure the backtest-only fee-aware order affordability check."""
+        self._cash_fee_rate = bps_rate(fee_bps)
+        self._backtest_account_type = account_type
 
     def configure_paper_risk(self, limits: PaperRiskLimits, *, reconciled: bool = False) -> None:
         """Enable broker-paper controls without changing deterministic backtest defaults."""
@@ -539,6 +551,63 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         )
         if quantity is None:
             return
+        if (
+            side == OrderSide.BUY
+            and self._backtest_account_type == AccountType.CASH
+            and self._cash_fee_rate is not None
+            and self._cash_fee_rate > 0.0
+        ):
+            # The order executes against this t+1 ask (already includes modeled slippage). CASH
+            # buying-power checks in Nautilus account for principal but not commission, so reject
+            # the whole order when principal plus the same currency-rounded fee would exceed free
+            # cash. The close-time target remains intact and no next-open price leaks into it.
+            price = float(quote.ask_price)
+            notional = float(quantity) * price
+            currency = instrument.quote_currency
+            principal = Money(notional, currency)
+            commission = Money(notional * self._cash_fee_rate, currency)
+            account = self.portfolio.account(self._iid.venue)
+            available = account.balance_free(currency) if account is not None else None
+            if available is None:
+                raise DataError(
+                    f"CASH fee affordability requires a free {currency} balance for {self._iid}"
+                )
+            required_cash_money = principal + commission
+            available_cash = available.as_double()
+            if required_cash_money > available:
+                reason = (
+                    "cash_notional_exceeds_free_balance"
+                    if principal > available
+                    else "cash_plus_commission_exceeds_free_balance"
+                )
+                self.rejections += 1
+                required_cash = required_cash_money.as_double()
+                self.execution_rejections.append(
+                    ExecutionRejectionTrace(
+                        ts=datetime.fromtimestamp(int(quote.ts_event) / 1_000_000_000, tz=UTC),
+                        instrument_id=str(self._iid),
+                        side="BUY",
+                        requested_quantity=float(quantity),
+                        reference_price=price,
+                        available_cash=available_cash,
+                        estimated_fee=commission.as_double(),
+                        required_cash=required_cash,
+                        reason=reason,
+                    )
+                )
+                self._emit(
+                    "order_rejected",
+                    {
+                        "instrument_id": str(self._iid),
+                        "side": "BUY",
+                        "quantity": float(quantity),
+                        "reason": reason,
+                        "required_cash": required_cash,
+                        "available_cash": available_cash,
+                    },
+                    ts_event_ns=int(quote.ts_event),
+                )
+                return
         intent_id = None
         if risk is not None:
             intent_id = risk.intent_id

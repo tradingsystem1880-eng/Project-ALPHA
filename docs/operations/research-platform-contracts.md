@@ -9,6 +9,12 @@ acceptance claim. The [ADR index](../adr/README.md), path rules and cited design
 - Strategies and backtests read through `as_of`. Daily execution uses an open-priced QuoteTick
   at the bar timestamp and a close-stamped decision Bar (+23h); `bar_execution=False` makes quotes
   the fill events. Decide at close t, fill at open t+1 (ADRs 0003, 0005).
+- The shared vol-target strategy checks CASH buy principal plus the currency-rounded fee against
+  actual free quote-currency cash at that next-open quote. An unaffordable request is rejected as a
+  pre-submit execution event; it does not resize the close-time target or become a venue order.
+  `pretrade_rejections.parquet` records its quantity, price, available cash, estimated fee, required
+  cash, and reason; manifest rejection totals reconcile venue rejections plus these events. MARGIN
+  orders and sells remain outside this CASH-buy check.
 - Corporate actions use `announce_date` (otherwise `ex_date`) for knowledge and `ex_date` for price
   application. Known future splits do not rescale current prices. Dividends are engine cash events
   at `pay_date` for the pre-ex holding, including short debits and Tier-2 paths; Tier-1 remains

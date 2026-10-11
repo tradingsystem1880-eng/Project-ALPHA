@@ -8,9 +8,11 @@ Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `
 ### `alpha_core` (`packages/alpha-core/src/alpha_core/`) — domain types, protocols, errors, config. Imports nothing internal.
 | Module | Responsibility | Key public symbols |
 |---|---|---|
-| `types.py` | Frozen domain values | `Bar` (OHLCV), `ValidationOutcome`, causal `DecisionTrace`/`IndicatorTrace`, deterministic vector `ChartAnchor`/`ChartAnnotationTrace` |
+| `types.py` | Frozen domain values | `Bar` (OHLCV), `ValidationOutcome`, causal `DecisionTrace`/`IndicatorTrace`, deterministic vector `ChartAnchor`/`ChartAnnotationTrace`; fee-aware `ExecutionRejectionTrace` |
 | `errors.py` | Typed error hierarchy | `AlphaError` ← `DataError`, `LookAheadError` |
 | `protocols.py` | Structural interfaces | `DataSource` (`available_symbols`, `as_of`), `Validator`, `ExecutionEventSink` (flat low-volume operational events only) |
 | `config.py` | Typed settings (env `ALPHA_*`/`.env`) | `AlphaSettings(data_dir=Path("data"), bulk_data_dir=Path("data/bulk"), bulk_volume_uuid=None, random_seed=7, paper_enabled=False, ibkr_paper_enabled=False)`; `forecast_hub_cache`/`forecast_local_only` = machine-local HF weight cache + no-network loading (never in run ids/manifests; ADR-0010) |
 | `corporate.py` | Corporate-action types (two-clock) | `ActionType` (SPLIT/DIVIDEND/REDENOMINATION/SYMBOL_MIGRATION), `CorporateAction` (`knowledge_time`, `knowledge_is_estimated`) |
 
+
+`costs.py::bps_rate` validates a finite nonnegative fee and uses division by 10,000; adapters share this rate before quote-currency rounding.

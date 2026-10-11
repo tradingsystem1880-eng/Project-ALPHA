@@ -2,33 +2,25 @@ import { expect, test } from '@playwright/test'
 import { preparePage } from './support/workstationHarness'
 import type { components } from '../src/api/generated'
 const candles = { 'XRP/USDT': Array.from({ length: 1000 }, (_, i) => ({ t: 1700000000 + i * 3600, o: 100 + i / 20, h: 102 + i / 20, l: 99 + i / 20, c: 101 + i / 20, v: 1000 + i })) }
-test('scientific Bokeh default, optional market renderer and mounted maximize', async ({ page }) => {
+test('technical Bokeh default, optional market renderer and mounted maximize', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message))
   await preparePage(page, { candles }); await page.goto('/#page=data&pane=PriceChart')
   await expect(page.getByLabel('Plot renderer')).toHaveValue('scientific')
-  const host = page.locator('[data-panel-id=primary] .scientific-series-host').first()
+  const host = page.locator('[data-panel-id=primary] .technical-host').first()
   await expect(host.locator('canvas').first()).toBeVisible()
-  await expect(page.getByRole('alert').filter({ hasText: 'Scientific plot unavailable' })).toHaveCount(0)
-  const auxiliary = page.locator('[data-panel-id=primary] .scientific-indicator .scientific-series-host')
-  await expect(auxiliary).toHaveCount(0)
-  const auxiliarySummary = page.locator('[data-panel-id=primary] .scientific-market-details > summary')
-  await auxiliarySummary.click()
-  await expect(auxiliary.locator('canvas').first()).toBeVisible()
-  await auxiliary.locator('canvas').first().evaluate(node => node.setAttribute('data-auxiliary-lifetime', 'preserved'))
-  await auxiliarySummary.click()
-  await expect(auxiliary.locator('canvas[data-auxiliary-lifetime=preserved]')).toHaveCount(1)
-  await auxiliarySummary.click()
-  await expect(auxiliary.locator('canvas[data-auxiliary-lifetime=preserved]')).toBeVisible()
-  await auxiliarySummary.click()
-  await host.locator('canvas').first().evaluate(node => node.setAttribute('data-lifetime', 'scientific'))
+  await expect(page.getByRole('alert').filter({ hasText: 'Technical chart unavailable' })).toHaveCount(0)
+  // Volume and backend studies share the price stack (RSI above, MACD below); nothing is hidden.
+  await expect(host.locator('.technical-legend')).toHaveCount(3)
+  await expect(host.locator('.technical-legend').nth(1)).toContainText('Volume')
+  await host.locator('canvas').first().evaluate(node => node.setAttribute('data-lifetime', 'technical'))
   await page.getByLabel('Analytical layout').selectOption('grid')
   await expect(page.locator('.analytical-panel')).toHaveCount(4)
   await page.getByRole('button', { name: 'Maximize panel primary', exact: true }).click()
   await page.keyboard.press('Escape')
-  await expect(host.locator('canvas[data-lifetime=scientific]')).toHaveCount(1)
+  await expect(host.locator('canvas[data-lifetime=technical]')).toHaveCount(1)
   await page.getByLabel('Grid', { exact: true }).click()
-  await expect(host.locator('canvas[data-lifetime=scientific]')).toHaveCount(1)
-  await page.screenshot({ path: '/tmp/alpha-scientific-workspace.png', fullPage: true })
+  await expect(host.locator('canvas[data-lifetime=technical]')).toHaveCount(1)
+  await page.screenshot({ path: '/tmp/alpha-technical-workspace.png', fullPage: true })
   await page.getByLabel('Plot renderer').selectOption('market')
   await expect(page.locator('[data-panel-id=primary] .price-host canvas').first()).toBeVisible()
   expect(errors).toEqual([])
@@ -46,23 +38,25 @@ test('hourly source discovery and scientific UTC links preserve native identity'
   await expect(page.locator('.terminal-titlebar')).toContainText('[XRPUSDT,1h]')
   await page.getByLabel('Analytical layout').selectOption('side-by-side')
   await page.getByText('Panels', { exact: true }).click(); await page.getByLabel('Link UTC ranges').check(); await page.getByLabel('Link UTC cursors').check(); await page.getByText('Panels', { exact: true }).click()
-  const primary = page.locator('[data-panel-id=primary] .scientific-series-host').first(), peer = page.locator('[data-panel-id=panel-1] .scientific-series-host').first()
+  const primary = page.locator('[data-panel-id=primary] .technical-host').first(), peer = page.locator('[data-panel-id=panel-1] .technical-host').first()
   await expect(peer.locator('canvas').first()).toBeVisible()
+  const lastBar = (await page.locator('[data-panel-id=panel-1] .technical-ohlc').first().textContent())!
   const initial = await primary.getAttribute('data-visible-range')
   const box = (await primary.boundingBox())!
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.wheel(0, -200)
   await expect.poll(() => primary.getAttribute('data-visible-range')).not.toBe(initial)
   await expect.poll(() => peer.getAttribute('data-visible-range')).toBe(await primary.getAttribute('data-visible-range'))
-  const primaryReadout = page.locator('[data-panel-id=primary] .plot-readout').first(), peerReadout = page.locator('[data-panel-id=panel-1] .plot-readout').first()
+  const primaryReadout = page.locator('[data-panel-id=primary] .technical-ohlc').first(), peerReadout = page.locator('[data-panel-id=panel-1] .technical-ohlc').first()
   await page.mouse.move(box.x + box.width / 2 + 10, box.y + box.height / 2)
-  await expect(primaryReadout).not.toContainText('Cursor —')
+  await expect(primaryReadout).not.toHaveText(lastBar)
   await expect(peerReadout).toHaveText((await primaryReadout.textContent())!)
-  // The imperative cursor must follow Bokeh's frame after linked zoom and relayout.
+  // The imperative crosshair must follow Bokeh's frames after linked zoom and relayout.
   const cursorGeometry = async (host: typeof primary) => {
-    await expect(host.locator('.scientific-cursor')).toBeVisible()
+    await expect(host.locator('.technical-cursor').first()).toBeVisible()
     await expect.poll(async () => {
-      const bounds = (await host.boundingBox())!, cursor = (await host.locator('.scientific-cursor').boundingBox())!
-      return cursor.x >= bounds.x && cursor.x <= bounds.x + bounds.width && cursor.y >= bounds.y && cursor.y + cursor.height <= bounds.y + bounds.height + 1 && cursor.height > bounds.height / 2
+      const bounds = (await host.boundingBox())!
+      const cursors = await host.locator('.technical-cursor').evaluateAll(nodes => nodes.map(n => { const r = n.getBoundingClientRect(); return { x: r.x, y: r.y, height: r.height } }))
+      return cursors.length > 0 && cursors.every(c => c.x >= bounds.x && c.x <= bounds.x + bounds.width && c.y >= bounds.y && c.y + c.height <= bounds.y + bounds.height + 1) && cursors.reduce((sum, c) => sum + c.height, 0) > bounds.height / 2
     }).toBe(true)
   }
   await cursorGeometry(primary); await cursorGeometry(peer)
@@ -82,5 +76,5 @@ test('hourly source discovery and scientific UTC links preserve native identity'
   await cursorGeometry(primary); await cursorGeometry(peer)
   expect(await primary.getAttribute('data-visible-range')).toBe(range)
   await page.getByRole('menuitem', { name: 'File', exact: true }).hover()
-  await expect(peerReadout).toContainText('Cursor —')
+  await expect(peerReadout).toHaveText(lastBar)
 })

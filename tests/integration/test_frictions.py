@@ -7,7 +7,15 @@ import pytest
 from alpha_backtest.engine import run_backtest
 from alpha_backtest.feed import daily_bar_type, to_execution_feed
 from alpha_backtest.instruments import equity_instrument
+from alpha_core import DataError, bps_rate
 from tests.fixtures.nautilus_fixtures import RoundTrip, ladder_bars
+
+
+def test_basis_point_rate_is_shared_and_rejects_non_finite_costs() -> None:
+    assert bps_rate(2.0) == 0.0002
+    for invalid in (-1.0, float("nan"), float("inf")):
+        with pytest.raises(DataError, match="fee_bps"):
+            bps_rate(invalid)
 
 
 def test_slippage_fills_buy_above_and_sell_below_open() -> None:

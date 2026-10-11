@@ -182,6 +182,8 @@ def validate(
     manifest["folds"] = [_runner.fold_manifest(fold, bars) for fold in out.oos.folds]
     manifest["oos_execution_boundary"] = "fresh_portfolio_after_causal_indicator_priming"
     manifest["oos_trace_scope"] = "scored_test_sessions_plus_originating_prior_close_decision"
+    manifest["rejected"] = out.result.rejected
+    manifest["pretrade_rejections"] = len(out.result.execution_rejections)
     if spec.rules_spec is not None:
         # the owner's exact rule set, so the report can show what was validated (identity
         # already includes these bytes through ``vars(spec)``)
