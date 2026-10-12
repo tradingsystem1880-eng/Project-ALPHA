@@ -16,6 +16,7 @@ import secrets
 import sqlite3
 import stat
 import tempfile
+import time
 import uuid
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -1668,6 +1669,30 @@ def _research_d2_topology(payload: Mapping[str, object]) -> tuple[dict[str, obje
     return d2, boundary_hash
 
 
+def _enable_wal(connection: sqlite3.Connection) -> None:
+    """Retry safe journal negotiation within the configured SQLite busy budget."""
+    budget_ms = int(connection.execute("PRAGMA busy_timeout").fetchone()[0])
+    deadline = time.monotonic() + budget_ms / 1000
+    try:
+        while True:
+            remaining_ms = max(0, int((deadline - time.monotonic()) * 1000))
+            connection.execute(f"PRAGMA busy_timeout = {remaining_ms}")
+            try:
+                connection.execute("PRAGMA journal_mode = WAL")
+                return
+            except sqlite3.OperationalError as exc:
+                remaining = deadline - time.monotonic()
+                if (
+                    getattr(exc, "sqlite_errorcode", None) != sqlite3.SQLITE_BUSY
+                    or connection.in_transaction
+                    or remaining <= 0
+                ):
+                    raise
+                time.sleep(min(0.01, remaining))
+    finally:
+        connection.execute(f"PRAGMA busy_timeout = {budget_ms}")
+
+
 class ControlStore:
     """Typed public seam over ALPHA's local Workstation v3 control database."""
 
@@ -1735,7 +1760,7 @@ class ControlStore:
             # SQLite treats changing the mode as a database-wide write; doing it before the
             # migration lock lets concurrent openers fail with SQLITE_BUSY before BEGIN
             # IMMEDIATE can serialize them.
-            connection.execute("PRAGMA journal_mode = WAL")
+            _enable_wal(connection)
             _heal_missing_development_stage_rows(connection)
             return connection
         except (OSError, sqlite3.Error) as exc:
