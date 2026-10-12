@@ -942,3 +942,7 @@ by the combined build/freshness gate; Atlas inputs are regenerated for this comb
 Private coverage remains UNVERIFIED; these ordinary paths trigger no specialised private
 review or new exception. Protected mutation staging, extreme ticks, mutation inventory,
 floors, exclusions, policy and PR #54's description are unchanged.
+
+## 2026-10-13 — Bounded maintainability delivery
+
+Integrated the cleanup-only runtime/tests delta on accepted main `d914be9f` (PR54 and PR57). Immutable crypto writes and pure control JSON helpers are separated without changing bytes, limits, facade names, migrations or authority. The accepted WAL busy retry, disposable fixture repair and wheel restoration remain unchanged. Frontend checks build/type-check once before built-only browsers; standalone browser commands still build. Added focused development navigation. Source relocation intentionally changes new execution fingerprints; historical evidence remains untouched. The owner-approved one-time cleanup exception records unavailable private coverage UNVERIFIED; no standing policy change. Fresh target acceptance is recorded externally after public full verification and independent review; prior prototype evidence is not reused.

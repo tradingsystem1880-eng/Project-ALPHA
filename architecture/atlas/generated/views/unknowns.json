@@ -1,5 +1,5 @@
 {
-  "inputs_hash": "84f258c32302246ac2e6b0e182bc7b46a25ee53453c752aac9d6f25a27b039c2",
+  "inputs_hash": "95038fb94786de8eaab32a95e4a41fb152f6882b8ee476d7f8ca07714a093792",
   "purpose": "review queue: nodes with no doc anchor, test, or cross-layer link",
   "schema_version": 1,
   "unknown_node_ids": [
@@ -8,9 +8,11 @@
     "component:qlib",
     "module:alpha_backtest",
     "module:alpha_cli._atomic",
+    "module:alpha_cli._control_json",
     "module:alpha_cli._control_schema",
     "module:alpha_cli._crypto_acquisition",
     "module:alpha_cli._crypto_panel",
+    "module:alpha_cli._crypto_persistence",
     "module:alpha_cli._hypothesis_scan",
     "module:alpha_cli.assistant_cmds",
     "module:alpha_cli.assistant_worker",

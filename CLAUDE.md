@@ -2,15 +2,15 @@
 
 Authority: `docs/governance/capability-authority-matrix.md`.
 
-Private single-owner research platform: validate edge after costs. Python 3.12; uv. No hosting/distribution.
+Owner research: validate edge after costs. Python 3.12; uv. No hosting/distribution.
 
 ## Rules (path-scoped)
 
-Before edits, read applicable `.claude/rules/`. Load `karpathy-guidelines` for code work,
+Read applicable `.claude/rules/` before edits. Load `karpathy-guidelines`,
 `incremental-implementation` for multi-file changes, `code-simplification` for refactors,
 `code-review-and-quality` before merge, and `verification-before-completion` before success claims.
 Use `alpha-feature-workflow` for nontrivial changes; quant changes also require primary-source
-verification. Skills: `.agents/skills/`. Keep one mutator per overlapping slice.
+verification. Skills: `.agents/skills/`. One mutator per overlapping slice.
 
 Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`,
 `alpha-backtest.md`, `alpha-validation.md`, `alpha-research.md`, `alpha-forecast.md`,
@@ -54,28 +54,29 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
 - Components: `uv run python scripts/gate.py component NAME`, where NAME is
   `backend`, `frontend`, `literature`, `qlib`, `atlas` or `eval`; full requires all components.
 - Discovery: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;
-  `alpha info procedures --json`. Default command catalog remains launch-form compatible.
+  `alpha info procedures --json`. Default catalog remains launch-form compatible.
 - Install: `uv sync --locked`. Tests: `uv run pytest -q -m "not network"`; bias guards:
-  `uv run pytest -q -m bias_guard`. Component definitions own exact gate steps.
+  `uv run pytest -q -m bias_guard`. Definitions own exact steps; frontend builds once before built-only browsers.
 
 **2026-09-16:** [delivery record](docs/superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md).
-Shared checks, discovery, V2 plans and frozen-input screening are implemented. Install thin Git
-guards in new checkouts. Claude adapters provide orientation and native-boundary safety only.
+Checks, discovery, V2 plans and frozen-input screening delivered. Install Git guards
+in new checkouts. Claude adapters provide orientation and native-boundary safety only.
 Require a fresh full stamp; never bypass checks.
 [ADR-0037](docs/adr/0037-agent-neutral-research-engineering.md) separates engineering
 ceremony changes from unchanged application authority.
 [Harness](docs/operations/claude-code-harness.md): checkpoints, 96-mutant caps, intake, exceptions.
 
-Benchmark: [Codex-only; preserve history; enforce isolation](tools/alpha-eval/README.md).
+[Benchmark](tools/alpha-eval/README.md): Codex-only; preserve history/isolation.
 
 ## Current evidence
 
-Before work read [architecture](docs/ARCHITECTURE.md), the [ADR index](docs/adr/README.md),
+Read [architecture](docs/ARCHITECTURE.md), [ADRs](docs/adr/README.md),
 rules and [build record](docs/BUILD-STATUS.md). Contracts:
-[research platform](docs/operations/research-platform-contracts.md). Use source and fresh tests. Provider acceptance requires receipts; absent/failed live evidence cannot pass.
+[research platform](docs/operations/research-platform-contracts.md). Use fresh source/tests. Provider acceptance needs receipts; absent/failed live evidence cannot pass.
 
-Update this manual and append `docs/BUILD-STATUS.md` when behavior changes.
-Preserve user work; local checks are not aggregate acceptance.
+[Development loop](docs/operations/development-loop.md): focused checks.
+Behavior changes: update this manual and append `docs/BUILD-STATUS.md`.
+Preserve user work; local checks do not confer acceptance.
 
 UI: [terminal guide](apps/alpha-web/frontend/README.md): Bokeh research, optional market charts,
 UTC windows, exact exports and project-free browsing.
