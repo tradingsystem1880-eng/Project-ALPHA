@@ -874,3 +874,22 @@ Focused red regressions reproduced the old partition failure before implementati
 checks, canonical full verification, independent review and exact-head hosted CI/complete sweep
 are required before this follow-up can be accepted or merged. Private suites remain unverified under
 the existing scoped owner exception; standing policy is unchanged.
+
+
+### 2026-10-12: deterministic signed PIP oracle follow-up
+
+Sweep `38151251890` at `3c3a7760` completed 249 of 250 fragments successfully. PIP-miner
+fragment 4 (index 147) failed during clean test statistics; its error checkpoint retained all
+94 assigned mutants as unmeasured. Aggregate job `114573250539` correctly rejected the
+unfinished record. This was an oracle failure, not a phase deadline: the differential
+reference used unmirrored negative-total returns despite the documented symmetric ranking,
+and a module-global RNG made inputs depend on selected test order. Seed 11 at normal-draw
+offset 4250 reproduces the logged mismatch to float64 precision; the hosted order was not logged.
+
+The bounded test-only repair gives each PIP oracle/unit test its own seeded RNG and checks
+positive, negative and zero totals explicitly, retaining the counterexample and running-peak
+negative control. Production maths, tolerances, test scope, all mutant identities and score
+floors are unchanged. Repeated/reversed execution, applicable static checks, fresh canonical
+full, independent review and new exact-head hosted CI/exhaustive acceptance remain required.
+Private coverage remains UNVERIFIED under the existing scoped decision. PR #54's description
+remains untouched; failed/partial historical verdicts are never reused for acceptance.
