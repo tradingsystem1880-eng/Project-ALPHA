@@ -131,9 +131,10 @@ export function PriceChartCanvas({
       const width = host.clientWidth, height = host.clientHeight
       if (!width || !height || (width === renderedWidth && height === renderedHeight)) return
       const range = chart.timeScale().getVisibleLogicalRange()
-      chart.resize(width, height)
-      renderedWidth = width; renderedHeight = height
+      // Finish the queued range restoration in this resize paint, before the next gesture.
       if (range) chart.timeScale().setVisibleLogicalRange(range)
+      chart.resize(width, height, true)
+      renderedWidth = width; renderedHeight = height
     }
     const ro = new ResizeObserver(() => {
       clearTimeout(resizeTimer); cancelChartResize(resize)

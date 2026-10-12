@@ -703,6 +703,7 @@
     "tests/unit/test_git_guard.py": "606fe3084318b2ee0a0a229e77b144435596853259160db0e2ac1ceb29f32f17",
     "tests/unit/test_harmonics.py": "2a24280ae27cd769ea68cbd18b764db926b6ebcaf70e9a3d0fc85adc04d15abd",
     "tests/unit/test_harmonics_bias_guard.py": "9a9283a33797f03c680555e8e32d756a06d85a1b558eabe6628f1d0480138440",
+    "tests/unit/test_harness_repo_fixture.py": "1f4cff4fcd447b8fb3a1d11ce9caf9e98ae92f8c98d99a79983089471008771e",
     "tests/unit/test_hawkes.py": "b11bdc3583db5d561cc377d92369ee708064ecf31f9d18caf3fa0b2352ca00d6",
     "tests/unit/test_head_shoulders.py": "5ce23da3ce16dd047bf1845dd6b8a40e03c1dd27090a8dcc1f43f087bf3042cb",
     "tests/unit/test_hedged_basis_composition.py": "d37a22918ec757686b864cc932f31c4da4cb8644ffc3301e78127e31da8978dd",

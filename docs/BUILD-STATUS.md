@@ -893,3 +893,52 @@ floors are unchanged. Repeated/reversed execution, applicable static checks, fre
 full, independent review and new exact-head hosted CI/exhaustive acceptance remain required.
 Private coverage remains UNVERIFIED under the existing scoped decision. PR #54's description
 remains untouched; failed/partial historical verdicts are never reused for acceptance.
+
+
+### 2026-10-12: post-merge harness-template isolation follow-up
+
+PR #54 merged as `5b0b422d` after exact-head CI and exhaustive sweep `38233472012`
+passed. Independent aggregation verified all 52 modules, 250 checkpoints, 252 unique
+artifacts and 21,555 functional plus four legacy constant mutants; twelve score misses
+remain report-only under unchanged floors. The merged Git tree equals the accepted tree.
+PR #54's description remained byte-for-byte unchanged.
+
+Post-merge CI `38272832758` reported 5,321 tests passed and coverage 93.13%, but one
+harness fixture setup failed: copying the session template raced Git's removal of
+`.git/objects/maintenance.lock`. The bounded follow-up disables automatic maintenance
+only in the throwaway template before its initial writes; copied fixture repositories
+inherit the setting. Copy failures remain visible, and production/Git user configuration,
+mutation source, scope, inventory and baselines remain unchanged. A forced-maintenance
+TRACE2 regression fails before the fix and passes after it; its positive control launches
+actual foreground maintenance and packing with local suppression removed.
+
+Focused public checks pass; fresh canonical full, independent review and hosted checks
+remain required. Private coverage remains UNVERIFIED. This standalone fixture delta has
+no risk-tier, quant or protected-path trigger, so the specialized private-suite review rule
+does not apply. No exception is inferred or broadened; no private execution has been retried.
+
+
+### 2026-10-13: combined post-merge fixture and single-wheel resize repair
+
+The standalone fixture follow-up passed ordinary review, but its final full stopped at
+`quant-workspace.spec.ts:135`: one trusted wheel left the visible range unchanged. The
+failed trace and six isolated diagnostic passes are retained without treating the latter
+as acceptance. The chart owner then proved the ordering defect deterministically: after
+resize and one trusted wheel, releasing the pending draw restored the old span of 499
+in all three viewports.
+
+The bounded frontend correction restores the captured range before a forced resize paint,
+so the queued restoration completes before the next input. The actual-component regression
+waits for draw completion and asserts a settled contracted span after exactly one trusted
+wheel. All eighteen focused original/regression cases pass on the fixed source; the
+original quant-workspace test and fifty PNG baselines remain byte-identical. The full
+fixed browser and final combined canonical full, fresh review and hosted CI remain
+required; their acceptance is not inferred from focused results.
+
+This target combines that two-file correction with the disposable Git-maintenance fixture
+repair, its public regression and truthful scope documentation. Frontend build artifacts
+are copied only from the hash-verified frozen wheel preparation and will be checked again
+by the combined build/freshness gate; Atlas inputs are regenerated for this combined tree.
+Private coverage remains UNVERIFIED; these ordinary paths trigger no specialised private
+review or new exception. Protected mutation staging, extreme ticks, mutation inventory,
+floors, exclusions, policy and PR #54's description are unchanged.
