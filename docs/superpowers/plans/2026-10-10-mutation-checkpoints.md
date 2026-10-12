@@ -203,3 +203,45 @@ floors are unchanged. Repeated/reversed execution, applicable static checks, fre
 full, independent review and new exact-head hosted CI/exhaustive acceptance remain required.
 Private coverage remains UNVERIFIED under the existing scoped decision. PR #54's description
 remains untouched; failed/partial historical verdicts are never reused for acceptance.
+
+
+### 2026-10-12: post-merge harness-template isolation follow-up
+
+PR #54 merged as `5b0b422d` after exact-head CI and exhaustive sweep `38233472012`
+passed. Independent aggregation verified all 52 modules, 250 checkpoints, 252 unique
+artifacts and 21,555 functional plus four legacy constant mutants; twelve score misses
+remain report-only under unchanged floors. The merged Git tree equals the accepted tree.
+PR #54's description remained byte-for-byte unchanged.
+
+Post-merge CI `38272832758` reported 5,321 tests passed and coverage 93.13%, but one
+harness fixture setup failed: copying the session template raced Git's removal of
+`.git/objects/maintenance.lock`. The bounded follow-up disables automatic maintenance
+only in the throwaway template before its initial writes; copied fixture repositories
+inherit the setting. Copy failures remain visible, and production/Git user configuration,
+mutation source, scope, inventory and baselines remain unchanged. A forced-maintenance
+TRACE2 regression fails before the fix and passes after it; its positive control launches
+actual foreground maintenance and packing with local suppression removed.
+
+Focused public checks pass; fresh canonical full, independent review and hosted checks
+remain required. Private coverage remains UNVERIFIED. This standalone fixture delta has
+no risk-tier, quant or protected-path trigger, so the specialized private-suite review rule
+does not apply. No exception is inferred or broadened; no private execution has been retried.
+
+
+### 2026-10-13: final combined verification target
+
+The corrected fixture tree `bf0fd3bb` received ordinary independent approval, but its
+canonical full stopped on a one-wheel chart assertion. The failed full and subsequent
+readonly diagnostics remain historical evidence; isolated passes were not accepted as
+closure. The chart owner proved queued resize range restoration overwrote a later
+trusted wheel, then prepared the minimal call-order correction and actual-component
+settled-span regression in the [wheel plan](2026-10-12-chart-resize-wheel-order.md).
+
+The final isolated target combines those two source/test files with the unchanged
+Git-fixture repair, its ordinary scope correction, hash-verified generated SPA assets
+and regenerated Atlas fingerprints. The original chart assertions, gestures, timeouts
+and PNG baselines remain unchanged. The chart owner's complete fixed-browser terminal
+result precedes one fresh combined canonical full, independent review and exact-head
+hosted CI; normal merge and post-merge checks remain required. Private coverage is
+UNVERIFIED, with no specialised trigger or inferred exception for these ordinary paths.
+Protected mutation staging and the accepted exhaustive inventory remain separate.

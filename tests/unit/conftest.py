@@ -12,21 +12,12 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit._harness_support import git
+from tests.unit._harness_support import build_harness_repo
 
 
 @pytest.fixture(scope="session")
 def _harness_repo_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    root = tmp_path_factory.mktemp("harness-repo-template") / "repo"
-    root.mkdir()
-    git(root, "init", "--quiet")
-    git(root, "config", "user.email", "test@example.com")
-    git(root, "config", "user.name", "Test")
-    (root / ".gitignore").write_text(".claude/state/\n.alpha/state/\n")
-    (root / "tracked.py").write_text("x = 1\n")
-    git(root, "add", "-A")
-    git(root, "commit", "--quiet", "-m", "chore: init")
-    return root
+    return build_harness_repo(tmp_path_factory.mktemp("harness-repo-template") / "repo")
 
 
 @pytest.fixture()

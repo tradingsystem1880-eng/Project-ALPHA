@@ -37,7 +37,7 @@ presets, plus a research report arrangement of equity, drawdown, diagnostics and
 market window/snapshot, archive manifest or recorded run. Changing a panel source cannot change
 canonical research context. Hidden chart documents retain their captured context and range.
 
-Optional UTC range and cursor linking uses a local animation-frame registry outside React state. Latest ranges reach one peer per available axis-work frame; pending resizing or other live documents can add convergence frames. Cursors reach peers together. Both renderers share cancellable axis work: resize dispatches are separated by four paint frames, and peer range dispatch never shares a resize frame. Current views and mounted charts are preserved.
+Optional UTC range and cursor linking uses a local animation-frame registry outside React state. Latest ranges reach one peer per available axis-work frame; pending resizing or other live documents can add convergence frames. Cursors reach peers together. Both renderers share cancellable axis work: resize dispatches are separated by four paint frames, and peer range dispatch never shares a resize frame. Current views and mounted charts are preserved. Lightweight chart resizes finish captured-range restoration in the resize paint before the next wheel gesture, so a queued resize cannot erase a later zoom.
 Absent timestamps clear linked cursors. Recorded plots display backend values and null gaps;
 backend histogram bins and QQ points use interactive Bokeh plots; monthly returns and portfolio correlations retain scientific SVG axes. All preserve exact accessible tables. Backend scientific figures remain explicitly static and retain exports,
 metadata and sampling disclosures. Missing run price snapshots cannot use current candles.

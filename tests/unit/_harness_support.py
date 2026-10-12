@@ -14,6 +14,21 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def build_harness_repo(root: Path) -> Path:
+    """Seed the disposable repository copied by harness tests."""
+    root.mkdir()
+    git(root, "-c", "maintenance.auto=false", "init", "--quiet")
+    # Detached maintenance can remove Git files while the session template is copied.
+    git(root, "config", "--local", "maintenance.auto", "false")
+    git(root, "config", "user.email", "test@example.com")
+    git(root, "config", "user.name", "Test")
+    (root / ".gitignore").write_text(".claude/state/\n.alpha/state/\n")
+    (root / "tracked.py").write_text("x = 1\n")
+    git(root, "add", "-A")
+    git(root, "commit", "--quiet", "-m", "chore: init")
+    return root
+
+
 def git(cwd: Path, *args: str, check: bool = True) -> str:
     result = subprocess.run(
         ["git", "-C", str(cwd), *args],
