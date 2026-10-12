@@ -100,3 +100,16 @@ schema: {"verdict": "APPROVE"|"BLOCK", "findings": [{"severity": "high"|"medium"
 "second_opinion": [{"finding": "...", "disposition": "agree"|"refute"|"out_of_scope",
 "reason": "..."}], "codex_unavailable": false} — no fences, no commentary. The
 caller pipes it to `uv run python scripts/gate.py attest --kind review`.
+
+## Bounded cleanup exception
+
+One-time owner exception (2026-10-10): the owner explicitly authorized proceeding
+without the absent private engineering suite `tests/holdout/` only for the bounded
+cleanup under `docs/superpowers/plans/2026-10-10-maintainability-cleanup.md`. Record
+private coverage UNVERIFIED with an informational finding; absence alone is
+nonblocking for this cleanup review. No private source access or execution of a
+denied private command is granted. All actual failures, public verification, fresh
+independent review, normal Git guards and hosted CI remain required. Separate
+push and merge are authorized only after those checks pass. This is not a
+private-test pass, standing policy, mutation exception, research/trading authority
+or permission for any later change.

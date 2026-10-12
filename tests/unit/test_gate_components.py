@@ -1,5 +1,6 @@
 """Agent-neutral gate coverage and conservative impact selection."""
 
+import json
 from pathlib import Path
 
 import gate
@@ -41,13 +42,23 @@ def test_component_cli_accepts_every_registered_component() -> None:
         assert parser.parse_args(["component", name]).name == name
 
 
-def test_frontend_commands_include_types_browser_and_freshness() -> None:
+def test_frontend_build_checks_types_once_before_browser_and_freshness() -> None:
     commands = gate_components.component_steps(Path.cwd(), "frontend")
-    flattened = "\n".join(" ".join(command) for _, _, command in commands)
-    assert "tsc -b --pretty false" in flattened
-    assert "test:coverage" in flattened
-    assert "test:e2e" in flattened
-    assert "generate:api" in flattened
+    names = [name for name, _, _ in commands]
+    by_name = {name: command for name, _, command in commands}
+    scripts = json.loads((Path.cwd() / "apps/alpha-web/frontend/package.json").read_text())[
+        "scripts"
+    ]
+    assert by_name["build + types"] == ["npm", "run", "build"]
+    assert scripts["build"].startswith("tsc -b && ")
+    assert scripts["test:e2e:built"] == "playwright test"
+    assert scripts["test:e2e"] == "npm run build && playwright test"
+    assert by_name["browser"] == ["npm", "run", "test:e2e:built"]
+    assert names.index("build + types") < names.index("browser") < names.index("SPA freshness")
+    assert sum("tsc" in arg for _, _, command in commands for arg in command) == 0
+    assert by_name["coverage"] == ["npm", "run", "test:coverage"]
+    assert by_name["API generation"] == ["npm", "run", "generate:api"]
+    assert "API freshness" in names
 
 
 def test_component_definitions_have_stable_digest() -> None:
