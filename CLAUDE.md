@@ -49,7 +49,7 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
 
 ## Commands
 
-- Canonical aggregate: `uv run python scripts/gate.py full`.
+- Full (size guard): `uv run python scripts/gate.py full`.
 - Components: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
   `literature`, `qlib`, `atlas`, `eval`); full requires all.
 - Discovery: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;

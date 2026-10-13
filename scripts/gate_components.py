@@ -57,6 +57,24 @@ def component_steps(root: Path, component: str) -> list[Step]:
             for name, command in gate.gate_steps("full", root)
             if name not in {"slow oracles", "mutation gate"}
         ]
+        # Reuse the coverage suite's guard before expensive checks, after locked setup.
+        setup_end = next(i for i, (name, _, _) in enumerate(commands) if name == "uv sync")
+        commands.insert(
+            setup_end + 1,
+            (
+                "manual preflight",
+                root,
+                [
+                    "uv",
+                    "run",
+                    "pytest",
+                    "-q",
+                    "-p",
+                    "no:cacheprovider",
+                    "tests/unit/test_claude_md_relocation.py::TestCurrentManual::test_core_is_small",
+                ],
+            ),
+        )
         paths = changed_paths(root)
         modules = (
             gate.all_quant_source_modules(root)

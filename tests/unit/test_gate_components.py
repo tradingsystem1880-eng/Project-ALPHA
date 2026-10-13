@@ -10,6 +10,116 @@ import pytest
 from tests.unit._harness_support import git
 
 
+@pytest.mark.parametrize(
+    ("paths", "quant_expected"),
+    [
+        ([], False),
+        (["packages/alpha-research/src/alpha_research/weekly_diagnostic.py"], True),
+        (None, True),
+    ],
+)
+def test_backend_checks_manual_before_expensive_steps(
+    monkeypatch: pytest.MonkeyPatch,
+    paths: list[str] | None,
+    quant_expected: bool,
+) -> None:
+    monkeypatch.setattr(gate_components, "changed_paths", lambda _root: paths)
+    root = Path.cwd()
+    commands = gate_components.component_steps(root, "backend")
+    preflight = (
+        "manual preflight",
+        root,
+        [
+            "uv",
+            "run",
+            "pytest",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "tests/unit/test_claude_md_relocation.py::TestCurrentManual::test_core_is_small",
+        ],
+    )
+    assert commands[:3] == [
+        ("uv lock", root, ["uv", "lock", "--check"]),
+        ("uv sync", root, ["uv", "sync", "--locked"]),
+        preflight,
+    ]
+    previous = [
+        (name, root, [arg for arg in command if name != "semgrep" or arg != "--changed"])
+        for name, command in gate.gate_steps("full", root)
+        if name not in {"slow oracles", "mutation gate"}
+    ]
+    quant_steps = {"slow oracles", "mutation gate"}
+    assert [
+        step for step in commands if step[0] not in quant_steps | {"manual preflight"}
+    ] == previous
+    names = [name for name, _, _ in commands]
+    if quant_expected:
+        assert names[-2:] == ["slow oracles", "mutation gate"]
+    else:
+        assert not quant_steps.intersection(names)
+
+
+@pytest.mark.parametrize("combined_bytes", [6_000, 6_001])
+def test_manual_budget_decides_preflight_receipt(
+    repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    combined_bytes: int,
+) -> None:
+    from tests.unit import test_claude_md_relocation as manual_tests
+
+    (repo / "CLAUDE.md").write_bytes(b"x" * 6_000)
+    (repo / "AGENTS.md").write_bytes(b"x" * (combined_bytes - 6_000))
+    monkeypatch.setattr(manual_tests, "ROOT", repo)
+    commands = gate_components.component_steps(repo, "backend")
+    seen: list[list[str]] = []
+
+    def run(command: list[str], *, cwd: Path) -> tuple[bool, float, str]:
+        seen.append(command)
+        if any("test_core_is_small" in arg for arg in command):
+            try:
+                manual_tests.TestCurrentManual().test_core_is_small()
+            except AssertionError:
+                return False, 0.01, "manual exceeds the existing 6000-byte limit"
+        return True, 0.01, ""
+
+    monkeypatch.setattr(gate, "_env_runner", run)
+    gate.write_stamp(repo, "full", steps=[], duration=0)
+    valid = combined_bytes <= 6_000
+    assert gate_components.run_component(repo, "backend", steps=commands) == (0 if valid else 1)
+    assert len(seen) == (len(commands) if valid else 3)
+    assert not gate.stamp_is_valid(repo, "full")
+    receipt = gate.read_json(repo / gate.STATE_DIR / "component-backend.json")
+    assert receipt and receipt["status"] == ("passed" if valid else "failed")
+    assert receipt["ok"] is valid
+
+
+def test_old_backend_receipt_without_preflight_cannot_match() -> None:
+    root = Path.cwd()
+    commands = gate_components.component_steps(root, "backend")
+    previous = [step for step in commands if step[0] != "manual preflight"]
+    receipt = {
+        "schema_version": 1,
+        "component": "backend",
+        "tree_hash": "same-tree",
+        "definition_hash": gate_components._steps_hash(root, previous),
+        "status": "passed",
+        "ok": True,
+        "stable_tree": True,
+        "steps": [
+            {
+                "name": name,
+                "command": cmd,
+                "cwd": str(cwd.relative_to(root)),
+                "ok": True,
+                "seconds": 0.1,
+            }
+            for name, cwd, cmd in previous
+        ],
+    }
+    assert not gate_components._receipt_matches(root, "backend", commands, "same-tree", receipt)
+
+
 def test_unknown_base_requires_every_component() -> None:
     assert gate_components.required_components(None) == set(gate_components.COMPONENTS)
 
