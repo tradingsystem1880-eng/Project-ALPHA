@@ -58,6 +58,7 @@ from alpha_cli._crypto_coverage import batch_directory as _coverage_batch_direct
 from alpha_cli._crypto_coverage import create_coverage_batch as _create_coverage_batch_at
 from alpha_cli._crypto_coverage import read_coverage_batch as _read_coverage_batch_at
 from alpha_cli._crypto_coverage import write_batch_json as _write_coverage_batch_json
+from alpha_cli._crypto_persistence import write_immutable_json
 from alpha_cli._crypto_yield_catalog import empty_yield_catalog, yield_catalog
 from alpha_cli.control_store import ControlStore, research_case_revision
 from alpha_cli.research_crypto_data import load_crypto_crowding_observations
@@ -437,15 +438,11 @@ def _coverage_batch_root() -> Path:
 def _write_coverage_profile(profile: CryptoCoverageProfileV1) -> None:
     root = _coverage_profile_root()
     root.mkdir(parents=True, exist_ok=True)
-    path = root / f"{profile.profile_id}.json"
-    rendered = json.dumps(profile.to_dict(), sort_keys=True, indent=2, allow_nan=False) + "\n"
-    if path.exists():
-        if path.read_text(encoding="utf-8") != rendered:
-            raise DataError("crypto coverage-profile identity collision")
-        return
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(rendered, encoding="utf-8")
-    os.replace(temporary, path)
+    write_immutable_json(
+        root / f"{profile.profile_id}.json",
+        profile.to_dict(),
+        collision="crypto coverage-profile identity collision",
+    )
 
 
 def _read_coverage_profile(profile_id: str) -> CryptoCoverageProfileV1:
@@ -463,15 +460,11 @@ def _read_coverage_profile(profile_id: str) -> CryptoCoverageProfileV1:
 def _write_asset_master(master: AssetMaster) -> None:
     root = _asset_master_root()
     root.mkdir(parents=True, exist_ok=True)
-    path = root / f"{master.version}.json"
-    rendered = json.dumps(master.to_dict(), sort_keys=True, indent=2, allow_nan=False) + "\n"
-    if path.exists():
-        if path.read_text(encoding="utf-8") != rendered:
-            raise DataError("crypto asset-master identity collision")
-        return
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(rendered, encoding="utf-8")
-    os.replace(temporary, path)
+    write_immutable_json(
+        root / f"{master.version}.json",
+        master.to_dict(),
+        collision="crypto asset-master identity collision",
+    )
 
 
 def _read_asset_master(version: str) -> AssetMaster:
@@ -509,15 +502,11 @@ def _stable_resource_revision_lineage(
 def _write_snapshot(snapshot: CryptoSnapshotV1) -> None:
     root = _snapshot_root()
     root.mkdir(parents=True, exist_ok=True)
-    path = root / f"{snapshot.snapshot_id}.json"
-    rendered = json.dumps(snapshot.to_dict(), sort_keys=True, indent=2, allow_nan=False) + "\n"
-    if path.exists():
-        if path.read_text(encoding="utf-8") != rendered:
-            raise DataError("crypto snapshot identity collision")
-        return
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(rendered, encoding="utf-8")
-    os.replace(temporary, path)
+    write_immutable_json(
+        root / f"{snapshot.snapshot_id}.json",
+        snapshot.to_dict(),
+        collision="crypto snapshot identity collision",
+    )
 
 
 def _read_snapshot(snapshot_id: str) -> CryptoSnapshotV1:

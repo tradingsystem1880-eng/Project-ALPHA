@@ -826,3 +826,181 @@ Private coverage remains UNVERIFIED; the standing policy is excluded. Recovered 
 previously passed all six components on f54af6df. Refresh exact-tree validation and independent
 review for this delivery record; exact-target hosted CI and legitimate dependency order remain
 required. No live-provider acceptance, strategy admission or trading authority is conferred.
+
+**2026-10-10 mutation sweep durability (isolated publication):** Serial nightly sweeps were
+cancelled near six hours. The owner selected weekly exhaustive singleton jobs; nightly Semgrep,
+determinism and raise-site coverage remain. Identity-bound atomic checkpoints, persisted logs,
+unique staging, bounded matrix/internal workers, deadline process-group cleanup and exact aggregate
+validation separate complete infrastructure from report-only hosted scores. Floors, tolerance,
+module/test scope, excluded-test audit and local tooling-unavailable semantics are unchanged.
+The shared-tree implementation passed 225 focused tests, four Atlas consistency tests and the
+six-component canonical full gate. This focused branch requires its own fresh full verification,
+independent review and hosted evidence. Private engineering coverage remains UNVERIFIED; main's
+review policy must be satisfied before any protected commit. After an explicit question,
+the owner answered "yes" to a one-time absent-private-suite exception for the mutation fix
+under `docs/superpowers/plans/2026-10-10-mutation-checkpoints.md` only. Its absence remains
+UNVERIFIED; the denied private execution will not be retried. No actual failure, public
+check, independent review, hosted mutation completeness or Git protection is waived, and
+no private-source access or future exception is granted. The isolated pre-exception tree
+passed all six full-gate components; the updated tree requires fresh full verification
+and independent review before guarded publication.
+
+## 2026-10-10 — Hosted mutation constant-module repair (verification pending)
+
+PR #54 candidate `2c90f008` passed required CI after one documented harness fixture-race
+retry. The exhaustive hosted sweep exposed mutmut 3's unsupported constant-only
+`alpha_research/figures/version.py`: its failed checkpoint and command logs survived.
+Pinned mutmut 2.5.1 measured four actual mutations locally, all killed, with the unchanged
+selected tests and audited exclusions. A narrow serial fallback and strict completed-cache
+export retain this module, freeze backend identity and reject empty/unfinished records.
+Fresh full gate, independent review and complete hosted sweep remain required on the repaired
+tree. Mutation baselines, thresholds and private-source boundaries remain unchanged.
+
+## 2026-10-10 — Hosted mutation deadline repair (verification pending)
+
+PR #54 head `1605b5b` passed fresh local full, independent review, 213 focused tests and all seven
+hosted CI checks; its actual hosted constant-only fallback measured four killed of four mutants.
+Run `38052927037-1` retained explicit 5400-second failures for data (224/239), boundary (1083/1810)
+and crypto crowding (971/1333), with error checkpoints and terminated descendant process groups.
+Singleton module jobs therefore cannot establish full hosted completion. Owner-authorized repair
+partitions complete pinned-backend canonical mutant inventories into up to four exact-name fragments
+per functional module, with exact per-mutant aggregation and unchanged test/floor/verdict semantics.
+Up to 205 jobs repeat setup/preflight/statistics at most four times, retaining eight concurrent jobs
+and two workers each. Failed and successful evidence is retained; no partial run is acceptance.
+The repaired tree still requires real failed-module reproduction, final full/review and a new
+complete hosted sweep/required CI. Private engineering coverage remains UNVERIFIED under the same
+scoped exception; original shared work and unrelated reconciliation lanes remain untouched.
+
+The same run also retained event-study (233/580) and renderer (651/1778) deadline failures.
+`alpha_validation/_atomic.py` failed separately after successful stats collection found no associated tests
+for its 30 generated mutants. The scoped adapter adds explicit successful-collection certification
+for conservative no-tests accounting, with negative regressions; actual-tool validation is pending.
+
+Actual final-code diagnostics completed locally: data accounted for all 239 canonical mutants
+in four disjoint fragments (176 killed, five survived, 58 timeout; 0.7364 score fails its unchanged
+0.8182 floor). Complete collection certified the 30 generated `_atomic` mutants as conservative
+no-tests, zero kills and score failure at the unchanged 0.90 floor, with 527 real test records.
+The first two data fragments used the initial exact-name CLI adapter; the last two and `_atomic`
+used the final pinned adapter. These are diagnostic receipts, never full hosted acceptance.
+The old hosted head also retained gate-packet timeout progress 2250/3019. New exact-head hosted
+completion, final canonical full and fresh bound review remain acceptance requirements.
+
+
+## 2026-10-11 — bounded WAL negotiation during hosted mutation collection
+
+Final fragment head `31e64420` generated the complete hosted inventory (52 modules, 205 jobs,
+21,555 functional mutants), independently validated against commit/run identity and source hashes.
+One `_arrays` fragment failed unmutated collection at the existing public concurrent v1 migration
+test with `DataError("cannot initialize control store")`; other fragments passed. The initial
+assertion omitted the chained cause. A real temporary-database contention reproduction captured
+`SQLITE_BUSY` (code 5) at `PRAGMA journal_mode = WAL`, wrapped by the same error.
+
+The bounded follow-up retries only exact `SQLITE_BUSY` outside a transaction, within the existing
+configured busy-timeout budget for WAL negotiation (normally five seconds). Each attempt receives
+only the remaining budget, and the original timeout is restored. This is not a bound on all of
+`_open`; migrations retain their separate existing waits. Non-BUSY errors and exhausted budgets
+still fail loudly. Migration ordering, backups, protected schema and owner authority are unchanged.
+The existing migration assertions/timeouts/test selection remain; failure-only diagnostics retain
+chained traceback, statement and SQLite code. A real contention regression failed before and passed
+after the fix; budget exhaustion, read-only failure and timeout restoration also passed.
+
+Fresh public full verification, independent review and new exact-head complete hosted acceptance
+remain pending for this follow-up. No partial/stale hosted verdict, score floor or private-suite
+exception is reused or broadened. SQLite reference: https://www.sqlite.org/c3ref/busy_handler.html.
+
+
+### 2026-10-11: measured fragment sizing follow-up
+
+At `da463cee`, hosted sweep `38136100567` failed rendering fragment 46 at the unchanged
+5400-second mutation budget: 441 of 444 assigned mutants reached terminal status. The checkpoint
+remained an error and strict aggregation did not accept its three unfinished mutants. The run was
+explicitly cancelled after retaining its failure and all 69 started checkpoint/log artifacts;
+60 fragments completed, eight were interrupted and 136 never started. None is reused for acceptance.
+
+Cross-group sizing considered every started fragment, including event's 5198.5-second completed
+phase and conservative elapsed/progress estimates for interrupted leadlag jobs. Balanced sorted
+round-robin partitions now cap each fragment at 96 mutants. The same complete 52-module inventory
+produces 250 jobs, below the unchanged 256-job hard limit. Exhaustive keys, module/test scopes,
+associated tests, worker/concurrency limits, timeouts, floors and report-only score semantics remain
+unchanged. More setup and test-statistics runs are the explicit cost. Timing projections are estimates;
+never-started groups and a fresh complete hosted sweep remain unverified.
+
+Focused red regressions reproduced the old partition failure before implementation. Fresh focused
+checks, canonical full verification, independent review and exact-head hosted CI/complete sweep
+are required before this follow-up can be accepted or merged. Private suites remain unverified under
+the existing scoped owner exception; standing policy is unchanged.
+
+
+### 2026-10-12: deterministic signed PIP oracle follow-up
+
+Sweep `38151251890` at `3c3a7760` completed 249 of 250 fragments successfully. PIP-miner
+fragment 4 (index 147) failed during clean test statistics; its error checkpoint retained all
+94 assigned mutants as unmeasured. Aggregate job `114573250539` correctly rejected the
+unfinished record. This was an oracle failure, not a phase deadline: the differential
+reference used unmirrored negative-total returns despite the documented symmetric ranking,
+and a module-global RNG made inputs depend on selected test order. Seed 11 at normal-draw
+offset 4250 reproduces the logged mismatch to float64 precision; the hosted order was not logged.
+
+The bounded test-only repair gives each PIP oracle/unit test its own seeded RNG and checks
+positive, negative and zero totals explicitly, retaining the counterexample and running-peak
+negative control. Production maths, tolerances, test scope, all mutant identities and score
+floors are unchanged. Repeated/reversed execution, applicable static checks, fresh canonical
+full, independent review and new exact-head hosted CI/exhaustive acceptance remain required.
+Private coverage remains UNVERIFIED under the existing scoped decision. PR #54's description
+remains untouched; failed/partial historical verdicts are never reused for acceptance.
+
+
+### 2026-10-12: post-merge harness-template isolation follow-up
+
+PR #54 merged as `5b0b422d` after exact-head CI and exhaustive sweep `38233472012`
+passed. Independent aggregation verified all 52 modules, 250 checkpoints, 252 unique
+artifacts and 21,555 functional plus four legacy constant mutants; twelve score misses
+remain report-only under unchanged floors. The merged Git tree equals the accepted tree.
+PR #54's description remained byte-for-byte unchanged.
+
+Post-merge CI `38272832758` reported 5,321 tests passed and coverage 93.13%, but one
+harness fixture setup failed: copying the session template raced Git's removal of
+`.git/objects/maintenance.lock`. The bounded follow-up disables automatic maintenance
+only in the throwaway template before its initial writes; copied fixture repositories
+inherit the setting. Copy failures remain visible, and production/Git user configuration,
+mutation source, scope, inventory and baselines remain unchanged. A forced-maintenance
+TRACE2 regression fails before the fix and passes after it; its positive control launches
+actual foreground maintenance and packing with local suppression removed.
+
+Focused public checks pass; fresh canonical full, independent review and hosted checks
+remain required. Private coverage remains UNVERIFIED. This standalone fixture delta has
+no risk-tier, quant or protected-path trigger, so the specialized private-suite review rule
+does not apply. No exception is inferred or broadened; no private execution has been retried.
+
+
+### 2026-10-13: combined post-merge fixture and single-wheel resize repair
+
+The standalone fixture follow-up passed ordinary review, but its final full stopped at
+`quant-workspace.spec.ts:135`: one trusted wheel left the visible range unchanged. The
+failed trace and six isolated diagnostic passes are retained without treating the latter
+as acceptance. The chart owner then proved the ordering defect deterministically: after
+resize and one trusted wheel, releasing the pending draw restored the old span of 499
+in all three viewports.
+
+The bounded frontend correction restores the captured range before a forced resize paint,
+so the queued restoration completes before the next input. The actual-component regression
+waits for draw completion and asserts a settled contracted span after exactly one trusted
+wheel. All eighteen focused original/regression cases pass on the fixed source; the
+original quant-workspace test and fifty PNG baselines remain byte-identical. The full
+fixed browser and final combined canonical full, fresh review and hosted CI remain
+required; their acceptance is not inferred from focused results.
+
+This target combines that two-file correction with the disposable Git-maintenance fixture
+repair, its public regression and truthful scope documentation. Frontend build artifacts
+are copied only from the hash-verified frozen wheel preparation and will be checked again
+by the combined build/freshness gate; Atlas inputs are regenerated for this combined tree.
+Private coverage remains UNVERIFIED; these ordinary paths trigger no specialised private
+review or new exception. Protected mutation staging, extreme ticks, mutation inventory,
+floors, exclusions, policy and PR #54's description are unchanged.
+
+## 2026-10-13 — Bounded maintainability delivery
+
+Integrated the cleanup-only runtime/tests delta on accepted main `d914be9f` (PR54 and PR57). Immutable crypto writes and pure control JSON helpers are separated without changing bytes, limits, facade names, migrations or authority. The accepted WAL busy retry, disposable fixture repair and wheel restoration remain unchanged. Frontend checks build/type-check once before built-only browsers; standalone browser commands still build. Added focused development navigation. Source relocation intentionally changes new execution fingerprints; historical evidence remains untouched. The owner-approved one-time cleanup exception records unavailable private coverage UNVERIFIED; no standing policy change. Fresh target acceptance is recorded externally after public full verification and independent review; prior prototype evidence is not reused.
+
+
+**2026-10-13 — Recovered feature integration against accepted cleanup (pending).** PR55 is refreshed against accepted main d3043d6c (mutation checkpoints/WAL, disposable Git fixture, chart wheel order and bounded maintainability). Source repairs are retained; historical feature and acceptance records remain intact. Conflicting SPA and Atlas output is regenerated from the combined source. Fresh focused tests, independent review, quant verification, all six canonical components and exact-head/postmerge CI govern final acceptance. Private coverage remains UNVERIFIED under the existing recovered-work scoped exception; protected mutation staging remains separate and unapproved.

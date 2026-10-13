@@ -132,3 +132,70 @@ checks; it does not automatically extend the earlier exception to future work.
 A third explicit owner resolution on 2026-10-05 covers only the commits made under the
 [clean-and-reconcile plan](../superpowers/plans/2026-10-05-clean-reconcile-main.md). Hidden
 tests remain UNVERIFIED; every other check stays mandatory; no extension to later work.
+
+
+## Checkpointed weekly mutation execution (2026-10-10)
+
+`scripts/mutation_fragment.py inventory` under pinned `mutmut==3.8.0` generates every functional
+module's canonical mutant identity with the backend's original generator. Then
+`scripts/mutation_sweep.py plan --commit SHA --run-id RUN-ATTEMPT --mutants mutation-keys.json`
+freezes the entire `all_quant_source_modules` inventory, source hashes and complete mutant lists.
+Sorted identities are partitioned round-robin into balanced, disjoint fragments of at most
+96 mutants each; constant-only modules retain a singleton job. The current inventory has 250 jobs and
+planning rejects matrices over GitHub's 256-job limit. Weekly scheduling and
+on-touch local mutation requirements are preserved. Each hosted job uses unique temporary
+staging, at most two `mutmut run --max-children` workers and eight matrix jobs concurrently.
+Modules without functions use pinned `mutmut==2.5.1` serially because mutmut 3 cannot mutate
+their module-level constants. Both backends retain exactly the selected tests and exclusions.
+Inventory freezes the backend; checkpoints identify it. Legacy export requires actual mutant
+rows for the assigned source, known terminal statuses and a test hash; empty or unfinished
+measurements fail completeness. `--CI` makes legacy score findings report-only while fatal
+errors still fail. No constants are dropped or reclassified as successful empty measurements.
+Each functional fragment regenerates and verifies the complete frozen identity set before
+executing its exact assigned names with the unchanged associated tests. Its export requires
+every assigned verdict terminal and every unassigned verdict untouched. Aggregate reconstructs
+counts from disjoint per-mutant verdicts, requires their exact complete union and identical
+excluded-test audits, then computes each module's original floor verdict. Partial backend
+whole-module exports are never accepted. Setup, preflight and test statistics repeat per fragment;
+no mutant executes more than once. Concurrency and worker bounds are unchanged.
+Checkpoints initialize before dependency installation and atomically record module, full expected
+inventory, commit, run/attempt, phase, elapsed time, command timings and terminal measurement.
+Command logs persist separately during execution. SIGTERM/interruption records an unfinished
+checkpoint; hard runner loss can still prevent upload and is detected as missing aggregation.
+
+Preflight and mutation retain their 5400-second limits; export retains 120 seconds. A shared
+11100-second elapsed budget bounds commands, with process-group TERM/KILL cleanup and upload
+headroom inside the 200-minute job limit. Setup/staging filesystem time remains outside command
+timeouts and is included in elapsed-budget accounting before each command. Local mutation also
+cleans descendant processes and uses unique staging. Tooling absence remains locally nonblocking.
+
+Always-upload artifacts include run/attempt and module index; `aggregate` runs even when a shard
+fails. It rejects missing, duplicate, malformed, stale, mismatched or unfinished records and
+unaccounted/interrupted mutant counts, and writes a success or failure summary artifact. Low kill
+rates remain report-only hosted findings. Minimum 0.90, tolerance 0.005, baseline floors, selected
+tests, excluded-test audit, and conservative timeout/no-tests accounting are unchanged. No
+baseline writes occurred. Local mocked checks do not prove hosted completion.
+
+
+Before merge, the existing default-branch `nightly.yml` dispatcher can run the candidate branch's
+new reusable sweep: `gh workflow run nightly.yml --ref BRANCH -f mutation_sweep=true`.
+The explicit input defaults false; scheduled nightlies retain their ordinary non-mutation checks.
+Manual mutation callers use a separate concurrency group and cannot be cancelled by a scheduled
+nightly. The reusable sweep's own concurrency still prevents overlapping mutation batches.
+
+The pinned functional adapter explicitly certifies successful fresh full test-statistics collection
+when no mutant has associated tests. The certificate binds source, generated inventory and effective
+staged configuration, records executed test IDs/durations and staged import origins, and requires
+empty tracer hits plus untouched metadata. Only assigned mutants receive conservative `no_tests`
+verdicts (zero kills); generic tool failures and invalid certificates still block completeness.
+
+
+### Collection-time SQLite contention
+
+Unmutated collection can expose the public concurrent-control-store migration test. Preserve
+its assertions, timing and test selection; retain chained errors and SQLite codes before diagnosis.
+WAL negotiation retries only exact `SQLITE_BUSY` outside a transaction within the configured
+busy-timeout budget, with remaining milliseconds applied per attempt and the original timeout
+restored. The normal five-second WAL budget is not an overall `_open` deadline; migration waits
+are unchanged. Other errors and exhausted budgets still fail. Complete fresh hosted results remain
+mandatory; retries never manufacture mutation measurements or bypass the aggregate.

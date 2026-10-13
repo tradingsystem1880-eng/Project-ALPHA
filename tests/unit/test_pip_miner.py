@@ -19,12 +19,18 @@ from alpha_research.pip_miner import (
     walk_forward_pip_signal,
 )
 
-_RNG = np.random.default_rng(7)
+
+@pytest.fixture
+def rng() -> np.random.Generator:
+    """Fresh input stream per test, independent of selection and execution order."""
+    return np.random.default_rng(7)
 
 
-def _blobs(k: int = 3, per: int = 20, dim: int = 5) -> tuple[np.ndarray, np.ndarray]:
+def _blobs(
+    rng: np.random.Generator, k: int = 3, per: int = 20, dim: int = 5
+) -> tuple[np.ndarray, np.ndarray]:
     centers = np.arange(k, dtype=np.float64)[:, None] * 10.0 * np.ones(dim)
-    rows = np.vstack([centers[c] + _RNG.normal(0.0, 0.3, size=(per, dim)) for c in range(k)])
+    rows = np.vstack([centers[c] + rng.normal(0.0, 0.3, size=(per, dim)) for c in range(k)])
     truth = np.repeat(np.arange(k), per)
     return rows, truth
 
@@ -43,8 +49,8 @@ def _windows(log_close: np.ndarray, lookback: int, n_pips: int) -> tuple[np.ndar
 # ---------------------------------------------------------------- kmeans_pp / silhouette
 
 
-def test_kmeans_recovers_planted_blobs() -> None:
-    rows, truth = _blobs()
+def test_kmeans_recovers_planted_blobs(rng: np.random.Generator) -> None:
+    rows, truth = _blobs(rng)
     result = kmeans_pp(rows, 3, seed=1)
     assert result.centers.shape == (3, 5)
     # labels equal the truth up to a relabelling
@@ -56,16 +62,16 @@ def test_kmeans_recovers_planted_blobs() -> None:
     )
 
 
-def test_kmeans_is_deterministic_per_seed_and_moves_with_it() -> None:
-    rows = _RNG.normal(size=(60, 4))
+def test_kmeans_is_deterministic_per_seed_and_moves_with_it(rng: np.random.Generator) -> None:
+    rows = rng.normal(size=(60, 4))
     a = kmeans_pp(rows, 4, seed=11)
     b = kmeans_pp(rows, 4, seed=11)
     assert np.array_equal(a.labels, b.labels) and np.array_equal(a.centers, b.centers)
     assert a.inertia == b.inertia
 
 
-def test_kmeans_rejects_degenerate_inputs() -> None:
-    rows = _RNG.normal(size=(6, 2))
+def test_kmeans_rejects_degenerate_inputs(rng: np.random.Generator) -> None:
+    rows = rng.normal(size=(6, 2))
     with pytest.raises(DataError):
         kmeans_pp(rows, 1, seed=0)
     with pytest.raises(DataError):
@@ -77,16 +83,16 @@ def test_kmeans_rejects_degenerate_inputs() -> None:
         kmeans_pp(rows, 2, seed=0)
 
 
-def test_silhouette_of_planted_blobs_is_near_one_and_bounded() -> None:
-    rows, truth = _blobs()
+def test_silhouette_of_planted_blobs_is_near_one_and_bounded(rng: np.random.Generator) -> None:
+    rows, truth = _blobs(rng)
     score = silhouette_score(rows, truth)
     assert 0.9 < score <= 1.0
     shuffled = np.random.default_rng(0).permutation(truth)
     assert -1.0 <= silhouette_score(rows, shuffled) < score
 
 
-def test_silhouette_rejects_single_cluster() -> None:
-    rows, _ = _blobs()
+def test_silhouette_rejects_single_cluster(rng: np.random.Generator) -> None:
+    rows, _ = _blobs(rng)
     with pytest.raises(DataError):
         silhouette_score(rows, np.zeros(rows.shape[0], dtype=np.intp))
 
@@ -223,8 +229,8 @@ def test_walk_forward_requires_stride_one_windows() -> None:
 # ---------------------------------------------------------------- mutation-hardening
 
 
-def test_every_data_error_names_its_cause() -> None:
-    rows = _RNG.normal(size=(8, 3))
+def test_every_data_error_names_its_cause(rng: np.random.Generator) -> None:
+    rows = rng.normal(size=(8, 3))
     with pytest.raises(DataError, match=r"^k-means rows must be a non-empty two-dimensional"):
         kmeans_pp(np.empty((0, 3)), 2, seed=0)
     with pytest.raises(DataError, match=r"^k-means rows must contain only finite"):
@@ -432,8 +438,8 @@ def test_fit_boundary_bar_is_read_and_two_clusters_are_enough() -> None:
     )
 
 
-def test_select_k_prefers_the_silhouette_maximum_inside_the_range() -> None:
-    rows, _ = _blobs(k=4, per=15, dim=3)
+def test_select_k_prefers_the_silhouette_maximum_inside_the_range(rng: np.random.Generator) -> None:
+    rows, _ = _blobs(rng, k=4, per=15, dim=3)
     ends = np.arange(60) * 3
     log_close = _random_walk(200)
     model = fit_pip_clusters(rows, ends, log_close, train_end=199, hold=2, k_range=(2, 3), seed=0)

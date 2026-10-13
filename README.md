@@ -444,3 +444,5 @@ permanent private/local-only scope (see docs/BUILD-STATUS.md). Durable Binance r
 evidence, UTC-rollover sandbox soak (R-24), current-universe Tiingo qualification, and every real
 IBKR Paper acceptance scenario remain pending. The standalone R-14 public-quote network smoke
 passed locally on 2026-08-04.
+
+Development: [focused checks and module ownership](docs/operations/development-loop.md).

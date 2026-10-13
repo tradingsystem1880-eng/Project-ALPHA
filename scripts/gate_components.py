@@ -80,11 +80,11 @@ def component_steps(root: Path, component: str) -> list[Step]:
         return [
             ("install", cwd, ["npm", "ci"]),
             ("lint", cwd, ["npm", "run", "lint", "--", "--deny-warnings"]),
-            ("types", cwd, ["npx", "tsc", "-b", "--pretty", "false"]),
+            ("build + types", cwd, ["npm", "run", "build"]),
             ("coverage", cwd, ["npm", "run", "test:coverage"]),
             ("API generation", cwd, ["npm", "run", "generate:api"]),
             ("API freshness", cwd, ["git", "diff", "--exit-code", "--", "src/api/generated.ts"]),
-            ("browser", cwd, ["npm", "run", "test:e2e"]),
+            ("browser", cwd, ["npm", "run", "test:e2e:built"]),
             (
                 "SPA freshness",
                 root,

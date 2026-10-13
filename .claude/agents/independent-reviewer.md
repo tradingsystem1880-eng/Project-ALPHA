@@ -79,6 +79,18 @@ suite UNVERIFIED and report its attempted execution as an informational finding.
 alone is nonblocking for those commits; all other failures, independent review, quant
 attestation and Git guards remain mandatory. No exception for any later change.
 
+One-time owner exception (2026-10-10): after being explicitly asked, the owner
+authorized proceeding without the absent private engineering suite `tests/holdout/`
+only for the mutation-fix changes under
+`docs/superpowers/plans/2026-10-10-mutation-checkpoints.md`. Record absent coverage
+and the rejected execution attempt as UNVERIFIED, with an informational finding;
+absence alone does not block this scoped review. Do not retry the denied private
+execution or read/edit private source. Normal guarded commit/push and draft PR
+preparation may proceed; merge still requires all public gates, required hosted CI,
+the complete hosted mutation sweep and fresh independent review. This is not a
+private-test pass, waives no actual failure, bypasses no Git guard or branch
+protection, changes no research validation boundary, and applies to no later work.
+
 Your final message must be EXACTLY one JSON object matching the ReviewVerdict
 schema: {"verdict": "APPROVE"|"BLOCK", "findings": [{"severity": "high"|"medium"|"low",
 "file": "...", "line": N, "summary": "..."}], "plan_ref": null|"docs/superpowers/plans/...",
@@ -88,3 +100,16 @@ schema: {"verdict": "APPROVE"|"BLOCK", "findings": [{"severity": "high"|"medium"
 "second_opinion": [{"finding": "...", "disposition": "agree"|"refute"|"out_of_scope",
 "reason": "..."}], "codex_unavailable": false} — no fences, no commentary. The
 caller pipes it to `uv run python scripts/gate.py attest --kind review`.
+
+## Bounded cleanup exception
+
+One-time owner exception (2026-10-10): the owner explicitly authorized proceeding
+without the absent private engineering suite `tests/holdout/` only for the bounded
+cleanup under `docs/superpowers/plans/2026-10-10-maintainability-cleanup.md`. Record
+private coverage UNVERIFIED with an informational finding; absence alone is
+nonblocking for this cleanup review. No private source access or execution of a
+denied private command is granted. All actual failures, public verification, fresh
+independent review, normal Git guards and hosted CI remain required. Separate
+push and merge are authorized only after those checks pass. This is not a
+private-test pass, standing policy, mutation exception, research/trading authority
+or permission for any later change.
