@@ -1266,3 +1266,13 @@ skipped) but stopped because the combined manuals exceeded the 6,000-byte cap. T
 full, required hosted CI and post-merge checks. Private coverage and live Codex 0.161/Tiingo acceptance
 remain UNVERIFIED; no credential access, hosted-provider activation, new strategy authority or
 standing policy is added. Protected mutation-staging work remains separate and unapproved.
+
+
+## 2026-10-13 — Scoped preflight and tooling integration candidate
+
+PR56 was accepted as `31479cad` after seven head and seven post-merge checks with exact tested-tree parity. This isolated followup inserts the existing public 6000-byte manual assertion after locked setup and before backend lint/types/coverage. All former checks and receipt binding remain; failure stops costly steps and old backend definitions cannot reuse receipts. The failing-first regressions reproduce missing ordering, invalid6001 acceptance and stale-receipt acceptance on the unchanged gate. Successful full throughput is not claimed improved.
+
+Compatible development tooling patches align Vitest/coverage at4.1.11, js-yaml4.3.2, brace-expansion2.1.7 and source-map-js1.2.2. The accepted build/type/browser ordering, production Bokeh3.10.0/sprintf1.1.3 and application source remain unchanged. The upstream sprintf advisory remains explicit and unpatched; separately frozen renderer/readiness changes are not included. Current scripts, tests, plans, documentation and generated Atlas are finalized before exact-tree full/review/CI acceptance. The owner-approved four-followup absence-only exception leaves private coverage UNVERIFIED and grants no private access, failed-test waiver or standing policy.
+
+
+The first frozen source passed all six local components but is retained as superseded evidence: a bounded diagnostic showed the new ordering test falsely rejected the existing required oracle/mutation suffix for quant-source changes and unknown history. The regression now controls those three impact inputs explicitly and checks that the conservative suffix remains. Runtime checks, selectors and floors are unchanged; repaired-source acceptance requires fresh binding, review and full verification.
