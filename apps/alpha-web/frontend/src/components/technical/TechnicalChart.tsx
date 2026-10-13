@@ -76,6 +76,7 @@ export function TechnicalChart({ bars, title, styleName, evidence = EMPTY, annot
         onCursor: writeHeader,
       })
       if (!live) { chart.destroy(); return }
+      chart.activate()
       controller.current = chart
       setUndrawn(chart.undrawnAnnotations)
       const now = latest.current

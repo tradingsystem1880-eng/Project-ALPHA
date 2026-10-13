@@ -454,10 +454,10 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
   const stampRange = () => { const r = visibleUTC(); node.dataset.visibleRange = r ? JSON.stringify({ from: r[0], to: r[1] }) : '' }
   x.change.connect(stampRange); stampRange()
 
-  unregister = options.registry?.register(options.panelId, {
+  const activate = () => { unregister ??= options.registry?.register(options.panelId, {
     range(from, to) { const logical = logicalRangeForUTC(times, from, to); if (logical) { column.document?.interactive_start(price.fig); x.setv({ start: logical.from, end: logical.to }) } },
     cursor(time) { hover = null; setCursor(time === null ? null : indexOf.get(time) ?? null) },
-  })
+  }) }
 
   // ---- resize: keep the observation window, recompute frames after an 80 ms quiet period
   let resizeTimer: ReturnType<typeof setTimeout> | undefined
@@ -479,6 +479,7 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
   // A recomposition restores a window that already carries the toolbar zoom; only later steps apply.
   let zoom = restored ? options.initialZoom ?? 0 : 0
   return {
+    activate,
     controls(next: ChartControls) {
       wick.visible = next.type !== 'line'; body.visible = next.type === 'candles'
       openTick.visible = closeTick.visible = next.type === 'bars'; closeLine.visible = next.type === 'line'
