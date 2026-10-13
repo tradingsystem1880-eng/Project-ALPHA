@@ -10,7 +10,7 @@ import { nearestTimestamp, plotBounds, scientificValues, type ScientificPoint } 
 import type { ChartControls } from '../context/chartControls'
 import type { ChartLinkRegistry } from '../shell/chartLinkRegistry'
 import { styleTechnicalAxes, tagStyle, technicalFigureAttrs } from './technical/technicalChrome'
-import { padExtent, visibleExtent } from './technical/technicalModel'
+import { padExtent, chartExtent, visibleExtent, displayNumber } from './technical/technicalModel'
 import { technicalStyle, type ChartStyleName } from './technical/technicalTokens'
 import { technicalPng } from './technical/technicalExport'
 /** Local BokehJS recorded time series in the technical chart language; no statistics computed. */
@@ -42,13 +42,13 @@ export async function mountBokehPlot(node: HTMLElement, unit: string, panelId: s
   // Tag precision from the whole recorded range, computed once per data() rather than per repaint.
   let decimals = 2
   const decimalsFor = () => { const extent = visibleExtent([values], 0, values.length - 1); return extent ? Math.max(2, Math.min(6, 3 - Math.floor(Math.log10(Math.max(1e-12, Math.abs(extent[1] - extent[0])))))) : 2 }
-  const fit = () => { const bounds = plotBounds(points); x.setv({ start: bounds.x[0], end: bounds.x[1], reset_start: bounds.x[0], reset_end: bounds.x[1] }); y.setv({ start: bounds.y[0], end: bounds.y[1], reset_start: bounds.y[0], reset_end: bounds.y[1] }) }
+  const fit = () => { const bounds = plotBounds(points); chartExtent(bounds.y, Math.max(1, node.clientHeight)); x.setv({ start: bounds.x[0], end: bounds.x[1], reset_start: bounds.x[0], reset_end: bounds.x[1] }); y.setv({ start: bounds.y[0], end: bounds.y[1], reset_start: bounds.y[0], reset_end: bounds.y[1] }) }
   // Full-height autoscale over the visible observations, like the price stack.
   const lower = (t: number) => { let lo = 0, hi = times.length; while (lo < hi) { const mid = (lo + hi) >>> 1; if (times[mid] < t) lo = mid + 1; else hi = mid } return lo }
   /** Index of the last observation at or before `t` (seconds); -1 when none. */
   const lastAtOrBefore = (t: number) => lower(t + 1e-6) - 1
   let scaleFrame = 0
-  const autoscale = () => { scaleFrame = 0; const extent = visibleExtent([values], lower(x.start / 1000), lastAtOrBefore(x.end / 1000)); if (extent) { const [lo, hi] = padExtent(area ? [Math.min(0, extent[0]), Math.max(0, extent[1])] : extent, 0.06); y.setv({ start: lo, end: hi }) } }
+  const autoscale = () => { scaleFrame = 0; const extent = visibleExtent([values], lower(x.start / 1000), lastAtOrBefore(x.end / 1000)); if (extent) { const [lo, hi] = padExtent(area ? [Math.min(0, extent[0]), Math.max(0, extent[1])] : extent, 0.06); chartExtent([lo, hi], Math.max(1, node.clientHeight)); y.setv({ start: lo, end: hi }) } }
   x.change.connect(() => { if (!scaleFrame) scaleFrame = requestAnimationFrame(autoscale) })
   const setCursor = (time: number | null) => {
     const value = time === null ? null : valueAt.get(time)
@@ -94,7 +94,13 @@ export async function mountBokehPlot(node: HTMLElement, unit: string, panelId: s
     for (let i = Math.min(values.length - 1, lastAtOrBefore(x.end / 1000)); i >= 0; i--) { const value = values[i]; if (value !== null && Number.isFinite(value)) { v = value; break } }
     if (tag.hidden !== (v === null)) tag.hidden = v === null
     if (v === null) return
-    const frame = mounted.view.frame, left = `${frame.bbox.right + 1}px`, top = `${frame.y_scale.compute(v) - 6}px`, text = v.toFixed(decimals)
+    const frame = mounted.view.frame, left = `${frame.bbox.right + 1}px`, top = `${frame.y_scale.compute(v) - 6}px`, text = displayNumber(v, decimals)
+    if (text.includes('e')) {
+      const measure = node.ownerDocument.createElement('canvas').getContext('2d')!
+      measure.font = `bold ${style.fontSize}px ${style.font}`
+      const right = Math.ceil(measure.measureText('-1.2345678901234567e-308').width) + 8
+      if ((plot.min_border_right ?? 0) < right) plot.min_border_right = right
+    }
     if (tag.style.left !== left) tag.style.left = left
     if (tag.style.top !== top) tag.style.top = top
     if (tag.textContent !== text) tag.textContent = text

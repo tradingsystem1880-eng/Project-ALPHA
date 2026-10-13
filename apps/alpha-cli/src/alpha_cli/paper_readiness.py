@@ -1,7 +1,8 @@
 """Fail-closed operational paper acceptance report.
 
 Legacy journal events remain monitor history. Their open payload cannot prove an acceptance
-requirement, so readiness stays pending until the typed V2 acceptance runner is available.
+requirement. Readiness takes its overall status from the typed V2 acceptance report; the legacy
+per-requirement details remain unavailable and fail closed.
 """
 
 from __future__ import annotations

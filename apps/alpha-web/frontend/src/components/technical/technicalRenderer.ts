@@ -28,7 +28,7 @@ import { showScientificPlot } from '../bokehLifecycle'
 import { scheduleChartResize, cancelChartResize } from '../chartResize'
 import {
   calendarKeys, candleClasses, inferCalendar, compactVolume, dateTicks, medianSpacing, fractionalIndex, groupedInteger, niceTicks, observationGaps,
-  padExtent, panelHeights, panelLayout, priceDecimals, studyLabel, studySpec, visibleExtent, visibleVolumeClasses,
+  padExtent, chartExtent, panelHeights, panelLayout, priceDecimals, displayNumber, tickFormat, studyLabel, studySpec, visibleExtent, visibleVolumeClasses,
   type DateTick,
 } from './technicalModel'
 import { studyColors, type TechnicalStyle } from './technicalTokens'
@@ -74,7 +74,7 @@ function el(parent: HTMLElement, style: Partial<CSSStyleDeclaration>, text?: str
 }
 
 function fixed(value: number | null | undefined, decimals: number): string {
-  return value === null || value === undefined || !Number.isFinite(value) ? '—' : value.toFixed(decimals)
+  return value === null || value === undefined || !Number.isFinite(value) ? '—' : displayNumber(value, decimals)
 }
 
 /** Last finite value at or before the window end; the tolerance absorbs linked ranges' 1e-6 insets. */
@@ -106,7 +106,8 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
 
   // ---- geometry
   const width = Math.max(320, node.clientWidth), height = Math.max(200, node.clientHeight)
-  let frameWidth = width - LEFT - RIGHT
+  let rightGutter = RIGHT
+  let frameWidth = width - LEFT - rightGutter
   const studies = [...layout.above, ...layout.below]
   const strips = 1 + (layout.below.length ? 1 : 0)
   const heights = panelHeights(height - strips * DATE_STRIP - 2, studies.length)
@@ -115,7 +116,7 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
   const makeFigure = (frameHeight: number, dateAxis: boolean, kind: Panel['kind']): Panel => {
     const y = new Range1d({ start: 0, end: 1 })
     const fig = figure({
-      x_range: x, y_range: y, frame_width: frameWidth, frame_height: frameHeight,
+      x_range: x, y_range: y, width, frame_width: frameWidth, frame_height: frameHeight,
       tools: 'xpan,xwheel_zoom', active_drag: 'xpan' as never, active_scroll: 'xwheel_zoom' as never, toolbar_location: null,
       y_axis_location: 'right', min_border_left: LEFT, min_border_right: RIGHT, min_border_top: 0, min_border_bottom: dateAxis ? DATE_STRIP : 0,
       background_fill_color: style.plot, border_fill_color: style.canvas, outline_line_color: style.border, outline_line_width: 1,
@@ -207,7 +208,7 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
   const undrawn = shapeRows.length - drawable.length + markerRows.length - swings.length
   if (swings.length) {
     const high = swings.map(a => a.label.endsWith('high'))
-    const source = new ColumnDataSource({ data: { x: swings.map(a => indexOf.get(a.anchors[0].ts)!), y: swings.map(a => a.anchors[0].value), text: swings.map(a => a.anchors[0].value.toFixed(pd)), dy: high.map(h => h ? 4 : -13) } })
+    const source = new ColumnDataSource({ data: { x: swings.map(a => indexOf.get(a.anchors[0].ts)!), y: swings.map(a => a.anchors[0].value), text: swings.map(a => displayNumber(a.anchors[0].value, pd)), dy: high.map(h => h ? 4 : -13) } })
     price.fig.add_layout(new LabelSet({ x: { field: 'x' }, y: { field: 'y' }, text: { field: 'text' }, y_offset: { field: 'dy' }, source, text_align: 'center', text_font: style.font, text_font_size: `${style.fontSize - 1}px`, text_color: style.text }))
   }
   const events = new ColumnDataSource({ data: { x: [], y: [], label: [], sequence: [], color: [], size: [] } })
@@ -246,6 +247,7 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
       }
     }
     const count = (p: Panel) => Math.max(3, Math.floor(p.frameHeight / TICK_PX))
+    let scientificLabels = false
     for (const p of panels) {
       if (p.kind === 'rsi') continue
       const columns: Values[] = p.kind === 'price' ? [lows, highs] : p.lines.map(l => l.values)
@@ -255,15 +257,26 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
       const [lo, base] = p.kind === 'price' ? padExtent(extent, 0.03) : padExtent([zero ? Math.min(extent[0], 0) : extent[0], zero ? Math.max(extent[1], 0) : extent[1]], 0.06)
       // Headroom so the in-panel legend never sits on the data (StockCharts keeps its legend clear).
       const legend = Math.min(0.4, (legendRows(p) * 11 + 6) / p.frameHeight)
-      const hi = base + (base - lo) * legend / (1 - legend)
+      const hi = Math.min(Number.MAX_VALUE, base + (base - lo) * legend / (1 - legend))
+      chartExtent([lo, hi], p.frameHeight)
       if (p.y.start !== lo || p.y.end !== hi) p.y.setv({ start: lo, end: hi })
       const nice = niceTicks(lo, hi, count(p))
       setTicks(p.yTicker, nice.ticks)
-      const format = `%.${nice.decimals}f`
+      const format = tickFormat(nice)
       if (p.yFormat.format !== format) p.yFormat.format = format
+      scientificLabels ||= format.endsWith('e') || extent.some(v => Math.abs(v) >= 1e12 || (v !== 0 && Math.abs(v) < 1e-12))
+    }
+    if (scientificLabels && rightGutter === RIGHT) {
+      const measure = node.ownerDocument.createElement('canvas').getContext('2d')!
+      measure.font = `bold ${style.fontSize}px ${style.font}`
+      // A finite double needs at most 17 significant digits and a three-digit exponent.
+      rightGutter = Math.max(RIGHT, Math.ceil(measure.measureText('-1.2345678901234567e-308').width) + 8)
+      frameWidth = Math.max(80, node.clientWidth - LEFT - rightGutter)
+      for (const p of panels) p.fig.setv({ min_border_right: rightGutter, frame_width: frameWidth })
     }
     const vmax = visibleExtent([volumes], i0, i1)?.[1] ?? 0
     if (vmax > 0) {
+      chartExtent([0, vmax * 4], price.frameHeight)
       if (volumeRange.end !== vmax * 4) volumeRange.setv({ start: 0, end: vmax * 4 })
       const vt = niceTicks(0, vmax, Math.max(2, Math.floor(price.frameHeight * 0.25 / TICK_PX))).ticks.filter(t => t > 0)
       if (setTicks(volumeTicker, vt)) volumeAxis.major_label_overrides = new Map(vt.map(t => [t, compactVolume(t)]))
@@ -350,10 +363,10 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
     const bbox = view.frame.bbox, xs = view.frame.x_scale, ys = view.frame.y_scale
     // value tags: last visible value per series, nudged apart so they never overlap
     const tags: { y: number; text: string; color: string; bold: boolean }[] = []
-    if (p.kind === 'price') { const v = lastVisible(closes, x.end); if (v !== null) tags.push({ y: ys.compute(v), text: v.toFixed(pd), color: style.text, bold: true }) }
+    if (p.kind === 'price') { const v = lastVisible(closes, x.end); if (v !== null) tags.push({ y: ys.compute(v), text: displayNumber(v, pd), color: style.text, bold: true }) }
     for (const line of p.lines) {
       const v = lastVisible(line.values, x.end)
-      if (v !== null) tags.push({ y: ys.compute(v), text: v.toFixed(p.kind === 'price' ? pd : p.decimals), color: line.histogram ? style.histEdge : line.color, bold: false })
+      if (v !== null) tags.push({ y: ys.compute(v), text: displayNumber(v, p.kind === 'price' ? pd : p.decimals), color: line.histogram ? style.histEdge : line.color, bold: false })
     }
     // Off-frame values are not tagged; in-frame tags stay inside the frame and never overlap.
     const inFrame = tags.filter(tag => tag.y >= bbox.top - 1 && tag.y <= bbox.bottom + 1).map(tag => ({ ...tag, y: Math.min(bbox.bottom - 6, Math.max(bbox.top + 6, tag.y)) }))
@@ -413,7 +426,7 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
     if (level) {
       const cy = frame.y_scale.compute(hover!.y)
       c.horizontal.style.width = `${bbox.width}px`; move(c.horizontal, bbox.left, cy)
-      c.value.textContent = hover!.y.toFixed(p.kind === 'price' ? pd : p.decimals); move(c.value, bbox.right + 1, cy - 6)
+      c.value.textContent = displayNumber(hover!.y, p.kind === 'price' ? pd : p.decimals); move(c.value, bbox.right + 1, cy - 6)
     }
     show(c.date, visible && p.dateAxis)
     if (visible && p.dateAxis) {
@@ -467,8 +480,8 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
     if (w === size[0] && h === size[1]) return
     size = [w, h]
     const hs = panelHeights(h - strips * DATE_STRIP - 2, studies.length)
-    for (const p of panels) { p.frameHeight = p.kind === 'price' ? hs.price : hs.study; p.fig.setv({ frame_width: w - LEFT - RIGHT, frame_height: p.frameHeight }) }
-    frameWidth = w - LEFT - RIGHT
+    for (const p of panels) { p.frameHeight = p.kind === 'price' ? hs.price : hs.study; p.fig.setv({ width: w, frame_width: Math.max(80, w - LEFT - rightGutter), frame_height: p.frameHeight }) }
+    frameWidth = Math.max(80, w - LEFT - rightGutter)
     for (const view of views) view.invalidate_layout()
     mounted.view.invalidate_layout()
     autoscale()

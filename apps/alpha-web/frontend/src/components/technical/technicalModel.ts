@@ -143,8 +143,22 @@ export function visibleExtent(columns: readonly (readonly (number | null)[])[], 
 }
 
 export function padExtent([min, max]: [number, number], fraction: number): [number, number] {
-  const pad = (max - min || Math.abs(max) || 1) * fraction
-  return [min - pad, max + pad]
+  if (![min, max, fraction].every(Number.isFinite) || min > max || fraction < 0 || !Number.isFinite(max - min)) {
+    throw new RangeError('Chart extent requires finite ordered bounds and a representable span')
+  }
+  const pad = fraction === 0 ? 0 : Math.max(Number.MIN_VALUE, (max - min || Math.abs(max) || 1) * fraction)
+  const lo = Math.max(-Number.MAX_VALUE, min - pad), hi = Math.min(Number.MAX_VALUE, max + pad)
+  if (!Number.isFinite(hi - lo)) throw new RangeError('Padded chart extent exceeds the representable span')
+  return [lo, hi]
+}
+
+/** Validate the final padded/legend range against Bokeh's actual affine scale limits. */
+export function chartExtent([min, max]: [number, number], pixels: number): [number, number] {
+  const span = max - min, factor = pixels / span
+  if (![min, max, pixels, span, factor, factor * min].every(Number.isFinite) || span <= 0 || pixels <= 0 || factor === 0) {
+    throw new RangeError('Chart range cannot be represented by a finite nonzero canvas scale')
+  }
+  return [min, max]
 }
 
 /**
@@ -223,7 +237,16 @@ export function barDate(t: number, intraday: boolean): string {
 }
 
 export function signed(v: number, decimals: number): string {
-  return `${v > 0 ? '+' : ''}${v.toFixed(decimals)}`
+  if (!Number.isFinite(v)) return '—'
+  return `${v > 0 ? '+' : ''}${displayNumber(v, decimals)}`
+}
+
+/** Fixed labels keep their existing precision; scientific fallback preserves finite nonzero values. */
+export function displayNumber(v: number, decimals: number): string {
+  if (!Number.isFinite(v)) return '—'
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 12) throw new RangeError('Display precision must be an integer from 0 to 12')
+  const abs = Math.abs(v)
+  return abs >= 1e12 || (abs > 0 && abs < 1e-12) ? v.toExponential() : v.toFixed(decimals)
 }
 
 /** Fractional observation index of a UTC time (linear between bars), or null outside coverage. */
@@ -237,13 +260,39 @@ export function fractionalIndex(times: readonly number[], t: number): number | n
 
 /** StockCharts-style value ticks: steps of 1, 2, 2.5 or 5 × 10^k, about `count` of them. */
 export function niceTicks(min: number, max: number, count: number): { ticks: number[]; decimals: number } {
+  if (![min, max, count].every(Number.isFinite) || !Number.isInteger(count) || count > 1000) throw new RangeError('Tick bounds must be finite and count an integer at most 1000')
   if (!(max > min) || count < 1) return { ticks: [], decimals: 0 }
-  const raw = (max - min) / count, power = Math.pow(10, Math.floor(Math.log10(raw)))
+  const raw = Number.isFinite(max - min) ? (max - min) / count : max / count - min / count
+  const power = Math.pow(10, Math.floor(Math.log10(raw)))
   const step = ([1, 2, 2.5, 5, 10].map(m => m * power).find(s => s >= raw) ?? 10 * power)
+  // No decimal lattice fits below a representable step, or beyond safe integer indices.
+  // The exact endpoints remain distinct and permit an honest axis rather than a false zero.
+  if (!(step > 0) || !Number.isFinite(step) || !Number.isSafeInteger(Math.ceil(min / step)) || !Number.isSafeInteger(Math.floor(max / step))) {
+    return { ticks: [min, max], decimals: 17 }
+  }
   const decimals = Math.max(0, Math.ceil(-Math.log10(step) - 1e-9) + (Math.abs(step / power - 2.5) < 1e-9 ? 1 : 0))
   const ticks: number[] = []
-  for (let v = Math.ceil(min / step) * step; v <= max + step * 1e-9; v += step) ticks.push(Number(v.toFixed(Math.min(20, decimals + 2))))
+  const first = Math.ceil(min / step), last = Math.floor(max / step + 1e-9)
+  for (let i = 0; i <= Math.min(count + 1, last - first); i++) {
+    const value = (first + i) * step
+    const tick = decimals <= 12 ? Number(value.toFixed(decimals + 2)) : value
+    if (Number.isFinite(tick) && (ticks.length === 0 || tick > ticks[ticks.length - 1])) ticks.push(tick)
+  }
   return { ticks, decimals }
+}
+
+/** Only bounded numeric printf literals reach Bokeh; scientific labels distinguish close ticks. */
+export function tickFormat({ ticks, decimals }: { ticks: readonly number[]; decimals: number }): string {
+  if (!Number.isInteger(decimals) || decimals < 0 || !ticks.every(Number.isFinite)) throw new RangeError('Tick formatting requires finite values and nonnegative integer precision')
+  const magnitude = ticks.reduce((largest, tick) => Math.max(largest, Math.abs(tick)), 0)
+  if (decimals <= 12 && magnitude < 1e12) return `%.${decimals}f`
+  let relative = Infinity
+  for (let i = 1; i < ticks.length; i++) {
+    const distance = Math.abs(ticks[i] / magnitude - ticks[i - 1] / magnitude)
+    if (distance > 0) relative = Math.min(relative, distance)
+  }
+  const precision = Math.max(2, Math.min(16, Math.ceil(-Math.log10(relative))))
+  return `%.${precision}e`
 }
 
 

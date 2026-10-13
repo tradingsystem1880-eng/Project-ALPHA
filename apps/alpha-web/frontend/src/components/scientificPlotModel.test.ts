@@ -12,6 +12,12 @@ describe('scientific plot values', () => {
     expect(plotBounds([{ time: 10, value: 2 }, { time: 10, value: 3 }]).x).toEqual([10000, 11000])
     expect(plotBounds([])).toEqual({ x: [0, 1], y: [0, 1] })
   })
+  it('keeps padded bounds finite at the edges of the finite number range', () => {
+    const largest = Number.MAX_VALUE
+    expect(plotBounds([{ time: 10, value: largest }, { time: 20, value: largest }]).y).toEqual([largest * 0.92, largest])
+    expect(plotBounds([{ time: 10, value: -largest }, { time: 20, value: -largest }]).y).toEqual([-largest, -largest * 0.92])
+    expect(plotBounds([{ time: 10, value: -largest }, { time: 20, value: largest }]).y).toEqual([-largest, largest])
+  })
   it('binary searches timestamps and clears outside the source coverage', () => {
     expect(nearestTimestamp([10, 20, 30], 19)).toBe(20)
     expect(nearestTimestamp([10, 20, 30], 5)).toBeNull()

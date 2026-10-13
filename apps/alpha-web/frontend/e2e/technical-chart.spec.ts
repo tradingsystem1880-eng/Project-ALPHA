@@ -9,6 +9,49 @@ import { studySeries, walkBars } from './support/technicalFixture'
 const BARS = walkBars(260, '2025-10-06', false)
 const SHOTS = process.env.ALPHA_TECHNICAL_SHOTS
 
+for (const scale of [1e-200, 1e200]) {
+  test(`@reference-only extreme finite ${scale < 1 ? 'tiny' : 'large'} chart has distinct readable scientific labels`, async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', error => errors.push(error.message))
+    await page.addInitScript(() => {
+      const labels: string[] = []
+      Object.assign(window, { numericLabels: labels })
+      const fill = CanvasRenderingContext2D.prototype.fillText
+      CanvasRenderingContext2D.prototype.fillText = function(text, ...args) {
+        if (/^-?[\d.]+e[+-]\d+$/.test(text)) labels.push(text)
+        return fill.call(this, text, ...args)
+      }
+    })
+    const bars = BARS.map(b => ({ ...b, o: b.o * scale, h: b.h * scale, l: b.l * scale, c: b.c * scale }))
+    const chart = await openChart(page, 'classic', bars)
+    await expect.poll(() => chart.locator('.technical-tag').allTextContents()).toContain(bars.at(-1)!.c.toExponential())
+    await expect.poll(() => page.evaluate(() => new Set((window as unknown as { numericLabels: string[] }).numericLabels).size)).toBeGreaterThan(2)
+    const host = (await chart.locator('.technical-host').boundingBox())!
+    const tag = chart.locator('.technical-tag').filter({ hasText: bars.at(-1)!.c.toExponential() }).first()
+    const box = (await tag.boundingBox())!
+    expect(box.x + box.width).toBeLessThanOrEqual(host.x + host.width + 1)
+    expect(await chart.locator('.technical-header').textContent()).toContain(`Close ${bars.at(-1)!.c.toExponential()}`)
+    expect(errors).toEqual([])
+    await chart.screenshot({ path: test.info().outputPath('extreme-finite-chart.png') })
+  })
+}
+
+test('@reference-only scientific value tags stay inside a narrow chart host', async ({ page }) => {
+  const scale = Number.parseFloat('1e-200')
+  const bars = BARS.map(b => ({ ...b, o: b.o * scale, h: b.h * scale, l: b.l * scale, c: b.c * scale }))
+  const chart = await openChart(page, 'classic', bars)
+  await chart.evaluate(element => { element.style.width = '340px'; element.style.maxWidth = '340px' })
+  const host = chart.locator('.technical-host')
+  await expect.poll(async () => (await host.boundingBox())?.width).toBeLessThanOrEqual(341)
+  await expect.poll(async () => Math.max(...await chart.locator('canvas').evaluateAll(items => items.map(item => item.getBoundingClientRect().width)))).toBeLessThanOrEqual(342)
+  const hostBox = (await host.boundingBox())!
+  const tag = chart.locator('.technical-tag').filter({ hasText: bars.at(-1)!.c.toExponential() }).first()
+  await expect(tag).toBeVisible()
+  const tagBox = (await tag.boundingBox())!
+  expect(tagBox.x).toBeGreaterThanOrEqual(hostBox.x - 1)
+  expect(tagBox.x + tagBox.width).toBeLessThanOrEqual(hostBox.x + hostBox.width + 1)
+})
+
 test('@reference-only PNG download includes header, calendar dates and study legends', async ({ page }) => {
   const chart = await openChart(page, 'classic')
   const height = (await chart.locator('.technical-host').boundingBox())!.height
