@@ -1289,3 +1289,10 @@ exports, statistical/backend arithmetic and dependency versions are unchanged. T
 `sprintf-js` advisory GHSA-hp3w-g68c-fv3c remains unresolved. Focused public checks pass; canonical
 full, fresh independent review, hosted checks and post-merge verification remain pending. Private
 coverage remains UNVERIFIED under the existing approved scope.
+
+The first hosted run on PR #60 passed six required checks but failed two chart-document screenshot
+profiles after explicit initial Bokeh width changed the recorded layout. The follow-up removes that
+initial width override while retaining measured width updates on resize. Browser checks now assert
+canvas geometry both immediately after mount and after narrowing the host, and all three local chart
+document screenshot profiles pass. This exact follow-up still requires a fresh canonical full and
+hosted checks; the earlier full and hosted results do not certify it.

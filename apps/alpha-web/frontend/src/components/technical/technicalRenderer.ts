@@ -116,7 +116,7 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
   const makeFigure = (frameHeight: number, dateAxis: boolean, kind: Panel['kind']): Panel => {
     const y = new Range1d({ start: 0, end: 1 })
     const fig = figure({
-      x_range: x, y_range: y, width, frame_width: frameWidth, frame_height: frameHeight,
+      x_range: x, y_range: y, frame_width: frameWidth, frame_height: frameHeight,
       tools: 'xpan,xwheel_zoom', active_drag: 'xpan' as never, active_scroll: 'xwheel_zoom' as never, toolbar_location: null,
       y_axis_location: 'right', min_border_left: LEFT, min_border_right: RIGHT, min_border_top: 0, min_border_bottom: dateAxis ? DATE_STRIP : 0,
       background_fill_color: style.plot, border_fill_color: style.canvas, outline_line_color: style.border, outline_line_width: 1,

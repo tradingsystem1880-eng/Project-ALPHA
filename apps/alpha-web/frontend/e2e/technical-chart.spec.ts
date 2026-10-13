@@ -40,8 +40,11 @@ test('@reference-only scientific value tags stay inside a narrow chart host', as
   const scale = Number.parseFloat('1e-200')
   const bars = BARS.map(b => ({ ...b, o: b.o * scale, h: b.h * scale, l: b.l * scale, c: b.c * scale }))
   const chart = await openChart(page, 'classic', bars)
-  await chart.evaluate(element => { element.style.width = '340px'; element.style.maxWidth = '340px' })
   const host = chart.locator('.technical-host')
+  const initialHost = (await host.boundingBox())!
+  await expect.poll(async () => Math.max(...await chart.locator('canvas').evaluateAll(items => items.map(item => item.getBoundingClientRect().width)))).toBeGreaterThanOrEqual(initialHost.width * 0.98)
+  await expect.poll(async () => Math.max(...await chart.locator('canvas').evaluateAll(items => items.map(item => item.getBoundingClientRect().width)))).toBeLessThanOrEqual(initialHost.width + 2)
+  await chart.evaluate(element => { element.style.width = '340px'; element.style.maxWidth = '340px' })
   await expect.poll(async () => (await host.boundingBox())?.width).toBeLessThanOrEqual(341)
   await expect.poll(async () => Math.max(...await chart.locator('canvas').evaluateAll(items => items.map(item => item.getBoundingClientRect().width)))).toBeLessThanOrEqual(342)
   const hostBox = (await host.boundingBox())!
