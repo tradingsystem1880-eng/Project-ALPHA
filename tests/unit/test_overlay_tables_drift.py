@@ -101,3 +101,21 @@ def test_every_rule_builder_example_is_an_operand_the_parser_accepts() -> None:
             heads.add(head)
         assert parse_operand(payload, "example").label == text
     assert heads == set(INDICATOR_ARITY)
+
+
+def test_e2e_overlay_stand_in_bars_needed_matches_cli() -> None:
+    """The browser-test stand-in for `alpha chart overlays` refuses short windows by the CLI rule.
+
+    ``e2e/support/technicalFixture.ts`` copies ``_bars_needed`` for the studies it serves (sma, ema,
+    rsi: first parameter; macd: slow + signal). Pin both sides so neither drifts silently.
+    """
+    from alpha_cli.chart_cmds import _bars_needed
+
+    fixture = (_FRONTEND.parent / "e2e" / "support" / "technicalFixture.ts").read_text(
+        encoding="utf-8"
+    )
+    assert "const needed = (name: string, p: number[]) => name === 'macd' ? p[1] + p[2] : p[0]" in (
+        fixture
+    )
+    for spec, expected in {"sma:50": 50, "ema:20": 20, "rsi:14": 14, "macd:12:26:9": 35}.items():
+        assert _bars_needed(parse_indicator(spec)) == expected, spec

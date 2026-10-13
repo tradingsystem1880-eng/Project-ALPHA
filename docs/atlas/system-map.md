@@ -2,7 +2,7 @@
 
 # System map
 
-14 components (packages, apps, workers), 343 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+14 components (packages, apps, workers), 344 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
 <!-- nodes: component:alpha-backtest|component:alpha-cli|component:alpha-core|component:alpha-data|component:alpha-forecast|component:alpha-mcp|component:alpha-patterns|component:alpha-research|component:alpha-strategies|component:alpha-study|component:alpha-validation|component:alpha-web|component:literature|component:qlib -->
 ```mermaid
@@ -89,7 +89,7 @@ component:alpha-web -> component:alpha-core
 | alpha_mcp imports only public platform surfaces | `alpha_mcp` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_research, alpha_study, alpha_web` |
 | alpha_mcp sits atop the DAG (nothing imports it) | `alpha_core, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_research, alpha_study, alpha_cli` | `alpha_mcp` |
 | alpha_patterns depends only on core | `alpha_patterns` | `alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_research, alpha_study, alpha_cli, alpha_mcp, alpha_web` |
-| alpha_research depends only on core | `alpha_research` | `alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_study, alpha_cli, alpha_mcp, alpha_web` |
+| alpha_research depends only on core | `alpha_research` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_study, alpha_cli, alpha_mcp, alpha_web` |
 | alpha_strategies depends only on core and patterns | `alpha_strategies` | `alpha_data, alpha_backtest, alpha_validation, alpha_forecast, alpha_research, alpha_study, alpha_cli` |
 | alpha_study composes only research-plane primitives | `alpha_study` | `alpha_strategies, alpha_backtest, alpha_validation, alpha_forecast, alpha_cli, alpha_mcp, alpha_web` |
 | alpha_validation depends only on core | `alpha_validation` | `alpha_patterns, alpha_data, alpha_strategies, alpha_backtest, alpha_forecast, alpha_research, alpha_study, alpha_cli` |
@@ -100,9 +100,9 @@ component:alpha-web -> component:alpha-core
 
 ## Unknowns review queue
 
-52 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
+53 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
 
-<details><summary>52 unknown-level node(s)</summary>
+<details><summary>53 unknown-level node(s)</summary>
 
 - `component:alpha-study`
 - `component:literature`
@@ -118,6 +118,7 @@ component:alpha-web -> component:alpha-core
 - `module:alpha_cli.assistant_cmds`
 - `module:alpha_cli.assistant_worker`
 - `module:alpha_cli.figures._sources`
+- `module:alpha_core.costs`
 - `module:alpha_core.universe`
 - `module:alpha_data._atomic`
 - `module:alpha_data.crypto.providers`

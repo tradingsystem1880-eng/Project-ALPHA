@@ -137,23 +137,15 @@
 
 
 /* Scientific plotting surfaces use Qbot's paper-like axes within the terminal frame. */
-.scientific-series { contain: layout style; display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; overflow: auto; background: #fafafa; color: #333; }
+.scientific-series { contain: layout style; display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; overflow: auto; background: var(--tc-canvas); color: var(--tc-text); font: var(--tc-font); }
 .scientific-series-host { flex: 1 0 100px; min-height: 100px; min-width: 0; overflow: hidden; }
-.plot-readout { contain: strict; display: flex; flex: 0 0 20px; height: 20px; overflow: hidden; white-space: nowrap; gap: 12px; min-height: 20px; padding: 2px 8px; font-size: 10px; background: #ececec; color: #333; }
+.plot-readout { contain: strict; display: flex; flex: 0 0 16px; height: 16px; overflow: hidden; white-space: nowrap; gap: 12px; min-height: 16px; padding: 1px 6px; font: var(--tc-font); background: var(--tc-canvas); color: var(--tc-text); border-bottom: 1px solid var(--tc-border); }
 .recorded-series > .scientific-series { min-height: 200px; height: auto; }
 
-.scientific-market { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: auto; background: #fafafa; color: #333; }
-.scientific-market-price { flex: 1; min-height: 200px; overflow: hidden; contain: strict; }
-.scientific-market-details { flex: none; padding: 3px 8px; background: #ececec; font-size: 11px; }
-.scientific-market-details[open] { flex: none; }
-.scientific-indicator { height: 230px; margin-top: 4px; }
-.scientific-market-details .plot-legend { color: #333; background: #ececec; }
 
-.price-chart-frame .plot-readout.mono { color: #333; }
-
-.scientific-cartesian-host { min-height: 270px; background: #fafafa; overflow: hidden; }
+.scientific-cartesian-host { min-height: 270px; background: var(--tc-canvas); overflow: hidden; }
 /* Compact plot exploration; expanded controls scroll rather than cover neighboring panels. */
-.scientific-explore { flex: 0 0 auto; background: #ececec; color: #333; border-bottom: 1px solid #ccc; }
+.scientific-explore { flex: 0 0 auto; background: var(--tc-canvas); color: var(--tc-text); border-bottom: 1px solid var(--tc-border); }
 .scientific-range-buttons { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; padding: 2px 5px; font-size: 11px; }
 .scientific-range-buttons .btn { min-height: 24px; padding: 1px 6px; font-size: 11px; }
 .scientific-range-buttons details { padding: 0; max-height: 180px; overflow: auto; background: #ececec; color: #333; }
@@ -168,3 +160,33 @@
 .scientific-cursor-data summary { padding: 2px 5px; cursor: pointer; }
 .scientific-cursor-data .cursor-values { display: block; padding: 5px; font-family: 'JetBrains Mono Variable', monospace; overflow-wrap: anywhere; }
 .scientific-cursor-data p { padding: 0 5px 5px; margin: 0; }
+
+/* Technical chart (StockCharts Classic/Default grammar, docs/superpowers/plans/2026-10-07-technical-chart-language.md).
+   Colours come from technicalTokens via --tc-* on the root; the plot stack is BokehJS. */
+.technical-chart { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--tc-canvas); color: var(--tc-text); font: var(--tc-font); }
+.technical-header { position: relative; flex: none; background: var(--tc-header); display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; padding: 3px 6px 2px; border-bottom: 1px solid var(--tc-border); font: var(--tc-font); line-height: 14px; font-variant-numeric: tabular-nums; }
+.technical-title { font-size: 12px; font-weight: bold; }
+.technical-ohlc { white-space: pre; }
+.technical-ohlc[data-tone='up'] { color: var(--tc-text); }
+.technical-ohlc[data-tone='down'] { color: var(--tc-down); }
+.technical-skipped { color: var(--tc-muted); }
+.technical-tools { margin-left: auto; display: flex; align-items: baseline; gap: 6px; }
+.technical-tools .scientific-explore { background: transparent; border: 0; color: inherit; }
+.technical-tools .scientific-range-buttons { padding: 0; gap: 0 6px; font: var(--tc-font); }
+.technical-tools .scientific-range-buttons > span:first-child { display: none; }
+.technical-tools .scientific-range-buttons .btn,
+.scientific-series .scientific-range-buttons .btn,
+.technical-link { min-height: 0; padding: 0; border: 0; background: none; color: var(--tc-link); font: var(--tc-font); text-decoration: underline; cursor: pointer; }
+.technical-tools .scientific-range-buttons .btn:disabled, .scientific-series .scientific-range-buttons .btn:disabled, .technical-link:disabled { color: var(--tc-muted); text-decoration: none; cursor: default; }
+.technical-tools .scientific-range-buttons details { background: var(--tc-canvas); color: inherit; }
+.technical-tools .scientific-range-buttons summary { padding: 0; color: var(--tc-muted); }
+.technical-tools .scientific-range-buttons details[open] > :not(summary) { position: absolute; z-index: 5; right: 6px; top: 100%; max-height: 240px; overflow: auto; background: var(--tc-canvas); border: 1px solid var(--tc-border); padding: 4px; }
+.technical-host { flex: 1 1 0; min-height: 200px; min-width: 0; overflow: hidden; contain: strict; position: relative; }
+/* The unit/as-of disclosure under a technical chart is a footnote, not a black status strip. */
+.price-chart-frame:has(.technical-chart) { grid-template-rows: minmax(0, 1fr) 16px; background: var(--tc-canvas); color: var(--tc-text); border-color: var(--tc-border); }
+.price-chart-frame:has(.technical-chart) .chart-foot { font: 9px var(--tc-family); color: var(--tc-muted); background: var(--tc-canvas); border-top: 1px solid var(--tc-border); text-transform: none; }
+.price-chart-frame:has(.technical-chart) .chart-foot.mono span { color: var(--tc-muted); }
+.recorded-series:has(> .scientific-series) { background: var(--tc-canvas); color: var(--tc-text); }
+.recorded-series:has(> .scientific-series) > .plot-legend { font: var(--tc-font); border-bottom: 1px solid var(--tc-border); }
+.scientific-series .scientific-range-buttons { gap: 0 8px; padding: 1px 6px; font: var(--tc-font); }
+.scientific-series .scientific-range-buttons .btn { font: var(--tc-font); }

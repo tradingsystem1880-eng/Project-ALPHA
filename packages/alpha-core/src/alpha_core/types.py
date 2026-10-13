@@ -67,6 +67,46 @@ class DecisionTrace(BaseModel):
         return self
 
 
+class ExecutionRejectionTrace(BaseModel):
+    """A causal opening-quote affordability rejection for an otherwise valid target order."""
+
+    model_config = ConfigDict(frozen=True)
+
+    ts: AwareDatetime
+    instrument_id: str
+    side: str
+    requested_quantity: float
+    reference_price: float
+    available_cash: float
+    estimated_fee: float
+    required_cash: float
+    reason: str
+
+    @model_validator(mode="after")
+    def _check_rejection(self) -> ExecutionRejectionTrace:
+        values = (
+            self.requested_quantity,
+            self.reference_price,
+            self.available_cash,
+            self.estimated_fee,
+            self.required_cash,
+        )
+        if any(not math.isfinite(value) for value in values):
+            raise ValueError("execution rejection amounts must be finite")
+        if (
+            self.side != "BUY"
+            or self.requested_quantity <= 0
+            or self.reference_price <= 0
+            or self.available_cash < 0
+            or self.estimated_fee < 0
+            or self.required_cash <= self.available_cash
+        ):
+            raise ValueError("execution rejection must describe an unaffordable CASH buy")
+        if not self.instrument_id or not self.reason:
+            raise ValueError("execution rejection instrument_id and reason must be non-empty")
+        return self
+
+
 class IndicatorTrace(BaseModel):
     """One causal indicator value emitted from the prefix available at a decision timestamp."""
 

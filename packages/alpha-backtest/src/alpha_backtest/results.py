@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from alpha_core import ChartAnnotationTrace, DecisionTrace, IndicatorTrace
+from alpha_core import ChartAnnotationTrace, DecisionTrace, ExecutionRejectionTrace, IndicatorTrace
 
 
 @dataclass(frozen=True)
@@ -84,6 +84,7 @@ class BacktestResult:
     equity_curve: list[tuple[datetime, float]]
     rejected: int = 0  # orders denied (risk/buying-power) or rejected by the venue (none filled)
     decision_trace: tuple[DecisionTrace, ...] = ()
+    execution_rejections: tuple[ExecutionRejectionTrace, ...] = ()
     indicator_trace: tuple[IndicatorTrace, ...] = ()
     chart_annotations: tuple[ChartAnnotationTrace, ...] = ()
     order_trace: tuple[OrderTrace, ...] = ()

@@ -1,9 +1,9 @@
 # Project ALPHA — Architecture
 
-**Last reviewed:** 2026-08-30
+**Last reviewed:** 2026-10-08
 **Status:** Living (terminal-style Workstation and governed D0/D1/D2 research flow implemented;
 private single-owner local-device scope; no production or distribution target)
-**Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual + module map) · [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](superpowers/specs/2026-08-06-research-scientist-program-design.md) · [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) (research synthesis) · [`adr/`](adr/) (decision records)
+**Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual) · [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](superpowers/specs/2026-08-06-research-scientist-program-design.md) · [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) (research synthesis) · [`adr/`](adr/) (decision records)
 
 ---
 
@@ -29,8 +29,6 @@ graph TD
     research[alpha_research]
     study[alpha_study]
     fc[alpha_forecast]
-    opt[alpha_options]
-    screen[alpha_screener]
     core[alpha_core]
     qlib["isolated Qlib worker\nworkers/qlib"]
 
@@ -43,12 +41,11 @@ graph TD
     cli --> research
     cli --> study
     cli --> fc
-    cli --> opt
-    cli --> screen
     cli --> core
     bt --> data
     bt --> core
     data --> core
+    strat --> patterns
     strat --> core
     val --> core
     research --> core
@@ -58,8 +55,6 @@ graph TD
     study --> research
     patterns[alpha_patterns] --> core
     fc --> core
-    opt --> core
-    screen --> core
     cli -. "validated JSON/Parquet only" .-> qlib
 ```
 
@@ -71,20 +66,20 @@ alpha_mcp   alpha_web          surfaces: subprocess `alpha`; public metadata/rea
       alpha_cli               sole composer; may import every package below
       /   |   \
      /    |    +------------ alpha_backtest ---- alpha_data ----+
-alpha_strategies  alpha_validation  alpha_research  alpha_study  alpha_forecast  alpha_options  alpha_screener
-    \             |                 |               |               |              /
+alpha_strategies  alpha_validation  alpha_research  alpha_study  alpha_forecast
+    \             |                 |               |               |
      +------------+-----------------+---------------+---------------+-------------+ -> alpha_core
                                                                imports nothing internal
 ```
 </details>
 
-**The rule:** `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_patterns` depends on `alpha_core`; `alpha_strategies`, `alpha_validation`, `alpha_research`, `alpha_forecast`, `alpha_options`, and `alpha_screener` depend on `alpha_core` only (and only `alpha_cli` may import `alpha_forecast`); `alpha_study` is an additive projection/composition seam over `alpha_core`, `alpha_data`, `alpha_patterns`, and `alpha_research`; `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG, depend only on `alpha_core` and supported public `alpha_cli` seams, and **nothing imports them**. Those surface seams cover catalog/run metadata, artifact contracts and bounded run projections, job capacity/durable leases, the paper journal, and governed research-case projections; bounded artifact projection may use Polars. Neither surface imports or executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. `alpha_study` owns immutable content-hashed lineage/event/factor projections, one closed source-owned operator registry, and exact `not_checked` references to existing D0/control-plane records; it owns no persistence, empirical evidence, D1 reservation, launch authority, or command. `workers/qlib` is a separate project/process with its own lock; no root package imports it.
+**The rule:** `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_patterns` depends on `alpha_core`; `alpha_strategies` depends on `alpha_core` and `alpha_patterns`; `alpha_validation`, `alpha_research` and `alpha_forecast` depend on `alpha_core` only (and only `alpha_cli` may import `alpha_forecast`); `alpha_study` is an additive projection/composition seam over `alpha_core`, `alpha_data`, `alpha_patterns`, and `alpha_research`; `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG, depend only on `alpha_core` and supported public `alpha_cli` seams, and **nothing imports them**. Those surface seams cover catalog/run metadata, artifact contracts and bounded run projections, job capacity/durable leases, the paper journal, and governed research-case projections; bounded artifact projection may use Polars. Neither surface imports or executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. `alpha_study` owns immutable content-hashed lineage/event/factor projections, one closed source-owned operator registry, and exact `not_checked` references to existing D0/control-plane records; it owns no persistence, empirical evidence, D1 reservation, launch authority, or command. `workers/qlib` is a separate project/process with its own lock; no root package imports it.
 
-**Enforcement:** fifteen `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode these boundaries, including outbound contracts that keep both surfaces free of internal data, strategy, validation, research, engine, and model-package imports and the bidirectional alpha-study seam. They run as the **`Architecture`** step (`uv run lint-imports`) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
+**Enforcement:** thirteen `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode these boundaries, including outbound contracts that keep both surfaces free of internal data, strategy, validation, research, engine, and model-package imports and the bidirectional alpha-study seam. They run as the **`Architecture`** step (`uv run lint-imports`) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
 
 ## 3. Layer Responsibilities
 
-One charter per package; see the **MODULE MAP** in [`CLAUDE.md`](../CLAUDE.md) for the per-module detail (not duplicated here).
+One charter per package; see the path-scoped module maps in [`.claude/rules/`](../.claude/rules/) for the per-module detail (not duplicated here).
 
 | Package | Layer | Charter | May import |
 |---|---|---|---|
@@ -95,10 +90,8 @@ One charter per package; see the **MODULE MAP** in [`CLAUDE.md`](../CLAUDE.md) f
 | `alpha_research` | 1 — research | Pure deterministic research primitives: fixed-duration research bars and identity, group-atomic chronological D1/D2/D3 allocation, causal pattern detection, prospective power and confirmation, point-in-time matched event studies, multiplicity control, lineage-bound charts, and terminal gate packets. D1/D2 are admitted only through governed contracts/phases; the package grants no strategy, validation, holdout, paper, or execution authority. | `core` |
 | `alpha_study` | 2 — research composition | Strict immutable feature/event/factor contracts, a closed Git-owned operator declaration, exact existing-authority references, derived finding/mechanism/advisor/workspace projections, one thin existing-double-bottom event-table adapter, and an S5a1 byte-bound blind semantic-read contract. The semantic contract emits only chart points available by its D0 acceptance-event reference and an aggregate masked count; its lineage remains unchecked until CLI composition. The package owns no persistence, commands, UI, approvals, empirical authority, D1/D2 transitions, promotion, paper, broker, or order authority. | `core`, `data`, `patterns`, `research` |
 | `alpha_forecast` | 1 — model | Kronos foundation-model facade: vendored pinned weights code, typed `Forecaster` protocol, per-sample OHLCV paths, deterministic seeding, offline `FakeForecaster`. torch/pandas confined inside; importing the package never imports torch. See [ADR-0008](adr/0008-vendored-kronos-and-alpha-forecast-layer.md). | `core` |
-| `alpha_options` | 1 — analytics | Pure Black–Scholes pricing, Greeks, and implied volatility. | `core` |
-| `alpha_screener` | 1 — market edge | Typed Finnhub quote/news parsing plus the opt-in API-key-gated network adapter. | `core` |
 | `alpha_backtest` | 2 — engine | The `nautilus_trader` run harness: bar→feed encoding (t+1 fills), engine config, instruments, fee model, result schema. | `core`, `data` |
-| `alpha_cli` | 3 — compose/control | The **only** operational composition layer. Owns governed D0/D1/D2 research orchestration, v3 run/artifact contracts, the schema-v5 SQLite project/job/evidence/research-governance control plane with its protected append-only semantic owner-event ledger, canonical semantic reads, and dedicated atomic owner-auth receipt/event seam, isolated-worker exchange validation, provider/system registry, wake-safe Tiingo daily scheduling, Binance Sandbox and native IBKR Paper admission/node assembly, immutable order intents/readiness evidence, and the separate operational paper journal. Engine imports are lazy. | everything in the root DAG |
+| `alpha_cli` | 3 — compose/control | The **only** operational composition layer. Owns governed D0/D1/D2 research orchestration, v3 run/artifact contracts, the schema-v6 SQLite project/job/evidence/research-governance control plane with its protected append-only semantic owner-event ledger, canonical semantic reads, and dedicated atomic owner-auth receipt/event seam, isolated-worker exchange validation, provider/system registry, wake-safe Tiingo daily scheduling, Binance Sandbox and native IBKR Paper admission/node assembly, immutable order intents/readiness evidence, and the separate operational paper journal. Engine imports are lazy. | everything in the root DAG |
 | `alpha_mcp` | 4 — surface | stdio MCP server whose generated capability matrix records the current bounded tool count and authority. **Subprocesses the `alpha` CLI**, composes nothing, cannot approve/decide research, consume D2, reveal a holdout, or place orders. | `core`, supported public `cli` seams |
 | `alpha_web` | 4 — surface | Local FastAPI JSON+SSE backend serving the committed terminal-style SPA (classic menu bar and one active-panel toolbar exposing the workflow routes Overview, Data & Assets, Research, Strategies & Tests, Results, Operations and Settings through View/Search; document tabs, Toolbox and docks; ChartWorkspace with Bokeh research and optional Lightweight market panels; panels gated per crypto/equities display profile). It subprocesses CLI actions/projections and serves server-rendered figures plus typed artifact/control records; the existing owner-auth challenge/perform routes are the dedicated local-confirmation/legacy-WebAuthn atomic semantic-event exception and call the supported `alpha_cli.owner_auth` seam without generic CLI dispatch. The existing Research Study tab renders the unchanged server-masked semantic GET beside additive non-authoritative semantic/D1 status; D1 launch remains subject to the existing owner-auth/CLI authority boundary. It never queries SQLite directly, reconstructs trading evidence, or imports/executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. Bounded Polars artifact projection is permitted. | `core`, supported public `cli` seams |
 | `workers/qlib` | isolated process | Daily cross-sectional Alpha158-style/LightGBM training with fold-local preprocessing. Accepts an immutable exchange bundle and returns validated close-stamped OOS predictions; models/pickles never cross the boundary. | its own `pyqlib`/LightGBM lock only |
@@ -476,12 +469,14 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 | [0027](adr/0027-tiered-research-readiness-semantics.md) | Python-authoritative tiered readiness | Accepted |
 | [0028](adr/0028-governed-market-state-and-model-candidates.md) | Governed market-state and model candidates | Accepted |
 | [0029](adr/0029-four-family-monte-carlo-validation.md) | Required four-family Monte Carlo path-risk validation | Accepted |
-| [0030](adr/0030-touch-id-owner-presence-for-research-actions.md) | Per-action Touch ID for closed research-lifecycle authority | Accepted |
+| [0030](adr/0030-touch-id-owner-presence-for-research-actions.md) | Legacy per-action WebAuthn; ordinary local confirmation superseded by ADR-0038 | Accepted |
 | [0031](adr/0031-provider-readiness-and-paper-acceptance-v2.md) | Receipted provider readiness and mechanically reverified paper acceptance | Accepted |
+
+Current ADR navigation, including ADR-0032 through ADR-0038, is maintained in the [ADR index](adr/README.md). Options and screener functionality are CLI modules, not separate workspace packages.
 
 ## 7. References
 
-- [`CLAUDE.md`](../CLAUDE.md) — agent operating manual, golden rules, CLI surface, full module map.
+- [`CLAUDE.md`](../CLAUDE.md) — agent operating manual and invariants; path-scoped rules retain module maps.
 - [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) — the original v1 design spec (pre-build).
 - [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) — consolidated research synthesis + decision table.
 - [`research/07-architecture-ai-workflow.md`](../research/07-architecture-ai-workflow.md) — repo layout, tooling, and AI build-workflow rationale.

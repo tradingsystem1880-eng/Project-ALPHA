@@ -176,7 +176,8 @@ def test_bbands_are_symmetric_around_the_middle_band() -> None:
 
 def test_short_window_fails_loud() -> None:
     series = to_ohlcv(_bars(30))
-    with pytest.raises(DataError, match="needs more than 50 bars"):
+    # the SPA reads this exact sentence (chartOverlaysModel.shortStudy) to skip a template study
+    with pytest.raises(DataError, match=r"^sma:50 needs more than 50 bars, the window has 30$"):
         indicator_series(series, parse_indicator("sma:50"))
     with pytest.raises(DataError, match="needs more than"):
         indicator_series(series, parse_indicator("macd:12:26:9"))

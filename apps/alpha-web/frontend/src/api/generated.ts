@@ -4784,7 +4784,7 @@ export interface components {
              * Event Type
              * @enum {string}
              */
-            event_type: "decision" | "order" | "fill" | "trade";
+            event_type: "decision" | "order" | "fill" | "trade" | "execution_rejection";
             /** Exit Price */
             exit_price: number | null;
             /** Exit Ts */

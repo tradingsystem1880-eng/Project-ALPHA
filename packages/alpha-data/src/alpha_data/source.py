@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, ValidationError
 
-from alpha_core import Bar, CorporateAction
+from alpha_core import Bar, CorporateAction, DataError
 from alpha_data.pit import PointInTimeReader
 from alpha_data.store import ParquetStore
 
@@ -34,18 +34,22 @@ class PointInTimeSource:
     def as_of(self, symbol: str, when: AwareDatetime) -> list[Bar]:
         """Validated, chronologically-ordered bars knowable at ``when`` (split-adjusted)."""
         frame = self._reader.as_of(symbol, when)
-        return [
-            Bar(
-                symbol=symbol,
-                ts=row["ts"],
-                open=row["open"],
-                high=row["high"],
-                low=row["low"],
-                close=row["close"],
-                volume=row["volume"],
-            )
-            for row in frame.iter_rows(named=True)
-        ]
+        bars = []
+        for row in frame.iter_rows(named=True):
+            try:
+                bar = Bar(
+                    symbol=symbol,
+                    ts=row["ts"],
+                    open=row["open"],
+                    high=row["high"],
+                    low=row["low"],
+                    close=row["close"],
+                    volume=row["volume"],
+                )
+            except ValidationError as exc:
+                raise DataError(f"invalid bar for {symbol!r} at {row['ts']}: {exc}") from exc
+            bars.append(bar)
+        return bars
 
     def dividends_as_of(self, symbol: str, when: AwareDatetime) -> list[CorporateAction]:
         """Knowledge-gated cash dividends for crediting at pay_date (see ``PointInTimeReader``)."""

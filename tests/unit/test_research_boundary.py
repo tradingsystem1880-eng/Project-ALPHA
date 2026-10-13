@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import tomllib
 from pathlib import Path
 
 
@@ -31,3 +32,17 @@ def test_research_kernel_imports_no_side_effectful_runtime() -> None:
                 found.add(node.module.split(".", 1)[0])
 
     assert found.isdisjoint(forbidden), found & forbidden
+
+
+def test_research_import_contract_enforces_core_only_dependencies() -> None:
+    root = Path(__file__).parents[2]
+    config = tomllib.loads((root / "pyproject.toml").read_text())
+    contracts = config["tool"]["importlinter"]["contracts"]
+    forbidden = {
+        module
+        for contract in contracts
+        if "alpha_research" in contract["source_modules"]
+        for module in contract["forbidden_modules"]
+    }
+    internal = set(config["tool"]["importlinter"]["root_packages"])
+    assert internal - {"alpha_research", "alpha_core"} <= forbidden

@@ -47,3 +47,9 @@ retirement receipts for unreferenced quarantines or the known DefiLlama v1 suppl
 Canonical manifests, raw lineage, payloads and historical verification remain intact. Active
 inventories and new explicit-ID admission exclude retired inputs; full storage audits include
 them. Warning data and referenced artifacts remain. Malformed receipts fail closed.
+
+Typed PIT reads validate bars only after cutoff filtering. `PointInTimeSource.as_of` translates
+Pydantic bar-validation failures to chained `DataError` with symbol, timestamp and reason;
+invalid visible rows are never skipped or coerced. CLI callers retain their typed usage-error
+boundary and publish no run on malformed inputs. Future-invalid and in-window-invalid controls
+live in `tests/bias_guards/test_source_future_poison.py`.

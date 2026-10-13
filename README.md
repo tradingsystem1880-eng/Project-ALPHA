@@ -11,7 +11,7 @@ whether a strategy's edge is real or just luck. Built and operated by AI agents.
 
 For the current-state architecture — the enforced dependency DAG, data flow, and the decision
 records behind the load-bearing choices — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (+ the
-[ADRs](docs/adr/)). For the agent operating manual, invariants, and module map see
+[ADRs](docs/adr/)). For the agent operating manual and invariants see
 [`CLAUDE.md`](CLAUDE.md); the original design rationale lives in
 [`docs/superpowers/specs/`](docs/superpowers/specs/) and [`research/`](research/).
 
@@ -35,7 +35,7 @@ and the [isolated Qlib worker](docs/superpowers/specs/2026-07-19-workstation-v3-
 The [Research Scientist program](docs/superpowers/specs/2026-08-06-research-scientist-program-design.md)
 now provides the bounded D0/D1/one-shot-D2 lifecycle, compact exact-membership boundaries, explicit
 owner-clicked literature discovery and extraction, anchored claim screening, cited non-authoritative
-recommendations, and per-action Touch ID for the closed research-lifecycle authority set. It never
+recommendations, and explicit local owner confirmation for the closed research-lifecycle authority set (ADR-0038). It never
 turns literature, model output, standalone experiments, provider configuration, or a broker what-if
 preview into strategy, paper, or order authority.
 
@@ -57,7 +57,7 @@ supplemental and cannot satisfy a venue-price validation requirement.
 Requires Python 3.12 and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
-uv sync
+uv sync --locked
 uv run alpha info        # smoke test: prints resolved settings + core version
 ```
 
@@ -72,33 +72,17 @@ second-opinion seam, and a hash-chained audit journal; see
 `docs/operations/claude-code-harness.md` (ADR-0034).
 
 ```bash
-uv lock --check && uv sync --locked \
-  && uv run ruff check . && uv run ruff format --check . && uv run lint-imports \
-  && uv run mypy packages apps tests \
-  && uv run pytest -q -m "not network" --cov --cov-report=term-missing \
-  && uv run python scripts/generate_web_openapi.py --check \
-  && uv run python scripts/check_openapi_operations.py \
-  && uv build --all-packages
-# Then reinstall dist/*.whl with --no-deps and import-smoke all 13 packages (the exact CI assertion
-# is in .github/workflows/ci.yml).
-
-cd apps/alpha-web/frontend
-npm ci
-npm run lint -- --deny-warnings
-npm run test:coverage
-npm run generate:api
-npx playwright install chromium
-npm run test:e2e
-
-cd ../../../workers/qlib
-uv lock --check && uv sync --locked
-uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest -q
-
-cd ../literature
-uv lock --check && uv sync --locked
-uv run ruff check . && uv run ruff format --check . && uv run mypy
-uv run pytest -q -m "not network"
+uv run python scripts/gate.py full
+# Diagnose an individual component using the same local/CI definitions:
+uv run python scripts/gate.py component backend
+uv run python scripts/gate.py component frontend
+# Other components: literature, qlib, atlas, eval.
 ```
+
+The full gate checks all six components on one unchanged tree, including generated OpenAPI,
+TypeScript API definitions, committed SPA assets and Atlas freshness. Component passes alone
+are not aggregate acceptance. Performance budgets are an explicitly opt-in reference-machine lane;
+functional browser journeys remain mandatory. See the frontend README for that lane.
 
 ## Workflow
 
@@ -379,7 +363,7 @@ interface — a focused owner workstation over the same governed CLI contracts.
 - **Research Cockpit** — exact-idea capture, explicit thesis/mechanism/prediction and competing
   explanations, owner-visible gates, native-unit budgets, synthetic D0 plus governed empirical
   D1 and one-shot D2 lanes, immutable D2/D3 firewalls, and a teaching-oriented terminal packet.
-  Empirical packet sections remain `NOT_TESTED` without typed D1/D2 evidence. Touch ID protects
+  Empirical packet sections remain `NOT_TESTED` without typed D1/D2 evidence. Local owner confirmation protects
   the closed research-lifecycle actions; the UI cannot bypass their server gates.
 - **Kronos + ML studios** — complete sampled K-lines, uncertainty/terminal distributions,
   calibration/provenance/warnings, plus the isolated Alpha158-style LightGBM/Qlib workflow and
@@ -400,13 +384,13 @@ interface — a focused owner workstation over the same governed CLI contracts.
   operation, output activity, accessible progress, live logs, and cancellation. ETA remains visibly
   indeterminate until a comparable successful command provides a same-session median; UI-launched
   Kronos/Qlib children use reduced scheduling priority to keep the desk responsive.
-- **Command palette + savable workspaces** over the terminal shell (2026-09-03): a menu bar, toolbar, Market Watch and Navigator docks, MDI documents with bottom tabs, a Toolbox and a Data Manager dock, gated per crypto/equities profile in the browser only.
+- **Command palette + savable workspaces** over the current terminal shell: menus, toolbar, Market Watch, real document tabs, a four-panel ChartWorkspace with UTC linking, research docks, Toolbox and Data Manager. Presentation settings remain per market profile.
 
-Built as a Vite/React/TypeScript SPA (Lightweight Charts + TanStack Table/Virtual + cmdk) over a
+Built as a Vite/React/TypeScript SPA (BokehJS, optional Lightweight Charts, TanStack Table/Virtual and cmdk) over a
 thin FastAPI **JSON + SSE** backend. Stable, bounded JSON responses are strict Pydantic
 models with an explicit REST contract version; committed OpenAPI generates the frontend API
 definitions. Bounded Research Case routes mirror the supported MCP read/draft boundary while
-owner actions remain confined to the Touch ID service. Like the MCP server it's purely additive —
+owner actions remain behind server-bound local confirmation; legacy WebAuthn is optional (ADR-0038). Like the MCP server it's purely additive —
 provider/system data subprocesses the matching `alpha info … --json` projections, research data is a
 manifest/artifact read, and paper monitoring uses the public operational journal seam; nothing
 imports an engine. The SPA
@@ -448,11 +432,11 @@ For conversational control, pair the Workstation's AI Console with the `alpha` M
 
 ## Quality gate
 
-The v3 offline release gate passed on 2026-07-19. The current gate covers 14 import contracts,
+The v3 offline release gate passed on 2026-07-19. The current gate covers 13 import contracts,
 strict mypy, warnings as errors, a true 93.00% minimum owned-source Python line coverage threshold,
 OpenAPI/generated TypeScript freshness, frontend V8 coverage, Playwright/axe at 1280×720,
-1440×900, and 1920×1080, deterministic artifact publication, isolated builds/imports for all 13
-root wheels, and the separately locked Qlib worker. Historical hardening evidence is recorded in
+1585×991, and 1920×1080, deterministic artifact publication, isolated builds/imports for all 12
+root wheels, separately locked Qlib/literature workers, Atlas and eval components. Historical hardening evidence is recorded in
 [`docs/audit/2026-07-18-professional-hardening-readiness.md`](docs/audit/2026-07-18-professional-hardening-readiness.md);
 exact 2026-07-19 v3 release evidence is recorded in the
 [post-v2 audit](docs/audit/2026-07-19-post-v2-architecture-audit.md). R-22 is retired under the

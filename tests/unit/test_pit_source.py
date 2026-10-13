@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+import polars as pl
 import pytest
+from pydantic import ValidationError
 
 from alpha_core import Bar, DataError
 from alpha_core.protocols import DataSource
@@ -51,3 +53,36 @@ def test_as_of_unknown_symbol_raises(tmp_path: Path) -> None:
     src = PointInTimeSource(ParquetStore(tmp_path), actions={})
     with pytest.raises(DataError):
         src.as_of("NOPE", datetime(2024, 1, 1, tzinfo=UTC))
+
+
+@pytest.mark.parametrize("field", ["open", "high", "low", "close", "volume"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_source_translates_nonfinite_bar_to_data_error(
+    tmp_path: Path, field: str, value: float
+) -> None:
+    store = ParquetStore(tmp_path)
+    bars = linear_bars("X", date(2024, 1, 1), 1).with_columns(pl.lit(value).alias(field))
+    store.write_bars("X", bars)
+    with pytest.raises(DataError, match=rf"Bar\.{field} must be finite") as caught:
+        PointInTimeSource(store, actions={}).as_of("X", datetime(2024, 1, 1, tzinfo=UTC))
+    assert "'X' at 2024-01-01 00:00:00+00:00" in str(caught.value)
+    assert isinstance(caught.value.__cause__, ValidationError)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "reason"),
+    [
+        ("close", -1.0, "must be > 0"),
+        ("volume", -1.0, "must be >= 0"),
+        ("high", 1.0, "OHLC inconsistent"),
+    ],
+)
+def test_source_translates_invalid_bar_invariants(
+    tmp_path: Path, field: str, value: float, reason: str
+) -> None:
+    store = ParquetStore(tmp_path)
+    store.write_bars(
+        "X", linear_bars("X", date(2024, 1, 1), 1).with_columns(pl.lit(value).alias(field))
+    )
+    with pytest.raises(DataError, match=reason):
+        PointInTimeSource(store, actions={}).as_of("X", datetime(2024, 1, 1, tzinfo=UTC))
