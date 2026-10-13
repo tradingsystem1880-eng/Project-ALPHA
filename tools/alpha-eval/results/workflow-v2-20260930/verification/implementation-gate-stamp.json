@@ -1,0 +1,40 @@
+{
+  "created_at": "2026-09-30T10:45:48+00:00",
+  "duration_seconds": 924.5079171648249,
+  "head": "e54aa7ab05f48a6add384feeb6dcb98e9541e7df",
+  "schema_version": 1,
+  "steps": [
+    {
+      "name": "backend",
+      "ok": true,
+      "seconds": 0.0
+    },
+    {
+      "name": "frontend",
+      "ok": true,
+      "seconds": 0.0
+    },
+    {
+      "name": "literature",
+      "ok": true,
+      "seconds": 0.0
+    },
+    {
+      "name": "qlib",
+      "ok": true,
+      "seconds": 0.0
+    },
+    {
+      "name": "atlas",
+      "ok": true,
+      "seconds": 0.0
+    },
+    {
+      "name": "eval",
+      "ok": true,
+      "seconds": 0.0
+    }
+  ],
+  "tier": "full",
+  "tree_hash": "7ad880237b475f741c8b19106e58ac8fcc8d139498e299c1210e5ba64a812a7d"
+}

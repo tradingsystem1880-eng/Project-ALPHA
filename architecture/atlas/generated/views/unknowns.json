@@ -1,5 +1,5 @@
 {
-  "inputs_hash": "b44f97d4760a8e16ac6403f455f607e318489ac57385e9399c61aee7cdcab640",
+  "inputs_hash": "370e5e14bb055086d27ac33891639c7b2cda65f245c61de3e9db198359598b9b",
   "purpose": "review queue: nodes with no doc anchor, test, or cross-layer link",
   "schema_version": 1,
   "unknown_node_ids": [
@@ -14,9 +14,9 @@
     "module:alpha_cli._crypto_panel",
     "module:alpha_cli._crypto_persistence",
     "module:alpha_cli._hypothesis_scan",
-    "module:alpha_cli.assistant_cmds",
     "module:alpha_cli.assistant_worker",
     "module:alpha_cli.figures._sources",
+    "module:alpha_cli.investigation_workspace_data",
     "module:alpha_core.costs",
     "module:alpha_core.universe",
     "module:alpha_data._atomic",
@@ -45,6 +45,7 @@
     "module:alpha_validation.conditional",
     "module:alpha_web._assistant",
     "module:alpha_web._atomic",
+    "module:alpha_web._investigations",
     "module:alpha_web.api._common",
     "module:alpha_web.api.errors",
     "module:alpha_web.api.rule_evaluation_models",

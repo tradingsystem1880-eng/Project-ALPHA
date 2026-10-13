@@ -115,6 +115,14 @@ See the [plan](../../docs/superpowers/plans/2026-10-07-technical-chart-language.
 
 Owner correction 2026-10-03: scientific rendering is default; keep the approved classic top bar. Bokeh views own standalone documents and must release both views and document/model registries on cancellation, failure and disposal. Price annotations must retain unit isolation. The visible project selector permits no-project market/archive browsing; project inventory errors stay explicit. Native interval discovery offers exact sources without automatic venue/market substitution. See [correction report](../../docs/operations/2026-10-03-scientific-research-workstation.md).
 
+## Authorized investigation extension (2026-10-04)
+
+The owner authorized the narrow managed advisory investigation controls inside RunDetail.
+`research investigations` remains the CLI-owned public seam; typed web relays never import
+engines. Opaque IDs, immutable evidence, durable budgets and explicit comparison preview apply.
+This exception does not reopen research admission, D2, paper, broker or order authority.
+See `docs/superpowers/plans/2026-10-04-workstation-investigations.md`.
+
 Volume painting uses exact native-index viewport intersections and complementary previous-close
 up/down views with scalar colors; retain the full x/volume source. Include partially intersecting
 edge bars and unchanged-close classification. Never aggregate bars or change timing budgets to

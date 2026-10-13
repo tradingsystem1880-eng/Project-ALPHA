@@ -29,3 +29,9 @@ The cleanup ports the engine/strategy guard, typed rejection records, existing C
 Recovered onto `reconcile/preserved-features` from the verified preservation snapshot. Original receipts remain historical. Standing private-suite policy and mutation/maintainability changes are excluded. Focused checks and a fresh exact-tree aggregate are pending; no release acceptance or publication is claimed.
 
 Fresh focused checks:69 backend regressions and eight chart browser tests pass on the recovered candidate. Two additional PNG omissions were reproduced and corrected: annotation-outside-window disclosure and the volume legend swatch. Final aggregate and independent acceptance remain pending.
+
+## Existing research integration, 2026-10-11
+
+The historical research execution digest is retained in the combined research candidate.
+Its pretrade/venue reconciliation is independently tested; the earlier recovery boundary above
+describes the feature-only candidate, which intentionally omitted that research module.

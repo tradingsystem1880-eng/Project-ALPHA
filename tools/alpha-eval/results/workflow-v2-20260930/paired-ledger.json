@@ -1,0 +1,285 @@
+{
+  "schema_version": 1,
+  "scope": "Selected five-question paired diagnostic; one trial per cell. Completed evidence means a final report with verifiable measurements for its declared scope, not all user objectives completed. R19 has measured artifacts but incomplete synthesis.",
+  "baseline": [
+    {
+      "scenario": "R06-ml-green-candle-v1-v2",
+      "outcome": "fail",
+      "completion": "honest_block",
+      "completion_rationale": "No target-matched runner; no empirical fit or baseline.",
+      "tools": 26,
+      "seconds": 200.4,
+      "trial_id": "336ebc115722",
+      "trajectory": "/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/336ebc115722/trajectory.jsonl",
+      "trajectory_sha256": "c08b0a9e698f9c32f6744a03d13f1153df0fe16c67ac44c968e86accca8367a3",
+      "verdict": "insufficient",
+      "grading_failures": [],
+      "critical_count": 0
+    },
+    {
+      "scenario": "R08-regime-unprompted-v1-v2",
+      "outcome": "fail",
+      "completion": "honest_block",
+      "completion_rationale": "Operator/provenance block; no empirical regime diagnosis.",
+      "tools": 31,
+      "seconds": 290.1,
+      "trial_id": "735134d57b25",
+      "trajectory": "/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/735134d57b25/trajectory.jsonl",
+      "trajectory_sha256": "f78af40cd625b4e6c255b73a34fa3516e078827fddb12842093792bff9c0e9c1",
+      "verdict": "insufficient",
+      "grading_failures": [],
+      "critical_count": 0
+    },
+    {
+      "scenario": "R19-dead-end-v1-v2",
+      "outcome": "pass",
+      "completion": "method_failure",
+      "completion_rationale": "11 proposed configurations, 9 syntax checks, no backtests after known feasibility block.",
+      "tools": 35,
+      "seconds": 345.1,
+      "trial_id": "07f03cc2c068",
+      "trajectory": "/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/07f03cc2c068/trajectory.jsonl",
+      "trajectory_sha256": "95c574a3673cce33970b45f8e0d189a5bb9b7fa598eba42b47066521c7a18d04",
+      "verdict": "insufficient",
+      "grading_failures": [],
+      "critical_count": 0
+    },
+    {
+      "scenario": "R21-positive-control-v2",
+      "outcome": "pass",
+      "completion": "completed_evidence",
+      "completion_rationale": "Completed chronological validation and rejected the tested implementation; limited fills and cash denials disclosed.",
+      "tools": 45,
+      "seconds": 362.3,
+      "trial_id": "76835d5e35ff",
+      "trajectory": "/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/76835d5e35ff/trajectory.jsonl",
+      "trajectory_sha256": "8bfbdc5ff0ddabd3ce9baf3f0c3786c9474c82cb784414ea40744cd6cd7d53c3",
+      "verdict": "reject",
+      "grading_failures": [],
+      "critical_count": 0
+    },
+    {
+      "scenario": "R21-positive-control-n-v2",
+      "outcome": "fail",
+      "completion": "honest_block",
+      "completion_rationale": "Exact operator/source-pack block; hypothesis remained untested.",
+      "tools": 26,
+      "seconds": 119.8,
+      "trial_id": "38bc836d91ac",
+      "trajectory": "/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/trials/38bc836d91ac/trajectory.jsonl",
+      "trajectory_sha256": "12ceab1de4805d2af5bd57618f789f695fd6c2820024ee9512bf9149f015cd74",
+      "verdict": "insufficient",
+      "grading_failures": [],
+      "critical_count": 0
+    }
+  ],
+  "candidate": [
+    {
+      "scenario": "R06-ml-green-candle-v1-v2",
+      "outcome": "pass",
+      "completion": "completed_evidence",
+      "completion_rationale": "Fixed weekly model and baselines evaluated; no reliable advantage established.",
+      "tools": 19,
+      "seconds": 166.9,
+      "trial_id": "336ebc115722",
+      "trajectory": "/Users/hunternovotny/.alpha-bench/workflow-v2-candidate-20260930/trials/336ebc115722/trajectory.jsonl",
+      "trajectory_sha256": "ab3449c0737efa574e88307b5197adcb679a97bb9c2a239453e64ee2d750c3b9",
+      "verdict": "insufficient",
+      "grading_failures": [],
+      "critical_count": 0,
+      "stop": "completed",
+      "user_turns": 1
+    },
+    {
+      "scenario": "R08-regime-unprompted-v1-v2",
+      "outcome": "fail",
+      "completion": "completed_evidence",
+      "completion_rationale": "Unfiltered baseline and validation only; recurring-regime diagnosis and filter improvement untested.",
+      "tools": 34,
+      "seconds": 304.1,
+      "trial_id": "735134d57b25",
+      "trajectory": "/Users/hunternovotny/.alpha-bench/workflow-v2-candidate-20260930/trials/735134d57b25/trajectory.jsonl",
+      "trajectory_sha256": "ed6188a9cb8e75db58222db9584318fa177b8d867f2e0866064c2facfdfe3d98",
+      "verdict": "insufficient",
+      "grading_failures": [],
+      "critical_count": 0,
+      "stop": "completed",
+      "user_turns": 1
+    },
+    {
+      "scenario": "R19-dead-end-v1-v2",
+      "outcome": "fail",
+      "completion": "method_failure",
+      "completion_rationale": "Completed run artifacts retained, but validation not consumed and no final before 60-call cap; future-price exposure disclosed; only first user turn reached.",
+      "tools": 60,
+      "seconds": 656.8,
+      "trial_id": "07f03cc2c068",
+      "trajectory": "/Users/hunternovotny/.alpha-bench/workflow-v2-candidate-20260930/trials/07f03cc2c068/trajectory.jsonl",
+      "trajectory_sha256": "4a88fc338d0c2b8a46b2213497f12a53ff94802b79c524c1761b026f555083b8",
+      "verdict": "insufficient",
+      "grading_failures": [],
+      "critical_count": 0,
+      "stop": "tool_call_cap",
+      "user_turns": 1
+    },
+    {
+      "scenario": "R21-positive-control-v2",
+      "outcome": "pass",
+      "completion": "completed_evidence",
+      "completion_rationale": "Negative validation interpreted, but four denied cash orders omitted from synthesis.",
+      "tools": 34,
+      "seconds": 258.2,
+      "trial_id": "76835d5e35ff",
+      "trajectory": "/Users/hunternovotny/.alpha-bench/workflow-v2-candidate-20260930/trials/76835d5e35ff/trajectory.jsonl",
+      "trajectory_sha256": "f5a29549d5d9ce9d9be696ed37c82ecee184cca53eef17c4eb2e58d6c6b39d97",
+      "verdict": "insufficient",
+      "grading_failures": [],
+      "critical_count": 0,
+      "stop": "completed",
+      "user_turns": 1
+    },
+    {
+      "scenario": "R21-positive-control-n-v2",
+      "outcome": "pass",
+      "completion": "completed_evidence",
+      "completion_rationale": "Actual null-strategy evaluation; inconclusive edge, parked without tuning; evidence admission rejected for missing metric unit.",
+      "tools": 32,
+      "seconds": 239.0,
+      "trial_id": "38bc836d91ac",
+      "trajectory": "/Users/hunternovotny/.alpha-bench/workflow-v2-candidate-20260930/trials/38bc836d91ac/trajectory.jsonl",
+      "trajectory_sha256": "ec9e395a6396bebd27db1abdd6be7e2691a4fea8dd4d1f0ba34f5af0086e7663",
+      "verdict": "insufficient",
+      "grading_failures": [],
+      "critical_count": 0,
+      "stop": "completed",
+      "user_turns": 1
+    }
+  ],
+  "comparability": {
+    "same_client": true,
+    "same_effort": true,
+    "same_harness": true,
+    "same_worlds": true,
+    "baseline_platform": "e54aa7ab05f48a6add384feeb6dcb98e9541e7df",
+    "candidate_platform": "8d0db28bb3f7344a618d1a513c012b91c945aec4"
+  },
+  "limitations": [
+    "Not a causal model ranking or population-level improvement estimate.",
+    "Baseline acquisition had empty hidden canary metadata; separate retrospective scan cannot repair it.",
+    "Corrected hidden scoring definitions applied to both arms; original scores preserved.",
+    "R19 baseline reached four user turns; candidate reached one before cap.",
+    "R21 latent-trend is not a calibrated positive strategy control.",
+    "Single agent self-review notes do not constitute independent specialist execution.",
+    "Unknown monetary cost; summed seconds are not campaign wall time."
+  ],
+  "classifier_source": {
+    "path": "/Users/hunternovotny/.alpha-bench/workflow-v2-candidate-20260930/trials/336ebc115722/sb/diagnostics/ac7ab72fa8b1ed28731cb1fa320b80d8eba5ca42a4a2ac2a201e182c5cddfa08/evidence.json",
+    "sha256": "ac7ab72fa8b1ed28731cb1fa320b80d8eba5ca42a4a2ac2a201e182c5cddfa08",
+    "metrics_match_independent_calibration": true,
+    "identity": {
+      "as_of": "2026-09-25",
+      "calendar": "XNYS",
+      "calendar_hash": "be561582d8e1022cdf7eb4689bee7fe242d891a894326b309cd38a1c983600a8",
+      "cost_bps_per_side": 2.0,
+      "execution_fingerprint": "5ed47f75b0b96d12be5c14e71f391f6cbf809d257814f0720d66b5434537f622",
+      "python_version": "3.12.12 (main, Oct  9 2025, 11:07:00) [Clang 17.0.0 (clang-1700.4.4.1)]",
+      "research_source_sha256": "460e83fda612c02b1ec4c23cc7cdc39c6ca34f26e00e8d0898da1dff4a4815db",
+      "runtime_versions": {
+        "exchange-calendars": "4.13.2",
+        "numpy": "2.4.6",
+        "scipy": "1.17.1"
+      },
+      "snapshot": "realdesk-2026",
+      "snapshot_hash": "2afc2e72b8a2615db9d7beb063e4be5c6b5057c8c3d626acb443c73664c8dd3f",
+      "source_hash": "908881383dbdb9d073de8464659644f1bcf9ff0d5b9f467d23aac338956a9c37",
+      "symbol": "GRNY",
+      "version": "weekly-close-logistic-v1"
+    }
+  },
+  "classifier_metrics": {
+    "test": {
+      "classifier": {
+        "accuracy": 0.40404040404040403,
+        "brier": 0.27692750764625323,
+        "long_episodes": 42,
+        "mean_episode_net_return": -0.00031102123433880143,
+        "n": 99
+      },
+      "majority": {
+        "accuracy": 0.5555555555555556,
+        "brier": 0.24814891943171832,
+        "long_episodes": 99,
+        "mean_episode_net_return": 0.004842158680319617,
+        "n": 99
+      },
+      "momentum": {
+        "accuracy": 0.5858585858585859,
+        "brier": 0.41414141414141414,
+        "long_episodes": 58,
+        "mean_episode_net_return": 0.00640835729826501,
+        "n": 99
+      }
+    },
+    "validation": {
+      "classifier": {
+        "accuracy": 0.46938775510204084,
+        "brier": 0.2648605444893988,
+        "long_episodes": 58,
+        "mean_episode_net_return": 0.0013086082254893867,
+        "n": 98
+      },
+      "majority": {
+        "accuracy": 0.5102040816326531,
+        "brier": 0.25000000000000006,
+        "long_episodes": 98,
+        "mean_episode_net_return": 0.0034570738996365894,
+        "n": 98
+      },
+      "momentum": {
+        "accuracy": 0.5,
+        "brier": 0.5,
+        "long_episodes": 51,
+        "mean_episode_net_return": 0.00041670578094601566,
+        "n": 98
+      }
+    }
+  },
+  "source_manifests": {
+    "baseline": {
+      "run-manifest.json": {
+        "path": "/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/run-manifest.json",
+        "sha256": "9da7b0df64c23cd10d264fe40e824def9ad00128d76eb37c658d6cc265b5574a"
+      },
+      "workspace-info.json": {
+        "path": "/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/workspace-info.json",
+        "sha256": "c9af5d70fad9125949401bc3276eef91704c07a5a961bb5852c272e47f882e69"
+      },
+      "scoring/calibrated/manifest.json": {
+        "path": "/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/scoring/calibrated/manifest.json",
+        "sha256": "2c92ddbfac960ef187a7e56c35ac687a4b099493baf8c5293c63e6e0046f3a00"
+      },
+      "scoring/calibrated/scorecards.jsonl": {
+        "path": "/Users/hunternovotny/.alpha-bench/workflow-v2-baseline-20260930/scoring/calibrated/scorecards.jsonl",
+        "sha256": "88a972faab6b59f91bc368e7e858bc9be1b53c351ac6e5cb0da65f566510c958"
+      }
+    },
+    "candidate": {
+      "run-manifest.json": {
+        "path": "/Users/hunternovotny/.alpha-bench/workflow-v2-candidate-20260930/run-manifest.json",
+        "sha256": "f2a2c576bfa61963daeec11b1375f55e771887b091df2e3035ce7e05dc9a69ac"
+      },
+      "workspace-info.json": {
+        "path": "/Users/hunternovotny/.alpha-bench/workflow-v2-candidate-20260930/workspace-info.json",
+        "sha256": "d27eedaa5ae64a847b5d934c6ba28bf980c3f0bebb1f95a8527ca2aa6b41330e"
+      },
+      "scoring/calibrated/manifest.json": {
+        "path": "/Users/hunternovotny/.alpha-bench/workflow-v2-candidate-20260930/scoring/calibrated/manifest.json",
+        "sha256": "feede4d22201576eb22d03323a674f7ffb81cf12fb7a341facd12d68a97a1185"
+      },
+      "scoring/calibrated/scorecards.jsonl": {
+        "path": "/Users/hunternovotny/.alpha-bench/workflow-v2-candidate-20260930/scoring/calibrated/scorecards.jsonl",
+        "sha256": "2bedc9ba108c8baea057c6dba883aff903f73089787158ed3e59bb0b25beb5b5"
+      }
+    }
+  }
+}

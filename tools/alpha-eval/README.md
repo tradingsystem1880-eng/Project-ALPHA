@@ -102,3 +102,114 @@ resume identity, Codex-only execution, normalization, partial traces, failed tur
 Historical world-power approximations, legacy overnight/intraday dependence and regex checks remain
 limitations; do not turn them into precise scientific power or profitability claims. Platform defects
 are follow-up work, not fixed to improve this campaign's scores.
+
+## Workflow V2 diagnostic panel
+
+`scenarios/workflow_v2.yaml` adds separately versioned R06/R08/R19/R20/R21 definitions.
+`realdesk_v2` uses XNYS sessions; `bundle_v2` reconciles synthetic daily MTM to trade and
+monthly outputs. Legacy catalogs/worlds remain unchanged. R21 distinguishes within-dataset
+signal, bounded follow-up value and deployability. Do not pool these with historical scores.
+
+The initial paired panel is five questions (R06-v1, R08-v1, R19-v1, R21 positive/null),
+one baseline and one candidate trial each. Completion status is independently adjudicated
+from retained execution evidence, separately from rubric credit. Ten trials are diagnostic,
+not a powered general capability comparison. See the [active plan](../../docs/superpowers/plans/2026-09-30-research-workflow-completion.md).
+
+## Closed synthetic investigation demo
+
+`uv run --project tools/alpha-eval alpha-eval investigate-demo --out NEW_DIRECTORY`
+calibrates three designed controls using physically restricted measurement workers. Add `--live`
+to invoke bounded Codex reasoning (default model follows the existing `gpt-6-astra` route).
+Outputs are append-only; an existing destination is rejected. No Claude invocation or historical
+result mutation occurs. This is an evaluator command, not a public research admission workflow.
+
+The identical vague question is presented for an observable planted indicator, a frozen-indicator
+null, and an accounting defect. The null uses the same equity path with an alternating indicator;
+it is not evidence that no other explanatory feature exists. These are synthetic panels, not
+engine-generated backtests. The positive indicator is deliberately planted; calibration cannot
+establish real-world causality or predictive availability.
+
+The lead returns a strict Pydantic proposal. A trusted controller alone dispatches `inspect_run`,
+`loss_episodes`, `historical_context`, or `conditional_diagnostic`. It reserves attempts before
+execution, counts denials/failures, permits each action once, and allows at most five model calls
+including synthesis. Accounting failure blocks further interpretation. A final must cite its
+inspection receipt; response completion is distinct from independently reviewed research quality.
+No action accepts model-provided paths, code, search parameters or commands.
+
+Inputs contain only cutoff-permitted synthetic rows and bounded source records. Parent hashes
+remain evaluator-side. Measurement workers have read-only input/code access, a minimized environment
+and no network access. Actual preflight probes test reads, denied input mutation, absolute/relative/
+symlink escapes and network connection denial. Model decisions use an empty workspace, host skills
+and configuration disabled, auxiliary tools disabled, explicit deny/read permissions, and no MCP.
+Raw events are retained; unexpected tool events invalidate the turn. A model canary refusal is
+only evidence of no observed disclosure, not a substitute for worker enforcement probes.
+
+Conditional summaries freeze indicator t against equity return t→t+1 and report counts/means,
+without significance or uncertainty estimates. Context is dated untrusted synthetic text, never
+instructions or proof of cause. All exposed periods remain observed retrospective evidence.
+`summary.json`, per-action receipts, raw model events, invocation settings, code/input hashes and
+`report.md` preserve what actually happened. There is no baseline comparison or general AI-uplift
+claim in this development panel. Real-data exports, predictive confirmation, broader recovery,
+agent-team/SDK ablations and outcome benchmarks remain later work.
+
+Configuration reference used for this adapter:
+[OpenAI Codex configuration](https://developers.openai.com/codex/config-reference) and
+[permissions](https://developers.openai.com/codex/permissions), verified against installed CLI help
+and the retained transport smoke. Provider transport remains trusted; model tools and measurement
+workers have separate restrictions.
+
+
+### Investigation efficiency comparison
+
+`alpha-eval investigate-compare --out NEW_DIR` performs isolated synthetic calibration and
+writes the frozen nine-cell protocol. Add `--live` to acquire all nine Codex trials. It compares
+the unchanged legacy adaptive policy with pre-model inspection plus compact JSON, and a
+fixed-evidence advisory synthesis. The latter collects all permitted measurements before one
+model call, stopping collection on integrity failure. It is a synthetic comparator, not the
+production `diagnostic suggest` workflow. The default demo remains unchanged.
+
+All automatic measurements consume the four-action budget. The same panel hashes, worker, model
+and isolation are used across arms; mode order rotates across cases. Full receipts are preserved
+losslessly. `comparison-protocol.json` precedes inference; `comparison.json` includes every trial,
+including failures. Usage totals are unknown when any call lacks valid usage; cached tokens are
+a subset of input, never an additional charge estimate. Trial elapsed time includes measurements
+and provider setup/model calls but excludes shared preflight/calibration. Calibration
+measurements are reported separately. No billing dollars or statistical uplift are inferred.
+
+See the [efficiency plan](../../docs/superpowers/plans/2026-10-02-investigation-efficiency.md).
+
+[Retained nine-trial results](results/investigation-efficiency-20261002/report.md) show lower
+measured usage for prechecked and fixed policies, with an independent qualitative evidence
+review. The small designed panel does not establish general agent reliability; defaults remain
+unchanged and richer selection tests precede any team/runtime expansion.
+
+
+### Research judgment cases
+
+`alpha-eval investigate-judgment --out NEW_DIR` prepares six isolated synthetic cases and
+freezes a 12-cell protocol. Add `--live` for prechecked versus fixed Codex trials (at most 30
+model calls). The same optional judgment guidance asks both modes for a leading explanation,
+a credible alternative, discriminating evidence and prioritized next work. It is not a
+production assistant integration or a claim of expert trading competence. Old commands and
+default prompts remain unchanged.
+
+Cases contrast relevant and misleading context, strategy losses against a rising benchmark,
+post-outcome labels, missing benchmark/indicator data, and an injected context measurement outage.
+The last is a deterministic test fault, not an observed provider incident. Null data remain
+unavailable, never fabricated zero returns. Indicator provenance is exposed; labels unavailable
+at the export cutoff are redacted and independently checked by the worker. The numerical
+estimators are unchanged. Source inventory titles are untrusted metadata, not conclusions.
+
+Review actual source exposure before crediting resistance to injected instructions. Failure to
+retrieve a source is not successful handling of its text. Automatic accounting enforcement is
+separate from model judgment. The fixed mode still supplies all available measurements; no
+artificial cost handicap is added to manufacture an adaptive advantage.
+
+[Judgment plan](../../docs/superpowers/plans/2026-10-02-research-judgment-cases.md) defines the
+case-specific expectations outside model inputs. Completion, engineering verification and
+research-quality review are separate. Real execution reconciliation and data export remain
+prerequisites for using owner trading evidence.
+
+Transport receipts now include `failure_kind`, distinguishing provider errors, malformed events,
+unexpected tool events and timeouts. The shared stream `stop` field retains its legacy generic
+callback-stop label; it must not by itself be interpreted as evidence of a model tool attempt.

@@ -3,6 +3,8 @@
 Other runbooks in this directory: [`owner-actions-checklist.md`](owner-actions-checklist.md)
 (every credential, approval and opt-in that needs the owner's own hands) and
 [`codex-second-model-runbook.md`](codex-second-model-runbook.md) (the optional Codex login).
+For the Codex-first recorded-run runtime, see
+[`codex-investigations.md`](codex-investigations.md).
 
 This runbook is for the single-operator local deployment. Do not commit `.env`, Tiingo/IBKR
 credentials, account identifiers, Docker secrets, generated journals, or copied market data.

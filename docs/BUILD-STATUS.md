@@ -771,6 +771,220 @@ rendered in the `mcr.microsoft.com/playwright:v1.61.1-noble` container (linux/am
 unchanged 2% tolerance. The CI frontend job's timeout rose from 15 to 40 minutes for the 308-test
 browser suite.
 
+### 2026-09-30 — bounded research diagnostics (verification in progress)
+
+Isolated continuation from e54aa7a adds a non-admitted weekly-close classifier CLI, typed advisory
+specialist review contracts and evidence-selector checking, and a bounded baseline-before-variants
+procedure. Qlib, research approvals, D2, promotion and the MCP/REST tool surfaces are unchanged.
+Versioned benchmark worlds add XNYS calendars and reconciling synthetic MTM; historical scenarios
+and model evidence remain retained. The classifier, fixture and contract tests have focused
+coverage; aggregate acceptance and the paired diagnostic panel remain pending in the
+[delivery plan](superpowers/plans/2026-09-30-research-workflow-completion.md).
+
+
+## 2026-09-30 — Research workflow paired closeout
+
+Implementation `8d0db28` passed the canonical full gate on tree `7ad880237b475f741c8b19106e58ac8fcc8d139498e299c1210e5ba64a812a7d`, independent APPROVE and quant PASS. New calendar/MTM fixtures, weekly classification diagnostics, typed advisory reviews and bounded workflow guidance are delivered; historical Claude evidence remains unchanged.
+
+The bounded ten-trial Codex-only diagnostic is complete. It supports further work on execution budgets, evidence reconciliation and information boundaries; it does not establish a general model ranking or validate an independent multi-agent architecture. Scenario-specific outcomes and control diagnoses remain in `tools/alpha-eval/results/workflow-v2-20260930/README.md` and the architecture audit, which are excluded from agent workspace exports. This public build record deliberately omits those answers. Closure documentation is committed only after its own exact-tree full gate.
+
+
+## 2026-09-30 — Bounded baseline execution controller
+
+A CLI-first controller now runs one frozen momentum baseline and validation, preserves durable attempts, reserves reconciliation time and publishes verified execution digests. It makes no model calls, launches no candidate variants, and grants no research admission or owner authority. The digest retains order denials independently of model narrative and checks execution quantities and session coverage. This bounds controller operations; surrounding-agent temporal read isolation and specialist-agent effectiveness remain unverified. Historical benchmark evidence is retained. See the [controller plan](superpowers/plans/2026-09-30-bounded-research-controller.md); exact-tree gate/review receipts determine acceptance.
+
+
+## 2026-10-01 — Immutable rule execution in the bounded research controller
+
+The isolated research branch adds embedded canonical rule specifications to `BaselineExecutionPlan`.
+Both baseline and validation consume one immutable rule file plus its exact byte hash, and the
+collector verifies returned rule identity. Existing named-rule behavior, CASH/long-only policy,
+validation defaults and two-operation budget remain unchanged. Invalid or altered inputs fail
+before engine execution. Default launch forms omit the new local-file options; existing authorized
+generic CLI transport can relay them. No new REST schema, MCP tool or approval authority.
+
+This addresses fixed-rule operator coverage, not agent pressure-turn behavior or whole-agent
+information isolation. Historical Claude evidence is unchanged; no new model trial is claimed.
+See the [plan](superpowers/plans/2026-10-01-immutable-research-rules.md) and
+[usage guide](operations/bounded-research-workflow.md). Acceptance is recorded separately in
+exact-tree gate and independent-review receipts; combined main/UI integration remains pending.
+
+
+## 2026-10-02 — Research teammate advisory slice
+
+Implemented in isolated `feat/research-teammate` on `73fb2a9`, preserving concurrent primary
+checkout changes and historical Claude evidence. New CLI `research diagnostic suggest` verifies
+retained evidence, measures existing drawdown episodes and proposes bounded follow-ups. Typed
+external proposals permit novel questions with exact brief binding; no automatic execution.
+Exploratory-analysis protocol now explicitly asks for useful unsolicited questions and justified
+skips. Focused tests cover corrupt evidence, cutoff, loss diagnosis, reference binding and CLI.
+Acceptance requires independent review and a fresh full-gate receipt; this entry is not a receipt.
+The broader capability program, isolation and agent-reasoning benchmark uplift remain pending.
+
+
+## 2026-10-02 — Closed synthetic investigation demo
+
+Next slice after `535a461`, implemented in isolated `feat/research-investigation-demo`.
+The evaluator exports neutral cutoff-scoped synthetic panels and dispatches four fixed measurements
+from typed model proposals. Input mutation/path escape/network denial are tested by actual worker
+preflight. Failed/denied attempts consume bounds; accounting failure blocks interpretation and
+synthesis requires an inspection receipt. Fresh tools-disabled Codex turns retain raw evidence.
+Designed controls distinguish a planted indicator, a frozen-indicator null and an accounting defect;
+they are not engine backtests or evidence of real predictive causality. Model completion and research
+quality are separate. The original general harness and historical results are unchanged.
+Independent review and a fresh full-gate stamp remain acceptance requirements; this narrative is
+not a receipt. Consult the retained development report for live outcomes and limitations.
+
+Retained [synthetic live evidence](../tools/alpha-eval/results/investigation-demo-20261002/README.md)
+records three final responses, 12 model calls and nine measurements. The planted indicator and
+frozen-indicator null received distinct interpretations; the defect case stopped after inspection.
+These observations do not establish benchmark uplift, unrestricted initiative or real trading edge.
+
+Verification infrastructure: `ALPHA_PLAYWRIGHT_PORT` selects a separate test-only backend port
+(default 8802, excludes owner port 8801); Playwright refuses reuse of another server. This fixes
+observed cross-checkout verification interference without changing application routes or authority.
+
+
+## 2026-10-02 — Investigation efficiency comparison
+
+Implemented on isolated `feat/research-investigation-efficiency` after `d5f3cd4`. New
+`alpha-eval investigate-compare` freezes three policies across the same three synthetic panels:
+legacy adaptive, prechecked adaptive and fixed-evidence advisory synthesis. Automatic work
+uses the existing attempt budget; lossless compact JSON retains complete evidence. Setup failures
+are reserved and retained; missing or malformed usage stays unknown. Defaults and historical
+evidence are unchanged. No model, dependency, statistical operator or application authority changed.
+
+[Retained report](../tools/alpha-eval/results/investigation-efficiency-20261002/report.md): all nine
+trials completed. Legacy used 12 calls / 127832 input tokens, prechecked 7 / 74126 (42.01% fewer
+input tokens), fixed 3 / 32425 (74.63% fewer). A separate reviewer recomputed measurements and
+checked all 22 transport usage records; no critical regression was observed in these outputs.
+Three designed cases, one trial per cell, do not establish general reliability or real edge.
+The simpler fixed-evidence baseline motivates richer task-selection tests before adding teams.
+Fresh exact-tree full-gate and code-review receipts remain required for engineering acceptance.
+
+
+## 2026-10-02 — Research judgment development cases
+
+Implemented in isolated `feat/research-judgment-cases` after `77d6e94`. The optional evaluator
+judgment path adds six contrasting cases, explicit missingness, cutoff-safe indicator provenance,
+and a labeled measurement outage. It asks for competing explanations, discriminating evidence and
+prioritized next work. Existing demo defaults and historical Claude evidence remain unchanged.
+
+[Retained evidence](../tools/alpha-eval/results/research-judgment-20261002/report.md) separates
+original A (4/12 finals, provider interruptions), recovery B (local path failure, zero inference),
+and recovery C (8/8 finals, 16 calls). Independent review found no critical factual or causal failure
+in the available finals. This does not repair A's completion rate or establish general reliability.
+New transport metadata distinguishes provider errors from tool events. The production assistant
+is not integrated with this optional judgment path; real-run export and independent execution
+reconciliation are next. Engineering acceptance requires fresh full-gate and exact-tree review receipts.
+
+## 2026-10-03 — Codex-first recorded-run runtime, first increment
+
+Implemented on isolated `feat/codex-research-runtime` based on the delivered research checkout
+`8a00b27`; concurrent primary workstation changes remain untouched. The CLI connects Codex App
+Server to three fixed-case MCP tools, verifies actual execution isolation and thread policy,
+retains durable tool/model budgets and evidence receipts, and validates final citation bindings.
+Completed checkpoint resume revalidates evidence without spending another model turn. Transport
+steering/interruption seams exist; workstation controls and chart input are not integrated yet.
+
+Local acceptance used existing MSFT run `8648eedee80cbdc4` at its recorded 2024-12-30 cutoff.
+The successful trial invoked execution, loss and follow-up tools and produced three verified
+receipts. It preserved unverified coverage, distinguished fills from independent closed bets,
+and proposed reconciliation before causal attribution. This is one operational smoke, not a
+benchmark win or a claim of reliable trading judgment. Earlier development failures are retained:
+initial isolation probe denied launch; first model turn could not discover tools with code-mode
+host disabled; second model turn encountered missing per-tool preauthorization. Both unsupported
+reports failed admission. The corrected configuration preauthorizes only the three fixed tools.
+
+Raw cases and reports remain private under `/private/tmp/alpha-codex-acceptance-20261003`, outside
+Git; they contain conversation history and should not be published. The source run and historical
+Claude benchmarks were not edited. [Operation and limits](operations/codex-investigations.md),
+[execution plan and remaining roadmap](superpowers/plans/2026-10-03-codex-research-runtime.md).
+Engineering acceptance requires the canonical full gate and independent review of the final tree;
+this runtime grants no research, confirmation, paper or trading authority.
+
+### First-increment acceptance record
+
+The 65 targeted runtime tests and all six canonical full-gate components passed. Independent
+review approved the implementation and reproduced the three live receipts from source. Native
+thread resume and CLI checkpoint resume succeeded without another model turn. Full-gate scope
+was the 25-file increment against `8a00b2749984f937c994c0b7bc6b261de297cc89`; this is not cumulative
+branch-versus-main acceptance. The passing implementation tree and private log are recorded in
+the execution plan. Final delivery-record changes must receive a fresh full stamp before commit.
+Earlier gate failures were retained and addressed: manual size and coverage were corrected;
+two existing cancellation tests failed under concurrent load, passed in isolation, and passed in
+the clean aggregate rerun with four workers. No test threshold or authority boundary was waived.
+
+
+## 2026-10-03 — Frozen comparison evidence for Codex investigations
+
+Continued `feat/codex-research-runtime` from `e111377`. New investigations optionally freeze up to four snapshot series with expected manifest hashes and operator-selected roles. Existing loss inspection reports exact daily endpoint price changes over strategy drawdowns, observed rows, declared instrument/fetch provenance and explicit blockers. Source integrity is reverified on every cached read; schema-v2 identities and completed checkpoints remain compatible. Schema-v3 cases bind the comparison plan, data root and evidence. No new tools, model providers, permissions or dependencies were added.
+
+Forty-eight new tests passed, including actual MCP-to-CLI comparison execution, future-poison controls, sparse/malformed inputs and bounded reads. The fast gate passed after test-typing corrections. Independent review identified an all-member hashing limit gap; pre-hash manifest/member/payload bounds and pre-materialization row/schema limits resolved it. A real Codex session on a labeled synthetic fixture reported the known 40% versus 20% declines with limitations; both its resume and the earlier real MSFT v2 checkpoint preserved findings without another model turn. This confirms operational wiring, not trading reliability or economic benefit.
+
+[Runbook](operations/codex-investigations.md), [scope and acceptance record](superpowers/plans/2026-10-03-codex-comparison-evidence.md). Final-tree full gate and independent review are required before commit. Snapshot provenance is not quality certification or historical-vintage proof; schedule completeness, causality and benchmark suitability remain unverified. Bounded acquisition and existing-contract data qualification remain next. Historical Claude results and concurrent primary UI work were untouched.
+
+
+## 2026-10-04 — Bounded private comparison acquisition
+
+Continued `feat/codex-research-runtime` from `dd1c745`. An inspected parent investigation can
+reserve one explicit batch of up to four daily Tiingo stock/ETF comparisons. The trusted CLI
+runs bounded downloads through the existing ingestion checks in a private store, retains emitted
+receipts/quarantine, and publishes a snapshot and comparison plan only when all requests pass.
+Completed reads reverify hashes and replay raw parsing/quality checks; failed or ambiguous batches
+never automatically retry. A separate comparison-data root leaves original run resolution unchanged.
+The model retains its three read-only tools. No canonical data, research admission or trading
+authority is granted; historical Claude evidence and concurrent workstation edits are preserved.
+
+Fixture tests cover CLI acquisition, private snapshot-to-investigation handoff, unchanged parent
+budgets, cached reads without credentials, tampering, failed batches, bounded transport and future
+poison with discriminating controls. These are synthetic operational checks, not real-market
+findings. Live Tiingo acceptance is **UNVERIFIED**: no provider credential is configured here.
+Declared instrument metadata, proxy suitability, historical vintage and independent-source
+agreement remain unverified. Final-tree full gate and independent review are required before commit.
+
+[Runbook](operations/codex-investigations.md),
+[scope and acceptance plan](superpowers/plans/2026-10-04-bounded-comparison-acquisition.md).
+Next: live-provider acceptance when configured and workstation integration after reconciling its
+separate active changes; macro attribution, regime learning and strategy engineering remain later
+increments, not implied capabilities of this download path.
+
+
+## 2026-10-04 — Managed recorded-run investigations in the workstation
+
+Continued `feat/codex-research-runtime` from `4b93c97`. The shared run report now starts and
+restores CLI-owned investigations, shows evidence separately from hypotheses and proposed tests,
+and supports same-case follow-ups, cancellation and refresh recovery within durable budgets.
+Explicit comparison previews lead to private acquisition and a linked new exposed case; an
+interrupted child publication can finish without another download or duplicate child. Verified
+list/show projections do not initialize sessions or acquire data. Ambiguous model reservations
+remain blocked. Parent-death/deadline supervision reaps the owned Codex process group.
+
+Browser acceptance passed through actual HTTP, CLI processes and persisted state, using labeled
+model/provider doubles. Separate live Codex CLI and web follow-ups passed; active-turn cancellation
+left none of four observed descendant processes alive and preserved consumed turn budgets. An
+initial cancellation status mismatch was fixed and rechecked against live Codex. Live Tiingo
+acceptance remains UNVERIFIED without a configured credential. These are operational checks,
+not evidence of trading reliability. The final staged tree requires independent review and the
+canonical full gate before commit; its receipt records aggregate acceptance.
+
+[Plan and acceptance scope](superpowers/plans/2026-10-04-workstation-investigations.md),
+[operator workflow](operations/codex-investigations.md). Primary checkout's concurrent UI is
+untouched; this branch's acceptance does not certify a future combined tree. Codex stays the only
+reasoning model; Claude artifacts, research admission and trading authority are unchanged.
+
+
+**2026-10-10 existing research-runtime reconciliation (local candidate):** The thirteen committed
+bounded runtime increments through `b18cf921` are merged without a commit against main `454c940f`
+in an isolated checkout. Recorded-run investigations, immutable case budgets, scoped MCP findings,
+frozen comparisons and managed acquisition/cancellation/follow-up/handoff coexist with main's
+current API, recorded panels and authority controls. Bounded compatibility regressions repair
+custom Codex home propagation, fail-closed event handling and disposable backend/test isolation.
+Generated OpenAPI, SPA and Atlas describe the combined source. Fresh primary-source quant checks
+pass; cumulative public full verification and independent risk acceptance are still pending.
+Private-suite, current live Codex isolation and provider acceptance remain unverified. No standing
+exception or publication permission is assumed. See the research-runtime reconciliation plan.
+
 
 **2026-10-07 — Technical chart language (StockCharts Classic/Default grammar).** Owner request:
 make the primary analytical chart read as market-analysis software rather than a web component.
@@ -827,6 +1041,26 @@ previously passed all six components on f54af6df. Refresh exact-tree validation 
 review for this delivery record; exact-target hosted CI and legitimate dependency order remain
 required. No live-provider acceptance, strategy admission or trading authority is conferred.
 
+
+**2026-10-11 — Existing research-runtime delivery authorized.** Existing source through b18cf921
+previously passed all six components on fefe81cb, with fresh quant verification and no independent
+source findings. The owner approved the one-time exception documented above, keeping private
+coverage UNVERIFIED. The combined candidate incorporates recovered chart/CASH/PIT/hygiene source
+and preserves recorded investigation/report, immutable-rule, budget and authority boundaries.
+Regenerate contracts/assets and obtain fresh full/source/quant/independent review plus exact-target
+hosted CI before merge. Live Codex0.161/Tiingo acceptance remains UNVERIFIED; no live credentials,
+private data, new strategy authority or standing policy is introduced.
+
+
+**2026-10-11 — Hosted research configuration-test portability repair.** Research PR #56's
+first hosted backend gate failed three public configuration tests because their executable
+lookup relied on Codex being installed on the test machine. The same failures reproduce locally
+with Codex removed from PATH. Those tests now discover a synthetic executable in a fixture-only
+PATH, assert its exact launch argv, and retain configuration/auth-reference/isolation assertions.
+A new negative test removes the fixture executable and verifies the production unavailable error
+before runtime-directory creation. All ten environment tests pass with no installed executable;
+production behavior and live-provider acceptance are unchanged. Fresh exact-tree independent
+review, canonical full and hosted checks follow this bounded test-only repair.
 **2026-10-10 mutation sweep durability (isolated publication):** Serial nightly sweeps were
 cancelled near six hours. The owner selected weekly exhaustive singleton jobs; nightly Semgrep,
 determinism and raise-site coverage remain. Identity-bound atomic checkpoints, persisted logs,
@@ -1007,3 +1241,28 @@ Integrated the cleanup-only runtime/tests delta on accepted main `d914be9f` (PR5
 
 
 **2026-10-13 — Technical price-mount lifecycle repair.** Fresh clean-context review found that a cancelled asynchronous technical-price mount registered its UTC endpoint before the component checked whether its effect was live. If it resolved after its replacement, stale cleanup removed the replacement link. Two actual-renderer unit regressions fail on the old source (premature registration and missing replacement cursor delivery). The renderer now exposes deferred activation, and the component activates only after its live check, matching the recorded-plot protocol. Both completion orders pass; native data, rendering geometry and screenshot baselines are unchanged. Previous 5a855ce4 full/CI evidence is retained as historical evidence; fresh final-tree full, independent review and exact-head CI remain required.
+
+## 2026-10-13 — PR55 accepted feature integration
+
+PR #55 merged as `cf7ce4a3` after the repaired exact candidate passed the six-component canonical
+full gate (872.35 seconds), fresh clean-context independent review, all seven required head checks
+and all seven post-merge checks. The merged Git tree exactly matches the reviewed and tested tree.
+The lifecycle correction defers technical-chart registry activation until the asynchronous component
+confirms that its mount is still live; both actual-renderer completion-order regressions pass.
+Private coverage remains UNVERIFIED under the existing recovered-work exception; no standing policy
+or protected-staging permission was added. The exact acceptance receipt is retained in the external
+reconciliation evidence directory.
+
+## 2026-10-13 — PR56 research integration candidate
+
+The preserved research runtime from `b18cf921` is being integrated with accepted main after PR #55.
+This candidate retains the bounded `ControlStore` WAL retry, pure control JSON and crypto persistence
+helpers, fixture-only Codex executable, deterministic diagnostic oracle and single-wheel range-order
+repairs. The supported Atlas generator refreshes the live CLI cache before regenerating its outputs.
+The quant review found and the author corrected one docstring: the reported binary score is half
+the two-category Brier loss. The first canonical full reached 93.09% coverage (5,717 passed, nine
+skipped) but stopped because the combined manuals exceeded the 6,000-byte cap. The manuals are now
+6,000 bytes. Acceptance requires fresh exact-tree quant confirmation, independent review, canonical
+full, required hosted CI and post-merge checks. Private coverage and live Codex 0.161/Tiingo acceptance
+remain UNVERIFIED; no credential access, hosted-provider activation, new strategy authority or
+standing policy is added. Protected mutation-staging work remains separate and unapproved.

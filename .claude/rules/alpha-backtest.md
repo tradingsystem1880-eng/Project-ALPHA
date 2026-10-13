@@ -21,8 +21,8 @@ For the shared `VolTargetStrategy` lifecycle, a CASH buy is rejected before subm
 actual next-open ask notional plus the currency-rounded commission exceeds the account's free
 quote-currency balance. The check preserves the close-t target and uses the same opening quote as the
 fill convention; `BacktestResult.execution_rejections` records the rejected quantity, price, cash,
-fee, and reason. The CLI persists this separately in `pretrade_rejections.parquet`, records the
-pretrade and total rejection counts in the manifest, and includes rejections in the consolidated
-execution trace. Generic strategies without this shared hook
+fee, and reason. The CLI persists this separately in `pretrade_rejections.parquet` and reconciles
+that count with venue denials in the execution digest. The manifest records pretrade and total
+rejection counts, and the consolidated execution trace includes these rejections. Generic strategies without this shared hook
 retain the engine's fail-loud truncation check. MARGIN orders and sells are not constrained by this
 CASH-only rule.

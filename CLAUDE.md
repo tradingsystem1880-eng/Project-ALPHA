@@ -2,17 +2,16 @@
 
 Authority: `docs/governance/capability-authority-matrix.md`.
 
-Owner research: validate edge after costs. Python 3.12; uv. No hosting/distribution.
+Private owner research: validate edge after costs. Python 3.12/uv; no hosting/distribution.
 
 ## Rules (path-scoped)
 
-Read applicable `.claude/rules/` before edits. Load `karpathy-guidelines`,
-`incremental-implementation` for multi-file changes, `code-simplification` for refactors,
-`code-review-and-quality` before merge, and `verification-before-completion` before success claims.
-Use `alpha-feature-workflow` for nontrivial changes; quant changes also require primary-source
-verification. Skills: `.agents/skills/`. One mutator per overlapping slice.
+Load `karpathy-guidelines`; `incremental-implementation` for multi-file work;
+`code-simplification` for refactors; `code-review-and-quality` before merge;
+`verification-before-completion` before claims. Use `alpha-feature-workflow` for nontrivial work;
+quant changes need primary sources. Skills: `.agents/skills/`. One mutator per overlapping slice.
 
-Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`,
+Applicable rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`,
 `alpha-backtest.md`, `alpha-validation.md`, `alpha-research.md`, `alpha-forecast.md`,
 `alpha-patterns.md`, `alpha-study.md`, `alpha-cli.md`, `alpha-mcp.md`, `alpha-web.md`,
 `quant.md`, `tests.md`, `docs.md`.
@@ -45,14 +44,14 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
 - Tests under `tests/holdout/` may run, but agents never read or edit them. Proposed tests go in
   `tests/holdout_seed/`. No owner data, credentials or hidden tests in discovery indexes.
 - Research ships CLI-first. The [edge workspace](docs/superpowers/plans/2026-09-30-edge-workspace.md) connects
-  charts, verified conditions and bounded advisory Codex. Drafts confer no authority. Grey terminal
-  docks, verified archive charts and local click confirmation follow ADR-0038.
+  charts, conditions and advisory Codex. Drafts confer no authority; terminal docks, verified
+  charts and local confirmation follow ADR-0038.
 
 ## Commands
 
 - Canonical aggregate: `uv run python scripts/gate.py full`.
-- Components: `uv run python scripts/gate.py component NAME`, where NAME is
-  `backend`, `frontend`, `literature`, `qlib`, `atlas` or `eval`; full requires all components.
+- Components: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
+  `literature`, `qlib`, `atlas`, `eval`); full requires all.
 - Discovery: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;
   `alpha info procedures --json`. Default catalog remains launch-form compatible.
 - Install: `uv sync --locked`. Tests: `uv run pytest -q -m "not network"`; bias guards:
@@ -67,12 +66,14 @@ ceremony changes from unchanged application authority.
 [Harness](docs/operations/claude-code-harness.md): checkpoints, 96-mutant caps, intake, exceptions.
 
 [Benchmark](tools/alpha-eval/README.md): Codex-only; preserve history/isolation.
+Research: [bounded CLI workflow](docs/operations/bounded-research-workflow.md);
+[Codex investigations](docs/operations/codex-investigations.md). Advisory only.
 
 ## Current evidence
 
 Read [architecture](docs/ARCHITECTURE.md), [ADRs](docs/adr/README.md),
-rules and [build record](docs/BUILD-STATUS.md). Contracts:
-[research platform](docs/operations/research-platform-contracts.md). Use fresh source/tests. Provider acceptance needs receipts; absent/failed live evidence cannot pass.
+rules in `.claude/rules/`, [build record](docs/BUILD-STATUS.md) and [contracts](docs/operations/research-platform-contracts.md).
+Use fresh source/tests. Provider acceptance requires passing receipts.
 
 [Development loop](docs/operations/development-loop.md): focused checks.
 Behavior changes: update this manual and append `docs/BUILD-STATUS.md`.

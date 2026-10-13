@@ -946,6 +946,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/investigations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listing */
+        get: operations["listing_api_investigations_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_investigations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/investigations/eligibility/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Eligibility */
+        get: operations["eligibility_api_investigations_eligibility__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/investigations/{identifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Show */
+        get: operations["show_api_investigations__identifier__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/investigations/{identifier}/comparison-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Draft */
+        post: operations["draft_api_investigations__identifier__comparison_plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/investigations/{identifier}/comparisons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acquire */
+        post: operations["acquire_api_investigations__identifier__comparisons_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/investigations/{identifier}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn */
+        post: operations["turn_api_investigations__identifier__turns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/jobs": {
         parameters: {
             query?: never;
@@ -4891,6 +4994,71 @@ export interface components {
             /** Type */
             type: string;
         };
+        /** ComparisonAcquireRequest */
+        ComparisonAcquireRequest: {
+            /** Plan Sha256 */
+            plan_sha256: string;
+        };
+        /** ComparisonDraft */
+        ComparisonDraft: {
+            /**
+             * Calendar
+             * @default XNYS
+             * @constant
+             */
+            calendar: "XNYS";
+            /**
+             * Currency
+             * @default USD
+             * @constant
+             */
+            currency: "USD";
+            /** End */
+            end: string;
+            /**
+             * Limitation
+             * @default Instrument metadata and benchmark suitability are operator-declared.
+             */
+            limitation: string;
+            /** Plan Sha256 */
+            plan_sha256: string;
+            /**
+             * Provider
+             * @default tiingo
+             * @constant
+             */
+            provider: "tiingo";
+            /** Series */
+            series: components["schemas"]["ComparisonProxy"][];
+            /** Start */
+            start: string;
+            /**
+             * Venue
+             * @default US
+             * @constant
+             */
+            venue: "US";
+        };
+        /** ComparisonDraftRequest */
+        ComparisonDraftRequest: {
+            /** Series */
+            series: components["schemas"]["ComparisonProxy"][];
+        };
+        /** ComparisonProxy */
+        ComparisonProxy: {
+            /**
+             * Asset Class
+             * @enum {string}
+             */
+            asset_class: "stock" | "etf";
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "asset" | "market" | "sector" | "other";
+            /** Symbol */
+            symbol: string;
+        };
         /** ControlJob */
         ControlJob: {
             /** Created At */
@@ -6970,6 +7138,121 @@ export interface components {
             family: string;
             /** Multiplicity */
             multiplicity: string;
+        };
+        /** InvestigationCreate */
+        InvestigationCreate: {
+            /** Parent Id */
+            parent_id?: string | null;
+            /** Question */
+            question: string;
+            /** Run Id */
+            run_id: string;
+        };
+        /** InvestigationEligibility */
+        InvestigationEligibility: {
+            /** Cutoff */
+            cutoff?: string | null;
+            /** Eligible */
+            eligible: boolean;
+            /** Reason */
+            reason?: string | null;
+            /** Run Id */
+            run_id: string;
+        };
+        /** InvestigationFinding */
+        InvestigationFinding: {
+            /** Observation */
+            observation: string;
+            /** Receipt Ids */
+            receipt_ids: string[];
+        };
+        /** InvestigationFindings */
+        InvestigationFindings: {
+            /** Findings */
+            findings: components["schemas"]["InvestigationFinding"][];
+            /** Hypotheses */
+            hypotheses: string[];
+            /** Limitations */
+            limitations: string[];
+            /** Next Tests */
+            next_tests: string[];
+        };
+        /** InvestigationProgress */
+        InvestigationProgress: {
+            /** Message */
+            message: string;
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "preparing" | "tool_started" | "tool_completed" | "verifying" | "acquiring";
+        };
+        /** InvestigationTurnRequest */
+        InvestigationTurnRequest: {
+            /** Followup */
+            followup?: string | null;
+        };
+        /** InvestigationView */
+        InvestigationView: {
+            /**
+             * Acquisition Status
+             * @default not_started
+             * @enum {string}
+             */
+            acquisition_status: "not_started" | "succeeded" | "failed" | "incomplete";
+            /** Active Job Id */
+            active_job_id?: string | null;
+            /**
+             * Admitted
+             * @default false
+             * @constant
+             */
+            admitted: false;
+            /**
+             * Authority
+             * @default none
+             * @constant
+             */
+            authority: "none";
+            /** Can Followup */
+            can_followup: boolean;
+            /** Can Resume */
+            can_resume: boolean;
+            /** Case Id */
+            case_id: string;
+            /** Comparison Child Id */
+            comparison_child_id?: string | null;
+            comparison_draft?: components["schemas"]["ComparisonDraft"] | null;
+            /** Created At */
+            created_at: string;
+            /** Cutoff */
+            cutoff: string;
+            /** Error */
+            error?: string | null;
+            /** Id */
+            id: string;
+            /** Parent Id */
+            parent_id?: string | null;
+            /** Progress */
+            progress?: components["schemas"]["InvestigationProgress"][];
+            /** Question */
+            question: string;
+            /** Receipts */
+            receipts?: {
+                [key: string]: unknown;
+            }[];
+            report?: components["schemas"]["InvestigationFindings"] | null;
+            /** Requests Remaining */
+            requests_remaining: number;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "running" | "completed" | "failed" | "interrupted" | "blocked";
+            /** Turns Remaining */
+            turns_remaining: number;
         };
         /** JobDetail */
         JobDetail: {
@@ -13056,6 +13339,237 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvidenceRecord"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    listing_api_investigations_get: {
+        parameters: {
+            query: {
+                run_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationView"][];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    create_api_investigations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvestigationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationView"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    eligibility_api_investigations_eligibility__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationEligibility"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    show_api_investigations__identifier__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationView"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    draft_api_investigations__identifier__comparison_plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComparisonDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonDraft"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    acquire_api_investigations__identifier__comparisons_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComparisonAcquireRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    turn_api_investigations__identifier__turns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvestigationTurnRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatus"];
                 };
             };
             /** @description Stable, redacted Workstation error */

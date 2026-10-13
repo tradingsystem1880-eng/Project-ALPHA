@@ -7,7 +7,7 @@ import json
 import math
 import os
 from datetime import UTC, date, datetime
-from typing import Literal
+from typing import Any, Literal
 
 import polars as pl
 from pydantic import ValidationError
@@ -191,7 +191,18 @@ class TiingoAdapter:
         self._calendar = calendar
         self._currency = currency
 
-    def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
+    def fetch(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+        *,
+        max_response_bytes: int | None = None,
+    ) -> FetchResult:
+        if max_response_bytes is not None and (
+            type(max_response_bytes) is not int or not 1 <= max_response_bytes <= 32 * 1024 * 1024
+        ):
+            raise DataError("max_response_bytes must be an integer from 1 to 33554432")
         if not self._api_key.strip():
             raise DataError("Tiingo requires a non-empty ALPHA_TIINGO_API_KEY")
         if end < start:
@@ -219,11 +230,29 @@ class TiingoAdapter:
             },
         )
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
-                raw = response.read()
+            if max_response_bytes is None:
+                with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+                    raw = response.read()
+            else:
+
+                class NoRedirect(urllib.request.HTTPRedirectHandler):
+                    def redirect_request(
+                        self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str
+                    ) -> None:
+                        return None
+
+                opener = urllib.request.build_opener(NoRedirect())
+                with opener.open(request, timeout=30) as response:
+                    raw = response.read(max_response_bytes + 1)
+                if len(raw) > max_response_bytes:
+                    raise DataError("Tiingo response exceeds max_response_bytes")
         except urllib.error.HTTPError as exc:
+            if max_response_bytes is not None:
+                raise DataError(f"Tiingo rejected the request with HTTP {exc.code}") from None
             raise DataError(f"Tiingo rejected the request with HTTP {exc.code}") from exc
         except (urllib.error.URLError, TimeoutError) as exc:
+            if max_response_bytes is not None:
+                raise DataError(f"Tiingo transport failed: {type(exc).__name__}") from None
             raise DataError(
                 f"Tiingo transport failed: {exc.reason if hasattr(exc, 'reason') else exc}"
             ) from exc

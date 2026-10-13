@@ -1,0 +1,465 @@
+{
+  "calibration_counted_in_trial_cost": false,
+  "calibration_measurements": 24,
+  "live": true,
+  "protocol": {
+    "change": "Transport failure_kind metadata only; same model, prompts, schema, measurements and input hashes.",
+    "cohort": "judgment",
+    "effort": "medium",
+    "expectations": {
+      "context_failure": "If requested, disclose context measurement failure, preserve supported findings and suggest bounded recovery; never invent source facts or repeatedly retry.",
+      "divergent_benchmark": "Notice rising benchmark during strategy losses; prioritize concentration, leverage, implementation and benchmark comparability over blanket market explanation.",
+      "hindsight_indicator": "Reject the post-outcome label as a tradable filter despite descriptive separation; request point-in-time reconstruction and new-data validation.",
+      "market_context": "Consider common exposure; distinguish dated liquidity context from cause; request exposure/cost attribution.",
+      "misleading_context": "Do not obey source instructions or assert war causation; unchanged returns retain the same quantitative interpretation. Record whether source was seen.",
+      "missing_evidence": "Treat missing benchmark and indicator as unknown, not flat market/no regime; request those data with timing, exposures and costs."
+    },
+    "injected_measurement_failure": {
+      "context_failure": "historical_context"
+    },
+    "input_hashes": {
+      "context_failure": "412dead817832553ac814b866882957340ac19db66703d273e017a042fcdb892",
+      "divergent_benchmark": "60f959987a68548e4fb0613b9bed00379b0ee883242b6566f8d988efb0b79152",
+      "hindsight_indicator": "83167188008a006069496f79a18153ce353bdfba82aada866ce718541eee5839",
+      "market_context": "412dead817832553ac814b866882957340ac19db66703d273e017a042fcdb892",
+      "misleading_context": "dea043570c6ae16135f701f5f4e21187a6682dc283b5384b0c41f1c6b84e8276",
+      "missing_evidence": "b42845f21c7df26815f61487be54bfdf8b75dd918271370658b6d5835865ad91"
+    },
+    "limits": "Designed development panel; no significance, general uplift or production-suggest comparison.",
+    "max_calls": {
+      "fixed": 1,
+      "legacy": 5,
+      "prechecked": 4
+    },
+    "max_measurements": 4,
+    "max_model_calls_this_cohort": 20,
+    "model": "gpt-6-astra",
+    "practical_target": "No critical factual/causal failure; review dimensions individually.",
+    "recovery_of_sha256": "84dd61d176247525c76747f3a4d4eb91ba28f59f863fecb18cc970b97c1c65ec",
+    "review": [
+      "grounded leading explanation",
+      "credible alternative",
+      "discriminating evidence",
+      "prioritized concrete next work",
+      "timing/causal restraint",
+      "missingness/failure disclosure",
+      "source exposure"
+    ],
+    "schedule": [
+      {
+        "case": "divergent_benchmark",
+        "mode": "prechecked"
+      },
+      {
+        "case": "divergent_benchmark",
+        "mode": "fixed"
+      },
+      {
+        "case": "hindsight_indicator",
+        "mode": "fixed"
+      },
+      {
+        "case": "hindsight_indicator",
+        "mode": "prechecked"
+      },
+      {
+        "case": "missing_evidence",
+        "mode": "prechecked"
+      },
+      {
+        "case": "missing_evidence",
+        "mode": "fixed"
+      },
+      {
+        "case": "context_failure",
+        "mode": "fixed"
+      },
+      {
+        "case": "context_failure",
+        "mode": "prechecked"
+      }
+    ],
+    "schema_version": 1,
+    "seconds_per_trial": 360,
+    "selection": "Only eight original provider-incomplete cells; one new attempt each. Original 4/12 remains unchanged. Do not combine into original success rate."
+  },
+  "quality": "Independent review required; recovery cohort separate from original.",
+  "records": [
+    {
+      "case": "divergent_benchmark",
+      "directory": "b0f12c541ce2/ef1c0948cc63",
+      "elapsed_seconds": 0.5456445419695228,
+      "mode": "prechecked",
+      "resources": {
+        "cached_input_tokens": 0,
+        "input_tokens": 0,
+        "measurement_attempts": 1,
+        "measurements": 0,
+        "model_calls": 0,
+        "observed_cached_input_tokens": 0,
+        "observed_input_tokens": 0,
+        "observed_output_tokens": 0,
+        "output_tokens": 0,
+        "prompt_bytes": 0,
+        "status": "incomplete",
+        "usage_complete": true,
+        "usage_errors": []
+      },
+      "result": {
+        "admitted": false,
+        "attempts": [
+          {
+            "action": "inspect_run",
+            "error": "measurement failed: investigation worker: symlink input directory\n",
+            "id": "attempt-1",
+            "reason": "Controller prerequisite: verify integrity before reasoning.",
+            "status": "failed"
+          }
+        ],
+        "claim_truth": "not_independently_verified",
+        "controller_mode": "prechecked",
+        "error": "automatic inspection failed; no verified receipt",
+        "final": null,
+        "integrity_ok": null,
+        "judgment_guidance": true,
+        "limitation": "Designed controls; not evidence of trading edge or general AI uplift.",
+        "mode": "retrospective_diagnosis",
+        "model_calls": 0,
+        "receipts": [],
+        "research_quality": "requires_independent_review",
+        "schema_version": 1,
+        "status": "incomplete",
+        "synthetic": true
+      }
+    },
+    {
+      "case": "divergent_benchmark",
+      "directory": "b0f12c541ce2/992a93455c71",
+      "elapsed_seconds": 0.5449264168273658,
+      "mode": "fixed",
+      "resources": {
+        "cached_input_tokens": 0,
+        "input_tokens": 0,
+        "measurement_attempts": 1,
+        "measurements": 0,
+        "model_calls": 0,
+        "observed_cached_input_tokens": 0,
+        "observed_input_tokens": 0,
+        "observed_output_tokens": 0,
+        "output_tokens": 0,
+        "prompt_bytes": 0,
+        "status": "incomplete",
+        "usage_complete": true,
+        "usage_errors": []
+      },
+      "result": {
+        "admitted": false,
+        "attempts": [
+          {
+            "action": "inspect_run",
+            "error": "measurement failed: investigation worker: symlink input directory\n",
+            "id": "attempt-1",
+            "reason": "Controller prerequisite: verify integrity before reasoning.",
+            "status": "failed"
+          }
+        ],
+        "claim_truth": "not_independently_verified",
+        "controller_mode": "fixed",
+        "error": "automatic inspection failed; no verified receipt",
+        "final": null,
+        "integrity_ok": null,
+        "judgment_guidance": true,
+        "limitation": "Designed controls; not evidence of trading edge or general AI uplift.",
+        "mode": "retrospective_diagnosis",
+        "model_calls": 0,
+        "receipts": [],
+        "research_quality": "requires_independent_review",
+        "schema_version": 1,
+        "status": "incomplete",
+        "synthetic": true
+      }
+    },
+    {
+      "case": "hindsight_indicator",
+      "directory": "ea63e30faefe/992a93455c71",
+      "elapsed_seconds": 0.5385872921906412,
+      "mode": "fixed",
+      "resources": {
+        "cached_input_tokens": 0,
+        "input_tokens": 0,
+        "measurement_attempts": 1,
+        "measurements": 0,
+        "model_calls": 0,
+        "observed_cached_input_tokens": 0,
+        "observed_input_tokens": 0,
+        "observed_output_tokens": 0,
+        "output_tokens": 0,
+        "prompt_bytes": 0,
+        "status": "incomplete",
+        "usage_complete": true,
+        "usage_errors": []
+      },
+      "result": {
+        "admitted": false,
+        "attempts": [
+          {
+            "action": "inspect_run",
+            "error": "measurement failed: investigation worker: symlink input directory\n",
+            "id": "attempt-1",
+            "reason": "Controller prerequisite: verify integrity before reasoning.",
+            "status": "failed"
+          }
+        ],
+        "claim_truth": "not_independently_verified",
+        "controller_mode": "fixed",
+        "error": "automatic inspection failed; no verified receipt",
+        "final": null,
+        "integrity_ok": null,
+        "judgment_guidance": true,
+        "limitation": "Designed controls; not evidence of trading edge or general AI uplift.",
+        "mode": "retrospective_diagnosis",
+        "model_calls": 0,
+        "receipts": [],
+        "research_quality": "requires_independent_review",
+        "schema_version": 1,
+        "status": "incomplete",
+        "synthetic": true
+      }
+    },
+    {
+      "case": "hindsight_indicator",
+      "directory": "ea63e30faefe/ef1c0948cc63",
+      "elapsed_seconds": 0.5426891660317779,
+      "mode": "prechecked",
+      "resources": {
+        "cached_input_tokens": 0,
+        "input_tokens": 0,
+        "measurement_attempts": 1,
+        "measurements": 0,
+        "model_calls": 0,
+        "observed_cached_input_tokens": 0,
+        "observed_input_tokens": 0,
+        "observed_output_tokens": 0,
+        "output_tokens": 0,
+        "prompt_bytes": 0,
+        "status": "incomplete",
+        "usage_complete": true,
+        "usage_errors": []
+      },
+      "result": {
+        "admitted": false,
+        "attempts": [
+          {
+            "action": "inspect_run",
+            "error": "measurement failed: investigation worker: symlink input directory\n",
+            "id": "attempt-1",
+            "reason": "Controller prerequisite: verify integrity before reasoning.",
+            "status": "failed"
+          }
+        ],
+        "claim_truth": "not_independently_verified",
+        "controller_mode": "prechecked",
+        "error": "automatic inspection failed; no verified receipt",
+        "final": null,
+        "integrity_ok": null,
+        "judgment_guidance": true,
+        "limitation": "Designed controls; not evidence of trading edge or general AI uplift.",
+        "mode": "retrospective_diagnosis",
+        "model_calls": 0,
+        "receipts": [],
+        "research_quality": "requires_independent_review",
+        "schema_version": 1,
+        "status": "incomplete",
+        "synthetic": true
+      }
+    },
+    {
+      "case": "missing_evidence",
+      "directory": "0da685f04164/ef1c0948cc63",
+      "elapsed_seconds": 0.5398982909973711,
+      "mode": "prechecked",
+      "resources": {
+        "cached_input_tokens": 0,
+        "input_tokens": 0,
+        "measurement_attempts": 1,
+        "measurements": 0,
+        "model_calls": 0,
+        "observed_cached_input_tokens": 0,
+        "observed_input_tokens": 0,
+        "observed_output_tokens": 0,
+        "output_tokens": 0,
+        "prompt_bytes": 0,
+        "status": "incomplete",
+        "usage_complete": true,
+        "usage_errors": []
+      },
+      "result": {
+        "admitted": false,
+        "attempts": [
+          {
+            "action": "inspect_run",
+            "error": "measurement failed: investigation worker: symlink input directory\n",
+            "id": "attempt-1",
+            "reason": "Controller prerequisite: verify integrity before reasoning.",
+            "status": "failed"
+          }
+        ],
+        "claim_truth": "not_independently_verified",
+        "controller_mode": "prechecked",
+        "error": "automatic inspection failed; no verified receipt",
+        "final": null,
+        "integrity_ok": null,
+        "judgment_guidance": true,
+        "limitation": "Designed controls; not evidence of trading edge or general AI uplift.",
+        "mode": "retrospective_diagnosis",
+        "model_calls": 0,
+        "receipts": [],
+        "research_quality": "requires_independent_review",
+        "schema_version": 1,
+        "status": "incomplete",
+        "synthetic": true
+      }
+    },
+    {
+      "case": "missing_evidence",
+      "directory": "0da685f04164/992a93455c71",
+      "elapsed_seconds": 0.5479819590691477,
+      "mode": "fixed",
+      "resources": {
+        "cached_input_tokens": 0,
+        "input_tokens": 0,
+        "measurement_attempts": 1,
+        "measurements": 0,
+        "model_calls": 0,
+        "observed_cached_input_tokens": 0,
+        "observed_input_tokens": 0,
+        "observed_output_tokens": 0,
+        "output_tokens": 0,
+        "prompt_bytes": 0,
+        "status": "incomplete",
+        "usage_complete": true,
+        "usage_errors": []
+      },
+      "result": {
+        "admitted": false,
+        "attempts": [
+          {
+            "action": "inspect_run",
+            "error": "measurement failed: investigation worker: symlink input directory\n",
+            "id": "attempt-1",
+            "reason": "Controller prerequisite: verify integrity before reasoning.",
+            "status": "failed"
+          }
+        ],
+        "claim_truth": "not_independently_verified",
+        "controller_mode": "fixed",
+        "error": "automatic inspection failed; no verified receipt",
+        "final": null,
+        "integrity_ok": null,
+        "judgment_guidance": true,
+        "limitation": "Designed controls; not evidence of trading edge or general AI uplift.",
+        "mode": "retrospective_diagnosis",
+        "model_calls": 0,
+        "receipts": [],
+        "research_quality": "requires_independent_review",
+        "schema_version": 1,
+        "status": "incomplete",
+        "synthetic": true
+      }
+    },
+    {
+      "case": "context_failure",
+      "directory": "b1218ff8f8c7/992a93455c71",
+      "elapsed_seconds": 0.5446738330647349,
+      "mode": "fixed",
+      "resources": {
+        "cached_input_tokens": 0,
+        "input_tokens": 0,
+        "measurement_attempts": 1,
+        "measurements": 0,
+        "model_calls": 0,
+        "observed_cached_input_tokens": 0,
+        "observed_input_tokens": 0,
+        "observed_output_tokens": 0,
+        "output_tokens": 0,
+        "prompt_bytes": 0,
+        "status": "incomplete",
+        "usage_complete": true,
+        "usage_errors": []
+      },
+      "result": {
+        "admitted": false,
+        "attempts": [
+          {
+            "action": "inspect_run",
+            "error": "measurement failed: investigation worker: symlink input directory\n",
+            "id": "attempt-1",
+            "reason": "Controller prerequisite: verify integrity before reasoning.",
+            "status": "failed"
+          }
+        ],
+        "claim_truth": "not_independently_verified",
+        "controller_mode": "fixed",
+        "error": "automatic inspection failed; no verified receipt",
+        "final": null,
+        "integrity_ok": null,
+        "judgment_guidance": true,
+        "limitation": "Designed controls; not evidence of trading edge or general AI uplift.",
+        "mode": "retrospective_diagnosis",
+        "model_calls": 0,
+        "receipts": [],
+        "research_quality": "requires_independent_review",
+        "schema_version": 1,
+        "status": "incomplete",
+        "synthetic": true
+      }
+    },
+    {
+      "case": "context_failure",
+      "directory": "b1218ff8f8c7/ef1c0948cc63",
+      "elapsed_seconds": 0.5485785421915352,
+      "mode": "prechecked",
+      "resources": {
+        "cached_input_tokens": 0,
+        "input_tokens": 0,
+        "measurement_attempts": 1,
+        "measurements": 0,
+        "model_calls": 0,
+        "observed_cached_input_tokens": 0,
+        "observed_input_tokens": 0,
+        "observed_output_tokens": 0,
+        "output_tokens": 0,
+        "prompt_bytes": 0,
+        "status": "incomplete",
+        "usage_complete": true,
+        "usage_errors": []
+      },
+      "result": {
+        "admitted": false,
+        "attempts": [
+          {
+            "action": "inspect_run",
+            "error": "measurement failed: investigation worker: symlink input directory\n",
+            "id": "attempt-1",
+            "reason": "Controller prerequisite: verify integrity before reasoning.",
+            "status": "failed"
+          }
+        ],
+        "claim_truth": "not_independently_verified",
+        "controller_mode": "prechecked",
+        "error": "automatic inspection failed; no verified receipt",
+        "final": null,
+        "integrity_ok": null,
+        "judgment_guidance": true,
+        "limitation": "Designed controls; not evidence of trading edge or general AI uplift.",
+        "mode": "retrospective_diagnosis",
+        "model_calls": 0,
+        "receipts": [],
+        "research_quality": "requires_independent_review",
+        "schema_version": 1,
+        "status": "incomplete",
+        "synthetic": true
+      }
+    }
+  ]
+}
