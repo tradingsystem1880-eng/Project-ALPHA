@@ -28,7 +28,7 @@ import { showScientificPlot } from '../bokehLifecycle'
 import { scheduleChartResize, cancelChartResize } from '../chartResize'
 import {
   calendarKeys, candleClasses, inferCalendar, compactVolume, dateTicks, medianSpacing, fractionalIndex, groupedInteger, niceTicks, observationGaps,
-  padExtent, chartExtent, panelHeights, panelLayout, priceDecimals, displayNumber, tickFormat, studyLabel, studySpec, visibleExtent, visibleVolumeClasses,
+  padExtent, chartExtent, panelHeights, panelLayout, priceDecimals, displayMacdValue, displayNumber, tickFormat, studyLabel, studySpec, visibleExtent, visibleVolumeClasses,
   type DateTick,
 } from './technicalModel'
 import { studyColors, type TechnicalStyle } from './technicalTokens'
@@ -83,6 +83,11 @@ function lastVisible(values: Values, end: number): number | null {
   return null
 }
 
+function lastVisibleIndex(values: Values, end: number): number {
+  for (let i = Math.min(values.length - 1, Math.floor(end + 1e-3)); i >= 0; i--) if (values[i] !== null && Number.isFinite(values[i])) return i
+  return -1
+}
+
 export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposition, options: { panelId: string; registry?: ChartLinkRegistry; onCursor: (index: number | null) => void; initialZoom?: number }) {
   const { bars, style } = c
   const n = bars.length
@@ -94,6 +99,17 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
     return out
   }
   const closes = bars.map(b => b.c), highs = bars.map(b => b.h), lows = bars.map(b => b.l), volumes = bars.map(b => b.v)
+  const displayStudyValue = (panel: Panel, value: number | null | undefined, index: number) =>
+    panel.kind === 'macd' && value !== null && value !== undefined && Number.isFinite(value)
+      ? displayMacdValue(value, Math.abs(closes[index]))
+      : value
+  const displayStudyNumber = (panel: Panel, value: number | null | undefined, index: number, decimals: number) => {
+    if (value === null || value === undefined || !Number.isFinite(value)) return '—'
+    const displayValue = displayStudyValue(panel, value, index)!
+    return displayValue === 0 && value !== 0
+      ? `${value < 0 ? '-' : ''}${(0).toFixed(decimals)}`
+      : displayNumber(displayValue, decimals)
+  }
   const { up, hollow } = candleClasses(bars)
   const pd = priceDecimals(closes)
   const layout = panelLayout(c.indicators)
@@ -250,7 +266,12 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
     let scientificLabels = false
     for (const p of panels) {
       if (p.kind === 'rsi') continue
-      const columns: Values[] = p.kind === 'price' ? [lows, highs] : p.lines.map(l => l.values)
+      const sourceColumns: Values[] = p.kind === 'price' ? [lows, highs] : p.lines.map(l => l.values)
+      const columns = p.kind === 'macd'
+        ? sourceColumns.map(values => values.map((value, index) =>
+          value === null || !Number.isFinite(value) ? value : displayMacdValue(value, Math.abs(closes[index])),
+        ))
+        : sourceColumns
       const extent = visibleExtent(columns, i0, i1)
       if (!extent) continue
       const zero = p.lines.some(l => l.histogram)
@@ -330,7 +351,7 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
     for (const line of p.lines) bySpec.set(line.spec, [...(bySpec.get(line.spec) ?? []), line])
     for (const [spec, lines] of bySpec) {
       const decimals = p.kind === 'price' ? pd : p.decimals
-      addRow(studyLabel(spec), lines[0].histogram ? style.histEdge : lines[0].color, lines.map(l => l.histogram ? style.histEdge : l.color), i => lines.map(l => fixed(l.values[i], decimals)))
+      addRow(studyLabel(spec), lines[0].histogram ? style.histEdge : lines[0].color, lines.map(l => l.histogram ? style.histEdge : l.color), i => lines.map(l => displayStudyNumber(p, l.values[i], i, decimals)))
     }
     if (p.kind === 'price') addRow('Volume', style.muted, [style.muted], i => [volumes[i] === undefined ? '—' : groupedInteger(volumes[i])], true)
     legendEntries.push({ panel: p, rows })
@@ -365,8 +386,11 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
     const tags: { y: number; text: string; color: string; bold: boolean }[] = []
     if (p.kind === 'price') { const v = lastVisible(closes, x.end); if (v !== null) tags.push({ y: ys.compute(v), text: displayNumber(v, pd), color: style.text, bold: true }) }
     for (const line of p.lines) {
-      const v = lastVisible(line.values, x.end)
-      if (v !== null) tags.push({ y: ys.compute(v), text: displayNumber(v, p.kind === 'price' ? pd : p.decimals), color: line.histogram ? style.histEdge : line.color, bold: false })
+      const index = lastVisibleIndex(line.values, x.end)
+      if (index >= 0) {
+        const value = displayStudyValue(p, line.values[index], index)!
+        tags.push({ y: ys.compute(value), text: displayStudyNumber(p, line.values[index], index, p.kind === 'price' ? pd : p.decimals), color: line.histogram ? style.histEdge : line.color, bold: false })
+      }
     }
     // Off-frame values are not tagged; in-frame tags stay inside the frame and never overlap.
     const inFrame = tags.filter(tag => tag.y >= bbox.top - 1 && tag.y <= bbox.bottom + 1).map(tag => ({ ...tag, y: Math.min(bbox.bottom - 6, Math.max(bbox.top + 6, tag.y)) }))

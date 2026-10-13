@@ -55,6 +55,30 @@ test('@reference-only scientific value tags stay inside a narrow chart host', as
   expect(tagBox.x + tagBox.width).toBeLessThanOrEqual(hostBox.x + hostBox.width + 1)
 })
 
+test('@reference-only MACD cancellation noise does not widen the shared chart gutter', async ({ page }) => {
+  const bars = Array.from({ length: 60 }, (_, index) => ({
+    t: 1_700_000_000 + index * 86400,
+    o: 100 + index,
+    h: 102 + index,
+    l: 99 + index,
+    c: 101 + index,
+    v: 1000,
+  }))
+  const chart = await openChart(page, 'classic', bars)
+  const geometry = await chart.locator('.technical-host').evaluate(host => {
+    const column = host.querySelector('.bk-Column') as HTMLElement | null
+    return [...(column?.shadowRoot?.querySelectorAll('[class*="bk-"]') ?? [])]
+      .map(element => getComputedStyle(element).gridTemplateColumns.split(/\s+/).map(parseFloat))
+      .filter(columns => columns.length === 3)
+      .map(columns => columns[2])
+  })
+  expect(geometry.length).toBeGreaterThan(0)
+  expect(Math.max(...geometry)).toBeLessThanOrEqual(80)
+  const legend = (await chart.locator('.technical-legend').allTextContents()).join(' ')
+  expect(legend).toContain('-0.000')
+  expect(legend).not.toMatch(/e[+-]\d+/)
+})
+
 test('@reference-only PNG download includes header, calendar dates and study legends', async ({ page }) => {
   const chart = await openChart(page, 'classic')
   const height = (await chart.locator('.technical-host').boundingBox())!.height

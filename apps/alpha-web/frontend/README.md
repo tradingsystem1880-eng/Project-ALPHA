@@ -60,6 +60,10 @@ and padded/legend-expanded extents whose span or canvas scale factor is unrepres
 fail explicitly (including unsupported subnormal geometry); no false-zero ticks or silently
 estimated data are substituted. This bounds the technical renderer's computed printf precision,
 but the unpatched transitive sprintf-js advisory remains tracked separately.
+For MACD only, a residual smaller than one ULP of its corresponding source close is treated as
+zero when choosing the display extent; legends and value tags retain the existing fixed-decimal
+presentation, and backend study values remain unchanged. Genuine tiny values relative to tiny
+source prices still use scientific notation.
 
 The context button selects an available pair and date window. Crypto choices combine `/api/symbols`
 with external-drive chart discovery. Alias labels such as BTC-USD and BTC/USD share one BTC/USD

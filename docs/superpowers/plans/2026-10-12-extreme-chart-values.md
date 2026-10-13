@@ -25,3 +25,16 @@
 No statistical or backend values change. The recorded-series bounds use finite saturated padding at the representable edges; a range whose affine canvas scale cannot be represented still fails closed. The narrow-host browser regression verifies visible tag containment. The readiness docstring describes the typed overall status while retaining the legacy per-requirement details as unavailable and fail closed.
 
 The upstream `sprintf-js` advisory GHSA-hp3w-g68c-fv3c remains unresolved; this local display correction does not remove that dependency advisory. Private coverage remains UNVERIFIED under the existing approved scope; no private access or new exception is inferred. Canonical full, fresh independent review, hosted CI and post-merge verification remain pending.
+
+## Linux screenshot follow-up (2026-10-13)
+
+The first PR #60 hosted run retained exact evidence for both screenshot failures. The reference and
+wide host/viewport dimensions matched their baselines, but the chart's Bokeh shadow root reserved
+167px at the right edge instead of 64px. The cause was a MACD histogram cancellation residual below
+one ULP of its corresponding source close; its scientific tag expanded the shared frame for every
+panel. The display extent now treats only those sub-ULP MACD residuals as zero. Raw backend arrays
+remain unchanged, prior fixed-decimal labels are preserved, and genuine tiny MACD values relative
+to tiny source closes still use scientific labels. A built-browser regression pins the inner Bokeh
+gutter and fixed-decimal label; the ordinary PNG export contract remains covered. The previous full
+and review do not certify this follow-up; a fresh exact-tree full, independent review, and hosted CI
+are required.

@@ -4,6 +4,7 @@ import type { Candle, OverlaySeries } from '../../api/types'
 import {
   candleClasses, compactVolume, dateTicks, fractionalIndex, niceTicks, headerValues, inferCalendar, observationGaps, panelHeights, panelLayout,
   priceDecimals, studyLabel, studySpec, visibleExtent, visibleVolumeIndices, visibleVolumeClasses, padExtent, chartExtent, tickFormat, displayNumber, signed,
+  displayMacdValue,
 } from './technicalModel'
 import { CLASSIC, DEFAULT_STYLE, studyColors } from './technicalTokens'
 
@@ -62,6 +63,21 @@ describe('extreme finite display ranges', () => {
     expect(signed(1e-200, 2)).toBe('+1e-200')
     expect(displayNumber(NaN, 2)).toBe('—')
     expect(signed(Infinity, 2)).toBe('—')
+  })
+  it('suppresses only MACD residuals below one source-price ULP', () => {
+    expect(displayMacdValue(-1.7763568394002505e-15, 160)).toBe(0)
+    const spacingAt160 = 2 ** -45
+    expect(displayMacdValue(spacingAt160, 160)).toBe(spacingAt160)
+    expect(displayMacdValue(2.8e-14, 160)).toBe(0)
+    expect(displayMacdValue(3e-14, 160)).toBe(3e-14)
+    expect(displayMacdValue(5e-14, 160)).toBe(5e-14)
+    expect(displayMacdValue(1e-200, 2e-200)).toBe(1e-200)
+    expect(displayMacdValue(Number.MIN_VALUE, Number.MIN_VALUE)).toBe(Number.MIN_VALUE)
+    expect(displayMacdValue(Number.EPSILON, 1)).toBe(Number.EPSILON)
+    expect(displayMacdValue(0, 160)).toBe(0)
+    expect(() => displayMacdValue(NaN, 160)).toThrow(RangeError)
+    expect(() => displayMacdValue(1, Infinity)).toThrow(RangeError)
+    expect(() => displayMacdValue(1, -1)).toThrow(RangeError)
   })
   it('pads subnormal/large finite values without inventing zero width or infinity', () => {
     for (const extent of [[Number.MIN_VALUE, Number.MIN_VALUE], [Number.MAX_VALUE, Number.MAX_VALUE]] as [number, number][]) {

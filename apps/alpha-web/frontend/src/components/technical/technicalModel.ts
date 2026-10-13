@@ -249,6 +249,24 @@ export function displayNumber(v: number, decimals: number): string {
   return abs >= 1e12 || (abs > 0 && abs < 1e-12) ? v.toExponential() : v.toFixed(decimals)
 }
 
+/** MACD arithmetic below the next-up source-price spacing is cancellation noise, not a resolved spread. */
+function positiveFloatSpacing(value: number): number {
+  const bits = new BigUint64Array(new Float64Array([value]).buffer)
+  const next = new Float64Array(bits.buffer)
+  bits[0] += 1n
+  if (Number.isFinite(next[0])) return next[0] - value
+  bits[0] -= 2n
+  return value - next[0]
+}
+
+export function displayMacdValue(value: number, priceScale: number): number {
+  if (!Number.isFinite(value) || !Number.isFinite(priceScale) || priceScale < 0) {
+    throw new RangeError('MACD display values and price scale must be finite; price scale must be nonnegative')
+  }
+  const resolution = priceScale === 0 ? 0 : positiveFloatSpacing(priceScale)
+  return value !== 0 && Math.abs(value) < resolution ? 0 : value
+}
+
 /** Fractional observation index of a UTC time (linear between bars), or null outside coverage. */
 export function fractionalIndex(times: readonly number[], t: number): number | null {
   if (!times.length || t < times[0] || t > times[times.length - 1]) return null

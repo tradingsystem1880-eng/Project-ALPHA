@@ -1296,3 +1296,12 @@ initial width override while retaining measured width updates on resize. Browser
 canvas geometry both immediately after mount and after narrowing the host, and all three local chart
 document screenshot profiles pass. This exact follow-up still requires a fresh canonical full and
 hosted checks; the earlier full and hosted results do not certify it.
+
+Failure-only Linux artifact run 38437838761 showed the ordinary MACD screenshot reserved a 167px
+Bokeh right gutter because a histogram residual (`-1.7763568394002505e-15`) was treated as a
+genuine scientific label. The Bokeh shadow root confirmed that the plot frame narrowed by about
+100px while the host and viewport stayed unchanged. MACD display extents now treat values strictly
+below one ULP of the corresponding source close as cancellation noise; labels retain their prior
+fixed-decimal form and backend study values remain untouched. A browser regression checks the
+shadow-root gutter and signed fixed-decimal label, with PNG export checks retained. Fresh full
+verification, independent review, and exact-head hosted checks are pending.
