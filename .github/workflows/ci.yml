@@ -70,7 +70,22 @@ jobs:
         working-directory: apps/alpha-web/frontend
         run: npm ci && npx playwright install --with-deps chromium
       - name: Shared frontend gate
+        id: frontend_gate
         run: uv run python scripts/gate.py component frontend
+      - name: Retain chart screenshot failure evidence
+        if: always() && steps.frontend_gate.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: chart-screenshot-diagnostics-${{ github.run_id }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            apps/alpha-web/frontend/test-results/**/chart-document-actual.png
+            apps/alpha-web/frontend/test-results/**/chart-document-diff.png
+            apps/alpha-web/frontend/test-results/**/error-context.md
+            apps/alpha-web/frontend/test-results/**/trace.zip
+            apps/alpha-web/frontend/e2e/workstation.spec.ts-snapshots/chart-document-chromium-reference-linux.png
+            apps/alpha-web/frontend/e2e/workstation.spec.ts-snapshots/chart-document-chromium-wide-linux.png
 
   qlib-worker:
     runs-on: ubuntu-latest

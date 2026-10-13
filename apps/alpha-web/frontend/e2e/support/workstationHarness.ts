@@ -2618,11 +2618,46 @@ for (const item of DOCUMENTS) {
       test.info().project.name === 'chromium-wide'
     ) {
       await page.evaluate(() => document.fonts.ready)
-      await expect(page.locator('.shell')).toHaveScreenshot(`${item.id}-document.png`, {
-        animations: 'disabled',
-        caret: 'hide',
-        maxDiffPixelRatio: 0.02,
-      })
+      try {
+        await expect(page.locator('.shell')).toHaveScreenshot(`${item.id}-document.png`, {
+          animations: 'disabled',
+          caret: 'hide',
+          maxDiffPixelRatio: 0.02,
+        })
+      } catch (error) {
+        const layout = await page.evaluate(() => {
+          const bounds = (element: Element) => {
+            const rect = element.getBoundingClientRect()
+            const style = getComputedStyle(element)
+            return {
+              tag: element.tagName,
+              className: typeof element.className === 'string' ? element.className : '',
+              left: rect.left,
+              top: rect.top,
+              width: rect.width,
+              height: rect.height,
+              clientWidth: (element as HTMLElement).clientWidth,
+              clientHeight: (element as HTMLElement).clientHeight,
+              cssWidth: style.width,
+              cssHeight: style.height,
+              overflow: `${style.overflowX}/${style.overflowY}`,
+            }
+          }
+          return {
+            viewport: { width: innerWidth, height: innerHeight, devicePixelRatio },
+            shell: document.querySelector('.shell') && bounds(document.querySelector('.shell')!),
+            priceChartWrap: [...document.querySelectorAll('.price-chart-canvas-wrap')].map(bounds),
+            technicalHosts: [...document.querySelectorAll('.technical-host')].map(bounds),
+            bokehRoots: [...document.querySelectorAll('.bk-root')].map(bounds),
+            canvases: [...document.querySelectorAll('.technical-host canvas')].map(canvas => ({
+              ...bounds(canvas),
+              bitmapWidth: (canvas as HTMLCanvasElement).width,
+              bitmapHeight: (canvas as HTMLCanvasElement).height,
+            })),
+          }
+        })
+        throw new Error(`${error instanceof Error ? error.message : String(error)}\nChart screenshot layout: ${JSON.stringify(layout)}`)
+      }
     }
   })
 }

@@ -103,7 +103,7 @@
     "apps/alpha-cli/src/alpha_cli/owner_auth_cmds.py": "8e6994fb2e23ca61b4b4c8a09330a5afb3b49177afb16ce2a8faa391e98858dd",
     "apps/alpha-cli/src/alpha_cli/paper_acceptance.py": "7b11b97c3ac429ea4a8c874b39024199646cbf4f392fe02451807bf5ddcd0e0b",
     "apps/alpha-cli/src/alpha_cli/paper_cmds.py": "5421cabd70b98d9a6c4ce073468c8465b89990e7e74f4739224e9769498a5426",
-    "apps/alpha-cli/src/alpha_cli/paper_readiness.py": "7d5f9cbf6762ea09d77f9e4cba7a40ae4d496ae1c7c8aa0161090834c7171ea0",
+    "apps/alpha-cli/src/alpha_cli/paper_readiness.py": "4ce9d1e9cda462f58d628f24f9c79060e62d9572b3800efc1eaacabebce3be4f",
     "apps/alpha-cli/src/alpha_cli/paper_store.py": "3d0215ca505097e654e84ebe9bda42acb688cb0b170fc95eb818f58ebe45b807",
     "apps/alpha-cli/src/alpha_cli/project_cmds.py": "a421aa9fbb4cb85ac973e15e46874ed08acafa41920ef47e8e9e82b93eacdd6b",
     "apps/alpha-cli/src/alpha_cli/project_workspace.py": "13bd0106a75f389bed15571a6ed75caf3eda8090436f24218f11b5b21d2227a9",

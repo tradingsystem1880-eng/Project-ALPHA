@@ -1,12 +1,116 @@
 import { describe, expect, it } from 'vitest'
+import { sprintf } from 'sprintf-js'
 import type { Candle, OverlaySeries } from '../../api/types'
 import {
   candleClasses, compactVolume, dateTicks, fractionalIndex, niceTicks, headerValues, inferCalendar, observationGaps, panelHeights, panelLayout,
-  priceDecimals, studyLabel, studySpec, visibleExtent, visibleVolumeIndices, visibleVolumeClasses,
+  priceDecimals, studyLabel, studySpec, visibleExtent, visibleVolumeIndices, visibleVolumeClasses, padExtent, chartExtent, tickFormat, displayNumber, signed,
+  displayMacdValue,
 } from './technicalModel'
 import { CLASSIC, DEFAULT_STYLE, studyColors } from './technicalTokens'
 
 const DAY = 86400
+// Execute the installed formatter dependency used by Bokeh, not a copied formatting algorithm.
+
+describe('extreme finite display ranges', () => {
+  it.each([
+    [1e-200, 2e-200], [-2e-200, -1e-200], [-1e-200, 1e-200],
+    [1e200, 2e200], [-2e200, -1e200], [-1e200, 1e200],
+    [1e16, 1e16 + 2], [1, 1 + Number.EPSILON],
+    [Number.MIN_VALUE, Number.MIN_VALUE * 2], [0, Number.MIN_VALUE],
+    [-Number.MAX_VALUE, Number.MAX_VALUE],
+  ])('keeps finite distinct readable ticks for [%s, %s]', (min, max) => {
+    const result = niceTicks(min, max, 5)
+    expect(result.ticks.length).toBeGreaterThan(1)
+    expect(result.ticks.length).toBeLessThanOrEqual(7)
+    expect(result.ticks.every(Number.isFinite)).toBe(true)
+    expect(new Set(result.ticks).size).toBe(result.ticks.length)
+    expect(result.ticks.every((v, i) => i === 0 || v > result.ticks[i - 1])).toBe(true)
+    const format = tickFormat(result)
+    expect(format).toMatch(/^%.(?:[0-9]|1[0-6])[fe]$/)
+    const labels = result.ticks.map(v => sprintf(format, v))
+    expect(new Set(labels).size).toBe(labels.length)
+    if (min > 0) expect(result.ticks.every(v => v > 0)).toBe(true)
+    if (max < 0) expect(result.ticks.every(v => v < 0)).toBe(true)
+    for (let i = 0; i < labels.length; i++) if (result.ticks[i] !== 0) expect(labels[i]).not.toMatch(/^-?0(?:\.0+)?(?:e[+-]?\d+)?$/)
+  })
+  it('keeps zero/flat and ordinary financial formatting contracts', () => {
+    expect(niceTicks(0, 0, 5)).toEqual({ ticks: [], decimals: 0 })
+    expect(padExtent([0, 0], .03)).toEqual([-.03, .03])
+    expect(tickFormat(niceTicks(0, 100, 5))).toBe('%.0f')
+    expect(tickFormat(niceTicks(.51, .529, 4))).toBe('%.3f')
+    expect(displayNumber(62.03, 2)).toBe('62.03')
+    expect(displayNumber(.0005, 3)).toBe('0.001')
+    expect(signed(-.5, 2)).toBe('-0.50')
+    expect(displayNumber(-0, 2)).toBe('0.00')
+  })
+  it('keeps actual formatter labels distinct across decimal scales and signed ranges', () => {
+    for (const exponent of [-323, -300, -200, -30, -13, -12, -7, 0, 12, 200, 300, 308]) {
+      const unit = 10 ** exponent
+      for (const [min, max] of [[unit, unit * 1.5], [-unit * 1.5, -unit], [-unit, unit]]) {
+        for (const count of [3, 5, 17]) {
+          const result = niceTicks(min, max, count)
+          const labels = result.ticks.map(t => sprintf(tickFormat(result), t))
+          expect(new Set(labels).size).toBe(labels.length)
+          expect(result.ticks.every(Number.isFinite)).toBe(true)
+        }
+      }
+    }
+  })
+  it('preserves scientific label values without false zeros or lost adjacent values', () => {
+    for (const v of [1e-200, -1e-200, 1e200, Number.MIN_VALUE, 1e16, 1e16 + 2]) {
+      expect(Number(displayNumber(v, 2))).toBe(v)
+    }
+    expect(signed(1e-200, 2)).toBe('+1e-200')
+    expect(displayNumber(NaN, 2)).toBe('—')
+    expect(signed(Infinity, 2)).toBe('—')
+  })
+  it('suppresses only MACD residuals below one source-price ULP', () => {
+    expect(displayMacdValue(-1.7763568394002505e-15, 160)).toBe(0)
+    const spacingAt160 = 2 ** -45
+    expect(displayMacdValue(spacingAt160, 160)).toBe(spacingAt160)
+    expect(displayMacdValue(2.8e-14, 160)).toBe(0)
+    expect(displayMacdValue(3e-14, 160)).toBe(3e-14)
+    expect(displayMacdValue(5e-14, 160)).toBe(5e-14)
+    expect(displayMacdValue(1e-200, 2e-200)).toBe(1e-200)
+    expect(displayMacdValue(Number.MIN_VALUE, Number.MIN_VALUE)).toBe(Number.MIN_VALUE)
+    expect(displayMacdValue(Number.EPSILON, 1)).toBe(Number.EPSILON)
+    expect(displayMacdValue(0, 160)).toBe(0)
+    expect(() => displayMacdValue(NaN, 160)).toThrow(RangeError)
+    expect(() => displayMacdValue(1, Infinity)).toThrow(RangeError)
+    expect(() => displayMacdValue(1, -1)).toThrow(RangeError)
+  })
+  it('pads subnormal/large finite values without inventing zero width or infinity', () => {
+    for (const extent of [[Number.MIN_VALUE, Number.MIN_VALUE], [Number.MAX_VALUE, Number.MAX_VALUE]] as [number, number][]) {
+      const [lo, hi] = padExtent(extent, .03)
+      expect(Number.isFinite(lo) && Number.isFinite(hi)).toBe(true)
+      expect(lo).toBeLessThan(hi)
+      expect(lo).toBeLessThanOrEqual(extent[0]); expect(hi).toBeGreaterThanOrEqual(extent[1])
+    }
+    // Finite endpoints with an overflowing span cannot be faithfully scaled by Bokeh.
+    expect(() => padExtent([-Number.MAX_VALUE, Number.MAX_VALUE], .03)).toThrow(RangeError)
+    expect(() => padExtent([-8.9e307, 8.9e307], .03)).toThrow(RangeError)
+  })
+  it('validates the final legend-expanded canvas range, including unsupported subnormal scales', () => {
+    const lo = -8e307, base = 8e307, legend = .4
+    const hi = Math.min(Number.MAX_VALUE, base + (base - lo) * legend / (1 - legend))
+    expect(() => chartExtent([lo, hi], 500)).toThrow(RangeError)
+    expect(() => chartExtent([Number.MIN_VALUE, Number.MIN_VALUE * 2], 500)).toThrow(RangeError)
+    expect(() => chartExtent([1, 1], 500)).toThrow(RangeError)
+    expect(chartExtent([1e-200, 2e-200], 500)).toEqual([1e-200, 2e-200])
+    expect(chartExtent([1e200, 2e200], 500)).toEqual([1e200, 2e200])
+    for (const pixels of [0, -1, NaN, Infinity]) expect(() => chartExtent([0, 1], pixels)).toThrow(RangeError)
+  })
+  it('rejects invalid inputs rather than generating unbounded precision/loops', () => {
+    for (const [min, max, count] of [[NaN, 1, 5], [0, Infinity, 5], [0, 1, NaN], [0, 1, Infinity], [0, 1, 1.5], [0, 1, 1001]]) {
+      expect(() => niceTicks(min, max, count)).toThrow(RangeError)
+    }
+    for (const decimals of [-1, 1.5, 13, 202, NaN, Infinity]) expect(() => displayNumber(1, decimals)).toThrow(RangeError)
+    for (const decimals of [-1, 1.5, NaN, Infinity]) expect(() => tickFormat({ ticks: [0, 1], decimals })).toThrow(RangeError)
+    expect(() => tickFormat({ ticks: [Infinity], decimals: 2 })).toThrow(RangeError)
+    expect(() => padExtent([NaN, 1], .03)).toThrow(RangeError)
+    expect(() => padExtent([0, 1], Infinity)).toThrow(RangeError)
+  })
+})
 
 describe('visible volume color classes', () => {
   it('partitions original indices by prior-close direction, including unchanged closes', () => {
@@ -160,6 +264,12 @@ describe('layout', () => {
 })
 
 describe('index and tick helpers', () => {
+  it('preserves tiny finite tick coordinates instead of rounding them to zero', () => {
+    const ticks = niceTicks(9.7e-201, 2.03e-200, 5).ticks
+    expect(ticks.length).toBeGreaterThan(1)
+    expect(ticks.every(t => Number.isFinite(t) && t > 0)).toBe(true)
+    expect(new Set(ticks).size).toBe(ticks.length)
+  })
   it('maps UTC times to fractional observation indices', () => {
     expect(fractionalIndex([10, 20, 40], 30)).toBe(1.5)
     expect(fractionalIndex([10, 20, 40], 20)).toBe(1)

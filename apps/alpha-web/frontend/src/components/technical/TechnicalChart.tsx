@@ -6,7 +6,7 @@ import type { ChartLinkRegistry } from '../../shell/chartLinkRegistry'
 import { skippedText, type ShortStudy } from '../../panels/chartOverlaysModel'
 import { ScientificRangeControls } from '../ScientificRangeControls'
 import type { TechnicalChartController } from './technicalRenderer'
-import { barDate, groupedInteger, headerValues, medianSpacing, priceDecimals, signed } from './technicalModel'
+import { barDate, groupedInteger, headerValues, medianSpacing, priceDecimals, signed, displayNumber } from './technicalModel'
 import { cssVars, technicalStyle, type ChartStyleName } from './technicalTokens'
 
 const EMPTY: never[] = []
@@ -52,7 +52,7 @@ export function TechnicalChart({ bars, title, styleName, evidence = EMPTY, annot
     const { bar, change, changePct } = values
     const tone = change === null || change === 0 ? '' : change > 0 ? 'up' : 'down'
     header.current.dataset.tone = tone
-    header.current.textContent = `${barDate(bar.t, intraday)}  Open ${bar.o.toFixed(decimals)}  High ${bar.h.toFixed(decimals)}  Low ${bar.l.toFixed(decimals)}  Close ${bar.c.toFixed(decimals)}  Volume ${groupedInteger(bar.v)}  Chg ${change === null ? '—' : `${change > 0 ? '▲' : change < 0 ? '▼' : ''}${signed(change, decimals)} (${changePct === null ? '—' : `${signed(changePct, 2)}%`})`}`
+    header.current.textContent = `${barDate(bar.t, intraday)}  Open ${displayNumber(bar.o, decimals)}  High ${displayNumber(bar.h, decimals)}  Low ${displayNumber(bar.l, decimals)}  Close ${displayNumber(bar.c, decimals)}  Volume ${groupedInteger(bar.v)}  Chg ${change === null ? '—' : `${change > 0 ? '▲' : change < 0 ? '▼' : ''}${signed(change, decimals)} (${changePct === null ? '—' : `${signed(changePct, 2)}%`})`}`
   }
 
   // Composition: bars, studies, annotations and style rebuild the panel stack; the visible UTC

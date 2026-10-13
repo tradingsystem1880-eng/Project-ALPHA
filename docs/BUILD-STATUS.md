@@ -1276,3 +1276,32 @@ Compatible development tooling patches align Vitest/coverage at4.1.11, js-yaml4.
 
 
 The first frozen source passed all six local components but is retained as superseded evidence: a bounded diagnostic showed the new ordering test falsely rejected the existing required oracle/mutation suffix for quant-source changes and unknown history. The regression now controls those three impact inputs explicitly and checks that the conservative suffix remains. Runtime checks, selectors and floors are unchanged; repaired-source acceptance requires fresh binding, review and full verification.
+
+## 2026-10-13 — Extreme finite chart display candidate
+
+On accepted PR #59 main `2172406c`, the isolated chart follow-up keeps tiny and very large finite
+observations visible with bounded scientific tick formats and scientific value labels. The recorded
+series path also saturates padded display bounds at finite numeric limits, and a narrow-host browser
+regression checks that scientific value tags remain within the clipped plot host. A readiness
+docstring now describes the typed overall status without implying that legacy per-requirement rows
+are satisfied; those details remain unavailable and fail closed. Ordinary values, observations,
+exports, statistical/backend arithmetic and dependency versions are unchanged. The upstream
+`sprintf-js` advisory GHSA-hp3w-g68c-fv3c remains unresolved. Focused public checks pass; canonical
+full, fresh independent review, hosted checks and post-merge verification remain pending. Private
+coverage remains UNVERIFIED under the existing approved scope.
+
+The first hosted run on PR #60 passed six required checks but failed two chart-document screenshot
+profiles after explicit initial Bokeh width changed the recorded layout. The follow-up removes that
+initial width override while retaining measured width updates on resize. Browser checks now assert
+canvas geometry both immediately after mount and after narrowing the host, and all three local chart
+document screenshot profiles pass. This exact follow-up still requires a fresh canonical full and
+hosted checks; the earlier full and hosted results do not certify it.
+
+Failure-only Linux artifact run 38437838761 showed the ordinary MACD screenshot reserved a 167px
+Bokeh right gutter because a histogram residual (`-1.7763568394002505e-15`) was treated as a
+genuine scientific label. The Bokeh shadow root confirmed that the plot frame narrowed by about
+100px while the host and viewport stayed unchanged. MACD display extents now treat values strictly
+below one ULP of the corresponding source close as cancellation noise; labels retain their prior
+fixed-decimal form and backend study values remain untouched. A browser regression checks the
+shadow-root gutter and signed fixed-decimal label, with PNG export checks retained. Fresh full
+verification, independent review, and exact-head hosted checks are pending.

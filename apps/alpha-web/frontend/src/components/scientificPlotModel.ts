@@ -8,8 +8,10 @@ export function plotBounds(points: readonly ScientificPoint[]): { x: [number, nu
   let min = Infinity, max = -Infinity
   for (const p of points) if (p.value !== null && Number.isFinite(p.value)) { min = Math.min(min, p.value); max = Math.max(max, p.value) }
   if (!Number.isFinite(min)) { min = 0; max = 1 }
-  const pad = (max - min || Math.abs(max) || 1) * .08
-  return { x: [points[0].time * 1000, points.at(-1)!.time * 1000 + (points[0].time === points.at(-1)!.time ? 1000 : 0)], y: [min - pad, max + pad] }
+  const span = max - min
+  const pad = (Number.isFinite(span) ? span || Math.abs(max) || 1 : max / 2 - min / 2) * .08
+  const lo = Math.max(-Number.MAX_VALUE, min - pad), hi = Math.min(Number.MAX_VALUE, max + pad)
+  return { x: [points[0].time * 1000, points.at(-1)!.time * 1000 + (points[0].time === points.at(-1)!.time ? 1000 : 0)], y: [lo, hi] }
 }
 export function nearestTimestamp(times: readonly number[], time: number): number | null {
   if (!times.length || time < times[0] || time > times[times.length - 1]) return null
