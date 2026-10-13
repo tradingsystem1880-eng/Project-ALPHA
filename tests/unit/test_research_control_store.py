@@ -9,6 +9,8 @@ import os
 import shutil
 import sqlite3
 import threading
+import time
+import traceback
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -2281,6 +2283,12 @@ def test_schema_v1_backup_and_migration_hold_one_writer_lock(
         try:
             ControlStore(tmp_path).list_projects()
         except BaseException as exc:  # pragma: no cover - asserted below for thread handoff.
+            cause = exc.__cause__
+            exc.add_note(
+                f"SQLite code={getattr(cause, 'sqlite_errorcode', None)} "
+                f"name={getattr(cause, 'sqlite_errorname', None)}"
+            )
+            traceback.print_exception(exc)
             migration_errors.append(exc)
 
     def concurrent_migrate() -> None:
@@ -2303,6 +2311,11 @@ def test_schema_v1_backup_and_migration_hold_one_writer_lock(
             connection.set_authorizer(observe_transaction)
             control_store_module._migrate_schema_v1(connection, database)
         except BaseException as exc:  # pragma: no cover - asserted below for thread handoff.
+            exc.add_note(
+                f"SQLite code={getattr(exc, 'sqlite_errorcode', None)} "
+                f"name={getattr(exc, 'sqlite_errorname', None)}"
+            )
+            traceback.print_exception(exc)
             concurrent_migration_errors.append(exc)
         finally:
             connection.close()
@@ -2341,6 +2354,124 @@ def test_schema_v1_backup_and_migration_hold_one_writer_lock(
     finally:
         migrated.close()
         backup.close()
+
+
+def test_open_waits_for_busy_wal_negotiation_after_serialized_migration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    assert store.list_projects() == []
+    database = tmp_path / "control" / "workstation.sqlite3"
+    original_connect = sqlite3.connect
+    connection = original_connect(database, isolation_level=None)
+    try:
+        assert connection.execute("PRAGMA journal_mode = DELETE").fetchone() == ("delete",)
+    finally:
+        connection.close()
+    writer_ready = threading.Event()
+    busy_observed = threading.Event()
+    writer_errors: list[BaseException] = []
+
+    class BusyConnection(sqlite3.Connection):
+        def execute(self, sql: str, parameters: Any = (), /) -> sqlite3.Cursor:
+            try:
+                return super().execute(sql, parameters)
+            except sqlite3.OperationalError as exc:
+                if (
+                    sql == "PRAGMA journal_mode = WAL"
+                    and exc.sqlite_errorcode == sqlite3.SQLITE_BUSY
+                ):
+                    busy_observed.set()
+                raise
+
+    def recorded_connect(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        return original_connect(*args, **kwargs, factory=BusyConnection)
+
+    def hold_writer() -> None:
+        writer = original_connect(database, isolation_level=None)
+        try:
+            writer.execute("BEGIN IMMEDIATE")
+            writer_ready.set()
+            assert busy_observed.wait(timeout=5)
+        except BaseException as exc:
+            writer_errors.append(exc)
+        finally:
+            writer.rollback()
+            writer.close()
+
+    holder = threading.Thread(target=hold_writer)
+    holder.start()
+    try:
+        assert writer_ready.wait(timeout=5)
+        monkeypatch.setattr(sqlite3, "connect", recorded_connect)
+        assert store.list_projects() == []
+    finally:
+        holder.join(timeout=5)
+    assert not holder.is_alive()
+    assert writer_errors == []
+    assert busy_observed.is_set()
+    connection = original_connect(database)
+    try:
+        assert connection.execute("PRAGMA journal_mode").fetchone() == ("wal",)
+    finally:
+        connection.close()
+
+
+def test_wal_negotiation_exhausted_busy_budget_fails_and_restores_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "busy.sqlite3"
+    writer = sqlite3.connect(database, isolation_level=None)
+    writer.execute("CREATE TABLE public_test (value INTEGER)")
+    writer.execute("BEGIN IMMEDIATE")
+    reader = sqlite3.connect(database, timeout=0.02, isolation_level=None)
+    ticks = iter([1.0, 1.0, 1.021])
+    monkeypatch.setattr(
+        control_store_module,
+        "time",
+        SimpleNamespace(
+            monotonic=lambda: next(ticks),
+            sleep=lambda _: pytest.fail("expired busy budget must not retry"),
+        ),
+    )
+    try:
+        with pytest.raises(sqlite3.OperationalError) as raised:
+            control_store_module._enable_wal(reader)
+        assert raised.value.sqlite_errorcode == sqlite3.SQLITE_BUSY
+        assert reader.execute("PRAGMA busy_timeout").fetchone() == (20,)
+    finally:
+        reader.close()
+        writer.rollback()
+        writer.close()
+
+
+def test_wal_negotiation_non_busy_error_fails_without_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "readonly.sqlite3"
+    writer = sqlite3.connect(database)
+    writer.execute("CREATE TABLE public_test (value INTEGER)")
+    writer.commit()
+    writer.close()
+    reader = sqlite3.connect(f"file:{database}?mode=ro", uri=True, timeout=0.02)
+    monkeypatch.setattr(time, "sleep", lambda _: pytest.fail("unexpected retry"))
+    try:
+        with pytest.raises(sqlite3.OperationalError) as raised:
+            control_store_module._enable_wal(reader)
+        assert raised.value.sqlite_errorcode == sqlite3.SQLITE_READONLY
+        assert reader.execute("PRAGMA busy_timeout").fetchone() == (20,)
+    finally:
+        reader.close()
+
+
+def test_wal_negotiation_success_restores_configured_timeout(tmp_path: Path) -> None:
+    connection = sqlite3.connect(tmp_path / "success.sqlite3", timeout=0.02)
+    try:
+        control_store_module._enable_wal(connection)
+        assert connection.execute("PRAGMA journal_mode").fetchone() == ("wal",)
+        assert connection.execute("PRAGMA busy_timeout").fetchone() == (20,)
+    finally:
+        connection.close()
 
 
 def test_existing_schema_v2_reopen_adds_launch_reservation_tables(tmp_path: Path) -> None:

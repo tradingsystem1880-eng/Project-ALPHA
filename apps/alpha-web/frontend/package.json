@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "npm run build && playwright test",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e:built": "playwright test"
   },
   "dependencies": {
     "@bokeh/bokehjs": "3.10.0",

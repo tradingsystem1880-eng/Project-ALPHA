@@ -61,15 +61,15 @@ uv sync --locked
 uv run alpha info        # smoke test: prints resolved settings + core version
 ```
 
-## The full quality gate (run before every commit; mirrors CI)
+## The full quality gate (final acceptance; mirrors CI)
 
-One command runs the whole chain below and stamps the tree on success:
-`uv run python scripts/gate.py full` (`fast` for the lint/type subset). Claude Code sessions in
-this repo are governed by a mechanical hook harness built on that gate — commit/stop guards,
-independent review and academic quant verification tiers, owner-token escape hatches, an oracle
-test layer (metamorphic/calibration/differential, hidden holdout, mutation gate), an optional Codex
-second-opinion seam, and a hash-chained audit journal; see
-`docs/operations/claude-code-harness.md` (ADR-0034).
+One command runs all six components on one unchanged tree and stamps it on success:
+`uv run python scripts/gate.py full` (`fast` is the backend lint/type subset). Component commands
+help diagnose individual results. The thin Git commit guard requires a fresh full stamp; independent
+source review and quant verification remain separate acceptance evidence. Claude adapters provide
+orientation and native-boundary safety; they do not confer application authority or replace owner
+decisions. See the [development loop](docs/operations/development-loop.md) and
+[Claude Code operations](docs/operations/claude-code-harness.md).
 
 ```bash
 uv run python scripts/gate.py full
@@ -444,3 +444,5 @@ permanent private/local-only scope (see docs/BUILD-STATUS.md). Durable Binance r
 evidence, UTC-rollover sandbox soak (R-24), current-universe Tiingo qualification, and every real
 IBKR Paper acceptance scenario remain pending. The standalone R-14 public-quote network smoke
 passed locally on 2026-08-04.
+
+Development: [focused checks and module ownership](docs/operations/development-loop.md).

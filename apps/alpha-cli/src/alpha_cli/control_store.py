@@ -16,6 +16,7 @@ import secrets
 import sqlite3
 import stat
 import tempfile
+import time
 import uuid
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -25,6 +26,21 @@ from typing import Any, Final, Literal, cast
 
 import polars as pl
 
+from alpha_cli._control_json import (
+    _MAX_JSON_BYTES as _MAX_JSON_BYTES,
+)
+from alpha_cli._control_json import (
+    _canonical_json as _canonical_json,
+)
+from alpha_cli._control_json import (
+    _clean_json as _clean_json,
+)
+from alpha_cli._control_json import (
+    _decode_json as _decode_json,
+)
+from alpha_cli._control_json import (
+    _json_object as _json_object,
+)
 from alpha_cli._control_schema import (
     _DDL_OBJECT_NAME as _DDL_OBJECT_NAME,
 )
@@ -440,7 +456,6 @@ _SOURCE_RECORD_ADDITIVE_COLUMNS: Final = (
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _SYMBOL_RE = re.compile(r"[A-Z0-9][A-Z0-9._:/-]{0,31}")
 _ARTIFACT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}")
-_MAX_JSON_BYTES = 65_536
 _MAX_TEXT = 8_192
 OWNER_ACTION_TYPES: Final = frozenset(
     {
@@ -536,45 +551,6 @@ def _iso_date(value: str, field: str) -> str:
 
 def _at(value: datetime | None) -> str:
     return _format_timestamp(datetime.now(UTC) if value is None else value)
-
-
-def _clean_json(value: object, *, label: str, depth: int = 0) -> object:
-    if depth > 16:
-        raise DataError(f"invalid control {label}: JSON nesting exceeds 16 levels")
-    if value is None or isinstance(value, (str, bool, int)):
-        return value
-    if isinstance(value, float):
-        if not math.isfinite(value):
-            raise DataError(f"invalid control {label}: expected finite JSON values")
-        return value
-    if isinstance(value, Mapping):
-        clean: dict[str, object] = {}
-        for key, item in value.items():
-            if not isinstance(key, str) or not key or "\x00" in key:
-                raise DataError(f"invalid control {label}: JSON keys must be non-empty strings")
-            clean[key] = _clean_json(item, label=label, depth=depth + 1)
-        return clean
-    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return [_clean_json(item, label=label, depth=depth + 1) for item in value]
-    raise DataError(f"invalid control {label}: expected finite JSON values")
-
-
-def _json_object(value: Mapping[str, object], label: str) -> dict[str, object]:
-    clean = _clean_json(value, label=label)
-    if not isinstance(clean, dict):  # Mapping above makes this defensive branch unreachable.
-        raise DataError(f"invalid control {label}: expected a JSON object")
-    _canonical_json(clean, label)
-    return clean
-
-
-def _canonical_json(value: object, label: str) -> str:
-    try:
-        result = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
-    except (TypeError, ValueError) as exc:
-        raise DataError(f"invalid control {label}: expected finite JSON values") from exc
-    if len(result.encode("utf-8")) > _MAX_JSON_BYTES:
-        raise DataError(f"invalid control {label}: JSON exceeds {_MAX_JSON_BYTES} bytes")
-    return result
 
 
 def _semantic_empty_head_sha256(project_id: str) -> str:
@@ -842,16 +818,6 @@ def research_case_revision(summary: Mapping[str, object]) -> str:
         "source_pack_id": summary.get("source_pack_id"),
     }
     return hashlib.sha256(_canonical_json(payload, "research case revision").encode()).hexdigest()
-
-
-def _decode_json(value: object, label: str) -> object:
-    if not isinstance(value, str):
-        raise DataError(f"corrupt control store: {label} is not text")
-    try:
-        result: object = json.loads(value)
-    except json.JSONDecodeError as exc:
-        raise DataError(f"corrupt control store: invalid {label}") from exc
-    return _clean_json(result, label=label)
 
 
 def _content_id(prefix: str, payload: Mapping[str, object]) -> str:
@@ -1668,6 +1634,30 @@ def _research_d2_topology(payload: Mapping[str, object]) -> tuple[dict[str, obje
     return d2, boundary_hash
 
 
+def _enable_wal(connection: sqlite3.Connection) -> None:
+    """Retry safe journal negotiation within the configured SQLite busy budget."""
+    budget_ms = int(connection.execute("PRAGMA busy_timeout").fetchone()[0])
+    deadline = time.monotonic() + budget_ms / 1000
+    try:
+        while True:
+            remaining_ms = max(0, int((deadline - time.monotonic()) * 1000))
+            connection.execute(f"PRAGMA busy_timeout = {remaining_ms}")
+            try:
+                connection.execute("PRAGMA journal_mode = WAL")
+                return
+            except sqlite3.OperationalError as exc:
+                remaining = deadline - time.monotonic()
+                if (
+                    getattr(exc, "sqlite_errorcode", None) != sqlite3.SQLITE_BUSY
+                    or connection.in_transaction
+                    or remaining <= 0
+                ):
+                    raise
+                time.sleep(min(0.01, remaining))
+    finally:
+        connection.execute(f"PRAGMA busy_timeout = {budget_ms}")
+
+
 class ControlStore:
     """Typed public seam over ALPHA's local Workstation v3 control database."""
 
@@ -1735,7 +1725,7 @@ class ControlStore:
             # SQLite treats changing the mode as a database-wide write; doing it before the
             # migration lock lets concurrent openers fail with SQLITE_BUSY before BEGIN
             # IMMEDIATE can serialize them.
-            connection.execute("PRAGMA journal_mode = WAL")
+            _enable_wal(connection)
             _heal_missing_development_stage_rows(connection)
             return connection
         except (OSError, sqlite3.Error) as exc:

@@ -1,6 +1,6 @@
 # ADR-0037: Agent-neutral engineering and reproducible research
 
-Status: Accepted; implemented locally (2026-09-16).
+Status: Accepted; implementation completed (2026-09-16).
 
 ## Context
 

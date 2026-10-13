@@ -503,3 +503,7 @@ RecordedSeries defaults to local BokehJS for backend points and gaps, with optio
 No endpoint, statistical estimator or authority was added. See the [delivery report](operations/2026-10-03-reference-quant-workstation.md).
 
 Owner correction: [scientific research renderer and project-free browsing](operations/2026-10-03-scientific-research-workstation.md). No backend or statistical changes.
+
+## Bounded CLI persistence seams
+
+`alpha_cli._crypto_persistence` shares exact-byte immutable JSON writes; command wrappers retain paths and document identities. `alpha_cli._control_json` owns pure serialization and validation; `control_store` retains facade names, migrations, transactions and authority. See [development loop](operations/development-loop.md).

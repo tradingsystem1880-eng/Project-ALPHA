@@ -70,7 +70,7 @@ def weekly_diagnostic(
     Logistic model: Hastie et al. (2009), ESL §4.4. Train-only z scores and fixed L2
     penalty, no hyperparameter search. Brier score: Gneiting & Raftery (2007),
     JASA 102, Example 1 p.363 (doi:10.1198/016214506000001437). Binary loss
-    here is mean((p-y)**2), minus half their two-category reward score.
+    reported here is half the two-category Brier loss, mean((p-y)**2).
     Accuracy and episode returns
     are descriptive, without significance or independence claims. Features use a
     simple 14-change gain fraction (not Wilder-smoothed RSI), normalized 12/26 EMA
