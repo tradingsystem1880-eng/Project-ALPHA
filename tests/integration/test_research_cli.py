@@ -22,16 +22,9 @@ from alpha_cli.main import app
 from alpha_core import DataError
 from alpha_research import CryptoCrowdingObservationV1
 from tests.fixtures.cli_fixtures import seed_store
+from tests.fixtures.research_cli import _invoke as _invoke
 
 runner = CliRunner()
-
-
-def _invoke(*args: str) -> dict[str, object]:
-    result = runner.invoke(app, ["research", *args, "--json"])
-    assert result.exit_code == 0, result.output
-    value: object = json.loads(result.output)
-    assert isinstance(value, dict)
-    return value
 
 
 def test_generic_capture_reports_operator_gap_not_owner_answer_batch(
