@@ -7585,8 +7585,9 @@ export interface components {
             /** Worker Kind */
             worker_kind: ("fake" | "qlib") | null;
         };
-        /** MlExperimentContract */
-        MlExperimentContract: {
+        MlExperimentContract: components["schemas"]["MlExperimentContractV1"] | components["schemas"]["MlExperimentContractV2"];
+        /** MlExperimentContractV1 */
+        MlExperimentContractV1: {
             /** Config Hash */
             config_hash: string;
             costs: components["schemas"]["MlCosts"];
@@ -7596,7 +7597,7 @@ export interface components {
             /** Folds */
             folds: components["schemas"]["MlFold"][];
             label_recipe: components["schemas"]["MlLabelRecipe"];
-            model: components["schemas"]["MlModelRecipe"];
+            model: components["schemas"]["MlLightgbmModelRecipe"];
             /** Panel Rows */
             panel_rows: number;
             /** Panel Sha256 */
@@ -7609,6 +7610,48 @@ export interface components {
              * @constant
              */
             schema_version: 1;
+            /** Seed */
+            seed: number;
+            /** Snapshot Hash */
+            snapshot_hash: string;
+            /** Survivorship Warning */
+            survivorship_warning: string | null;
+            /** Universe */
+            universe: string[];
+            /** Universe Count */
+            universe_count: number;
+            /**
+             * Universe Membership
+             * @enum {string}
+             */
+            universe_membership: "point_in_time" | "current_membership";
+            /** Worker Lock Hash */
+            worker_lock_hash: string;
+        };
+        /** MlExperimentContractV2 */
+        MlExperimentContractV2: {
+            /** Config Hash */
+            config_hash: string;
+            costs: components["schemas"]["MlCosts"];
+            /** Embargo Sessions */
+            embargo_sessions: number;
+            feature_recipe: components["schemas"]["MlFeatureRecipe"];
+            /** Folds */
+            folds: components["schemas"]["MlFold"][];
+            label_recipe: components["schemas"]["MlLabelRecipe"];
+            model: components["schemas"]["MlRankEnsembleV1ModelRecipe"];
+            /** Panel Rows */
+            panel_rows: number;
+            /** Panel Sha256 */
+            panel_sha256: string;
+            portfolio: components["schemas"]["MlPortfolioRecipe"];
+            /** Purge Sessions */
+            purge_sessions: number;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 2;
             /** Seed */
             seed: number;
             /** Snapshot Hash */
@@ -7803,9 +7846,9 @@ export interface components {
             boundaries: components["schemas"]["MlFoldBoundaries"];
             /**
              * Fit Count
-             * @constant
+             * @enum {integer}
              */
-            fit_count: 1;
+            fit_count: 1 | 2;
             /** Fold */
             fold: number;
             /** Model Hash */
@@ -7955,8 +7998,8 @@ export interface components {
              */
             name: "next_session_open_to_open";
         };
-        /** MlModelRecipe */
-        MlModelRecipe: {
+        /** MlLightgbmModelRecipe */
+        MlLightgbmModelRecipe: {
             /**
              * Name
              * @constant
@@ -8042,6 +8085,18 @@ export interface components {
             observations: number;
             /** Quantile */
             quantile: number;
+        };
+        /** MlRankEnsembleV1ModelRecipe */
+        MlRankEnsembleV1ModelRecipe: {
+            /**
+             * Name
+             * @constant
+             */
+            name: "rank_ensemble_v1";
+            /** Parameters */
+            parameters: {
+                [key: string]: number;
+            };
         };
         /** MlReadiness */
         MlReadiness: {

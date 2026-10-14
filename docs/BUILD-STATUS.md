@@ -1305,3 +1305,31 @@ below one ULP of the corresponding source close as cancellation noise; labels re
 fixed-decimal form and backend study values remain untouched. A browser regression checks the
 shadow-root gutter and signed fixed-decimal label, with PNG export checks retained. Fresh full
 verification, independent review, and exact-head hosted checks are pending.
+
+
+## 2026-10-14 — Existing ML ensemble response compatibility preparation
+
+A synthetic exchange reproduction through actual FastAPI response validation on main `fc6d3b90`
+returned HTTP 200 for v1 LightGBM detail/tear-sheet but raised response validation errors for the
+already-supported schema-v2 `rank_ensemble_v1` detail and its two-fit fold diagnostics. The CLI and
+isolated worker contracts already support those values; the web projection forwarded them unchanged.
+The bounded correction extends only the three response literals to the existing supported values.
+Regression tests exercise both versions through the real projection/router, preserve complete
+projected diagnostics, and reject unsupported schema/model/fit values. OpenAPI and generated client
+types follow the corrected responses. Numerical behavior, worker capability, artifact validation,
+subprocess isolation, bounds, strict extra-field rejection and protected gates are unchanged.
+This was an isolated preparation candidate; its focused evidence did not establish combined full,
+hosted CI, private-suite or release acceptance.
+
+### 2026-10-14 — Combined atomic-publication tests and ML response compatibility candidate
+
+The combined candidate adds public contract tests for `alpha_validation._atomic.write_text` and
+correctly discriminates existing ML response contracts: schema 1 pairs with LightGBM, while schema 2
+pairs with `rank_ensemble_v1`. Prepared exchanges with incompatible pairs fail response validation
+even without a result artifact; OpenAPI and generated TypeScript encode the same pairing. The
+tear-sheet now describes the actual fit count per fold. Supported Atlas refresh regenerated the live
+226-command cache and derived views. The 56 focused backend tests pass. The owner-authorized documented
+holdout suite passed 17 tests, and the validation copy passed all six canonical full-gate components;
+fresh independent review approved that validated tree. Hosted head and post-merge results are tracked
+separately in PR acceptance evidence, and private coverage remains UNVERIFIED. No worker, numerical,
+research-authority, or protected-gate behavior changed.

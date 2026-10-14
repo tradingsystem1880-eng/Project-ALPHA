@@ -5,6 +5,9 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
 
 ## Unreleased
 
+- Add direct regression coverage for atomic text publication and pair existing ML response schema
+  versions with their supported model recipes; regenerate OpenAPI, client types and Atlas outputs.
+
 - Prepared repository cleanup (unmerged): finish technical chart exports and weekly mutation
   report validation, enforce the research import boundary, recover fee-aware CASH buy
   rejection evidence, and reconcile current documentation. Available engineering checks

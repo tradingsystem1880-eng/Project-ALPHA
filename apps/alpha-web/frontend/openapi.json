@@ -10225,6 +10225,16 @@
         "type": "object"
       },
       "MlExperimentContract": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/MlExperimentContractV1"
+          },
+          {
+            "$ref": "#/components/schemas/MlExperimentContractV2"
+          }
+        ]
+      },
+      "MlExperimentContractV1": {
         "additionalProperties": false,
         "properties": {
           "config_hash": {
@@ -10256,7 +10266,7 @@
             "$ref": "#/components/schemas/MlLabelRecipe"
           },
           "model": {
-            "$ref": "#/components/schemas/MlModelRecipe"
+            "$ref": "#/components/schemas/MlLightgbmModelRecipe"
           },
           "panel_rows": {
             "minimum": 1.0,
@@ -10332,7 +10342,6 @@
           }
         },
         "required": [
-          "schema_version",
           "snapshot_hash",
           "config_hash",
           "worker_lock_hash",
@@ -10342,7 +10351,6 @@
           "survivorship_warning",
           "feature_recipe",
           "label_recipe",
-          "model",
           "portfolio",
           "costs",
           "folds",
@@ -10350,9 +10358,142 @@
           "embargo_sessions",
           "seed",
           "panel_sha256",
-          "panel_rows"
+          "panel_rows",
+          "schema_version",
+          "model"
         ],
-        "title": "MlExperimentContract",
+        "title": "MlExperimentContractV1",
+        "type": "object"
+      },
+      "MlExperimentContractV2": {
+        "additionalProperties": false,
+        "properties": {
+          "config_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Config Hash",
+            "type": "string"
+          },
+          "costs": {
+            "$ref": "#/components/schemas/MlCosts"
+          },
+          "embargo_sessions": {
+            "minimum": 0.0,
+            "title": "Embargo Sessions",
+            "type": "integer"
+          },
+          "feature_recipe": {
+            "$ref": "#/components/schemas/MlFeatureRecipe"
+          },
+          "folds": {
+            "items": {
+              "$ref": "#/components/schemas/MlFold"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Folds",
+            "type": "array"
+          },
+          "label_recipe": {
+            "$ref": "#/components/schemas/MlLabelRecipe"
+          },
+          "model": {
+            "$ref": "#/components/schemas/MlRankEnsembleV1ModelRecipe"
+          },
+          "panel_rows": {
+            "minimum": 1.0,
+            "title": "Panel Rows",
+            "type": "integer"
+          },
+          "panel_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Panel Sha256",
+            "type": "string"
+          },
+          "portfolio": {
+            "$ref": "#/components/schemas/MlPortfolioRecipe"
+          },
+          "purge_sessions": {
+            "minimum": 0.0,
+            "title": "Purge Sessions",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 2,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "seed": {
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "snapshot_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Snapshot Hash",
+            "type": "string"
+          },
+          "survivorship_warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Survivorship Warning"
+          },
+          "universe": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 512,
+            "minItems": 20,
+            "title": "Universe",
+            "type": "array"
+          },
+          "universe_count": {
+            "maximum": 512.0,
+            "minimum": 20.0,
+            "title": "Universe Count",
+            "type": "integer"
+          },
+          "universe_membership": {
+            "enum": [
+              "point_in_time",
+              "current_membership"
+            ],
+            "title": "Universe Membership",
+            "type": "string"
+          },
+          "worker_lock_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Worker Lock Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshot_hash",
+          "config_hash",
+          "worker_lock_hash",
+          "universe",
+          "universe_count",
+          "universe_membership",
+          "survivorship_warning",
+          "feature_recipe",
+          "label_recipe",
+          "portfolio",
+          "costs",
+          "folds",
+          "purge_sessions",
+          "embargo_sessions",
+          "seed",
+          "panel_sha256",
+          "panel_rows",
+          "schema_version",
+          "model"
+        ],
+        "title": "MlExperimentContractV2",
         "type": "object"
       },
       "MlExperimentGenerateRequest": {
@@ -10858,7 +10999,10 @@
             "$ref": "#/components/schemas/MlFoldBoundaries"
           },
           "fit_count": {
-            "const": 1,
+            "enum": [
+              1,
+              2
+            ],
             "title": "Fit Count",
             "type": "integer"
           },
@@ -11249,7 +11393,7 @@
         "title": "MlLabelRecipe",
         "type": "object"
       },
-      "MlModelRecipe": {
+      "MlLightgbmModelRecipe": {
         "additionalProperties": false,
         "properties": {
           "name": {
@@ -11276,7 +11420,7 @@
           "name",
           "parameters"
         ],
-        "title": "MlModelRecipe",
+        "title": "MlLightgbmModelRecipe",
         "type": "object"
       },
       "MlPortfolioPoint": {
@@ -11485,6 +11629,36 @@
           "observations"
         ],
         "title": "MlQuantileReturn",
+        "type": "object"
+      },
+      "MlRankEnsembleV1ModelRecipe": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "const": "rank_ensemble_v1",
+            "title": "Name",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "title": "Parameters",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "parameters"
+        ],
+        "title": "MlRankEnsembleV1ModelRecipe",
         "type": "object"
       },
       "MlReadiness": {

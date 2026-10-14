@@ -79,5 +79,5 @@ Use fresh source/tests. Provider acceptance requires passing receipts.
 Behavior changes: update this manual and append `docs/BUILD-STATUS.md`.
 Preserve user work; local checks do not confer acceptance.
 
-UI: [terminal guide](apps/alpha-web/frontend/README.md): technical charts, optional market charts,
-UTC windows, exact exports and project-free browsing.
+UI: [terminal guide](apps/alpha-web/frontend/README.md): charts, UTC, exact exports, no-project browsing.
+ML: v1/LightGBM; v2/rank_ensemble_v1.
