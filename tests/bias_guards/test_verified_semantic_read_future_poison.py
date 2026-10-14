@@ -15,7 +15,7 @@ from alpha_cli.control_store import ControlStore
 from alpha_core import DataError
 from alpha_research._canonical import canonical_sha256
 from alpha_study import BlindSemanticProjectionV1, project_blind_semantic_read
-from tests.integration.test_research_cli import _invoke
+from tests.fixtures.research_cli import _invoke
 
 pytestmark = pytest.mark.bias_guard
 
