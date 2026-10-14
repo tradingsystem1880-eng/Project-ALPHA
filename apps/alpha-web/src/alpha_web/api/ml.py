@@ -102,8 +102,13 @@ class MlLabelRecipe(StrictModel):
     horizon_sessions: Literal[1]
 
 
-class MlModelRecipe(StrictModel):
+class MlLightgbmModelRecipe(StrictModel):
     name: Literal["lightgbm"]
+    parameters: dict[str, int | float]
+
+
+class MlRankEnsembleV1ModelRecipe(StrictModel):
+    name: Literal["rank_ensemble_v1"]
     parameters: dict[str, int | float]
 
 
@@ -128,8 +133,7 @@ class MlFold(StrictModel):
     test_end: str
 
 
-class MlExperimentContract(StrictModel):
-    schema_version: Literal[1]
+class _MlExperimentContractFields(StrictModel):
     snapshot_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     config_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     worker_lock_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -139,7 +143,6 @@ class MlExperimentContract(StrictModel):
     survivorship_warning: str | None
     feature_recipe: MlFeatureRecipe
     label_recipe: MlLabelRecipe
-    model: MlModelRecipe
     portfolio: MlPortfolioRecipe
     costs: MlCosts
     folds: list[MlFold] = Field(min_length=1, max_length=50)
@@ -148,6 +151,23 @@ class MlExperimentContract(StrictModel):
     seed: int = Field(ge=0)
     panel_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     panel_rows: int = Field(ge=1)
+
+
+class MlExperimentContractV1(_MlExperimentContractFields):
+    schema_version: Literal[1]
+    model: MlLightgbmModelRecipe
+
+
+class MlExperimentContractV2(_MlExperimentContractFields):
+    schema_version: Literal[2]
+    model: MlRankEnsembleV1ModelRecipe
+
+
+# Keep `schema_version` as a numeric literal in generated clients. OpenAPI's
+# `discriminator` mapping is string-valued, so publishing it here makes the
+# generated TypeScript client incorrectly type the numeric wire values as
+# strings. The strict variant models still enforce version/model pairing.
+type MlExperimentContract = MlExperimentContractV1 | MlExperimentContractV2
 
 
 class MlWorkerResult(StrictModel):
@@ -332,7 +352,7 @@ class MlFoldBoundaries(StrictModel):
 
 class MlFoldDiagnostic(StrictModel):
     fold: int
-    fit_count: Literal[1]
+    fit_count: Literal[1, 2]
     train_rows: int
     validation_rows: int
     test_rows: int

@@ -14,11 +14,15 @@ from typing import Any, cast
 
 import polars as pl
 import pytest
+from fastapi.exceptions import ResponseValidationError
+from fastapi.testclient import TestClient
 
 from alpha_cli.artifact_contract import artifact_contract
 from alpha_cli.control_store import ControlStore
 from alpha_cli.durable_lease import DEFAULT_TERMINATE_GRACE_SECONDS
 from alpha_web import _catalog, _ml
+from alpha_web.api import ml as ml_api
+from alpha_web.app import create_app
 
 EXCHANGE_ID = "a" * 32
 INPUT_ID = "b" * 32
@@ -199,6 +203,149 @@ def _write_exchange(data_dir: Path) -> Path:
     }
     (exchange / "result.json").write_text(json.dumps(result), encoding="utf-8")
     return exchange
+
+
+@pytest.fixture
+def ml_response_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, Path]:
+    exchange = _write_exchange(tmp_path)
+    monkeypatch.setattr(ml_api, "data_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        _ml,
+        "_run_json",
+        lambda args, **kwargs: (
+            {"status": "validated"}
+            if args[:2] == ["ml", "import"]
+            else {"diagnostics": json.loads((exchange / "result.json").read_text())["diagnostics"]}
+        ),
+    )
+    return TestClient(create_app()), exchange
+
+
+@pytest.mark.parametrize(
+    "schema_version,model,fit_count", [(1, "lightgbm", 1), (2, "rank_ensemble_v1", 2)]
+)
+@pytest.mark.parametrize("suffix", ["", "/tear-sheet"])
+def test_ml_responses_preserve_existing_artifact_versions(
+    ml_response_client: tuple[TestClient, Path],
+    schema_version: int,
+    model: str,
+    fit_count: int,
+    suffix: str,
+) -> None:
+    client, exchange = ml_response_client
+    request = json.loads((exchange / "request.json").read_text())
+    request["schema_version"] = schema_version
+    request["model"]["name"] = model
+    (exchange / "request.json").write_text(json.dumps(request))
+    result = json.loads((exchange / "result.json").read_text())
+    result["diagnostics"]["folds"][0]["fit_count"] = fit_count
+    (exchange / "result.json").write_text(json.dumps(result))
+
+    response = client.get(f"/api/ml/exchanges/{EXCHANGE_ID}{suffix}")
+
+    assert response.status_code == 200
+    if not suffix:
+        expected = _ml.exchange_detail(EXCHANGE_ID, data_dir=exchange.parents[3])
+        assert response.json() == expected
+        assert response.json()["contract"]["schema_version"] == schema_version
+        assert response.json()["contract"]["model"]["name"] == model
+    else:
+        expected = _ml.exchange_tearsheet(
+            EXCHANGE_ID,
+            data_dir=exchange.parents[3],
+            feature_limit=50,
+            timeline_limit=500,
+            timeline_offset=0,
+            history_limit=200,
+        )
+        assert response.json() == expected
+        assert response.json()["folds"][0]["fit_count"] == fit_count
+        assert len(response.json()["ic"]["by_target"]) == 2
+        assert len(response.json()["portfolio"]["timeline"]) == 2
+
+
+@pytest.mark.parametrize(
+    "field,value,suffix,location,error_type",
+    [
+        ("schema_version", 3, "", ("response", "contract"), "literal_error"),
+        ("model", "unsupported_model", "", ("model", "name"), "literal_error"),
+        ("fit_count", 0, "/tear-sheet", ("response", "folds", 0, "fit_count"), "literal_error"),
+        ("fit_count", 3, "/tear-sheet", ("response", "folds", 0, "fit_count"), "literal_error"),
+    ],
+)
+def test_ml_responses_reject_unsupported_artifact_values(
+    ml_response_client: tuple[TestClient, Path],
+    field: str,
+    value: int | str,
+    suffix: str,
+    location: tuple[str | int, ...],
+    error_type: str,
+) -> None:
+    client, exchange = ml_response_client
+    filename = "result.json" if field == "fit_count" else "request.json"
+    payload = json.loads((exchange / filename).read_text())
+    if field == "fit_count":
+        payload["diagnostics"]["folds"][0][field] = value
+    elif field == "model":
+        payload["model"]["name"] = value
+    else:
+        payload[field] = value
+    (exchange / filename).write_text(json.dumps(payload))
+
+    with pytest.raises(ResponseValidationError) as error:
+        client.get(f"/api/ml/exchanges/{EXCHANGE_ID}{suffix}")
+
+    assert any(
+        item["type"] == error_type
+        and (
+            item["loc"][: len(location)] == location
+            if field == "schema_version"
+            else item["loc"][-len(location) :] == location
+        )
+        for item in error.value.errors()
+    ), error.value.errors()
+
+
+def test_ml_contract_openapi_pairs_schema_version_with_model() -> None:
+    schemas = create_app().openapi()["components"]["schemas"]
+    contract = schemas["MlExperimentContract"]
+
+    # Numeric wire tags must stay numeric in generated clients. OpenAPI's
+    # discriminator mapping is string-valued, so expose the exact numeric
+    # variant schemas without that metadata.
+    assert "discriminator" not in contract
+    assert {item["$ref"] for item in contract["anyOf"]} == {
+        "#/components/schemas/MlExperimentContractV1",
+        "#/components/schemas/MlExperimentContractV2",
+    }
+    expected = {
+        "MlExperimentContractV1": (1, "MlLightgbmModelRecipe", "lightgbm"),
+        "MlExperimentContractV2": (2, "MlRankEnsembleV1ModelRecipe", "rank_ensemble_v1"),
+    }
+    for name, (version, model_schema, model_name) in expected.items():
+        variant = schemas[name]
+        assert variant["properties"]["schema_version"]["const"] == version
+        model_ref = variant["properties"]["model"]["$ref"]
+        assert model_ref == f"#/components/schemas/{model_schema}"
+        assert schemas[model_schema]["properties"]["name"]["const"] == model_name
+
+
+@pytest.mark.parametrize(
+    "schema_version,model",
+    [(1, "rank_ensemble_v1"), (2, "lightgbm")],
+)
+def test_exchange_detail_rejects_model_incompatible_with_schema_for_prepared_exchange(
+    ml_response_client: tuple[TestClient, Path], schema_version: int, model: str
+) -> None:
+    client, exchange = ml_response_client
+    request = json.loads((exchange / "request.json").read_text())
+    request["schema_version"] = schema_version
+    request["model"]["name"] = model
+    (exchange / "request.json").write_text(json.dumps(request))
+    (exchange / "result.json").unlink()
+
+    with pytest.raises(ResponseValidationError):
+        client.get(f"/api/ml/exchanges/{EXCHANGE_ID}")
 
 
 def test_exchange_projection_omits_raw_paths_and_bounds_diagnostics(

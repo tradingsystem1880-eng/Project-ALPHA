@@ -290,7 +290,7 @@ export function MlDiagnosticsBody({
       <Section title="Gross, costed, benchmark, excess & turnover" right={<span className="muted">diagnostic portfolio · declared costs</span>}><PortfolioDiagnostics sheet={sheet} /></Section>
       <div className="ml-diagnostic-two-up lower">
         <Section title="Feature importance" right={<span className="muted">mean LightGBM gain / split count</span>}><FeatureImportance sheet={sheet} /></Section>
-        <Section title="Fold boundaries" right={<span className="muted">one fit per fold · train-only normalization</span>}><FoldBoundaries folds={sheet.folds} /></Section>
+        <Section title="Fold boundaries" right={<span className="muted">fit counts per fold · train-only normalization</span>}><FoldBoundaries folds={sheet.folds} /></Section>
       </div>
       <Section title="Training history" right={<span className="muted">bounded worker history · no interpolation</span>}><div className="ml-training-grid">{sheet.folds.map((fold) => <TrainingHistoryChart key={fold.fold} fold={fold} />)}</div></Section>
       <Section title="Recipe & availability contract" right={<span className="muted">close t decision · open t+1 entry</span>}>
