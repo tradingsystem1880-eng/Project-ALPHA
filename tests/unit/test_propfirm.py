@@ -208,6 +208,12 @@ def test_rules_validate_their_invariants() -> None:
         _rules(daily_loss_limit=0.0)  # None or > 0
 
 
+@pytest.mark.parametrize("field", ["account_size", "profit_target"])
+def test_rules_reject_zero_account_size_and_profit_target(field: str) -> None:
+    with pytest.raises(DataError):
+        _rules(**{field: 0.0})
+
+
 def test_firm_presets_are_well_formed() -> None:
     assert {"topstep", "apex", "takeprofit"} <= set(FIRM_PRESETS)
     for name, rules in FIRM_PRESETS.items():

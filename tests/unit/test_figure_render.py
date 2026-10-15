@@ -13,12 +13,21 @@ from __future__ import annotations
 import ast
 import re
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from pathlib import Path
 
+import numpy as np
 import pytest
+from matplotlib.axes import Axes
+from matplotlib.collections import LineCollection, PathCollection
+from matplotlib.colors import to_rgba
+from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
 
 from alpha_core import DataError
 from alpha_research.figures import (
+    CandleMark,
+    ErrorBarMark,
     FigureSpec,
     HistogramMark,
     LineMark,
@@ -31,6 +40,7 @@ from alpha_research.figures import (
     load_theme,
     render_figure,
 )
+from alpha_research.figures import render as figure_render
 
 _SVG_NS = {"svg": "http://www.w3.org/2000/svg"}
 _TS = tuple(1_420_070_400.0 + index * 86_400.0 for index in range(40))
@@ -51,6 +61,19 @@ def _readable(spec: FigureSpec) -> ET.Element:
 
 def _texts(root: ET.Element) -> list[str]:
     return [element.text or "" for element in root.iter(f"{{{_SVG_NS['svg']}}}text")]
+
+
+def _inspect_rendered_axes(
+    spec: FigureSpec, monkeypatch: pytest.MonkeyPatch, inspect: Callable[[Axes], None]
+) -> ET.Element:
+    save = figure_render._save
+
+    def inspect_and_save(figure: Figure, options: RenderOptions, spec: FigureSpec) -> bytes:
+        inspect(figure.axes[0])
+        return save(figure, options, spec)
+
+    monkeypatch.setattr(figure_render, "_save", inspect_and_save)
+    return _readable(spec)
 
 
 def _spec(panels: tuple[Panel, ...], **overrides: object) -> FigureSpec:
@@ -88,6 +111,91 @@ def _line_panel(panel_id: str, label: str, unit: str = "sharpe") -> Panel:
 
 
 class TestStructure:
+    @pytest.mark.parametrize("x", [(0.0, 2.0, 5.0), (4.0,)])
+    def test_candles_render_supplied_geometry_and_direction(
+        self, monkeypatch: pytest.MonkeyPatch, x: tuple[float, ...]
+    ) -> None:
+        count = len(x)
+        mark = CandleMark(
+            x=x,
+            open=(10.0, 12.0, 11.0)[:count],
+            high=(13.0, 14.0, 12.0)[:count],
+            low=(9.0, 8.0, 10.0)[:count],
+            close=(12.0, 10.0, 11.0)[:count],
+        )
+        theme = load_theme()
+
+        def inspect(axes: Axes) -> None:
+            assert len(axes.patches) == len(axes.collections) == count
+            width = 1.24 if count > 1 else 0.62
+            for index, (patch, wick) in enumerate(zip(axes.patches, axes.collections, strict=True)):
+                assert isinstance(patch, Rectangle)
+                assert isinstance(wick, LineCollection)
+                np.testing.assert_allclose(
+                    wick.get_segments(),
+                    [[[x[index], mark.low[index]], [x[index], mark.high[index]]]],
+                )
+                assert (patch.get_x(), patch.get_y(), patch.get_width(), patch.get_height()) == (
+                    pytest.approx(
+                        (
+                            x[index] - width / 2,
+                            (10.0, 10.0, 11.0)[index],
+                            width,
+                            (2.0, 2.0, 0.02)[index],
+                        )
+                    )
+                )
+                colour = to_rgba(theme.down if index == 1 else theme.up)
+                assert patch.get_facecolor() == pytest.approx(colour)
+                np.testing.assert_allclose(
+                    np.asarray(wick.get_colors(), dtype=float), np.asarray([colour], dtype=float)
+                )
+
+        panel = Panel(panel_id="price", y_label="Price (USD)", y_unit="price", marks=(mark,))
+        root = _inspect_rendered_axes(_spec((panel,), x_kind="numeric"), monkeypatch, inspect)
+        assert "Price (USD)" in _texts(root)
+
+    def test_errorbars_render_bounds_points_categories_and_interval_sign(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mark = ErrorBarMark(
+            categories=("Positive", "Negative", "Crosses zero", "Zero width"),
+            point=(2.0, -3.0, 0.25, 0.0),
+            lower=(1.0, -4.0, -1.0, 0.0),
+            upper=(3.0, -2.0, 2.0, 0.0),
+        )
+        theme = load_theme()
+
+        def inspect(axes: Axes) -> None:
+            assert len(axes.collections) == 3 * len(mark.categories)
+            assert axes.yaxis_inverted()
+            assert [tick.get_text() for tick in axes.get_yticklabels()] == list(mark.categories)
+            np.testing.assert_allclose(axes.get_yticks(), range(len(mark.categories)))
+            for index, tone in enumerate((theme.up, theme.down, theme.gold, theme.gold)):
+                interval, caps, point = axes.collections[3 * index : 3 * index + 3]
+                assert isinstance(interval, LineCollection) and isinstance(caps, LineCollection)
+                assert isinstance(point, PathCollection)
+                low, high = mark.lower[index], mark.upper[index]
+                np.testing.assert_allclose(interval.get_segments(), [[[low, index], [high, index]]])
+                np.testing.assert_allclose(
+                    caps.get_segments(),
+                    [
+                        [[low, index - 0.12], [low, index + 0.12]],
+                        [[high, index - 0.12], [high, index + 0.12]],
+                    ],
+                )
+                np.testing.assert_allclose(
+                    np.asarray(point.get_offsets(), dtype=float), [[mark.point[index], index]]
+                )
+                for colours in (interval.get_colors(), caps.get_colors(), point.get_facecolor()):
+                    np.testing.assert_allclose(
+                        np.asarray(colours, dtype=float), np.asarray([to_rgba(tone)], dtype=float)
+                    )
+
+        panel = Panel(panel_id="forest", y_label="Effect (ratio)", y_unit="ratio", marks=(mark,))
+        root = _inspect_rendered_axes(_spec((panel,), x_kind="numeric"), monkeypatch, inspect)
+        assert set(mark.categories) <= set(_texts(root))
+
     def test_each_panel_becomes_its_own_axes_group(self) -> None:
         root = _readable(
             _spec(
