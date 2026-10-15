@@ -126,6 +126,20 @@ def test_registered_forward_horizon_embargoes_each_evidence_boundary() -> None:
         topology.validate_outcome_window(30, 32)
 
 
+def test_zero_horizon_accepts_same_index_outcomes_through_every_window() -> None:
+    topology = ResearchEvidenceTopology.for_observations(20, forward_outcome_observations=0)
+
+    assert topology.boundary_embargo_observations == 0
+    for window in (topology.discovery, topology.confirmation, topology.final_holdout):
+        assert topology.eligible_event_window(window.phase) == window
+        for index in (window.start, window.stop - 1):
+            assert topology.event_partition_for(index) == window.phase
+            assert topology.validate_outcome_window(index, index) == window.phase
+
+    with pytest.raises(DataError):
+        topology.validate_outcome_window(0, 1)
+
+
 def test_outcome_window_cannot_exceed_registered_horizon() -> None:
     topology = ResearchEvidenceTopology.for_observations(
         20,

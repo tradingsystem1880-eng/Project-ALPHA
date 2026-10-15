@@ -8,6 +8,7 @@ from alpha_core import DataError
 from alpha_research.figures import (
     BandMark,
     BarMark,
+    CandleMark,
     ErrorBarMark,
     FigureSpec,
     HeatmapMark,
@@ -25,6 +26,25 @@ from alpha_research.figures import (
 def _line(**overrides: object) -> LineMark:
     base: dict[str, object] = {"x": (0.0, 1.0, 2.0), "y": (1.0, 1.1, 1.05)}
     return LineMark(**{**base, **overrides})  # type: ignore[arg-type]
+
+
+def _candle(**series: tuple[float, ...]) -> CandleMark:
+    return CandleMark(
+        x=series.get("x", (0.0,)),
+        open=series.get("open", (10.0,)),
+        high=series.get("high", (12.0,)),
+        low=series.get("low", (9.0,)),
+        close=series.get("close", (11.0,)),
+    )
+
+
+def _errorbar(**series: tuple[float, ...]) -> ErrorBarMark:
+    return ErrorBarMark(
+        categories=("estimate",),
+        point=series.get("point", (0.5,)),
+        lower=series.get("lower", (0.0,)),
+        upper=series.get("upper", (1.0,)),
+    )
 
 
 def _panel(*marks: object, **overrides: object) -> Panel:
@@ -54,6 +74,46 @@ def _spec(**overrides: object) -> FigureSpec:
 
 
 class TestMarks:
+    @pytest.mark.parametrize("field", ["x", "open", "high", "low", "close"])
+    @pytest.mark.parametrize("invalid", [float("nan"), float("inf"), True])
+    def test_candle_rejects_nonfinite_or_boolean_values(self, field: str, invalid: float) -> None:
+        with pytest.raises(DataError):
+            _candle(**{field: (invalid,)})
+
+    @pytest.mark.parametrize("field", ["x", "open", "high", "low", "close"])
+    def test_candle_requires_aligned_series(self, field: str) -> None:
+        with pytest.raises(DataError):
+            _candle(**{field: ()})
+
+    def test_candle_rejects_empty_series(self) -> None:
+        with pytest.raises(DataError):
+            CandleMark(x=(), open=(), high=(), low=(), close=())
+
+    @pytest.mark.parametrize("field", ["point", "lower", "upper"])
+    @pytest.mark.parametrize("invalid", [float("nan"), float("inf"), True])
+    def test_errorbar_rejects_nonfinite_or_boolean_values(self, field: str, invalid: float) -> None:
+        with pytest.raises(DataError):
+            _errorbar(**{field: (invalid,)})
+
+    @pytest.mark.parametrize("field", ["point", "lower", "upper"])
+    def test_errorbar_requires_each_series_to_align(self, field: str) -> None:
+        with pytest.raises(DataError):
+            _errorbar(**{field: ()})
+
+    def test_errorbar_rejects_empty_categories(self) -> None:
+        with pytest.raises(DataError):
+            ErrorBarMark(categories=(), point=(), lower=(), upper=())
+
+    def test_errorbar_rejects_inverted_bounds(self) -> None:
+        with pytest.raises(DataError):
+            ErrorBarMark(categories=("estimate",), point=(0.5,), lower=(1.0,), upper=(0.0,))
+
+    def test_band_and_errorbar_allow_equal_interval_bounds(self) -> None:
+        band = BandMark(x=(0.0, 1.0), lower=(0.5, 1.0), upper=(0.5, 1.0))
+        errorbar = ErrorBarMark(categories=("estimate",), point=(0.5,), lower=(0.5,), upper=(0.5,))
+        assert band.lower == band.upper == pytest.approx((0.5, 1.0))
+        assert errorbar.lower == errorbar.upper == pytest.approx((0.5,))
+
     def test_line_rejects_misaligned_series(self) -> None:
         with pytest.raises(DataError, match="must align"):
             _line(y=(1.0, 2.0))

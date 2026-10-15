@@ -72,6 +72,26 @@ def test_artifact_ref_validates_content_identity() -> None:
         ResearchArtifactRef("bad", "table", "text/csv", "d" * 64, 1, -1)
 
 
+@pytest.mark.parametrize("row_count", [0, None])
+def test_artifact_zero_counts_are_preserved(row_count: int | None) -> None:
+    artifact = ResearchArtifactRef("empty", "table", "text/csv", "d" * 64, 0, row_count)
+
+    encoded = artifact.to_dict()
+    assert encoded["size_bytes"] == 0
+    assert type(encoded["size_bytes"]) is int
+    assert encoded["row_count"] == row_count
+    assert type(encoded["row_count"]) is type(row_count)
+
+
+@pytest.mark.parametrize("field", ["size_bytes", "row_count"])
+@pytest.mark.parametrize("value", [False, True])
+def test_artifact_counts_reject_booleans(field: str, value: bool) -> None:
+    counts = {"size_bytes": 1, "row_count": 1}
+    counts[field] = value
+    with pytest.raises(DataError):
+        ResearchArtifactRef("table", "table", "text/csv", "d" * 64, **counts)
+
+
 def test_chart_contract_hash_is_canonical_across_series_input_order() -> None:
     first = _chart((_series("event"), _series("control", 0.01)))
     second = _chart((_series("control", 0.01), _series("event")))
