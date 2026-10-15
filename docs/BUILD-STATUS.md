@@ -1368,3 +1368,15 @@ access was performed; private coverage remains UNVERIFIED.
 The standard protected-path review, canonical full, required hosted CI, normal merge and post-merge
 CI are evaluated separately against the exact candidate. This entry records the scoped behavior
 and local public checks; it does not claim mutation-adequacy scores or protected release acceptance.
+
+## 2026-10-15 — Synchronous cloud root/frontend setup
+
+The installer uses locked root/frontend dependencies, installs pinned Chromium, and runs a bounded
+CLI smoke plus a static-page Chromium browser-runtime smoke while preserving original failures. It
+does not run frontend app E2E tests. Cache defaults are process-local; the cloud
+environment must provide persistent variables to later shells and MCP servers. Linux Chromium
+system libraries are a host prerequisite. A separate cold-bootstrap run passed in 62.55 seconds
+on source candidate `b2c43735`; its exact receipt and SHA-256 are recorded in the cloud setup plan
+and reconciliation evidence. That run does not establish full-gate or release acceptance for the
+newer integrated tree. Exact-tree full, independent review, and hosted acceptance are tracked
+separately in the delivery receipt.
