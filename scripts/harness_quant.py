@@ -108,6 +108,16 @@ def stage_mutation_tree(root: Path, modules: list[str], staging: Path) -> list[s
         target = staging / "tests" / rel_path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(tests_root / rel_path, target)
+    also_copy = ["packages"]
+    if Path("unit/test_theme_drift.py") in keep:
+        # Public theme assertions inspect committed CSS by repository-relative path.
+        # Preserve those exact bytes in both staging and mutmut's nested execution tree.
+        for name in ("index.css", "theme.generated.css"):
+            relative = Path("apps/alpha-web/frontend/src") / name
+            target = staging / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(root / relative, target)
+        also_copy.append("apps")
     markers: list[str] = []
     try:
         pyproject = tomllib.loads((root / "pyproject.toml").read_text())
@@ -118,7 +128,7 @@ def stage_mutation_tree(root: Path, modules: list[str], staging: Path) -> list[s
         "[tool.mutmut]\n"
         f"source_paths = {json.dumps([f'src/{pkg}' for pkg in sorted(packages)])}\n"
         f"only_mutate = {json.dumps(only)}\n"
-        'also_copy = ["packages"]\n'
+        f"also_copy = {json.dumps(also_copy)}\n"
         'pytest_add_cli_args_test_selection = ["tests"]\n'
         f"pytest_add_cli_args = {json.dumps(_MUTATION_PYTEST_ARGS)}\n"
         "use_git_change_detection = false\n"

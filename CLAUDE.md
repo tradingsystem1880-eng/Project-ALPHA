@@ -63,7 +63,7 @@ in new checkouts. Claude adapters provide orientation and native-boundary safety
 Require a fresh full stamp; never bypass checks.
 [ADR-0037](docs/adr/0037-agent-neutral-research-engineering.md) separates engineering
 ceremony changes from unchanged application authority.
-[Harness](docs/operations/claude-code-harness.md): checkpoints, 96-mutant caps, intake, exceptions.
+[Harness](docs/operations/claude-code-harness.md): checkpoint, 96-mutant cap, intake/exceptions, CSS staging.
 
 [Benchmark](tools/alpha-eval/README.md): Codex-only; preserve history/isolation.
 Research: [bounded CLI workflow](docs/operations/bounded-research-workflow.md);

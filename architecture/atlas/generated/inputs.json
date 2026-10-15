@@ -786,6 +786,7 @@
     "tests/unit/test_montecarlo_parametric.py": "7c92b1e5d30274dd5a1f35c2cdc6dd7d01dda83facb5e854022f3e4ba38225ee",
     "tests/unit/test_mutation_fragment.py": "ba2459f04345a59f1011af6713f81821fbd6c22ce7a8728868ba77cf949ab71a",
     "tests/unit/test_mutation_legacy.py": "294dddd91195fcd929256731ff7b74eeed4357058c366f1fd7abe83bb8e6b9df",
+    "tests/unit/test_mutation_public_staging.py": "de14d0919dc5ced634302e7aaac66d023df850d8f0cde1a9395779a916dca642",
     "tests/unit/test_mutation_report.py": "073cb0cb742896d7c24673109645ce0e3697da5e33663037f78290e0fefb283a",
     "tests/unit/test_mutation_sweep.py": "06e6adea8c4e7a4a6f6b8e461b2db8cd4763e800991a2354a28e8e9dc7202adf",
     "tests/unit/test_native_tearsheet.py": "7b3d6767ede68b9e38e0459877d310830b4d25dcbed237f26c89a730b2ac5c84",

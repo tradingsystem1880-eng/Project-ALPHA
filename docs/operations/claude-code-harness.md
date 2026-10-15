@@ -28,18 +28,20 @@ checks; CI must independently verify changes.
 
 ## Thin Claude adapter
 
-`scripts/claude_hooks.py` is stdlib-only and has precisely three entrypoints:
+`scripts/claude_hooks.py` is stdlib-only and has precisely four entrypoints:
 
 | Event | Entrypoint | Behavior |
 |---|---|---|
 | SessionStart | `session-start` | Bounded pointers to CLAUDE.md, applicable rules, the canonical skill, orientation and gate. No scanning or telemetry. |
 | PreToolUse: Read/Edit/Write/MultiEdit | `pre-file-guard` | Denies hidden-holdout paths, including resolved symlinks and nested edit paths. |
 | PreToolUse: alpha MCP | `pre-mcp-guard` | Retains denial of owner research decisions, overrides and holdout reveal. |
+| PreToolUse: Bash/WebFetch/MCP | `pre-owner-action-guard` | Denies tool input naming owner-action routes or owner-auth enrollment/recovery, including decoded references. |
 
-The adapter no longer requires acknowledgments before source edits, intercepts Bash, checks Stop
+The adapter no longer requires acknowledgments before source edits, checks Stop
 or task/subagent completion, runs prompt judges, reinjects per-turn prose, or writes session/audit
-telemetry. It does not lint each edit or infer shell mutations. Git guards and the shared gate own
-engineering verification.
+telemetry. It does not lint each edit or infer shell mutations. The owner-action guard scans
+Bash/WebFetch/MCP tool inputs for the existing denied routes and credential ceremonies; it is not
+a shell parser. Git guards and the shared gate own engineering verification.
 
 File/MCP checks fail closed on malformed inputs and when their script is unavailable. Session
 guidance is advisory and does not block startup. Agent role labels, owner-token environment values

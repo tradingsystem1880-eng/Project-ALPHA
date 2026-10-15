@@ -1333,3 +1333,38 @@ holdout suite passed 17 tests, and the validation copy passed all six canonical 
 fresh independent review approved that validated tree. Hosted head and post-merge results are tracked
 separately in PR acceptance evidence, and private coverage remains UNVERIFIED. No worker, numerical,
 research-authority, or protected-gate behavior changed.
+
+
+## 2026-10-15 — Current-main documentation and Atlas upkeep preparation
+
+Rechecked the old `d3043d6c` maintenance findings on accepted main `b2c43735`. README already names
+all six canonical gate components, the thirteen import contracts match `pyproject.toml`, and the
+AGENTS/ADR/plan delivery labels are corrected. The committed CLI cache matches all 226 live command
+records with no missing, removed or changed entries; the eight generated Atlas outputs were fresh
+before this slice. The ADR's five-component candidate acceptance remains accurate September history
+(the original delivered definition had five components); it is not rewritten as a newer receipt.
+The remaining harness-guide drift described only three adapter entrypoints and implied that Bash
+had no interception. The guide now describes the already-wired fourth owner-action input guard and
+its bounded route/credential-reference scan. Runtime, settings, protected instructions, gates and
+authority are unchanged. The supported Atlas CLI refresh and regeneration produced byte-identical
+cache and generated outputs; this documentation correction does not change the Atlas input set.
+This isolated patch is preparation only; no publication, merge or heavy gate is performed, and
+final integration acceptance remains with the integration owner.
+
+## 2026-10-15 — Selected theme CSS in isolated mutation staging (in progress)
+
+The staging harness copies the checked-out `index.css` and `theme.generated.css` only when
+`tests/unit/test_theme_drift.py` is selected, and includes the minimal `apps` tree in mutmut's
+nested execution copy. Both CSS inputs matched accepted base `b2c43735` in this candidate; the
+harness intentionally reads working-tree paths. Missing source fixtures fail loudly. PR #62
+already supplies the separate public CLI helper; this candidate does not replay that accepted
+change. The public staging regression passes 4 tests, the focused staging/sweep/fragment set passes
+76, and the selected theme-drift test passes 54 tests from an actual isolated tree. The configured
+test selector, mutant inventory, score floor, tolerance, timeout, exclusion rules, concurrency and
+acceptance rule are unchanged. Restoring the selected theme cases that previously failed staging
+preflight and were deselected can change effective executed cases, denominators and measured
+outcomes; no mutation-adequacy claim is made. No exhaustive mutation sweep or private source/data
+access was performed; private coverage remains UNVERIFIED.
+The standard protected-path review, canonical full, required hosted CI, normal merge and post-merge
+CI are evaluated separately against the exact candidate. This entry records the scoped behavior
+and local public checks; it does not claim mutation-adequacy scores or protected release acceptance.
