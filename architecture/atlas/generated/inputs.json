@@ -656,6 +656,7 @@
     "tests/unit/test_claude_harness_skills.py": "24db9d0d42f162da0f921e8dc4ad5ebb0cd6d6d8db82350094538eca1ed29ade",
     "tests/unit/test_claude_md_relocation.py": "97e8807b3c41ff2a76a2a19e8cd3b183733b63711520229811ed72d7bb973aba",
     "tests/unit/test_cli_data_ticker.py": "0ebec2f84f368b0fa933fef72eec649112327a9d00fd2a2ec31edabf1f49123e",
+    "tests/unit/test_cloud_setup.py": "55fcb5d8120e1bd624ced74bf35b7587e669615b084209498a5764218e1ad363",
     "tests/unit/test_cmma.py": "fa8dddaf61d222fba54e9cb977d4bfa77cddbc4849f2145cc019d02bee711c19",
     "tests/unit/test_codex_environment.py": "c1a404fb5490c89aaeefef21350d82abb8eb30dc9432b561ebdf8c928f2519bd",
     "tests/unit/test_codex_investigation.py": "741966b61bea786a74e05b1ee357fc1f0c32d0f2fe6a323517c08201cfbbcc26",

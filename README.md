@@ -61,6 +61,34 @@ uv sync --locked
 uv run alpha info        # smoke test: prints resolved settings + core version
 ```
 
+For a Linux cloud checkout with `uv`, Python 3.12, Node/npm and GNU `timeout` available,
+run `bash scripts/cloud_setup.sh` from the repository root. It installs locked root/frontend
+dependencies and pinned Chromium, then runs a bounded CLI smoke and a Chromium browser-runtime
+smoke on a static page (not a frontend app E2E test). It stops on failure and preserves the original
+error and exit status. It does not install worker/tool environments or replace the full quality gate.
+Linux Chromium system libraries must already be installed;
+the script installs the pinned browser binary, not host operating-system packages.
+
+Save these **environment-level variables separately**, so subsequent shells and MCP servers
+inherit them (installer subprocess exports do not persist):
+
+```text
+UV_CACHE_DIR=/tmp/project-alpha-uv-cache
+UV_TOOL_DIR=/tmp/project-alpha-uv-tools
+UV_LINK_MODE=copy
+XDG_CONFIG_HOME=/tmp/project-alpha-xdg
+npm_config_cache=/tmp/project-alpha-npm-cache
+PLAYWRIGHT_BROWSERS_PATH=/tmp/project-alpha-playwright-browsers
+```
+
+Set the environment's install/setup command to `bash /workspace/Project-ALPHA/scripts/cloud_setup.sh`
+(adjust the checkout path). If `/tmp` is not retained, run the same command synchronously in
+session startup/maintenance before browser work; otherwise run it explicitly at session start.
+Without environment-level settings, pass the six variables explicitly to every later shell/process.
+The script uses these defaults and respects configured paths; it does not edit shell profiles,
+account settings or network policy. Download failures, including CDN 403 errors, require fixing
+the provisioning environment; dependency/browser fallbacks are not acceptance.
+
 ## The full quality gate (final acceptance; mirrors CI)
 
 One command runs all six components on one unchanged tree and stamps it on success:
