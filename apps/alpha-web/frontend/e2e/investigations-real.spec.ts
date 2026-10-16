@@ -35,6 +35,7 @@ test('real persisted investigation supports followup, cancel, refresh and compar
   await panel.getByRole('button', {name: 'Acquire this comparison plan'}).click()
   await expect(panel.getByRole('button', {name: 'Open comparison investigation'})).toBeEnabled({timeout: 30_000})
   await panel.getByRole('button', {name: 'Open comparison investigation'}).click()
+  await expect(panel.getByLabel('Saved investigations')).not.toHaveValue(id, {timeout: 30_000})
   await expect(panel.getByRole('button', {name: 'Resume investigation'})).toBeEnabled({timeout: 30_000})
   const childId = await panel.getByLabel('Saved investigations').inputValue()
   expect(childId).not.toBe(id)

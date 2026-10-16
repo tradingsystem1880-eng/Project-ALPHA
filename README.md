@@ -15,6 +15,8 @@ records behind the load-bearing choices — see [`docs/ARCHITECTURE.md`](docs/AR
 [`CLAUDE.md`](CLAUDE.md); the original design rationale lives in
 [`docs/superpowers/specs/`](docs/superpowers/specs/) and [`research/`](research/).
 
+For Software Team and ALPHA Quant Platform navigation, use the [context index](docs/context/README.md).
+
 The approved post-v2 extension is bounded by the
 [architecture audit](docs/audit/2026-07-19-post-v2-architecture-audit.md),
 [provider/paper implementation spec](docs/superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md),
