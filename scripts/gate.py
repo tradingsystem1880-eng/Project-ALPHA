@@ -86,6 +86,7 @@ _PYPROJECT_GUARDED = ("[tool.importlinter]", "fail_under", "strict", "addopts")
 _PROTECTED_EXACT = frozenset(
     {
         "scripts/gate.py",
+        "scripts/run_owned_test.py",
         "scripts/gate_components.py",
         "scripts/git_guard.py",
         "scripts/wheel_smoke.py",
@@ -926,8 +927,15 @@ def write_baseline(root: Path, *, reason: str, authorized_by: str) -> None:
 def _env_runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
     """The one subprocess wrapper: (ok, seconds, combined output); never raises."""
     started = time.monotonic()
+    # A separate owner can reap Linux orphans without stealing pytest/app wait statuses.
+    command = cmd
+    if sys.platform == "linux" and cmd[:3] == ["uv", "run", "pytest"]:
+        owner = Path(__file__).resolve().with_name("run_owned_test.py")
+        limit = kwargs.pop("timeout", None)
+        timeout_args = [] if limit is None else ["--timeout", str(limit)]
+        command = [sys.executable, str(owner), *timeout_args, "--", *cmd]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False, **kwargs)
+        result = subprocess.run(command, capture_output=True, text=True, check=False, **kwargs)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return (False, time.monotonic() - started, f"{type(exc).__name__}: {exc}")
     output = (result.stdout + result.stderr).strip()
@@ -935,6 +943,7 @@ def _env_runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
 
 
 HARNESS_SCRIPTS = (
+    "scripts/run_owned_test.py",
     "scripts/gate.py",
     "scripts/gate_components.py",
     "scripts/git_guard.py",

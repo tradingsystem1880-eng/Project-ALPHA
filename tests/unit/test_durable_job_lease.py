@@ -133,7 +133,11 @@ def test_exited_leader_keeps_descendant_group_leased_until_audited_cancellation(
         "import os, signal, sys, time\n"
         "from pathlib import Path\n"
         "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
-        "Path(sys.argv[1]).write_text(str(os.getpid()), encoding='utf-8')\n"
+        # Existence is the parent's readiness handshake, so publish complete bytes atomically.
+        "ready = Path(sys.argv[1])\n"
+        "temporary = ready.with_suffix('.tmp')\n"
+        "temporary.write_text(str(os.getpid()), encoding='utf-8')\n"
+        "temporary.replace(ready)\n"
         "time.sleep(30)\n"
     )
     leader_code = (

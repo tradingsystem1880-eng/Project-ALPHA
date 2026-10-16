@@ -502,6 +502,7 @@ def _wire_minimal_harness(repo: Path) -> None:
     scripts.mkdir(exist_ok=True)
     for name in (
         "gate.py",
+        "run_owned_test.py",
         "gate_components.py",
         "git_guard.py",
         "wheel_smoke.py",

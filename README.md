@@ -79,15 +79,27 @@ UV_LINK_MODE=copy
 XDG_CONFIG_HOME=/tmp/project-alpha-xdg
 npm_config_cache=/tmp/project-alpha-npm-cache
 PLAYWRIGHT_BROWSERS_PATH=/tmp/project-alpha-playwright-browsers
+SEMGREP_VERSION_CACHE_PATH=/tmp/project-alpha-semgrep/semgrep_version
 ```
 
 Set the environment's install/setup command to `bash /workspace/Project-ALPHA/scripts/cloud_setup.sh`
 (adjust the checkout path). If `/tmp` is not retained, run the same command synchronously in
 session startup/maintenance before browser work; otherwise run it explicitly at session start.
-Without environment-level settings, pass the six variables explicitly to every later shell/process.
+Without environment-level settings, pass all seven variables explicitly to later shells/processes.
+The Semgrep path is a file; setup creates its parent directory. It prevents version-cache writes
+to a read-only home without disabling the scanner or its checks.
 The script uses these defaults and respects configured paths; it does not edit shell profiles,
 account settings or network policy. Download failures, including CDN 403 errors, require fixing
 the provisioning environment; dependency/browser fallbacks are not acceptance.
+
+On Linux the gate starts each pytest command under `scripts/run_owned_test.py`, a separate
+subreaper established before the test process starts. It actually waits for adopted descendants,
+preserves the command's exit status and streams, forwards termination signals, and fails if a
+successful command leaves live descendants. Its reaping loop never runs in pytest or application
+processes, and signals only its own command group or direct children. Linux requires `prctl`
+subreaper support and readable `/proc/*/stat` metadata for shutdown cleanup; setup failures are
+fatal. Other platforms run the original pytest command directly. This changes test process
+ownership, not application cancellation, test assertions, warning policy or coverage thresholds.
 
 ## The full quality gate (final acceptance; mirrors CI)
 

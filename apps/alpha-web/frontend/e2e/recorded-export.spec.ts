@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { preparePage } from './support/workstationHarness'
+import { acceptNextDialog } from './support/dialogCompletion'
 
 test('@reference-only recorded-series native Save includes the displayed value tag', async ({ page }) => {
   await preparePage(page)
@@ -26,8 +27,9 @@ test('@reference-only recorded-series native Save includes the displayed value t
   })
   await host.hover()
   const pending = page.waitForEvent('download')
-  await host.locator('[title="Save"]').click()
-  const download = await pending
+  const [, , download] = await Promise.all([
+    acceptNextDialog(page), host.locator('[title="Save"]').click(), pending,
+  ])
   const stream = await download.createReadStream()
   const chunks: Buffer[] = []
   for await (const chunk of stream!) chunks.push(Buffer.from(chunk))

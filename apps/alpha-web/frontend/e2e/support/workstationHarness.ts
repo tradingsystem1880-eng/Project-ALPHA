@@ -1,8 +1,9 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page, type Route } from '@playwright/test'
+import { expect, test, type Locator, type Page, type Route } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import type { components } from '../../src/api/generated'
 import { studySeries } from './technicalFixture'
+import { acceptNextDialog } from './dialogCompletion'
 
 /** A CLI refusal the API relays as 400 with its message (e.g. a study longer than the window). */
 class Refusal { readonly detail: string; constructor(detail: string) { this.detail = detail } }
@@ -2436,7 +2437,6 @@ function responseFor(route: Route, options: MockOptions): unknown {
 }
 
 export async function preparePage(page: Page, options: MockOptions = {}): Promise<void> {
-  page.on('dialog', dialog => void dialog.accept())
   await page.addInitScript(([initialSymbol, settings]: [string | null, Record<string, unknown> | null]) => {
     localStorage.clear()
     localStorage.setItem('alpha.workflow.context', JSON.stringify({ symbol: initialSymbol }))
@@ -2924,7 +2924,7 @@ test('a research decision requires explicit local confirmation and sends no call
   await page.getByRole('button', { name: 'capture · no compute' }).click()
 
   await page.getByLabel('Decision reason').fill('The proposed operator is unavailable.')
-  await page.getByRole('button', { name: 'Confirm · reject exploration' }).click()
+  await confirmOwnerAction(page, page.getByRole('button', { name: 'Confirm · reject exploration' }))
 
   await expect.poll(() => challenge).not.toBeNull()
   expect(challenge).toMatchObject({
@@ -3746,6 +3746,14 @@ test('@reference-only @perf-budget 25k bars and 200 annotations remain interacti
 
 const APPROVED = { state: 'approved', event: null } as components['schemas']['ResearchReviewSummary']
 
+async function confirmOwnerAction(page: Page, button: Locator): Promise<void> {
+  const performed = page.waitForResponse(response =>
+    new URL(response.url()).pathname === '/api/owner-auth/actions/perform'
+    && response.request().method() === 'POST')
+  const [, , response] = await Promise.all([acceptNextDialog(page), button.click(), performed])
+  expect(response.ok()).toBe(true)
+}
+
 async function captureCase(page: Page) {
   await page.getByLabel('Raw research idea').fill(RESEARCH_RAW_IDEA)
   await page.getByRole('button', { name: 'capture · no compute' }).click()
@@ -3770,7 +3778,7 @@ test('a case waiting for D1 offers Confirm · launch D1 where the next action is
   const button = next.getByRole('button', { name: 'Confirm · launch D1' })
   await expect(button).toBeDisabled() // a reason is part of the receipt
   await next.getByLabel('Reason for launch D1').fill('Exploration approved; run the frozen plan.')
-  await button.click()
+  await confirmOwnerAction(page, button)
   await expect.poll(() => challenge).not.toBeNull()
   expect(challenge).toMatchObject({
     action_type: 'launch_d1',
@@ -3801,7 +3809,7 @@ test('material questions are answered in place and revised with local confirmati
   }
   await questions.getByLabel('Reason for revise with these answers').fill('Answers chosen from the available operators.')
   await expect(revise).toBeEnabled()
-  await revise.click()
+  await confirmOwnerAction(page, revise)
   await expect.poll(() => challenge).not.toBeNull()
   expect(challenge).toMatchObject({ action_type: 'revise_exploration', payload: { source_pack_id: 'sp_frozen_1' } })
   const answers = (challenge as unknown as { payload: { answers: Record<string, string> } }).payload.answers
@@ -3830,7 +3838,7 @@ test('the Decision tab records the final disposition with local confirmation onc
   await form.locator('select').nth(0).selectOption('SUPPORTED')
   await form.locator('select').nth(1).selectOption('park')
   await form.getByLabel('Reason for record decision').fill('Supported but parked pending capacity.')
-  await record.click()
+  await confirmOwnerAction(page, record)
   await expect.poll(() => challenge).not.toBeNull()
   expect(challenge).toMatchObject({
     action_type: 'record_final_disposition',
@@ -3955,7 +3963,7 @@ test('a running case offers confirmed pause and cancel where the next action is 
   const pause = next.getByRole('button', { name: 'Confirm · pause' })
   await expect(pause).toBeDisabled()
   await next.getByLabel('Reason for pause').fill('Owner wants to review the checkpoint first.')
-  await pause.click()
+  await confirmOwnerAction(page, pause)
   await expect.poll(() => challenge).not.toBeNull()
   expect(challenge).toMatchObject({ action_type: 'pause_research', project_id: RESEARCH_CASE.project_id })
   expect(challenge).not.toHaveProperty('actor')
