@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import urllib.error
 import urllib.request
 from datetime import date
@@ -64,6 +65,10 @@ def test_exact_byte_limit_and_overflow(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_redirect_is_rejected_before_second_request(
     monkeypatch: pytest.MonkeyPatch, status: int
 ) -> None:
+    # The transport is wholly synthetic; inherited cloud proxy routing must not
+    # mutate its Request before FakeHTTPS observes the original target.
+    monkeypatch.setenv("https_proxy", "http://fixture-proxy.invalid:8080")
+    monkeypatch.setenv("no_proxy", "")
     requests: list[urllib.request.Request] = []
 
     class FakeHTTPS(urllib.request.HTTPSHandler):
@@ -79,12 +84,16 @@ def test_redirect_is_rejected_before_second_request(
 
     real_build = urllib.request.build_opener
     monkeypatch.setattr(
-        urllib.request, "build_opener", lambda *handlers: real_build(FakeHTTPS(), *handlers)
+        urllib.request,
+        "build_opener",
+        lambda *handlers: real_build(urllib.request.ProxyHandler({}), FakeHTTPS(), *handlers),
     )
     with pytest.raises(DataError, match=f"HTTP {status}"):
         TiingoAdapter(api_key="secret").fetch("SPY", DAY, DAY, max_response_bytes=100)
     assert len(requests) == 1
     assert requests[0].host == "api.tiingo.com"
+    assert os.environ["https_proxy"] == "http://fixture-proxy.invalid:8080"
+    assert os.environ["no_proxy"] == ""
 
 
 @pytest.mark.parametrize(

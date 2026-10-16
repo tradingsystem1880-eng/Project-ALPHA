@@ -9,8 +9,10 @@ export UV_LINK_MODE="${UV_LINK_MODE:-copy}"
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-/tmp/project-alpha-xdg}"
 export npm_config_cache="${npm_config_cache:-/tmp/project-alpha-npm-cache}"
 export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/tmp/project-alpha-playwright-browsers}"
+export SEMGREP_VERSION_CACHE_PATH="${SEMGREP_VERSION_CACHE_PATH:-/tmp/project-alpha-semgrep/semgrep_version}"
 mkdir -p "$UV_CACHE_DIR" "$UV_TOOL_DIR" "$XDG_CONFIG_HOME" \
     "$npm_config_cache" "$PLAYWRIGHT_BROWSERS_PATH"
+mkdir -p "$(dirname -- "$SEMGREP_VERSION_CACHE_PATH")"
 
 for tool in uv npm npx node timeout; do
     command -v "$tool" >/dev/null

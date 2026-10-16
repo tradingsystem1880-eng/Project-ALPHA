@@ -363,6 +363,8 @@ def test_live_heavyweight_cancel_reaps_a_sigterm_ignoring_nested_child(
                 os.killpg(process.pid, signal.SIGKILL)
             with contextlib.suppress(subprocess.TimeoutExpired):
                 process.wait(timeout=1)
+        if process is not None and process.stdout is not None:
+            process.stdout.close()
         if nested_pid is not None and _process_is_executing(nested_pid):
             with contextlib.suppress(ProcessLookupError):
                 os.kill(nested_pid, signal.SIGKILL)
@@ -425,6 +427,8 @@ def test_durable_startup_status_failure_reaps_the_entire_process_group(
                 os.killpg(process.pid, signal.SIGKILL)
             with contextlib.suppress(subprocess.TimeoutExpired):
                 process.wait(timeout=1)
+        if process is not None and process.stdout is not None:
+            process.stdout.close()
         if nested_pid is not None and _process_is_executing(nested_pid):
             with contextlib.suppress(ProcessLookupError):
                 os.kill(nested_pid, signal.SIGKILL)

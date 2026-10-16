@@ -56,7 +56,7 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
   `alpha info procedures --json`. Default catalog remains launch-form compatible.
 - Install: `uv sync --locked`; cloud: [README](README.md).
 - Tests: `uv run pytest -q -m "not network"`; bias: `uv run pytest -q -m bias_guard`.
-  Gate owns steps; build before browser checks.
+  Gate owns Linux pytest; build before browsers.
 
 **2026-09-16:** [delivery record](docs/superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md).
 Checks, discovery, V2 plans and frozen-input screening delivered. Install Git guards

@@ -1380,3 +1380,17 @@ on source candidate `b2c43735`; its exact receipt and SHA-256 are recorded in th
 and reconciliation evidence. That run does not establish full-gate or release acceptance for the
 newer integrated tree. Exact-tree full, independent review, and hosted acceptance are tracked
 separately in the delivery receipt.
+
+## 2026-10-15 — Cloud test ownership candidate
+
+The gate now gives Linux pytest commands a separate owning subreaper, preserving command
+status, output and every cancellation/disappearance assertion. Non-Linux execution is unchanged.
+Synthetic urllib tests isolate their fake opener from inherited proxies; retained subprocess test
+finalizers close stdout. The pause/cancel browser test awaits dialog acceptance and the performed
+action instead of ending at challenge capture. Setup also supplies a writable Semgrep version-cache
+file. All five owner-confirmation browser journeys await dialog acceptance and the perform response.
+The recorded-series export test explicitly awaits its filename prompt before the download.
+Lease-test PID readiness is atomically published; the doctor fixture includes the owner runner.
+Production proxy policy, application cancellation, warnings and coverage thresholds are unchanged.
+Original failures and candidate red/green logs are indexed under ignored `.alpha/state/` task evidence.
+Independent exact-candidate review and the unchanged full gate remain required for acceptance.

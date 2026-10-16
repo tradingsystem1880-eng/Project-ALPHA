@@ -16,6 +16,7 @@ CACHES = {
     "XDG_CONFIG_HOME": "/tmp/project-alpha-xdg",
     "npm_config_cache": "/tmp/project-alpha-npm-cache",
     "PLAYWRIGHT_BROWSERS_PATH": "/tmp/project-alpha-playwright-browsers",
+    "SEMGREP_VERSION_CACHE_PATH": "/tmp/project-alpha-semgrep/semgrep_version",
 }
 STEPS = [
     "uv sync --locked",
@@ -120,8 +121,9 @@ def test_setup_uses_locked_installs_and_exports_defaults(tmp_path: Path) -> None
     assert all(
         (isolated / Path(value).name).is_dir()
         for key, value in CACHES.items()
-        if key != "UV_LINK_MODE"
+        if key not in {"UV_LINK_MODE", "SEMGREP_VERSION_CACHE_PATH"}
     )
+    assert (isolated / "project-alpha-semgrep").is_dir()
     assert [call["cwd"] for call in calls] == [
         str(root),
         str(root / "apps/alpha-web/frontend"),
@@ -147,19 +149,24 @@ def test_setup_stops_and_preserves_original_failure(tmp_path: Path, step: str) -
 def test_setup_preserves_configured_paths(tmp_path: Path) -> None:
     configured = {key: str(tmp_path / key) for key in CACHES if key != "UV_LINK_MODE"}
     configured["UV_LINK_MODE"] = "copy"
+    configured["SEMGREP_VERSION_CACHE_PATH"] = str(tmp_path / "semgrep" / "version")
     result, calls, _, timeouts = run_setup(tmp_path, overrides=configured)
     assert result.returncode == 0, result.stderr
     assert all(call["caches"] == configured for call in calls)
     assert timeouts == ["30s", "35s"]
-    assert all(Path(value).is_dir() for key, value in configured.items() if key != "UV_LINK_MODE")
+    assert all(
+        Path(value).is_dir()
+        for key, value in configured.items()
+        if key not in {"UV_LINK_MODE", "SEMGREP_VERSION_CACHE_PATH"}
+    )
+    assert Path(configured["SEMGREP_VERSION_CACHE_PATH"]).parent.is_dir()
 
 
-def test_unusable_cache_path_fails_before_install(tmp_path: Path) -> None:
+@pytest.mark.parametrize("cache", ["UV_CACHE_DIR", "SEMGREP_VERSION_CACHE_PATH"])
+def test_unusable_cache_path_fails_before_install(tmp_path: Path, cache: str) -> None:
     blocked = tmp_path / "file"
     blocked.write_text("not a directory")
-    result, calls, _, timeouts = run_setup(
-        tmp_path, overrides={"UV_CACHE_DIR": str(blocked / "cache")}
-    )
+    result, calls, _, timeouts = run_setup(tmp_path, overrides={cache: str(blocked / "cache")})
     assert result.returncode != 0
     assert calls == []
     assert timeouts == []
