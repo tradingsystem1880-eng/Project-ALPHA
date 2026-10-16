@@ -1394,3 +1394,13 @@ Lease-test PID readiness is atomically published; the doctor fixture includes th
 Production proxy policy, application cancellation, warnings and coverage thresholds are unchanged.
 Original failures and candidate red/green logs are indexed under ignored `.alpha/state/` task evidence.
 Independent exact-candidate review and the unchanged full gate remain required for acceptance.
+
+## 2026-10-16 — Four-family Monte Carlo explanation draft
+
+Added an operations overview and separate IID empirical, causal-volatility Markov, Student-t
+log-account-return and Kronos replay guides. All four remain required; no algorithm, source
+behavior or ADR authority changes. The guides distinguish fitted periods, observed account-return
+resampling from fresh market/engine execution, scenario ranges from Wilson intervals, Student-t
+moment/numerical limits, and controlled-test evidence from real-model or market acceptance.
+Documentation/link checks and independent review are recorded separately in ignored task evidence.
+Parent review and required full validation remain pending; this draft is not release acceptance.
