@@ -4,7 +4,7 @@
 {
   "schema_version": 1,
   "title": "Proposed context ownership and one-module test-layout pilot",
-  "context": "Read-only audit of bf5baa75c8db0de8e85623c218fd89b1d4f5f668 found navigation gaps, one unavailable historical reference and large public test modules. This plan proposes bounded follow-up; no test move or policy change is accepted or implemented.",
+  "context": "Read-only audit of bf5baa75c8db0de8e85623c218fd89b1d4f5f668 found navigation gaps, one unavailable historical reference and large public test modules. This plan proposes bounded follow-up; no test move or policy change is accepted or implemented. Slice one is now authorized as a documentation-only candidate from accepted main dd5a924d709b8d60c97492043f2a82dac976105a; slices two and three remain pending.",
   "assumptions": [
     {
       "statement": "Existing operating, domain, evidence and gate authorities remain controlling.",
@@ -27,10 +27,10 @@
   "slices": [
     {
       "title": "Assign artifact stewardship and validate existing entrypoint retrieval",
-      "verify": "Compare the ownership table and six retrieval tasks below against existing manuals, Atlas and source; no new authority or graph.",
-      "expected": "Bounded navigation with explicit missing relationships and source-inspection versus executed-evidence separation.",
+      "verify": "Review existing ownership roles and six two-hop retrieval routes; run bounded task-local positive/negative link, heading and Git source-anchor drift checks, focused existing checks, independent diff review and the unchanged exact-tree full gate.",
+      "expected": "Documentation-only candidate with explicit missing relationships and syntactic freshness separated from semantic correctness and executed evidence. Keep in_progress pending parent review.",
       "rollback": "Preserve the original archive; restore the reviewed integrated documentation baseline, including its three added navigation lines, using refreshed baseline hashes; discard only the independently reviewed follow-up patch.",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "title": "Resolve one unavailable historical reference without recovering protected content",
@@ -58,25 +58,29 @@
     "docs/BUILD-STATUS.md"
   ],
   "out_of_scope": [
-    "Implementation or acceptance of this plan",
+    "Implementation of slices two and three; no historical-reference edits or test moves in slice one",
     "Hidden/private test content or missing-policy recovery",
     "Changes to product logic, test assertions, fixtures, thresholds, markers, tier classification rules or gate requirements",
-    "Mass moves, deletions, history rewrites, provisioning repairs, installation, commit, push or publication"
+    "Mass moves, deletions, history rewrites, provisioning repairs, manual installation, commit, push or publication; canonical gate behavior remains unchanged"
   ],
   "files": [
     "docs/superpowers/plans/2026-10-16-context-ownership-and-test-layout-pilot.md",
     "tests/unit/test_research_control_store.py",
     "tests/unit/test_research_semantic_payload.py",
-    "tests/fixtures/research_semantic_payload_fixtures.py"
+    "tests/fixtures/research_semantic_payload_fixtures.py",
+    "docs/context/README.md",
+    "docs/context/software-team.md",
+    "docs/context/alpha-quant-platform.md",
+    "docs/BUILD-STATUS.md"
   ]
 }
 ```
 
-**Status:** Proposed; not accepted or implemented. All slices remain pending.
+**Status:** Slice one is an authorized documentation-only implementation candidate, in progress pending parent review. Slices two and three remain proposed and pending.
 **Source inspected:** `bf5baa75c8db0de8e85623c218fd89b1d4f5f668`.
 No runtime or test acceptance follows from source inspection or this plan's validation.
 The schema tier value `none` describes this documentation proposal only; reclassify the actual
-implementation diff under existing rules before starting. This is not an authorization to edit tests.
+implementation diff under existing rules before starting. Slice one remains documentation-only; no test edit is authorized by this candidate.
 
 ## Scope and ownership
 
@@ -105,6 +109,28 @@ invent a source to meet the hop target. Source inspection records base commit/an
 from command, exit, scope and tested-tree evidence. Keep private links and archive content excluded.
 The October 14 corpus has 46 files and 296 links privately verified per the user; public intake
 remains pending and it is not in GitHub. This plan imports none of that corpus.
+
+## Slice-one candidate acceptance
+
+Implementation base: `dd5a924d709b8d60c97492043f2a82dac976105a`; preserve the integrated baseline
+and original archives. Independent pre-edit review selected a documentation-only implementation:
+reuse the existing task-local link checker with synthetic negative cases rather than extending tests
+and triggering Atlas input regeneration. This checker is retained with private task evidence, not
+installed as a new persistent gate. Generated outputs, source, tests and all four Monte Carlo guides
+remain unchanged. Existing authority roles above are reused rather than copied into another inventory.
+
+- Reach decision, plan/spec, source and representative public check from the context index in at most
+  two clickable hops where identified; state each missing relationship and representative-check limit.
+- Validate all local targets/Markdown headings in the three context pages. Check inspected-commit
+  availability, anchor membership, current existence and staged/unstaged Git drift for capability-table
+  implementation/check files. Use metadata only for protected targets; directory links are navigation.
+- Demonstrate valid context passes and broken target/heading, unavailable commit and changed/missing
+  source anchors are rejected with synthetic public fixtures. Preserve exact script, commands and exits.
+- Distinguish syntactic link/byte freshness from semantic source correctness, test adequacy and executed
+  receipts. Review public source separately; never recover unavailable policy or ingest private research.
+- Run focused existing checks, independent exact-diff review and the unchanged canonical full gate on
+  the final candidate. Record results and tree/diff hashes under ignored task-local evidence; append
+  build history without asserting acceptance in advance. Return for parent review before commit/PR.
 
 ## One historical reference: bounded resolution
 
