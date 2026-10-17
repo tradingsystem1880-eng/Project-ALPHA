@@ -4,7 +4,7 @@
 {
   "schema_version": 1,
   "title": "Proposed context ownership and one-module test-layout pilot",
-  "context": "Read-only audit of bf5baa75c8db0de8e85623c218fd89b1d4f5f668 found navigation gaps, one unavailable historical reference and large public test modules. This plan proposes bounded follow-up; no test move or policy change is accepted or implemented. Slice one is now authorized as a documentation-only candidate from accepted main dd5a924d709b8d60c97492043f2a82dac976105a; slices two and three remain pending.",
+  "context": "Read-only audit of bf5baa75c8db0de8e85623c218fd89b1d4f5f668 found navigation gaps, one unavailable historical reference and large public test modules. This plan proposes bounded follow-up; no test move or policy change is accepted or implemented. Slice one is now authorized as a documentation-only candidate from accepted main dd5a924d709b8d60c97492043f2a82dac976105a; slice two is now a separate draft PR69 and slice three is an authorized bounded implementation candidate from accepted main c1fdba82a32c7aa01bedeb34306a26613e7f7bac.",
   "assumptions": [
     {
       "statement": "Existing operating, domain, evidence and gate authorities remain controlling.",
@@ -44,21 +44,18 @@
       "verify": "Before/after collection, marker/tier/fixture metadata, AST and outcome parity plus affected existing consistency checks and exact-tree full gate.",
       "expected": "Only the two selected test functions move; all parametrized cases, assertions, fixtures and authority behavior remain unchanged.",
       "rollback": "Restore original test module and remove only newly introduced pilot files from the isolated patch; restore generated outputs using the original inputs.",
-      "status": "pending"
+      "status": "in_progress"
     }
   ],
   "tier_impact": [
     "none"
   ],
   "docs_to_update": [
-    "docs/context/README.md",
-    "docs/context/software-team.md",
-    "docs/context/alpha-quant-platform.md",
-    "docs/superpowers/plans/2026-10-08-repository-hygiene.md",
+    "docs/superpowers/plans/2026-10-16-context-ownership-and-test-layout-pilot.md",
     "docs/BUILD-STATUS.md"
   ],
   "out_of_scope": [
-    "Implementation of slices two and three; no historical-reference edits or test moves in slice one",
+    "Slice-two historical-reference edits in this pilot; keep its separate draft PR69 and recovery unchanged",
     "Hidden/private test content or missing-policy recovery",
     "Changes to product logic, test assertions, fixtures, thresholds, markers, tier classification rules or gate requirements",
     "Mass moves, deletions, history rewrites, provisioning repairs, manual installation, commit, push or publication; canonical gate behavior remains unchanged"
@@ -68,15 +65,15 @@
     "tests/unit/test_research_control_store.py",
     "tests/unit/test_research_semantic_payload.py",
     "tests/fixtures/research_semantic_payload_fixtures.py",
-    "docs/context/README.md",
-    "docs/context/software-team.md",
-    "docs/context/alpha-quant-platform.md",
-    "docs/BUILD-STATUS.md"
+    "docs/BUILD-STATUS.md",
+    "architecture/atlas/generated/inputs.json",
+    "architecture/atlas/generated/graph.json",
+    "architecture/atlas/generated/views/unknowns.json"
   ]
 }
 ```
 
-**Status:** Slice one is an authorized documentation-only implementation candidate, in progress pending parent review. Slices two and three remain proposed and pending.
+**Status (2026-10-17):** Slice one is present in accepted main; slice two remains separate in draft PR69. Slice three is an authorized implementation candidate, in progress pending frozen validation and independent parent review.
 **Source inspected:** `bf5baa75c8db0de8e85623c218fd89b1d4f5f668`.
 No runtime or test acceptance follows from source inspection or this plan's validation.
 The schema tier value `none` describes this documentation proposal only; reclassify the actual
@@ -221,3 +218,37 @@ Never reset shared work, remove the navigation draft or discard historical evide
 Report each slice as pending until its stated checks and review pass. Delivery updates, if later
 implemented, append to build history rather than rewriting it. Full-gate acceptance remains pending;
 this proposal and its focused documentation checks confer no commit, push or publication approval.
+
+## Slice-three candidate (2026-10-17)
+
+Implementation base: `c1fdba82a32c7aa01bedeb34306a26613e7f7bac` on a separate pilot
+branch. The PR69 historical-reference annotation is excluded. This authorization
+supersedes the earlier proposal-only restrictions for this bounded pilot only.
+
+Move exactly the two named test functions (four cases) and share the three named
+constructors plus the unchanged `PROJECT_ID` constant through explicit imports.
+No assertions, parameter values, fixture semantics, product behavior or decision
+authority change. Protected classifier, conftest and runner implementations remain
+unopened; the actual collected platform marker supplies the observed tier evidence.
+
+Before/after observation collected 135 module cases and 5,839 public-layer cases.
+After normalizing only the four approved node IDs, collection metadata, markers,
+parameter IDs, selected fixture definitions and actual request scope groups match.
+Both module executions passed all 135 cases, with matching per-phase outcomes,
+fixture parameter indices and within-scope lifecycle order. The two tests, three
+helpers and constant retain identical ASTs; other original non-import ASTs match.
+The temporary metadata observer and command recorder received independent method
+review before execution. No fixture values or protected source contents were read.
+
+The documented Atlas producer may update its three generated JSON outputs and only
+existing `docs/atlas/` Markdown outputs directly changed by this relocation. Preserve
+explicit before/after manifests and review the exact generated diff; never hand-edit
+these outputs. No API/SPA generation or unrelated source changes belong here.
+Focused checks, independent final exact-diff/evidence review and this pilot's own
+canonical full gate remain required on the frozen candidate. Actual Codex review
+and public release remain pending; this record grants no publication or merge.
+
+Rollback restores only this pilot's original module/plan bytes and its append-only
+build entry, removes only the two newly introduced files, and restores the approved
+producer outputs from preserved inputs. Preserve unrelated work and all failure
+receipts; recheck collection, fixture/tier parity and Atlas freshness after rollback.

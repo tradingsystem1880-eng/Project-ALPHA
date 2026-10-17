@@ -1430,3 +1430,17 @@ unpatched inventory risk. These fixtures cover the exercised local UI paths, not
 provider acceptance or a package fix. Focused checks, sensitivity failures, independent review and
 the frozen-candidate full-gate result are recorded separately in ignored task evidence; this entry
 does not claim aggregate acceptance. Supported GitHub Codex Code Review remains a parent-owned step.
+
+### 2026-10-17 — Bounded semantic-payload test-layout candidate
+
+From accepted main `c1fdba82a32c7aa01bedeb34306a26613e7f7bac`, isolate the two
+semantic-payload tests (four cases) and share their three unchanged public
+constructors and `PROJECT_ID`. The separate PR69 document is excluded. Baseline
+and after-state collection match for 135 module cases and 5,839 public cases;
+both module runs passed all 135 cases. ASTs, observed platform markers, actual
+fixture bindings/scope groups/parameter indices, within-scope lifecycle order
+and per-phase outcomes match under only the four approved node relocations.
+Atlas updates must come from its documented producer and receive exact-diff
+review. Frozen-candidate focused checks, independent review and a fresh canonical
+full gate remain required before acceptance; publication and merge are held.
+No product behavior, assertions, fixtures or research decision authority changed.
