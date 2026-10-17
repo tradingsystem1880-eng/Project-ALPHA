@@ -17,6 +17,22 @@ The frontend component runs `npm run build` once, including TypeScript, before
 `test:e2e:built`. The standalone `test:e2e` still builds first; use the built-only
 command only after a fresh build. API and SPA freshness remain required.
 
+For a focused browser invocation, `scripts/playwright_evidence.py prepare` allocates
+fresh absolute output paths and checks a listing through the existing process owner:
+
+```sh
+.venv/bin/python scripts/playwright_evidence.py prepare --output-parent /ABS/private-existing-parent \
+  --project chromium-minimum --file e2e/feature.spec.ts --grep 'intended title' --expect-id REVIEWED_NATIVE_ID
+```
+
+Use a reviewed native ID from the intended public listing. After a fresh build,
+use the returned `cwd`, owner-wrapped `test_argv` and log paths; prepare again for
+each invocation. The helper does not run that test command or prevent later reuse.
+Optional `export --run-dir /ABS/run --destination /ABS/new-copy --test-exit 1 --stopped`
+copies enumerated files from one stopped run and verifies sizes/hashes. Originals
+and partial copies remain on failure. Listing/copy success is not test acceptance;
+the supplied test status and stopped-writer declaration remain caller-reported.
+
 `NAME` is `backend`, `frontend`, `literature`, `qlib`, `atlas` or `eval`.
 Focused checks give feedback; they do not confer aggregate acceptance. The `fast`
 backend lane excludes platform tests, so control-plane and web changes need their
