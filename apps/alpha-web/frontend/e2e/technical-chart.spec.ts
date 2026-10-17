@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import type { Candles } from '../src/api/types'
 import { preparePage } from './support/workstationHarness'
 import { studySeries, walkBars } from './support/technicalFixture'
 
@@ -9,8 +10,83 @@ import { studySeries, walkBars } from './support/technicalFixture'
 const BARS = walkBars(260, '2025-10-06', false)
 const SHOTS = process.env.ALPHA_TECHNICAL_SHOTS
 
+type PrintfCall = { format: string; labels: string[] }
+
+async function observePrintf(page: Page) {
+  await page.addInitScript(() => {
+    const calls: PrintfCall[] = [], wrapped = new WeakSet<object>()
+    Object.assign(window, { printfCalls: calls, printfOverflow: false })
+    // Observe the real models as Bokeh adds its document graph; no application test hook.
+    const set = Map.prototype.set
+    Map.prototype.set = function(key, value) {
+      const result = set.call(this, key, value)
+      if (value && typeof value === 'object' && value.type === 'PrintfTickFormatter' && typeof value.doFormat === 'function' && !wrapped.has(value)) {
+        wrapped.add(value)
+        const format = value.doFormat
+        value.doFormat = function(...args: unknown[]) {
+          const labels = format.apply(this, args)
+          // Relayout repeats calls; retain distinct results without silently truncating them.
+          if (!calls.some(call => call.format === this.format && call.labels.length === labels.length && call.labels.every((label, index) => label === labels[index]))) {
+            if (calls.length < 100) calls.push({ format: this.format, labels: [...labels] })
+            else (window as unknown as { printfOverflow: boolean }).printfOverflow = true
+          }
+          return labels
+        }
+      }
+      return result
+    }
+  })
+}
+
+async function expectBoundedPrintf(page: Page, notation: 'f' | 'e') {
+  const observed = () => page.evaluate(() => (window as unknown as { printfCalls: PrintfCall[] }).printfCalls)
+  await expect.poll(async () => (await observed()).some(call => call.format.endsWith(notation) && call.labels.length > 1)).toBe(true)
+  for (const { format, labels } of await observed()) {
+    expect(format).toMatch(/^%(?:d|\.(?:[0-9]|1[0-2])f|\.(?:[2-9]|1[0-6])e)$/)
+    expect(new Set(labels).size).toBe(labels.length)
+    expect(labels.every(label => label.length <= 40)).toBe(true)
+  }
+  expect(await page.evaluate(() => (window as unknown as { printfOverflow: boolean }).printfOverflow)).toBe(false)
+}
+
+test('@reference-only ordinary chart uses bounded real Bokeh printf formats', async ({ page }) => {
+  await observePrintf(page)
+  await openChart(page, 'classic')
+  await expectBoundedPrintf(page, 'f')
+})
+
+test('@reference-only hostile API marker values stay literal in real Bokeh hover', async ({ page }) => {
+  const errors: string[] = []; page.on('pageerror', error => errors.push(error.message))
+  const side = '%.101f %.101e %.101g @y{%.101f} <img data-printf-payload src=x>'
+  const bars = BARS.slice(0, 120).map(bar => ({ ...bar, o: 100, h: 101, l: 99, c: 100 }))
+  await preparePage(page, { candles: { 'XRP/USDT': bars }, settings: { chartTemplate: 1, overlays: { crypto: { indicators: [], patterns: [] } } } })
+  const response: Candles = {
+    symbol: 'XRP/USDT', snapshot_id: null, bars,
+    provenance: { source: 'synthetic:printf-regression', venue: null, timeframe: '1D', snapshot_id: null,
+      provenance_sha256: null, receipt_id: null, knowledge_cutoff: null, quality_status: 'legacy_unqualified' },
+    paper_markers: bars.map((bar, sequence) => ({ session_id: 'synthetic-printf', sequence, t: bar.t, exact_ts: bar.t,
+      event_type: 'fill', execution_mode: 'local_sandbox', side, quantity: 1, price: bar.c, intent_id: null })),
+  }
+  await page.route('**/api/candles/**', route => route.fulfill({ json: response }))
+  await page.goto('/#page=data&pane=PriceChart')
+  const host = page.locator('[data-panel-id=primary] .technical-host')
+  await expect(host.locator('canvas').first()).toBeVisible()
+  const tag = host.locator('.technical-tag').filter({ hasText: /^100\.00$/ }).first()
+  await expect(tag).toBeVisible()
+  const box = (await host.boundingBox())!, tagBox = (await tag.boundingBox())!
+  const y = tagBox.y + 6
+  await page.mouse.move(box.x + box.width / 2, y)
+  const cursor = host.locator('.technical-cursor').first()
+  await expect(cursor).toBeVisible()
+  await page.mouse.move((await cursor.boundingBox())!.x, y)
+  await expect(page.locator('.bk-Tooltip').getByText(`P FILL ${side}`, { exact: true })).toBeVisible()
+  await expect(page.locator('[data-printf-payload]')).toHaveCount(0)
+  expect(errors).toEqual([])
+})
+
 for (const scale of [1e-200, 1e200]) {
   test(`@reference-only extreme finite ${scale < 1 ? 'tiny' : 'large'} chart has distinct readable scientific labels`, async ({ page }) => {
+    await observePrintf(page)
     const errors: string[] = []
     page.on('pageerror', error => errors.push(error.message))
     await page.addInitScript(() => {
@@ -31,6 +107,7 @@ for (const scale of [1e-200, 1e200]) {
     const box = (await tag.boundingBox())!
     expect(box.x + box.width).toBeLessThanOrEqual(host.x + host.width + 1)
     expect(await chart.locator('.technical-header').textContent()).toContain(`Close ${bars.at(-1)!.c.toExponential()}`)
+    await expectBoundedPrintf(page, 'e')
     expect(errors).toEqual([])
     await chart.screenshot({ path: test.info().outputPath('extreme-finite-chart.png') })
   })

@@ -1420,6 +1420,16 @@ ignored task evidence. This entry describes the candidate, not a passing receipt
 Slice one remains in progress pending parent review; historical-reference and test-layout slices are
 pending. No test moves, commit, PR or publication are part of this slice.
 
+## 2026-10-17 — Bounded printf input regression candidate
+
+Browser regressions observe actual Bokeh formatter calls for ordinary and extreme finite candle
+responses and exercise hostile paper-marker side text through the mocked candles API and native
+hover interaction. They retain the existing bounded f/e precision grammar and literal hover values;
+production code and dependency locks are unchanged. The transitive sprintf-js advisory remains
+unpatched inventory risk. These fixtures cover the exercised local UI paths, not arbitrary inputs,
+provider acceptance or a package fix. Focused checks, sensitivity failures, independent review and
+the frozen-candidate full-gate result are recorded separately in ignored task evidence; this entry
+does not claim aggregate acceptance. Supported GitHub Codex Code Review remains a parent-owned step.
 
 ### 2026-10-17 — Bounded semantic-payload test-layout candidate
 
