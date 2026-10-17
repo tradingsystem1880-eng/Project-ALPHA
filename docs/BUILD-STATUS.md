@@ -1404,3 +1404,18 @@ resampling from fresh market/engine execution, scenario ranges from Wilson inter
 moment/numerical limits, and controlled-test evidence from real-model or market acceptance.
 Documentation/link checks and independent review are recorded separately in ignored task evidence.
 Parent review and required full validation remain pending; this draft is not release acceptance.
+
+## 2026-10-16 — Context stewardship and retrieval, slice-one candidate
+
+The existing context index now links the pilot's artifact stewardship roles and six bounded retrieval
+routes. Area maps add existing CLI, crypto-family, D2 and full-gate source/check relationships, and
+state missing dedicated relationships and representative coverage limits. Randomized-price-null
+navigation remains distinct from all four retained Monte Carlo path-risk families. The inspection
+base is accepted main `dd5a924d709b8d60c97492043f2a82dac976105a`; protected links receive metadata
+checks only. Source, tests, generated outputs and private research are unchanged.
+A repeatable Git/source-review procedure distinguishes link/byte freshness from semantic correctness
+and executed acceptance. The reused task-local link checker and synthetic positive/negative cases,
+focused checks, independent reviews and exact-tree full-gate receipts are recorded separately under
+ignored task evidence. This entry describes the candidate, not a passing receipt or release approval.
+Slice one remains in progress pending parent review; historical-reference and test-layout slices are
+pending. No test moves, commit, PR or publication are part of this slice.
