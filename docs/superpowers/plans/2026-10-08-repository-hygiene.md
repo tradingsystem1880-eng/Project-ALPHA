@@ -194,4 +194,12 @@ Post-mask CPU profiling attributed roughly 165.5 ms directly to `_from_css_array
 
 ## Standing private engineering availability correction (2026-10-09)
 
-The prior final candidate `f7d6ae8c` passed all six canonical components with a valid full stamp. Its independent BLOCK was caused solely by an unconditional private-suite requirement despite original manual owner provisioning and absence in this checkout. The owner then requested root-cause repair and recurrence prevention. The [standing contract repair](2026-10-09-engineering-holdout-policy.md) aligns full/CI/review: absent coverage is UNVERIFIED without a synthetic pass; any provisioned suite must explicitly pass, including nonempty collection. Public regressions and all source/authority boundaries remain. Historical unavailable receipts are preserved. The changed candidate requires fresh aggregate verification and independent review; no commit, merge or production/provider readiness is inferred.
+The prior final candidate `f7d6ae8c` passed all six canonical components with a valid full stamp. Its independent BLOCK was caused solely by an unconditional private-suite requirement despite original manual owner provisioning and absence in this checkout. The owner then requested root-cause repair and recurrence prevention. The standing contract repair (`2026-10-09-engineering-holdout-policy.md`) aligns full/CI/review: absent coverage is UNVERIFIED without a synthetic pass; any provisioned suite must explicitly pass, including nonempty collection. Public regressions and all source/authority boundaries remain. Historical unavailable receipts are preserved. The changed candidate requires fresh aggregate verification and independent review; no commit, merge or production/provider readiness is inferred.
+
+**Reference availability (2026-10-16):** At inspected base
+`9d9d6a57083231e39bd7fca84adc8b0aad8a82c2`, the named target was unavailable in the
+tracked tree and accompanying worktree. Only public path metadata was checked.
+The dated claim above is preserved as history; the unavailable contents were not
+opened, recovered or verified and supply no current policy authority. Consult the
+current [operating manual](../../../CLAUDE.md) and [commit guard](../../../scripts/git_guard.py)
+for current requirements.
