@@ -90,6 +90,41 @@ def test_prepare_keeps_dependency_cases_separate_and_counts_specs(
 
 
 @pytest.mark.parametrize(
+    "settings", [("FILE",), ("DIR",), ("NAME",), ("DIR", "NAME"), ("FILE", "DIR", "NAME")]
+)
+def test_prepare_does_not_forward_json_reporter_output_settings(
+    helper: ModuleType,
+    listing: dict[str, Any],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    settings: tuple[str, ...],
+) -> None:
+    keys = tuple(f"PLAYWRIGHT_JSON_OUTPUT_{suffix}" for suffix in ("FILE", "DIR", "NAME"))
+    for key in keys:
+        monkeypatch.delenv(key, raising=False)
+    inherited = {f"PLAYWRIGHT_JSON_OUTPUT_{suffix}": str(tmp_path / suffix) for suffix in settings}
+    for key, value in inherited.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("PLAYWRIGHT_EVIDENCE_TEST_UNRELATED", "retain-me")
+    original_run = helper.subprocess.run
+
+    def inspect_listing(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        env = kwargs.get("env")
+        assert env is not None, "Listing must receive an isolated environment"
+        assert id(env) != id(os.environ)
+        assert all(key not in env for key in keys)
+        assert env["PLAYWRIGHT_EVIDENCE_TEST_UNRELATED"] == "retain-me"
+        return cast(subprocess.CompletedProcess[bytes], original_run(argv, **kwargs))
+
+    monkeypatch.setattr(helper.subprocess, "run", inspect_listing)
+    result = prepare(helper, tmp_path)
+    receipt = json.loads((Path(result["run_dir"]) / "run.json").read_text())
+    assert receipt["intended_cases"][0]["id"] == "case-one"
+    assert {key: os.environ.get(key) for key in keys} == {key: inherited.get(key) for key in keys}
+    assert os.environ["PLAYWRIGHT_EVIDENCE_TEST_UNRELATED"] == "retain-me"
+
+
+@pytest.mark.parametrize(
     "problem", ["missing-id", "zero-intended", "errors", "config", "argv", "file"]
 )
 def test_prepare_rejects_wrong_selection_and_retains_listing(

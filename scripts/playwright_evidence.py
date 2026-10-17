@@ -165,7 +165,16 @@ def prepare(
                 (frontend / "node_modules/@playwright/test/package.json").read_text()
             )["version"],
         )
-        proc = subprocess.run(owner + listing_argv, cwd=frontend, capture_output=True)
+        listing_env = os.environ.copy()
+        for name in (
+            "PLAYWRIGHT_JSON_OUTPUT_FILE",
+            "PLAYWRIGHT_JSON_OUTPUT_DIR",
+            "PLAYWRIGHT_JSON_OUTPUT_NAME",
+        ):
+            listing_env.pop(name, None)
+        proc = subprocess.run(
+            owner + listing_argv, cwd=frontend, capture_output=True, env=listing_env
+        )
         (run / "listing.json").write_bytes(proc.stdout)
         (run / "listing.stderr.log").write_bytes(proc.stderr)
         receipt["list_exit"] = proc.returncode
