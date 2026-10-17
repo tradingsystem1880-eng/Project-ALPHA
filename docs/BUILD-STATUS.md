@@ -1419,3 +1419,28 @@ focused checks, independent reviews and exact-tree full-gate receipts are record
 ignored task evidence. This entry describes the candidate, not a passing receipt or release approval.
 Slice one remains in progress pending parent review; historical-reference and test-layout slices are
 pending. No test moves, commit, PR or publication are part of this slice.
+
+## 2026-10-17 — Bounded printf input regression candidate
+
+Browser regressions observe actual Bokeh formatter calls for ordinary and extreme finite candle
+responses and exercise hostile paper-marker side text through the mocked candles API and native
+hover interaction. They retain the existing bounded f/e precision grammar and literal hover values;
+production code and dependency locks are unchanged. The transitive sprintf-js advisory remains
+unpatched inventory risk. These fixtures cover the exercised local UI paths, not arbitrary inputs,
+provider acceptance or a package fix. Focused checks, sensitivity failures, independent review and
+the frozen-candidate full-gate result are recorded separately in ignored task evidence; this entry
+does not claim aggregate acceptance. Supported GitHub Codex Code Review remains a parent-owned step.
+
+### 2026-10-17 — Bounded semantic-payload test-layout candidate
+
+From accepted main `c1fdba82a32c7aa01bedeb34306a26613e7f7bac`, isolate the two
+semantic-payload tests (four cases) and share their three unchanged public
+constructors and `PROJECT_ID`. The separate PR69 document is excluded. Baseline
+and after-state collection match for 135 module cases and 5,839 public cases;
+both module runs passed all 135 cases. ASTs, observed platform markers, actual
+fixture bindings/scope groups/parameter indices, within-scope lifecycle order
+and per-phase outcomes match under only the four approved node relocations.
+Atlas updates must come from its documented producer and receive exact-diff
+review. Frozen-candidate focused checks, independent review and a fresh canonical
+full gate remain required before acceptance; publication and merge are held.
+No product behavior, assertions, fixtures or research decision authority changed.

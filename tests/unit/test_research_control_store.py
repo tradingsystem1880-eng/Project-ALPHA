@@ -40,8 +40,13 @@ from alpha_research import (
     build_research_gate_packet,
 )
 from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
+from tests.fixtures.research_semantic_payload_fixtures import PROJECT_ID as PROJECT_ID
+from tests.fixtures.research_semantic_payload_fixtures import (
+    _semantic_definition_payload,
+    _semantic_review_payload,
+    _semantic_source,
+)
 
-PROJECT_ID = "9e4908b1-a9cd-4c13-a47e-740d92175680"
 LEGACY_PROJECT_ID = "bf09e202-a02a-45c5-904e-1dbda4bf298e"
 START = datetime(2026, 8, 6, 9, 0, tzinfo=UTC)
 # The approval-frozen confirmation dataset bytes every fabricated D2 run must claim.
@@ -140,52 +145,6 @@ def _insert_v4_receipt(database: Path) -> list[tuple[object, ...]]:
         return rows
     finally:
         connection.close()
-
-
-def _semantic_source() -> dict[str, object]:
-    return {
-        "project_id": PROJECT_ID,
-        "case_contract_id": "rc_" + "1" * 64,
-        "source_contract_id": "rc_" + "2" * 64,
-        "case_revision": "a" * 64,
-        "verified_read_sha256": "b" * 64,
-        "projection_sha256": "c" * 64,
-        "run_id": "0123456789abcdef",
-        "cutoff_confirmed_at": "2026-08-13T00:00:00.000000Z",
-    }
-
-
-def _semantic_definition_payload(source: dict[str, object], head: str) -> dict[str, object]:
-    return {
-        "schema": "SemanticOwnerActionV1",
-        "schema_version": 1,
-        "event_type": "definition",
-        "verified_read_sha256": source["verified_read_sha256"],
-        "projection_sha256": source["projection_sha256"],
-        "run_id": source["run_id"],
-        "cutoff_confirmed_at": source["cutoff_confirmed_at"],
-        "expected_semantic_head_sha256": head,
-        "definition_label": "Test definition",
-        "definition_text": "A bounded semantic definition.",
-    }
-
-
-def _semantic_review_payload(
-    source: dict[str, object], head: str, definition_id: str, decision: str
-) -> dict[str, object]:
-    return {
-        "schema": "SemanticOwnerActionV1",
-        "schema_version": 1,
-        "event_type": "review",
-        "verified_read_sha256": source["verified_read_sha256"],
-        "projection_sha256": source["projection_sha256"],
-        "run_id": source["run_id"],
-        "cutoff_confirmed_at": source["cutoff_confirmed_at"],
-        "expected_semantic_head_sha256": head,
-        "definition_id": definition_id,
-        "review_decision": decision,
-        "review_text": "Review the bounded semantic definition.",
-    }
 
 
 def _semantic_freeze_payload(
@@ -330,47 +289,6 @@ def test_semantic_owner_payload_and_empty_head_are_canonical_and_closed(tmp_path
     )
     with pytest.raises(DataError, match="keys are not exact"):
         control_store_module._semantic_payload({**payload, "extra": True})
-
-
-def test_semantic_payload_accepts_the_frozen_study_second_precision_cutoff() -> None:
-    source = {**_semantic_source(), "cutoff_confirmed_at": "2026-08-13T00:00:00Z"}
-    payload = _semantic_definition_payload(
-        source, control_store_module._semantic_empty_head_sha256(PROJECT_ID)
-    )
-
-    assert control_store_module._semantic_source_map(source)["cutoff_confirmed_at"] == (
-        "2026-08-13T00:00:00Z"
-    )
-    assert control_store_module._semantic_payload(payload)["cutoff_confirmed_at"] == (
-        "2026-08-13T00:00:00Z"
-    )
-
-
-@pytest.mark.parametrize(
-    ("event_type", "field", "maximum"),
-    [
-        pytest.param("definition", "definition_label", 256, id="definition-label"),
-        pytest.param("definition", "definition_text", 8192, id="definition-text"),
-        pytest.param("review", "review_text", 8192, id="review-text"),
-    ],
-)
-def test_semantic_payload_requires_canonical_text(
-    event_type: str, field: str, maximum: int
-) -> None:
-    source = _semantic_source()
-    head = control_store_module._semantic_empty_head_sha256(PROJECT_ID)
-    definition_id = "sd_" + "d" * 64
-    payload = (
-        _semantic_definition_payload(source, head)
-        if event_type == "definition"
-        else _semantic_review_payload(source, head, definition_id, "approve")
-    )
-    exact = "x" * maximum
-    payload[field] = exact
-    assert control_store_module._semantic_payload(payload)[field] == exact
-    payload[field] = f" {exact} "
-    with pytest.raises(DataError, match="canonical"):
-        control_store_module._semantic_payload(payload)
 
 
 def test_semantic_freeze_check_rejects_null_review_id_directly(tmp_path: Path) -> None:
