@@ -102,5 +102,5 @@ Before a run or retry:
 
 Private traces, credentials, support identifiers and raw task conversations stay
 outside public documentation and publication payloads. See the
-[engineering retrospectives](retrospectives/README.md) for dated observations and
+[cleanup execution retrospective](retrospectives/2026-10-17-cleanup-execution.md) for dated observations and
 their evidence limits; keep incident history there rather than duplicating it here.

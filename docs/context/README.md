@@ -7,7 +7,7 @@ These maps introduce no product scope, permissions, or new source of authority.
 - [ALPHA Quant Platform](alpha-quant-platform.md): data, research, validation and surfaces.
 - [Current foundation status](../BUILD-STATUS.md#2026-10-18-foundation-status): verified deliveries, pending evidence and deferred scope.
 - [Evidence and recovery](../operations/development-loop.md#evidence-and-recovery): preflight, preservation, retries and authorization.
-- [Engineering retrospectives](../operations/retrospectives/README.md): dated incidents and evidence limits.
+- [Cleanup execution retrospective](../operations/retrospectives/2026-10-17-cleanup-execution.md): dated incidents and evidence limits.
 - [Context ownership and test-layout pilot](../superpowers/plans/2026-10-16-context-ownership-and-test-layout-pilot.md): context stewardship/retrieval ([PR68](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/68)), unavailable-reference annotation ([PR69](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/69)) and bounded semantic-payload test isolation ([PR71](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/71)) are delivered; broader cleanup remains pending.
 
 ## Read authority before capability
