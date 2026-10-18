@@ -1444,3 +1444,88 @@ Atlas updates must come from its documented producer and receive exact-diff
 review. Frozen-candidate focused checks, independent review and a fresh canonical
 full gate remain required before acceptance; publication and merge are held.
 No product behavior, assertions, fixtures or research decision authority changed.
+
+## 2026-10-18 Foundation status
+
+This is the current navigation record for cleanup, refactor, cloud and documentation
+foundations, scoped to accepted main `1d9920238ccaf0e231c90b06eba61f6ab75b7777`.
+Historical entries above remain dated evidence, not current acceptance assertions.
+
+- **Verified, bounded deliveries:** [PR68](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/68)
+  delivered context stewardship/retrieval; [PR69](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/69)
+  annotated an unavailable historical reference without recovering its contents;
+  [PR70](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/70) delivered
+  bounded sprintf fixture tests; [PR71](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/71)
+  delivered semantic-payload test isolation; [PR72](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/72)
+  delivered README workstation guidance. The
+  [accepted pilot plan](superpowers/plans/2026-10-16-context-ownership-and-test-layout-pilot.md)
+  retains historical collection parity for 135 module and 5,839 public cases,
+  AST/fixture/lifecycle and outcome parity; these are retained receipts, not a new
+  rerun here. [PR73](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/73)
+  readiness and [PR74](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/74)
+  evidence preservation are accepted, with all seven postmerge jobs passing in
+  [39082708982](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/39082708982)
+  and [39088156452](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/39088156452).
+- **Pending cleanup:** reconcile evidence-backed dispositions for the 144 paths in
+  the [maintainability plan](superpowers/plans/2026-10-10-maintainability-cleanup.md)
+  and current handover against the [hygiene plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+  Preserve the original `454c940f` checkout, 126 status rows and 11 dirty Mac
+  worktrees as owner-side preservation obligations. Their current state was not
+  inspected here; no deletion, new parallel inventory or completed handover is claimed.
+- **Pending refactor evidence:** accepted bounded deliveries do not close private
+  or live-provider coverage, current mutation adequacy or cross-platform wheel
+  acceptance. Match each future claim to scoped receipts. Canonical Linux wheel
+  build/smoke passes apply only to their tested candidates. The upstream sprintf-js
+  advisory remains open. No failing foundation check is reproduced in the current
+  cited receipts; that is not a repository-wide defect census.
+- **Verified cloud operation within dated scope; hardening pending:** the
+  [setup plan](superpowers/plans/2026-10-15-cloud-setup.md) and
+  [owned-process readiness plan](superpowers/plans/2026-10-15-cloud-readiness-owned-processes.md)
+  retain setup/fresh-startup, writable cache, dependency, pinned-browser, CLI,
+  static Chromium and backend receipts. No new fresh launch was performed here.
+  A current configuration/version record does not establish unavailable per-launch
+  configuration binding. The documented bounded 401 procedure is not a new executed
+  recovery claim. The old pending-upload CONNECT 403 remains a separate unresolved
+  reported platform support case; no service cause
+  or fix is claimed.
+- **Verified accepted plan annotations:** [PR75](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/75)
+  reviewed head `f35f22dee2fa226f4041f3c70137ca6dc6e67b72`, tree
+  `cb338a9f31de6ca582c87dd72822ddfe51169b03`, was normally merged at
+  `1d9920238ccaf0e231c90b06eba61f6ab75b7777`. Its fresh local full passed all
+  49 steps across six components, branch CI passed all seven jobs, and the
+  [actual exact-head Codex review](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/75#issuecomment-6245365693)
+  completed without findings or unresolved findings. Postmerge
+  [CI39097174785](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/39097174785)
+  attempt 1 passed all seven jobs, completed 2026-10-18T04:53:19Z.
+  The original candidate and first review findings remain preserved alongside
+  the correction. This separate five-document prevention/status/navigation
+  candidate remains local and uncommitted, with publication held. Its own
+  frozen-tree validation and independent evidence review remain distinct;
+  accepted PR75 results do not confer this candidate's acceptance.
+- **Blocked evidence and next action:** the original chart trace is unavailable;
+  later passes cannot establish its original cause. Keep that limit and other
+  dated incidents in the [cleanup retrospective](operations/retrospectives/2026-10-17-cleanup-execution.md).
+  Use the [evidence/recovery procedure](operations/development-loop.md#evidence-and-recovery)
+  for future runs and retries; missing scoped evidence blocks the corresponding claim.
+- **Explicitly deferred:** Future Software Team work, a full Qlib product build and
+  wholesale restructuring require separately scoped plans and authorization.
+  Passing the existing qlib gate component does not establish a full Qlib product build.
+
+Shared acceptance requires an exact commit/tree, unchanged required checks, resolved
+actual native review, explicit publication/merge authorization, postmerge CI and
+preserved failure/recovery evidence. Engineering acceptance grants no research,
+owner, risk, paper, broker or order authority; the existing decision authority and
+all four Monte Carlo families remain unchanged.
+
+Navigation rationale (primary sources inspected 2026-10-18): Van Clief and
+McDermott's [ICM paper](https://arxiv.org/html/2603.16021v2) describes scoped
+orientation, routing and task context. Its [core conventions](https://github.com/RinDig/icm-architect/blob/main/references/core.md)
+separate reusable references from run artifacts and favor links to each fact's
+owning home. The [system-map guidance](https://github.com/RinDig/icm-architect/blob/main/references/system-map.md)
+keeps source authoritative and permits a minimal index. Our adaptation uses the
+existing operating manual and [context index](context/README.md), this dated status,
+the development-loop procedure and [generated Atlas](atlas/system-map.md).
+Deeper routing requires an observed navigation failure; no new hierarchy or
+framework is introduced. GitHub source URLs are mutable. The independent route
+assessment is informed by prior repository knowledge; no cold-worker experiment
+is claimed here.
