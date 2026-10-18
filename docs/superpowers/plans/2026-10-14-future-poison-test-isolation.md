@@ -1,5 +1,9 @@
 # Isolate the public future-poison test helper
 
+**Current status — 2026-10-17:** The public helper extraction was accepted through [PR #62](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/62), and the selected CSS-fixture staging fix through [PR #63](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/63); both have seven successful required checks. Keep any supplemental/private validation separate and UNVERIFIED; public CI does not close that scope.
+
+Earlier dated status and incident entries are preserved as historical records.
+
 ```json
 {
   "schema_version": 1,

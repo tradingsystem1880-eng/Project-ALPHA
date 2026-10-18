@@ -1,6 +1,12 @@
 # Preserved feature reconciliation
 
-**Delivery state:** In progress; local source recovery only.
+**Current status — 2026-10-17:** The preserved feature and research deliveries were accepted through [PR #55](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/55) and [PR #56](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/56), each with seven successful required checks. This closes the authorized delivery scope only; private coverage remains UNVERIFIED and no standing exception is adopted.
+
+**Delivery state:** Completed (authorized feature/research recovery delivery via PRs #55 and #56 only; private coverage remains UNVERIFIED).
+
+Earlier dated status and incident entries are preserved as historical records.
+
+**Historical delivery state before PRs #55 and #56:** In progress; local source recovery only.
 
 ```json
 {
@@ -73,7 +79,7 @@
 
 ## Fresh focused verification
 
-69 backend regressions pass. Both PNG omissions failed before correction, then all eight technical-chart browser tests pass with unchanged Classic/Default screenshots. Frontend lint/build/typechecks pass; full frontend unit coverage passes. Imports: 13 contracts kept; Python lint/format pass. Independent review then identified chart response rejection of CASH execution_rejection events and recorded-series PNG omission of visible value tags. The chart API/OpenAPI/frontend contract is extended; a real response regression fails before and passes after correction, and all 42 chart API tests pass. The first aggregate was stopped for these repairs; a fresh final-tree aggregate and independent acceptance remain pending. Private standing-policy paths remain at main; original shared source/index remain preserved.
+69 backend regressions pass. Both PNG omissions failed before correction, then all eight technical-chart browser tests pass with unchanged Classic/Default screenshots. Frontend lint/build/typechecks pass; full frontend unit coverage passes. Imports: 13 contracts kept; Python lint/format pass. Independent review then identified chart response rejection of CASH execution_rejection events and recorded-series PNG omission of visible value tags. The chart API/OpenAPI/frontend contract is extended; a real response regression fails before and passes after correction, and all 42 chart API tests pass. At that checkpoint before PRs #55 and #56, the first aggregate had been stopped for these repairs, so a fresh final-tree aggregate and independent acceptance still remained pending. Private standing-policy paths remain at main; original shared source/index remain preserved.
 
 
-The native recorded-series Save PNG regression also fails before and passes after correction. Save/Copy/Open/menu/prompt remain native; only export compositing changes. Independent source inspection finds no issue in either integration correction. Current acceptance remains BLOCK for the absent private suite under unchanged rules. Final canonical full evidence is stored outside the source tree in `Project-ALPHA-reconciliation-evidence/feature-final-full.log` so verification receipts do not alter the frozen candidate. Quant-source verification scope is empty: no statistical module or validation/research source is changed; no empty-scope attestation is created. The original shared staged/unstaged/status bytes and 1,751 preserved path states were checked again and match recovery.
+The native recorded-series Save PNG regression also fails before and passes after correction. Save/Copy/Open/menu/prompt remain native; only export compositing changes. Independent source inspection finds no issue in either integration correction. **At that historical checkpoint, before PRs #55 and #56, engineering acceptance remained BLOCK under the then-current absent-private-suite requirement.** PRs #55 and #56 later accepted the authorized delivery scope; private coverage remains UNVERIFIED. Final canonical full evidence is stored outside the source tree in `Project-ALPHA-reconciliation-evidence/feature-final-full.log` so verification receipts do not alter the frozen candidate. Quant-source verification scope is empty: no statistical module or validation/research source is changed; no empty-scope attestation is created. The original shared staged/unstaged/status bytes and 1,751 preserved path states were checked again and match recovery.

@@ -1,5 +1,9 @@
 # Bounded mutation sweep checkpoints
 
+**Current status — 2026-10-17:** [PR #54](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/54) and its bounded fixture follow-up [PR #57](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/57) are accepted, each with seven successful required checks. Sweep 38233472012-1 on 430ddeb remains historical infrastructure-complete accounting, not current-main adequacy evidence. Later public staging/test changes in PRs #62–#64 mean current adequacy is UNMEASURED; no new sweep or floor-pass claim is made here.
+
+Earlier dated status and incident entries are preserved as historical records.
+
 ```json
 {
   "schema_version": 1,

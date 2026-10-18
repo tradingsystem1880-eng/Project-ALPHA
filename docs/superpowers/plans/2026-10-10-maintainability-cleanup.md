@@ -2,6 +2,10 @@
 
 # Bounded maintainability cleanup
 
+**Current status — 2026-10-17:** The bounded cleanup was accepted through [PR #58](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/58) after exact-tree validation and seven successful required checks. Private-suite coverage remains UNVERIFIED under the cleanup-only scoped exception.
+
+Earlier dated status and incident entries are preserved as historical records.
+
 ```json
 {
   "schema_version": 1,

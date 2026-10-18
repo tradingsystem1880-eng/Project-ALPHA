@@ -13,6 +13,12 @@
 }
 ```
 
-**Delivery state:** Implementation candidate; exact-tree review and full acceptance are recorded separately.
+**Current status — 2026-10-17:** Accepted through [PR #66](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/66), merged with all seven required checks successful. The accepted scope is test-process ownership and fixture lifecycle; it does not change production proxy or cancellation behavior.
+
+**Delivery state:** Completed (accepted test-process ownership and fixture-lifecycle delivery via PR #66 only).
+
+Earlier dated status and incident entries are preserved as historical records.
+
+**Historical delivery state before PR #66:** Implementation candidate; exact-tree review and full acceptance were recorded separately.
 
 No quant source, architecture edges, look-ahead rules or research determinism changes. Original evidence: `.alpha/state/cloud-validation-837e198/index.json`. Candidate red/green logs and review receipts: `.alpha/state/cloud-readiness-candidate/`.

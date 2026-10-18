@@ -1,5 +1,9 @@
 # Clean, reconcile and protect main
 
+**Current status — 2026-10-17:** The main integration in [PR #53](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/53) and the later preserved feature recovery in [PR #55](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/55) are merged; each has seven successful required checks. The historical canceled nightly mutation run is not a green run. Keep any workstation restart or nightly closeout separate until its own current receipt is recorded.
+
+Earlier dated status and incident entries are preserved as historical records.
+
 ```json
 {
   "schema_version": 1,

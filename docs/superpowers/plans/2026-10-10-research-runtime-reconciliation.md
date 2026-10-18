@@ -1,6 +1,12 @@
 # Existing research-runtime reconciliation
 
-**Delivery state:** Existing source locally verified; owner-authorized combined feature/research delivery verification in progress.
+**Current status — 2026-10-17:** Accepted through [PR #56](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/56) with seven successful required checks. Live Codex authentication, nested-policy/isolation, and Tiingo acceptance remain UNVERIFIED.
+
+**Delivery state:** Completed (accepted bounded runtime reconciliation via PR #56 only; live Codex authentication, nested-policy/isolation and Tiingo acceptance remain UNVERIFIED).
+
+Earlier dated status and incident entries are preserved as historical records.
+
+**Historical delivery state before PR #56:** Existing source locally verified; owner-authorized combined feature/research delivery verification in progress.
 
 ```json
 {

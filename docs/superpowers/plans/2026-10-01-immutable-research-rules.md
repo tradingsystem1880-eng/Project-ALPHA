@@ -1,6 +1,12 @@
 # Immutable rules in bounded research execution
 
-**Delivery state:** Implementation delivered; acceptance tracked by exact-tree receipts
+**Current status — 2026-10-17:** Accepted through [PR #56](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/56) with seven successful required checks. Temporal filesystem isolation remains separate work and is not claimed complete by this delivery.
+
+**Delivery state:** Completed (accepted bounded immutable-rules delivery via PR #56 only; temporal filesystem isolation remains separate).
+
+Earlier dated status and incident entries are preserved as historical records.
+
+**Historical delivery state before PR #56:** Implementation delivered; acceptance tracked by exact-tree receipts
 
 ```json
 {
