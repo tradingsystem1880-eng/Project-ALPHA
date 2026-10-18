@@ -11,6 +11,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -276,18 +277,89 @@ def test_stop_with_live_leader_terminates_before_reporting_failure() -> None:
     assert journal and "child cleanup failed" in journal[0]
 
 
+_NESTED_CHILD_CODE = (
+    "import os, signal, sys, time\n"
+    "from pathlib import Path\n"
+    "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+    "ready_path = Path(sys.argv[1])\n"
+    "pending_path = ready_path.with_name(ready_path.name + '.pending')\n"
+    "pending_path.write_text(str(os.getpid()), encoding='utf-8')\n"
+    "pending_path.replace(ready_path)\n"
+    "time.sleep(30)\n"
+)
+
+
+def _cleanup_nested_child(leader: subprocess.Popen[str], nested_pid: int | None) -> None:
+    # The new-session leader's group may outlive the leader or PID parsing.
+    with contextlib.suppress(ProcessLookupError):
+        os.killpg(leader.pid, signal.SIGKILL)
+    with contextlib.suppress(subprocess.TimeoutExpired):
+        leader.wait(timeout=1)
+    if nested_pid is not None and _process_is_alive(nested_pid):
+        with contextlib.suppress(ProcessLookupError):
+            os.kill(nested_pid, signal.SIGKILL)
+
+
+@pytest.mark.parametrize("prefix_length", [0, 1])
+def test_nested_child_readiness_is_published_complete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prefix_length: int
+) -> None:
+    ready_path = tmp_path / "nested-child-ready"
+    original_write_text = Path.write_text
+
+    def interrupted_write(path: Path, data: str, encoding: str) -> int:
+        original_write_text(path, data[:prefix_length], encoding=encoding)
+        assert not ready_path.exists(), "incomplete readiness file was published"
+        return original_write_text(path, data, encoding=encoding)
+
+    expected_pid = str(os.getpid())
+    with monkeypatch.context() as scoped:
+        scoped.setattr(sys, "argv", ["nested-child", str(ready_path)])
+        scoped.setattr(signal, "signal", Mock())
+        scoped.setattr(time, "sleep", Mock())
+        scoped.setattr(Path, "write_text", interrupted_write)
+        exec(_NESTED_CHILD_CODE, {})
+
+    assert ready_path.read_text(encoding="utf-8") == expected_pid
+    assert list(tmp_path.iterdir()) == [ready_path]
+
+
+@pytest.mark.parametrize("missing_group", [False, True])
+def test_nested_child_cleanup_after_leader_exit(
+    monkeypatch: pytest.MonkeyPatch, missing_group: bool
+) -> None:
+    leader = Mock(spec=subprocess.Popen)
+    leader.pid = 12345
+    leader.poll.return_value = 0
+    killpg = Mock(side_effect=ProcessLookupError if missing_group else None)
+    kill = Mock()
+    monkeypatch.setattr(os, "killpg", killpg)
+    monkeypatch.setattr(os, "kill", kill)
+
+    _cleanup_nested_child(leader, None)
+
+    killpg.assert_called_once_with(leader.pid, signal.SIGKILL)
+    leader.wait.assert_called_once_with(timeout=1)
+    kill.assert_not_called()
+
+
+def test_nested_child_cleanup_does_not_hide_permission_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    leader = Mock(spec=subprocess.Popen)
+    leader.pid = 12345
+    leader.poll.return_value = 0
+    monkeypatch.setattr(os, "killpg", Mock(side_effect=PermissionError))
+
+    with pytest.raises(PermissionError):
+        _cleanup_nested_child(leader, None)
+
+
 def test_terminate_and_reap_kills_sigterm_ignoring_nested_child(tmp_path: Path) -> None:
     ready_path = tmp_path / "nested-child-ready"
-    nested_code = (
-        "import os, signal, sys, time\n"
-        "from pathlib import Path\n"
-        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
-        "Path(sys.argv[1]).write_text(str(os.getpid()), encoding='utf-8')\n"
-        "time.sleep(30)\n"
-    )
     leader_code = (
         "import subprocess, sys, time\n"
-        f"subprocess.Popen([sys.executable, '-c', {nested_code!r}, sys.argv[1]])\n"
+        f"subprocess.Popen([sys.executable, '-c', {_NESTED_CHILD_CODE!r}, sys.argv[1]])\n"
         "time.sleep(30)\n"
     )
     leader = subprocess.Popen(
@@ -314,14 +386,7 @@ def test_terminate_and_reap_kills_sigterm_ignoring_nested_child(tmp_path: Path) 
             time.sleep(0.01)
         assert not _process_is_alive(nested_pid)
     finally:
-        if leader.poll() is None:
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(leader.pid, signal.SIGKILL)
-        with contextlib.suppress(subprocess.TimeoutExpired):
-            leader.wait(timeout=1)
-        if nested_pid is not None and _process_is_alive(nested_pid):
-            with contextlib.suppress(ProcessLookupError):
-                os.kill(nested_pid, signal.SIGKILL)
+        _cleanup_nested_child(leader, nested_pid)
 
 
 def test_cancel_cleanup_failure_keeps_durable_capacity_reserved(

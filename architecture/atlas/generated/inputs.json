@@ -711,7 +711,7 @@
     "tests/unit/test_documentation_truth.py": "97a7a6099e9d5441c44e6e9711096290e199fe96dc8a7e146f2cfc9a171cd9a5",
     "tests/unit/test_drawdown_episodes.py": "902be92121a068cc38c4e52fe75df06032dd267d748d007fa626ee5773d475aa",
     "tests/unit/test_dsr.py": "5b87b423ceef6313a1c691774d06b790351d06bee5eec80c446b0152c28bd553",
-    "tests/unit/test_durable_job_lease.py": "5c6a271b16f17405272a9b6ca5e99679ccb694e770c14bdead670455bd3c51e7",
+    "tests/unit/test_durable_job_lease.py": "86de6c1dcc4d48006ea7f50c7c433ae9926529dea4a9cdafd10b4b7c247209e6",
     "tests/unit/test_entropy.py": "345495fa7c247b118a383bd692afc6296c1cab1aa7f9e12414fe86e4634bfb56",
     "tests/unit/test_eval_fixture_v2.py": "9bd6f33275d3f27fef08da62e40c360e71e392216772f48b1194ba72be2da321",
     "tests/unit/test_execution_trace_golden.py": "146ed206e625c7e127ed6e1b45c6d9bbcbcf1c29800e932cd9e269a36455d2c3",
