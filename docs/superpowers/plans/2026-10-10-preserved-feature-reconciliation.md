@@ -2,6 +2,8 @@
 
 **Current status — 2026-10-17:** The preserved feature and research deliveries were accepted through [PR #55](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/55) and [PR #56](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/56), each with seven successful required checks. This closes the authorized delivery scope only; private coverage remains UNVERIFIED and no standing exception is adopted.
 
+**Delivery state:** Completed (authorized feature/research recovery delivery via PRs #55 and #56 only; private coverage remains UNVERIFIED).
+
 Earlier dated status and incident entries are preserved as historical records.
 
 **Historical delivery state before PRs #55 and #56:** In progress; local source recovery only.
@@ -53,7 +55,7 @@ Earlier dated status and incident entries are preserved as historical records.
       "verify": "uv run python scripts/gate.py full",
       "expected": "Fresh public checks and explicit private coverage limitation, exact-tree review; no publication or new exception",
       "rollback": "Preserve unaccepted local patch and report remaining acceptance dependency",
-      "status": "done"
+      "status": "pending"
     }
   ],
   "tier_impact": [

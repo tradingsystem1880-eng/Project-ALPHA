@@ -2,6 +2,8 @@
 
 **Current status — 2026-10-17:** Accepted through [PR #55](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/55), which carries the recovered cash-affordability fix on the accepted tree and passed all seven required checks. The source-branch approval and gate described below remain historical evidence.
 
+**Delivery state:** Completed (accepted CASH affordability delivery via PR #55 only).
+
 Earlier dated status and incident entries are preserved as historical records.
 
 **Historical status before PR #55:** The source-branch implementation receipt said recovery onto the cleanup tree was in progress; its original approval and gate did not attest the new tree. See [current cleanup plan](2026-10-08-repository-hygiene.md).

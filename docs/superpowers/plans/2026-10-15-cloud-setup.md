@@ -2,6 +2,8 @@
 
 **Current status — 2026-10-17:** Accepted through [PR #65](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/65) with seven successful required checks. Separate environment verification recorded on 2026-10-17 confirmed persistent caches and fresh-task startup, alpha info, and Chromium smoke; those environment checks are distinct from PR CI.
 
+**Delivery state:** Completed (accepted provisioning delivery via PR #65 only; dated environment checks remain separate evidence).
+
 Earlier dated status and incident entries are preserved as historical records.
 
 ```json

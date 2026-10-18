@@ -4,6 +4,8 @@
 
 **Current status — 2026-10-17:** The application-specific extreme-value correction was accepted through [PR #60](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/60) with seven successful required checks. The upstream sprintf-js advisory remains open; this change does not resolve that dependency advisory.
 
+**Delivery state:** Completed (accepted application-specific correction via PR #60 only; the upstream sprintf-js advisory remains open).
+
 Earlier dated status and incident entries are preserved as historical records.
 
 ```json
