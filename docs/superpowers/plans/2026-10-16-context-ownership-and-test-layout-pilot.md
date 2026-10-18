@@ -1,5 +1,17 @@
 # Proposed context ownership and test-layout pilot
 
+**Current status — 2026-10-18:** The three bounded slices below are accepted in inspected main `1d9920238ccaf0e231c90b06eba61f6ab75b7777`.
+
+**Delivery state:** Completed (the three named pilot slices only).
+
+| Bounded slice | Current delivery evidence |
+| --- | --- |
+| Context stewardship and retrieval | Delivered through [PR68](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/68). |
+| Unavailable historical-reference annotation | Delivered through [PR69](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/69). |
+| Semantic-payload test isolation with parity | Delivered through [PR71](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/71). |
+
+The original title, JSON slice statuses and dated candidate/authorization entries below are retained as historical snapshots. Their proposal, draft, pending and in-progress language describes those earlier stages, not current delivery or new authorization. The merge commits of PR68, PR69 and PR71 are ancestors of the inspected main. Broader cleanup and research intake are outside this bounded closure; current behavior still requires its own evidence and existing decision authority.
+
 ```json
 {
   "schema_version": 1,
