@@ -71,7 +71,5 @@ record as another inventory.
 - The original lost trace cannot be reconstructed from later passes or text logs.
 - Static browser launch and review startup do not establish application acceptance.
 - Independent agent review and native Codex review are distinct evidence.
-- Keep raw traces, private conversations, support identifiers, credentials and
-  protected contents out of public records. Preserve history without copying them.
-- Update the dated status when new evidence arrives; do not advance an inspection
-  date or rewrite an earlier failure to hide uncertainty.
+- Keep raw traces, private conversations, support identifiers, credentials and protected contents out of public records. Preserve history without copying them.
+- Update the dated status when new evidence arrives; do not advance an inspection date or rewrite an earlier failure to hide uncertainty.
