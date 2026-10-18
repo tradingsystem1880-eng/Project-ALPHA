@@ -1,5 +1,9 @@
 # Carry selected theme CSS into isolated mutation staging
 
+**Current status — 2026-10-17:** Accepted through [PR #63](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/63) with seven successful required checks. No new exhaustive mutation sweep is claimed, and current-main adequacy remains UNMEASURED.
+
+Earlier dated status and incident entries are preserved as historical records.
+
 **Delivery state:** Completed (2026-10-15; implementation and scoped public verification; release acceptance is outside this implementation plan).
 
 ```json

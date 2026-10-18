@@ -1,6 +1,10 @@
 # Add public contract regression tests
 
-**Delivery state:** Completed (2026-10-15; local implementation and focused public verification complete; exact-source and release acceptance are separate).
+**Current status — 2026-10-17:** Accepted through [PR #64](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/64) with seven successful required checks. The five public regression-test deltas are integrated. Preserve the original payload/source caveat; current-main mutation adequacy remains UNMEASURED.
+
+Earlier dated status and incident entries are preserved as historical records.
+
+**Historical delivery state (2026-10-15, before PR #64):** Completed; local implementation and focused public verification were complete, while exact-source and release acceptance remained separate.
 
 ```json
 {

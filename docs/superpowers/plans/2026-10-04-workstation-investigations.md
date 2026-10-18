@@ -1,6 +1,10 @@
 # Recorded-run investigations in the workstation
 
-**Delivery state:** Implemented; final-tree aggregate acceptance required before commit
+**Current status — 2026-10-17:** Accepted through [PR #56](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/56) with seven successful required checks. Live Tiingo acceptance remains UNVERIFIED; fixture-based tests are not live-provider acceptance.
+
+Earlier dated status and incident entries are preserved as historical records.
+
+**Historical delivery state before PR #56:** Implemented; final-tree aggregate acceptance required before commit.
 
 ```json
 {

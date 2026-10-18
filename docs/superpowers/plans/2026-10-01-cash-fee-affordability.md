@@ -1,6 +1,10 @@
 # CASH execution affordability including fees
 
-**Status:** Historical source-branch implementation receipt. Recovery onto the cleanup tree is in progress; original approval and gate do not attest the new tree. See [current cleanup plan](2026-10-08-repository-hygiene.md).
+**Current status — 2026-10-17:** Accepted through [PR #55](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/55), which carries the recovered cash-affordability fix on the accepted tree and passed all seven required checks. The source-branch approval and gate described below remain historical evidence.
+
+Earlier dated status and incident entries are preserved as historical records.
+
+**Historical status before PR #55:** The source-branch implementation receipt said recovery onto the cleanup tree was in progress; its original approval and gate did not attest the new tree. See [current cleanup plan](2026-10-08-repository-hygiene.md).
 **Goal:** Prevent fee-bearing CASH buys from spending beyond available cash after close-t signals meet the actual t+1 opening execution quote. Preserve MARGIN behavior, sells, and the close-to-next-open decision contract.
 
 **Evidence:** The retained Tier-2 replay has a CASH balance of $920,929.27 before a buy of 7,513 shares at $122.57 ($920,868.41 principal) plus a $92.09 commission, leaving cash at approximately -$31.23. The simulator applies fees after matching principal; the later truncation check detects the damage but does not prevent it.

@@ -1,5 +1,9 @@
 # Immutable rules in bounded research execution
 
+**Current status — 2026-10-17:** Accepted through [PR #56](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/56) with seven successful required checks. Temporal filesystem isolation remains separate work and is not claimed complete by this delivery.
+
+Earlier dated status and incident entries are preserved as historical records.
+
 **Delivery state:** Implementation delivered; acceptance tracked by exact-tree receipts
 
 ```json
@@ -48,7 +52,7 @@
       "verify": "uv run python scripts/gate.py full",
       "expected": "Bounded operations and honest immutable results; no inferred authority.",
       "rollback": "Revert added runtime; preserve prior immutable evidence.",
-      "status": "pending"
+      "status": "done"
     }
   ],
   "tier_impact": [

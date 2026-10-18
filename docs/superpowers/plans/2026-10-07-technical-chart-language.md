@@ -1,6 +1,10 @@
 # ALPHA technical chart language (StockCharts Classic/Default grammar)
 
-**Delivery state:** Local implementation and corrected-tree full verification complete; authorized scoped PR delivery in progress.
+**Current status — 2026-10-17:** Accepted through [PR #55](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/55) with seven successful required checks. The separate wheel-order follow-up remains under its own status and is not closed by this annotation.
+
+Earlier dated status and incident entries are preserved as historical records.
+
+**Historical delivery state before PR #55:** Local implementation and corrected-tree full verification complete; authorized scoped PR delivery in progress.
 
 Owner request 2026-10-07: make the primary analytical charts read as market-analysis software,
 close to StockCharts Classic and Default, by reproducing their visual grammar rather than their layout.

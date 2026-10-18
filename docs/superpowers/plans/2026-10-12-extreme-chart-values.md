@@ -1,6 +1,10 @@
-**Delivery state:** Candidate on accepted PR #59 main `2172406c`; focused public checks pass; canonical full, fresh independent review, hosted acceptance and publication remain pending.
+**Historical delivery state before PR #60:** Candidate on accepted PR #59 main `2172406c`; focused public checks pass; canonical full, fresh independent review, hosted acceptance and publication remain pending.
 
 # Preserve extreme finite chart values in ticks and labels
+
+**Current status — 2026-10-17:** The application-specific extreme-value correction was accepted through [PR #60](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/60) with seven successful required checks. The upstream sprintf-js advisory remains open; this change does not resolve that dependency advisory.
+
+Earlier dated status and incident entries are preserved as historical records.
 
 ```json
 {
@@ -24,7 +28,7 @@
 
 No statistical or backend values change. The recorded-series bounds use finite saturated padding at the representable edges; a range whose affine canvas scale cannot be represented still fails closed. The narrow-host browser regression verifies visible tag containment. The readiness docstring describes the typed overall status while retaining the legacy per-requirement details as unavailable and fail closed.
 
-The upstream `sprintf-js` advisory GHSA-hp3w-g68c-fv3c remains unresolved; this local display correction does not remove that dependency advisory. Private coverage remains UNVERIFIED under the existing approved scope; no private access or new exception is inferred. Canonical full, fresh independent review, hosted CI and post-merge verification remain pending.
+The upstream `sprintf-js` advisory GHSA-hp3w-g68c-fv3c remains unresolved; this local display correction does not remove that dependency advisory. Private coverage remains UNVERIFIED under the existing approved scope; no private access or new exception is inferred. **Historical acceptance state before PR #60:** canonical full, fresh independent review, hosted CI and post-merge verification remained pending.
 
 ## Linux screenshot follow-up (2026-10-13)
 
