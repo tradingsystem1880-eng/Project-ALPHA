@@ -1,6 +1,9 @@
 # Cleanup execution retrospective (2026-10-17)
 
-**Status:** Local documentation reconciliation; publication remains held.
+**Status at the prepublication freeze:** Local documentation reconciliation;
+publication was held. Subsequent draft publication is recorded in
+[PR76](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/76); consult its
+live head and review/CI state for the published candidate.
 Original reconciliation base:
 `3b73c27f9f60fee34ebbc5c7f57c8a43cf7a8f10`.
 The observations below retain their 2026-10-17 evidence limits. The original

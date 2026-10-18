@@ -1466,9 +1466,13 @@ Historical entries above remain dated evidence, not current acceptance assertion
   evidence preservation are accepted, with all seven postmerge jobs passing in
   [39082708982](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/39082708982)
   and [39088156452](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/39088156452).
-- **Pending cleanup:** reconcile evidence-backed dispositions for the 144 paths in
-  the [maintainability plan](superpowers/plans/2026-10-10-maintainability-cleanup.md)
-  and current handover against the [hygiene plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+- **Pending cleanup:** reconcile the reported owner-side handover count of 144 paths
+  against the [broader hygiene plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+  The item-level handover is unavailable to this inspection; this count is
+  not a verified repository inventory. The
+  [maintainability plan](superpowers/plans/2026-10-10-maintainability-cleanup.md)
+  describes the completed bounded [PR58](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/58),
+  rather than that outstanding handover.
   Preserve the original `454c940f` checkout, 126 status rows and 11 dirty Mac
   worktrees as owner-side preservation obligations. Their current state was not
   inspected here; no deletion, new parallel inventory or completed handover is claimed.
@@ -1498,10 +1502,13 @@ Historical entries above remain dated evidence, not current acceptance assertion
   [CI39097174785](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/39097174785)
   attempt 1 passed all seven jobs, completed 2026-10-18T04:53:19Z.
   The original candidate and first review findings remain preserved alongside
-  the correction. This separate five-document prevention/status/navigation
-  candidate remains local and uncommitted, with publication held. Its own
-  frozen-tree validation and independent evidence review remain distinct;
-  accepted PR75 results do not confer this candidate's acceptance.
+  the correction. At the prepublication freeze, this separate five-document
+  prevention/status/navigation candidate was local and uncommitted, with publication
+  held. It was published as a draft in [PR76](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/76)
+  from initial commit `0b90467b80f802ccd26bdc532ee67d424e576b51`. Consult that PR for
+  its live head and candidate-specific CI/review state; merge requires separate
+  approval. Each corrected tree needs its own frozen-tree validation and independent
+  evidence review; accepted PR75 results do not confer this candidate's acceptance.
 - **Blocked evidence and next action:** the original chart trace is unavailable;
   later passes cannot establish its original cause. Keep that limit and other
   dated incidents in the [cleanup retrospective](operations/retrospectives/2026-10-17-cleanup-execution.md).

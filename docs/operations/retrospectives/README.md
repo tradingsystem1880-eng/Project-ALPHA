@@ -3,7 +3,9 @@
 Dated observations preserve causes, uncertainty and follow-up status. Reusable
 execution rules live in the [development loop](../development-loop.md#evidence-and-recovery).
 See [current foundation status](../../BUILD-STATUS.md#2026-10-18-foundation-status)
-for acceptance boundaries; this five-document reconciliation remains local.
+for acceptance boundaries. Dated local/publication-held statements describe the
+prepublication freeze; [draft PR76](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/76)
+records the subsequent publication and live validation state.
 
 | Date | Record | Scope |
 | --- | --- | --- |
