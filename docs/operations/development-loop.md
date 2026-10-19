@@ -57,3 +57,50 @@ Read [the operating manual](../../CLAUDE.md) for mandatory invariants,
 [architecture](../ARCHITECTURE.md) for ownership and data flow,
 [ADRs](../adr/README.md) for decisions, and [build history](../BUILD-STATUS.md)
 for recorded delivery evidence. Plans describe scope; they are not proof of a pass.
+
+## Evidence and recovery
+
+Before a run or retry:
+
+1. Record the base, exact candidate paths, command, tool versions, configured caches
+   and available disk. Check prerequisites before starting; report missing runtime
+   evidence and obtain the required authorization before provisioning it. Define an
+   explicit permitted path list before searching or reading; protected links permit
+   metadata checks only. Stop content access when protection is unclear.
+2. For a focused browser run, check the locked Playwright listing with the intended
+   config, project and filter. Use `prepare` above and review
+   its intended cases separately from additional projects. Require nonempty intended
+   selection and every requested native ID; this is not a complete expected-case-set
+   check. A bad config, zero intended cases or missing requested ID blocks execution.
+   Use the existing process owner and avoid concurrent duplicate runs.
+3. Before any retry, preserve the current failure's permitted
+   artifacts in a new absolute private task directory. Retain the original command,
+   error and exit code, plus copied relative paths, byte counts and SHA256 values.
+   `export` above verifies enumerated files from one stopped
+   run; account for required evidence separately rather than claiming a complete or
+   atomic snapshot. Reject links, traversal, special files and overwrites. If copying
+   or verification fails, stop the retry and leave source and partial evidence intact.
+   Allocate fresh output for the retry; run `prepare` again.
+4. For an ambiguous or `UNKNOWN` action result, read back authoritative state before
+   repeating a create, run or merge. Cancellation or denial ends the relevant write
+   action; do not switch tools, routes or flags to carry it through. Resume only after
+   fresh explicit authorization. Preserve bounded status/error metadata without
+   guessing service-internal causes or widening permissions, credentials or scope.
+5. Only with explicit task authorization, a failed CLI read returning 401 permits
+   one bounded recovery: preserve the failed read, perform one supported sanitized
+   auth-status check without printing or retaining raw account/credential output,
+   and, only if status succeeds, retry the identical read once with the same CLI,
+   account and configuration. Stop if either check or retry fails. Do not change
+   credentials, scopes, security settings or configuration. This grants no write
+   retry permission and does not apply to the separate pending-upload CONNECT 403
+   support case.
+6. Diagnose from the retained evidence before changing code. Keep any fix separately
+   identified, preserve assertions and thresholds, and validate the final frozen
+   candidate through independent review and the required gate. Record failed attempts
+   separately. Distinguish an observed pass from a startup check, selection listing,
+   review request or unavailable coverage; never infer acceptance from those alone.
+
+Private traces, credentials, support identifiers and raw task conversations stay
+outside public documentation and publication payloads. See the
+[cleanup execution retrospective](retrospectives/2026-10-17-cleanup-execution.md) for dated observations and
+their evidence limits; keep incident history there rather than duplicating it here.
