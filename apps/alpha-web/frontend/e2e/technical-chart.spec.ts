@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import type { Candles } from '../src/api/types'
 import { preparePage } from './support/workstationHarness'
 import { studySeries, walkBars } from './support/technicalFixture'
+import { waitForTechnicalChartWidth } from './support/technicalLayout'
 
 // The StockCharts-grade technical chart (docs/superpowers/plans/2026-10-07-technical-chart-language.md):
 // one panel stack with RSI above price + volume and MACD below, all studies served by the
@@ -269,6 +270,7 @@ for (const style of ['classic', 'default'] as const) {
 test('@reference-only hovering updates the header and legends; x zoom rescales price', async ({ page }) => {
   const chart = await openChart(page, 'classic')
   const host = chart.locator('.technical-host')
+  await waitForTechnicalChartWidth(host)
   const box = (await host.boundingBox())!
   await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.5)
   const header = chart.locator('.technical-ohlc')
