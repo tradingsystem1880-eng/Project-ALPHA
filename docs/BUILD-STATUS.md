@@ -1536,3 +1536,45 @@ Deeper routing requires an observed navigation failure; no new hierarchy or
 framework is introduced. GitHub source URLs are mutable. The independent route
 assessment is informed by prior repository knowledge; no cold-worker experiment
 is claimed here.
+
+## 2026-10-19 Mac handover update
+
+The clean isolated `current-main` checkout was fast-forwarded to accepted main
+after [PR77](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/77), at
+`59b92919a3fb2efcbb2159063d2801c10693e47c` (tree
+`c8fdb502cbd59d1ccbcee915073be1cae2d42128`), matching fetched `origin/main`.
+Read-only GitHub verification confirmed [post-merge workflow run
+39245184680](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/39245184680)
+completed successfully with all seven jobs passing.
+This updates the checkout used for the bounded workstation check; it does not
+change the original dirty checkout or resolve its preserved worktree inventory.
+
+A fresh, bounded headless startup and UI smoke passed on that exact tree using an
+empty synthetic data directory, isolated HOME, no provider credentials, and paper
+and IBKR paper disabled. All twelve workspace package imports resolved inside the
+current-main checkout, including `alpha_research.weekly_diagnostic` from
+`packages/alpha-research/src`. The Overview page rendered with its main region visible;
+all 17 observed HTTP responses were 200, expected startup requests were present,
+and no browser console/runtime errors or external host requests were observed. The
+normal startup read of `/api/providers` returned the local provider catalog only;
+no provider check, acquisition, data pull, broker action, or live readiness check
+was run. The browser and server stopped, and their ports were clear afterward.
+The read-only local process check found no matching ALPHA/Workstation launch
+labels or LaunchAgent filenames, no app/smoke processes, and no listener on the
+checked ports; no launch configuration was changed.
+
+The initial rerun failed because its sanitized PATH omitted the existing `alpha`
+CLI executable. That attempt and its diagnostics were retained separately; the
+successful rerun added the existing venv's `bin` directory without installing or
+changing dependencies. The local receipts and screenshot are under the ignored
+project state directory `.alpha/state/mac-handover-2026-10-19/`; the run manifest
+is the entry point. The earlier Desktop evidence remains preserved at
+`/Users/hunternovotny/Desktop/Project-ALPHA-reconciliation-evidence/current-main-browser-rendering-smoke-2026-10-18/`.
+
+This smoke closes only the bounded startup/UI check. Physical handover remains
+open: reconcile the saved path/branch/operation records and owner dispositions
+before retiring any checkout or branch. No archive, branch, worktree, or unexplained
+change was removed. The UI also reported the expansion SSD as blocked; this run
+did not inspect physical storage, launch persistence, live providers, broker
+connectivity, the full gate, or the Playwright suite. The 2026-10-18 foundation
+record above remains the historical basis for items not changed by this update.

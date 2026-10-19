@@ -5,7 +5,9 @@ These maps introduce no product scope, permissions, or new source of authority.
 
 - [Software Team](software-team.md): engineering boundaries, discovery and verification.
 - [ALPHA Quant Platform](alpha-quant-platform.md): data, research, validation and surfaces.
-- [Current foundation status](../BUILD-STATUS.md#2026-10-18-foundation-status): verified deliveries, pending evidence and deferred scope.
+- [Foundation status baseline (2026-10-18)](../BUILD-STATUS.md#2026-10-18-foundation-status): verified deliveries, pending evidence and deferred scope; see later dated updates for new checks.
+- [Mac handover update (2026-10-19)](../BUILD-STATUS.md#2026-10-19-mac-handover-update): current bounded workstation evidence and remaining physical handover blockers.
+- [Mac workstation handover refresh](../operations/mac-workstation-handover-2026-10-19.md): bounded startup/UI evidence and the remaining physical handover blockers.
 - [Evidence and recovery](../operations/development-loop.md#evidence-and-recovery): preflight, preservation, retries and authorization.
 - [Cleanup execution retrospective](../operations/retrospectives/2026-10-17-cleanup-execution.md): dated incidents and evidence limits.
 - [Context ownership and test-layout pilot](../superpowers/plans/2026-10-16-context-ownership-and-test-layout-pilot.md): context stewardship/retrieval ([PR68](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/68)), unavailable-reference annotation ([PR69](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/69)) and bounded semantic-payload test isolation ([PR71](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/71)) are delivered; broader cleanup remains pending.
