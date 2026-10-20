@@ -5,9 +5,8 @@ accepted-main checkout after [PR77](https://github.com/tradingsystem1880-eng/Pro
 has HEAD `59b92919a3fb2efcbb2159063d2801c10693e47c`, tree
 `c8fdb502cbd59d1ccbcee915073be1cae2d42128`. Before this documentation candidate
 was added, the isolated checkout was clean and its HEAD matched fetched
-`origin/main`. This branch now contains the uncommitted documentation changes
-described here. The original shared checkout and preserved worktrees were left
-untouched.
+`origin/main`. This candidate commit contains the documentation changes described
+here. The original shared checkout and preserved worktrees were left untouched.
 
 ## Completed
 
@@ -64,8 +63,16 @@ acceptance. Its older comparison receipt remains in
 `Project-ALPHA-reconciliation-evidence`; all earlier failed attempts remain
 preserved with their original result. The external completion ledger now records
 this workstation result, updates current-main to PR77, and keeps
-`final_clean_handover` blocked. The newer preflight/tooling checkout report remains
-unverified because its reported path is absent in this execution environment and
-no exact head, status, or recovery manifest was available. Targeted assertions on
-those updated ledger records passed; the whole-ledger checker was not run because
-it inspects protected paths.
+`final_clean_handover` blocked. On 2026-10-20 the reported path
+`/Users/hunternovotny/Desktop/Project-ALPHA-preflight-tooling-delivery` was absent
+in this execution environment. The existing accepted checkout at
+`/Users/hunternovotny/Desktop/Project-ALPHA-handover/accepted/pr59-preflight-tooling`
+was present and clean on `fix/preflight-tooling-delivery` at
+`e57b18c2fc71a1bfa88e3aa6ab4320d24e76f7eb`, tracking the same origin branch and
+based on `31479cad85d345786de911968828cef1b8c9d4d6`. PR #59 is merged. Its
+recovery receipt lists 12 files, all of whose current content hashes match the
+receipt. This verifies the accepted PR #59 checkout only; it does not establish a
+separate newer checkout or unfinished source delta. The external ledger keeps the
+reported path as an unverified timing discrepancy, so do not replay accepted PR
+#59 content. Targeted assertions on the recorded ledger entries passed; the
+whole-ledger checker was not run because it inspects protected paths.
