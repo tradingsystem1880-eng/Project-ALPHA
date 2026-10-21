@@ -113,3 +113,20 @@ independent review, normal Git guards and hosted CI remain required. Separate
 push and merge are authorized only after those checks pass. This is not a
 private-test pass, standing policy, mutation exception, research/trading authority
 or permission for any later change.
+
+## Atomic snapshot/retry absence decision — 2026-10-21
+
+The owner authorized a one-time absence-only exception for the exact ten-file
+Atomic candidate at Git tree `77638a7f657490d5605c92a33e8aa0ff62391f80`,
+plus only this appended instruction and
+`docs/operations/2026-10-21-atomic-snapshot-retry-private-suite-exception.md`.
+Verify the record's base, frozen patch and all ten file hashes; independently
+review both software and exception metadata against the recorded authorization.
+No later substantive changes inherit this exception. Documented absence of
+`tests/holdout/` alone is informational and nonblocking; record private coverage
+UNVERIFIED, never PASS. Actual failures, collection errors in a present/nonempty
+suite, other unrunnable checks and all other blocking findings still BLOCK.
+No private source access, denied-command retry, test/guard/threshold/CI weakening,
+seed promotion or publication authority is granted. Fresh independent review,
+every available required gate and normal attestation remain mandatory. Commit,
+push, PR, publication and merge remain on HOLD.

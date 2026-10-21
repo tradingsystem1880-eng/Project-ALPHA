@@ -7,6 +7,8 @@ import json
 import os
 import shutil
 import tempfile
+from collections.abc import Iterator
+from contextlib import ExitStack, contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -67,6 +69,42 @@ def resolve_snapshot_dir(snapshots_root: Path, snapshot_id: str) -> Path:
     return snapshots_root / snapshot_id
 
 
+@contextmanager
+def _stable_snapshot_source(store: ParquetStore, symbol: str) -> Iterator[None]:
+    """Bind copies to original inodes; store writes and rollback replace files atomically."""
+    with ExitStack() as opened:
+        originals: dict[Path, os.stat_result | None] = {}
+        for path in (
+            store._bars_path(symbol),  # noqa: SLF001 -- snapshot/store peers
+            store._actions_path(symbol),  # noqa: SLF001
+            store._provenance_path(symbol),  # noqa: SLF001
+        ):
+            try:
+                stream = opened.enter_context(path.open("rb"))
+            except FileNotFoundError:
+                originals[path] = None
+            else:
+                originals[path] = os.fstat(stream.fileno())
+        try:
+            yield
+        except FileNotFoundError as exc:
+            raise DataError(
+                f"cannot snapshot {symbol!r}: canonical data changed during copy"
+            ) from exc
+        for path, original in originals.items():
+            try:
+                current = path.stat()
+            except FileNotFoundError:
+                current = None
+            if (original is None) != (current is None) or (
+                original is not None
+                and current is not None
+                and not os.path.samestat(original, current)
+            ):
+                raise DataError(f"cannot snapshot {symbol!r}: canonical data changed during copy")
+        store.read_provenance(symbol)  # Reject a promotion still in progress.
+
+
 def _copy_snapshot_files(
     store: ParquetStore,
     staging: Path,
@@ -82,50 +120,51 @@ def _copy_snapshot_files(
     (staging / "provenance").mkdir()
     sym_manifest: dict[str, dict[str, Any]] = {}
     for sym in symbols:
-        bars_src = store._bars_path(sym)  # noqa: SLF001 — snapshot is a peer of the store
-        if not bars_src.exists():
-            raise DataError(f"cannot snapshot {sym!r}: no bars in store")
-        bars_rel = bars_src.relative_to(store.root / "bars")  # preserve slash-symbol subdirs
-        bars_dst = staging / "bars" / bars_rel
-        bars_dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(bars_src, bars_dst)
-        entry: dict[str, Any] = {
-            "bars_sha256": _sha256(bars_dst),
-            "bars_file": f"bars/{bars_rel.as_posix()}",
-        }
-        actions_src = store._actions_path(sym)  # noqa: SLF001
-        if actions_src.exists():
-            actions_rel = actions_src.relative_to(store.root / "actions")
-            actions_dst = staging / "actions" / actions_rel
-            actions_dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(actions_src, actions_dst)
-            entry["actions_sha256"] = _sha256(actions_dst)
-            entry["actions_file"] = f"actions/{actions_rel.as_posix()}"
-        expected = {
-            "source": source,
-            "adapter_version": adapter_version,
-            "parser_version": parser_version,
-        }
-        provenance = store.read_provenance(sym)
-        if provenance is None and source.startswith("ccxt:"):
-            raise DataError(
-                f"cannot snapshot {sym!r} as {source!r}: stored bars have no pull provenance"
-            )
-        if provenance is not None:
-            actual = {name: provenance.get(name) for name in expected}
-            if actual != expected:
+        with _stable_snapshot_source(store, sym):
+            provenance = store.read_provenance(sym)
+            bars_src = store._bars_path(sym)  # noqa: SLF001 — snapshot is a peer of the store
+            if not bars_src.exists():
+                raise DataError(f"cannot snapshot {sym!r}: no bars in store")
+            bars_rel = bars_src.relative_to(store.root / "bars")  # preserve slash-symbol subdirs
+            bars_dst = staging / "bars" / bars_rel
+            bars_dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(bars_src, bars_dst)
+            entry: dict[str, Any] = {
+                "bars_sha256": _sha256(bars_dst),
+                "bars_file": f"bars/{bars_rel.as_posix()}",
+            }
+            actions_src = store._actions_path(sym)  # noqa: SLF001
+            if actions_src.exists():
+                actions_rel = actions_src.relative_to(store.root / "actions")
+                actions_dst = staging / "actions" / actions_rel
+                actions_dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(actions_src, actions_dst)
+                entry["actions_sha256"] = _sha256(actions_dst)
+                entry["actions_file"] = f"actions/{actions_rel.as_posix()}"
+            expected = {
+                "source": source,
+                "adapter_version": adapter_version,
+                "parser_version": parser_version,
+            }
+            if provenance is None and source.startswith("ccxt:"):
                 raise DataError(
-                    f"cannot snapshot {sym!r} as {source!r}: stored pull provenance is "
-                    f"{provenance['source']!r}"
+                    f"cannot snapshot {sym!r} as {source!r}: stored bars have no pull provenance"
                 )
-            provenance_src = store._provenance_path(sym)  # noqa: SLF001 — snapshot/store peers
-            provenance_rel = provenance_src.relative_to(store.root / "provenance")
-            provenance_dst = staging / "provenance" / provenance_rel
-            provenance_dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(provenance_src, provenance_dst)
-            entry["provenance_sha256"] = _sha256(provenance_dst)
-            entry["provenance_file"] = f"provenance/{provenance_rel.as_posix()}"
-        sym_manifest[sym] = entry
+            if provenance is not None:
+                actual = {name: provenance.get(name) for name in expected}
+                if actual != expected:
+                    raise DataError(
+                        f"cannot snapshot {sym!r} as {source!r}: stored pull provenance is "
+                        f"{provenance['source']!r}"
+                    )
+                provenance_src = store._provenance_path(sym)  # noqa: SLF001 — snapshot/store peers
+                provenance_rel = provenance_src.relative_to(store.root / "provenance")
+                provenance_dst = staging / "provenance" / provenance_rel
+                provenance_dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(provenance_src, provenance_dst)
+                entry["provenance_sha256"] = _sha256(provenance_dst)
+                entry["provenance_file"] = f"provenance/{provenance_rel.as_posix()}"
+            sym_manifest[sym] = entry
     return sym_manifest
 
 

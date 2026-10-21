@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import math
@@ -55,8 +56,26 @@ def _publish_directory(staging: Path, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     try:
         os.rename(staging, destination)
-    except FileExistsError as exc:
-        raise DataError(f"immutable ingest artifact already exists at {destination}") from exc
+    except OSError as exc:
+        if exc.errno not in (errno.EEXIST, errno.ENOTEMPTY):
+            raise
+        # A rolled-back promotion retains its evidence. Reuse only identical bytes;
+        # changed canonical input or a changed candidate must never replace that evidence.
+        staged = {path.relative_to(staging) for path in staging.rglob("*")}
+        existing = {path.relative_to(destination) for path in destination.rglob("*")}
+        if staged == existing and all(
+            not (destination / path).is_symlink()
+            and (
+                (staging / path).is_dir() == (destination / path).is_dir()
+                and (
+                    (staging / path).is_dir()
+                    or (staging / path).read_bytes() == (destination / path).read_bytes()
+                )
+            )
+            for path in staged
+        ):
+            return
+        raise DataError(f"immutable ingest artifact conflict at {destination}") from exc
 
 
 def _file_hash(path: Path) -> str:
@@ -458,8 +477,6 @@ def _create_promotion_backup(
         / _safe_segment(provider, label="provider")
         / _safe_segment(receipt_id, label="receipt id")
     )
-    if destination.exists():
-        raise DataError(f"immutable promotion backup already exists at {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(
         tempfile.mkdtemp(prefix=f".{receipt_id}.", suffix=".tmp", dir=destination.parent)
