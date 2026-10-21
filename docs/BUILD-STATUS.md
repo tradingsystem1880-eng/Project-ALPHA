@@ -1578,3 +1578,28 @@ change was removed. The UI also reported the expansion SSD as blocked; this run
 did not inspect physical storage, launch persistence, live providers, broker
 connectivity, the full gate, or the Playwright suite. The 2026-10-18 foundation
 record above remains the historical basis for items not changed by this update.
+
+
+## 2026-10-21 — Atomic snapshot and receipt retry corrections
+
+On the isolated branch based on `b2556c0ede016f99dba687187b6e9f501bedd5cb`, synthetic deterministic
+controls reproduced mixed-generation snapshots accepted by their own hashes and identical-receipt
+retry failures after automatic and explicit rollback. Snapshot copying now holds original peer
+file descriptors per symbol and rejects intervening atomic replacements, including rollback that
+restores identical bytes. Candidate and backup retries reuse only identical retained artifacts;
+conflicts fail through the typed CLI boundary without replacing evidence.
+
+The original 69 focused tests passed before changes. Added controls cover copy boundaries,
+rollback during copying, exact-evidence preservation, conflicting candidate/backup/canonical state,
+CLI exit 2 without traceback and future poison with a discriminating leaky read. Independent review
+found and reproduced the rollback counterexample before the final descriptor-based correction.
+The [audit plan](superpowers/plans/2026-10-21-atomic-snapshot-retry.md) records scope and limits.
+Final full-gate and exact-tree independent-review outcomes are recorded in separate task receipts;
+this entry does not assert those outcomes, private-suite coverage, provider qualification or release
+acceptance. No prior missing-suite exemption applies. No commit or publication is part of this work.
+
+
+The first corrected-tree aggregate attempt passed backend, frontend/browser, literature and Qlib
+and passed Atlas tests, then stopped on stale generated Atlas graph/input/unknowns outputs.
+Their canonical regeneration is part of this change; the failed attempt remains preserved and is
+not aggregate acceptance. Final regenerated-tree results remain in the separate task receipts.

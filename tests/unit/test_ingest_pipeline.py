@@ -2,22 +2,27 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
+from threading import Event, current_thread, main_thread
 from typing import Any, cast
 
 import polars as pl
 import pytest
 
 from alpha_core import ActionType, CorporateAction, DataError
-from alpha_data import pipeline
+from alpha_data import pipeline, snapshot
 from alpha_data.adapters.base import DatasetIdentity, FetchReceipt, FetchResult
 from alpha_data.pipeline import (
+    IngestOutcome,
     promote_quarantined,
     rollback_interrupted_promotion,
     stage_and_promote,
 )
+from alpha_data.source import PointInTimeSource
 from alpha_data.store import ParquetStore
 
 
@@ -93,6 +98,181 @@ def _legacy_store(root: Path) -> ParquetStore:
     store.write_actions("AAPL", [])
     store.write_provenance("AAPL", source="yfinance", adapter_version="1", parser_version="2")
     return store
+
+
+def _immutable_bytes(store: ParquetStore) -> dict[Path, bytes]:
+    return {
+        path: path.read_bytes()
+        for name in ("receipts", "candidates", "promotion-backups")
+        for path in (store.root / name).rglob("*")
+        if path.is_file()
+    }
+
+
+@pytest.mark.parametrize("copy_kind", ["bars", "actions", "provenance"])
+def test_snapshot_cannot_freeze_mixed_promoted_generations(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, copy_kind: str
+) -> None:
+    store = ParquetStore(tmp_path / "store")
+    first = _result([("2026-08-03", 101.0)], start=date(2026, 8, 3), end=date(2026, 8, 3), raw=b"A")
+    second = _result(
+        [("2026-08-03", 102.0)], start=date(2026, 8, 3), end=date(2026, 8, 3), raw=b"B"
+    )
+    assert second.receipt is not None
+    second = replace(
+        second,
+        actions=[
+            CorporateAction(
+                symbol="AAPL", action_type=ActionType.DIVIDEND, ex_date=date(2026, 8, 3), amount=0.5
+            )
+        ],
+        receipt=replace(second.receipt, action_count=1),
+    )
+    stage_and_promote(store, first, authoritative_source="tiingo")
+    paths = [store._bars_path("AAPL"), store._actions_path("AAPL"), store._provenance_path("AAPL")]  # noqa: SLF001
+    generation_a = [path.read_bytes() for path in paths]
+    trigger = paths[["bars", "actions", "provenance"].index(copy_kind)]
+    original_copy = shutil.copy2
+    promoted = False
+
+    def promote_after_copy(source: Path, destination: Path) -> Path:
+        nonlocal promoted
+        copied = original_copy(source, destination)
+        if source == trigger and not promoted:
+            promoted = True
+            stage_and_promote(store, second, authoritative_source="tiingo")
+        return Path(copied)
+
+    monkeypatch.setattr(shutil, "copy2", promote_after_copy)
+    snapshots = tmp_path / "snapshots"
+    try:
+        snapshot.create_snapshot(
+            store,
+            snapshots,
+            "race",
+            ["AAPL"],
+            source="tiingo",
+            adapter_version="1",
+            parser_version="1",
+            created_at=datetime(2026, 8, 4, tzinfo=UTC),
+        )
+    except DataError:
+        assert promoted
+        assert list(snapshots.iterdir()) == []
+        return
+    assert promoted
+    snapshot.verify_snapshot(snapshots / "race")
+    generation_b = [path.read_bytes() for path in paths]
+    frozen = [(snapshots / "race" / path.relative_to(store.root)).read_bytes() for path in paths]
+    assert frozen in (generation_a, generation_b)
+
+
+@pytest.mark.bias_guard
+def test_snapshot_after_promotion_excludes_future_poison(tmp_path: Path) -> None:
+    store = ParquetStore(tmp_path / "store")
+    first = _result(
+        [("2026-08-03", 101.0)], start=date(2026, 8, 3), end=date(2026, 8, 3), raw=b"past"
+    )
+    stage_and_promote(store, first, authoritative_source="tiingo")
+    cutoff = datetime(2026, 8, 3, tzinfo=UTC)
+    baseline = PointInTimeSource(store, actions={}).as_of("AAPL", cutoff)
+    poisoned = _result(
+        [("2026-08-04", 9.9e9)], start=date(2026, 8, 4), end=date(2026, 8, 4), raw=b"future"
+    )
+    stage_and_promote(store, poisoned, authoritative_source="tiingo")
+    snapshot.create_snapshot(
+        store,
+        tmp_path / "snapshots",
+        "poison",
+        ["AAPL"],
+        source="tiingo",
+        adapter_version="1",
+        parser_version="1",
+        created_at=cutoff,
+    )
+    frozen = ParquetStore(tmp_path / "snapshots" / "poison")
+    snapshot.verify_snapshot(frozen.root)
+    source = PointInTimeSource(frozen, actions={})
+    assert source.as_of("AAPL", cutoff) == baseline
+    # Leaky control must observe the future poison; an in-window read must be nonempty.
+    assert len(baseline) == 1
+    assert source.as_of("AAPL", datetime(2026, 8, 4, tzinfo=UTC))[-1].close == 9.9e9
+
+
+def test_snapshot_rejects_rollback_during_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ParquetStore(tmp_path / "store")
+    first = _result([("2026-08-03", 101.0)], start=date(2026, 8, 3), end=date(2026, 8, 3), raw=b"A")
+    second = _result(
+        [("2026-08-03", 101.0)], start=date(2026, 8, 3), end=date(2026, 8, 3), raw=b"B"
+    )
+    assert second.receipt is not None
+    second = replace(
+        second,
+        actions=[
+            CorporateAction(
+                symbol="AAPL", action_type=ActionType.DIVIDEND, ex_date=date(2026, 8, 3), amount=0.5
+            )
+        ],
+        receipt=replace(second.receipt, action_count=1),
+    )
+    stage_and_promote(store, first, authoritative_source="tiingo")
+    paths = [store._bars_path("AAPL"), store._actions_path("AAPL"), store._provenance_path("AAPL")]  # noqa: SLF001
+    before = [path.read_bytes() for path in paths]
+    staged, rollback = Event(), Event()
+    copy = shutil.copy2
+    read_provenance = store.read_provenance
+    promotion: Future[IngestOutcome] | None = None
+
+    def fail_provenance(*args: object, **kwargs: object) -> None:
+        staged.set()
+        assert rollback.wait(10)
+        raise OSError("injected final write failure")
+
+    def read_after_rollback(symbol: str) -> dict[str, object] | None:
+        if current_thread() is main_thread() and staged.is_set():
+            rollback.set()
+            assert promotion is not None
+            with pytest.raises(OSError, match="injected final write failure"):
+                promotion.result(timeout=10)
+        return read_provenance(symbol)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+
+        def copy_during_promotion(source: Path, destination: Path) -> Path:
+            nonlocal promotion
+            copied = copy(source, destination)
+            if source == paths[0]:
+                promotion = pool.submit(
+                    stage_and_promote, store, second, authoritative_source="tiingo"
+                )
+                assert staged.wait(10)
+            return Path(copied)
+
+        monkeypatch.setattr(store, "write_provenance", fail_provenance)
+        monkeypatch.setattr(store, "read_provenance", read_after_rollback)
+        monkeypatch.setattr(shutil, "copy2", copy_during_promotion)
+        try:
+            with pytest.raises(DataError):
+                snapshot.create_snapshot(
+                    store,
+                    tmp_path / "snaps",
+                    "rollback",
+                    ["AAPL"],
+                    source="tiingo",
+                    adapter_version="1",
+                    parser_version="1",
+                    created_at=datetime(2026, 8, 4, tzinfo=UTC),
+                )
+        finally:
+            rollback.set()
+            assert promotion is not None
+            with pytest.raises(OSError, match="injected final write failure"):
+                promotion.result(timeout=10)
+    assert [path.read_bytes() for path in paths] == before
+    assert list((tmp_path / "snaps").iterdir()) == []
+    assert not store.promotion_pending("AAPL")
 
 
 def test_stage_and_promote_merges_corrections_and_writes_v2_provenance(tmp_path: Path) -> None:
@@ -344,6 +524,7 @@ def test_failed_promotion_restores_exact_previous_canonical(
         del symbol, actions
         raise OSError("injected promotion failure")
 
+    write_actions = store.write_actions
     monkeypatch.setattr(store, "write_actions", fail_actions)
     with pytest.raises(OSError, match="injected promotion failure"):
         stage_and_promote(store, result, authoritative_source="tiingo")
@@ -351,6 +532,13 @@ def test_failed_promotion_restores_exact_previous_canonical(
     assert store._bars_path("AAPL").read_bytes() == before_bars  # noqa: SLF001
     assert store._actions_path("AAPL").read_bytes() == before_actions  # noqa: SLF001
     assert store._provenance_path("AAPL").read_bytes() == before_provenance  # noqa: SLF001
+    assert not store.promotion_pending("AAPL")
+    evidence = _immutable_bytes(store)
+    monkeypatch.setattr(store, "write_actions", write_actions)
+    outcome = stage_and_promote(store, result, authoritative_source="tiingo")
+    assert outcome.status == "promoted"
+    assert store.read_bars("AAPL")["close"].to_list() == [100.0, 101.5, 102.0]
+    assert all(path.read_bytes() == content for path, content in evidence.items())
     assert not store.promotion_pending("AAPL")
 
 
@@ -374,6 +562,7 @@ def test_explicit_rollback_recovers_after_interrupted_promotion(
         del args, kwargs
         raise OSError("write failed")
 
+    write_actions = store.write_actions
     monkeypatch.setattr(pipeline, "_restore_promotion_backup", interrupted)
     monkeypatch.setattr(store, "write_actions", fail_write)
     with pytest.raises(OSError, match="simulated process interruption"):
@@ -383,6 +572,46 @@ def test_explicit_rollback_recovers_after_interrupted_promotion(
     monkeypatch.setattr(pipeline, "_restore_promotion_backup", restore)
     rollback_interrupted_promotion(store, symbol="AAPL", acknowledge=True)
     assert store._bars_path("AAPL").read_bytes() == before  # noqa: SLF001
+    assert not store.promotion_pending("AAPL")
+    evidence = _immutable_bytes(store)
+    monkeypatch.setattr(store, "write_actions", write_actions)
+    assert stage_and_promote(store, result, authoritative_source="tiingo").status == "promoted"
+    assert store.read_bars("AAPL")["close"].to_list() == [100.0, 101.5, 102.0]
+    assert all(path.read_bytes() == content for path, content in evidence.items())
+    assert not store.promotion_pending("AAPL")
+
+
+@pytest.mark.parametrize("conflict", ["candidate", "backup", "canonical", "extra"])
+def test_retry_rejects_changed_immutable_evidence_or_canonical(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, conflict: str
+) -> None:
+    store = _legacy_store(tmp_path)
+    result = _result([("2026-08-03", 101.5)], start=date(2026, 8, 3), end=date(2026, 8, 3))
+
+    def fail_actions(*args: object, **kwargs: object) -> None:
+        raise OSError("injected promotion failure")
+
+    with monkeypatch.context() as failure:
+        failure.setattr(store, "write_actions", fail_actions)
+        with pytest.raises(OSError, match="injected promotion failure"):
+            stage_and_promote(store, result, authoritative_source="tiingo")
+    assert result.receipt is not None
+    receipt_id = result.receipt.receipt_id
+    if conflict == "canonical":
+        store.write_provenance("AAPL", source="yfinance", adapter_version="99", parser_version="2")
+    elif conflict == "extra":
+        (tmp_path / "candidates" / "tiingo" / receipt_id / "extra").write_bytes(b"extra")
+    else:
+        relative = "candidates" if conflict == "candidate" else "promotion-backups"
+        filename = "quality.json" if conflict == "candidate" else "manifest.json"
+        path = tmp_path / relative / "tiingo" / receipt_id / filename
+        path.write_bytes(path.read_bytes() + b" ")
+    evidence = _immutable_bytes(store)
+    canonical = store._provenance_path("AAPL").read_bytes()  # noqa: SLF001
+    with pytest.raises(DataError, match="immutable ingest artifact conflict"):
+        stage_and_promote(store, result, authoritative_source="tiingo")
+    assert all(path.read_bytes() == content for path, content in evidence.items())
+    assert store._provenance_path("AAPL").read_bytes() == canonical  # noqa: SLF001
     assert not store.promotion_pending("AAPL")
 
 

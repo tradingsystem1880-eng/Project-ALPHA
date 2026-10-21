@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -8,7 +9,7 @@ from typer.testing import CliRunner
 from alpha_cli import data_cmds
 from alpha_cli.main import app
 from alpha_core import DataError
-from alpha_data.adapters.base import FetchResult
+from alpha_data.adapters.base import DatasetIdentity, FetchReceipt, FetchResult
 from alpha_data.adapters.yfinance_adapter import parse_yfinance_history
 from tests.fixtures.yf_fixtures import aapl_like
 
@@ -125,6 +126,83 @@ def test_pull_fails_loud_on_blocked_source(tmp_path: Path, monkeypatch: pytest.M
     )
     assert r.exit_code == 2
     assert "anti-bot" in r.output and "Traceback" not in r.output
+
+
+def test_receipt_retry_conflict_is_typed_and_preserves_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import hashlib
+
+    from alpha_data import pipeline
+    from alpha_data.store import ParquetStore
+
+    class ReceiptAdapter(_FakeAdapter):
+        def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
+            result = super().fetch(symbol, start, end)
+            identity = DatasetIdentity(
+                symbol=symbol,
+                provider="fake",
+                provider_symbol=symbol,
+                venue="XNAS",
+                asset_class="stock",
+                timeframe="1D",
+                calendar="XNAS",
+                currency="USD",
+                price_basis="raw",
+            )
+            receipt = FetchReceipt.create(
+                identity=identity,
+                requested_start=start,
+                requested_end=end,
+                fetched_at=datetime(2026, 8, 3, tzinfo=UTC),
+                adapter_version="1",
+                parser_version="1",
+                response_sha256=hashlib.sha256(b"synthetic").hexdigest(),
+                response_bytes=9,
+                row_count=result.bars.height,
+                action_count=len(result.actions),
+                request_metadata={},
+            )
+            return replace(result, identity=identity, receipt=receipt, raw_response=b"synthetic")
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(data_cmds, "_ADAPTERS", {"fake": ReceiptAdapter})
+    result = ReceiptAdapter().fetch("AAPL", date(2020, 8, 28), date(2020, 9, 1))
+    store = ParquetStore(tmp_path / "store")
+    write_actions = store.write_actions
+
+    def fail_actions(*args: object, **kwargs: object) -> None:
+        raise OSError("injected promotion failure")
+
+    monkeypatch.setattr(store, "write_actions", fail_actions)
+    with pytest.raises(OSError, match="injected promotion failure"):
+        pipeline.stage_and_promote(store, result, authoritative_source="fake")
+    monkeypatch.setattr(store, "write_actions", write_actions)
+    assert result.receipt is not None
+    quality = (
+        tmp_path / "store" / "candidates" / "fake" / result.receipt.receipt_id / "quality.json"
+    )
+    quality.write_bytes(quality.read_bytes() + b" ")
+    evidence = {path: path.read_bytes() for path in store.root.rglob("*") if path.is_file()}
+    retried = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "AAPL",
+            "--source",
+            "fake",
+            "--start",
+            "2020-08-28",
+            "--end",
+            "2020-09-01",
+        ],
+    )
+    assert retried.exit_code == 2
+    assert "immutable ingest artifact conflict" in retried.output
+    assert "Traceback" not in retried.output
+    assert all(path.read_bytes() == content for path, content in evidence.items())
+    assert not store.promotion_pending("AAPL")
 
 
 def test_pull_rejects_malformed_date(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -33,9 +33,9 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
 - Fail loud on invalid/non-finite/disordered data and degenerate statistics. No swallowed errors.
   Retry WAL SQLITE_BUSY within its existing budget. Polars is default; pandas only at sanctioned
   vendor edges. Keep strict typing.
-- Runs, snapshots, receipts and admitted evidence are immutable and hash-bound. Preserve historical
-  readers/migrations. Seeds and execution fingerprints are deterministic; D0/D1 protocol seeds
-  are frozen, not settings-derived. Reverify reads; retirement preserves bytes.
+- Runs, snapshots, receipts and admitted evidence are immutable and hash-bound. Keep historical
+  readers/migrations. Seeds/execution fingerprints are deterministic; D0/D1 seeds
+  are frozen, not settings-derived. Reverify reads/copy generations; retirement/retries preserve bytes.
 - Research precedes strategy. D1 stays in discovery; owner-approved D2 is one-shot. Promotion
   requires verified evidence and owner decision. Screening and Monte Carlo path risk are not proof of edge.
 - Explicit local owner confirmation (ADR-0038), paper opt-ins, provider/venue/unit boundaries and no-live-capital
