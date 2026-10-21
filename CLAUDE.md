@@ -30,9 +30,9 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
 - All data/strategy reads use point-in-time `as_of`; bias guards poison future data and have leaky
   controls. Decide at close t, fill at open t+1. Corporate actions have knowledge/application clocks;
   dividends are cash at pay_date. Details: [domain contracts](docs/operations/research-platform-contracts.md).
-- Fail loud on invalid/non-finite/disordered data and degenerate statistics. No swallowed errors.
-  Retry WAL SQLITE_BUSY within its existing budget. Polars is default; pandas only at sanctioned
-  vendor edges. Keep strict typing.
+- Reject invalid/non-finite/disordered data and degenerate statistics; never swallow errors.
+  Type Stooq read interruptions. Retry WAL SQLITE_BUSY within budget. Use Polars;
+  pandas only at sanctioned vendor edges. Keep strict typing.
 - Runs, snapshots, receipts and admitted evidence are immutable and hash-bound. Preserve historical
   readers/migrations. Seeds and execution fingerprints are deterministic; D0/D1 protocol seeds
   are frozen, not settings-derived. Reverify reads; retirement preserves bytes.

@@ -1,4 +1,7 @@
+import http.client
 import json
+import urllib.error
+import urllib.request
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -9,10 +12,60 @@ from alpha_cli import data_cmds
 from alpha_cli.main import app
 from alpha_core import DataError
 from alpha_data.adapters.base import FetchResult
+from alpha_data.adapters.stooq_adapter import StooqAdapter
 from alpha_data.adapters.yfinance_adapter import parse_yfinance_history
 from tests.fixtures.yf_fixtures import aapl_like
 
 runner = CliRunner()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        TimeoutError("synthetic timeout"),
+        urllib.error.URLError("synthetic DNS failure"),
+        ConnectionResetError("synthetic reset"),
+        http.client.IncompleteRead(b"partial", 30),
+    ],
+)
+def test_stooq_pull_interrupted_response_is_typed_and_publishes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    class Response:
+        def __enter__(self) -> "Response":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            pass
+
+        def read(self) -> bytes:
+            raise error
+
+    class Opener:
+        def open(self, request: urllib.request.Request, timeout: int) -> Response:
+            return Response()
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(data_cmds, "_ADAPTERS", {"stooq": StooqAdapter})
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *args: Opener())
+    result = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "spy.us",
+            "--source",
+            "stooq",
+            "--start",
+            "2020-01-01",
+            "--end",
+            "2020-02-01",
+        ],
+    )
+    assert result.exit_code == 2, result.output
+    assert "Stooq transport failed" in result.output
+    assert "Traceback" not in result.output
+    assert not list(tmp_path.rglob("*"))
 
 
 class _BlockedAdapter:

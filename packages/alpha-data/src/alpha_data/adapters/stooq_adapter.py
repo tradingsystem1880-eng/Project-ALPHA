@@ -111,6 +111,7 @@ def _fetch_stooq_text(url: str) -> str:
     reload carrying the auth cookie. Returns the raw response body; the caller decides whether the
     body is CSV, "No data", or a still-blocked response and fails loud accordingly.
     """
+    import http.client  # noqa: PLC0415
     import http.cookiejar  # noqa: PLC0415
     import re  # noqa: PLC0415
     import urllib.error  # noqa: PLC0415
@@ -135,7 +136,12 @@ def _fetch_stooq_text(url: str) -> str:
                 f"Stooq anti-bot/transport rejected the request with HTTP {exc.code}; "
                 "use --source yfinance for equities/ETFs"
             ) from exc
-        except (urllib.error.URLError, TimeoutError) as exc:
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            ConnectionError,
+            http.client.IncompleteRead,
+        ) as exc:
             raise DataError(f"Stooq transport failed: {exc}") from exc
         return body
 

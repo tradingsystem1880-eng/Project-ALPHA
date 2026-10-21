@@ -170,6 +170,16 @@ That is intentional; push and open the PR from the main session, not from a fork
 
 ## Environment gotchas
 
+**Correction — 2026-10-21:** The branch-only harness advice below is a preserved
+2026-08-19 snapshot and is superseded. Accepted main
+`b2556c0ede016f99dba687187b6e9f501bedd5cb` tracks `.claude/settings.json` and
+`scripts/claude_hooks.py`; staying on the historical branch is no longer required
+by that absence claim. File presence does not establish installed or active hooks,
+workspace trust, permissions, or local readiness. Follow the current
+[operating manual](../../CLAUDE.md) and [harness guide](claude-code-harness.md)
+for the current checkout's setup and verification requirements. Other machine
+observations below retain their original inspection date.
+
 - **Worktrees do not inherit `.env` or `data/`.** `AlphaSettings` reads `env_file=".env"`
   relative to the current directory, so a worktree reports zero configured providers and
   `data_dir exists: false` even when the main checkout at `~/Desktop/Project-ALPHA` is fully set

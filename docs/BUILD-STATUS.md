@@ -1578,3 +1578,22 @@ change was removed. The UI also reported the expansion SSD as blocked; this run
 did not inspect physical storage, launch persistence, live providers, broker
 connectivity, the full gate, or the Playwright suite. The 2026-10-18 foundation
 record above remains the historical basis for items not changed by this update.
+
+## 2026-10-21 — Stooq interrupted-response error boundary candidate
+
+An offline probe through the real Stooq adapter and `data pull` on accepted main
+`b2556c0ede016f99dba687187b6e9f501bedd5cb` reproduced connection-reset and truncated-body
+exceptions escaping with exit 1 and no diagnostic. Timeout and URL-error controls
+already produced typed exit-2 errors. The narrow candidate translates connection
+errors and incomplete HTTP reads to chained `DataError`, preserving the existing
+HTTP-rejection message. It does not retry, parse partial bytes, fall back to another
+provider or publish partial history. Public adapter/CLI regression tests cover the
+interrupted reads, original cause, response cleanup and absence of publication.
+Fresh focused/full validation and independent exact-diff review remain required;
+this offline reproduction establishes neither live-provider acceptance nor release
+acceptance. Original probe and failed test attempts remain in private task evidence.
+
+A separate dated correction in the owner-actions register supersedes its preserved
+August 19 branch-only harness advice: accepted main tracks the two named harness
+files. Their presence does not establish hook installation, trust, permissions or
+local readiness. The old inspection date and historical text remain unchanged.
