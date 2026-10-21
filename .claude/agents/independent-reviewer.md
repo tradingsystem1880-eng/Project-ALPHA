@@ -113,3 +113,30 @@ independent review, normal Git guards and hosted CI remain required. Separate
 push and merge are authorized only after those checks pass. This is not a
 private-test pass, standing policy, mutation exception, research/trading authority
 or permission for any later change.
+
+## Stooq candidate: one-time absent-private-suite decision (2026-10-21)
+
+The owner explicitly approved the candidate-specific decision in
+`docs/operations/2026-10-21-stooq-private-suite-absence-decision.md`, which records
+exact consent, base, original tree and all nine file hashes. This exception covers
+only those unchanged Stooq/navigation candidate bytes plus that decision record
+and this appended instruction; it covers no later substantive change or separate
+snapshot/rollback candidate. The prior formal BLOCK remains correct history.
+
+Only documented ABSENCE of the original private `tests/holdout/` suite is an
+informational, nonblocking finding for this candidate; private coverage remains
+UNVERIFIED. Use permitted path metadata to establish absence; never read private
+source or rerun a known-absent/denied private command merely to record absence.
+If the genuine suite is available and execution is permitted, execute it normally.
+Actual failures, collection errors (including nonempty-suite errors), any other
+unavailable required check or other blocking finding still require BLOCK.
+
+Fresh independent review must cover the software/navigation diff AND these
+control-plane additions against the exact owner authorization, independently run
+all available covering tests, and bind a genuine verdict to the final staged tree,
+scoped diff and files. The author cannot self-approve. Every other required gate
+and normal attestation/guard remains unchanged; no test, threshold, exclusion,
+timeout, CI, security or runtime control may be weakened. No private-source
+access/edit/copy/transfer, seed promotion, fabricated test, override, standing
+exception, later-change permission, commit/push/publication or merge authority is
+granted. Preserve the prior BLOCK, original manifest and recovery evidence.
