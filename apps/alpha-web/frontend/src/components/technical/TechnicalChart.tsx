@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import type { Candle, ChartAnnotation, ChartOverlays } from '../../api/types'
 import type { EvidenceMarker } from '../../panels/v3Models'
 import type { ChartControls } from '../../context/chartControls'
@@ -54,6 +55,18 @@ export function TechnicalChart({ bars, title, styleName, evidence = EMPTY, annot
     header.current.dataset.tone = tone
     header.current.textContent = `${barDate(bar.t, intraday)}  Open ${displayNumber(bar.o, decimals)}  High ${displayNumber(bar.h, decimals)}  Low ${displayNumber(bar.l, decimals)}  Close ${displayNumber(bar.c, decimals)}  Volume ${groupedInteger(bar.v)}  Chg ${change === null ? '—' : `${change > 0 ? '▲' : change < 0 ? '▼' : ''}${signed(change, decimals)} (${changePct === null ? '—' : `${signed(changePct, 2)}%`})`}`
   }
+  const inspectKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return
+    const action = event.key === 'ArrowLeft' ? -1
+      : event.key === 'ArrowRight' ? 1
+        : event.key === 'Home' ? 'first'
+          : event.key === 'End' ? 'last'
+            : event.key === 'Escape' ? 'clear'
+              : null
+    if (action === null) return
+    event.preventDefault()
+    controller.current?.navigate(action)
+  }
 
   // Composition: bars, studies, annotations and style rebuild the panel stack; the visible UTC
   // window survives the rebuild. Evidence, selection and toolbar controls update in place.
@@ -62,6 +75,8 @@ export function TechnicalChart({ bars, title, styleName, evidence = EMPTY, annot
     let live = true
     const previous = controller.current?.visibleUTC() ?? windowRef.current
     windowRef.current = previous
+    // A study/style recomposition destroys the old cursor. Keep its readout from appearing active.
+    writeHeader(null)
     controller.current?.destroy(); controller.current = null
     setReady(false); setError(null)
     import('./technicalRenderer').then(async ({ mountTechnicalChart }) => {
@@ -118,6 +133,14 @@ export function TechnicalChart({ bars, title, styleName, evidence = EMPTY, annot
       </span>
     </div>
     {error ? <p role="alert">Technical chart unavailable: {error}</p> : null}
-    <div className="technical-host" ref={host} role="group" aria-label={`Technical price chart ${title}; observation-spaced UTC time axis; native quote units. The OHLCV table below has the same bars.`} />
+    <div
+      className="technical-host"
+      ref={host}
+      role="group"
+      tabIndex={ready ? 0 : -1}
+      aria-keyshortcuts="ArrowLeft ArrowRight Home End Escape"
+      aria-label={`Technical price chart ${title}; observation-spaced UTC time axis; native quote units. Use Left and Right to inspect visible bars, Home and End for the visible range limits, Escape to clear, or tap a bar. The OHLCV table below has the same bars.`}
+      onKeyDown={inspectKey}
+    />
   </div>
 }
