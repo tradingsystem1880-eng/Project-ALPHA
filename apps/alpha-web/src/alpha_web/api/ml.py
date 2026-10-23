@@ -172,6 +172,7 @@ type MlExperimentContract = MlExperimentContractV1 | MlExperimentContractV2
 
 class MlWorkerResult(StrictModel):
     status: Literal["succeeded"]
+    membership_status: Literal["current_membership_warning", "declared_unverified"]
     worker_kind: Literal["fake", "qlib"]
     worker_implementation_version: str
     prediction_rows: int = Field(ge=1)
@@ -183,6 +184,7 @@ class MlWorkerResult(StrictModel):
 class MlExchangeSummary(StrictModel):
     exchange_id: OpaqueId
     status: Literal["empty", "prepared", "trained", "replay_handoff_prepared"]
+    membership_status: Literal["current_membership_warning", "declared_unverified"] | None
     config_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     snapshot_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     worker_kind: Literal["fake", "qlib"] | None
@@ -245,6 +247,7 @@ class MlEvaluationScore(StrictModel):
 class MlEvaluation(StrictModel):
     schema_version: Literal[1]
     authority: Literal["diagnostic_only"]
+    membership_status: Literal["current_membership_warning", "declared_unverified"]
     rows: int
     symbols: int
     targets: int
@@ -368,6 +371,7 @@ class MlTearSheet(StrictModel):
     exchange_id: OpaqueId
     authority: str
     label: str
+    membership_status: Literal["current_membership_warning", "declared_unverified"] | None
     counterfactual_refit: bool
     versions: MlDiagnosticVersions | None
     feature_recipe: MlDiagnosticFeatureRecipe | None

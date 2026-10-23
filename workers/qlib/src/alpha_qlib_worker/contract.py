@@ -400,6 +400,11 @@ def validate_request(exchange_dir: Path) -> WorkerRequest:
         _fail("unsupported universe_membership")
     if membership == "current_membership" and (not isinstance(warning, str) or not warning.strip()):
         _fail("current membership requires a permanent survivorship warning")
+    if membership == "point_in_time":
+        _fail(
+            "point_in_time membership is declared but unverified; isolated worker execution is "
+            "disabled"
+        )
     return WorkerRequest(
         payload=request,
         panel=panel,

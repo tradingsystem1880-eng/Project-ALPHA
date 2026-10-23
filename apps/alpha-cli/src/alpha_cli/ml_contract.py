@@ -150,6 +150,13 @@ class ValidatedRequest:
     universe: tuple[str, ...]
     sessions: tuple[datetime, ...]
 
+    @property
+    def membership_status(self) -> str:
+        """Describe the request's membership claim without upgrading its evidence."""
+        if self.request["universe_membership"] == "point_in_time":
+            return "declared_unverified"
+        return "current_membership_warning"
+
 
 @dataclass(frozen=True)
 class ValidatedResult:
@@ -654,6 +661,12 @@ def prepare_exchange(
         raise MLContractError(f"panel source must be a regular Parquet file: {panel_path}")
     draft = _load_json(spec_path, canonical=False)
     _require_exact_keys(draft, _DRAFT_FIELDS, "experiment spec")
+    if draft.get("universe_membership") == "point_in_time":
+        raise MLContractError(
+            "point_in_time is unsupported for new requests: schema versions 1 and 2 do not "
+            "carry a membership schedule; use current_membership only if that is the intended "
+            "universe and retain its survivorship warning"
+        )
     panel = _read_parquet(panel_path, "panel source")
     request = copy.deepcopy(draft)
     request["panel"] = {
@@ -691,7 +704,10 @@ def prepare_exchange(
 
 
 def validate_request_bundle(
-    exchange_dir: Path, *, expected_input_anchor: InputAnchor | None = None
+    exchange_dir: Path,
+    *,
+    expected_input_anchor: InputAnchor | None = None,
+    for_execution: bool = False,
 ) -> ValidatedRequest:
     exchange_dir = Path(exchange_dir)
     _validate_portable_files(exchange_dir)
@@ -704,6 +720,11 @@ def validate_request_bundle(
     ):
         raise MLContractError("panel hash does not match panel.parquet")
     validated = _validate_request_payload(request, panel)
+    if for_execution and validated.membership_status == "declared_unverified":
+        raise MLContractError(
+            "point_in_time membership is declared but unverified; this frozen request is "
+            "inspection-only and cannot be executed"
+        )
     input_anchor = validate_input_anchor(exchange_dir)
     if expected_input_anchor is not None and input_anchor != expected_input_anchor:
         raise MLContractError("ALPHA input anchor changed after worker launch")
@@ -1001,9 +1022,11 @@ def evaluate_result_bundle(exchange_dir: Path) -> dict[str, Any]:
     score_max = _as_finite_float(scores.max(), "prediction score maximum")
     score_mean = _as_finite_float(scores.mean(), "prediction score mean")
     score_std = _as_finite_float(scores.std(ddof=0), "prediction score standard deviation")
+    legacy_membership = validated.request.membership_status == "declared_unverified"
     return {
         "schema_version": validated.request.request["schema_version"],
         "authority": "diagnostic_only",
+        "membership_status": validated.request.membership_status,
         "rows": validated.predictions.height,
         "symbols": validated.predictions.get_column("symbol").n_unique(),
         "targets": validated.predictions.get_column("target_ts").n_unique(),
@@ -1017,11 +1040,18 @@ def evaluate_result_bundle(exchange_dir: Path) -> dict[str, Any]:
         "config_hash": validated.request.request["config_hash"],
         "worker_lock_hash": validated.request.request["worker_lock_hash"],
         "counterfactual_refit": False,
-        "label": "OOS prediction contract validated — canonical ALPHA replay pending",
+        "label": (
+            "OOS predictions validated; point_in_time membership is declared but unverified"
+            if legacy_membership
+            else "OOS prediction contract validated — canonical ALPHA replay pending"
+        ),
         "diagnostics": validated.result["diagnostics"],
         "next_required_step": (
-            "canonical ALPHA replay: run `alpha ml replay EXCHANGE`; counterfactual refit remains "
-            "required for null verdicts"
+            "Frozen result is inspection-only because point_in_time membership is unverified; "
+            "training and replay are disabled"
+            if legacy_membership
+            else "canonical ALPHA replay: run `alpha ml replay EXCHANGE`; counterfactual refit "
+            "remains required for null verdicts"
         ),
     }
 
@@ -1034,6 +1064,11 @@ def replay_signal_frame(exchange_dir: Path) -> pl.DataFrame:
     explicit while making every intended position inspectable and hashable.
     """
     validated = validate_result_bundle(exchange_dir)
+    if validated.request.membership_status == "declared_unverified":
+        raise MLContractError(
+            "point_in_time membership is declared but unverified; replay-signal generation is "
+            "disabled for this frozen result"
+        )
     rows: list[dict[str, Any]] = []
     predictions = validated.predictions.filter(pl.col("split") == "test")
     for key, cross_section in predictions.group_by(

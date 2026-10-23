@@ -11,7 +11,7 @@ import polars as pl
 import pytest
 
 from alpha_cli.control_store import ControlStore
-from alpha_cli.ml_contract import MIN_ALIGNED_SESSIONS, MIN_SYMBOLS, PANEL_COLUMNS
+from alpha_cli.ml_contract import MIN_ALIGNED_SESSIONS, MIN_SYMBOLS, PANEL_COLUMNS, MLContractError
 from alpha_cli.ml_input import _draft_spec, _folds, export_project_input
 from alpha_core import DataError
 from alpha_data.snapshot import create_snapshot, snapshot_manifest_hash
@@ -19,7 +19,9 @@ from alpha_data.store import ParquetStore
 from tests.fixtures.control_store_fixtures import mark_project_as_migrated_legacy
 
 
-def _project_snapshot(tmp_path: Path) -> tuple[str, str, list[str]]:
+def _project_snapshot(
+    tmp_path: Path, *, universe_membership: str = "current_membership"
+) -> tuple[str, str, list[str]]:
     symbols = [f"S{index:02d}" for index in range(MIN_SYMBOLS)]
     sessions = [
         datetime(2020, 1, 2, tzinfo=UTC) + timedelta(days=index)
@@ -74,7 +76,12 @@ def _project_snapshot(tmp_path: Path) -> tuple[str, str, list[str]]:
         split_policy={"train": 504, "test": 63, "purge": 5, "embargo": 5},
         costs={"fee_bps": 1.0, "slippage_bps": 2.0},
         seeds={"master": 7},
-        stage_config={"ml": {"validation_sessions": 120}},
+        stage_config={
+            "ml": {
+                "validation_sessions": 120,
+                "universe_membership": universe_membership,
+            }
+        },
     )
     return str(project["project_id"]), str(experiment["experiment_id"]), symbols
 
@@ -111,6 +118,24 @@ def test_export_project_input_is_snapshot_bound_aligned_and_worker_validated(
     assert summary["sessions"] == MIN_ALIGNED_SESSIONS
     assert summary["symbols"] == MIN_SYMBOLS
     assert summary["worker_contract_validated"] is True
+
+
+def test_export_project_input_rejects_unscheduled_point_in_time_without_publishing(
+    tmp_path: Path,
+) -> None:
+    project_id, experiment_id, _ = _project_snapshot(tmp_path, universe_membership="point_in_time")
+    output = tmp_path / "control" / "ml" / "inputs" / ("b" * 32)
+
+    with pytest.raises(MLContractError, match="point_in_time.*membership schedule"):
+        export_project_input(
+            data_dir=tmp_path,
+            project_id=project_id,
+            experiment_id=experiment_id,
+            output_dir=output,
+        )
+
+    assert not output.exists()
+    assert not list(output.parent.glob(f".{output.name}.*.tmp"))
 
 
 def test_zero_configured_split_buffers_resolve_to_the_label_horizon() -> None:

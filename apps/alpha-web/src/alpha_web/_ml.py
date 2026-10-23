@@ -229,6 +229,19 @@ def _contract(request: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _declared_membership_status(request: dict[str, Any] | None) -> str | None:
+    """Describe the saved membership claim without treating it as schedule evidence."""
+    if request is None:
+        return None
+    membership = request.get("universe_membership")
+    if membership == "point_in_time":
+        return "declared_unverified"
+    warning = request.get("survivorship_warning")
+    if membership == "current_membership" and isinstance(warning, str) and warning.strip():
+        return "current_membership_warning"
+    return None
+
+
 def _exchange_summary(exchange_id: str, path: Path) -> dict[str, Any]:
     request_path = path / "request.json"
     result_path = path / "result.json"
@@ -244,6 +257,7 @@ def _exchange_summary(exchange_id: str, path: Path) -> dict[str, Any]:
     return {
         "exchange_id": exchange_id,
         "status": status,
+        "membership_status": _declared_membership_status(request),
         "config_hash": None if request is None else request.get("config_hash"),
         "snapshot_hash": None if request is None else request.get("snapshot_hash"),
         "worker_kind": (
@@ -278,12 +292,19 @@ def exchange_detail(exchange_id: str, *, data_dir: Path) -> dict[str, Any]:
     result_path = path / "result.json"
     result_summary: dict[str, Any] | None = None
     if result_path.is_file():
-        _run_json(["ml", "import", str(path), "--json"], data_dir=data_dir)
+        imported = _object(
+            _run_json(["ml", "import", str(path), "--json"], data_dir=data_dir),
+            "ML import",
+        )
+        membership_status = imported.get("membership_status")
+        if membership_status not in {"current_membership_warning", "declared_unverified"}:
+            raise MlError("ML import omitted a valid membership status")
         result = _json_object(result_path, "ML result")
         worker = _object(result.get("worker"), "worker")
         predictions = _object(result.get("predictions"), "predictions")
         result_summary = {
             "status": result.get("status"),
+            "membership_status": membership_status,
             "worker_kind": worker.get("kind"),
             "worker_implementation_version": worker.get("implementation_version"),
             "prediction_rows": predictions.get("rows"),
@@ -378,11 +399,19 @@ def exchange_tearsheet(
     path = _exchange_dir(exchange_id, data_dir=data_dir)
     result_path = path / "result.json"
     if not result_path.is_file():
+        request_path = path / "request.json"
+        request = _json_object(request_path, "ML request") if request_path.is_file() else None
+        membership_status = _declared_membership_status(request)
         return {
             "available": False,
             "exchange_id": exchange_id,
             "authority": "unavailable",
-            "label": "Worker result is not available",
+            "label": (
+                "Worker result is unavailable; point_in_time membership is declared but unverified"
+                if membership_status == "declared_unverified"
+                else "Worker result is not available"
+            ),
+            "membership_status": membership_status,
             "counterfactual_refit": False,
             "versions": None,
             "feature_recipe": None,
@@ -400,13 +429,25 @@ def exchange_tearsheet(
             "timeline_has_more": False,
         }
     evaluation = evaluate_exchange(exchange_id, data_dir=data_dir)
+    membership_status = evaluation.get("membership_status")
+    if membership_status not in {"current_membership_warning", "declared_unverified"}:
+        raise MlError("ML evaluation omitted a valid membership status")
+    evaluation_label = evaluation.get("label")
+    if not isinstance(evaluation_label, str):
+        raise MlError("ML evaluation omitted its label")
+    unverified_membership = membership_status == "declared_unverified"
     diagnostics = _object(evaluation.get("diagnostics"), "worker diagnostics")
     if diagnostics.get("authority") != "qlib_diagnostic_only":
         return {
             "available": False,
             "exchange_id": exchange_id,
             "authority": "diagnostic_unavailable",
-            "label": "Typed Qlib diagnostics are unavailable for this worker mode",
+            "label": (
+                evaluation_label
+                if unverified_membership
+                else "Typed Qlib diagnostics are unavailable for this worker mode"
+            ),
+            "membership_status": membership_status,
             "counterfactual_refit": False,
             "versions": None,
             "feature_recipe": None,
@@ -452,7 +493,8 @@ def exchange_tearsheet(
         "available": True,
         "exchange_id": exchange_id,
         "authority": diagnostics.get("authority"),
-        "label": diagnostics.get("label"),
+        "label": evaluation_label if unverified_membership else diagnostics.get("label"),
+        "membership_status": membership_status,
         "counterfactual_refit": diagnostics.get("counterfactual_refit"),
         "versions": diagnostics.get("versions"),
         "feature_recipe": diagnostics.get("feature_recipe"),

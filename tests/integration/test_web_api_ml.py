@@ -228,6 +228,7 @@ def test_worker_result_route_never_exposes_a_model_object(
         "exchange_result",
         lambda *args, **kwargs: {
             "status": "succeeded",
+            "membership_status": "current_membership_warning",
             "worker_kind": "qlib",
             "worker_implementation_version": "1.0.0",
             "prediction_rows": 2500,
@@ -242,6 +243,7 @@ def test_worker_result_route_never_exposes_a_model_object(
     assert response.status_code == 200
     assert set(response.json()) == {
         "status",
+        "membership_status",
         "worker_kind",
         "worker_implementation_version",
         "prediction_rows",

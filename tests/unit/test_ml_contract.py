@@ -11,6 +11,7 @@ from typing import Any
 import polars as pl
 import pytest
 
+from alpha_cli.ml_cmds import import_result
 from alpha_cli.ml_contract import (
     ENSEMBLE_DIAGNOSTIC_COLUMNS,
     INPUT_ANCHOR_FILENAME,
@@ -73,8 +74,8 @@ def _draft(
         "schema_version": 1,
         "snapshot_hash": "a" * 64,
         "universe": resolved_symbols,
-        "universe_membership": "point_in_time",
-        "survivorship_warning": None,
+        "universe_membership": "current_membership",
+        "survivorship_warning": "Current membership; survivorship-biased.",
         "feature_recipe": {"name": "alpha158", "version": 1, "parameters": {}},
         "label_recipe": {
             "name": "next_session_open_to_open",
@@ -193,6 +194,38 @@ def _write_result(
     return result
 
 
+def _legacy_point_in_time_result(
+    tmp_path: Path,
+) -> tuple[Path, dict[str, Any], pl.DataFrame]:
+    panel = _panel()
+    exchange = tmp_path / "legacy-exchange"
+    exchange.mkdir()
+    panel_path = exchange / "panel.parquet"
+    panel.write_parquet(panel_path)
+    request = _draft()
+    request["universe_membership"] = "point_in_time"
+    request["survivorship_warning"] = None
+    request["panel"] = {
+        "path": "panel.parquet",
+        "sha256": sha256_file(panel_path),
+        "rows": panel.height,
+    }
+    request["config_hash"] = compute_config_hash(request)
+    request_path = exchange / "request.json"
+    request_path.write_bytes(canonical_json_bytes(request))
+    (exchange / INPUT_ANCHOR_FILENAME).write_bytes(
+        canonical_json_bytes(
+            {
+                "schema_version": request["schema_version"],
+                "request_sha256": sha256_file(request_path),
+                "panel_sha256": sha256_file(panel_path),
+            }
+        )
+    )
+    _write_result(exchange, request, _prediction_frame(request, panel))
+    return exchange, request, panel
+
+
 def test_prepare_writes_canonical_validated_immutable_request(tmp_path: Path) -> None:
     exchange, request, _ = _prepare(tmp_path)
 
@@ -306,7 +339,7 @@ def test_prepare_enforces_starter_experiment_minimums(
 
 def test_current_membership_requires_permanent_survivorship_warning(tmp_path: Path) -> None:
     draft = _draft()
-    draft["universe_membership"] = "current_membership"
+    draft["survivorship_warning"] = None
     panel_path = tmp_path / "panel.parquet"
     _panel().write_parquet(panel_path)
     spec_path = tmp_path / "spec.json"
@@ -314,6 +347,46 @@ def test_current_membership_requires_permanent_survivorship_warning(tmp_path: Pa
 
     with pytest.raises(MLContractError, match="survivorship_warning"):
         prepare_exchange(spec_path, panel_path, tmp_path / "exchange")
+
+
+def test_current_membership_with_warning_remains_preparable(tmp_path: Path) -> None:
+    draft = _draft()
+    panel_path = tmp_path / "panel.parquet"
+    _panel().write_parquet(panel_path)
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(draft), encoding="utf-8")
+
+    request = prepare_exchange(spec_path, panel_path, tmp_path / "exchange")
+
+    assert request["universe_membership"] == "current_membership"
+    assert request["survivorship_warning"] == "Current membership; survivorship-biased."
+
+
+@pytest.mark.parametrize(
+    ("schema_version", "model"),
+    [
+        (1, {"name": "lightgbm", "parameters": {"num_leaves": 31}}),
+        (2, {"name": "rank_ensemble_v1", "parameters": {"num_leaves": 31}}),
+    ],
+)
+def test_prepare_rejects_point_in_time_without_membership_schedule(
+    tmp_path: Path, schema_version: int, model: dict[str, object]
+) -> None:
+    draft = _draft()
+    draft["schema_version"] = schema_version
+    draft["model"] = model
+    draft["universe_membership"] = "point_in_time"
+    draft["survivorship_warning"] = None
+    panel_path = tmp_path / "panel.parquet"
+    _panel().write_parquet(panel_path)
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(draft), encoding="utf-8")
+    exchange = tmp_path / "exchange"
+
+    with pytest.raises(MLContractError, match="point_in_time.*membership schedule"):
+        prepare_exchange(spec_path, panel_path, exchange)
+
+    assert not exchange.exists()
 
 
 def test_prepare_rejects_recipe_drift_and_unbounded_model_parameters(
@@ -469,6 +542,36 @@ def test_valid_result_is_repeatably_importable_and_evaluable(tmp_path: Path) -> 
     assert evaluation["symbols"] == MIN_SYMBOLS
     assert evaluation["authority"] == "diagnostic_only"
     assert "ALPHA replay" in evaluation["next_required_step"]
+
+
+def test_legacy_point_in_time_result_is_inspectable_but_not_executable(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    exchange, _, _ = _legacy_point_in_time_result(tmp_path)
+    immutable_files = (
+        INPUT_ANCHOR_FILENAME,
+        "panel.parquet",
+        "request.json",
+        "predictions.parquet",
+        "result.json",
+    )
+    hashes_before = {name: sha256_file(exchange / name) for name in immutable_files}
+
+    inspected = validate_result_bundle(exchange)
+    assert inspected.request.membership_status == "declared_unverified"
+    import_result(exchange, as_json=True)
+    imported = json.loads(capsys.readouterr().out)
+    assert imported["membership_status"] == "declared_unverified"
+    assert "inspection-only" in imported["next_required_step"]
+    evaluation = evaluate_result_bundle(exchange)
+    assert "declared but unverified" in evaluation["label"]
+    assert "inspection-only" in evaluation["next_required_step"]
+    with pytest.raises(MLContractError, match="declared but unverified.*cannot be executed"):
+        validate_request_bundle(exchange, for_execution=True)
+    with pytest.raises(MLContractError, match="replay-signal generation is disabled"):
+        replay_signal_frame(exchange)
+
+    assert {name: sha256_file(exchange / name) for name in immutable_files} == hashes_before
 
 
 def test_result_rejects_prediction_without_a_following_open(tmp_path: Path) -> None:

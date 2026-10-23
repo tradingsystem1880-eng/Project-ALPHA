@@ -18,6 +18,8 @@ current-status paragraph, which is maintained there and may be newer than the co
 below. With ADR-0027/0028, that paragraph takes precedence over the dated narratives
 below wherever they conflict. Append new delivery records HERE.
 
+**2026-10-23 local candidate — unscheduled ML membership guard:** On main `99f2d472dd4511b446e1198ae80201e7207d089d`, schema versions 1 and 2 could accept `point_in_time` without a membership schedule. This local protective slice rejects that declaration at new export/preparation, retains `current_membership` only with its visible warning, and leaves historical artifacts byte-identical and inspectable with a `declared_unverified` status carried through CLI and web result/evaluation/tear-sheet projections. Existing frozen unscheduled PIT inputs cannot be trained or replayed by ALPHA/Qlib. No promotion gate changed; no schedule-v2 or date-varying model support is claimed. Focused synthetic contract, exporter, CLI, worker and web response tests passed; independent review approved the guard and read-only web projection. The full gate was not run, and this patch is not committed or merged.
+
 **Current research-program status (2026-08-11):** R1–R6 are implemented and integrated, and the
 scientific-authority hardening in ADR-0027 is complete. The private local implementation is
 complete; production, distribution, sale, hosting, and multi-user readiness are permanently out of
