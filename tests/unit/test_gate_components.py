@@ -193,6 +193,43 @@ def test_component_failure_overwrites_old_success(
     assert receipt is not None and receipt["ok"] is False
 
 
+def test_empty_component_definition_cannot_be_passed_or_stamped_full(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(gate_components, "component_steps", lambda root, name: [])
+    monkeypatch.setattr(
+        gate,
+        "_env_runner",
+        lambda *a, **kw: pytest.fail("an empty component must not run a command"),
+    )
+    gate.write_stamp(repo, "full", steps=[], duration=0)
+
+    assert gate_components.run_full(repo) == 1
+    assert not gate.stamp_is_valid(repo, "full")
+    receipt = gate.read_json(repo / gate.STATE_DIR / "component-backend.json")
+    assert receipt is not None
+    assert receipt["status"] == "failed"
+    assert receipt["ok"] is False
+    assert receipt["stable_tree"] is True
+    assert receipt["steps"] == []
+
+
+def test_empty_component_receipt_cannot_match() -> None:
+    root = Path.cwd()
+    receipt = {
+        "schema_version": 1,
+        "component": "literature",
+        "tree_hash": "same-tree",
+        "definition_hash": gate_components._steps_hash(root, []),
+        "status": "passed",
+        "ok": True,
+        "stable_tree": True,
+        "steps": [],
+    }
+
+    assert not gate_components._receipt_matches(root, "literature", [], "same-tree", receipt)
+
+
 def test_change_selection_includes_committed_and_untracked(repo: Path) -> None:
     base = git(repo, "rev-parse", "HEAD").strip()
     (repo / "committed.py").write_text("x = 1\n")

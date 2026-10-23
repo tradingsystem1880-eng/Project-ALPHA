@@ -51,9 +51,9 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
 
 - Full (size guard): `uv run python scripts/gate.py full`.
 - Components: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
-  `literature`, `qlib`, `atlas`, `eval`); full requires all.
-- Discovery: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;
-  `alpha info procedures --json`. Default catalog remains launch-form compatible.
+  `literature`, `qlib`, `atlas`, `eval`); empty steps fail; full needs all.
+- Discover: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;
+  `alpha info procedures --json`. Catalog is launch-form compatible.
 - Install: `uv sync --locked`; cloud: [README](README.md).
 - Tests: `uv run pytest -q -m "not network"`; bias: `uv run pytest -q -m bias_guard`.
   Gate owns Linux pytest; build before browsers.
