@@ -7498,6 +7498,11 @@ export interface components {
             folds: number[];
             /** Label */
             label: string;
+            /**
+             * Membership Status
+             * @enum {string}
+             */
+            membership_status: "current_membership_warning" | "declared_unverified";
             /** Next Required Step */
             next_required_step: string;
             /** Rows */
@@ -7537,6 +7542,8 @@ export interface components {
             diagnostic_only: boolean | null;
             /** Exchange Id */
             exchange_id: string;
+            /** Membership Status */
+            membership_status: ("current_membership_warning" | "declared_unverified") | null;
             /** Prediction Rows */
             prediction_rows: number | null;
             result: components["schemas"]["MlWorkerResult"] | null;
@@ -7573,6 +7580,8 @@ export interface components {
             diagnostic_only: boolean | null;
             /** Exchange Id */
             exchange_id: string;
+            /** Membership Status */
+            membership_status: ("current_membership_warning" | "declared_unverified") | null;
             /** Prediction Rows */
             prediction_rows: number | null;
             /** Snapshot Hash */
@@ -8314,6 +8323,8 @@ export interface components {
             /** Label */
             label: string;
             label_recipe: components["schemas"]["MlDiagnosticLabelRecipe"] | null;
+            /** Membership Status */
+            membership_status: ("current_membership_warning" | "declared_unverified") | null;
             portfolio: components["schemas"]["MlDiagnosticPortfolio"] | null;
             /** Quantile Returns */
             quantile_returns: components["schemas"]["MlQuantileReturn"][];
@@ -8363,6 +8374,11 @@ export interface components {
              * @constant
              */
             diagnostic_only: true;
+            /**
+             * Membership Status
+             * @enum {string}
+             */
+            membership_status: "current_membership_warning" | "declared_unverified";
             /** Prediction Rows */
             prediction_rows: number;
             /** Prediction Sha256 */

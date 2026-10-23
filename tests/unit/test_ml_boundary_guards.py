@@ -70,8 +70,8 @@ def _draft(worker_lock_hash: str) -> dict[str, Any]:
         "schema_version": 1,
         "snapshot_hash": "a" * 64,
         "universe": _symbols(),
-        "universe_membership": "point_in_time",
-        "survivorship_warning": None,
+        "universe_membership": "current_membership",
+        "survivorship_warning": "Current membership; survivorship-biased.",
         "feature_recipe": {"name": "alpha158", "version": 1, "parameters": {}},
         "label_recipe": {
             "name": "next_session_open_to_open",
@@ -311,7 +311,12 @@ RequestMutation = Callable[[dict[str, Any]], None]
             "valid, sorted, and unique",
         ),
         (lambda request: request.update({"universe_membership": "latest"}), "point_in_time"),
-        (lambda request: request.update({"survivorship_warning": 7}), "null or a string"),
+        (
+            lambda request: request.update(
+                {"universe_membership": "point_in_time", "survivorship_warning": 7}
+            ),
+            "null or a string",
+        ),
         (lambda request: request.update({"feature_recipe": []}), "JSON object"),
         (
             lambda request: request.update(

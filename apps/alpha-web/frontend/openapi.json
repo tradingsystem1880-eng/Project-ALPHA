@@ -9891,6 +9891,14 @@
             "title": "Label",
             "type": "string"
           },
+          "membership_status": {
+            "enum": [
+              "current_membership_warning",
+              "declared_unverified"
+            ],
+            "title": "Membership Status",
+            "type": "string"
+          },
           "next_required_step": {
             "title": "Next Required Step",
             "type": "string"
@@ -9924,6 +9932,7 @@
         "required": [
           "schema_version",
           "authority",
+          "membership_status",
           "rows",
           "symbols",
           "targets",
@@ -10013,6 +10022,21 @@
             "title": "Exchange Id",
             "type": "string"
           },
+          "membership_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "current_membership_warning",
+                  "declared_unverified"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Membership Status"
+          },
           "prediction_rows": {
             "anyOf": [
               {
@@ -10075,6 +10099,7 @@
         "required": [
           "exchange_id",
           "status",
+          "membership_status",
           "worker_kind",
           "prediction_rows",
           "diagnostic_only",
@@ -10164,6 +10189,21 @@
             "title": "Exchange Id",
             "type": "string"
           },
+          "membership_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "current_membership_warning",
+                  "declared_unverified"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Membership Status"
+          },
           "prediction_rows": {
             "anyOf": [
               {
@@ -10216,6 +10256,7 @@
         "required": [
           "exchange_id",
           "status",
+          "membership_status",
           "worker_kind",
           "prediction_rows",
           "diagnostic_only",
@@ -12244,6 +12285,21 @@
               }
             ]
           },
+          "membership_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "current_membership_warning",
+                  "declared_unverified"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Membership Status"
+          },
           "portfolio": {
             "anyOf": [
               {
@@ -12303,6 +12359,7 @@
           "exchange_id",
           "authority",
           "label",
+          "membership_status",
           "counterfactual_refit",
           "versions",
           "feature_recipe",
@@ -12387,6 +12444,14 @@
             "title": "Diagnostic Only",
             "type": "boolean"
           },
+          "membership_status": {
+            "enum": [
+              "current_membership_warning",
+              "declared_unverified"
+            ],
+            "title": "Membership Status",
+            "type": "string"
+          },
           "prediction_rows": {
             "minimum": 1.0,
             "title": "Prediction Rows",
@@ -12417,6 +12482,7 @@
         },
         "required": [
           "status",
+          "membership_status",
           "worker_kind",
           "worker_implementation_version",
           "prediction_rows",
