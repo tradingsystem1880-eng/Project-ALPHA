@@ -1603,3 +1603,25 @@ The first corrected-tree aggregate attempt passed backend, frontend/browser, lit
 and passed Atlas tests, then stopped on stale generated Atlas graph/input/unknowns outputs.
 Their canonical regeneration is part of this change; the failed attempt remains preserved and is
 not aggregate acceptance. Final regenerated-tree results remain in the separate task receipts.
+
+## 2026-10-22 — Pinned Semgrep tooling candidate
+
+On isolated branch `work` at baseline `99f2d472dd4511b446e1198ae80201e7207d089d` (clean before
+edits), the gate and float-contract checker now share `scripts/semgrep_runner.py`. It requests exact
+Semgrep 1.181.0 through isolated `uvx --from semgrep==1.181.0`, verifies `--version` before each
+scan, and returns a failure on a missing tool, failed invocation, or mismatch. The existing rule
+file and both callers' scan arguments are retained; application and worker lockfiles are unchanged.
+Offline Semgrep-focused tests passed 12/12, including both callers, exact argv, version mismatch,
+scanner failure and no stamp after a failed gate step on the initial implementation candidate. The
+implementation remains local and uncommitted; subsequent candidate-specific checks are recorded in
+the task handoff. This entry does not claim repository acceptance, publication or merge.
+
+Cold-cache requalification later exposed that the gate adapter combined `uvx` stdout and stderr,
+so first-install diagnostics polluted the exact version comparison and stopped before any scan. The
+shared runner now checks only the probe's exact stdout, keeps bootstrap diagnostics separate,
+propagates probe failures, and preserves both streams in failure logs. Both callers also emit stderr
+from successful invocations so cold-cache bootstrap diagnostics remain visible. Added offline
+regressions cover bootstrap stderr with the exact pin, wrong/empty/extra stdout, misleading version
+text in diagnostics, failed bootstrap, both callers, scan arguments and full scan failures. The
+failed cold-cache full-gate attempt is preserved in durable task evidence; it exposed the adapter
+issue before any scan began. This entry makes no private-suite or release-qualification claim.

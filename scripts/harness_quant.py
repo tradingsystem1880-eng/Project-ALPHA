@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 import gate
+import semgrep_runner
 
 MUTATION_BASELINE_FILE = Path(".claude") / "mutation-baseline.json"
 MUTATION_MIN_KILL = 0.90
@@ -416,9 +417,7 @@ def write_mutation_baseline(root: Path, report: dict[str, Any], *, reason: str, 
     gate.append_audit(root, "mutation_baseline_written", f"by={by} reason={reason!r}")
 
 
-_SEMGREP_BASE = (
-    "uvx",
-    "semgrep",
+_SEMGREP_OPTIONS = (
     "--config",
     str(gate.SEMGREP_RULES),
     "--metrics=off",
@@ -427,10 +426,18 @@ _SEMGREP_BASE = (
 )
 
 
+def _semgrep_arguments(targets: list[str]) -> list[str]:
+    return [*_SEMGREP_OPTIONS, *targets]
+
+
+def _semgrep_targets(root: Path, paths: list[str]) -> list[str]:
+    return sorted(p for p in paths if p.endswith(".py") and (root / p).is_file())
+
+
 def semgrep_command(root: Path, paths: list[str]) -> list[str]:
-    """``uvx semgrep`` over the given python paths (empty list ⇒ nothing to scan ⇒ ``[]``)."""
-    targets = sorted(p for p in paths if p.endswith(".py") and (root / p).is_file())
-    return [*_SEMGREP_BASE, *targets] if targets else []
+    """Pinned Semgrep over the given python paths (empty list ⇒ ``[]``)."""
+    targets = _semgrep_targets(root, paths)
+    return semgrep_runner.semgrep_command(_semgrep_arguments(targets)) if targets else []
 
 
 def _scanner_failed_to_launch(output: str) -> bool:
@@ -448,20 +455,31 @@ def _scanner_failed_to_launch(output: str) -> bool:
 def semgrep(root: Path, *, changed_only: bool) -> int:
     if changed_only:
         paths = gate.scoped_changed_paths(root, lambda p: p.endswith(".py"))
-        cmd = semgrep_command(root, paths)
+        targets = _semgrep_targets(root, paths)
+        if not targets:
+            print("[semgrep] no python changes to scan")
+            return 0
+        arguments = _semgrep_arguments(targets)
     else:
-        cmd = [*_SEMGREP_BASE, "packages", "apps", "scripts", "tests"]
-    if not cmd:
-        print("[semgrep] no python changes to scan")
-        return 0
-    ok, seconds, output = gate._env_runner(cmd, cwd=root, timeout=600)
-    if ok:
-        print(f"[semgrep] ok ({seconds:.1f}s)")
+        arguments = _semgrep_arguments(["packages", "apps", "scripts", "tests"])
+
+    started = time.monotonic()
+    result = semgrep_runner.run_semgrep(
+        arguments,
+        cwd=root,
+        timeout=600,
+        capture_output=True,
+        text=True,
+    )
+    output = semgrep_runner.combine_output(result.stdout, result.stderr)
+    if result.returncode == 0:
+        if result.stderr:
+            sys.stderr.write(result.stderr)
+        print(f"[semgrep] ok ({time.monotonic() - started:.1f}s)")
         return 0
     if _scanner_failed_to_launch(output):
         print(f"[semgrep] unavailable: {output[-200:]}", file=sys.stderr)
         gate.append_audit(root, "semgrep_unavailable", output[-200:])
-        return 0
     print(output[-4000:], file=sys.stderr)
     return 1
 
