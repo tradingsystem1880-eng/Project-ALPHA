@@ -9,9 +9,12 @@ fail-loud classification of a blocked/non-CSV response. The live HTTP path stays
 from __future__ import annotations
 
 import hashlib
+import http.client
+import io
 import urllib.error
 import urllib.request
 from email.message import Message
+from types import SimpleNamespace
 
 import pytest
 
@@ -84,3 +87,43 @@ def test_fetch_wraps_provider_http_rejection_as_data_error(
 
     with pytest.raises(DataError, match="anti-bot/transport.*HTTP 403"):
         _fetch_stooq_text("https://stooq.com/q/d/l/?s=spy.us")
+
+
+@pytest.mark.parametrize(
+    "error", [ConnectionResetError("synthetic reset"), http.client.IncompleteRead(b"partial", 30)]
+)
+def test_fetch_wraps_interrupted_body_and_closes_response(
+    monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    closed = []
+
+    class Response:
+        def __enter__(self) -> Response:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            closed.append(True)
+
+        def read(self) -> bytes:
+            raise error
+
+    class Opener:
+        def open(self, request: urllib.request.Request, timeout: int) -> Response:
+            return Response()
+
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *args: Opener())
+    with pytest.raises(DataError, match="Stooq transport failed") as caught:
+        _fetch_stooq_text("https://stooq.com/q/d/l/?s=spy.us")
+    assert caught.value.__cause__ is error
+    assert closed == [True]
+
+
+def test_fetch_returns_complete_csv_and_closes_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = io.BytesIO(_VALID_CSV.encode())
+    monkeypatch.setattr(
+        urllib.request,
+        "build_opener",
+        lambda *args: SimpleNamespace(open=lambda request, timeout: response),
+    )
+    assert _fetch_stooq_text("https://stooq.com/q/d/l/?s=spy.us") == _VALID_CSV
+    assert response.closed

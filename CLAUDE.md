@@ -30,12 +30,12 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
 - All data/strategy reads use point-in-time `as_of`; bias guards poison future data and have leaky
   controls. Decide at close t, fill at open t+1. Corporate actions have knowledge/application clocks;
   dividends are cash at pay_date. Details: [domain contracts](docs/operations/research-platform-contracts.md).
-- Fail loud on invalid/non-finite/disordered data and degenerate statistics. No swallowed errors.
-  Retry WAL SQLITE_BUSY within its existing budget. Polars is default; pandas only at sanctioned
-  vendor edges. Keep strict typing.
-- Runs, snapshots, receipts and admitted evidence are immutable and hash-bound. Keep historical
-  readers/migrations. Seeds/execution fingerprints are deterministic; D0/D1 seeds
-  are frozen, not settings-derived. Reverify reads/copy generations; retirement/retries preserve bytes.
+- Fail loud on invalid/non-finite/disordered data or degenerate statistics. Never swallow errors.
+  Type interrupted Stooq reads; retry WAL SQLITE_BUSY within existing budget. Polars default; pandas
+  only at sanctioned vendor edges. Strict typing.
+- Runs/snapshots/receipts/admitted evidence: immutable, hash-bound. Keep historical
+  readers/migrations. Seeds/execution fingerprints deterministic; D0/D1 seeds frozen, not
+  settings-derived. Reverify reads/copy generations; retirement/retries preserve bytes.
 - Research precedes strategy. D1 stays in discovery; owner-approved D2 is one-shot. Promotion
   requires verified evidence and owner decision. Screening and Monte Carlo path risk are not proof of edge.
 - Explicit local owner confirmation (ADR-0038), paper opt-ins, provider/venue/unit boundaries and no-live-capital
