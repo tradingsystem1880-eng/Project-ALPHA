@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Browser, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import type { Candles } from '../src/api/types'
 import { preparePage } from './support/workstationHarness'
@@ -233,6 +233,18 @@ async function openChart(page: Page, style: 'classic' | 'default', bars = BARS, 
   return chart
 }
 
+async function touchContext(browser: Browser) {
+  const port = process.env.ALPHA_PLAYWRIGHT_PORT ?? '8802'
+  return browser.newContext({
+    baseURL: `http://localhost:${port}/`,
+    viewport: { width: 1280, height: 720 },
+    colorScheme: 'dark',
+    hasTouch: true,
+    isMobile: true,
+    reducedMotion: 'reduce',
+  })
+}
+
 test('@reference-only PNG retains disclosure of annotations outside loaded observations', async ({ page }) => {
   const chart = await openChart(page, 'classic', BARS, true)
   const disclosure = '1 annotation outside the loaded bars not drawn'
@@ -282,6 +294,130 @@ test('@reference-only hovering updates the header and legends; x zoom rescales p
   await expect.poll(async () => JSON.parse((await host.getAttribute('data-visible-range'))!).from).toBeGreaterThan(before.from)
   await chart.getByRole('button', { name: 'All data', exact: true }).click()
   await expect.poll(async () => JSON.parse((await host.getAttribute('data-visible-range'))!).from).toBe(BARS[0].t)
+})
+
+test('@reference-only keyboard inspection selects exact bars and preserves null studies and provenance', async ({ page }) => {
+  const chart = await openChart(page, 'classic')
+  await chart.getByRole('button', { name: 'All data', exact: true }).click()
+  const host = chart.locator('.technical-host')
+  await expect(host).toHaveAttribute('tabindex', '0')
+  await host.focus()
+  await page.keyboard.press('End')
+
+  const header = chart.locator('.technical-ohlc')
+  const last = BARS.at(-1)!
+  const study = studySeries('sma:50', BARS)
+  if (!('series' in study)) throw new Error('fixture SMA unexpectedly refused its window')
+  await expect(header).toContainText(new Date(last.t * 1_000).toISOString().slice(0, 10))
+  await expect(header).toContainText(`Close ${last.c.toFixed(2)}`)
+  await expect(header).toContainText(`Volume ${last.v.toLocaleString('en-US')}`)
+  await expect(chart.locator('.technical-legend').filter({ hasText: 'MA(50)' }).first()).toContainText(study.series[0].values.at(-1)!.toFixed(2))
+
+  await page.keyboard.press('ArrowLeft')
+  const previous = BARS.at(-2)!
+  await expect(header).toContainText(new Date(previous.t * 1_000).toISOString().slice(0, 10))
+  await expect(header).toContainText(`Close ${previous.c.toFixed(2)}`)
+  await expect(chart.locator('.technical-legend').filter({ hasText: 'MA(50)' }).first()).toContainText(study.series[0].values.at(-2)!.toFixed(2))
+
+  await page.keyboard.press('Home')
+  await expect(header).toContainText(new Date(BARS[0].t * 1_000).toISOString().slice(0, 10))
+  await expect(chart.locator('.technical-legend').filter({ hasText: 'MA(50)' }).first()).toContainText('—')
+  await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('PRICE · NATIVE QUOTE UNITS')
+  await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('TIME · UTC')
+  await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('SNAPSHOT · CURRENT STORE')
+  await expect(page.locator('.price-toolbar')).toContainText('ccxt:binance')
+  await expect(page.locator('.price-toolbar')).toContainText('qualified')
+
+  await page.keyboard.press('Escape')
+  await expect(header).toContainText(`Close ${last.c.toFixed(2)}`)
+  await expect(host.locator('.technical-cursor').first()).not.toBeVisible()
+})
+
+test('@reference-only touch tap inspects the exact candle and aligned backend study', async ({ browser }) => {
+  const context = await touchContext(browser)
+  try {
+    const page = await context.newPage()
+    await preparePage(page, { candles: { 'XRP/USDT': BARS } })
+    await page.goto('/#page=data&pane=PriceChart')
+    const chart = page.locator('[data-panel-id=primary] .technical-chart')
+    const host = chart.locator('.technical-host')
+    await expect(host.locator('canvas').first()).toBeVisible()
+    await expect(chart.locator('.technical-legend').filter({ hasText: 'MA(50)' }).first()).toBeVisible()
+    const bounds = (await host.boundingBox())!
+    await page.touchscreen.tap(bounds.x + bounds.width * 0.6, bounds.y + bounds.height * 0.55)
+
+    const header = chart.locator('.technical-ohlc')
+    await expect(header).not.toContainText(`Close ${BARS.at(-1)!.c.toFixed(2)}`)
+    const text = await header.innerText()
+    const date = text.match(/^\d{4}-\d\d-\d\d/)?.[0]
+    const selected = BARS.find(bar => new Date(bar.t * 1_000).toISOString().startsWith(date ?? '\u0000'))
+    expect(selected).toBeDefined()
+    await expect(header).toContainText(`Open ${selected!.o.toFixed(2)}`)
+    await expect(header).toContainText(`High ${selected!.h.toFixed(2)}`)
+    await expect(header).toContainText(`Low ${selected!.l.toFixed(2)}`)
+    await expect(header).toContainText(`Close ${selected!.c.toFixed(2)}`)
+    const study = studySeries('sma:50', BARS)
+    if (!('series' in study)) throw new Error('fixture SMA unexpectedly refused its window')
+    const index = BARS.findIndex(bar => bar.t === selected!.t)
+    const value = study.series[0].values[index]
+    await expect(chart.locator('.technical-legend').filter({ hasText: 'MA(50)' }).first()).toContainText(value === null ? '—' : value.toFixed(2))
+    await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('TIME · UTC')
+    await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('AS OF ')
+    await expect(page.locator('.price-toolbar')).toContainText('ccxt:binance')
+  } finally {
+    await context.close()
+  }
+})
+
+test('@reference-only changing a study clears the inspected bar before the new composition', async ({ page }) => {
+  const chart = await openChart(page, 'classic')
+  await chart.getByRole('button', { name: 'All data', exact: true }).click()
+  const host = chart.locator('.technical-host')
+  await host.focus()
+  await page.keyboard.press('ArrowLeft')
+  const header = chart.locator('.technical-ohlc')
+  await expect(header).toContainText(new Date(BARS.at(-2)!.t * 1_000).toISOString().slice(0, 10))
+  await expect(host.locator('.technical-cursor').first()).toBeVisible()
+
+  const indicators = page.getByRole('button', { name: /^Indicators/ })
+  await indicators.focus()
+  await page.keyboard.press('Enter')
+  const dialog = page.getByRole('dialog', { name: 'Indicators' })
+  const sma50 = dialog.locator('.indicator-choice').filter({ hasText: 'sma:50' }).locator('input[type=checkbox]')
+  await sma50.focus()
+  await page.keyboard.press('Space')
+  await expect(sma50).not.toBeChecked()
+  const done = dialog.getByRole('button', { name: 'Done' })
+  await done.focus()
+  await page.keyboard.press('Enter')
+
+  await expect(header).toContainText(`Close ${BARS.at(-1)!.c.toFixed(2)}`)
+  await expect(host.locator('.technical-cursor').first()).not.toBeVisible()
+  await expect(chart.locator('.technical-legend').filter({ hasText: 'MA(50)' })).toHaveCount(0)
+  await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('TIME · UTC')
+  await expect(page.locator('.price-toolbar')).toContainText('ccxt:binance')
+  await expect(page.locator('.price-toolbar')).toContainText('qualified')
+})
+
+test('@reference-only loading, empty and failed candle states stay explicit', async ({ page }) => {
+  await preparePage(page, { candles: { 'XRP/USDT': [] } })
+  let release!: () => void
+  const suspended = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/api/candles/**', async route => { await suspended; await route.fallback() })
+  await page.goto('/#page=data&pane=PriceChart')
+  await expect(page.locator('.price-panel .placeholder')).toContainText('loading…')
+  release()
+  await expect(page.locator('.price-panel .placeholder')).toContainText('no bars in window')
+
+  let fail = false
+  await page.route('**/api/candles/**', async route => {
+    if (fail) await route.fulfill({ status: 503, json: { detail: 'fixture candle failure' } })
+    else await route.fallback()
+  })
+  fail = true
+  await page.reload()
+  await expect(page.locator('.price-panel .placeholder')).toContainText('Error: 503 Service Unavailable')
+  await expect(page.locator('.technical-host')).toHaveCount(0)
 })
 
 test('@reference-only a window shorter than a study names the skipped study and keeps the rest', async ({ page }) => {

@@ -1603,3 +1603,21 @@ The first corrected-tree aggregate attempt passed backend, frontend/browser, lit
 and passed Atlas tests, then stopped on stale generated Atlas graph/input/unknowns outputs.
 Their canonical regeneration is part of this change; the failed attempt remains preserved and is
 not aggregate acceptance. Final regenerated-tree results remain in the separate task receipts.
+
+## 2026-10-22 — Technical-chart cursor inspection (unaccepted)
+
+On clean supplied base `99f2d472dd4511b446e1198ae80201e7207d089d` (isolated branch `work`), the
+existing Technical · Bokeh chart now supports exact candle/study inspection by hover, touch tap, and
+focused Left/Right/Home/End/Escape keys. Selection uses the returned candle index and aligned backend
+overlay value, preserves `—` for missing study points, publishes the existing UTC linked cursor, and
+clears on chart recomposition so the header returns to the latest returned candle. Classic/Default
+grammar and optional Market · Lightweight are preserved. No backend, API, dependency, or research
+artifact changes. The deterministic E2E uses mocked synthetic bars and is not research evidence.
+
+Focused evidence: renderer unit tests 3 passed; technical-chart Chromium reference spec 18 passed,
+including keyboard/touch value identity, study-change stale clearing, loading/empty/503 states, and
+both theme screenshots; TypeScript build check and warning-denying lint passed. The packaged SPA
+build passed with existing Vite dependency-eval/chunk-size warnings. Visual captures and exact
+candidate/recovery patch are in `/workspace/task-evidence/alpha-chart-inspection/`. Independent
+read-only review approved the implementation and scoped evidence. This is not a full repository gate
+or feature-release acceptance. No commit, publication, or merge was made.
