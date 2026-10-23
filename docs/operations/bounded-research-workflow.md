@@ -22,6 +22,12 @@ Write a JSON plan (use your verified snapshot and symbol):
 
 Run `alpha research diagnostic run-plan plan.json`. The closed configuration supports the momentum lookback/skip/volatility/rebalance settings, costs, leverage up to one, starting cash, validation train/test/embargo and seed. It fixes CASH/long-only, 252 periods/year and one worker. Existing validation default null/resampling settings are retained. There are no arbitrary commands, extra flags, owner overrides or tuning loops. Strategies other than `ts_momentum` and `rules` require a separate operator; do not relabel this baseline as a regime study or a completed general research question.
 
+JSON booleans are rejected for numeric plan fields and `schema_version` before the frozen plan is
+hashed; otherwise `true` could silently become `1` or `1.0`. Existing Pydantic numeric coercions
+remain supported, including numeric strings and integer-valued floats for integer fields, and
+normalize to the same plan representation as equivalent JSON numbers. The JSON date string remains
+supported.
+
 The controller verifies the frozen snapshot, dispatches at most two child commands sequentially, awaits their terminal outcomes, checks configuration/source identity, reconciles session timestamps against the snapshot and existing walk-forward splitter, and publishes `research_executions/<identity>/receipt.json` with a hash manifest. Baseline and validation populations stay separate. A failed baseline prevents validation. Measurement completion is separate from the validation PASS/FAIL result; completed negative results remain evidence, never admission.
 
 The 30–1500 second budget withholds ten seconds from child dispatch for cleanup and reconciliation. Storage and operating-system cleanup are not hard wall-time bounded. Attempts are recorded before launch; failed/interrupted attempts are not automatically retried, and restarting cannot replenish the same plan's execution budget. The identity binds plan, snapshot, execution fingerprint and controller/digest code. A changed plan or implementation is a new experiment, so the caller must still maintain the broader search ledger. Repeating a completed plan re-verifies its bound evidence. Concurrent identical invocations are refused.

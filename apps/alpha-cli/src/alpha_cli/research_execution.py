@@ -51,6 +51,32 @@ class BaselineExecutionPlan(BaseModel):
     seed: int = Field(default=42, ge=0, le=2**32 - 1)
     seconds: int = Field(default=900, ge=30, le=1500)
 
+    @field_validator(
+        "schema_version",
+        "lookback",
+        "skip",
+        "vol_window",
+        "rebalance_every",
+        "target_vol",
+        "max_leverage",
+        "fee_bps",
+        "slippage_bps",
+        "starting_cash",
+        "train_size",
+        "test_size",
+        "embargo",
+        "seed",
+        "seconds",
+        mode="before",
+    )
+    @classmethod
+    def reject_boolean_numeric_inputs(cls, value: Any) -> Any:
+        # bool is an int subclass in Python and Pydantic otherwise coerces JSON booleans
+        # into experiment parameters (for example, target_vol=true becomes 1.0).
+        if isinstance(value, bool):
+            raise ValueError("boolean is not a valid numeric experiment parameter")
+        return value
+
     @field_validator("rules_spec")
     @classmethod
     def canonical_rules(cls, value: str | None) -> str | None:
