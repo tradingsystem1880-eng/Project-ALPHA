@@ -1603,3 +1603,13 @@ The first corrected-tree aggregate attempt passed backend, frontend/browser, lit
 and passed Atlas tests, then stopped on stale generated Atlas graph/input/unknowns outputs.
 Their canonical regeneration is part of this change; the failed attempt remains preserved and is
 not aggregate acceptance. Final regenerated-tree results remain in the separate task receipts.
+
+## 2026-10-22 — Empty component gate definitions fail closed
+
+On isolated candidate `codex/gate-empty-steps-fail-closed`, based on accepted main
+`99f2d472dd4511b446e1198ae80201e7207d089d`, empty component definitions now return failure
+and cannot validate a component receipt or produce a full stamp. The focused
+`tests/unit/test_gate_components.py` run passed (34 tests); the two new regressions first
+reproduced the fail-open behavior on the base. This is a bounded candidate result only:
+the aggregate gate remains outstanding. An independent read-only review found no actionable
+issues; the reviewer did not run tests. No commit or publication was performed.

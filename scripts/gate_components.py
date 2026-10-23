@@ -158,7 +158,11 @@ def run_component(root: Path, component: str, *, steps: list[Step] | None = None
     steps = component_steps(root, component) if steps is None else steps
     definition = _steps_hash(root, steps)
     results: list[dict[str, object]] = []
-    success = True
+    success = bool(steps)
+    if not steps:
+        print(
+            f"[gate:{component}] No verification steps are configured; refusing to pass component."
+        )
     for name, cwd, command in steps:
         ok, seconds, output = gate._env_runner(command, cwd=cwd)
         results.append(
@@ -234,6 +238,8 @@ def _receipt_matches(
     tree_hash: str,
     receipt: dict[str, object] | None,
 ) -> bool:
+    if not steps:
+        return False
     if not receipt or any(
         receipt.get(key) != value
         for key, value in {
