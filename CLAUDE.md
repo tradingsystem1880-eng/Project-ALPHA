@@ -70,10 +70,10 @@ ceremony changes from unchanged application authority.
 Research: [bounded CLI workflow](docs/operations/bounded-research-workflow.md);
 [Codex investigations](docs/operations/codex-investigations.md). Advisory only.
 
-## Current evidence
+## Evidence
 
 Read [architecture](docs/ARCHITECTURE.md), [ADRs](docs/adr/README.md),
-rules in `.claude/rules/`, [build record](docs/BUILD-STATUS.md) and [contracts](docs/operations/research-platform-contracts.md).
+rules in `.claude/rules/`, [build record + schema](docs/BUILD-STATUS.md) and [contracts](docs/operations/research-platform-contracts.md).
 Use fresh source/tests. Provider acceptance requires passing receipts.
 
 [Development loop](docs/operations/development-loop.md): focused checks.
