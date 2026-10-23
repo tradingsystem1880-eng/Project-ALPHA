@@ -1633,3 +1633,16 @@ readers, nested input references, unsupported and missing versions, semantic tam
 extra keys, and boolean feature scalars. Valid serialized output and hashes remain
 unchanged. No schema migration, dependency, store, or authority change was introduced.
 Private external coverage remains **UNVERIFIED**.
+
+## 2026-10-23 — Boolean guard for frozen baseline numeric inputs
+
+`alpha research diagnostic run-plan` previously accepted JSON booleans in numeric plan fields and
+`schema_version`: `seed: true` became `1`, `target_vol: true` became `1.0`, and
+`schema_version: true` became `1` before plan identity was calculated. Focused regressions reproduce
+all three conversions. The existing `BaselineExecutionPlan` now rejects booleans in numeric fields
+and `schema_version` while preserving Pydantic's existing numeric-string and integral-float
+coercions; a compatibility test verifies equivalent inputs retain the same normalized plan hash.
+This is a fail-closed input-contract change only: no metrics, experiment lineage, reservation,
+semantic freeze, strategy behavior or authority changed. The focused module passed all 40 tests when
+run through `scripts/run_owned_test.py`, and an independent review approved the bounded patch. The
+canonical full gate was not run. No commit or publication was made.
