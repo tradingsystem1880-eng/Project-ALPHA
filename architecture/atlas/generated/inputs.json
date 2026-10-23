@@ -529,7 +529,7 @@
     "tests/integration/test_crypto_defillama_acquisition.py": "70eaf916b1861e9dcfadf59ac91df72db6eba4c7df6ce743c996f778408f8078",
     "tests/integration/test_crypto_market_catalog.py": "376dc9de26e70f5144abfc346fc011b1df4f6e28952a3aee3ed9d4fbc711347c",
     "tests/integration/test_crypto_reference_live.py": "daaae2f604ad998269df6136859e1a38c06e85586bee9ebe96ab611baa50b03b",
-    "tests/integration/test_crypto_yield_catalog.py": "048ab0c27663215a152313baa0bf6ceeb2b4adb18f8c9e3cfee341ad876aa531",
+    "tests/integration/test_crypto_yield_catalog.py": "d740c7973ceb23f87a83a84ae5946ac59dd43ca01755ef0f4a97d8063cc00ddf",
     "tests/integration/test_data_candles_cli.py": "ba010264176e65dc09631b359f88e007aa0c1f18efef791ae3b1fcf661254e5c",
     "tests/integration/test_data_cli.py": "6832fafcfda960f3010ce5b7d31887ee7472a5e97170b8db98ae8fba4c9e96fb",
     "tests/integration/test_dividend_credit.py": "cc6b2de0ebc6c45eb40df4274718ba3a1339d51e216a93c3d289fcd4766e9b92",
