@@ -179,6 +179,80 @@ def test_plan_has_no_arbitrary_commands_or_unbounded_work() -> None:
             BaselineExecutionPlan.model_validate({**plan.model_dump(), **fields})
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("schema_version", True),
+        ("seed", True),
+        ("target_vol", True),
+    ],
+)
+def test_plan_rejects_boolean_numeric_coercion(field: str, value: object) -> None:
+    from pydantic import ValidationError
+
+    rules_spec = (
+        '{"name":"fixed","long_when":[{"left":{"source":"close"},"op":">","right":{"value":1}}]}'
+    )
+    payload: dict[str, object] = {
+        "symbol": "TEST",
+        "snapshot": "frozen",
+        "as_of": "2020-01-02",
+        "strategy": "rules",
+        "rules_spec": rules_spec,
+    }
+    payload[field] = value
+
+    with pytest.raises(ValidationError):
+        BaselineExecutionPlan.model_validate_json(json.dumps(payload))
+
+
+def test_plan_preserves_numeric_coercions_and_canonical_plan_identity() -> None:
+    import hashlib
+
+    common: dict[str, object] = {
+        "symbol": "TEST",
+        "snapshot": "frozen",
+        "as_of": "2020-01-02",
+        "strategy": "rules",
+        "rules_spec": (
+            '{"name":"fixed","long_when":[{"left":{"source":"close"},'
+            '"op":">","right":{"value":1}}]}'
+        ),
+    }
+    canonical = BaselineExecutionPlan.model_validate_json(
+        json.dumps(
+            {
+                **common,
+                "schema_version": 1,
+                "skip": 1,
+                "rebalance_every": 1,
+                "target_vol": 1.0,
+            }
+        )
+    )
+    coerced = BaselineExecutionPlan.model_validate_json(
+        json.dumps(
+            {
+                **common,
+                "schema_version": 1.0,
+                "skip": "1",
+                "rebalance_every": 1.0,
+                "target_vol": 1,
+            }
+        )
+    )
+    canonical_plan = json.dumps(canonical.model_dump(mode="json"), sort_keys=True)
+    coerced_plan = json.dumps(coerced.model_dump(mode="json"), sort_keys=True)
+
+    assert coerced.skip == 1
+    assert coerced.rebalance_every == 1
+    assert coerced.target_vol == 1.0
+    assert (
+        hashlib.sha256(coerced_plan.encode()).digest()
+        == hashlib.sha256(canonical_plan.encode()).digest()
+    )
+
+
 def test_child_timeout_reaps_and_returns_receipt(tmp_path: Path) -> None:
     import sys
 
