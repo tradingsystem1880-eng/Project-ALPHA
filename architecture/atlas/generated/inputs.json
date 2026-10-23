@@ -649,7 +649,7 @@
     "tests/unit/test_chart_overlays.py": "d5ca357c62e9ba8deae88fcf80d826a7e23c591c2626d4b5f6f8bca3d10c1865",
     "tests/unit/test_chart_overlays_bias_guard.py": "3b8e4c79595a0f0bf27bb23b2195afde3d2ae0731558cb534c5b936500ffa4bd",
     "tests/unit/test_claude_harness_codex_bridge.py": "786a770a4ffc28894d20b176ec5f586bad872547967ee960307e1b343d6cf197",
-    "tests/unit/test_claude_harness_gate.py": "7e8468eff7c4e0f525bd77d0d146b77f1d3cef6732c77abc7f15d74443d4006b",
+    "tests/unit/test_claude_harness_gate.py": "14f1b98bb6ab0de65c9448f09ab31be762a93c9f9dede948519f7bc505e26413",
     "tests/unit/test_claude_harness_hooks.py": "b967ba8fe3bd95ef2c1b87e2987a0634a0c37d350b62c4d9038f2b63f0e5976f",
     "tests/unit/test_claude_harness_hooks_subprocess.py": "55938d612b658c8ffaf5d32216ec0d504a86e03611c01f1e41422d62dc46b0e5",
     "tests/unit/test_claude_harness_settings.py": "44167bdf8f96850dbbc889104dd5304363d6f2973034b2b94be8adf95af3a068",

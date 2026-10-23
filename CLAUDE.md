@@ -57,18 +57,15 @@ Study is projection-only: no persistence or approval authority. Isolate Qlib/lit
 - Install: `uv sync --locked`; cloud: [README](README.md).
 - Tests: `uv run pytest -q -m "not network"`; bias: `uv run pytest -q -m bias_guard`.
   Gate owns Linux pytest; build before browsers.
+- Semgrep uses shared fail-closed `scripts/semgrep_runner.py`, pinned and checked at 1.181.0.
 
-**2026-09-16:** [delivery record](docs/superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md).
-Checks, discovery, V2 plans and frozen-input screening delivered. Install Git guards
-in new checkouts. Claude adapters provide orientation and native-boundary safety only.
-Require a fresh full stamp; never bypass checks.
-[ADR-0037](docs/adr/0037-agent-neutral-research-engineering.md) separates engineering
-ceremony changes from unchanged application authority.
-[Harness](docs/operations/claude-code-harness.md): checkpoint, 96-mutant cap, intake/exceptions, CSS staging.
-
-[Benchmark](tools/alpha-eval/README.md): Codex-only; preserve history/isolation.
-Research: [bounded CLI workflow](docs/operations/bounded-research-workflow.md);
-[Codex investigations](docs/operations/codex-investigations.md). Advisory only.
+**2026-09-16:** [delivery](docs/superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md),
+[ADR-0037](docs/adr/0037-agent-neutral-research-engineering.md): agent-neutral checks; application
+authority unchanged. Install Git guards in new checkouts; require a fresh full stamp; never bypass checks.
+[Harness](docs/operations/claude-code-harness.md): checkpoint, mutant cap, intake, CSS staging.
+[Benchmark](tools/alpha-eval/README.md): Codex-only; preserve history. Research:
+[bounded CLI workflow](docs/operations/bounded-research-workflow.md),
+[Codex investigations](docs/operations/codex-investigations.md) are advisory.
 
 ## Evidence
 

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import shutil
-import subprocess
+import sys
 import tempfile
 from pathlib import Path
+
+import semgrep_runner
 
 
 def main() -> int:
@@ -21,10 +23,8 @@ def main() -> int:
         target = Path(temporary) / "packages/alpha-research/probe.py"
         target.parent.mkdir(parents=True)
         shutil.copyfile(fixture, target)
-        result = subprocess.run(
+        result = semgrep_runner.run_semgrep(
             [
-                "uvx",
-                "semgrep",
                 "--config",
                 str(root / ".semgrep/alpha.yml"),
                 "--metrics=off",
@@ -37,9 +37,13 @@ def main() -> int:
             cwd=temporary,
             capture_output=True,
             text=True,
-            check=True,
         )
-        payload = json.loads(result.stdout)
+        if result.returncode != 0:
+            output = semgrep_runner.combine_output(result.stdout, result.stderr)
+            raise RuntimeError(f"Semgrep failed with exit code {result.returncode}: {output}")
+        if result.stderr:
+            sys.stderr.write(result.stderr)
+        payload = json.loads(result.stdout or "")
         if payload.get("errors"):
             raise RuntimeError(f"Semgrep failed: {payload['errors']}")
         actual = {

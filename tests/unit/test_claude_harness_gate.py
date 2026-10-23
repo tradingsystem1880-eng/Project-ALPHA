@@ -9,13 +9,16 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from pathlib import Path
 from typing import Any
 
+import check_semgrep_contracts
 import gate
 import harness_awareness
 import harness_quant
 import pytest
+import semgrep_runner
 
 from tests.unit._harness_support import git as _git
 
@@ -1056,9 +1059,265 @@ class TestQuantRigorTooling:
         cmd = harness_quant.semgrep_command(
             repo, ["packages/x.py", "docs/a.md", "tests/t.py", "gone.py"]
         )
-        assert cmd[:2] == ["uvx", "semgrep"] and "--config" in cmd and ".semgrep/alpha.yml" in cmd
+        assert cmd[:4] == ["uvx", "--from", "semgrep==1.181.0", "semgrep"]
+        assert cmd[4:10] == [
+            "--config",
+            str(gate.SEMGREP_RULES),
+            "--metrics=off",
+            "--quiet",
+            "--error",
+            "packages/x.py",
+        ]
         assert cmd[-2:] == ["packages/x.py", "tests/t.py"]  # only python targets
         assert harness_quant.semgrep_command(repo, []) == []
+
+    def test_semgrep_runner_checks_version_and_preserves_arguments(self) -> None:
+        calls: list[tuple[list[str], dict[str, Any]]] = []
+        scan_args = ["--config", ".semgrep/alpha.yml", "--metrics=off", "packages/x.py"]
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            calls.append((command, kwargs))
+            if command[-1] == "--version":
+                return subprocess.CompletedProcess(
+                    command, 0, "1.181.0\n", "uvx: installing pinned Semgrep\n"
+                )
+            return subprocess.CompletedProcess(command, 7, "scan output", "scan failure")
+
+        result = semgrep_runner.run_semgrep(
+            scan_args, runner=run, capture_output=True, text=True, check=False
+        )
+
+        assert result.returncode == 7
+        assert result.stderr == "uvx: installing pinned Semgrep\nscan failure"
+        assert calls == [
+            (
+                ["uvx", "--from", "semgrep==1.181.0", "semgrep", "--version"],
+                {"capture_output": True, "text": True, "check": False},
+            ),
+            (
+                ["uvx", "--from", "semgrep==1.181.0", "semgrep", *scan_args],
+                {"capture_output": True, "text": True, "check": False},
+            ),
+        ]
+
+    def test_semgrep_runner_rejects_version_mismatch_without_scanning(self) -> None:
+        calls: list[list[str]] = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0, "1.182.1\n", "")
+
+        result = semgrep_runner.run_semgrep(["--config", ".semgrep/alpha.yml"], runner=run)
+
+        assert result.returncode != 0
+        assert "expected 1.181.0, found 1.182.1" in result.stderr
+        assert calls == [["uvx", "--from", "semgrep==1.181.0", "semgrep", "--version"]]
+
+    def test_semgrep_runner_does_not_match_version_text_in_diagnostics(self) -> None:
+        calls: list[list[str]] = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            calls.append(command)
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "1.182.1\n",
+                "diagnostic: expected 1.181.0 from repository policy\n",
+            )
+
+        result = semgrep_runner.run_semgrep(["--config", ".semgrep/alpha.yml"], runner=run)
+
+        assert result.returncode == 2
+        assert "found 1.182.1" in result.stderr
+        assert "expected 1.181.0 from repository policy" in result.stderr
+        assert calls == [["uvx", "--from", "semgrep==1.181.0", "semgrep", "--version"]]
+
+    @pytest.mark.parametrize("stdout", ["", "1.181.0\nextra output\n"])
+    def test_semgrep_runner_rejects_empty_or_extra_version_stdout(self, stdout: str) -> None:
+        calls: list[list[str]] = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0, stdout, "bootstrap diagnostic\n")
+
+        result = semgrep_runner.run_semgrep(["--config", ".semgrep/alpha.yml"], runner=run)
+
+        assert result.returncode == 2
+        assert calls == [["uvx", "--from", "semgrep==1.181.0", "semgrep", "--version"]]
+
+    def test_semgrep_runner_propagates_version_tool_failure(self) -> None:
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            return subprocess.CompletedProcess(command, 19, "partial stdout", "uvx failed")
+
+        result = semgrep_runner.run_semgrep(["--config", ".semgrep/alpha.yml"], runner=run)
+        assert result.returncode == 19
+        assert result.stdout == "partial stdout"
+        assert result.stderr == "uvx failed"
+
+    def test_semgrep_gate_rejects_a_version_mismatch(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        calls: list[tuple[list[str], dict[str, Any]]] = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            calls.append((command, kwargs))
+            if command[-1] == "--version":
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    "1.182.1\n",
+                    "diagnostic mentions expected 1.181.0\n",
+                )
+            raise AssertionError("mismatched Semgrep version must not scan")
+
+        monkeypatch.setattr(subprocess, "run", run)
+        assert harness_quant.semgrep(repo, changed_only=False) == 1
+        assert len(calls) == 1 and calls[0][0][-1] == "--version"
+        captured = capsys.readouterr()
+        assert "expected 1.181.0, found 1.182.1" in captured.err
+        assert "diagnostic mentions expected 1.181.0" in captured.err
+
+    def test_semgrep_gate_accepts_cold_cache_bootstrap_stderr(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        calls: list[tuple[list[str], dict[str, Any]]] = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            calls.append((command, kwargs))
+            if command[-1] == "--version":
+                return subprocess.CompletedProcess(
+                    command, 0, "1.181.0\n", "Downloading and installing pinned Semgrep\n"
+                )
+            return subprocess.CompletedProcess(command, 0, "scan output", "scan stderr")
+
+        monkeypatch.setattr(subprocess, "run", run)
+        assert harness_quant.semgrep(repo, changed_only=False) == 0
+        assert len(calls) == 2
+        assert calls[0][0][-1] == "--version"
+        assert calls[1][0] == [
+            "uvx",
+            "--from",
+            "semgrep==1.181.0",
+            "semgrep",
+            *harness_quant._SEMGREP_OPTIONS,
+            "packages",
+            "apps",
+            "scripts",
+            "tests",
+        ]
+        captured = capsys.readouterr()
+        assert "[semgrep] ok" in captured.out
+        assert "Downloading and installing pinned Semgrep" in captured.err
+
+    def test_semgrep_contract_caller_preserves_scan_arguments_offline(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        calls: list[tuple[list[str], dict[str, Any]]] = []
+        target_exists: list[bool] = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            calls.append((command, kwargs))
+            if command[-1] == "--version":
+                return subprocess.CompletedProcess(
+                    command, 0, "1.181.0\n", "Installing pinned Semgrep in uvx cache\n"
+                )
+            target = command[-1]
+            target_path = Path(kwargs["cwd"]) / target
+            target_exists.append(target_path.is_file())
+            fixture = target_path.read_text()
+            lines = [
+                index + 2
+                for index, line in enumerate(fixture.splitlines())
+                if line.strip() == "# finding"
+            ]
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                json.dumps(
+                    {
+                        "errors": [],
+                        "results": [
+                            {
+                                "check_id": "alpha.alpha-float-literal-equality",
+                                "start": {"line": line},
+                            }
+                            for line in lines
+                        ],
+                    }
+                ),
+                "",
+            )
+
+        monkeypatch.setattr(subprocess, "run", run)
+        assert check_semgrep_contracts.main() == 0
+        scan_command, scan_kwargs = calls[1]
+        assert scan_command == [
+            "uvx",
+            "--from",
+            "semgrep==1.181.0",
+            "semgrep",
+            "--config",
+            str(Path(check_semgrep_contracts.__file__).resolve().parents[1] / ".semgrep/alpha.yml"),
+            "--metrics=off",
+            "--disable-version-check",
+            "--no-git-ignore",
+            "--json",
+            "--quiet",
+            "packages/alpha-research/probe.py",
+        ]
+        assert target_exists == [True]
+        assert scan_kwargs["capture_output"] is True and scan_kwargs["text"] is True
+        assert "Installing pinned Semgrep in uvx cache" in capsys.readouterr().err
+
+    def test_semgrep_contract_caller_fails_on_tool_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls: list[list[str]] = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            calls.append(command)
+            if command[-1] == "--version":
+                return subprocess.CompletedProcess(command, 0, "1.181.0\n", "")
+            return subprocess.CompletedProcess(
+                command, 9, "partial scan stdout", "semgrep scan failed"
+            )
+
+        monkeypatch.setattr(subprocess, "run", run)
+        with pytest.raises(
+            RuntimeError, match="exit code 9: partial scan stdout\\nsemgrep scan failed"
+        ):
+            check_semgrep_contracts.main()
+        assert len(calls) == 2 and calls[1][-1] == "packages/alpha-research/probe.py"
+
+    def test_semgrep_contract_caller_propagates_version_probe_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls: list[list[str]] = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 23, "", "uvx bootstrap failed")
+
+        monkeypatch.setattr(subprocess, "run", run)
+        with pytest.raises(RuntimeError, match="exit code 23: uvx bootstrap failed"):
+            check_semgrep_contracts.main()
+        assert len(calls) == 1 and calls[0][-1] == "--version"
+
+    def test_semgrep_failure_cannot_write_gate_stamp(
+        self, repo: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        (repo / ".semgrep").mkdir()
+        (repo / ".semgrep" / "alpha.yml").write_text("rules: []\n")
+
+        def runner(command: list[str]) -> tuple[bool, float, str]:
+            if command[-2:] == ["semgrep", "--changed"]:
+                return False, 0.1, "Semgrep version mismatch"
+            return True, 0.1, ""
+
+        assert gate.run_gate(repo, "fast", runner=runner) != 0
+        assert not gate.stamp_is_valid(repo, "fast")
+        assert not (repo / gate.STATE_DIR / gate.STAMP_FILE).exists()
+        assert "no stamp written" in capsys.readouterr().err
 
     @pytest.mark.parametrize(
         ("output", "expected"),
@@ -1066,9 +1325,9 @@ class TestQuantRigorTooling:
             # Real findings whose matched source mentions OSError / a missing file must FAIL.
             ("3 Code Findings\n  340┆ except OSError:\n  341┆     pass\n", 1),
             ("finding: raise DataError('No such file')\n", 1),
-            # Only the runner's own failure to launch the scanner is "unavailable" (advisory).
-            ("FileNotFoundError: [Errno 2] No such file or directory: 'uvx'", 0),
-            ("zsh: command not found: uvx", 0),
+            # Missing scanner and launch failures are blocking; they cannot produce a stamp.
+            ("FileNotFoundError: [Errno 2] No such file or directory: 'uvx'", 1),
+            ("zsh: command not found: uvx", 1),
         ],
     )
     def test_semgrep_unavailable_is_decided_by_the_launch_not_the_findings(
@@ -1076,7 +1335,19 @@ class TestQuantRigorTooling:
     ) -> None:
         (repo / ".semgrep").mkdir()
         (repo / ".semgrep" / "alpha.yml").write_text("rules: []\n")
-        monkeypatch.setattr(gate, "_env_runner", lambda cmd, **kw: (False, 0.1, output))
+
+        real_run = subprocess.run
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            if command and command[0] == "git":
+                return real_run(command, **kwargs)
+            return subprocess.CompletedProcess(command, 127, "", output)
+
+        monkeypatch.setattr(
+            subprocess,
+            "run",
+            run,
+        )
         assert harness_quant.semgrep(repo, changed_only=False) == expected
 
     def test_raise_sites_are_found_by_ast(self, tmp_path: Path) -> None:
