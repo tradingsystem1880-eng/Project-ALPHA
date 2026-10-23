@@ -1621,3 +1621,13 @@ build passed with existing Vite dependency-eval/chunk-size warnings. Visual capt
 candidate/recovery patch are in `/workspace/task-evidence/alpha-chart-inspection/`. Independent
 read-only review approved the implementation and scoped evidence. This is not a full repository gate
 or feature-release acceptance. No commit, publication, or merge was made.
+
+## 2026-10-23 — Strict alpha-study feature schema versions
+
+`FeatureInputRefV1` and `FeatureValueV1` now reject schema-version values that are not
+integers equal to `1`, including JSON booleans and floating-point `1.0`. Public
+regressions cover valid round trips with unchanged content hashes, both top-level
+readers, nested input references, unsupported and missing versions, semantic tampering,
+extra keys, and boolean feature scalars. Valid serialized output and hashes remain
+unchanged. No schema migration, dependency, store, or authority change was introduced.
+Private external coverage remains **UNVERIFIED**.
