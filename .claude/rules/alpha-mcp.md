@@ -4,6 +4,10 @@ paths:
 ---
 # alpha_mcp rules
 
+Research source page reads return bounded, project-bound slices from the hash-verified immutable
+extraction and label paper text `UNTRUSTED_SOURCE`. They do not screen claims or advance research
+state. Opening the control store retains its existing schema and missing-stage maintenance.
+
 Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `tests/fixtures/claude_md_v1.md`). The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 ### `alpha_mcp` (`apps/alpha-mcp/src/alpha_mcp/`) — MCP server (top of DAG; subprocesses the `alpha` CLI, composes nothing). Launch: `uv run alpha-mcp` (repo `.mcp.json` auto-launches it in Claude Code).
 | Module | Responsibility | Key public symbols |

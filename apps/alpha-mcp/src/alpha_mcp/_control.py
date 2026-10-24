@@ -225,10 +225,41 @@ def research_sources_search(query: str, *, data_dir: Path, limit: int = 50) -> d
     )
 
 
-def research_source_get(source_id: str, *, data_dir: Path) -> dict[str, Any]:
-    """Read one immutable source record (the ``sources screen`` read projection)."""
+def research_source_get(
+    source_id: str,
+    *,
+    data_dir: Path,
+    project_id: str | None = None,
+    page: int | None = None,
+    char_offset: int = 0,
+    char_limit: int = 4_000,
+) -> dict[str, Any]:
+    """Read the legacy source preview or one bounded project-bound extracted page slice."""
+    args = ["research", "sources", "screen", source_id]
+    if page is None:
+        if project_id is not None or char_offset != 0 or char_limit != 4_000:
+            raise ValueError("project_id and page offsets require a page read")
+    else:
+        if project_id is None:
+            raise ValueError("project_id is required for a research source page read")
+        page = bound("page", page, 200)
+        char_offset = offset(char_offset)
+        char_limit = bound("char_limit", char_limit, 8_000)
+        args.extend(
+            [
+                "--project-id",
+                project_id,
+                "--page",
+                str(page),
+                "--char-offset",
+                str(char_offset),
+                "--char-limit",
+                str(char_limit),
+            ]
+        )
+    args.append("--json")
     return _object(
-        _invoke.run_json(["research", "sources", "screen", source_id, "--json"], data_dir=data_dir),
+        _invoke.run_json(args, data_dir=data_dir),
         "research source",
     )
 

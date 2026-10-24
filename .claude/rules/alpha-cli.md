@@ -4,6 +4,12 @@ paths:
 ---
 # alpha_cli rules
 
+## Literature worker boundary
+
+The isolated literature worker receives no inherited credentials and runs offline. It preserves a
+valid explicit `UV_CACHE_DIR`; otherwise it uses a temporary per-invocation cache removed after
+exit. An invalid explicit cache fails before startup.
+
 ## Connected research workspace additions (2026-09-30)
 
 `alpha assistant readiness --json` verifies local Codex authentication and filesystem isolation.

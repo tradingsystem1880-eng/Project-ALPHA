@@ -13,6 +13,7 @@ from alpha_cli.evidence_cmds import evidence_app
 from alpha_cli.figures_cmds import figures_app
 from alpha_cli.forecast_cmds import forecast_app
 from alpha_cli.info_cmds import info_app
+from alpha_cli.local_pdf_cmds import import_pdf_command
 from alpha_cli.ml_cmds import ml_app
 from alpha_cli.monte_carlo_cmds import monte_carlo_app
 from alpha_cli.optim_cmds import optim_app
@@ -30,6 +31,8 @@ from alpha_cli.scan_cmds import scan_app
 from alpha_cli.strategy_candidate_cmds import strategy_candidate_app
 from alpha_cli.suite_cmds import suite_app
 from alpha_cli.validate_cmds import validate as _validate
+
+research_app.command(name="import-pdf")(import_pdf_command)
 
 app = typer.Typer(help="Project ALPHA command-line interface.")
 app.add_typer(data_app, name="data")

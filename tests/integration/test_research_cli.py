@@ -2903,6 +2903,91 @@ def test_claim_lifecycle_drafts_screens_and_feeds_the_literature_dimension(
     assert hub_claims[0]["status"] == "screened"
 
 
+def test_source_screen_reads_one_bounded_page_and_keeps_legacy_preview(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "Read a synthetic paper")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    source_sha = hashlib.sha256(b"cli-page-pdf").hexdigest()
+    source = ControlStore(tmp_path).create_research_source(
+        project_id,
+        title="CLI page fixture",
+        locator="https://arxiv.org/pdf/1111.2222",
+        provider="arxiv",
+        access_mode="open_access",
+        content_hash=source_sha,
+    )
+    text = "A source page with a reported risk premium."
+    extraction_id = "rx_" + hashlib.sha256(b"cli-page-extraction").hexdigest()
+    ControlStore(tmp_path).record_research_document_text(
+        str(source["source_id"]),
+        artifact={
+            "extraction_id": extraction_id,
+            "schema": "ResearchDocumentTextV1",
+            "source_sha256": source_sha,
+            "parser": "pypdf",
+            "parser_version": "6.14.2",
+            "config_hash": hashlib.sha256(b"cli-page-config").hexdigest(),
+            "normalization": "NFC_LF_RSTRIP_V1",
+            "status": "extracted",
+            "pages": [
+                {
+                    "page": 1,
+                    "text": text,
+                    "character_count": len(text),
+                    "text_sha256": hashlib.sha256(text.encode()).hexdigest(),
+                }
+            ],
+            "page_count": 1,
+            "character_count": len(text),
+            "warnings": [],
+            "trust_label": "UNTRUSTED_SOURCE",
+        },
+    )
+
+    chunk = runner.invoke(
+        app,
+        [
+            "research",
+            "sources",
+            "screen",
+            str(source["source_id"]),
+            "--project-id",
+            project_id,
+            "--page",
+            "1",
+            "--char-offset",
+            "5",
+            "--char-limit",
+            "6",
+            "--json",
+        ],
+    )
+    assert chunk.exit_code == 0, chunk.output
+    page = cast(dict[str, object], json.loads(chunk.output))
+    assert page["page_text"] == text[5:11]
+    assert page["char_start"] == 5 and page["char_end"] == 11
+    assert page["trust_label"] == "UNTRUSTED_SOURCE"
+    assert page["source_id"] == source["source_id"]
+
+    legacy = runner.invoke(
+        app, ["research", "sources", "screen", str(source["source_id"]), "--json"]
+    )
+    assert legacy.exit_code == 0, legacy.output
+    legacy_source = cast(dict[str, object], json.loads(legacy.output))
+    previews = cast(list[dict[str, object]], legacy_source["page_previews"])
+    assert previews[0]["excerpt"] == text
+    assert previews[0]["trust_label"] == "UNTRUSTED_SOURCE"
+
+    missing_project = runner.invoke(
+        app,
+        ["research", "sources", "screen", str(source["source_id"]), "--page", "1", "--json"],
+    )
+    assert missing_project.exit_code != 0
+    assert "project id" in missing_project.output.lower()
+
+
 def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2911,8 +2996,14 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("ALPHA_TIINGO_API_KEY", "SECRET_SENTINEL")
     monkeypatch.setenv("SHELL", "/secret/interactive-shell")
+    monkeypatch.delenv("UV_CACHE_DIR", raising=False)
+    readonly_home = tmp_path / "readonly-home"
+    readonly_home.mkdir()
+    readonly_home.chmod(0o500)
+    monkeypatch.setenv("HOME", str(readonly_home))
     captured_argv: list[list[str]] = []
     captured_kwargs: list[dict[str, object]] = []
+    captured_cache_dirs: list[Path] = []
 
     class _Completed:
         returncode = 0
@@ -2932,10 +3023,18 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     def fake_run(argv: list[str], **kwargs: object) -> _Completed:
         captured_argv.append(argv)
         captured_kwargs.append(kwargs)
+        child_env = cast(dict[str, str], kwargs["env"])
+        cache_dir = Path(child_env["UV_CACHE_DIR"])
+        assert cache_dir.is_dir()
+        assert cache_dir != readonly_home
+        captured_cache_dirs.append(cache_dir)
         return _Completed()
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    fetched = _invoke("sources", "fetch", "https://arxiv.org/pdf/1234v1")
+    try:
+        fetched = _invoke("sources", "fetch", "https://arxiv.org/pdf/1234v1")
+    finally:
+        readonly_home.chmod(0o700)
     assert fetched["trust_label"] == "UNTRUSTED_SOURCE"
     assert "object_path" not in fetched and "receipt_path" not in fetched
     assert len(captured_argv) == 1
@@ -2950,9 +3049,18 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     assert "ALPHA_TIINGO_API_KEY" not in child_env
     assert "SHELL" not in child_env
     assert "HOME" not in child_env
-    assert set(child_env) == {"LANG", "LC_ALL", "PATH", "UV_NO_CONFIG", "UV_OFFLINE"}
+    assert set(child_env) == {
+        "LANG",
+        "LC_ALL",
+        "PATH",
+        "UV_CACHE_DIR",
+        "UV_NO_CONFIG",
+        "UV_OFFLINE",
+    }
     assert captured_kwargs[0]["start_new_session"] is True
     assert callable(captured_kwargs[0]["preexec_fn"])
+    assert len(captured_cache_dirs) == 1
+    assert not captured_cache_dirs[0].exists()
 
     class _Failed(_Completed):
         returncode = 1
@@ -2965,6 +3073,97 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     )
     assert rejected.exit_code != 0
     assert "not allowlisted" in rejected.output
+
+
+def test_literature_worker_preserves_an_explicit_cache_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shutil
+    import subprocess
+
+    cache_dir = tmp_path / "configured-uv-cache"
+    cache_dir.mkdir()
+    monkeypatch.setenv("UV_CACHE_DIR", str(cache_dir))
+    monkeypatch.setenv("ALPHA_TIINGO_API_KEY", "SECRET_SENTINEL")
+    monkeypatch.setenv("HOME", str(tmp_path / "home-not-for-child"))
+    captured_env: dict[str, str] = {}
+
+    class _Completed:
+        returncode = 0
+        stdout = '{"ok":true}'
+        stderr = ""
+
+    def fake_run(_argv: list[str], **kwargs: object) -> _Completed:
+        captured_env.update(cast(dict[str, str], kwargs["env"]))
+        return _Completed()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(shutil, "which", lambda _name: "/usr/bin/uv")
+
+    assert research_cmds._run_literature_worker(["probe"]) == {"ok": True}
+
+    assert captured_env["UV_CACHE_DIR"] == str(cache_dir)
+    assert set(captured_env) == {
+        "LANG",
+        "LC_ALL",
+        "PATH",
+        "UV_CACHE_DIR",
+        "UV_NO_CONFIG",
+        "UV_OFFLINE",
+    }
+    assert "ALPHA_TIINGO_API_KEY" not in captured_env
+    assert "HOME" not in captured_env
+    assert cache_dir.is_dir()
+
+
+def test_literature_worker_rejects_an_unusable_explicit_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    cache_file = tmp_path / "not-a-cache-directory"
+    cache_file.write_text("fixture", encoding="utf-8")
+    monkeypatch.setenv("UV_CACHE_DIR", str(cache_file))
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail("worker started with an invalid explicit cache"),
+    )
+
+    with pytest.raises(DataError, match="UV_CACHE_DIR.*writable directory"):
+        research_cmds._run_literature_worker(["probe"])
+
+
+def test_literature_worker_cleans_temporary_cache_after_subprocess_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import shutil
+    import subprocess
+    import tempfile
+
+    monkeypatch.delenv("UV_CACHE_DIR", raising=False)
+    cache_dirs: list[Path] = []
+
+    class _Failed:
+        returncode = 1
+        stdout = ""
+        stderr = "synthetic worker failure"
+
+    def fake_run(_argv: list[str], **kwargs: object) -> _Failed:
+        cache_dir = Path(cast(dict[str, str], kwargs["env"])["UV_CACHE_DIR"])
+        assert cache_dir.is_dir()
+        assert cache_dir.is_relative_to(Path(tempfile.gettempdir()))
+        cache_dirs.append(cache_dir)
+        return _Failed()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(shutil, "which", lambda _name: "/usr/bin/uv")
+
+    with pytest.raises(DataError, match="synthetic worker failure"):
+        research_cmds._run_literature_worker(["probe"])
+
+    assert len(cache_dirs) == 1
+    assert not cache_dirs[0].exists()
 
 
 def test_literature_discovery_acquisition_and_extraction_link_end_to_end_offline(
