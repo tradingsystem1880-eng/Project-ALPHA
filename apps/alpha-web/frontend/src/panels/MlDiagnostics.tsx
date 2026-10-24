@@ -4,7 +4,7 @@ import { api } from '../api/client'
 import type { MlExperimentPage } from '../api/types'
 import { Placeholder } from '../components/Placeholder'
 import { MiniLine, type MiniSeries } from '../components/MiniLine'
-import { setLinked, useLinked } from '../context/linked'
+import { useLinked } from '../context/linked'
 import { CHART, withAlpha } from '../util/chartTheme'
 import { fmtNum, fmtPct, shortId } from '../util/format'
 import {
@@ -17,6 +17,7 @@ import {
   type MlFoldDiagnosticProjection,
   type MlTearSheetProjection,
 } from './mlTearsheetModel'
+import { openRunDetail } from './actions'
 import { Section } from './rundetail/common'
 import type { PanelHandleProps } from '../context/panelHandle'
 
@@ -395,7 +396,7 @@ export function MlDiagnostics(_props: PanelHandleProps) {
         </label>
         <span className="spacer" />
         {summary?.replay_run_id ? (
-          <button className="btn" onClick={() => setLinked({ runId: summary.replay_run_id })}>
+          <button className="btn" onClick={() => openRunDetail(summary.replay_run_id!)}>
             Open canonical replay
           </button>
         ) : null}

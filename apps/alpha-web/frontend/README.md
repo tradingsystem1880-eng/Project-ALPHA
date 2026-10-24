@@ -75,7 +75,8 @@ this picker through Browse all available markets. Browse all crypto datasets ope
 non-price inventory. Metadata is not proof of integrity or research eligibility. Downloads accept
 typed symbols without claiming verified availability.
 
-Page/task links use `#page=...&pane=...`. Legacy `#run=<id>` links remain supported. Context and
+Page/task links use `#page=...&pane=...`. ML Diagnostics opens a canonical replay in Run Detail
+with that replay's exact run identity. Legacy `#run=<id>` links remain supported. Context and
 existing display preferences survive reload. Named workspace files remain unchanged; obsolete
 terminal window preferences are ignored.
 

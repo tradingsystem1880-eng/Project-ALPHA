@@ -1697,3 +1697,40 @@ regressions cover bootstrap stderr with the exact pin, wrong/empty/extra stdout,
 text in diagnostics, failed bootstrap, both callers, scan arguments and full scan failures. The
 failed cold-cache full-gate attempt is preserved in durable task evidence; it exposed the adapter
 issue before any scan began. This entry makes no private-suite or release-qualification claim.
+
+## 2026-10-24 — Local PR81–88 UI integration derivative
+
+Disposable local derivative of the independently reviewed eight-PR candidate at
+`76f85e673fe7e6d08a488a9da3dc6a85d0a7ddf6` (tree
+`07d6416459764fd64f75e49cfba5cfea47ac346b`). It combines the separately reviewed investigation
+selection-epoch, RunDetail trade-loading, Saved Workspaces load-ownership and ML Diagnostics
+canonical-replay navigation fixes, their public browser regressions, the RunDetail manual note and
+the ML navigation guide. The generated SPA was rebuilt once using Node.js 22.23.4 and the existing
+locked frontend dependencies. Focused oxlint, TypeScript/Vite production build and all 17 real-panel
+browser cases passed (11 on `chromium-minimum`; 6 selector cases on `chromium-reference-only` with
+project dependencies disabled). The build reports the existing Bokeh direct-`eval` and large-chunk
+warnings. No dependency or lockfile changed. Exact test output and source-candidate identities are
+preserved in `/tmp/alpha-pr81-88-ui-integration-20261024.md` and its adjacent logs.
+
+PR85 adds `membership_status` fields to ML response projections; compatibility with external strict
+clients consuming those response schemas remains unverified and is not covered by this UI-focused
+qualification.
+
+This is local focused qualification only: the canonical full gate and private coverage are
+outstanding. It does not authorize upstream integration, merge, publication or release acceptance.
+
+## 2026-10-24 — RunDetail summary/catalogue request ownership correction
+
+Separate local derivative of the PR81–88 UI integration tree
+`3c3fcd4485e0a9c26cf471bd50caf8e0124c1d9a`. RunDetail now tags summary detail, request error and
+figure catalogue values with their selected run ID and request epoch, and derives renderable values
+only when both match the current route. The `RunDetail hides A summary and figures while B detail
+and catalogue are pending` real-panel regression failed on the preserved pre-fix tree after
+observing both A's summary and catalogue under B; it passes after the owner guard. Additional tests
+cover a stale B detail error after A→B→A and delayed detail/catalogue completion after report
+unmount. All 7 RunDetail tests pass; the combined 20-case focus passes (14 `chromium-minimum`, 6
+`chromium-reference-only --no-deps`). Node.js 22.23.4 TypeScript/Vite build and targeted lint pass;
+the existing Bokeh direct-`eval` and large-chunk warnings remain. No lockfile or dependency changed.
+
+This remains focused local evidence, not canonical full-gate or private-coverage acceptance. The
+external strict-client caveat for PR85 and the earlier unresolved process-reaping diagnosis remain.
