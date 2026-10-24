@@ -209,15 +209,40 @@ def _write_exchange(data_dir: Path) -> Path:
 def ml_response_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, Path]:
     exchange = _write_exchange(tmp_path)
     monkeypatch.setattr(ml_api, "data_dir", lambda: tmp_path)
-    monkeypatch.setattr(
-        _ml,
-        "_run_json",
-        lambda args, **kwargs: (
-            {"status": "validated"}
-            if args[:2] == ["ml", "import"]
-            else {"diagnostics": json.loads((exchange / "result.json").read_text())["diagnostics"]}
-        ),
-    )
+
+    def run_json(args: list[str], **kwargs: object) -> dict[str, Any]:
+        del kwargs
+        request = json.loads((exchange / "request.json").read_text())
+        membership_status = (
+            "declared_unverified"
+            if request["universe_membership"] == "point_in_time"
+            else "current_membership_warning"
+        )
+        if args[:2] == ["ml", "import"]:
+            return {"status": "validated", "membership_status": membership_status}
+        diagnostics = json.loads((exchange / "result.json").read_text())["diagnostics"]
+        return {
+            "schema_version": 1,
+            "authority": "diagnostic_only",
+            "rows": 2500,
+            "symbols": 20,
+            "targets": 125,
+            "folds": [0],
+            "score": {"min": -1.0, "max": 1.0, "mean": 0.0, "std": 0.5},
+            "config_hash": "f" * 64,
+            "worker_lock_hash": "d" * 64,
+            "counterfactual_refit": False,
+            "diagnostics": diagnostics,
+            "label": (
+                "OOS predictions validated; point_in_time membership is declared but unverified"
+                if membership_status == "declared_unverified"
+                else "OOS prediction contract validated — canonical ALPHA replay pending"
+            ),
+            "next_required_step": "inspection only",
+            "membership_status": membership_status,
+        }
+
+    monkeypatch.setattr(_ml, "_run_json", run_json)
     return TestClient(create_app()), exchange
 
 
@@ -356,9 +381,13 @@ def test_exchange_projection_omits_raw_paths_and_bounds_diagnostics(
         _ml,
         "_run_json",
         lambda args, **kwargs: (
-            {"status": "validated"}
+            {"status": "validated", "membership_status": "current_membership_warning"}
             if args[:2] == ["ml", "import"]
-            else {"diagnostics": _diagnostics()}
+            else {
+                "diagnostics": _diagnostics(),
+                "label": _diagnostics()["label"],
+                "membership_status": "current_membership_warning",
+            }
         ),
     )
 
@@ -373,14 +402,85 @@ def test_exchange_projection_omits_raw_paths_and_bounds_diagnostics(
     )
 
     assert detail["status"] == "trained"
+    assert detail["membership_status"] == "current_membership_warning"
+    assert detail["result"]["membership_status"] == "current_membership_warning"
     assert detail["contract"]["panel_rows"] == 15120
     assert "path" not in json.dumps(detail).lower()
     assert len(tear["feature_importance"]) == 1
+    assert tear["membership_status"] == "current_membership_warning"
     assert tear["feature_importance_truncated"] is True
     assert tear["ic"]["by_target"][0]["target_ts"].startswith("2024-09-28")
     assert tear["portfolio"]["timeline"][0]["target_ts"].startswith("2024-09-28")
     assert tear["timeline_has_more"] is False
     assert tear["folds"][0]["training_history"]["train"]["l2"] == [0.3, 0.1]
+
+
+def test_legacy_point_in_time_web_inspection_is_explicit_and_read_only(
+    ml_response_client: tuple[TestClient, Path],
+) -> None:
+    client, exchange = ml_response_client
+    request_path = exchange / "request.json"
+    request = json.loads(request_path.read_text())
+    request["universe_membership"] = "point_in_time"
+    request["survivorship_warning"] = None
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+    watched = ("request.json", "result.json")
+    hashes_before = {
+        name: hashlib.sha256((exchange / name).read_bytes()).hexdigest() for name in watched
+    }
+
+    detail = client.get(f"/api/ml/exchanges/{EXCHANGE_ID}")
+    result = client.get(f"/api/ml/exchanges/{EXCHANGE_ID}/result")
+    evaluation = client.get(f"/api/ml/exchanges/{EXCHANGE_ID}/evaluation")
+    tear = client.get(f"/api/ml/exchanges/{EXCHANGE_ID}/tear-sheet")
+
+    assert (
+        detail.status_code
+        == result.status_code
+        == evaluation.status_code
+        == tear.status_code
+        == 200
+    )
+    assert detail.json()["result"]["status"] == "succeeded"
+    assert detail.json()["result"]["membership_status"] == "declared_unverified"
+    assert result.json()["membership_status"] == "declared_unverified"
+    assert evaluation.json()["membership_status"] == "declared_unverified"
+    assert "declared but unverified" in evaluation.json()["label"]
+    assert tear.json()["membership_status"] == "declared_unverified"
+    assert "declared but unverified" in tear.json()["label"]
+    assert detail.json()["membership_status"] == "declared_unverified"
+    assert client.get("/api/ml/exchanges").json()["items"][0]["membership_status"] == (
+        "declared_unverified"
+    )
+    assert {
+        name: hashlib.sha256((exchange / name).read_bytes()).hexdigest() for name in watched
+    } == hashes_before
+
+
+def test_prepared_legacy_point_in_time_web_inspection_is_explicit_and_read_only(
+    ml_response_client: tuple[TestClient, Path],
+) -> None:
+    client, exchange = ml_response_client
+    request_path = exchange / "request.json"
+    request = json.loads(request_path.read_text())
+    request["universe_membership"] = "point_in_time"
+    request["survivorship_warning"] = None
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+    (exchange / "result.json").unlink()
+    before = hashlib.sha256(request_path.read_bytes()).hexdigest()
+
+    detail = client.get(f"/api/ml/exchanges/{EXCHANGE_ID}")
+    listing = client.get("/api/ml/exchanges")
+    tear = client.get(f"/api/ml/exchanges/{EXCHANGE_ID}/tear-sheet")
+
+    assert detail.status_code == listing.status_code == tear.status_code == 200
+    assert detail.json()["status"] == "prepared"
+    assert detail.json()["membership_status"] == "declared_unverified"
+    assert detail.json()["result"] is None
+    assert listing.json()["items"][0]["membership_status"] == "declared_unverified"
+    assert tear.json()["membership_status"] == "declared_unverified"
+    assert "declared but unverified" in tear.json()["label"]
+    assert hashlib.sha256(request_path.read_bytes()).hexdigest() == before
 
 
 def test_frontend_service_status_is_honest_when_panel_producer_is_missing(

@@ -68,6 +68,79 @@ def test_exact_round_trip_preserves_nested_research_artifact() -> None:
     assert original.sources[0].artifact == artifact()
 
 
+def test_schema_v1_round_trip_preserves_integer_versions_and_hashes() -> None:
+    original_source = source()
+    original_value = value()
+    source_dict = original_source.to_dict()
+    value_dict = original_value.to_dict()
+
+    assert type(source_dict["schema_version"]) is int
+    assert type(value_dict["schema_version"]) is int
+    assert FeatureInputRefV1.from_dict(source_dict).content_sha256 == original_source.content_sha256
+    assert FeatureValueV1.from_dict(value_dict).content_sha256 == original_value.content_sha256
+
+
+@pytest.mark.parametrize("schema_version", [True, 1.0, False, 0, 2, "1", None])
+def test_feature_input_ref_rejects_non_integer_or_unsupported_schema_version(
+    schema_version: object,
+) -> None:
+    data = source().to_dict()
+    original_hash = data["content_sha256"]
+    data["schema_version"] = schema_version
+
+    assert data["content_sha256"] == original_hash
+    with pytest.raises(DataError):
+        FeatureInputRefV1.from_dict(data)
+
+
+@pytest.mark.parametrize("schema_version", [True, 1.0, False, 0, 2, "1", None])
+def test_feature_value_rejects_non_integer_or_unsupported_schema_version(
+    schema_version: object,
+) -> None:
+    data = value().to_dict()
+    original_hash = data["content_sha256"]
+    data["schema_version"] = schema_version
+
+    assert data["content_sha256"] == original_hash
+    with pytest.raises(DataError):
+        FeatureValueV1.from_dict(data)
+
+
+def test_feature_input_ref_requires_schema_version() -> None:
+    data = source().to_dict()
+    del data["schema_version"]
+
+    with pytest.raises(DataError):
+        FeatureInputRefV1.from_dict(data)
+
+
+def test_feature_value_requires_schema_version() -> None:
+    data = value().to_dict()
+    del data["schema_version"]
+
+    with pytest.raises(DataError):
+        FeatureValueV1.from_dict(data)
+
+
+@pytest.mark.parametrize("schema_version", [True, 1.0])
+def test_feature_value_rejects_non_integer_nested_source_schema_version(
+    schema_version: object,
+) -> None:
+    data = value().to_dict()
+    original_value_hash = data["content_sha256"]
+    sources = data["sources"]
+    assert isinstance(sources, list)
+    source_dict = sources[0]
+    assert isinstance(source_dict, dict)
+    original_source_hash = source_dict["content_sha256"]
+    source_dict["schema_version"] = schema_version
+
+    assert data["content_sha256"] == original_value_hash
+    assert source_dict["content_sha256"] == original_source_hash
+    with pytest.raises(DataError):
+        FeatureValueV1.from_dict(data)
+
+
 def test_timezone_equivalent_inputs_have_equal_identity() -> None:
     shifted = value(
         observed_at=BASE.astimezone(timezone(timedelta(hours=-4))),
@@ -140,6 +213,7 @@ def test_naive_and_causal_clock_errors_fail() -> None:
 def test_scalar_types_are_stable_and_contract_is_frozen() -> None:
     boolean = value(scalar=True, value_type="bool")
     integer = value(scalar=1, value_type="int")
+    assert FeatureValueV1.from_dict(boolean.to_dict()) == boolean
     assert boolean.content_sha256 != integer.content_sha256
     assert boolean.computation_sha256 == integer.computation_sha256 == HASH
     with pytest.raises(DataError):

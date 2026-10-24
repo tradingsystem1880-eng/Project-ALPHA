@@ -75,6 +75,30 @@ def test_protocol_read_returns_entry_plus_exact_content() -> None:
         read_research_protocol("build-me-a-strategy")
 
 
+def test_literature_protocol_requires_metric_interpretation_and_falsifiable_extension() -> None:
+    protocol = read_research_protocol("literature-review")
+    content = str(protocol["content"]).casefold()
+    for required in (
+        "estimand",
+        "units",
+        "sample",
+        "horizon",
+        "estimator",
+        "uncertainty",
+        "assumptions",
+        "evidence",
+        "inference",
+        "reproducibility",
+        "unknown",
+        "falsifiable",
+        "event_study",
+        "shuffled_event_null",
+        "truncated",
+        "untrusted_source",
+    ):
+        assert required in content
+
+
 def test_tampered_protocol_content_fails_loud(tmp_path: Path) -> None:
     library = tmp_path / "protocols"
     shutil.copytree(PROTOCOL_LIBRARY_DIR, library)

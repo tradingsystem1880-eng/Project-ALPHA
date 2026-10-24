@@ -237,6 +237,7 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
   // ---- autoscale + calendar ticks for the visible observations
   // Declared before any range callback: Bokeh may fire one while the document is still mounting.
   let cursorIndex: number | null = null, hover: { panel: Panel; y: number } | null = null, crosshairOn = true
+  let cursorMode: 'pointer' | 'tap' | 'keyboard' | 'linked' | null = null
   // Assigned once the panel views exist; range frames before then only rescale.
   let updateLegends = (_index: number) => {}
   const legendEntries: { panel: Panel; rows: { text: HTMLElement[]; values: (i: number) => string[] }[] }[] = []
@@ -320,6 +321,7 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
   const column = new Column({ children: panels.map(p => p.fig), spacing: 0 })
   const mounted = await showScientificPlot(column, node)
   let observer: ResizeObserver | undefined, unregister: (() => void) | undefined
+  let removePointerListeners = () => {}
   try {
   const views = mounted.view.child_views as unknown as PlotView[]
   const font = `${style.fontSize}px ${style.font}`
@@ -468,14 +470,52 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
     updateLegends(cursorIndex ?? lastIndex())
     if (notify) options.onCursor(cursorIndex)
   }
+  let pointerStart: { id: number; x: number; y: number } | null = null
+  const pointerDown = (event: PointerEvent) => {
+    if (event.button !== 0) return
+    pointerStart = { id: event.pointerId, x: event.clientX, y: event.clientY }
+  }
+  const pointerUp = (event: PointerEvent) => {
+    const start = pointerStart
+    pointerStart = null
+    if (!start || start.id !== event.pointerId || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) return
+    for (const p of panels) {
+      const layer = p.layers!.cursor, bounds = layer.getBoundingClientRect(), bbox = p.view!.frame.bbox
+      const px = event.clientX - bounds.left, py = event.clientY - bounds.top
+      if (px < bbox.left || px > bbox.right || py < bbox.top || py > bbox.bottom) continue
+      const first = Math.max(0, Math.ceil(x.start - 1e-3))
+      const last = Math.min(n - 1, Math.floor(x.end + 1e-3))
+      if (last < first) return
+      const index = Math.max(first, Math.min(last, Math.round(p.view!.frame.x_scale.invert(px))))
+      hover = { panel: p, y: p.view!.frame.y_scale.invert(py) }
+      cursorMode = event.pointerType === 'mouse' ? 'pointer' : 'tap'
+      setCursor(index)
+      options.registry?.publish(options.panelId, 'cursor', times[index])
+      return
+    }
+  }
+  const pointerCancel = () => { pointerStart = null }
+  node.addEventListener('pointerdown', pointerDown, true)
+  node.addEventListener('pointerup', pointerUp, true)
+  node.addEventListener('pointercancel', pointerCancel, true)
+  removePointerListeners = () => {
+    node.removeEventListener('pointerdown', pointerDown, true)
+    node.removeEventListener('pointerup', pointerUp, true)
+    node.removeEventListener('pointercancel', pointerCancel, true)
+  }
   for (const p of panels) {
     p.fig.on_event(MouseMove, event => {
       const i = Math.round(event.x)
       hover = { panel: p, y: event.y }
+      cursorMode = 'pointer'
       setCursor(i)
       options.registry?.publish(options.panelId, 'cursor', ...(cursorIndex === null ? [] : [times[cursorIndex]]))
     })
-    p.fig.on_event(MouseLeave, () => { hover = null; setCursor(null); options.registry?.publish(options.panelId, 'cursor') })
+    p.fig.on_event(MouseLeave, () => {
+      hover = null
+      if (cursorMode === 'pointer') { cursorMode = null; setCursor(null); options.registry?.publish(options.panelId, 'cursor') }
+      else drawCursor()
+    })
   }
   price.fig.on_event(RangesUpdate, () => publishRange())
   node.dataset.nativeLod = 'idle'
@@ -488,12 +528,32 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
   // The visible window as the UTC times of its first and last whole observations.
   // Observations whose centre lies in the window; the tolerance absorbs linked ranges' 1e-6 insets.
   const visibleUTC = (): [number, number] | null => { const lo = Math.max(0, Math.ceil(x.start - 1e-3)), hi = Math.min(n - 1, Math.floor(x.end + 1e-3)); return hi >= lo ? [times[lo], times[hi]] : null }
+  const navigate = (action: -1 | 1 | 'first' | 'last' | 'clear') => {
+    hover = null
+    if (action === 'clear') {
+      cursorMode = null
+      setCursor(null)
+      options.registry?.publish(options.panelId, 'cursor')
+      return
+    }
+    const first = Math.max(0, Math.ceil(x.start - 1e-3))
+    const last = Math.min(n - 1, Math.floor(x.end + 1e-3))
+    if (last < first) return
+    const index = action === 'first'
+      ? first
+      : action === 'last'
+        ? last
+        : Math.max(first, Math.min(last, (cursorIndex ?? (action < 0 ? last : first)) + action))
+    cursorMode = 'keyboard'
+    setCursor(index)
+    options.registry?.publish(options.panelId, 'cursor', times[index])
+  }
   const stampRange = () => { const r = visibleUTC(); node.dataset.visibleRange = r ? JSON.stringify({ from: r[0], to: r[1] }) : '' }
   x.change.connect(stampRange); stampRange()
 
   const activate = () => { unregister ??= options.registry?.register(options.panelId, {
     range(from, to) { const logical = logicalRangeForUTC(times, from, to); if (logical) { column.document?.interactive_start(price.fig); x.setv({ start: logical.from, end: logical.to }) } },
-    cursor(time) { hover = null; setCursor(time === null ? null : indexOf.get(time) ?? null) },
+    cursor(time) { hover = null; cursorMode = time === null ? null : 'linked'; setCursor(time === null ? null : indexOf.get(time) ?? null) },
   }) }
 
   // ---- resize: keep the observation window, recompute frames after an 80 ms quiet period
@@ -535,17 +595,18 @@ export async function mountTechnicalChart(node: HTMLElement, c: TechnicalComposi
     },
     range(from: number, to: number) { const logical = logicalRangeForUTC(times, from, to); if (!logical) return; x.setv({ start: logical.from, end: logical.to }); publishRange() },
     fit() { x.setv({ start: -0.5, end: n - 0.5 + 2 }); publishRange() },
+    navigate,
     visibleUTC,
     async png(header: string[] = []): Promise<Blob> {
       return technicalPng(await mounted.view.export('png').to_blob(), mounted.view.el,
         panels.flatMap(p => [p.layers!.legend, p.layers!.marks]), header, style)
     },
     undrawnAnnotations: undrawn,
-    destroy() { cancelAnimationFrame(scaleFrame); unregister?.(); clearTimeout(resizeTimer); cancelChartResize(resize); observer?.disconnect(); mounted.destroy(); mounted.view.el.remove() },
+    destroy() { removePointerListeners(); cancelAnimationFrame(scaleFrame); unregister?.(); clearTimeout(resizeTimer); cancelChartResize(resize); observer?.disconnect(); mounted.destroy(); mounted.view.el.remove() },
   }
   } catch (error) {
     // Fail loud, but release the shown document, observers and links first.
-    cancelAnimationFrame(scaleFrame); unregister?.(); observer?.disconnect(); mounted.destroy(); mounted.view.el.remove()
+    removePointerListeners(); cancelAnimationFrame(scaleFrame); unregister?.(); observer?.disconnect(); mounted.destroy(); mounted.view.el.remove()
     throw error
   }
 }

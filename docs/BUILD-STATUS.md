@@ -18,6 +18,8 @@ current-status paragraph, which is maintained there and may be newer than the co
 below. With ADR-0027/0028, that paragraph takes precedence over the dated narratives
 below wherever they conflict. Append new delivery records HERE.
 
+**2026-10-23 local candidate — unscheduled ML membership guard:** On main `99f2d472dd4511b446e1198ae80201e7207d089d`, schema versions 1 and 2 could accept `point_in_time` without a membership schedule. This local protective slice rejects that declaration at new export/preparation, retains `current_membership` only with its visible warning, and leaves historical artifacts byte-identical and inspectable with a `declared_unverified` status carried through CLI and web result/evaluation/tear-sheet projections. Existing frozen unscheduled PIT inputs cannot be trained or replayed by ALPHA/Qlib. No promotion gate changed; no schedule-v2 or date-varying model support is claimed. Focused synthetic contract, exporter, CLI, worker and web response tests passed; independent review approved the guard and read-only web projection. The full gate was not run, and this patch is not committed or merged.
+
 **Current research-program status (2026-08-11):** R1–R6 are implemented and integrated, and the
 scientific-authority hardening in ADR-0027 is complete. The private local implementation is
 complete; production, distribution, sale, hosting, and multi-user readiness are permanently out of
@@ -1603,3 +1605,173 @@ The first corrected-tree aggregate attempt passed backend, frontend/browser, lit
 and passed Atlas tests, then stopped on stale generated Atlas graph/input/unknowns outputs.
 Their canonical regeneration is part of this change; the failed attempt remains preserved and is
 not aggregate acceptance. Final regenerated-tree results remain in the separate task receipts.
+
+## 2026-10-22 — Technical-chart cursor inspection (unaccepted)
+
+On clean supplied base `99f2d472dd4511b446e1198ae80201e7207d089d` (isolated branch `work`), the
+existing Technical · Bokeh chart now supports exact candle/study inspection by hover, touch tap, and
+focused Left/Right/Home/End/Escape keys. Selection uses the returned candle index and aligned backend
+overlay value, preserves `—` for missing study points, publishes the existing UTC linked cursor, and
+clears on chart recomposition so the header returns to the latest returned candle. Classic/Default
+grammar and optional Market · Lightweight are preserved. No backend, API, dependency, or research
+artifact changes. The deterministic E2E uses mocked synthetic bars and is not research evidence.
+
+Focused evidence: renderer unit tests 3 passed; technical-chart Chromium reference spec 18 passed,
+including keyboard/touch value identity, study-change stale clearing, loading/empty/503 states, and
+both theme screenshots; TypeScript build check and warning-denying lint passed. The packaged SPA
+build passed with existing Vite dependency-eval/chunk-size warnings. Visual captures and exact
+candidate/recovery patch are in `/workspace/task-evidence/alpha-chart-inspection/`. Independent
+read-only review approved the implementation and scoped evidence. This is not a full repository gate
+or feature-release acceptance. No commit, publication, or merge was made.
+
+## 2026-10-23 — Strict alpha-study feature schema versions
+
+`FeatureInputRefV1` and `FeatureValueV1` now reject schema-version values that are not
+integers equal to `1`, including JSON booleans and floating-point `1.0`. Public
+regressions cover valid round trips with unchanged content hashes, both top-level
+readers, nested input references, unsupported and missing versions, semantic tampering,
+extra keys, and boolean feature scalars. Valid serialized output and hashes remain
+unchanged. No schema migration, dependency, store, or authority change was introduced.
+Private external coverage remains **UNVERIFIED**.
+
+## 2026-10-23 — Boolean guard for frozen baseline numeric inputs
+
+`alpha research diagnostic run-plan` previously accepted JSON booleans in numeric plan fields and
+`schema_version`: `seed: true` became `1`, `target_vol: true` became `1.0`, and
+`schema_version: true` became `1` before plan identity was calculated. Focused regressions reproduce
+all three conversions. The existing `BaselineExecutionPlan` now rejects booleans in numeric fields
+and `schema_version` while preserving Pydantic's existing numeric-string and integral-float
+coercions; a compatibility test verifies equivalent inputs retain the same normalized plan hash.
+This is a fail-closed input-contract change only: no metrics, experiment lineage, reservation,
+semantic freeze, strategy behavior or authority changed. The focused module passed all 40 tests when
+run through `scripts/run_owned_test.py`, and an independent review approved the bounded patch. The
+canonical full gate was not run. No commit or publication was made.
+
+## 2026-10-21 — Stooq interrupted-response error boundary candidate
+
+An offline probe through the real Stooq adapter and `data pull` on accepted main
+`b2556c0ede016f99dba687187b6e9f501bedd5cb` reproduced connection-reset and truncated-body
+exceptions escaping with exit 1 and no diagnostic. Timeout and URL-error controls
+already produced typed exit-2 errors. The narrow candidate translates connection
+errors and incomplete HTTP reads to chained `DataError`, preserving the existing
+HTTP-rejection message. It does not retry, parse partial bytes, fall back to another
+provider or publish partial history. Public adapter/CLI regression tests cover the
+interrupted reads, original cause, response cleanup and absence of publication.
+Fresh focused/full validation and independent exact-diff review remain required;
+this offline reproduction establishes neither live-provider acceptance nor release
+acceptance. Original probe and failed test attempts remain in private task evidence.
+
+A separate dated correction in the owner-actions register supersedes its preserved
+August 19 branch-only harness advice: accepted main tracks the two named harness
+files. Their presence does not establish hook installation, trust, permissions or
+local readiness. The old inspection date and historical text remain unchanged.
+
+## 2026-10-22 — Empty component gate definitions fail closed
+
+On isolated candidate `codex/gate-empty-steps-fail-closed`, based on accepted main
+`99f2d472dd4511b446e1198ae80201e7207d089d`, empty component definitions now return failure
+and cannot validate a component receipt or produce a full stamp. The focused
+`tests/unit/test_gate_components.py` run passed (34 tests); the two new regressions first
+reproduced the fail-open behavior on the base. This is a bounded candidate result only:
+the aggregate gate remains outstanding. An independent read-only review found no actionable
+issues; the reviewer did not run tests. No commit or publication was performed.
+
+## 2026-10-22 — Pinned Semgrep tooling candidate
+
+On isolated branch `work` at baseline `99f2d472dd4511b446e1198ae80201e7207d089d` (clean before
+edits), the gate and float-contract checker now share `scripts/semgrep_runner.py`. It requests exact
+Semgrep 1.181.0 through isolated `uvx --from semgrep==1.181.0`, verifies `--version` before each
+scan, and returns a failure on a missing tool, failed invocation, or mismatch. The existing rule
+file and both callers' scan arguments are retained; application and worker lockfiles are unchanged.
+Offline Semgrep-focused tests passed 12/12, including both callers, exact argv, version mismatch,
+scanner failure and no stamp after a failed gate step on the initial implementation candidate. The
+implementation remains local and uncommitted; subsequent candidate-specific checks are recorded in
+the task handoff. This entry does not claim repository acceptance, publication or merge.
+
+Cold-cache requalification later exposed that the gate adapter combined `uvx` stdout and stderr,
+so first-install diagnostics polluted the exact version comparison and stopped before any scan. The
+shared runner now checks only the probe's exact stdout, keeps bootstrap diagnostics separate,
+propagates probe failures, and preserves both streams in failure logs. Both callers also emit stderr
+from successful invocations so cold-cache bootstrap diagnostics remain visible. Added offline
+regressions cover bootstrap stderr with the exact pin, wrong/empty/extra stdout, misleading version
+text in diagnostics, failed bootstrap, both callers, scan arguments and full scan failures. The
+failed cold-cache full-gate attempt is preserved in durable task evidence; it exposed the adapter
+issue before any scan began. This entry makes no private-suite or release-qualification claim.
+
+## 2026-10-24 — Local PR81–88 UI integration derivative
+
+Disposable local derivative of the independently reviewed eight-PR candidate at
+`76f85e673fe7e6d08a488a9da3dc6a85d0a7ddf6` (tree
+`07d6416459764fd64f75e49cfba5cfea47ac346b`). It combines the separately reviewed investigation
+selection-epoch, RunDetail trade-loading, Saved Workspaces load-ownership and ML Diagnostics
+canonical-replay navigation fixes, their public browser regressions, the RunDetail manual note and
+the ML navigation guide. The generated SPA was rebuilt once using Node.js 22.23.4 and the existing
+locked frontend dependencies. Focused oxlint, TypeScript/Vite production build and all 17 real-panel
+browser cases passed (11 on `chromium-minimum`; 6 selector cases on `chromium-reference-only` with
+project dependencies disabled). The build reports the existing Bokeh direct-`eval` and large-chunk
+warnings. No dependency or lockfile changed. Exact test output and source-candidate identities are
+preserved in `/tmp/alpha-pr81-88-ui-integration-20261024.md` and its adjacent logs.
+
+PR85 adds `membership_status` fields to ML response projections; compatibility with external strict
+clients consuming those response schemas remains unverified and is not covered by this UI-focused
+qualification.
+
+This is local focused qualification only: the canonical full gate and private coverage are
+outstanding. It does not authorize upstream integration, merge, publication or release acceptance.
+
+## 2026-10-24 — RunDetail summary/catalogue request ownership correction
+
+Separate local derivative of the PR81–88 UI integration tree
+`3c3fcd4485e0a9c26cf471bd50caf8e0124c1d9a`. RunDetail now tags summary detail, request error and
+figure catalogue values with their selected run ID and request epoch, and derives renderable values
+only when both match the current route. The `RunDetail hides A summary and figures while B detail
+and catalogue are pending` real-panel regression failed on the preserved pre-fix tree after
+observing both A's summary and catalogue under B; it passes after the owner guard. Additional tests
+cover a stale B detail error after A→B→A and delayed detail/catalogue completion after report
+unmount. All 7 RunDetail tests pass; the combined 20-case focus passes (14 `chromium-minimum`, 6
+`chromium-reference-only --no-deps`). Node.js 22.23.4 TypeScript/Vite build and targeted lint pass;
+the existing Bokeh direct-`eval` and large-chunk warnings remain. No lockfile or dependency changed.
+
+This remains focused local evidence, not canonical full-gate or private-coverage acceptance. The
+external strict-client caveat for PR85 and the earlier unresolved process-reaping diagnosis remain.
+
+**Bounded literature page reads (2026-10-24)** — `get_research_source` now optionally reads one
+project-bound page and character slice from an already acquired extraction. The CLI reuses the
+existing immutable extraction hash reader, verifies source/extraction binding and the selected
+page hash, caps each result at 8,000 characters, enforces the extractor's 200-page ceiling, and
+labels text `UNTRUSTED_SOURCE`. An over-limit extraction is marked truncated without retaining
+partial text by the current worker, and page reads refuse any `truncated` artifact before returning
+text. The legacy source preview also returns extraction status/warnings and can include bounded
+page previews if present; it is not a full-paper review signal. The original source preview call
+and all 62 MCP tool names remain compatible. The literature-review
+protocol now requires metric/estimand definitions, units, sample and horizon, estimator and
+uncertainty, assumptions, evidence/inference separation, reproducibility limits, and a falsifiable
+extension linked to a registered analysis family; undefined metrics stay unknown. The change adds no
+provider, full-text acquisition route, analysis family, model, or authority. Selected store,
+protocol, CLI, and MCP regression checks passed; provider health was not tested. Neither source
+preview nor page read screens claims or advances research status. Opening `ControlStore` retains
+its existing schema/migration work and missing development-stage-row repair, which can write local
+control data when needed; that lifecycle behavior was not changed by this reader. The scoped test
+set passed 202 tests before the patch, 207 on its initial version, 6 targeted checks after the
+page-type correction, and 209 on the qualified final patch. Ruff lint/format and mypy also passed
+on the eight changed Python paths.
+
+**Deferred SSRN scope** — no SSRN adapter or access route is configured by the page-reader change.
+Keep any follow-up metadata-first: use Crossref/OpenAlex SSRN identifiers only where their actual
+coverage and linkage are verified; preserve the exact SSRN id, DOI, working-paper status, known
+version and retrieval provenance, and a content hash for any lawfully acquired text. A permanent
+DOI is not proof that historical full text is immutable or retained. Default to explicit
+metadata-only/access-unavailable states. Full-text intake requires a verified permitted route or
+an owner-provided PDF, with source attribution and rights handled under SSRN's [preprint FAQ](https://www.elsevier.support/ssrn/news/welcome-to-ssrn-elseviers-preprint-server),
+[DOI/version guidance](https://www.elsevier.support/ssrn/answer/doi), and [reuse guidance](https://www.elsevier.support/ssrn/answer/can-i-repurpose-content-available-on-ssrn).
+Dataset/code relationship retrieval is a separate follow-up; linked code remains inert and must
+never be executed as part of paper review. No SSRN API, host allowlist, automatic full-text fetch,
+or corpus reuse permission is assumed here.
+
+**Offline literature worker cache (2026-10-24)** — `_run_literature_worker` now passes only the
+existing credential-free, offline child environment plus `UV_CACHE_DIR`. A valid configured cache
+is preserved; otherwise the launch gets a temporary cache removed after the subprocess exits.
+Invalid explicit cache paths fail before worker startup rather than silently switching caches.
+Focused tests cover the configured and temporary paths, cleanup on success/failure, read-only home,
+and environment isolation. A real synthetic owner-PDF CLI import and page read passed with no
+inherited cache setting and a read-only home; no provider request or owner paper was used.

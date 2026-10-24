@@ -167,7 +167,7 @@ def train(
     if mode not in {"real", "fake"}:
         raise typer.BadParameter("--mode must be 'real' or 'fake'")
     try:
-        request = validate_request_bundle(exchange)
+        request = validate_request_bundle(exchange, for_execution=True)
         expected_input_anchor = validate_input_anchor(exchange)
         project, lock = _worker_project(worker_project)
         actual_lock_hash = sha256_file(lock)
@@ -248,8 +248,12 @@ def import_result(
             "config_hash": validated.result["config_hash"],
             "worker_lock_hash": validated.result["worker_lock_hash"],
             "diagnostic_only": True,
+            "membership_status": validated.request.membership_status,
             "next_required_step": (
-                "canonical ALPHA replay: run `alpha ml replay EXCHANGE` for validation"
+                "Frozen result is inspection-only because point_in_time membership is "
+                "unverified; training and replay are disabled"
+                if validated.request.membership_status == "declared_unverified"
+                else "canonical ALPHA replay: run `alpha ml replay EXCHANGE` for validation"
             ),
         },
         as_json=as_json,

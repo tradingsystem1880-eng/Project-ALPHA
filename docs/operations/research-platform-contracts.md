@@ -47,7 +47,7 @@ acceptance claim. The [ADR index](../adr/README.md), path rules and cited design
   can contaminate the sealed share; evidence-free or D0-only decisions cannot claim support.
   Promotion requires supported evidence, the owner disposition and the complete linked dossier.
   Gate overrides remain append-only owner events with permanent run watermarks.
-- SQLite control schema v5 retains supported historical migrations. Preserve migration writer
+- SQLite control schema v6 retains supported historical migrations. Preserve migration writer
   locking, exact checked backups, lossless receipt rebuilds and immutable semantic-event hashes.
   Credential counter, challenge, receipt and semantic event commit atomically. Canonical reads
   verify linkage/transitions in one read snapshot. Missing protected v5 objects fail closed;
