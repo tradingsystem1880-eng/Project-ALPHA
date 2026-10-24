@@ -2,7 +2,7 @@
 
 # CLI flow
 
-226 leaf commands in 24 groups (from the committed `alpha info commands` cache); 9 MCP action tools bridge to CLI leaves via argv literals. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+227 leaf commands in 24 groups (from the committed `alpha info commands` cache); 9 MCP action tools bridge to CLI leaves via argv literals. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
 <!-- nodes: cli:alpha assistant|cli:alpha backtest|cli:alpha chart|cli:alpha crypto-data|cli:alpha data|cli:alpha evidence|cli:alpha figures|cli:alpha forecast|cli:alpha info|cli:alpha ml|cli:alpha monte-carlo|cli:alpha optim|cli:alpha owner-auth|cli:alpha paper|cli:alpha project|cli:alpha propfirm|cli:alpha provider|cli:alpha quantpad-data|cli:alpha research|cli:alpha risk|cli:alpha rules|cli:alpha scan|cli:alpha strategy-candidate|cli:alpha suite -->
 ```mermaid
@@ -345,6 +345,7 @@ cli:alpha suite
 | `alpha research draft-confirmation` | `--created-by`, `--json` |
 | `alpha research evidence-hub` | `--json` |
 | `alpha research export` | `--output-dir`, `--json` |
+| `alpha research import-pdf` | `--file`, `--title`, `--json` |
 | `alpha research investigations acquire` | `--request` |
 | `alpha research investigations create` | `--request` |
 | `alpha research investigations draft` | `--request` |
@@ -375,7 +376,7 @@ cli:alpha suite
 | `alpha research sources discover` | `--query`, `--unpaywall-email`, `--max-candidates`, `--max-full-texts`, `--json` |
 | `alpha research sources fetch` | `--objects-dir`, `--allow-host`, `--json` |
 | `alpha research sources freeze` | `--source-id`, `--definition-json`, `--json` |
-| `alpha research sources screen` | `--json` |
+| `alpha research sources screen` | `--project-id`, `--page`, `--char-offset`, `--char-limit`, `--json` |
 | `alpha research sources search` | `--limit`, `--offset`, `--json` |
 | `alpha research status` | `--json` |
 | `alpha research verify` | `--path`, `--json` |

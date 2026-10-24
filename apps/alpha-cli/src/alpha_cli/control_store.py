@@ -3747,6 +3747,114 @@ class ControlStore:
             )
         return {**source, "document": record, "page_previews": previews}
 
+    def get_research_source_page(
+        self,
+        project_id: str,
+        source_id: str,
+        page_number: int,
+        *,
+        char_offset: int = 0,
+        char_limit: int = 4_000,
+    ) -> dict[str, object]:
+        """Read a bounded untrusted page slice from one source's verified extraction."""
+        if isinstance(page_number, bool) or not isinstance(page_number, int) or page_number < 1:
+            raise DataError("research source page must be a positive one-based integer")
+        if isinstance(char_offset, bool) or not isinstance(char_offset, int) or char_offset < 0:
+            raise DataError("research source character offset must be a non-negative integer")
+        if (
+            isinstance(char_limit, bool)
+            or not isinstance(char_limit, int)
+            or not 1 <= char_limit <= 8_000
+        ):
+            raise DataError("research source page character limit must be in 1..8000")
+
+        source = self.get_research_source(source_id)
+        if source["project_id"] != project_id:
+            raise DataError("research source does not belong to the requested project")
+        with self._transaction(write=False) as connection:
+            document = connection.execute(
+                "SELECT extraction_id FROM research_document_texts WHERE source_id = ?",
+                (source["source_id"],),
+            ).fetchone()
+        if document is None:
+            raise DataError("research source has no extracted document text")
+
+        record = self.get_research_document_text(str(document["extraction_id"]))
+        artifact = record.get("artifact")
+        source_hash = source.get("content_hash")
+        if (
+            record.get("source_id") != source["source_id"]
+            or record.get("source_sha256") != source_hash
+            or not isinstance(artifact, dict)
+            or artifact.get("schema") != "ResearchDocumentTextV1"
+            or artifact.get("extraction_id") != record.get("extraction_id")
+            or artifact.get("source_sha256") != source_hash
+            or artifact.get("status") != record.get("status")
+        ):
+            raise DataError("research document extraction does not match the source")
+        if record.get("status") == "truncated":
+            raise DataError(
+                "research source extraction is truncated by a limit; "
+                "full-paper page reading is unavailable"
+            )
+        if record.get("status") != "extracted":
+            raise DataError("research source extraction does not contain readable full text")
+
+        pages = artifact.get("pages")
+        page_count = artifact.get("page_count")
+        if (
+            not isinstance(pages, list)
+            or isinstance(page_count, bool)
+            or not isinstance(page_count, int)
+            or page_count != len(pages)
+        ):
+            raise DataError("research source page is outside a valid extracted document")
+        if page_count > 200:
+            raise DataError("research source extraction exceeds the 200-page reading limit")
+        if record.get("page_count") != page_count or page_number > page_count:
+            raise DataError("research source page is outside a valid extracted document")
+        page = pages[page_number - 1]
+        if (
+            not isinstance(page, dict)
+            or isinstance(page.get("page"), bool)
+            or not isinstance(page.get("page"), int)
+            or page.get("page") != page_number
+        ):
+            raise DataError("research source extracted page identity is corrupt")
+        text = page.get("text")
+        text_hash = page.get("text_sha256")
+        if (
+            not isinstance(text, str)
+            or isinstance(page.get("character_count"), bool)
+            or not isinstance(page.get("character_count"), int)
+            or page.get("character_count") != len(text)
+            or not isinstance(text_hash, str)
+            or hashlib.sha256(text.encode()).hexdigest() != text_hash
+        ):
+            raise DataError("research source extracted page failed integrity verification")
+        if char_offset > len(text):
+            raise DataError("research source character offset is outside the extracted page")
+
+        char_end = min(char_offset + char_limit, len(text))
+        page_text = text[char_offset:char_end]
+        return {
+            "source_id": source["source_id"],
+            "project_id": source["project_id"],
+            "source_title": source["title"],
+            "content_hash": source_hash,
+            "extraction_id": record["extraction_id"],
+            "page": page_number,
+            "page_count": page_count,
+            "page_character_count": len(text),
+            "page_text_sha256": text_hash,
+            "char_start": char_offset,
+            "char_end": char_end,
+            "next_char_offset": char_end if char_end < len(text) else None,
+            "page_text": page_text,
+            "page_chunk_sha256": hashlib.sha256(page_text.encode()).hexdigest(),
+            "trust_label": "UNTRUSTED_SOURCE",
+        }
+
     def _store_literature_artifact(
         self, *, category: str, artifact_id: str, payload: Mapping[str, object]
     ) -> tuple[str, str]:

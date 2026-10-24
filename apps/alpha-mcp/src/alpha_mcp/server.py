@@ -668,9 +668,22 @@ def search_research_sources(query: str, limit: int = 50) -> _types.SourceSearchO
 
 
 @mcp.tool()
-def get_research_source(source_id: str) -> _types.JsonObject:
-    """Read one immutable source record with its typed DOI/year/author descriptors."""
-    return _control.research_source_get(source_id, data_dir=_data_dir())
+def get_research_source(
+    source_id: str,
+    project_id: str | None = None,
+    page: int | None = None,
+    char_offset: int = 0,
+    char_limit: int = 4_000,
+) -> _types.JsonObject:
+    """Read a source preview or one bounded, untrusted page from its local extraction."""
+    return _control.research_source_get(
+        source_id,
+        data_dir=_data_dir(),
+        project_id=project_id,
+        page=page,
+        char_offset=char_offset,
+        char_limit=char_limit,
+    )
 
 
 @mcp.tool()

@@ -1603,3 +1603,44 @@ The first corrected-tree aggregate attempt passed backend, frontend/browser, lit
 and passed Atlas tests, then stopped on stale generated Atlas graph/input/unknowns outputs.
 Their canonical regeneration is part of this change; the failed attempt remains preserved and is
 not aggregate acceptance. Final regenerated-tree results remain in the separate task receipts.
+
+**Bounded literature page reads (2026-10-24)** — `get_research_source` now optionally reads one
+project-bound page and character slice from an already acquired extraction. The CLI reuses the
+existing immutable extraction hash reader, verifies source/extraction binding and the selected
+page hash, caps each result at 8,000 characters, enforces the extractor's 200-page ceiling, and
+labels text `UNTRUSTED_SOURCE`. An over-limit extraction is marked truncated without retaining
+partial text by the current worker, and page reads refuse any `truncated` artifact before returning
+text. The legacy source preview also returns extraction status/warnings and can include bounded
+page previews if present; it is not a full-paper review signal. The original source preview call
+and all 62 MCP tool names remain compatible. The literature-review
+protocol now requires metric/estimand definitions, units, sample and horizon, estimator and
+uncertainty, assumptions, evidence/inference separation, reproducibility limits, and a falsifiable
+extension linked to a registered analysis family; undefined metrics stay unknown. The change adds no
+provider, full-text acquisition route, analysis family, model, or authority. Selected store,
+protocol, CLI, and MCP regression checks passed; provider health was not tested. Neither source
+preview nor page read screens claims or advances research status. Opening `ControlStore` retains
+its existing schema/migration work and missing development-stage-row repair, which can write local
+control data when needed; that lifecycle behavior was not changed by this reader. The scoped test
+set passed 202 tests before the patch, 207 on its initial version, 6 targeted checks after the
+page-type correction, and 209 on the qualified final patch. Ruff lint/format and mypy also passed
+on the eight changed Python paths.
+
+**Deferred SSRN scope** — no SSRN adapter or access route is configured by the page-reader change.
+Keep any follow-up metadata-first: use Crossref/OpenAlex SSRN identifiers only where their actual
+coverage and linkage are verified; preserve the exact SSRN id, DOI, working-paper status, known
+version and retrieval provenance, and a content hash for any lawfully acquired text. A permanent
+DOI is not proof that historical full text is immutable or retained. Default to explicit
+metadata-only/access-unavailable states. Full-text intake requires a verified permitted route or
+an owner-provided PDF, with source attribution and rights handled under SSRN's [preprint FAQ](https://www.elsevier.support/ssrn/news/welcome-to-ssrn-elseviers-preprint-server),
+[DOI/version guidance](https://www.elsevier.support/ssrn/answer/doi), and [reuse guidance](https://www.elsevier.support/ssrn/answer/can-i-repurpose-content-available-on-ssrn).
+Dataset/code relationship retrieval is a separate follow-up; linked code remains inert and must
+never be executed as part of paper review. No SSRN API, host allowlist, automatic full-text fetch,
+or corpus reuse permission is assumed here.
+
+**Offline literature worker cache (2026-10-24)** — `_run_literature_worker` now passes only the
+existing credential-free, offline child environment plus `UV_CACHE_DIR`. A valid configured cache
+is preserved; otherwise the launch gets a temporary cache removed after the subprocess exits.
+Invalid explicit cache paths fail before worker startup rather than silently switching caches.
+Focused tests cover the configured and temporary paths, cleanup on success/failure, read-only home,
+and environment isolation. A real synthetic owner-PDF CLI import and page read passed with no
+inherited cache setting and a read-only home; no provider request or owner paper was used.

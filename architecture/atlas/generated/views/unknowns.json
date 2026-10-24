@@ -1,5 +1,5 @@
 {
-  "inputs_hash": "b480b0b4f56f72ee92ee99675f515ae67400a22aad68b175758d9a8cb55fb224",
+  "inputs_hash": "0c3c6e8f29a20f155935d38a4ff8ca33ec482578d1506976a1508dc464af50f3",
   "purpose": "review queue: nodes with no doc anchor, test, or cross-layer link",
   "schema_version": 1,
   "unknown_node_ids": [
@@ -17,6 +17,7 @@
     "module:alpha_cli.assistant_worker",
     "module:alpha_cli.figures._sources",
     "module:alpha_cli.investigation_workspace_data",
+    "module:alpha_cli.local_pdf_cmds",
     "module:alpha_core.costs",
     "module:alpha_core.universe",
     "module:alpha_data._atomic",

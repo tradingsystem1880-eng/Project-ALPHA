@@ -13,7 +13,7 @@ import json
 import re
 import xml.etree.ElementTree as ElementTree
 from typing import Final
-from urllib.parse import quote, urlsplit, urlunsplit
+from urllib.parse import parse_qs, quote, urlsplit, urlunsplit
 
 from literature_worker._errors import DataError
 
@@ -26,6 +26,10 @@ PROVIDER_HOSTS: Final = {
 
 _ATOM_NS: Final = "{http://www.w3.org/2005/Atom}"
 _DOI_PREFIX: Final = re.compile(r"^https?://(dx\.)?doi\.org/", re.IGNORECASE)
+_SSRN_DOI_PREFIX: Final = "10.2139/ssrn."
+_SSRN_DOI_ID: Final = re.compile(r"^10\.2139/ssrn\.([1-9][0-9]*)$")
+_SSRN_ID: Final = re.compile(r"^[1-9][0-9]*$")
+_SSRN_HOSTS: Final = frozenset({"papers.ssrn.com", "ssrn.com", "www.ssrn.com"})
 
 
 def _arxiv_pdf_url(identifier: str) -> str | None:
@@ -52,6 +56,105 @@ def dedup_key(*, doi: str | None, title: str, year: int | None) -> str:
         return f"doi:{normalize_doi(doi)}"
     digest = hashlib.sha256(f"{title.casefold()}|{year}".encode()).hexdigest()
     return f"content:{digest[:32]}"
+
+
+def _ssrn_id_from_doi(doi: str | None) -> str | None:
+    if doi is None:
+        return None
+    normalized = normalize_doi(doi)
+    if not normalized.startswith(_SSRN_DOI_PREFIX):
+        return None
+    match = _SSRN_DOI_ID.fullmatch(normalized)
+    if match is None:
+        raise DataError("invalid SSRN DOI identifier")
+    return match.group(1)
+
+
+def _ssrn_id_from_url(value: str | None) -> str | None:
+    if not value:
+        return None
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError as exc:
+        raise DataError("invalid SSRN abstract URL") from exc
+    host = (parsed.hostname or "").casefold()
+    if host not in _SSRN_HOSTS:
+        return None
+    if (
+        parsed.scheme.casefold() != "https"
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.fragment
+    ):
+        raise DataError("invalid SSRN abstract URL")
+    identifier: str | None = None
+    if host == "papers.ssrn.com" and parsed.path == "/sol3/papers.cfm":
+        query = parse_qs(parsed.query, keep_blank_values=True)
+        values = query.get("abstract_id", [])
+        if set(query) != {"abstract_id"} or len(values) != 1:
+            raise DataError("invalid SSRN abstract URL")
+        identifier = values[0]
+    elif host in {"ssrn.com", "www.ssrn.com"}:
+        match = re.fullmatch(r"/abstract=([^/]+)", parsed.path)
+        if match is not None and not parsed.query:
+            identifier = match.group(1)
+    if identifier is None:
+        return None
+    if _SSRN_ID.fullmatch(identifier) is None:
+        raise DataError("invalid SSRN abstract identifier")
+    return identifier
+
+
+def _crossref_relations(value: object) -> list[dict[str, str]]:
+    if not isinstance(value, dict):
+        return []
+    relations: list[dict[str, str]] = []
+    for relation_type, entries in sorted(value.items(), key=lambda item: str(item[0]))[:20]:
+        if not isinstance(relation_type, str) or not relation_type or len(relation_type) > 100:
+            continue
+        if not isinstance(entries, list):
+            continue
+        for entry in entries[:20]:
+            if not isinstance(entry, dict):
+                continue
+            id_type = entry.get("id-type")
+            identifier = entry.get("id")
+            if (
+                isinstance(id_type, str)
+                and id_type
+                and len(id_type) <= 64
+                and isinstance(identifier, str)
+                and identifier
+                and len(identifier) <= 300
+            ):
+                relations.append(
+                    {"type": relation_type, "id_type": id_type, "identifier": identifier}
+                )
+    return relations
+
+
+def _has_reported_ssrn_version_relation(
+    relations: list[dict[str, str]], *, ssrn_id: str, direct_ssrn_record: bool
+) -> bool:
+    for relation in relations:
+        relation_type = relation.get("type", "").casefold()
+        if relation.get("id_type", "").casefold() != "doi":
+            continue
+        identifier = relation.get("identifier")
+        if not identifier:
+            continue
+        related_ssrn_id = _ssrn_id_from_doi(identifier)
+        if (
+            relation_type == "has-preprint"
+            and not direct_ssrn_record
+            and related_ssrn_id == ssrn_id
+        ):
+            return True
+        if relation_type == "is-preprint-of" and direct_ssrn_record and related_ssrn_id is None:
+            return True
+    return False
 
 
 def lookup_url(provider: str, *, doi: str | None, query: str | None, email: str | None) -> str:
@@ -91,13 +194,46 @@ def _record(
     retracted: bool | None,
     version: str | None,
     open_access_url: str | None,
+    ssrn_url: str | None = None,
+    provider_relations: list[dict[str, str]] | None = None,
 ) -> dict[str, object]:
     if not title:
         raise DataError(f"{provider} response is missing a title")
-    return {
+    normalized_doi = None if doi is None else normalize_doi(doi)
+    direct_ssrn_doi_id = _ssrn_id_from_doi(normalized_doi)
+    ssrn_url_id = _ssrn_id_from_url(ssrn_url)
+    if (
+        direct_ssrn_doi_id is not None
+        and ssrn_url_id is not None
+        and direct_ssrn_doi_id != ssrn_url_id
+    ):
+        raise DataError("SSRN DOI and abstract URL identifiers conflict")
+    related_ssrn_dois: dict[str, str] = {}
+    for relation in provider_relations or []:
+        if relation.get("id_type", "").casefold() != "doi":
+            continue
+        relation_doi = relation.get("identifier")
+        if isinstance(relation_doi, str):
+            relation_ssrn_id = _ssrn_id_from_doi(relation_doi)
+            if relation_ssrn_id is not None:
+                related_ssrn_dois[relation_ssrn_id] = normalize_doi(relation_doi)
+    ssrn_id = direct_ssrn_doi_id or ssrn_url_id
+    identity_source = "doi" if direct_ssrn_doi_id is not None else "abstract_url"
+    direct_ssrn_record = direct_ssrn_doi_id is not None or (
+        ssrn_url_id is not None and normalized_doi is None
+    )
+    if ssrn_id is None and len(related_ssrn_dois) == 1:
+        ssrn_id = next(iter(related_ssrn_dois))
+        identity_source = "provider_relation"
+    has_reported_version_relation = ssrn_id is not None and _has_reported_ssrn_version_relation(
+        provider_relations or [],
+        ssrn_id=ssrn_id,
+        direct_ssrn_record=direct_ssrn_record,
+    )
+    record: dict[str, object] = {
         "provider": provider,
         "title": title,
-        "doi": None if doi is None else normalize_doi(doi),
+        "doi": normalized_doi,
         "year": year,
         "authors": authors,
         "retracted": retracted,
@@ -106,6 +242,30 @@ def _record(
         "dedup_key": dedup_key(doi=doi, title=title, year=year),
         "trust_label": "UNTRUSTED_SOURCE",
     }
+    if provider_relations:
+        record["provider_relations"] = provider_relations
+    if ssrn_id is not None:
+        ssrn_doi = (
+            normalized_doi if direct_ssrn_doi_id == ssrn_id else related_ssrn_dois.get(ssrn_id)
+        )
+        record["ssrn"] = {
+            "id": ssrn_id,
+            "doi": ssrn_doi,
+            "abstract_url": ("https://papers.ssrn.com/sol3/papers.cfm?abstract_id=" + ssrn_id),
+            "record_type": (
+                "provider_related_ssrn_record" if not direct_ssrn_record else "ssrn_preprint_record"
+            ),
+            "identity_source": identity_source,
+            "related_ssrn_ids": sorted(set(related_ssrn_dois) - {ssrn_id}),
+            "published_version_relation": (
+                "provider_reported" if has_reported_version_relation else "unverified"
+            ),
+            "provider_relations": provider_relations or [],
+            "full_text_state": "metadata_only",
+            "access_verification": "unverified",
+            "content_version_sha256": None,
+        }
+    return record
 
 
 def _json_body(raw: bytes, provider: str) -> dict[str, object]:
@@ -131,8 +291,12 @@ def _openalex_record(work: dict[str, object]) -> dict[str, object]:
                 if isinstance(author, dict) and isinstance(author.get("display_name"), str):
                     authors.append(str(author["display_name"]))
     oa_url: str | None = None
+    ssrn_url: str | None = None
     best = work.get("best_oa_location")
     if isinstance(best, dict):
+        landing_page = best.get("landing_page_url")
+        if isinstance(landing_page, str) and landing_page:
+            ssrn_url = landing_page
         for field in ("pdf_url", "landing_page_url"):
             value = best.get(field)
             if isinstance(value, str) and value:
@@ -148,6 +312,7 @@ def _openalex_record(work: dict[str, object]) -> dict[str, object]:
         retracted=retracted if isinstance(retracted, bool) else None,
         version=None,
         open_access_url=oa_url,
+        ssrn_url=ssrn_url,
     )
 
 
@@ -200,6 +365,7 @@ def _crossref_record(message: dict[str, object]) -> dict[str, object]:
         retracted=retracted,
         version=None,
         open_access_url=None,
+        provider_relations=_crossref_relations(message.get("relation")),
     )
 
 
