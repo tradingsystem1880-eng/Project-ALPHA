@@ -1737,6 +1737,190 @@ class ControlStore:
                 connection.close()
             raise
 
+    def _open_readonly(self) -> sqlite3.Connection:
+        """Open an existing complete v6 store without initialization or repair.
+
+        SQLite may use its WAL/SHM sidecars to provide a consistent read snapshot. This
+        connection never changes journal settings and never uses ``immutable=1``; only
+        the database records are guaranteed not to be written by this path.
+        """
+        connection: sqlite3.Connection | None = None
+        handed_off = False
+        try:
+            root = self._data_dir / "control"
+            if root.is_symlink():
+                raise DataError(f"control store root must not be a symlink: {root}")
+            if not root.is_dir():
+                raise DataError(f"control store directory does not exist: {root}")
+            database = root / DATABASE_NAME
+            if database.is_symlink():
+                raise DataError(f"control store database must not be a symlink: {database}")
+            if not database.exists():
+                raise DataError(f"control store database does not exist: {database}")
+            if not database.is_file():
+                raise DataError(f"control store database is not a file: {database}")
+
+            uri = f"{database.resolve(strict=True).as_uri()}?mode=ro"
+            connection = sqlite3.connect(
+                uri,
+                uri=True,
+                timeout=5.0,
+                isolation_level=None,
+            )
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA query_only = ON")
+            connection.execute("BEGIN")
+
+            version_row = connection.execute("PRAGMA user_version").fetchone()
+            version = 0 if version_row is None else int(version_row[0])
+            if version != SCHEMA_VERSION:
+                raise DataError(
+                    "read-only control store requires schema version "
+                    f"{SCHEMA_VERSION}, found {version}"
+                )
+
+            expected_names = _EXPECTED_SCHEMA_OBJECTS | _PROTECTED_V5_SCHEMA_OBJECTS
+            expected_types: dict[str, str] = {}
+            for schema_sql in (
+                _SCHEMA,
+                _SCHEMA_V2,
+                _SCHEMA_V3,
+                _SCHEMA_V4,
+                _SCHEMA_V5,
+                _SCHEMA_V5_RECEIPT,
+                _SCHEMA_V6_RECEIPT,
+            ):
+                for object_type, name in re.findall(
+                    r"CREATE\s+(?:UNIQUE\s+)?(TABLE|INDEX|TRIGGER)\s+IF\s+NOT\s+EXISTS\s+(\w+)",
+                    schema_sql,
+                    flags=re.IGNORECASE,
+                ):
+                    expected_types[name] = object_type.casefold()
+            undeclared = sorted(expected_names - expected_types.keys())
+            if undeclared:
+                raise DataError(
+                    "read-only control store schema declarations are incomplete: "
+                    + ", ".join(undeclared)
+                )
+
+            actual_types = {
+                str(row["name"]): str(row["type"])
+                for row in connection.execute(
+                    "SELECT type, name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
+                )
+            }
+            missing = sorted(expected_names - actual_types.keys())
+            if missing:
+                raise DataError(
+                    "read-only control store schema is incomplete; missing: " + ", ".join(missing)
+                )
+            wrong_types = sorted(
+                name for name in expected_names if actual_types[name] != expected_types[name]
+            )
+            if wrong_types:
+                raise DataError(
+                    "read-only control store schema object type mismatch: " + ", ".join(wrong_types)
+                )
+            unexpected_views = sorted(
+                name for name, object_type in actual_types.items() if object_type == "view"
+            )
+            if unexpected_views:
+                raise DataError(
+                    "read-only control store schema has unexpected views: "
+                    + ", ".join(unexpected_views)
+                )
+            expected_triggers = {
+                name for name, object_type in expected_types.items() if object_type == "trigger"
+            }
+            unexpected_triggers = sorted(
+                name
+                for name, object_type in actual_types.items()
+                if object_type == "trigger" and name not in expected_triggers
+            )
+            if unexpected_triggers:
+                raise DataError(
+                    "read-only control store schema has unexpected triggers: "
+                    + ", ".join(unexpected_triggers)
+                )
+
+            required_reader_columns = {
+                "research_attempt_records": {
+                    "attempt_id",
+                    "project_id",
+                    "contract_id",
+                    "phase",
+                    "kind",
+                    "status",
+                    "config_fingerprint",
+                    "budget_used_json",
+                    "run_id",
+                    "error",
+                    "details_json",
+                    "recorded_at",
+                },
+                "research_launch_attempt_links": {"reservation_id", "attempt_id", "linked_at"},
+                "research_contracts": {
+                    "contract_id",
+                    "project_id",
+                    "scope",
+                    "parent_contract_id",
+                    "payload_json",
+                    "created_by",
+                    "author_kind",
+                    "created_at",
+                },
+            }
+            missing_reader_columns: list[str] = []
+            for table, required_columns in required_reader_columns.items():
+                actual_columns = {
+                    str(row["name"]) for row in connection.execute(f'PRAGMA table_info("{table}")')
+                }
+                missing_reader_columns.extend(
+                    f"{table}.{column}" for column in sorted(required_columns - actual_columns)
+                )
+            if missing_reader_columns:
+                raise DataError(
+                    "read-only control store schema is missing required columns: "
+                    + ", ".join(missing_reader_columns)
+                )
+            missing_source_columns = _missing_source_record_columns(connection)
+            if missing_source_columns:
+                raise DataError(
+                    "read-only control store schema is incomplete; missing "
+                    "research_source_records columns: " + ", ".join(missing_source_columns)
+                )
+            _validate_protected_v5_schema(connection)
+            _validate_protected_v6_schema(connection)
+            handed_off = True
+            return connection
+        except (OSError, sqlite3.Error) as exc:
+            raise DataError("cannot read control store without changing it") from exc
+        finally:
+            if connection is not None and not handed_off:
+                try:
+                    if connection.in_transaction:
+                        connection.rollback()
+                except sqlite3.Error:
+                    # Always attempt close while preserving the triggering failure.
+                    pass
+                finally:
+                    connection.close()
+
+    @contextmanager
+    def _readonly_transaction(self) -> Iterator[sqlite3.Connection]:
+        """Pin one SQLite read snapshot; run files are independently hash-verified."""
+        connection = self._open_readonly()
+        try:
+            yield connection
+        except sqlite3.Error as exc:
+            raise DataError("control store read-only transaction failed") from exc
+        finally:
+            try:
+                if connection.in_transaction:
+                    connection.rollback()
+            finally:
+                connection.close()
+
     @contextmanager
     def _transaction(self, *, write: bool) -> Iterator[sqlite3.Connection]:
         connection = self._open()
@@ -5500,29 +5684,71 @@ class ControlStore:
         """Return one attempt and its exact immutable manifest after full lineage verification."""
         clean_attempt_id = _require_content_id(attempt_id, "research attempt_id", prefix="ra")
         with self._transaction(write=False) as connection:
-            row = connection.execute(
-                """SELECT a.*, l.reservation_id AS launch_reservation_id
-                FROM research_attempt_records AS a
-                LEFT JOIN research_launch_attempt_links AS l ON l.attempt_id = a.attempt_id
-                WHERE a.project_id = ? AND a.attempt_id = ?""",
-                (project_id, clean_attempt_id),
-            ).fetchone()
-            if row is None:
-                raise DataError(f"unknown research attempt {clean_attempt_id!r}")
-            attempt = self._research_attempt_view(cast(sqlite3.Row, row))
-            run_id = attempt.get("run_id")
-            if not isinstance(run_id, str):
-                raise DataError("research attempt has no immutable run to verify")
-            contract_id = str(attempt["contract_id"])
-            contract = self._require_research_contract(connection, project_id, contract_id)
-            payload = _decode_json(contract["payload_json"], "research attempt contract payload")
-            if not isinstance(payload, dict):  # pragma: no cover - stored JSON invariant.
-                raise DataError("corrupt research attempt contract payload")
-            manifest = self._verify_research_attempt_run(
-                project_id=project_id,
-                attempt=attempt,
-                contract_payload=payload,
+            return self._verified_research_attempt_in_connection(
+                connection, project_id, clean_attempt_id
             )
+
+    def verified_generic_d1_research_attempt(
+        self,
+        project_id: str,
+        attempt_id: str,
+    ) -> dict[str, object]:
+        """Read one completed ordinary D1 attempt without opening a write-capable store."""
+        clean_attempt_id = _require_content_id(attempt_id, "research attempt_id", prefix="ra")
+        with self._readonly_transaction() as connection:
+            return self._verified_research_attempt_in_connection(
+                connection,
+                project_id,
+                clean_attempt_id,
+                ordinary_generic_d1_only=True,
+            )
+
+    def _verified_research_attempt_in_connection(
+        self,
+        connection: sqlite3.Connection,
+        project_id: str,
+        attempt_id: str,
+        *,
+        ordinary_generic_d1_only: bool = False,
+    ) -> dict[str, object]:
+        row = connection.execute(
+            """SELECT a.*, l.reservation_id AS launch_reservation_id
+            FROM research_attempt_records AS a
+            LEFT JOIN research_launch_attempt_links AS l ON l.attempt_id = a.attempt_id
+            WHERE a.project_id = ? AND a.attempt_id = ?""",
+            (project_id, attempt_id),
+        ).fetchone()
+        if row is None:
+            raise DataError(f"unknown research attempt {attempt_id!r}")
+        attempt = self._research_attempt_view(cast(sqlite3.Row, row))
+        if ordinary_generic_d1_only and (
+            attempt.get("kind") != "d1-deep-research"
+            or attempt.get("phase") != "deep_research"
+            or attempt.get("status") != "completed"
+        ):
+            raise DataError(
+                "read-only evidence reader requires a completed D1 deep-research attempt"
+            )
+        run_id = attempt.get("run_id")
+        if not isinstance(run_id, str):
+            raise DataError("research attempt has no immutable run to verify")
+        contract_id = str(attempt["contract_id"])
+        contract = self._require_research_contract(connection, project_id, contract_id)
+        payload = _decode_json(contract["payload_json"], "research attempt contract payload")
+        if not isinstance(payload, dict):  # pragma: no cover - stored JSON invariant.
+            raise DataError("corrupt research attempt contract payload")
+        if ordinary_generic_d1_only:
+            protocol = payload.get("protocol")
+            operator = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
+            if isinstance(operator, Mapping) and operator.get("name") == (
+                "bybit_btcusdt_crowding_reversal"
+            ):
+                raise DataError("read-only evidence reader supports ordinary generic D1 only")
+        manifest = self._verify_research_attempt_run(
+            project_id=project_id,
+            attempt=attempt,
+            contract_payload=payload,
+        )
         return {"attempt": attempt, "manifest": manifest}
 
     @staticmethod
