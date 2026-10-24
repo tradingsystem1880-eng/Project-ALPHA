@@ -3452,6 +3452,53 @@ def _d1_evidence_ref(store: ControlStore, manifest: dict[str, object]) -> dict[s
     return {"artifact": "research_gate_evidence.json", "content_sha256": metadata["sha256"]}
 
 
+def _completed_d1_attempt(store: ControlStore) -> tuple[str, dict[str, object]]:
+    _project(store)
+    contract_id, payload = _approved_deep_case(store)
+    manifest = _published_d1_run(store, contract_id, payload)
+    attempt = store.record_research_attempt(
+        PROJECT_ID,
+        contract_id,
+        kind="d1-deep-research",
+        status="completed",
+        config_fingerprint=str(manifest["execution_fingerprint"]),
+        budget_used={"variants": 6},
+        details={
+            "evidence_zone": "D1",
+            "finding": "The registered plan executed on the discovery share.",
+            "gate_packet_evidence_ref": _d1_evidence_ref(store, manifest),
+        },
+        run_id=str(manifest["run_id"]),
+        at=START + timedelta(minutes=10),
+    )
+    return str(attempt["attempt_id"]), manifest
+
+
+def _control_schema_snapshot(database: Path) -> tuple[int, tuple[tuple[object, ...], ...]]:
+    uri = f"{database.resolve(strict=True).as_uri()}?mode=ro"
+    connection = sqlite3.connect(uri, uri=True)
+    try:
+        version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+        schema = tuple(
+            tuple(row)
+            for row in connection.execute(
+                "SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY type, name"
+            )
+        )
+    finally:
+        connection.close()
+    return version, schema
+
+
+def _control_journal_mode(database: Path) -> str:
+    uri = f"{database.resolve(strict=True).as_uri()}?mode=ro"
+    connection = sqlite3.connect(uri, uri=True)
+    try:
+        return str(connection.execute("PRAGMA journal_mode").fetchone()[0])
+    finally:
+        connection.close()
+
+
 def test_d1_attempt_admission_reverifies_evidence_mechanically(tmp_path: Path) -> None:
     store = ControlStore(tmp_path)
     _project(store)
@@ -3525,6 +3572,434 @@ def test_d1_attempts_pin_kind_and_require_typed_evidence(tmp_path: Path) -> None
             run_id=str(manifest["run_id"]),
             at=START + timedelta(minutes=10),
         )
+
+
+def test_readonly_d1_reader_repeats_without_changing_domain_bytes_or_schema(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    attempt_id, _manifest = _completed_d1_attempt(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    before_bytes = database.read_bytes()
+    before_schema = _control_schema_snapshot(database)
+    before_journal_mode = _control_journal_mode(database)
+    monkeypatch.setattr(
+        store,
+        "_open",
+        lambda: pytest.fail("generic D1 reader must not fall through to the mutating opener"),
+    )
+
+    first = store.verified_generic_d1_research_attempt(PROJECT_ID, attempt_id)
+    second = store.verified_generic_d1_research_attempt(PROJECT_ID, attempt_id)
+
+    assert first == second
+    assert first["attempt"]["attempt_id"] == attempt_id  # type: ignore[index]
+    assert database.read_bytes() == before_bytes
+    assert _control_schema_snapshot(database) == before_schema
+    assert _control_journal_mode(database) == before_journal_mode
+
+
+def test_readonly_d1_reader_does_not_create_a_missing_store(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+
+    with pytest.raises(DataError, match="directory does not exist"):
+        store.verified_generic_d1_research_attempt(PROJECT_ID, "ra_" + "a" * 64)
+
+    assert not (tmp_path / "control").exists()
+
+
+def test_readonly_d1_reader_rolls_back_and_closes_on_schema_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION - 1}")
+        connection.commit()
+    finally:
+        connection.close()
+
+    real_connect = sqlite3.connect
+    opened: list[sqlite3.Connection] = []
+    traced_sql: list[str] = []
+
+    def tracked_connect(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        tracked = cast(sqlite3.Connection, real_connect(*args, **kwargs))
+        tracked.set_trace_callback(traced_sql.append)
+        opened.append(tracked)
+        return tracked
+
+    monkeypatch.setattr(sqlite3, "connect", tracked_connect)
+    with pytest.raises(DataError, match="requires schema version"):
+        store.verified_generic_d1_research_attempt(PROJECT_ID, "ra_" + "a" * 64)
+
+    assert traced_sql[-1] == "ROLLBACK"
+    assert len(opened) == 1
+    with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+        opened[0].execute("SELECT 1")
+
+    connection = real_connect(database)
+    try:
+        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        connection.commit()
+    finally:
+        connection.close()
+    opened.clear()
+    traced_sql.clear()
+    with pytest.raises(DataError, match="unknown research attempt"):
+        store.verified_generic_d1_research_attempt(PROJECT_ID, "ra_" + "a" * 64)
+    assert traced_sql[-1] == "ROLLBACK"
+    assert len(opened) == 1
+    with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+        opened[0].execute("SELECT 1")
+
+
+def test_readonly_d1_reader_rejects_old_and_incomplete_schema_without_healing(
+    tmp_path: Path,
+) -> None:
+    old_store = ControlStore(tmp_path / "old")
+    _project(old_store)
+    old_database = tmp_path / "old" / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(old_database)
+    try:
+        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION - 1}")
+    finally:
+        connection.close()
+    old_bytes = old_database.read_bytes()
+    old_schema = _control_schema_snapshot(old_database)
+
+    with pytest.raises(DataError, match="requires schema version"):
+        old_store.verified_generic_d1_research_attempt(PROJECT_ID, "ra_" + "a" * 64)
+
+    assert old_database.read_bytes() == old_bytes
+    assert _control_schema_snapshot(old_database) == old_schema
+
+    incomplete_store = ControlStore(tmp_path / "incomplete")
+    _project(incomplete_store)
+    incomplete_database = tmp_path / "incomplete" / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(incomplete_database)
+    try:
+        connection.execute("DROP INDEX idx_project_versions_project")
+    finally:
+        connection.close()
+    incomplete_bytes = incomplete_database.read_bytes()
+    incomplete_schema = _control_schema_snapshot(incomplete_database)
+
+    with pytest.raises(DataError, match="schema is incomplete"):
+        incomplete_store.verified_generic_d1_research_attempt(PROJECT_ID, "ra_" + "a" * 64)
+
+    assert incomplete_database.read_bytes() == incomplete_bytes
+    assert _control_schema_snapshot(incomplete_database) == incomplete_schema
+
+
+def test_readonly_d1_reader_rejects_schema_object_type_and_column_mismatches(
+    tmp_path: Path,
+) -> None:
+    wrong_type_store = ControlStore(tmp_path / "wrong-type")
+    _project(wrong_type_store)
+    wrong_type_database = tmp_path / "wrong-type" / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(wrong_type_database)
+    try:
+        connection.execute("DROP INDEX idx_project_versions_project")
+        connection.execute("CREATE TABLE idx_project_versions_project (marker TEXT)")
+        connection.commit()
+    finally:
+        connection.close()
+    wrong_type_bytes = wrong_type_database.read_bytes()
+
+    with pytest.raises(DataError, match="object type mismatch"):
+        wrong_type_store.verified_generic_d1_research_attempt(PROJECT_ID, "ra_" + "a" * 64)
+
+    assert wrong_type_database.read_bytes() == wrong_type_bytes
+
+    missing_column_store = ControlStore(tmp_path / "missing-column")
+    _project(missing_column_store)
+    missing_column_database = (
+        tmp_path / "missing-column" / "control" / control_store_module.DATABASE_NAME
+    )
+    connection = sqlite3.connect(missing_column_database)
+    try:
+        connection.execute("ALTER TABLE research_attempt_records DROP COLUMN details_json")
+        connection.commit()
+    finally:
+        connection.close()
+    missing_column_bytes = missing_column_database.read_bytes()
+
+    with pytest.raises(DataError, match="missing required columns.*details_json"):
+        missing_column_store.verified_generic_d1_research_attempt(PROJECT_ID, "ra_" + "a" * 64)
+
+    assert missing_column_database.read_bytes() == missing_column_bytes
+
+
+def test_readonly_d1_reader_rejects_unexpected_views_and_triggers(tmp_path: Path) -> None:
+    for label, statement, error in (
+        (
+            "view",
+            "CREATE VIEW unexpected_reader_view AS SELECT 1 AS value",
+            "unexpected views",
+        ),
+        (
+            "trigger",
+            "CREATE TRIGGER unexpected_reader_trigger AFTER INSERT ON projects BEGIN SELECT 1; END",
+            "unexpected triggers",
+        ),
+    ):
+        store = ControlStore(tmp_path / label)
+        _project(store)
+        database = tmp_path / label / "control" / control_store_module.DATABASE_NAME
+        connection = sqlite3.connect(database)
+        try:
+            connection.execute(statement)
+            connection.commit()
+        finally:
+            connection.close()
+        before_bytes = database.read_bytes()
+
+        with pytest.raises(DataError, match=error):
+            store.verified_generic_d1_research_attempt(PROJECT_ID, "ra_" + "a" * 64)
+
+        assert database.read_bytes() == before_bytes
+
+
+def test_readonly_d1_reader_rejects_attempt_run_and_artifact_hash_mismatch(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    attempt_id, manifest = _completed_d1_attempt(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    run_id = str(manifest["run_id"])
+
+    with pytest.raises(DataError, match="unknown research attempt"):
+        store.verified_generic_d1_research_attempt(PROJECT_ID, "ra_" + "f" * 64)
+
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute(
+            "UPDATE research_attempt_records SET run_id = ? WHERE attempt_id = ?",
+            ("run_" + "f" * 16, attempt_id),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    with pytest.raises(DataError):
+        store.verified_generic_d1_research_attempt(PROJECT_ID, attempt_id)
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute(
+            "UPDATE research_attempt_records SET run_id = ? WHERE attempt_id = ?",
+            (run_id, attempt_id),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    run_dir = tmp_path / "runs" / run_id
+    evidence_path = run_dir / "research_gate_evidence.json"
+    evidence_bytes = evidence_path.read_bytes()
+    evidence_path.write_bytes(bytes([evidence_bytes[0] ^ 1]) + evidence_bytes[1:])
+    with pytest.raises(DataError, match="hash mismatch"):
+        store.verified_generic_d1_research_attempt(PROJECT_ID, attempt_id)
+
+
+def test_readonly_d1_reader_handles_uri_paths_and_binds_project_id(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path / "data ?#[]%")
+    attempt_id, _manifest = _completed_d1_attempt(store)
+
+    verified = store.verified_generic_d1_research_attempt(PROJECT_ID, attempt_id)
+    assert verified["attempt"]["attempt_id"] == attempt_id  # type: ignore[index]
+    with pytest.raises(DataError, match="unknown research attempt"):
+        store.verified_generic_d1_research_attempt("x' OR 1=1 --", attempt_id)
+
+
+def test_readonly_d1_reader_rechecks_files_changed_during_database_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    attempt_id, manifest = _completed_d1_attempt(store)
+    run_id = str(manifest["run_id"])
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    evidence_path = tmp_path / "runs" / run_id / "research_gate_evidence.json"
+    original_verify = store._verify_research_attempt_run
+    observed_attempt_status: list[object] = []
+
+    def change_sources_then_verify(
+        *,
+        project_id: str,
+        attempt: dict[str, object],
+        contract_payload: dict[str, object],
+    ) -> dict[str, object]:
+        observed_attempt_status.append(attempt["status"])
+        with sqlite3.connect(database, isolation_level=None, timeout=5.0) as writer:
+            writer.execute("BEGIN IMMEDIATE")
+            writer.execute(
+                "UPDATE projects SET name = ? WHERE project_id = ?",
+                ("Concurrent synthetic update", PROJECT_ID),
+            )
+            writer.commit()
+        raw_evidence = evidence_path.read_bytes()
+        evidence_path.write_bytes(bytes([raw_evidence[0] ^ 1]) + raw_evidence[1:])
+        return original_verify(
+            project_id=project_id,
+            attempt=attempt,
+            contract_payload=contract_payload,
+        )
+
+    monkeypatch.setattr(store, "_verify_research_attempt_run", change_sources_then_verify)
+    with pytest.raises(DataError, match="hash mismatch"):
+        store.verified_generic_d1_research_attempt(PROJECT_ID, attempt_id)
+
+    assert observed_attempt_status == ["completed"]
+    with store._readonly_transaction() as reader:
+        project_name = reader.execute(
+            "SELECT name FROM projects WHERE project_id = ?", (PROJECT_ID,)
+        ).fetchone()["name"]
+    assert project_name == "Concurrent synthetic update"
+
+
+def test_readonly_d1_reader_rejects_non_generic_attempt_routes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = ControlStore(tmp_path)
+    attempt_id, _manifest = _completed_d1_attempt(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+
+    for column, value in (
+        ("kind", "event-study"),
+        ("phase", "pilot"),
+        ("status", "failed"),
+    ):
+        connection = sqlite3.connect(database)
+        try:
+            row = connection.execute(
+                f"SELECT {column} FROM research_attempt_records WHERE attempt_id = ?",
+                (attempt_id,),
+            ).fetchone()
+            original = str(row[0])
+            connection.execute(
+                f"UPDATE research_attempt_records SET {column} = ? WHERE attempt_id = ?",
+                (value, attempt_id),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+        with pytest.raises(DataError, match="completed D1 deep-research"):
+            store.verified_generic_d1_research_attempt(PROJECT_ID, attempt_id)
+        connection = sqlite3.connect(database)
+        try:
+            connection.execute(
+                f"UPDATE research_attempt_records SET {column} = ? WHERE attempt_id = ?",
+                (original, attempt_id),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+
+    monkeypatch.setattr(
+        store,
+        "_require_research_contract",
+        lambda _connection, _project_id, _contract_id: {
+            "payload_json": json.dumps(
+                {"protocol": {"d0_operator": {"name": "bybit_btcusdt_crowding_reversal"}}}
+            )
+        },
+    )
+    with pytest.raises(DataError, match="ordinary generic D1 only"):
+        store.verified_generic_d1_research_attempt(PROJECT_ID, attempt_id)
+
+
+def test_readonly_d1_reader_enforces_existing_artifact_size_limit(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    attempt_id, manifest = _completed_d1_attempt(store)
+    run_id = str(manifest["run_id"])
+    run_dir = tmp_path / "runs" / run_id
+    analyses_path = run_dir / "d1_analyses.json"
+    analyses = json.loads(analyses_path.read_text(encoding="utf-8"))
+    analyses["synthetic_padding"] = "x" * (4 * 1024 * 1024 + 1)
+    oversized = json.dumps(analyses, sort_keys=True, separators=(",", ":"), allow_nan=False).encode(
+        "utf-8"
+    )
+    analyses_path.write_bytes(oversized)
+
+    manifest_path = run_dir / "manifest.json"
+    stored_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    metadata = stored_manifest["artifacts"]["d1_analyses.json"]
+    metadata["sha256"] = hashlib.sha256(oversized).hexdigest()
+    metadata["size_bytes"] = len(oversized)
+    manifest_path.write_text(
+        json.dumps(stored_manifest, indent=2, sort_keys=True), encoding="utf-8"
+    )
+
+    with pytest.raises(DataError, match="bounded JSON size"):
+        store.verified_generic_d1_research_attempt(PROJECT_ID, attempt_id)
+
+
+def test_readonly_d1_reader_works_with_readonly_database_permissions(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute("PRAGMA journal_mode = DELETE")
+    finally:
+        connection.close()
+    before_bytes = database.read_bytes()
+    control_dir = database.parent
+    database.chmod(0o444)
+    control_dir.chmod(0o555)
+    try:
+        with pytest.raises(DataError, match="unknown research attempt"):
+            store.verified_generic_d1_research_attempt(PROJECT_ID, "ra_" + "a" * 64)
+        assert database.read_bytes() == before_bytes
+        assert database.stat().st_mode & 0o777 == 0o444
+    finally:
+        control_dir.chmod(0o755)
+        database.chmod(0o644)
+
+
+def test_readonly_transaction_keeps_one_snapshot_during_concurrent_change(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    replacement = "Synthetic concurrent update"
+
+    with store._readonly_transaction() as reader:
+        before = str(
+            reader.execute(
+                "SELECT name FROM projects WHERE project_id = ?", (PROJECT_ID,)
+            ).fetchone()["name"]
+        )
+        assert reader.execute("PRAGMA query_only").fetchone()[0] == 1
+        with pytest.raises(sqlite3.OperationalError, match="readonly"):
+            reader.execute(
+                "UPDATE projects SET name = 'Forbidden' WHERE project_id = ?", (PROJECT_ID,)
+            )
+        with sqlite3.connect(database, isolation_level=None, timeout=5.0) as writer:
+            writer.execute("BEGIN IMMEDIATE")
+            writer.execute(
+                "UPDATE projects SET name = ? WHERE project_id = ?",
+                (replacement, PROJECT_ID),
+            )
+            writer.commit()
+        during = str(
+            reader.execute(
+                "SELECT name FROM projects WHERE project_id = ?", (PROJECT_ID,)
+            ).fetchone()["name"]
+        )
+        assert during == before
+
+    with store._readonly_transaction() as fresh_reader:
+        after = str(
+            fresh_reader.execute(
+                "SELECT name FROM projects WHERE project_id = ?", (PROJECT_ID,)
+            ).fetchone()["name"]
+        )
+    assert after == replacement
 
 
 def test_research_job_creation_is_governed_and_capacity_bound(tmp_path: Path) -> None:
