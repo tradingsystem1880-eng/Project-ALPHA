@@ -1775,3 +1775,9 @@ Invalid explicit cache paths fail before worker startup rather than silently swi
 Focused tests cover the configured and temporary paths, cleanup on success/failure, read-only home,
 and environment isolation. A real synthetic owner-PDF CLI import and page read passed with no
 inherited cache setting and a read-only home; no provider request or owner paper was used.
+
+**Tiingo transport-error redaction (2026-10-24)** — `TiingoAdapter.fetch` converts URL, timeout,
+incomplete-read, and OS transport failures into type-only `DataError` messages and suppresses their
+exception context for both bounded and unbounded reads. HTTP status errors, response-size limits,
+parsing, and adapter result contracts are unchanged. Synthetic offline tests cover both read paths,
+oversized responses, normal responses, and response cleanup.
