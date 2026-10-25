@@ -838,6 +838,7 @@
     "tests/unit/test_quantpad_adapter.py": "1bba952192f484a46dcf686a476fa642ff781df29ef07a1d5722d34b36fafaf6",
     "tests/unit/test_quantpad_archive.py": "7b10ddbbaacead071d3465827d310191393f1feff584c00aa7c5eed6dd04ecf4",
     "tests/unit/test_quantpad_data_cmds.py": "0e8cf692358429cc3a692c7a645ad0c21549146fd3120ad001da6356d0ec62f9",
+    "tests/unit/test_rdagent_foundation_contract.py": "075162b25d73c45557f441ed2f8278c3f6396a810cd1e1793fbc9960790e1e64",
     "tests/unit/test_reality_check.py": "51dee90cdcd03db36fd0be0a06aaa284cb6b21129da98dd7896a5988dba0fc60",
     "tests/unit/test_replay_surrogate.py": "e986ca4d52db6769bab979416554f524ae78d57a409bf49cd7fcadcead7cc2e8",
     "tests/unit/test_repo_awareness_drift.py": "c5d1f98d15a2e1311dff7b5de5b1f5654a397590b6daaaa5e550a4a68cab5cfd",
