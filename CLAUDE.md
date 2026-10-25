@@ -28,6 +28,7 @@ Applicable rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-str
 - Fail loud on invalid/non-finite/disordered data or degenerate statistics; never swallow errors. Type
   interrupted Stooq reads; retry WAL SQLITE_BUSY within existing budget. Polars default; pandas only
   at sanctioned vendor edges; type strictly.
+- Tiingo transport: type-only.
 - Runs/snapshots/receipts/admitted evidence are immutable and hash-bound. Keep historical
   readers/migrations. Seeds/execution fingerprints are deterministic; D0/D1 seeds are frozen, not
   settings-derived. Reverify reads/copy generations; retirement/retries preserve bytes.
