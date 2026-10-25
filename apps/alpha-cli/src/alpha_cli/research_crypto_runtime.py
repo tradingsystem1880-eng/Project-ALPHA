@@ -549,6 +549,7 @@ def run_crypto_crowding_deep(
     observations: tuple[CryptoCrowdingObservationV1, ...],
     boundary: ResearchD2BoundaryV2,
     on_checkpoint: Callable[[str], None] | None = None,
+    on_run_identity: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Execute the frozen operator against only the outcome-safe D1 membership."""
     if _PROJECT_ID.fullmatch(project_id) is None or _CONTRACT_ID.fullmatch(contract_id) is None:
@@ -567,6 +568,8 @@ def run_crypto_crowding_deep(
         "execution_fingerprint": execution_fingerprint,
     }
     run_id = sha(run_identity)[:16]
+    if on_run_identity is not None:
+        on_run_identity(run_id)
     run_dir = _artifacts.run_dir(data_dir, run_id)
     analyses, evidence, result = _d1_payloads(
         run_id=run_id,

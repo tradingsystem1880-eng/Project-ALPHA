@@ -1093,6 +1093,7 @@ def run_deep_research(
     bars: EqualDurationResearchBars,
     boundary: ResearchD2Boundary | None = None,
     on_checkpoint: Callable[[str], None] | None = None,
+    on_run_identity: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Execute the frozen analysis plan on the discovery share and publish one immutable run.
 
@@ -1138,6 +1139,20 @@ def run_deep_research(
         raise DataError(
             "the executable discovery share does not align with the sealed boundary's D1 zone"
         )
+
+    contract_hash = _sha(contract)
+    execution_fingerprint = d1_execution_fingerprint(contract)
+    run_identity = {
+        "command": "research_deep",
+        "project_id": project_id,
+        "research_contract_id": contract_id,
+        "contract_hash": contract_hash,
+        "dataset_hash": dataset_hash,
+        "execution_fingerprint": execution_fingerprint,
+    }
+    run_id = _sha(run_identity)[:16]
+    if on_run_identity is not None:
+        on_run_identity(run_id)
 
     families: dict[str, object] = {}
     skipped: list[dict[str, object]] = []
@@ -1188,17 +1203,6 @@ def run_deep_research(
     }
     findings = derive_d1_findings(measurements, claim=claim)
 
-    contract_hash = _sha(contract)
-    execution_fingerprint = d1_execution_fingerprint(contract)
-    run_identity = {
-        "command": "research_deep",
-        "project_id": project_id,
-        "research_contract_id": contract_id,
-        "contract_hash": contract_hash,
-        "dataset_hash": dataset_hash,
-        "execution_fingerprint": execution_fingerprint,
-    }
-    run_id = _sha(run_identity)[:16]
     run_dir = _artifacts.run_dir(Path(data_dir), run_id)
 
     analyses_payload = {

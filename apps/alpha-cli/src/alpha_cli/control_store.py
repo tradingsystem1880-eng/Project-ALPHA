@@ -5441,6 +5441,7 @@ class ControlStore:
         checkpoint: str | None = None,
         blocker: str | None = None,
         recovery: str | None = None,
+        expected_state: ResearchExecutionState | None = None,
         reconcile_running: bool = False,
         at: datetime | None = None,
     ) -> dict[str, object]:
@@ -5474,6 +5475,8 @@ class ControlStore:
             if prior is None:
                 raise DataError("research case has no execution state")
             prior_state = str(prior["state"])
+            if expected_state is not None and prior_state != expected_state:
+                raise DataError("research execution changed before the requested transition")
             if clean_state not in _RESEARCH_EXECUTION_TRANSITIONS[prior_state]:
                 raise DataError(
                     f"invalid research execution transition {prior_state!r} -> {clean_state!r}"
@@ -11069,6 +11072,7 @@ class ControlStore:
         The phase pre-check runs in its own read transaction; a lost race can only leave a
         stray queued job that the execution-event binding check refuses to activate.
         """
+        clean_request = dict(request)
         with self._transaction(write=False) as connection:
             contract = self._require_research_contract(connection, project_id, contract_id)
             review = self._latest_research_review(connection, contract_id)
@@ -11089,7 +11093,7 @@ class ControlStore:
                 )
         return self._create_job(
             kind="research:event-study",
-            request=request,
+            request=clean_request,
             project_id=project_id,
             experiment_id=None,
             job_id=job_id,
@@ -11526,6 +11530,65 @@ class ControlStore:
             ).fetchall()
         return [self._job_view(row) for row in rows]
 
+    def list_failed_d1_recovery_journals(
+        self,
+        project_id: str,
+        contract_id: str,
+        *,
+        attempt_number: int,
+    ) -> list[dict[str, object]]:
+        """Read exact failed D1 journals and their event windows from one project snapshot."""
+        clean_project_id = _canonical_uuid(project_id, "project_id")
+        clean_contract_id = _required_text(contract_id, "contract_id", max_length=100)
+        if isinstance(attempt_number, bool) or not isinstance(attempt_number, int):
+            raise DataError("D1 recovery attempt_number must be an integer")
+        if attempt_number < 1:
+            raise DataError("D1 recovery attempt_number must be positive")
+
+        journals: list[dict[str, object]] = []
+        with self._transaction(write=False) as connection:
+            rows = connection.execute(
+                """SELECT * FROM jobs
+                WHERE project_id = ? AND kind = 'research:event-study' AND status = 'failed'
+                ORDER BY updated_at DESC, job_id""",
+                (clean_project_id,),
+            ).fetchall()
+            for row in rows:
+                journal = self._job_view(row)
+                request = journal.get("request")
+                if (
+                    not isinstance(request, Mapping)
+                    or request.get("stage") != "deep"
+                    or request.get("contract_id") != clean_contract_id
+                    or isinstance(request.get("attempt_number"), bool)
+                    or not isinstance(request.get("attempt_number"), int)
+                    or request.get("attempt_number") != attempt_number
+                ):
+                    continue
+
+                event_rows = connection.execute(
+                    """SELECT * FROM job_events WHERE job_id = ?
+                    ORDER BY sequence ASC LIMIT 500""",
+                    (journal["job_id"],),
+                ).fetchall()
+                event_total = journal.get("last_sequence")
+                if (
+                    isinstance(event_total, bool)
+                    or not isinstance(event_total, int)
+                    or event_total < 0
+                ):
+                    raise DataError("control job has an invalid last_sequence invariant")
+                journal["events"] = [self._job_event_view(event) for event in event_rows]
+                journal["event_total"] = event_total
+                journal["event_limit"] = 500
+                journal["event_offset"] = 0
+                journal["event_tail"] = False
+                events_have_more = len(event_rows) < event_total
+                journal["events_has_more"] = events_have_more
+                journal["events_truncated"] = events_have_more
+                journals.append(journal)
+        return journals
+
     def reconcile_interrupted_jobs(
         self,
         *,
@@ -11533,7 +11596,7 @@ class ControlStore:
         stale_after_seconds: int = 60,
         at: datetime | None = None,
     ) -> list[dict[str, object]]:
-        """Fail only nonterminal journals whose durable heartbeat lease is stale."""
+        """Fail stale non-research journals; research needs a trustworthy owner-host binding."""
         clean_reason = _required_text(reason, "job reconciliation reason")
         if isinstance(stale_after_seconds, bool) or not 30 <= stale_after_seconds <= 86_400:
             raise DataError("job stale_after_seconds must be in 30..86400")
@@ -11549,6 +11612,12 @@ class ControlStore:
                 (stale_before,),
             ).fetchall()
             for job in rows:
+                is_research_job = job["kind"] == "research:event-study"
+                if is_research_job:
+                    # A PID is local to the probing host, while ALPHA_DATA_DIR is configurable
+                    # and may be shared. No trusted owner-host identity exists in this contract,
+                    # so a local PID miss cannot prove a remote D1 or D2 owner stopped.
+                    continue
                 self._require_monotonic(job["updated_at"], timestamp, "reconciliation timestamp")
                 sequence = int(job["last_sequence"]) + 1
                 payload = {"from": job["status"], "to": "failed", "reason": clean_reason}

@@ -1775,3 +1775,29 @@ Invalid explicit cache paths fail before worker startup rather than silently swi
 Focused tests cover the configured and temporary paths, cleanup on success/failure, read-only home,
 and environment isolation. A real synthetic owner-PDF CLI import and page read passed with no
 inherited cache setting and a read-only home; no provider request or owner paper was used.
+
+**D1/D2 durable recovery candidate (2026-10-24)** — isolated PR 89 work journals the content-derived
+D1 run identity before analysis, verifies recovery of an already-published D1 artifact, and retains
+active-job ownership through cancellation checkpoints. The shared `research:event-study` D1/D2
+reconciler now retains stale jobs and capacity because the store has no trusted owner-host identity;
+a local PID miss cannot prove a remote owner stopped when `ALPHA_DATA_DIR` may be shared. Recovery
+of that unresolved slot needs an owner-host/reconciliation design decision. Synthetic public tests
+cover D1 and D2 stale-heartbeat capacity retention, rejection of generic research-job terminalization,
+exact replay, artifact integrity, cancellation, failed-run retry, concurrent admission, and the
+stale-state race. Focused suites/static checks are
+reported in the task evidence packet. The standalone D1 candidate based on fc6da893 passed its six-component
+canonical full gate on tree 501c4d3e (fingerprint 6e3a8093); that receipt does not apply to this e635-based
+reconciliation tree, which has not had a full gate. No native RD-Agent qualification, publication or merge is
+claimed. See the
+[bounded D1 recovery packet](superpowers/plans/2026-10-24-d1-job-recovery.md).
+
+**D1 recovery lookup correction (2026-10-25)** — the e635-based candidate replaces the bounded
+global newest-500 job scan with a project-scoped lookup for failed research journals and exact
+contract/stage/attempt identity. The job row and event window are read in one SQLite snapshot.
+Its synthetic regression puts 505 newer unrelated jobs ahead of the target and adds cross-project,
+wrong-contract, wrong-stage, and wrong-attempt decoys; recovery still admits the original verified
+run once and exact replay does not call the runner again. The targeted recovery test and 10 adjacent
+D1/D2/cancellation tests pass; Ruff, format, and strict mypy pass on the changed Python files.
+Candidate-local locked sync succeeded offline from cached artifacts after the official registry
+attempt hit DNS resolution failure. Independent read-only review of the exact candidate found no
+findings. No full gate, publication, merge, or RD-Agent runtime is claimed.
