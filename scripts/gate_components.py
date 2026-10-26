@@ -6,23 +6,38 @@ import hashlib
 import json
 import math
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 import gate
 
 COMPONENTS = ("backend", "frontend", "literature", "qlib", "atlas", "eval")
 Step = tuple[str, Path, list[str]]
+GitOutputRunner = Callable[..., str]
 
 
-def changed_paths(root: Path, base: str | None = None) -> list[str] | None:
+def changed_paths(
+    root: Path,
+    base: str | None = None,
+    *,
+    git_runner: GitOutputRunner | None = None,
+) -> list[str] | None:
     """Merge-base diff plus dirty/untracked files; unavailable history is not no change."""
     reference = base or os.environ.get("ALPHA_GATE_BASE", "origin/main")
-    resolved = gate._git(root, "merge-base", reference, "HEAD", check=False).strip()
+    run_git = git_runner or gate._git
+    resolved = run_git(root, "merge-base", reference, "HEAD", check=False).strip()
     if not resolved:
         return None
-    committed_and_dirty = gate._git(root, "diff", "--name-only", "-z", resolved)
-    untracked = gate._git(root, "ls-files", "--others", "--exclude-standard", "-z")
+    committed_and_dirty = run_git(root, "diff", "--name-only", "-z", resolved)
+    untracked = run_git(root, "ls-files", "--others", "--exclude-standard", "-z")
     return sorted(set(filter(None, (committed_and_dirty + untracked).split("\0"))))
+
+
+def mutation_targets(root: Path, paths: list[str] | None) -> list[str]:
+    """Return the exact target set used by the backend mutation gate."""
+    if paths is None:
+        return gate.all_quant_source_modules(root)
+    return gate.quant_source_modules(root, paths)
 
 
 def required_components(paths: list[str] | None) -> set[str]:
@@ -76,11 +91,7 @@ def component_steps(root: Path, component: str) -> list[Step]:
             ),
         )
         paths = changed_paths(root)
-        modules = (
-            gate.all_quant_source_modules(root)
-            if paths is None
-            else gate.quant_source_modules(root, paths)
-        )
+        modules = mutation_targets(root, paths)
         if modules:
             commands.extend(
                 [

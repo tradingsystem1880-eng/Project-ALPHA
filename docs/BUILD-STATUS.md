@@ -1775,3 +1775,87 @@ Invalid explicit cache paths fail before worker startup rather than silently swi
 Focused tests cover the configured and temporary paths, cleanup on success/failure, read-only home,
 and environment isolation. A real synthetic owner-PDF CLI import and page read passed with no
 inherited cache setting and a read-only home; no provider request or owner paper was used.
+
+**Read-only qualification preflight (2026-10-25)** — Added `python3 scripts/gate.py preflight
+[--json]` to identify known blockers before the full gate. It checks only allowlisted public
+tracked prerequisites and Git alternates; reports branch, commit, Python/uv and CPU/memory/disk;
+shares the existing manual-size predicate; reuses `gate.lint_harness` and the canonical Atlas
+`--check`; and checks that the full-gate mypy command includes `tests` (`scope_only`) without
+executing mypy (`not_run`). It does not install or repair anything, run test suites, or rewrite Atlas
+outputs. The initial synthetic `unittest` module passed 8/8 and
+`git diff --check` passed; the dated `FeaturePlan` validates. On branch
+`codex/alpha-preflight-20261025` at baseline
+`e635e6cb5bc7b9fa688dc524998d7fe1ff8eebdc`, initial preflight found all 173 required public paths
+present, no Git alternates, the manual-size result at 5,965/6,000 bytes, Python 3.12 and uv
+available, canonical harness lint passing, and full-gate mypy scope covering tests. It returned 1 because the local
+`.venv` is missing and generated Atlas outputs are stale. The report showed 5 logical CPUs, about
+17.0 GiB available RAM and 29.8 GiB free disk. Independent review found no remaining code findings.
+At that point pytest was unavailable without creating an environment; the authorized follow-up
+verification is recorded below.
+
+**Qualification preflight follow-up (2026-10-25)** — On the same branch and baseline, the owner
+authorized the repository's root-only `uv sync --locked`, canonical Atlas generation, focused tests,
+canonical typing and cheap checks. Sync succeeded; `pyproject.toml` and `uv.lock` remained clean.
+The canonical Atlas generator was run with the root candidate `.venv`; its `--check` confirmed all
+8 generated outputs fresh. Final preflight JSON reports no blockers, all 173 allowlisted public
+paths present, no alternates, manual size 5,965/6,000 bytes, local `.venv` and mypy present, and
+Node/npm available. The mypy rows remain `scope_only` and `not_run`, respectively; separate executed
+commands passed `uv run mypy packages apps tests` (857 source files) and the canonical harness mypy
+command (18 files). Focused repository pytest passed 15 tests, including the synthetic preflight
+suite and shared manual-size test. Changed-file Ruff check/format, import contracts (13 kept, 0
+broken), harness lint, plan validation, Semgrep's pinned contract probe, and `git diff --check`
+passed. Semgrep verified the existing 1.181.0 pin and detected all four synthetic leaky comparisons.
+Independent review found no remaining findings. The initial blocked JSON and exit status remain preserved outside the worktree
+at `/workspace/alpha-preflight-initial-blocked.json` and
+`/workspace/alpha-preflight-initial-blocked.exit` (SHA-256: `465e75c44a0840bf8716a27dab640aae12d104d5db2a0f52fe3b46aab2d59b0d` and
+`4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865`). The first Semgrep probe
+attempt was interrupted with exit 130; after the owner confirmed the existing pinned `uvx` package
+workflow was authorized, it passed on retry. The first exit is preserved at
+`/workspace/alpha-preflight-semgrep-exit-130.json`; the successful result is at
+`/workspace/alpha-preflight-semgrep-contract-result.json`. No project dependency or lockfile
+changed. At completion of that follow-up, no full gate or publication had been performed.
+
+**Qualification preflight canonical gate attempt (2026-10-25)** — The owner subsequently authorized
+one canonical full gate on the reviewed candidate. Its backend component completed 11 of 12 steps
+successfully; the full public-test run reported 5,987 passed, 10 skipped, and one failure, with
+93.12% coverage against the unchanged 93.0% floor. The failure was
+`tests/unit/test_claude_harness_gate.py::TestDoctor::test_doctor_passes_on_wired_repo`: the
+synthetic wired-repository fixture kept a hardcoded harness script list and omitted newly registered
+`scripts/gate_preflight.py`. This exposed fixture drift without changing gate scope, thresholds, or
+production behavior. The backend receipt records `stable_tree: true`, failed step `pytest +
+coverage`, and original candidate fingerprint
+`73c350a90902b139fba989885208dc53012e51ab6d7dccf8dd47ab5a302c138d`. The preserved run log is
+`/workspace/alpha-preflight-full-gate.log` (SHA-256
+`092086bfdb5f1d9f1afdfed40ae3ef89123212e9a83c7bc2fe3fcc1e6d001770`); the backend receipt is
+`/workspace/alpha-preflight-backend-failed-receipt.json` (SHA-256
+`d7e668811d88330c9a6696a3eb8af02494d23ecab1ec0e7b1296ecc87e1344f5`). No full-gate stamp was
+written. The minimal correction updates the synthetic fixture to iterate canonical
+`gate.HARNESS_SCRIPTS`; independent read-only review found it keeps the fixture aligned with
+`gate.doctor()`. The corrected candidate's outcome is determined by its exact-tree checks and
+canonical gate receipt; this first attempt does not claim aggregate acceptance or publication.
+
+**Mutation-selection and freshness preflight follow-up (2026-10-26)** — Implemented in a separate
+worktree on branch `codex/alpha-preflight-selection-20261026`, based on the preserved qualified
+candidate tree `70e478836058e8da0f9b10e153e576029ce038f4`. The preflight now reports the canonical
+effective mutation base and resolution, exact-diff versus conservative-fallback selection and
+target count. Exact selection of every quant module is distinguished from fallback. Frontend API
+and SPA index alignment is checked only for the canonical freshness pathspecs; an actionable
+`index_setup` warning is explicitly separate from actual Atlas `generated_drift`. Synthetic tests
+cover explicit/default valid refs, missing/invalid/empty refs, exact and fallback target parity,
+unknown resolution, staged/unstaged outputs, sparse skip-worktree omissions, a missing canonical
+freshness step, and actual Atlas drift. Independent review found those two frontend-scope gaps; the
+diagnostic now requires both canonical freshness steps and verifies their tracked targets are
+present. Canonical backend selection logic remains authoritative through a shared target helper.
+
+The focused repository test run passed 25 tests with two sparse-target subtests; canonical
+`uv run --locked mypy packages apps
+tests` passed for 857 source files. Changed-file Ruff check/format, import contracts (13 kept, 0
+broken), harness lint, plan validation, canonical Atlas generation and `--check`, and
+`git diff --check` passed. The new worktree's existing locked root environment was created using
+`uv sync --locked`; the dependency and lock files did not change. Final read-only preflight JSON
+returned exit 0 with 173 required public paths present, no Git alternates, manual-size 5,965/6,000,
+candidate-local `.venv` and mypy present, and Atlas outputs fresh. It reported the available default
+`origin/main` ref, merge base `bf5baa75c8db0de8e85623c218fd89b1d4f5f668`, and an exact selection of
+zero quant targets. Frontend freshness paths matched the index. The preflight's own mypy entries
+remain correctly labeled `scope_only` and `not_run`; the passing mypy result above came from a
+separate command. No full gate, publication, merge, or deployment was performed for this follow-up.

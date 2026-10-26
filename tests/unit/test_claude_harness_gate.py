@@ -500,28 +500,10 @@ def _wire_minimal_harness(repo: Path) -> None:
         },
     }
     (claude / "settings.json").write_text(json.dumps(settings))
-    (claude / "statusline.py").write_text("print('ok')\n")
-    scripts = repo / "scripts"
-    scripts.mkdir(exist_ok=True)
-    for name in (
-        "gate.py",
-        "run_owned_test.py",
-        "gate_components.py",
-        "git_guard.py",
-        "wheel_smoke.py",
-        "check_semgrep_contracts.py",
-        "repo_orientation.py",
-        "claude_hooks.py",
-        "harness_awareness.py",
-        "harness_models.py",
-        "harness_quant.py",
-        "mutation_sweep.py",
-        "mutation_legacy.py",
-        "mutation_fragment.py",
-        "check_mutation_report.py",
-        "codex_bridge.py",
-    ):
-        (scripts / name).write_text("# stub\n")
+    for rel in gate.HARNESS_SCRIPTS:
+        script = repo / rel
+        script.parent.mkdir(parents=True, exist_ok=True)
+        script.write_text("# stub\n")
     gate.write_baseline(repo, reason="test", authorized_by="test")
 
 

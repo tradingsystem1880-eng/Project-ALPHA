@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import gate_preflight
 import pytest
 
 from tests.unit._harness_support import REPO_ROOT as ROOT
@@ -25,7 +26,8 @@ def _frontmatter_paths(text: str) -> list[str] | None:
 
 class TestCurrentManual:
     def test_core_is_small(self) -> None:
-        assert sum((ROOT / name).stat().st_size for name in ("CLAUDE.md", "AGENTS.md")) <= 6_000
+        valid, total = gate_preflight.manual_size_check(ROOT)
+        assert valid, f"CLAUDE.md + AGENTS.md total {total} bytes (limit 6000)"
 
     def test_local_manual_links_resolve(self) -> None:
         for name in ("AGENTS.md", "CLAUDE.md"):
