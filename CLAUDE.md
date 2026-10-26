@@ -24,7 +24,7 @@ Applicable rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-str
 
 - All data/strategy reads use point-in-time `as_of`; bias guards poison future data and have leaky controls.
   Decide at close t, fill at open t+1. Corporate actions have knowledge/application clocks; dividends
-  are cash at pay_date. See [domain contracts](docs/operations/research-platform-contracts.md).
+  are cash at pay_date. See [domain contracts and crypto query limits](docs/operations/research-platform-contracts.md).
 - Fail loud on invalid/non-finite/disordered data or degenerate statistics; never swallow errors. Type
   interrupted Stooq reads; retry WAL SQLITE_BUSY within existing budget. Polars default; pandas only
   at sanctioned vendor edges; type strictly.

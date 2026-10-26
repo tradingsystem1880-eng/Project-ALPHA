@@ -32,6 +32,19 @@ acceptance claim. The [ADR index](../adr/README.md), path rules and cited design
   Coin Metrics Community metrics. Coinbase/CCXT is comparison. Never merge USD/USDT/USDC,
   join by ticker alone, synthesize universal prices or silently fall back across evidence/units.
   Existing `ccxt:binance` snapshot/paper warmup bytes remain compatible (ADR-0032).
+- `alpha crypto-data snapshot-query SNAPSHOT_ID` reads exactly one DefiLlama `defi_tvl` member.
+  The read verifies the mounted bulk-volume UUID before snapshot/artifact verification, then binds
+  the exact snapshot ID, member identity, normalized artifact hash, raw receipt lineage, quality,
+  and schema. It accepts normalized Parquet up to 32 MiB, raw receipt payloads up to 8 MiB, and at
+  most 50,000 input rows. The reader checks schema before data decode, reads only fixed-width
+  timestamp/value columns, and derives the chain label from the bounded dataset identity. The three
+  decoded columns have a 24-byte-per-row primitive payload ceiling (about 1.2 MB / 1.15 MiB for
+  50,000 accepted rows); a 50,001st sentinel row is read only to reject oversized input. This is
+  before Polars internal buffers and is not an OS-enforced RSS cap. It returns at most 1,000 rows per
+  page, with `has_more` and `next_offset` continuation fields. `available_at` is the parser's
+  next-UTC-day convention, and source receipt `fetched_at` is retrieval time. Neither proves when
+  the provider first published a historical value; output never makes a historical point-in-time
+  claim.
 
 ## Research and control-store boundaries
 

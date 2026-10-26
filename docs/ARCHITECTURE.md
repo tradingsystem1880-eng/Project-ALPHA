@@ -201,6 +201,17 @@ authority. An explicit typed registration
 re-verifies every external member before recording the snapshot through the historical research
 `snapshot` kind with `snapshot_schema=CryptoSnapshotV1`; proposal preflight still admits it only
 when a registered operator declares compatibility.
+`alpha crypto-data snapshot-query SNAPSHOT_ID` reopens exactly one `defi_tvl` member as bounded
+rows after verifying its snapshot membership, normalized bytes, raw receipt lineage, units, and
+schema. The output keeps observation time, artifact and dataset hashes, provider schema/parser
+versions, and raw fetch time. `available_at` is filtered only under the parser's next-UTC-day
+convention; this does not establish a source publication timestamp or a historical point-in-time
+claim. Limits are 32 MiB per normalized Parquet artifact, 50,000 input rows, and 1,000 output rows
+per page. The reader schema-checks before decoding, decodes only fixed-width timestamp/value
+columns with a row cap, derives the chain label from the hashed dataset identity, and returns
+`has_more`/`next_offset` for continuation. This bounds materialized data but is not an
+OS-enforced process-RSS ceiling; Polars may use additional internal buffers. The reader does not
+write to snapshots or artifacts and supports no other member family.
 CoinGecko full-market reference uses ordered 250-row pages through one short terminal page, bounded
 to 100 pages. GeckoTerminal top-pool catalogs use exactly five 20-row pages per network. Each page
 is a separate immutable raw receipt and the combined normalized catalog preserves that order. The

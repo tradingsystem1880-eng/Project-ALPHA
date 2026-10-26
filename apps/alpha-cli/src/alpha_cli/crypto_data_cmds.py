@@ -61,6 +61,7 @@ from alpha_cli._crypto_coverage import write_batch_json as _write_coverage_batch
 from alpha_cli._crypto_persistence import write_immutable_json
 from alpha_cli._crypto_yield_catalog import empty_yield_catalog, yield_catalog
 from alpha_cli.control_store import ControlStore, research_case_revision
+from alpha_cli.crypto_snapshot_query import parse_available_by, query_defi_tvl_snapshot
 from alpha_cli.research_crypto_data import load_crypto_crowding_observations
 from alpha_cli.research_crypto_strategy import load_hedged_basis_observations
 from alpha_core import DataError
@@ -512,11 +513,18 @@ def _write_snapshot(snapshot: CryptoSnapshotV1) -> None:
 def _read_snapshot(snapshot_id: str) -> CryptoSnapshotV1:
     if _SHA256.fullmatch(snapshot_id) is None:
         raise DataError("crypto snapshot id is invalid")
+    root = _snapshot_root()
+    path = root / f"{snapshot_id}.json"
+    if root.is_symlink() or path.is_symlink():
+        raise DataError("crypto snapshot path is unsafe")
     try:
-        raw = json.loads((_snapshot_root() / f"{snapshot_id}.json").read_text(encoding="utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise DataError("crypto snapshot is unavailable or corrupt") from exc
-    return CryptoSnapshotV1.from_dict(raw)
+    snapshot = CryptoSnapshotV1.from_dict(raw)
+    if snapshot.snapshot_id != snapshot_id:
+        raise DataError("crypto snapshot file identity does not match its requested id")
+    return snapshot
 
 
 def _verify_snapshot_members(
@@ -525,6 +533,7 @@ def _verify_snapshot_members(
     required_families: tuple[CryptoFamily, ...],
     purpose: CryptoResearchPurpose,
     tolerate_legacy_scope: bool,
+    store: CryptoBulkStore | None = None,
 ) -> tuple[CryptoSnapshotV1, dict[str, CryptoQualityReportV1], CryptoResearchEligibilityV1, bool]:
     """Reverify one snapshot's bytes, identity, and member scope; report scope eligibility."""
     snapshot = _read_snapshot(snapshot_id)
@@ -532,7 +541,7 @@ def _verify_snapshot_members(
         master = _read_asset_master(snapshot.asset_master_version)
         if master.version != snapshot.asset_master_version:
             raise DataError("crypto snapshot asset-master identity is mismatched")
-    store = _bulk_store()
+    store = store or _bulk_store()
     by_membership = {
         (manifest.get("artifact_key"), manifest.get("artifact_sha256")): manifest
         for manifest in store.inventory()
@@ -4222,6 +4231,50 @@ def snapshot_verify(
         },
         json_out=json_out,
     )
+
+
+@crypto_data_app.command("snapshot-query")
+def snapshot_query(
+    snapshot_id: str,
+    limit: int = typer.Option(
+        100,
+        min=1,
+        max=1_000,
+        help="page size (maximum 1,000 rows); follow has_more and next_offset",
+    ),
+    offset: int = typer.Option(
+        0, min=0, max=100_000, help="rows to skip after availability filter"
+    ),
+    available_by: str | None = typer.Option(
+        None, help="UTC ISO-8601 filter for available_at; not historical publication proof"
+    ),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Read one bounded DefiLlama TVL page from an exact frozen snapshot ID."""
+    try:
+        cutoff = parse_available_by(available_by)
+        snapshot = _read_snapshot(snapshot_id)
+        store = _bulk_store()
+        store.verify_readable()
+        verified, _, _, _ = _verify_snapshot_members(
+            snapshot_id,
+            required_families=(),
+            purpose="research",
+            tolerate_legacy_scope=False,
+            store=store,
+        )
+        if verified != snapshot:
+            raise DataError("crypto snapshot changed during query verification")
+        result = query_defi_tvl_snapshot(
+            snapshot,
+            store,
+            limit=limit,
+            offset=offset,
+            available_by=cutoff,
+        )
+    except (DataError, typer.BadParameter) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(result.to_dict(), json_out=json_out)
 
 
 @crypto_data_app.command("snapshot-verify-crowding")

@@ -1,5 +1,30 @@
 # Project ALPHA — Build Status (delivery history)
 
+**2026-10-25 local candidate — bounded DefiLlama snapshot query:** On isolated branch
+`codex/storage-snapshot-query-audit` from verified commit `e635e6cb5bc7b9fa688dc524998d7fe1ff8eebdc`,
+added `alpha crypto-data snapshot-query SNAPSHOT_ID` for exactly one `defi_tvl` member. The reader
+checks volume UUID, exact snapshot/member identity, manifest and raw lineage, artifact hash, quality,
+and schema. It caps normalized Parquet at 32 MiB, the raw receipt at 8 MiB, accepted input at 50,000
+rows, and each page at 1,000 rows; `has_more` and `next_offset` make continuation explicit. A
+50,001st row is only a rejection sentinel. Fixed-width selected columns contribute about 1.2 MB /
+1.15 MiB at the accepted row cap before Polars internal buffers; this is a logical materialization
+bound, not an OS-enforced decompression or process-RSS ceiling. JSON retains observation and
+availability clocks, USD units, artifact/dataset/raw-response hashes, provider schema/parser
+versions, and receipt fetch time. `available_at` uses only the parser's next-UTC-day convention;
+fetch time is retrieval evidence, every result sets `point_in_time_claim=false`, and no historical
+publication time is inferred.
+
+Synthetic focused storage/query/CLI tests passed (39); DefiLlama fixture/acquisition tests passed
+(21); public fixture/harness checks passed (14); manual-size tests passed (23). Root Ruff check and
+format passed (1,001 files); strict mypy passed across packages/apps/tests (859 files) and harness
+scripts (17 files); import contracts kept all 13 rules. Atlas lock/sync, lint/format, package mypy
+(23 files), full non-network tests (102 passed, one Starlette deprecation warning), and generated
+freshness (8 outputs) passed. Root and Atlas lock/sync, harness lint, plan-check, and `git diff
+--check` passed. Independent read-only review approved the byte/row/page bounds and confirmed no
+silent truncation or historical point-in-time claim. Changed-files Semgrep passed (198.2 seconds),
+and the Semgrep contract check passed. No full gate, DuckDB/dependency change, migration, provider
+call, commit, merge, deployment, or publication was performed.
+
 **2026-10-02 crypto provider and archive hygiene work (in progress):** Added DefiLlama public
 reference data for protocol TVL, stablecoin supply, current yield-pool snapshots, and exact-pool
 history across parser, qualification, CLI acquisition, typed API, and Data Manager surfaces. The
