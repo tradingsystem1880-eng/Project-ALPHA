@@ -12,6 +12,7 @@ inside write paths and degrades to a loud error if unavailable.
 
 CLI:
     python3 scripts/gate.py fast|full          # run the tiered gate, stamp on success
+    python3 scripts/gate.py preflight [--json] # read-only candidate qualification
     python3 scripts/gate.py check --tier fast  # exit 0 iff a valid stamp covers the tier
     python3 scripts/gate.py attest --kind quant|review   # JSON report on stdin
     python3 scripts/gate.py override --reason "..."      # legacy token; Git guards ignore it
@@ -64,6 +65,7 @@ OWNER_TOKEN_ENV = "ALPHA_OWNER_TOKEN"
 AGENT_ACK_LIMIT = 3
 
 TIER_RANK = {"fast": 1, "full": 2}
+FULL_GATE_MYPY_COMMAND = ("uv", "run", "mypy", "packages", "apps", "tests")
 
 # claude_hooks.py subcommands; doctor verifies every one is wired in settings.json.
 HOOK_NAMES = (
@@ -154,7 +156,7 @@ def _git_lines(root: Path, *args: str) -> list[str]:
     return [line for line in _git(root, *args, check=False).splitlines() if line.strip()]
 
 
-def repo_root(start: Path | None = None) -> Path:
+def repo_root(start: Path | None = None, *, timeout: float | None = None) -> Path:
     """Resolve the enclosing repository root (worktree-correct) from cwd."""
     where = start or Path.cwd()
     out = subprocess.run(
@@ -162,6 +164,7 @@ def repo_root(start: Path | None = None) -> Path:
         capture_output=True,
         text=True,
         check=True,
+        timeout=timeout,
     )
     return Path(out.stdout.strip())
 
@@ -946,6 +949,7 @@ HARNESS_SCRIPTS = (
     "scripts/run_owned_test.py",
     "scripts/gate.py",
     "scripts/gate_components.py",
+    "scripts/gate_preflight.py",
     "scripts/git_guard.py",
     "scripts/wheel_smoke.py",
     "scripts/check_semgrep_contracts.py",
@@ -970,7 +974,7 @@ def gate_steps(tier: str, root: Path | None = None) -> list[tuple[str, list[str]
         ("ruff check", ["uv", "run", "ruff", "check", "."]),
         ("ruff format", ["uv", "run", "ruff", "format", "--check", "."]),
         ("import contracts", ["uv", "run", "lint-imports"]),
-        ("mypy", ["uv", "run", "mypy", "packages", "apps", "tests"]),
+        ("mypy", list(FULL_GATE_MYPY_COMMAND)),
         ("mypy harness", ["uv", "run", "mypy", *harness_files]),
         ("harness lint", [sys.executable, "scripts/gate.py", "lint-harness"]),
     ]
@@ -1292,6 +1296,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("fast")
     sub.add_parser("full")
+    preflight_p = sub.add_parser("preflight", help="read-only candidate qualification checks")
+    preflight_p.add_argument("--json", action="store_true")
     component_p = sub.add_parser("component")
     component_p.add_argument(
         "name", choices=("backend", "frontend", "literature", "qlib", "atlas", "eval")
@@ -1352,6 +1358,18 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
+    if args.command == "preflight":
+        sys.dont_write_bytecode = True
+        from gate_preflight import render_report, root_resolution_failure_report, run_preflight
+
+        try:
+            root = repo_root(timeout=10)
+        except (OSError, subprocess.SubprocessError) as exc:
+            code, report = root_resolution_failure_report(Path.cwd(), exc)
+        else:
+            code, report = run_preflight(root)
+        print(json.dumps(report, indent=2, sort_keys=True) if args.json else render_report(report))
+        return code
     root = repo_root()
     if args.command in ("attest", "override", "ack", "baseline", "plan-check"):
         _reexec_with_pydantic(root)

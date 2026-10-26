@@ -11,7 +11,33 @@ changing them afterward invalidates its evidence.
 | Frontend model | In `apps/alpha-web/frontend`: `npm test -- src/path/model.test.ts` |
 | Browser behavior | In that directory: `npm run test:e2e -- e2e/feature.spec.ts` |
 | Component readiness | `uv run python scripts/gate.py component NAME` |
+| Candidate qualification | `python3 scripts/gate.py preflight [--json]` |
 | Final acceptance | `uv run python scripts/gate.py full` |
+
+The read-only qualification preflight reports the candidate ref and available resources, checks
+allowlisted public tracked prerequisites and Git object alternates, reuses the manual-size and
+harness-lint checks, checks the candidate-local environment and mypy executable, confirms Node and
+npm are available, checks that the canonical full-gate mypy command includes `tests`, and runs Atlas
+freshness only with an already available Python 3.12 interpreter. The mypy scope entry is labeled
+`scope_only`; a separate `not_run` entry makes clear that preflight did not execute mypy. JSON and
+human output label checks as metadata, scope-only, executed, or not run. Preflight never installs
+dependencies or repairs outputs; blockers return a nonzero status. Preflight success is a readiness
+report; final acceptance still requires the full gate.
+
+The JSON result also reports `mutation_selection`: the effective `ALPHA_GATE_BASE` ref (explicit
+environment value or the canonical `origin/main` default), whether the ref and merge base resolved,
+whether target selection was an exact diff or the gate's conservative all-quant fallback, and the
+selected target count. An exact diff that selects every quant module is labeled as an exact
+all-module selection; an unavailable base is a warning that names the fallback cause and returns a
+nonzero preflight result. Preflight never chooses or repairs the base.
+
+`freshness_index_alignment` checks only the paths used by both canonical frontend API and SPA
+freshness commands. It blocks if either step is missing or any tracked target is absent from the
+checkout, including a sparse `skip-worktree` omission. Those commands compare the working tree with
+the Git index. If candidate output is unstaged or untracked, preflight reports an actionable
+`index_setup` warning and identifies the path; this does not establish that generated output is
+stale. The Atlas generator's `--check` remains a separate executed check and reports actual
+`generated_drift`. Neither check stages files or regenerates outputs.
 
 The frontend component runs `npm run build` once, including TypeScript, before
 `test:e2e:built`. The standalone `test:e2e` still builds first; use the built-only
