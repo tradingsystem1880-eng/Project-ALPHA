@@ -464,6 +464,10 @@ def _validated_d0_binding(
 def validate_d0_pilot_contract(contract: Mapping[str, object]) -> dict[str, object]:
     """Fail closed unless ``contract`` binds the exact registered Gate-1 event operator."""
 
+    from alpha_cli._native_rule_protocol import is_rule_contract, validate_rule_contract
+
+    if is_rule_contract(contract):
+        return validate_rule_contract(contract)
     return _validated_d0_binding(contract)[0]
 
 

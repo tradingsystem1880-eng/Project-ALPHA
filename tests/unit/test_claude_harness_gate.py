@@ -20,6 +20,7 @@ import harness_quant
 import pytest
 import semgrep_runner
 
+from tests.unit._harness_support import REPO_ROOT
 from tests.unit._harness_support import git as _git
 
 
@@ -366,6 +367,45 @@ class TestAttest:
     def test_review_attest_rejects_stale_diff_hash(self, repo: Path) -> None:
         verdict = self._review(repo, reviewed_diff_hash="0" * 64)
         assert gate.attest(repo, "review", json.dumps(verdict)) != 0
+
+    def test_review_attest_requires_protected_paths_in_review_scope(self, repo: Path) -> None:
+        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
+        assert gate.scoped_changed_paths(repo, gate.matches_risk) == []
+        verdict = self._review(repo, files_reviewed=[])
+        assert gate.attest(repo, "review", json.dumps(verdict)) != 0
+        assert not gate.review_verdict_valid(repo)
+        verdict = self._review(repo, files_reviewed=["CLAUDE.md"])
+        assert gate.attest(repo, "review", json.dumps(verdict)) == 0
+
+    @pytest.mark.parametrize(
+        ("path", "expected"),
+        [
+            ("packages/alpha-backtest/src/alpha_backtest/engine.py", True),
+            ("packages/alpha-validation/src/alpha_validation/dsr.py", True),
+            ("CLAUDE.md", True),
+            (".claude/rules/alpha-cli.md", True),
+            (".githooks/pre-commit", True),
+            (".githooks\\pre-commit", True),
+            ("pyproject.toml", True),
+            ("scripts/gate_components.py", True),
+            ("tracked.py", False),
+            ("docs/notes.md", False),
+        ],
+    )
+    def test_review_scope_matches_the_git_guard(self, path: str, expected: bool) -> None:
+        assert gate.matches_review(path) is expected
+
+    def test_literal_reviewer_template_attests_a_supplied_protected_scope(self, repo: Path) -> None:
+        reviewer = (REPO_ROOT / ".claude" / "agents" / "independent-reviewer.md").read_text()
+        command = (REPO_ROOT / ".claude" / "commands" / "review-gate.md").read_text()
+        template = '"files_reviewed": [every path in the review scope supplied as path list]'
+        assert template in reviewer and "every risk-tier path" not in reviewer
+        assert "scoped_changed_paths(r, gate.matches_review)" in command
+        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
+        supplied = gate.scoped_changed_paths(repo, gate.matches_review)
+        assert supplied == ["CLAUDE.md"]
+        verdict = self._review(repo, files_reviewed=supplied)
+        assert gate.attest(repo, "review", json.dumps(verdict)) == 0
 
     def test_quant_attest_rejects_unlisted_quant_file(self, repo: Path) -> None:
         quant = repo / "packages" / "alpha-validation" / "src" / "alpha_validation"

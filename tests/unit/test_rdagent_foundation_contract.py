@@ -186,6 +186,30 @@ def test_manifest_rejects_well_formed_but_incorrect_content_hash() -> None:
 
 
 @pytest.mark.parametrize(
+    "authority_key",
+    [
+        "scientific_continuation",
+        "permission_revision_reservation_attempt_budgets",
+        "data_snapshots_execution_results_evidence",
+        "d1_launch_d2_closure_promotion",
+        "native_trace_checkpoints",
+    ],
+)
+def test_manifest_rejects_resigned_authority_map_rebinding(authority_key: str) -> None:
+    altered = _golden()
+    authority_map = cast(dict[str, str], altered["authority_map"])
+    authority_map[authority_key] = "rdagent_native_runtime"
+    unsigned = {key: value for key, value in altered.items() if key != "content_sha256"}
+    altered["content_sha256"] = canonical_sha256(unsigned)
+
+    with pytest.raises(
+        ManifestValidationError,
+        match=rf"manifest\.authority_map\.{authority_key}",
+    ):
+        validate_manifest(altered)
+
+
+@pytest.mark.parametrize(
     ("index", "field", "value"),
     [
         (0, "git_blob_sha", "0" * 40),

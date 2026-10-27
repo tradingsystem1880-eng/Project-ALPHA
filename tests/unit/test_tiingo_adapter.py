@@ -154,16 +154,21 @@ def test_tiingo_adapter_preserves_canonical_and_provider_symbol(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class Response:
+        def __init__(self) -> None:
+            self.closed = False
+
         def __enter__(self) -> Response:
             return self
 
         def __exit__(self, *args: object) -> None:
             del args
+            self.closed = True
 
         def read(self) -> bytes:
             return _payload()
 
-    monkeypatch.setattr("urllib.request.urlopen", lambda request, timeout: Response())
+    response = Response()
+    monkeypatch.setattr("urllib.request.urlopen", lambda request, timeout: response)
     result = TiingoAdapter(api_key="secret-value", canonical_symbol="AAPL.XNAS").fetch(
         "AAPL", date(2020, 8, 28), date(2020, 9, 1)
     )
@@ -171,6 +176,7 @@ def test_tiingo_adapter_preserves_canonical_and_provider_symbol(
     assert result.identity is not None
     assert result.identity.symbol == "AAPL.XNAS"
     assert result.identity.provider_symbol == "AAPL"
+    assert response.closed
 
 
 def test_tiingo_http_errors_are_redacted(monkeypatch: pytest.MonkeyPatch) -> None:

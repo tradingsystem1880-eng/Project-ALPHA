@@ -119,6 +119,105 @@ def _prepare(tmp_path: Path) -> tuple[Path, dict[str, Any], pl.DataFrame]:
     return exchange, request, panel
 
 
+@pytest.mark.parametrize("name", ["lightgbm", "linear", "catboost", "xgboost", "double_ensemble"])
+def test_prepare_tabular_override_is_additive_and_keeps_source(tmp_path: Path, name: str) -> None:
+    panel_path = tmp_path / "source.parquet"
+    _panel().write_parquet(panel_path)
+    spec_path = tmp_path / "spec.json"
+    source = json.dumps(_draft()).encode()
+    spec_path.write_bytes(source)
+    request = prepare_exchange(
+        spec_path,
+        panel_path,
+        tmp_path / "exchange",
+        model_override={"name": name, "parameters": {}},
+    )
+    assert request["schema_version"] == 3
+    assert request["model"]["name"] == name
+    assert spec_path.read_bytes() == source
+
+
+@pytest.mark.parametrize("estimator", ["ols", "ridge", "lasso", "nnls"])
+def test_prepare_tabular_linear_estimator_variant(tmp_path: Path, estimator: str) -> None:
+    panel_path = tmp_path / "source.parquet"
+    _panel().write_parquet(panel_path)
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(_draft()))
+    request = prepare_exchange(
+        spec_path,
+        panel_path,
+        tmp_path / "exchange",
+        model_override={"name": "linear", "parameters": {"estimator": estimator}},
+    )
+    assert request["model"]["parameters"] == {"estimator": estimator}
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        {"name": "linear", "parameters": {"estimator": "automatic"}},
+        {"name": "linear", "parameters": {"estimator": ["ridge"]}},
+        {"name": "linear", "parameters": {"estimator": "ols", "alpha": 2}},
+        {"name": "catboost", "parameters": {"task_type": "GPU"}},
+        {"name": "xgboost", "parameters": {"num_threads": 9}},
+        {"name": "double_ensemble", "parameters": {"num_models": 1}},
+        {"name": ["linear"], "parameters": {}},
+    ],
+)
+def test_prepare_rejects_invalid_tabular_recipe_before_publication(
+    tmp_path: Path,
+    model: dict[str, Any],
+) -> None:
+    panel_path = tmp_path / "source.parquet"
+    _panel().write_parquet(panel_path)
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(_draft()))
+    exchange = tmp_path / "exchange"
+    with pytest.raises(MLContractError):
+        prepare_exchange(spec_path, panel_path, exchange, model_override=model)
+    assert not exchange.exists()
+
+
+def test_schema_three_result_uses_portable_prediction_contract(tmp_path: Path) -> None:
+    panel = _panel()
+    panel_path = tmp_path / "source.parquet"
+    panel.write_parquet(panel_path)
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(_draft()))
+    exchange = tmp_path / "exchange"
+    request = prepare_exchange(
+        spec_path,
+        panel_path,
+        exchange,
+        model_override={"name": "linear", "parameters": {}},
+    )
+    result = _write_result(exchange, request, _prediction_frame(request, panel))
+    result["schema_version"] = 3
+    (exchange / "result.json").write_bytes(canonical_json_bytes(result))
+    assert validate_result_bundle(exchange).request.request["schema_version"] == 3
+
+
+def test_tabular_numeric_rules_match_portable_descriptor() -> None:
+    from alpha_cli.ml_contract import _TABULAR_PARAMETER_RULES
+
+    schema_path = (
+        Path(__file__).parents[2]
+        / "workers/qlib/src/alpha_qlib_worker/schemas/request-v3.schema.json"
+    )
+    schema = json.loads(schema_path.read_text())
+    choices = schema["properties"]["model"]["oneOf"]
+    by_name = {choice["properties"]["name"]["const"]: choice for choice in choices}
+    assert set(by_name) == set(_TABULAR_PARAMETER_RULES)
+    for name, rules in _TABULAR_PARAMETER_RULES.items():
+        parameters = by_name[name]["properties"]["parameters"]["properties"]
+        for key, (minimum, maximum, integer) in rules.items():
+            assert parameters[key] == {
+                "type": "integer" if integer else "number",
+                "minimum": minimum,
+                "maximum": maximum,
+            }
+
+
 def _prepare_ensemble(tmp_path: Path) -> tuple[Path, dict[str, Any], pl.DataFrame]:
     panel = _panel()
     panel_path = tmp_path / "source.parquet"
@@ -195,7 +294,7 @@ def _write_result(
 
 
 def _legacy_point_in_time_result(
-    tmp_path: Path,
+    tmp_path: Path, *, schema_version: int = 1, model: dict[str, Any] | None = None
 ) -> tuple[Path, dict[str, Any], pl.DataFrame]:
     panel = _panel()
     exchange = tmp_path / "legacy-exchange"
@@ -203,6 +302,9 @@ def _legacy_point_in_time_result(
     panel_path = exchange / "panel.parquet"
     panel.write_parquet(panel_path)
     request = _draft()
+    request["schema_version"] = schema_version
+    if model is not None:
+        request["model"] = model
     request["universe_membership"] = "point_in_time"
     request["survivorship_warning"] = None
     request["panel"] = {
@@ -542,6 +644,19 @@ def test_valid_result_is_repeatably_importable_and_evaluable(tmp_path: Path) -> 
     assert evaluation["symbols"] == MIN_SYMBOLS
     assert evaluation["authority"] == "diagnostic_only"
     assert "ALPHA replay" in evaluation["next_required_step"]
+
+
+def test_schema_three_point_in_time_request_is_rejected_not_inspected(tmp_path: Path) -> None:
+    # Unlike frozen schema 1/2 declarations, schema 3 has no unverified-inspection status.
+    exchange, request, _ = _legacy_point_in_time_result(
+        tmp_path, schema_version=3, model={"name": "linear", "parameters": {}}
+    )
+    assert request["schema_version"] == 3
+    hashes_before = {path.name: sha256_file(path) for path in sorted(exchange.iterdir())}
+    for read in (validate_result_bundle, validate_request_bundle, evaluate_result_bundle):
+        with pytest.raises(MLContractError, match="schema 3 point_in_time requires a verified"):
+            read(exchange)
+    assert {path.name: sha256_file(path) for path in sorted(exchange.iterdir())} == hashes_before
 
 
 def test_legacy_point_in_time_result_is_inspectable_but_not_executable(

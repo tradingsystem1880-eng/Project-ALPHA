@@ -88,3 +88,25 @@ selection of zero quant targets, frontend freshness paths aligned with the index
 Atlas fresh. Mypy status remains accurately labeled `scope_only` and `not_run` within the preflight;
 its separate canonical execution is recorded above. No full gate, publication, merge, or deployment
 was performed.
+
+## Review-scope alignment, 2026-10-27
+
+Root cause: three contracts disagreed on review scope. `scripts/git_guard.py` required a tree-bound
+APPROVE covering risk-tier, protected control-plane, `.githooks/` and guarded-config paths, while
+`gate.py attest --kind review` checked `files_reviewed` against risk-tier paths only and
+`/review-gate` computed risk-tier paths and stopped when that set was empty. A protected-only change
+(for example `CLAUDE.md` plus `.claude/rules/`) therefore had no documented route to the review the
+guard requires, and attestation accepted a verdict that omitted the protected files.
+
+Delta: one predicate, `gate.matches_review`, reuses `matches_risk` and `protected_reason`; the Git
+guard uses it unchanged in behaviour, review attestation requires `files_reviewed` to cover it, and
+`/review-gate` scopes and stops by it. The risk-scoped diff-hash binding, independent reviewer,
+verbatim attestation, full stamp and quant evidence are unchanged. Regressions cover the
+protected-only attest and commit route and pin the predicate to the guard's scope; existing risk,
+quant and no-review cases remain. No owner exception or reviewer policy is changed.
+
+Reviewer template alignment (owner-approved): `.claude/agents/independent-reviewer.md` now asks for
+`files_reviewed` as every path in the review scope supplied as path list, and its description names
+review-scope diffs. Only those two lines changed; holdout execution, BLOCK discipline, exceptions,
+the verdict schema and the risk-scoped `reviewed_diff_hash` are unchanged. A regression binds the
+literal template, the command's review-scope list and attestation of a supplied protected path.

@@ -47,7 +47,10 @@ acceptance claim. The [ADR index](../adr/README.md), path rules and cited design
   can contaminate the sealed share; evidence-free or D0-only decisions cannot claim support.
   Promotion requires supported evidence, the owner disposition and the complete linked dossier.
   Gate overrides remain append-only owner events with permanent run watermarks.
-- SQLite control schema v6 retains supported historical migrations. Preserve migration writer
+- SQLite control schema v7 retains supported historical migrations, including v6 reservation rows
+  and foreign-key children. Ordinary ControlStore opens apply the schema migration; only native
+  dispatch is dormant. Synthetic migration evidence does not authorize a live database migration
+  or mixed-writer deployment. Preserve migration writer
   locking, exact checked backups, lossless receipt rebuilds and immutable semantic-event hashes.
   Credential counter, challenge, receipt and semantic event commit atomically. Canonical reads
   verify linkage/transitions in one read snapshot. Missing protected v5 objects fail closed;
@@ -58,7 +61,9 @@ acceptance claim. The [ADR index](../adr/README.md), path rules and cited design
 - Generated project workspaces contain identifier/hash references, twelve indexes, immutable
   revisions and an atomic current pointer. Explicit quarantine recovery never relocates raw
   evidence, rewrites SQLite or grants authority (ADR-0035).
-- Owner Touch ID is separate from actor labels and engineering checks (ADR-0030). Paper acceptance
+- Explicit owner confirmation is separate from actor labels and engineering checks.
+  [ADR-0038](../adr/0038-local-confirmation-and-terminal-archive-charts.md) defines the default
+  trusted-local confirmation flow; ADR-0030 describes the distinct authenticator policy. Paper acceptance
   requires mechanically verified receipts; legacy producer flags and elapsed time do not pass it.
   No live-capital route exists. Monte Carlo scenario/path-risk evidence cannot establish edge.
 

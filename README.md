@@ -137,6 +137,29 @@ The setup script respects configured paths and creates the Semgrep file's parent
 If temporary assets are not retained, rerun setup synchronously before browser work. Download or
 host-library failures require correcting the environment before claiming readiness.
 
+Some cloud images add `/etc/fonts/conf.d/56-prefer-inter.conf` (owned by no package; observed
+SHA-256 `1e74ca86…5a9e`), which aliases `-apple-system`, `Segoe UI`, `system-ui` and `sans-serif`
+to system Inter. Chromium then renders the chrome stack with that system font, while Linux visual
+baselines record the app's self-hosted `Inter Variable` webfont. Run browser checks with a derived
+fontconfig that omits only that rule; leave `/etc` and every other rule unchanged:
+
+```sh
+if [ -e /etc/fonts/conf.d/56-prefer-inter.conf ]; then
+  cfg="$(mktemp -d /tmp/project-alpha-fontconfig.XXXXXX)" && mkdir "$cfg/conf.d"
+  for f in /etc/fonts/conf.d/*; do
+    [ "${f##*/}" = 56-prefer-inter.conf ] || ln -s "$(readlink -f "$f")" "$cfg/conf.d/${f##*/}"
+  done
+  sed "s#<include ignore_missing=\"yes\">conf.d</include>#<include ignore_missing=\"yes\">$cfg/conf.d</include>#" \
+    /etc/fonts/fonts.conf > "$cfg/fonts.conf"
+  export FONTCONFIG_FILE="$cfg/fonts.conf"
+fi
+```
+
+Verified 2026-10-27 with fontconfig 2.15.0, Playwright 1.61.1 and Chromium 149.0.7827.55: the
+derived `fonts.conf` differs from the system file (`93a23ba0…ca22`) only in that include line, and
+the 40 linked rules (name plus target SHA-256, sorted) hash to `8e3428b1…22f9`. Without the image
+rule, use the system configuration unchanged.
+
 </details>
 
 ## Implemented scope and limits

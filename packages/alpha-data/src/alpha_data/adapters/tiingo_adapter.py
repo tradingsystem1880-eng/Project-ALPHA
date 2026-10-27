@@ -207,6 +207,7 @@ class TiingoAdapter:
             raise DataError("Tiingo requires a non-empty ALPHA_TIINGO_API_KEY")
         if end < start:
             raise DataError(f"Tiingo end {end} precedes start {start}")
+        import http.client  # noqa: PLC0415
         import urllib.error  # noqa: PLC0415
         import urllib.parse  # noqa: PLC0415
         import urllib.request  # noqa: PLC0415
@@ -250,12 +251,13 @@ class TiingoAdapter:
             if max_response_bytes is not None:
                 raise DataError(f"Tiingo rejected the request with HTTP {exc.code}") from None
             raise DataError(f"Tiingo rejected the request with HTTP {exc.code}") from exc
-        except (urllib.error.URLError, TimeoutError) as exc:
-            if max_response_bytes is not None:
-                raise DataError(f"Tiingo transport failed: {type(exc).__name__}") from None
-            raise DataError(
-                f"Tiingo transport failed: {exc.reason if hasattr(exc, 'reason') else exc}"
-            ) from exc
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            http.client.IncompleteRead,
+            OSError,
+        ) as exc:
+            raise DataError(f"Tiingo transport failed: {type(exc).__name__}") from None
         return parse_tiingo_eod(
             raw,
             symbol=canonical_symbol,

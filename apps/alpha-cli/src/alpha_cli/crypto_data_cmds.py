@@ -92,6 +92,7 @@ from alpha_data.crypto.profiles import (
     active_option_markets,
     build_default_coverage_tasks,
 )
+from alpha_data.crypto.providers._wire import RequestBudget
 from alpha_data.crypto.providers.binance import (
     archive_checksum_sha256,
     archive_url,
@@ -1452,6 +1453,7 @@ def _fetch_binance_tail_pages(
     frequency: str,
     start_ms: int,
     end_ms: int,
+    budget: RequestBudget | None = None,
 ) -> tuple[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]], ...]:
     cadence_ms = {
         "1d": 86_400_000,
@@ -1480,7 +1482,12 @@ def _fetch_binance_tail_pages(
             "startTime": next_start,
             "endTime": end_ms,
         }
-        payload = fetch_binance_public_api(binance_public_api_url(category, "klines", params))
+        url = binance_public_api_url(category, "klines", params)
+        payload = (
+            fetch_binance_public_api(url)
+            if budget is None
+            else fetch_binance_public_api(url, budget=budget)
+        )
         frame = parse_binance_klines(payload, source="rest_json")
         _require_observations_in_range(
             frame,
@@ -2105,6 +2112,7 @@ def _fetch_binance(
     start: str | None,
     end: str | None,
     fetched_at: datetime,
+    budget: RequestBudget | None = None,
 ) -> _FetchedAcquisition | _FetchedPagedAcquisition:
     base_value = base.strip().upper()
     quote_value = quote.strip().upper()
@@ -2316,6 +2324,7 @@ def _fetch_binance(
             frequency=frequency,
             start_ms=bounded_range[0],
             end_ms=bounded_range[1],
+            budget=budget,
         )
         pages = tail_pages
         page_parsers: tuple[Callable[[bytes], pl.DataFrame], ...] = tuple(
@@ -2381,6 +2390,7 @@ def _fetch_non_bybit(
     start: str | None,
     end: str | None,
     fetched_at: datetime,
+    budget: RequestBudget | None = None,
 ) -> _FetchedAcquisition | _FetchedPagedAcquisition:
     base_value, quote_value = base.strip().upper(), quote.strip().upper()
     instrument_value = instrument.strip()
@@ -2459,6 +2469,7 @@ def _fetch_non_bybit(
             start=start,
             end=end,
             fetched_at=fetched_at,
+            budget=budget,
         )
     raise DataError(f"unsupported crypto acquisition provider {provider!r}")
 
@@ -2554,11 +2565,28 @@ def _acquire_result(
         None, help="fresh research-case revision for derivative event capture"
     ),
     reason: str | None = typer.Option(None, help="bounded event-capture reason"),
+    max_requests: int | None = None,
+    max_total_bytes: int | None = None,
 ) -> dict[str, object]:
     """Acquire one bounded public provider page; this grants no research or order authority."""
     dataset_family = _family(family)
     fetched_at = _now()
     try:
+        budget = None
+        if max_requests is not None or max_total_bytes is not None:
+            if max_requests is None or max_total_bytes is None:
+                raise DataError("strict acquisition requires both request and byte budgets")
+            if not (
+                provider == "binance"
+                and dataset_family == "market_bars"
+                and category == "spot"
+                and frequency == "1d"
+                and period is None
+                and start is not None
+                and end is not None
+            ):
+                raise DataError("strict budgets require bounded Binance spot daily REST bars")
+            budget = RequestBudget(max_requests, max_total_bytes)
         acquisition_scope = _acquisition_scope(
             dataset_family,
             case_id=case_id,
@@ -2605,6 +2633,7 @@ def _acquire_result(
                 start=start,
                 end=end,
                 fetched_at=fetched_at,
+                budget=budget,
             )
             plan = fetched.plan
         fetched_at = _now()
@@ -2771,6 +2800,8 @@ def acquire(
         None, help="fresh research-case revision for derivative event capture"
     ),
     reason: str | None = typer.Option(None, help="bounded event-capture reason"),
+    max_requests: int | None = typer.Option(None, help="strict total HTTP attempt cap"),
+    max_total_bytes: int | None = typer.Option(None, help="strict total response body byte cap"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Acquire one bounded public provider page; this grants no research or order authority."""
@@ -2791,6 +2822,8 @@ def acquire(
         case_id=case_id,
         expected_case_revision=expected_case_revision,
         reason=reason,
+        max_requests=max_requests,
+        max_total_bytes=max_total_bytes,
     )
     _emit(result, json_out=json_out)
 

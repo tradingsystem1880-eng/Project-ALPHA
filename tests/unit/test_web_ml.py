@@ -247,7 +247,12 @@ def ml_response_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple
 
 
 @pytest.mark.parametrize(
-    "schema_version,model,fit_count", [(1, "lightgbm", 1), (2, "rank_ensemble_v1", 2)]
+    "schema_version,model,fit_count",
+    [(1, "lightgbm", 1), (2, "rank_ensemble_v1", 2)]
+    + [
+        (3, model, 6 if model == "double_ensemble" else 1)
+        for model in ("lightgbm", "linear", "catboost", "xgboost", "double_ensemble")
+    ],
 )
 @pytest.mark.parametrize("suffix", ["", "/tear-sheet"])
 def test_ml_responses_preserve_existing_artifact_versions(
@@ -292,10 +297,10 @@ def test_ml_responses_preserve_existing_artifact_versions(
 @pytest.mark.parametrize(
     "field,value,suffix,location,error_type",
     [
-        ("schema_version", 3, "", ("response", "contract"), "literal_error"),
+        ("schema_version", 4, "", ("response", "contract"), "literal_error"),
         ("model", "unsupported_model", "", ("model", "name"), "literal_error"),
         ("fit_count", 0, "/tear-sheet", ("response", "folds", 0, "fit_count"), "literal_error"),
-        ("fit_count", 3, "/tear-sheet", ("response", "folds", 0, "fit_count"), "literal_error"),
+        ("fit_count", 7, "/tear-sheet", ("response", "folds", 0, "fit_count"), "literal_error"),
     ],
 )
 def test_ml_responses_reject_unsupported_artifact_values(
@@ -342,11 +347,22 @@ def test_ml_contract_openapi_pairs_schema_version_with_model() -> None:
     assert {item["$ref"] for item in contract["anyOf"]} == {
         "#/components/schemas/MlExperimentContractV1",
         "#/components/schemas/MlExperimentContractV2",
+        "#/components/schemas/MlExperimentContractV3",
     }
     expected = {
         "MlExperimentContractV1": (1, "MlLightgbmModelRecipe", "lightgbm"),
         "MlExperimentContractV2": (2, "MlRankEnsembleV1ModelRecipe", "rank_ensemble_v1"),
     }
+    v3 = schemas["MlExperimentContractV3"]
+    assert v3["properties"]["schema_version"]["const"] == 3
+    assert v3["properties"]["model"]["$ref"] == "#/components/schemas/MlTabularModelRecipe"
+    assert schemas["MlTabularModelRecipe"]["properties"]["name"]["enum"] == [
+        "lightgbm",
+        "linear",
+        "catboost",
+        "xgboost",
+        "double_ensemble",
+    ]
     for name, (version, model_schema, model_name) in expected.items():
         variant = schemas[name]
         assert variant["properties"]["schema_version"]["const"] == version
@@ -1308,13 +1324,64 @@ def test_one_click_experiment_generation_exports_then_prepares(
         project_id="project-1",
         experiment_id=None,
         timeout_seconds=1200,
+        model="linear",
+        parameters={"alpha": 2.0},
     )
 
     assert accepted["action"] == "generate-experiment"
     assert accepted["exchange_id"]
     assert [step[0] for step in pipelines[0]] == ["export-input", "prepare"]
     safe_request = json.loads(calls[0][calls[0].index("--request-json") + 1])
+    assert safe_request["model"] == "linear"
+    assert safe_request["parameters"] == {"alpha": 2.0}
+    prepare = pipelines[0][1][1]
+    assert prepare[prepare.index("--model") + 1] == "linear"
+    assert json.loads(prepare[prepare.index("--parameters-json") + 1]) == {"alpha": 2.0}
     assert str(tmp_path) not in json.dumps(safe_request)
+
+
+def test_default_experiment_generation_keeps_the_frozen_recipe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        _ml, "_run_json", lambda args, **kwargs: {"current_experiment_id": "ex_" + "a" * 64}
+    )
+
+    def journal(args: list[str], **kwargs: object) -> dict[str, str]:
+        del kwargs
+        calls.append(args)
+        return {"job_id": "00000000-0000-4000-8000-000000000004", "status": "queued"}
+
+    monkeypatch.setattr(_ml, "_journal", journal)
+    pipelines: list[list[tuple[str, list[str], int]]] = []
+    monkeypatch.setattr(
+        _ml, "_start_pipeline", lambda job_id, steps, **kwargs: pipelines.append(steps)
+    )
+    worker = tmp_path / "worker"
+    worker.mkdir()
+    (worker / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+    monkeypatch.setattr(_ml, "_worker_project", lambda: worker)
+
+    _ml.launch_experiment_generation(
+        data_dir=tmp_path, project_id="project-1", experiment_id=None, timeout_seconds=1200
+    )
+
+    prepare = pipelines[0][1][1]
+    assert "--model" not in prepare
+    assert "--parameters-json" not in prepare
+    safe_request = json.loads(calls[0][calls[0].index("--request-json") + 1])
+    assert safe_request["model"] is None
+    assert safe_request["parameters"] == {}
+    with pytest.raises(_ml.MlError, match="require an explicit model override"):
+        _ml.launch_experiment_generation(
+            data_dir=tmp_path,
+            project_id="project-1",
+            experiment_id=None,
+            timeout_seconds=1200,
+            parameters={"alpha": 2.0},
+        )
+    assert len(pipelines) == 1
 
 
 def test_generation_pipeline_journals_each_step_then_succeeds(
@@ -1348,3 +1415,173 @@ def test_generation_pipeline_journals_each_step_then_succeeds(
 
     assert len(process_calls) == 2
     assert [call[3] for call in journal_calls] == ["progress", "progress", "succeeded"]
+
+
+def test_ml_capabilities_relays_only_cli_worker_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+    payload = {
+        "schema_version": 1,
+        "qlib_version": "0.9.7",
+        "backends": [
+            {
+                "name": "catboost",
+                "status": "missing_dependency",
+                "reason": "catboost is not installed",
+                "versions": {"pyqlib": "0.9.7"},
+            }
+        ],
+    }
+
+    def run_json(args: list[str], **kwargs: object) -> dict[str, object]:
+        calls.append(args)
+        return payload
+
+    monkeypatch.setattr(_ml, "_run_json", run_json)
+    response = TestClient(create_app()).get("/api/ml/capabilities")
+    assert response.status_code == 200
+    assert response.json() == payload
+    assert calls == [["ml", "capabilities", "--json"]]
+
+
+@pytest.mark.parametrize("model", ["lightgbm", "linear", "catboost", "xgboost", "double_ensemble"])
+def test_ml_generate_forwards_selected_model_after_preflight(
+    monkeypatch: pytest.MonkeyPatch, model: str
+) -> None:
+    received: list[dict[str, object]] = []
+    monkeypatch.setattr(_ml, "experiment_preflight", lambda **_: {"ready": True})
+
+    def launch(**kwargs: object) -> dict[str, object]:
+        received.append(kwargs)
+        return {
+            "job_id": "job",
+            "status": "queued",
+            "action": "generate-experiment",
+            "project_id": "project-1",
+            "experiment_id": "ex_" + "a" * 64,
+            "input_bundle_id": INPUT_ID,
+            "exchange_id": EXCHANGE_ID,
+        }
+
+    monkeypatch.setattr(_ml, "launch_experiment_generation", launch)
+    client = TestClient(create_app())
+    response = client.post(
+        "/api/ml/experiments",
+        json={
+            "project_id": "project-1",
+            "model": model,
+            "parameters": {"alpha": 2.0},
+        },
+    )
+    assert response.status_code == 202
+    assert received[0]["model"] == model
+    assert received[0]["parameters"] == {"alpha": 2.0}
+    monkeypatch.setattr(
+        _ml,
+        "experiment_preflight",
+        lambda **_: {
+            "ready": False,
+            "checks": [{"state": "blocked", "message": "research gate blocked"}],
+        },
+    )
+    denied = client.post("/api/ml/experiments", json={"project_id": "project-1", "model": model})
+    assert denied.status_code == 422
+    assert "research gate blocked" in json.dumps(denied.json())
+    assert len(received) == 1
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        {"model": "rank_ensemble_v1"},
+        {"model": "unknown"},
+        {"parameters": {"alpha": True}},
+        {"parameters": {"alpha": "2"}},
+        {"parameters": {"alpha": "ols"}},
+        {"parameters": {"estimator": "unsupported"}},
+    ],
+)
+def test_ml_generate_rejects_non_tabular_selection(selection: dict[str, object]) -> None:
+    response = TestClient(create_app()).post(
+        "/api/ml/experiments",
+        json={
+            "project_id": "project-1",
+            **selection,
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_tabular_tearsheet_keeps_predictive_timeline_without_portfolio(
+    ml_response_client: tuple[TestClient, Path],
+) -> None:
+    client, exchange = ml_response_client
+    request = json.loads((exchange / "request.json").read_text())
+    request["schema_version"] = 3
+    request["model"] = {"name": "linear", "parameters": {"alpha": 1.0}}
+    (exchange / "request.json").write_text(json.dumps(request))
+    result = json.loads((exchange / "result.json").read_text())
+    result["diagnostics"]["signal_analysis"]["portfolio"] = None
+    result["diagnostics"]["feature_importance"] = []
+    result["diagnostics"]["model_backend"] = "linear"
+    result["diagnostics"]["model_parameters"] = {"estimator": "ridge", "alpha": 1.0}
+    result["diagnostics"]["backend_versions"] = {"scikit-learn": "1.7.0"}
+    result["diagnostics"]["adapter_source_hash"] = "a" * 64
+    result["diagnostics"]["folds"][0].update(
+        {
+            "model_backend": "linear",
+            "resolved_parameters": {"estimator": "ridge", "alpha": 1.0},
+            "backend_versions": {"scikit-learn": "1.7.0"},
+            "importance_kind": None,
+        }
+    )
+    (exchange / "result.json").write_text(json.dumps(result))
+    response = client.get(f"/api/ml/exchanges/{EXCHANGE_ID}/tear-sheet")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["portfolio"] is None
+    assert payload["timeline_total"] == 2
+    assert len(payload["ic"]["by_target"]) == 2
+    assert payload["feature_importance"] == []
+    assert payload["folds"][0]["fit_count"] == 1
+    assert payload["model_backend"] == "linear"
+    assert payload["model_parameters"] == {"estimator": "ridge", "alpha": 1.0}
+    assert payload["folds"][0]["resolved_parameters"] == {"estimator": "ridge", "alpha": 1.0}
+    assert payload["adapter_source_hash"] == "a" * 64
+
+
+@pytest.mark.parametrize("estimator", ["ols", "ridge", "lasso", "nnls"])
+def test_ml_generate_accepts_explicit_linear_estimator(estimator: str) -> None:
+    request = ml_api.MlExperimentGenerateRequest.model_validate(
+        {
+            "project_id": "project-1",
+            "model": "linear",
+            "parameters": {"estimator": estimator},
+        }
+    )
+    assert request.parameters == {"estimator": estimator}
+
+
+@pytest.mark.parametrize("score_status", ["degenerate", "ties_present", "nondegenerate"])
+def test_tabular_tearsheet_projects_worker_diagnostic_state(
+    ml_response_client: tuple[TestClient, Path],
+    score_status: str,
+) -> None:
+    client, exchange = ml_response_client
+    request = json.loads((exchange / "request.json").read_text())
+    request["schema_version"] = 3
+    (exchange / "request.json").write_text(json.dumps(request))
+    result = json.loads((exchange / "result.json").read_text())
+    state = {
+        "score_status": score_status,
+        "reason": "Tied scores omitted from quantile grouping.",
+        "degenerate_cross_sections": 1,
+        "tied_cross_sections": 2,
+        "quantile_cross_sections": 0,
+    }
+    result["diagnostics"]["signal_analysis"]["diagnostic_state"] = state
+    result["diagnostics"]["signal_analysis"]["quantile_returns"] = []
+    (exchange / "result.json").write_text(json.dumps(result))
+    response = client.get(f"/api/ml/exchanges/{EXCHANGE_ID}/tear-sheet")
+    assert response.status_code == 200
+    assert response.json()["diagnostic_state"] == state
+    assert response.json()["quantile_returns"] == []

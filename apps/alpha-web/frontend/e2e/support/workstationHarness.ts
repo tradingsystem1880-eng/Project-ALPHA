@@ -2421,6 +2421,15 @@ function responseFor(route: Route, options: MockOptions): unknown {
       ],
     }
   }
+  if (url.pathname === '/api/ml/capabilities') {
+    return { schema_version: 1, qlib_version: '0.9.7', backends: [
+      { name: 'lightgbm', status: 'available', reason: null, versions: { pyqlib: '0.9.7' } },
+      { name: 'linear', status: 'available', reason: null, versions: { pyqlib: '0.9.7' } },
+      { name: 'double_ensemble', status: 'available', reason: null, versions: { pyqlib: '0.9.7' } },
+      { name: 'catboost', status: 'missing_dependency', reason: 'catboost is not installed', versions: {} },
+      { name: 'xgboost', status: 'incompatible_dependency', reason: 'unsupported xgboost version', versions: {} },
+    ] }
+  }
   if (url.pathname === '/api/ml/status') {
     return {
       available: true,

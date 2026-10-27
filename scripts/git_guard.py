@@ -30,20 +30,7 @@ def check_commit(root: Path) -> tuple[int, str]:
         )
     # Classify both the removed and added paths even when Git detects a rename.
     paths = gate._git(root, "diff", "--cached", "--no-renames", "--name-only", "-z").split("\0")
-    review_paths = [
-        path
-        for path in paths
-        if gate.matches_risk(path)
-        or gate.protected_reason(path)
-        or path.startswith(".githooks/")
-        or path
-        in {
-            "pyproject.toml",
-            "scripts/git_guard.py",
-            "scripts/gate_components.py",
-            "scripts/wheel_smoke.py",
-        }
-    ]
+    review_paths = [path for path in paths if gate.matches_review(path)]
     if review_paths:
         artifact = gate.read_json(root / gate.STATE_DIR / gate.REVIEW_VERDICT_FILE) or {}
         verdict = artifact.get("verdict", {})

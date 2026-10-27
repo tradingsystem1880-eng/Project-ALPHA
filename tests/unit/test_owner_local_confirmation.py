@@ -341,5 +341,5 @@ def test_v5_concurrent_migration_is_serialized(tmp_path: Path) -> None:
     with ThreadPoolExecutor(max_workers=2) as executor:
         assert list(executor.map(migrate, range(2))) == [[], []]
     with sqlite3.connect(database) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone() == (6,)
+        assert connection.execute("PRAGMA user_version").fetchone() == (7,)
     assert database.with_name(database.name + ".v5.bak").is_file()

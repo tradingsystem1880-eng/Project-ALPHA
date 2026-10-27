@@ -188,6 +188,13 @@ def _validate_analysis_plan_v1(
 
 def validate_analysis_plan(plan: Mapping[str, object], *, max_grid_cells: int) -> dict[str, Any]:
     """Resolve V2 parameters; preserve V1's exact historical validation semantics."""
+    if isinstance(plan, Mapping) and plan.get("schema") in {
+        "FrozenRulePositionsPlanV1",
+        "FrozenRuleCostedPlanV1",
+    }:
+        from alpha_cli._native_rule_protocol import validate_rule_plan
+
+        return validate_rule_plan(plan, max_grid_cells=max_grid_cells)
     if not isinstance(plan, Mapping) or plan.get("schema") != ANALYSIS_PLAN_SCHEMA_V2:
         return _validate_analysis_plan_v1(plan, max_grid_cells=max_grid_cells)
     structural = deepcopy(dict(plan))
@@ -260,6 +267,9 @@ def analysis_family_catalog() -> list[dict[str, object]]:
 
 def validate_new_exploration_plan(plan: Mapping[str, object], *, max_grid_cells: int) -> None:
     """New-approval policy only; never use for historical execution or verification."""
+    if plan.get("schema") in {"FrozenRulePositionsPlanV1", "FrozenRuleCostedPlanV1"}:
+        validate_analysis_plan(plan, max_grid_cells=max_grid_cells)
+        return
     if plan.get("schema") == ANALYSIS_PLAN_SCHEMA:
         raise DataError(
             "new exploration approval requires ResearchAnalysisPlanV2; create a new draft"

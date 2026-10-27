@@ -6,7 +6,7 @@ from typing import Annotated, Literal, cast
 
 import polars as pl
 from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
 from alpha_web import _ml
 from alpha_web.api._common import data_dir
@@ -16,6 +16,10 @@ router = APIRouter(prefix="/api/ml", tags=["ml-research"])
 type JsonObject = dict[str, JsonValue]
 
 OpaqueId = Annotated[str, Field(pattern=r"^[0-9a-f]{16,64}$")]
+TabularModelName = Literal["lightgbm", "linear", "catboost", "xgboost", "double_ensemble"]
+NumericParameter = (
+    Annotated[int, Field(strict=True)] | Annotated[float, Field(strict=True, allow_inf_nan=False)]
+)
 
 
 class StrictModel(BaseModel):
@@ -34,6 +38,19 @@ class MlReadiness(StrictModel):
     heavy_job_limit: Literal[1]
     heavy_job_busy: bool
     supported_modes: list[Literal["fake", "real"]]
+
+
+class MlBackendCapability(StrictModel):
+    name: TabularModelName
+    status: Literal["available", "missing_dependency", "incompatible_dependency"]
+    reason: str | None
+    versions: dict[str, str]
+
+
+class MlCapabilities(StrictModel):
+    schema_version: Literal[1]
+    qlib_version: str | None
+    backends: list[MlBackendCapability]
 
 
 class MlServiceStatus(StrictModel):
@@ -112,6 +129,28 @@ class MlRankEnsembleV1ModelRecipe(StrictModel):
     parameters: dict[str, int | float]
 
 
+class MlTabularParameters(StrictModel):
+    parameters: dict[str, NumericParameter | Literal["ols", "ridge", "lasso", "nnls"]] = Field(
+        default_factory=dict, max_length=32
+    )
+
+    @field_validator("parameters")
+    @classmethod
+    def estimator_is_only_string_parameter(
+        cls, value: dict[str, int | float | str]
+    ) -> dict[str, int | float | str]:
+        if any(isinstance(item, str) and key != "estimator" for key, item in value.items()):
+            raise ValueError("only the linear estimator parameter accepts a string")
+        return value
+
+
+class MlTabularModelRecipe(MlTabularParameters):
+    name: TabularModelName
+    parameters: dict[str, NumericParameter | Literal["ols", "ridge", "lasso", "nnls"]] = Field(
+        max_length=32
+    )
+
+
 class MlPortfolioRecipe(StrictModel):
     selection: Literal["top_quintile"]
     weighting: Literal["equal"]
@@ -163,11 +202,16 @@ class MlExperimentContractV2(_MlExperimentContractFields):
     model: MlRankEnsembleV1ModelRecipe
 
 
+class MlExperimentContractV3(_MlExperimentContractFields):
+    schema_version: Literal[3]
+    model: MlTabularModelRecipe
+
+
 # Keep `schema_version` as a numeric literal in generated clients. OpenAPI's
 # `discriminator` mapping is string-valued, so publishing it here makes the
 # generated TypeScript client incorrectly type the numeric wire values as
 # strings. The strict variant models still enforce version/model pairing.
-type MlExperimentContract = MlExperimentContractV1 | MlExperimentContractV2
+type MlExperimentContract = MlExperimentContractV1 | MlExperimentContractV2 | MlExperimentContractV3
 
 
 class MlWorkerResult(StrictModel):
@@ -354,8 +398,12 @@ class MlFoldBoundaries(StrictModel):
 
 
 class MlFoldDiagnostic(StrictModel):
+    model_backend: str | None = None
+    resolved_parameters: dict[str, JsonValue] | None = None
+    backend_versions: dict[str, str] | None = None
+    importance_kind: str | None = None
     fold: int
-    fit_count: Literal[1, 2]
+    fit_count: Literal[1, 2, 3, 4, 5, 6]
     train_rows: int
     validation_rows: int
     test_rows: int
@@ -366,7 +414,20 @@ class MlFoldDiagnostic(StrictModel):
     boundaries: MlFoldBoundaries
 
 
+class MlDiagnosticState(StrictModel):
+    score_status: Literal["degenerate", "ties_present", "nondegenerate"]
+    reason: str
+    degenerate_cross_sections: int = Field(ge=0)
+    tied_cross_sections: int = Field(ge=0)
+    quantile_cross_sections: int = Field(ge=0)
+
+
 class MlTearSheet(StrictModel):
+    diagnostic_state: MlDiagnosticState | None = None
+    model_backend: str | None = None
+    model_parameters: dict[str, JsonValue] | None = None
+    backend_versions: dict[str, str] | None = None
+    adapter_source_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     available: bool
     exchange_id: OpaqueId
     authority: str
@@ -454,10 +515,18 @@ class MlInputJobAccepted(StrictModel):
     input_bundle_id: OpaqueId
 
 
-class MlExperimentGenerateRequest(StrictModel):
+class MlExperimentGenerateRequest(MlTabularParameters):
+    # None keeps the experiment's frozen recipe; a name explicitly publishes a schema-3 override.
+    model: TabularModelName | None = None
     project_id: str = Field(min_length=1, max_length=64)
     experiment_id: str | None = Field(default=None, pattern=r"^ex_[0-9a-f]{64}$")
     timeout_seconds: int = Field(default=3600, ge=60, le=3600)
+
+    @model_validator(mode="after")
+    def parameters_require_model(self) -> MlExperimentGenerateRequest:
+        if self.parameters and self.model is None:
+            raise ValueError("model parameters require an explicit model override")
+        return self
 
 
 class MlExperimentJobAccepted(StrictModel):
@@ -506,6 +575,15 @@ def get_readiness() -> dict[str, object]:
     """Isolation/readiness status without importing Qlib or probing any network."""
     try:
         return _ml.readiness(data_dir=data_dir())
+    except (RuntimeError, OSError) as exc:
+        raise _http_error(exc) from exc
+
+
+@router.get("/capabilities", response_model=MlCapabilities)
+def get_capabilities() -> dict[str, object]:
+    """Relay installed backend capability evidence from the isolated worker through CLI."""
+    try:
+        return _ml.capabilities(data_dir=data_dir())
     except (RuntimeError, OSError) as exc:
         raise _http_error(exc) from exc
 
@@ -618,6 +696,8 @@ def generate_experiment(body: MlExperimentGenerateRequest) -> dict[str, object]:
             project_id=body.project_id,
             experiment_id=body.experiment_id,
             timeout_seconds=body.timeout_seconds,
+            model=body.model,
+            parameters=body.parameters,
         )
     except (RuntimeError, OSError) as exc:
         raise _http_error(exc) from exc

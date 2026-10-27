@@ -12,6 +12,7 @@ import math
 import os
 import signal
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -31,12 +32,14 @@ class DurableLeaseCancelled(RuntimeError):
     """The durable owner observed an audited cancellation request and reaped its child."""
 
 
-def _isolated_process_group_id(process: subprocess.Popen[Any]) -> int:
+def _isolated_process_group_id(
+    process: subprocess.Popen[Any], observe_exit: Callable[[], int | None] | None = None
+) -> int:
     """Resolve and verify the dedicated session created for one durable child."""
     try:
         process_group = os.getpgid(process.pid)
     except ProcessLookupError as exc:
-        if process.poll() is not None and not _process_group_exists(process.pid):
+        if (observe_exit or process.poll)() is not None and not _process_group_exists(process.pid):
             return process.pid
         raise DurableLeaseError(
             "leased child exited before its process group was verified"
@@ -73,11 +76,51 @@ def _wait_for_process_group_exit(
     return True
 
 
+def _observe_retained_child(process: subprocess.Popen[Any]) -> int | None:
+    """Observe a Linux direct child without releasing the PID that anchors its group.
+
+    The trusted owner must serialize this with final cleanup and use no other reaper.
+    A cached Popen return code is not retained kernel ownership.
+    """
+    if sys.platform != "linux":
+        raise DurableLeaseError("retained child observation requires Linux")
+    result = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+    if result is None:
+        return None
+    return result.si_status if result.si_code == os.CLD_EXITED else -result.si_status
+
+
+def _terminate_retaining_leader(process: subprocess.Popen[Any], grace_seconds: float) -> None:
+    """Keep the direct child waitable until after the final possible group signal."""
+    group_id = process.pid
+    if process.returncode is not None:
+        if _process_group_exists(group_id):
+            raise DurableLeaseError("reaped leader cannot authorize a surviving numeric group")
+        return
+    _observe_retained_child(process)  # Lost wait ownership denies *all* destructive signals.
+    _signal_process_group(group_id, signal.SIGTERM)
+    deadline = time.monotonic() + grace_seconds
+    while (remaining := deadline - time.monotonic()) > 0:
+        _observe_retained_child(process)  # WNOWAIT retains even an exited zombie leader.
+        time.sleep(min(_PROCESS_GROUP_POLL_SECONDS, remaining))
+    _observe_retained_child(process)
+    _signal_process_group(group_id, signal.SIGKILL)
+    # No destructive group operation is permitted after this release of the anchor.
+    process.wait(timeout=grace_seconds)
+    deadline = time.monotonic() + grace_seconds
+    while _process_group_exists(group_id):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise DurableLeaseError("process group remains after final leader reap; no safe retry")
+        time.sleep(min(_PROCESS_GROUP_POLL_SECONDS, remaining))
+
+
 def terminate_and_reap(
     process: subprocess.Popen[Any],
     *,
     grace_seconds: float = DEFAULT_TERMINATE_GRACE_SECONDS,
     process_group_id: int | None = None,
+    retain_leader: bool = False,
 ) -> None:
     """Terminate every member of an isolated child group, then reap its direct leader."""
     if not math.isfinite(grace_seconds) or grace_seconds <= 0.0:
@@ -88,6 +131,9 @@ def terminate_and_reap(
         )
         if group_id != process.pid:
             raise DurableLeaseError("leased process group id does not match its isolated leader")
+        if retain_leader:
+            _terminate_retaining_leader(process, grace_seconds)
+            return
         _signal_process_group(group_id, signal.SIGTERM)
         exited = _wait_for_process_group_exit(
             process,
@@ -114,7 +160,14 @@ def terminate_and_reap(
 
 
 class DurableJobLease:
-    """Renew a durable job heartbeat independently of the child process's stdout."""
+    """Renew a durable job heartbeat independently of the child process's stdout.
+
+    An optional trusted-owner cleanup callback shares one retained-child cleanup attempt.
+    It must raise when cleanup cannot be verified; failure never falls back to signalling
+    the numeric group again. This callback is not a caller-supplied evidence boundary.
+    A trusted observer may retain a leader until that shared cleanup finishes; it must
+    serialize observation and reaping. Default callers retain their existing poll behavior.
+    """
 
     def __init__(
         self,
@@ -124,6 +177,8 @@ class DurableJobLease:
         fail_journal: Callable[[str], object],
         cancel_requested: Callable[[], bool] | None = None,
         cancel_journal: Callable[[], object] | None = None,
+        cleanup: Callable[[], None] | None = None,
+        observe_exit: Callable[[], int | None] | None = None,
         interval_seconds: float = DEFAULT_HEARTBEAT_INTERVAL_SECONDS,
         terminate_grace_seconds: float = DEFAULT_TERMINATE_GRACE_SECONDS,
         label: str = "durable child",
@@ -142,11 +197,17 @@ class DurableJobLease:
         if (cancel_requested is None) != (cancel_journal is None):
             raise ValueError("cancel_requested and cancel_journal must be configured together")
         self._process = process
-        self._process_group_id = _isolated_process_group_id(process)
+        self._observe_exit = observe_exit
+        self._process_group_id = (
+            _isolated_process_group_id(process)
+            if observe_exit is None
+            else _isolated_process_group_id(process, observe_exit)
+        )
         self._renew = renew
         self._fail_journal = fail_journal
         self._cancel_requested = cancel_requested
         self._cancel_journal = cancel_journal
+        self._cleanup = cleanup
         self._interval_seconds = interval_seconds
         self._terminate_grace_seconds = terminate_grace_seconds
         self._label = clean_label
@@ -168,6 +229,8 @@ class DurableJobLease:
         fail_journal: Callable[[str], object],
         cancel_requested: Callable[[], bool] | None = None,
         cancel_journal: Callable[[], object] | None = None,
+        cleanup: Callable[[], None] | None = None,
+        observe_exit: Callable[[], int | None] | None = None,
         interval_seconds: float = DEFAULT_HEARTBEAT_INTERVAL_SECONDS,
         terminate_grace_seconds: float = DEFAULT_TERMINATE_GRACE_SECONDS,
         label: str = "durable child",
@@ -180,6 +243,8 @@ class DurableJobLease:
                 fail_journal=fail_journal,
                 cancel_requested=cancel_requested,
                 cancel_journal=cancel_journal,
+                cleanup=cleanup,
+                observe_exit=observe_exit,
                 interval_seconds=interval_seconds,
                 terminate_grace_seconds=terminate_grace_seconds,
                 label=label,
@@ -187,11 +252,14 @@ class DurableJobLease:
         except Exception as init_exc:
             clean_label = label.strip() or "durable child"
             try:
-                terminate_and_reap(
-                    process,
-                    grace_seconds=terminate_grace_seconds,
-                    process_group_id=process.pid,
-                )
+                if cleanup is not None:
+                    cleanup()
+                else:
+                    terminate_and_reap(
+                        process,
+                        grace_seconds=terminate_grace_seconds,
+                        process_group_id=process.pid,
+                    )
             except Exception as cleanup_exc:
                 raise DurableLeaseError(
                     f"{clean_label} lease initialization failed: {init_exc}; "
@@ -235,8 +303,12 @@ class DurableJobLease:
             self._fail("heartbeat thread start", exc)
             self.raise_if_failed()
 
-    def stop(self) -> None:
-        """Stop, join, and verify group cleanup before a terminal status can be published."""
+    def stop_renewal(self) -> None:
+        """Join renewal and return child cleanup to the owner without publishing a status.
+
+        The caller must still terminate/reap and verify its child before recording any
+        terminal outcome. This operation alone establishes no process-exit evidence.
+        """
         self._stop.set()
         thread = self._thread
         if (
@@ -245,12 +317,16 @@ class DurableJobLease:
             and thread.ident is not None
         ):
             thread.join()
+
+    def stop(self) -> None:
+        """Stop, join, and verify group cleanup before a terminal status can be published."""
+        self.stop_renewal()
         with self._failure_lock:
             terminal_outcome = self._failure is not None or self._cancelled
         if terminal_outcome:
             return
         try:
-            leader_alive = self._process.poll() is None
+            leader_alive = (self._observe_exit or self._process.poll)() is None
         except Exception as exc:
             self._fail("process-group liveness", exc)
             return
@@ -304,8 +380,12 @@ class DurableJobLease:
 
     def _run(self) -> None:
         while not self._stop.wait(self._interval_seconds):
-            self._process.poll()  # Reap an exited leader while descendants retain the lease.
+            if self._observe_exit is None:
+                self._process.poll()  # Existing callers reap while descendants retain the lease.
+            observed_exit: int | None = None
             try:
+                if self._observe_exit is not None:
+                    observed_exit = self._observe_exit()
                 group_alive = _process_group_exists(self._process_group_id)
             except Exception as exc:
                 self._fail("process-group liveness", exc)
@@ -328,6 +408,15 @@ class DurableJobLease:
                 if requested:
                     self._cancel()
                     return
+            if self._observe_exit is not None and observed_exit is not None:
+                # A retained zombie still makes the group visible. Finish physical
+                # cleanup now, independently of reporting, before a later deadline
+                # can misclassify an already-observed normal exit.
+                if not self._terminate():
+                    with self._failure_lock:
+                        self._failure = self._cleanup_failure
+                        self._failure_context = "child cleanup"
+                return
 
     def _fail(self, context: str, failure: Exception) -> None:
         with self._failure_lock:
@@ -365,11 +454,14 @@ class DurableJobLease:
 
     def _terminate(self) -> bool:
         try:
-            terminate_and_reap(
-                self._process,
-                grace_seconds=self._terminate_grace_seconds,
-                process_group_id=self._process_group_id,
-            )
+            if self._cleanup is not None:
+                self._cleanup()
+            else:
+                terminate_and_reap(
+                    self._process,
+                    grace_seconds=self._terminate_grace_seconds,
+                    process_group_id=self._process_group_id,
+                )
         except Exception as cleanup_exc:
             with self._failure_lock:
                 self._cleanup_failure = cleanup_exc

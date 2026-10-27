@@ -902,3 +902,36 @@ _SCHEMA_V6_RECEIPT = (
         OR (authorization_method = 'local_confirmation' AND credential_id IS NULL))""",
     )
 )
+
+# The v7 reservation contract is kept separate from the historical v2 DDL so that
+# old migration fixtures and retained backups remain byte-for-byte reproducible.
+_SCHEMA_V7 = """
+CREATE TABLE IF NOT EXISTS research_launch_reservations (
+    reservation_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(project_id),
+    contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
+    phase TEXT NOT NULL CHECK (phase IN ('pilot', 'deep_research')),
+    kind TEXT NOT NULL,
+    launch_number INTEGER NOT NULL CHECK (launch_number BETWEEN 1 AND 3),
+    config_fingerprint TEXT NOT NULL,
+    budget_reserved_json TEXT NOT NULL,
+    execution_sequence INTEGER NOT NULL,
+    reserved_at TEXT NOT NULL,
+    UNIQUE (project_id, contract_id, kind, launch_number),
+    UNIQUE (project_id, execution_sequence),
+    FOREIGN KEY (project_id, execution_sequence)
+        REFERENCES research_execution_events(project_id, sequence)
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS research_launch_attempt_links (
+    reservation_id TEXT PRIMARY KEY
+        REFERENCES research_launch_reservations(reservation_id),
+    attempt_id TEXT NOT NULL UNIQUE REFERENCES research_attempt_records(attempt_id),
+    linked_at TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_research_launch_reservations_project
+    ON research_launch_reservations(project_id, reserved_at, reservation_id);
+CREATE INDEX IF NOT EXISTS idx_research_launch_attempt_links_attempt
+    ON research_launch_attempt_links(attempt_id);
+"""

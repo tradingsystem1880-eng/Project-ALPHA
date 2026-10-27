@@ -1,14 +1,39 @@
 from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
-from alpha_core import ActionType, CorporateAction
+from alpha_core import ActionType, CorporateAction, DataError
 from alpha_data.pit import PointInTimeReader
 from alpha_data.store import ParquetStore
 from tests.fixtures.pit_fixtures import linear_bars
 
 pytestmark = pytest.mark.bias_guard
+
+
+def test_naive_cutoff_is_rejected_before_data_read(tmp_path: Path) -> None:
+    reader = PointInTimeReader(ParquetStore(tmp_path), actions={})
+    with pytest.raises(DataError, match="cutoff must be timezone-aware"):
+        reader.as_of("X", datetime(2024, 3, 11))
+
+
+@pytest.mark.parametrize(
+    "day", [date(2024, 3, 8), date(2024, 3, 11), date(2024, 11, 1), date(2024, 11, 4)]
+)
+@pytest.mark.parametrize("offset_us", [-1, 0, 1])
+def test_named_zone_cutoff_matches_utc_across_dst(
+    tmp_path: Path, day: date, offset_us: int
+) -> None:
+    store = ParquetStore(tmp_path)
+    store.write_bars("X", linear_bars("X", day, 3))
+    reader = PointInTimeReader(store, actions={})
+    boundary = datetime.combine(day, datetime.min.time(), tzinfo=UTC)
+    cutoff = boundary + timedelta(microseconds=offset_us)
+    expected = reader.as_of("X", cutoff)
+    actual = reader.as_of("X", cutoff.astimezone(ZoneInfo("America/New_York")))
+    assert actual.equals(expected)
+    assert actual.height == (0 if offset_us < 0 else 1)
 
 
 def test_knowledge_gate_uses_utc_date_for_non_utc_when(tmp_path: Path) -> None:

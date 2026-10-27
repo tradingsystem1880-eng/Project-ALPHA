@@ -1205,6 +1205,334 @@ def _approved_pilot(store: ControlStore) -> tuple[str, dict[str, object]]:
     return contract_id, payload
 
 
+def _approved_native_d1(
+    store: ControlStore,
+    *,
+    with_native_budget: bool = True,
+    loop_steps: int = 3,
+    implementation_fingerprints: dict[str, str | None] | None = None,
+    variants: int = 128,
+    cpu_milliseconds: int = 10_000,
+) -> tuple[str, dict[str, object]]:
+    pack_id = _source_pack(store)
+    payload = _payload(pack_id)
+    if with_native_budget:
+        budget = cast(dict[str, object], payload["budget"])
+        budget["variants"] = variants
+        budget.update(
+            {
+                "rdagent_native_v1_model_calls": 2,
+                "rdagent_native_v1_input_tokens": 40,
+                "rdagent_native_v1_output_tokens": 24,
+                "rdagent_native_v1_loop_steps": loop_steps,
+                "rdagent_native_v1_tool_calls": 2,
+                "rdagent_native_v1_cpu_milliseconds": cpu_milliseconds,
+            }
+        )
+        hashes = cast(dict[str, object], payload["hashes"])
+        hashes["dependency_lock"] = "uv-lock:feedfacecafebeef"
+        if implementation_fingerprints is not None:
+            hashes.update(implementation_fingerprints)
+    contract = store.create_research_contract(
+        PROJECT_ID,
+        scope="exploration",
+        payload=payload,
+        created_by="codex",
+        author_kind="agent",
+        at=START + timedelta(minutes=3),
+    )
+    contract_id = str(contract["contract_id"])
+    for minute, phase, responsibility in (
+        (4, "triage", "codex"),
+        (5, "exploration_review", "owner"),
+    ):
+        store.transition_research_phase(
+            PROJECT_ID,
+            to_phase=phase,  # type: ignore[arg-type]
+            contract_id=contract_id,
+            actor="codex",
+            reason=f"Advance the fixture to {phase}.",
+            next_action="Continue the governed native D1 fixture.",
+            responsibility=responsibility,  # type: ignore[arg-type]
+            at=START + timedelta(minutes=minute),
+        )
+    store.review_research_contract(
+        PROJECT_ID,
+        contract_id,
+        scope="exploration",
+        decision="approve",
+        actor="owner",
+        actor_kind="human",
+        reason="Approve the exact native D1 fixture.",
+        at=START + timedelta(minutes=6),
+    )
+    store.transition_research_phase(
+        PROJECT_ID,
+        to_phase="pilot",
+        contract_id=contract_id,
+        actor="owner",
+        reason="The pilot fixture is approved.",
+        next_action="Run D0 only.",
+        responsibility="codex",
+        at=START + timedelta(minutes=7),
+    )
+    _record_completed_d0(store, contract_id, payload, at=START + timedelta(minutes=8))
+    store.transition_research_phase(
+        PROJECT_ID,
+        to_phase="deep_research",
+        contract_id=contract_id,
+        actor="codex",
+        reason="The pilot completed.",
+        next_action="Prepare the native D1 investigation.",
+        responsibility="codex",
+        at=START + timedelta(minutes=9),
+    )
+    return contract_id, payload
+
+
+def _seed_terminal_d0_reservation(store: ControlStore) -> None:
+    _project(store)
+    contract_id, payload = _approved_pilot(store)
+    store.transition_research_execution(
+        PROJECT_ID,
+        to_state="queued",
+        contract_id=contract_id,
+        actor="codex",
+        reason="Queue synthetic migration fixture.",
+        next_action="Reserve the D0 fixture.",
+        responsibility="codex",
+        checkpoint="d0:queued",
+        at=START + timedelta(minutes=8),
+    )
+    reservation = store.reserve_d0_research_launch(
+        PROJECT_ID,
+        contract_id,
+        config_fingerprint=d0_execution_fingerprint(payload),
+        at=START + timedelta(minutes=9),
+    )
+    store.record_research_attempt(
+        PROJECT_ID,
+        contract_id,
+        kind="d0-synthetic-pilot",
+        status="failed",
+        config_fingerprint=d0_execution_fingerprint(payload),
+        budget_used={},
+        details={"attempt_number": 1, "evidence_zone": "D0"},
+        error="synthetic migration fixture terminalized",
+        launch_reservation_id=str(reservation["reservation_id"]),
+        at=START + timedelta(minutes=10),
+    )
+
+
+def _native_d1_job(
+    store: ControlStore,
+    contract_id: str,
+    *,
+    job_id: str,
+    attempt_number: int = 1,
+    reserve: bool = True,
+    started_at: datetime | None = None,
+    manifest_sha256: str | None = None,
+) -> tuple[dict[str, object], dict[str, object]]:
+    at = START + timedelta(minutes=10) if started_at is None else started_at
+    if manifest_sha256 is None:
+        manifest_sha256 = hashlib.sha256(b"pinned native manifest fixture").hexdigest()
+    spec = store.build_d1_native_invocation_spec(
+        PROJECT_ID,
+        contract_id,
+        job_id,
+        attempt_number=attempt_number,
+        native_manifest_sha256=manifest_sha256,
+    )
+    store.transition_research_execution(
+        PROJECT_ID,
+        to_state="queued",
+        contract_id=contract_id,
+        actor="codex",
+        reason="Queue the inert native D1 accounting fixture.",
+        next_action="Reserve before any external effect.",
+        responsibility="codex",
+        checkpoint="native-d1:queued",
+        at=at,
+    )
+    job = store.create_research_job(
+        PROJECT_ID,
+        contract_id=contract_id,
+        request={
+            "stage": "rdagent_native",
+            "contract_id": contract_id,
+            "job_id": job_id,
+            "attempt_number": attempt_number,
+            "native_invocation_spec": spec,
+        },
+        job_id=job_id,
+        at=at + timedelta(seconds=1),
+    )
+    store.set_job_status(job_id, "running", at=at + timedelta(seconds=2))
+    store.transition_research_execution(
+        PROJECT_ID,
+        to_state="running",
+        contract_id=contract_id,
+        actor="system",
+        reason="The native D1 fixture owns its durable job.",
+        next_action="No native process is dispatched by this test.",
+        responsibility="codex",
+        active_job_id=job_id,
+        checkpoint=f"native-d1:running:{attempt_number}",
+        at=at + timedelta(seconds=3),
+    )
+    reservation = (
+        store.reserve_d1_native_research_launch(
+            PROJECT_ID,
+            contract_id,
+            job_id,
+            native_manifest_sha256=manifest_sha256,
+            at=at + timedelta(seconds=4),
+        )
+        if reserve
+        else {}
+    )
+    return job, reservation
+
+
+def _downgrade_synthetic_reservations_to_v6(
+    database: Path, *, widened: bool = False, defect: str | None = None
+) -> None:
+    """Create a disposable v6 fixture, optionally with a deliberately incomplete v7 schema."""
+    phase_check = (
+        "CHECK (phase IN ('pilot', 'deep_research'))" if widened else "CHECK (phase = 'pilot')"
+    )
+    launch_check = (
+        "INTEGER NOT NULL"
+        if defect == "missing_launch_limit_check"
+        else "INTEGER NOT NULL CHECK (launch_number BETWEEN 1 AND 3)"
+    )
+    budget_column = (
+        "" if defect == "missing_budget_column" else "budget_reserved_json TEXT NOT NULL,"
+    )
+    identity_unique = (
+        ""
+        if defect == "missing_identity_unique"
+        else "UNIQUE (project_id, contract_id, kind, launch_number)"
+    )
+    execution_fk = (
+        ""
+        if defect == "missing_execution_fk"
+        else "FOREIGN KEY (project_id, execution_sequence) "
+        "REFERENCES research_execution_events(project_id, sequence)"
+    )
+    table_constraints = [
+        clause
+        for clause in (
+            identity_unique,
+            "UNIQUE (project_id, execution_sequence)",
+            execution_fk,
+        )
+        if clause
+    ]
+    table_constraints_sql = ",\n                ".join(table_constraints)
+    attempt_unique = "" if defect == "missing_attempt_unique" else "UNIQUE "
+    attempt_reference = (
+        f"attempt_id TEXT NOT NULL {attempt_unique}REFERENCES research_attempt_records(attempt_id)"
+    )
+    connection = sqlite3.connect(database, isolation_level=None)
+    try:
+        connection.execute("PRAGMA foreign_keys = OFF")
+        connection.execute("BEGIN IMMEDIATE")
+        connection.execute("DROP INDEX IF EXISTS idx_research_launch_reservations_project")
+        connection.execute("DROP INDEX IF EXISTS idx_research_launch_attempt_links_attempt")
+        connection.execute(
+            "ALTER TABLE research_launch_attempt_links "
+            "RENAME TO research_launch_attempt_links_v7_fixture"
+        )
+        connection.execute(
+            "ALTER TABLE research_launch_reservations "
+            "RENAME TO research_launch_reservations_v7_fixture"
+        )
+        connection.execute(
+            f"""CREATE TABLE research_launch_reservations (
+                reservation_id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL REFERENCES projects(project_id),
+                contract_id TEXT NOT NULL REFERENCES research_contracts(contract_id),
+                phase TEXT NOT NULL {phase_check},
+                kind TEXT NOT NULL,
+                launch_number {launch_check},
+                config_fingerprint TEXT NOT NULL,
+                {budget_column}
+                execution_sequence INTEGER NOT NULL,
+                reserved_at TEXT NOT NULL,
+                {table_constraints_sql}
+            ) STRICT"""
+        )
+        connection.execute(
+            f"""CREATE TABLE research_launch_attempt_links (
+                reservation_id TEXT PRIMARY KEY
+                    REFERENCES research_launch_reservations(reservation_id),
+                {attempt_reference},
+                linked_at TEXT NOT NULL
+            ) STRICT"""
+        )
+        reservation_columns = [
+            str(row[1])
+            for row in connection.execute("PRAGMA table_info(research_launch_reservations)")
+        ]
+        old_reservation_columns = {
+            str(row[1])
+            for row in connection.execute(
+                "PRAGMA table_info(research_launch_reservations_v7_fixture)"
+            )
+        }
+        common_reservation_columns = [
+            name for name in reservation_columns if name in old_reservation_columns
+        ]
+        columns_sql = ", ".join(common_reservation_columns)
+        connection.execute(
+            f"INSERT INTO research_launch_reservations ({columns_sql}) "
+            f"SELECT {columns_sql} FROM research_launch_reservations_v7_fixture"
+        )
+        connection.execute(
+            """INSERT INTO research_launch_attempt_links
+            SELECT * FROM research_launch_attempt_links_v7_fixture"""
+        )
+        connection.execute("DROP TABLE research_launch_attempt_links_v7_fixture")
+        connection.execute("DROP TABLE research_launch_reservations_v7_fixture")
+        if defect != "missing_project_index":
+            project_index_columns = (
+                "kind"
+                if defect == "wrong_project_index"
+                else "project_id, reserved_at, reservation_id"
+            )
+            connection.execute(
+                "CREATE INDEX idx_research_launch_reservations_project "
+                f"ON research_launch_reservations({project_index_columns})"
+            )
+        attempt_index_columns = "linked_at" if defect == "wrong_attempt_index" else "attempt_id"
+        connection.execute(
+            "CREATE INDEX idx_research_launch_attempt_links_attempt "
+            f"ON research_launch_attempt_links({attempt_index_columns})"
+        )
+        if defect == "unexpected_index":
+            connection.execute(
+                "CREATE INDEX idx_unexpected_reservation_probe "
+                "ON research_launch_reservations(kind)"
+            )
+        if defect == "unexpected_budget_trigger":
+            connection.execute(
+                "CREATE TRIGGER trg_unexpected_reservation_probe "
+                "AFTER INSERT ON research_launch_reservations "
+                "BEGIN SELECT 1; END"
+            )
+        connection.execute(f"PRAGMA user_version = {control_store_module.V6_SCHEMA_VERSION}")
+        connection.commit()
+    except Exception:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+    finally:
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.close()
+
+
 def _d2_run_id(payload: dict[str, object], contract_id: str) -> str:
     """The content-derived sealed-confirmation run identity the store recomputes."""
     contract_hash = hashlib.sha256(
@@ -1540,7 +1868,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
     connection.commit()
     connection.close()
 
-    assert SCHEMA_VERSION == 6
+    assert SCHEMA_VERSION == 7
     # The governance backfill drives the derived gate state: pre-launch rows are
     # grandfathered while post-launch v1 rows stay research-governed and open.
     assert ControlStore(tmp_path).list_projects() == [
@@ -1597,7 +1925,7 @@ def test_schema_v1_migrates_additively_and_preserves_legacy_projection(tmp_path:
         )
 
 
-def test_fresh_store_is_v6_with_protected_semantic_ledger_and_closed_receipt_action(
+def test_fresh_store_is_v7_with_protected_semantic_ledger_and_closed_receipt_action(
     tmp_path: Path,
 ) -> None:
     store = ControlStore(tmp_path)
@@ -1606,6 +1934,13 @@ def test_fresh_store_is_v6_with_protected_semantic_ledger_and_closed_receipt_act
     connection = sqlite3.connect(database)
     try:
         assert connection.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
+        reservation_sql = str(
+            connection.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type = 'table' AND name = 'research_launch_reservations'"
+            ).fetchone()[0]
+        )
+        assert "phase IN ('pilot', 'deep_research')" in reservation_sql
         objects = {
             str(row[0])
             for row in connection.execute(
@@ -1659,6 +1994,270 @@ def test_fresh_store_is_v6_with_protected_semantic_ledger_and_closed_receipt_act
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
     finally:
         connection.close()
+
+
+def test_synthetic_v6_migration_preserves_d0_reservations_and_fk_children(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    _seed_terminal_d0_reservation(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    _downgrade_synthetic_reservations_to_v6(database)
+
+    before = sqlite3.connect(database)
+    try:
+        reservations_before = before.execute(
+            "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+        ).fetchall()
+        links_before = before.execute(
+            "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+        ).fetchall()
+        assert before.execute("PRAGMA user_version").fetchone() == (
+            control_store_module.V6_SCHEMA_VERSION,
+        )
+    finally:
+        before.close()
+
+    assert store.get_project(PROJECT_ID)["project_id"] == PROJECT_ID
+    migrated = sqlite3.connect(database)
+    try:
+        assert migrated.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
+        assert (
+            migrated.execute(
+                "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+            ).fetchall()
+            == reservations_before
+        )
+        assert (
+            migrated.execute(
+                "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+            ).fetchall()
+            == links_before
+        )
+        assert migrated.execute("PRAGMA foreign_key_check").fetchall() == []
+        with pytest.raises(sqlite3.IntegrityError):
+            migrated.execute(
+                """INSERT INTO research_launch_reservations (
+                    reservation_id, project_id, contract_id, phase, kind, launch_number,
+                    config_fingerprint, budget_reserved_json, execution_sequence, reserved_at
+                ) VALUES ('invalid', ?, ?, 'unsupported', 'd1-deep-research', 1,
+                    'fingerprint', '{}', 1, '2026-08-06T00:00:00.000000Z')""",
+                (PROJECT_ID, "rc_" + "f" * 64),
+            )
+    finally:
+        migrated.close()
+    assert database.with_name(database.name + ".v6.bak").is_file()
+
+
+def test_synthetic_v6_migration_rolls_back_fk_validation_failure(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _seed_terminal_d0_reservation(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    _downgrade_synthetic_reservations_to_v6(database)
+    connection = sqlite3.connect(database, isolation_level=None)
+    connection.execute("PRAGMA foreign_keys = OFF")
+    connection.execute(
+        "INSERT INTO research_launch_attempt_links VALUES (?, ?, ?)",
+        ("rl_" + "d" * 64, "ra_" + "e" * 64, "2026-08-06T09:11:00.000000Z"),
+    )
+    before_rows = connection.execute(
+        "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+    ).fetchall()
+    before_links = connection.execute(
+        "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+    ).fetchall()
+    before_fk_errors = connection.execute("PRAGMA foreign_key_check").fetchall()
+    try:
+        with pytest.raises(DataError, match="changed historical row integrity"):
+            control_store_module._migrate_schema_v6(connection, database, backup=False)
+        assert connection.execute("PRAGMA user_version").fetchone() == (
+            control_store_module.V6_SCHEMA_VERSION,
+        )
+        assert (
+            connection.execute(
+                "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+            ).fetchall()
+            == before_rows
+        )
+        assert (
+            connection.execute(
+                "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+            ).fetchall()
+            == before_links
+        )
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == before_fk_errors
+    finally:
+        connection.close()
+
+
+def test_synthetic_widened_v6_open_creates_backup_before_version_bump(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    connection.execute(f"PRAGMA user_version = {control_store_module.V6_SCHEMA_VERSION}")
+    connection.close()
+
+    backup = database.with_name(database.name + ".v6.bak")
+    assert not backup.exists()
+    assert store.list_projects()[0]["project_id"] == PROJECT_ID
+    assert backup.is_file()
+
+    migrated = sqlite3.connect(database)
+    preserved = sqlite3.connect(backup)
+    try:
+        assert migrated.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
+        assert preserved.execute("PRAGMA user_version").fetchone() == (
+            control_store_module.V6_SCHEMA_VERSION,
+        )
+        schema = str(
+            preserved.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type = 'table' AND name = 'research_launch_reservations'"
+            ).fetchone()[0]
+        )
+        assert "phase IN ('pilot', 'deep_research')" in schema
+    finally:
+        migrated.close()
+        preserved.close()
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "missing_budget_column",
+        "missing_identity_unique",
+        "missing_attempt_unique",
+        "missing_launch_limit_check",
+        "missing_execution_fk",
+        "missing_project_index",
+        "wrong_attempt_index",
+        "unexpected_index",
+        "unexpected_budget_trigger",
+    ],
+)
+def test_synthetic_widened_v6_rejects_incomplete_reservation_schema(
+    tmp_path: Path, defect: str
+) -> None:
+    store = ControlStore(tmp_path)
+    if defect == "missing_budget_column":
+        _project(store)
+    else:
+        _seed_terminal_d0_reservation(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    _downgrade_synthetic_reservations_to_v6(database, widened=True, defect=defect)
+
+    before = sqlite3.connect(database)
+    try:
+        assert before.execute("PRAGMA user_version").fetchone() == (
+            control_store_module.V6_SCHEMA_VERSION,
+        )
+        reservations_before = before.execute(
+            "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+        ).fetchall()
+        links_before = before.execute(
+            "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+        ).fetchall()
+        schema_before = before.execute(
+            "SELECT type, name, sql FROM sqlite_master "
+            "WHERE tbl_name IN (?, ?) AND sql IS NOT NULL ORDER BY name",
+            ("research_launch_reservations", "research_launch_attempt_links"),
+        ).fetchall()
+    finally:
+        before.close()
+
+    with pytest.raises(DataError, match="protected schema"):
+        store.list_projects()
+
+    after = sqlite3.connect(database)
+    try:
+        assert after.execute("PRAGMA user_version").fetchone() == (
+            control_store_module.V6_SCHEMA_VERSION,
+        )
+        assert (
+            after.execute(
+                "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+            ).fetchall()
+            == reservations_before
+        )
+        assert (
+            after.execute(
+                "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+            ).fetchall()
+            == links_before
+        )
+        assert (
+            after.execute(
+                "SELECT type, name, sql FROM sqlite_master "
+                "WHERE tbl_name IN (?, ?) AND sql IS NOT NULL ORDER BY name",
+                ("research_launch_reservations", "research_launch_attempt_links"),
+            ).fetchall()
+            == schema_before
+        )
+    finally:
+        after.close()
+    assert database.with_name(database.name + ".v6.bak").is_file()
+
+
+@pytest.mark.parametrize("defect", ["unexpected_index", "unexpected_budget_trigger"])
+def test_synthetic_pilot_only_v6_refuses_to_drop_unexpected_reservation_objects(
+    tmp_path: Path, defect: str
+) -> None:
+    store = ControlStore(tmp_path)
+    _seed_terminal_d0_reservation(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    _downgrade_synthetic_reservations_to_v6(database, defect=defect)
+
+    before = sqlite3.connect(database)
+    try:
+        assert before.execute("PRAGMA user_version").fetchone() == (
+            control_store_module.V6_SCHEMA_VERSION,
+        )
+        reservations_before = before.execute(
+            "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+        ).fetchall()
+        links_before = before.execute(
+            "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+        ).fetchall()
+        schema_before = before.execute(
+            "SELECT type, name, sql FROM sqlite_master "
+            "WHERE tbl_name IN (?, ?) AND sql IS NOT NULL ORDER BY name",
+            ("research_launch_reservations", "research_launch_attempt_links"),
+        ).fetchall()
+    finally:
+        before.close()
+
+    with pytest.raises(DataError, match="protected schema"):
+        store.list_projects()
+
+    after = sqlite3.connect(database)
+    try:
+        assert after.execute("PRAGMA user_version").fetchone() == (
+            control_store_module.V6_SCHEMA_VERSION,
+        )
+        assert (
+            after.execute(
+                "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+            ).fetchall()
+            == reservations_before
+        )
+        assert (
+            after.execute(
+                "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+            ).fetchall()
+            == links_before
+        )
+        assert after.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert (
+            after.execute(
+                "SELECT type, name, sql FROM sqlite_master "
+                "WHERE tbl_name IN (?, ?) AND sql IS NOT NULL ORDER BY name",
+                ("research_launch_reservations", "research_launch_attempt_links"),
+            ).fetchall()
+            == schema_before
+        )
+    finally:
+        after.close()
 
 
 def test_v4_to_v5_rebuild_is_lossless_and_retains_exact_backup(tmp_path: Path) -> None:
@@ -2392,25 +2991,89 @@ def test_wal_negotiation_success_restores_configured_timeout(tmp_path: Path) -> 
         connection.close()
 
 
-def test_existing_schema_v2_reopen_adds_launch_reservation_tables(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "missing_table",
+    ["research_launch_reservations", "research_launch_attempt_links"],
+)
+def test_current_schema_reopen_fails_closed_when_reservation_table_is_missing(
+    tmp_path: Path, missing_table: str
+) -> None:
     store = ControlStore(tmp_path)
-    _project(store)
-    database = tmp_path / "control" / "workstation.sqlite3"
+    _seed_terminal_d0_reservation(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
     connection = sqlite3.connect(database)
     assert connection.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
-    connection.execute("DROP TABLE research_launch_attempt_links")
-    connection.execute("DROP TABLE research_launch_reservations")
+    reservations_before = connection.execute(
+        "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+    ).fetchall()
+    connection.execute(f"DROP TABLE {missing_table}")
+    connection.commit()
+    connection.close()
+
+    with pytest.raises(DataError, match="protected schema object missing"):
+        ControlStore(tmp_path).list_projects()
+    reopened = sqlite3.connect(database)
+    try:
+        tables = {
+            str(row[0])
+            for row in reopened.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+        }
+        assert missing_table not in tables
+        if missing_table == "research_launch_attempt_links":
+            assert (
+                reopened.execute(
+                    "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+                ).fetchall()
+                == reservations_before
+            )
+        assert reopened.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
+    finally:
+        reopened.close()
+
+
+def test_current_schema_reopen_heals_missing_reservation_indexes_without_changing_rows(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    _seed_terminal_d0_reservation(store)
+    database = tmp_path / "control" / control_store_module.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    reservations_before = connection.execute(
+        "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+    ).fetchall()
+    links_before = connection.execute(
+        "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+    ).fetchall()
+    connection.execute("DROP INDEX idx_research_launch_reservations_project")
+    connection.execute("DROP INDEX idx_research_launch_attempt_links_attempt")
     connection.commit()
     connection.close()
 
     assert ControlStore(tmp_path).get_project(PROJECT_ID)["project_id"] == PROJECT_ID
     reopened = sqlite3.connect(database)
-    tables = {
-        str(row[0])
-        for row in reopened.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
-    }
-    reopened.close()
-    assert {"research_launch_reservations", "research_launch_attempt_links"} <= tables
+    try:
+        indexes = {
+            str(row[0])
+            for row in reopened.execute("SELECT name FROM sqlite_master WHERE type = 'index'")
+        }
+        assert {
+            "idx_research_launch_reservations_project",
+            "idx_research_launch_attempt_links_attempt",
+        } <= indexes
+        assert (
+            reopened.execute(
+                "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+            ).fetchall()
+            == reservations_before
+        )
+        assert (
+            reopened.execute(
+                "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+            ).fetchall()
+            == links_before
+        )
+    finally:
+        reopened.close()
 
 
 def test_new_projects_require_research_and_legacy_import_is_migration_only(
@@ -5233,6 +5896,162 @@ def test_reserved_d0_terminalization_debits_once_and_blocks_unlinked_bypass(
     assert linked["terminal_attempt_count"] == 1
     assert linked["unfinalized_launch_count"] == 0
     assert linked["elapsed_budget"] == reserved["elapsed_budget"]
+
+
+def test_native_d1_admission_denies_a_contract_without_all_explicit_resource_dimensions(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    contract_id, _ = _approved_native_d1(store, with_native_budget=False)
+
+    with pytest.raises(DataError, match="every approved version-1 resource dimension"):
+        store.build_d1_native_invocation_spec(
+            PROJECT_ID,
+            contract_id,
+            "4c657d82-fc1a-44d8-b49b-bfdcfe93c52c",
+            attempt_number=1,
+            native_manifest_sha256=hashlib.sha256(b"manifest").hexdigest(),
+        )
+
+
+def test_native_d1_reservation_replays_identity_and_keeps_full_budget_charged(
+    tmp_path: Path,
+) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    store = ControlStore(tmp_path)
+    _project(store)
+    contract_id, payload = _approved_native_d1(store)
+    job_id = "4c657d82-fc1a-44d8-b49b-bfdcfe93c52c"
+    _, reservation = _native_d1_job(store, contract_id, job_id=job_id)
+    reservation_id = str(reservation["reservation_id"])
+    manifest_sha256 = hashlib.sha256(b"pinned native manifest fixture").hexdigest()
+
+    with pytest.raises(DataError, match="does not match the approved contract"):
+        store.reserve_d1_native_research_launch(
+            PROJECT_ID,
+            contract_id,
+            job_id,
+            native_manifest_sha256=hashlib.sha256(b"changed native manifest").hexdigest(),
+            at=START + timedelta(minutes=10, seconds=5),
+        )
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        replayed = list(
+            executor.map(
+                lambda _: store.reserve_d1_native_research_launch(
+                    PROJECT_ID,
+                    contract_id,
+                    job_id,
+                    native_manifest_sha256=manifest_sha256,
+                    at=START + timedelta(minutes=10, seconds=5),
+                ),
+                range(2),
+            )
+        )
+    assert {item["reservation_id"] for item in replayed} == {reservation_id}
+    reserved_budget = cast(dict[str, object], reservation["budget_reserved"])
+    assert reserved_budget["variants"] == 127
+    assert reserved_budget["rdagent_native_v1_loop_steps"] == 3
+    with pytest.raises(DataError, match="unsupported append-only job event type"):
+        store.append_job_event(
+            job_id,
+            event_type="resource_intent",
+            payload={},
+            at=START + timedelta(minutes=10, seconds=5),
+        )
+
+    store.set_job_status(
+        job_id,
+        "failed",
+        terminal_error="synthetic inert reservation fixture",
+        at=START + timedelta(minutes=10, seconds=6),
+    )
+    store.record_research_attempt(
+        PROJECT_ID,
+        contract_id,
+        kind="d1-deep-research",
+        status="failed",
+        config_fingerprint=str(reservation["config_fingerprint"]),
+        budget_used={},
+        details={"attempt_number": 1, "evidence_zone": "D1"},
+        error="synthetic inert reservation fixture",
+        launch_reservation_id=reservation_id,
+        at=START + timedelta(minutes=10, seconds=7),
+    )
+    summary = store.research_case_summary(PROJECT_ID)
+    assert summary["elapsed_budget"] == payload["budget"]
+
+    store.transition_research_execution(
+        PROJECT_ID,
+        to_state="idle",
+        contract_id=contract_id,
+        actor="system",
+        reason="The inert native reservation remains fully charged.",
+        next_action="A new reservation is denied by the exhausted approved envelope.",
+        responsibility="owner",
+        checkpoint="native-d1:failed",
+        at=START + timedelta(minutes=10, seconds=8),
+    )
+    second_job_id = "86a846b0-3d66-4fc0-a3b1-c1f63a900882"
+    _native_d1_job(
+        store,
+        contract_id,
+        job_id=second_job_id,
+        attempt_number=2,
+        reserve=False,
+        started_at=START + timedelta(minutes=10, seconds=9),
+    )
+
+    def attempt_over_budget(_: int) -> None:
+        store.reserve_d1_native_research_launch(
+            PROJECT_ID,
+            contract_id,
+            second_job_id,
+            native_manifest_sha256=manifest_sha256,
+            at=START + timedelta(minutes=10, seconds=14),
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(attempt_over_budget, index) for index in range(2)]
+        for future in futures:
+            with pytest.raises(DataError, match="no remaining approved resource budget"):
+                future.result()
+    with store._transaction(write=False) as connection:
+        reservation_count = connection.execute(
+            "SELECT COUNT(*) FROM research_launch_reservations WHERE phase = 'deep_research'"
+        ).fetchone()[0]
+    assert reservation_count == 1
+
+
+def test_native_d1_reservation_is_denied_after_cancellation(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    _project(store)
+    contract_id, _ = _approved_native_d1(store)
+    job_id = "4c657d82-fc1a-44d8-b49b-bfdcfe93c52c"
+    _native_d1_job(store, contract_id, job_id=job_id, reserve=False)
+    store.request_job_cancellation(
+        job_id,
+        actor="owner",
+        reason="Cancel the synthetic native job before reservation.",
+        at=START + timedelta(minutes=10, seconds=5),
+    )
+
+    with pytest.raises(DataError, match="cancellation blocks launch reservation"):
+        store.reserve_d1_native_research_launch(
+            PROJECT_ID,
+            contract_id,
+            job_id,
+            native_manifest_sha256=hashlib.sha256(b"pinned native manifest fixture").hexdigest(),
+            at=START + timedelta(minutes=10, seconds=6),
+        )
+    with store._transaction(write=False) as connection:
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM research_launch_reservations WHERE phase = 'deep_research'"
+            ).fetchone()[0]
+            == 0
+        )
 
 
 def test_unreserved_legacy_d0_attempts_are_capped_at_three(tmp_path: Path) -> None:

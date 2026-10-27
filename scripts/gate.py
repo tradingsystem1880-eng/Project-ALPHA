@@ -301,6 +301,27 @@ def matches_risk(path: str) -> bool:
     return posix in _RISK_CLI_FILES
 
 
+_REVIEW_CONFIG_EXACT = frozenset(
+    {
+        "pyproject.toml",
+        "scripts/git_guard.py",
+        "scripts/gate_components.py",
+        "scripts/wheel_smoke.py",
+    }
+)
+
+
+def matches_review(path: str) -> bool:
+    """Paths whose commit needs tree-bound independent review (the Git guard's scope)."""
+    posix = _posix(path)
+    return (
+        matches_risk(posix)
+        or protected_reason(posix) is not None
+        or posix.startswith(".githooks/")
+        or posix in _REVIEW_CONFIG_EXACT
+    )
+
+
 def protected_reason(path: str, content: str = "") -> str | None:
     """Control-plane paths whose edits need a governance ack (or the owner token)."""
     posix = _posix(path)
@@ -719,7 +740,7 @@ def attest(root: Path, kind: str, payload_text: str) -> int:
     elif kind == "review":
         model, field, want = ReviewVerdict, "verdict", "APPROVE"
         label, matcher, state_file, event = (
-            "risk-tier", matches_risk, REVIEW_VERDICT_FILE, "review_attested",
+            "review-scope", matches_review, REVIEW_VERDICT_FILE, "review_attested",
         )  # fmt: skip
     else:
         print(f"attest rejected: unknown kind {kind!r}", file=sys.stderr)

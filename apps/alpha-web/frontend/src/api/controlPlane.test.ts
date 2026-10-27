@@ -162,6 +162,18 @@ describe('control-plane API client', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/development/jobs/job-1?event_tail=true')
   })
 
+  it('relays worker capabilities and selected model parameters without inferring readiness', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({})))
+    vi.stubGlobal('fetch', fetchMock)
+    await api.mlCapabilities()
+    await api.createMlExperiment('project-1', 'linear', { alpha: 2 })
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/ml/capabilities')
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/ml/experiments', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ project_id: 'project-1', model: 'linear', parameters: { alpha: 2 } }),
+    })
+  })
+
   it('reads a bounded Qlib diagnostic tear sheet without accepting an unbounded offset', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ available: false }))
     vi.stubGlobal('fetch', fetchMock)

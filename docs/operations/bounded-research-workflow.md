@@ -1,5 +1,24 @@
 # Bounded discovery workflow
 
+## Optional daily acquisition budget
+
+For a separately approved discovery interval and UUID-verified storage destination,
+`alpha crypto-data acquire binance market_bars BTCUSDT --base BTC --quote USDT --category spot
+--frequency 1d --start START --end END --max-requests 2 --max-total-bytes 33554432 --json`
+uses one shared budget for that invocation. Both positive caps are required; strict mode permits
+only bounded Binance spot daily REST bars, without `--period`. No redirects are followed.
+The proposed 2020-01-01 through 2023-01-01 exclusive capture would use
+`--start 2020-01-01T00:00:00Z --end 2022-12-31T23:59:59.999Z`; these dates are not approved
+by this documentation. Discovery designation and matching mounted storage remain prerequisites.
+
+The byte ceiling covers application response-body reads, including overflow probes and known
+partial chunks. Reaching the exact aggregate ceiling before proving EOF fails conservatively,
+without reading an extra byte. Opaque interrupted reads abort further budget use; their hidden
+transport bytes cannot be measured. TCP/TLS traffic and internal buffering are not bounded.
+The budget resets for each explicit invocation; it grants no permission to repeat a capture.
+The existing 100-page limit, host/MIME checks and per-response limits still apply. Partial terminal
+pages do not establish complete coverage, and retrieval time does not prove historical availability.
+
 Use for an open research question, indicator investigation or model request. This is a discovery procedure; existing case, source-pack, one-shot confirmation and owner gates still apply.
 
 1. State the exact target, decision time, permitted data window and intended output. Inspect available commands and verified snapshot coverage before drafting variants. Record the current question, baseline, maximum three candidates, inspected/failed attempts and stop rule in one append-only ledger.

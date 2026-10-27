@@ -13,17 +13,20 @@ import typer
 
 from alpha_cli._ml_replay import run_ml_replay
 from alpha_cli._runner import parse_as_of
+from alpha_cli.ml_compare import compare_exchanges, publish_comparison
 from alpha_cli.ml_contract import (
     MLContractError,
     evaluate_result_bundle,
     prepare_exchange,
     publish_replay_signal_frame,
     sha256_file,
+    tabular_model_names,
     validate_input_anchor,
     validate_request_bundle,
     validate_result_bundle,
 )
 from alpha_cli.ml_input import export_project_input
+from alpha_cli.ml_refit import plan_refit, publish_refit_plan, status_refit_plan
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 
@@ -48,6 +51,15 @@ def _worker_environment(*, seed: int) -> dict[str, str]:
     """Build the credential-free environment allowed into the isolated Qlib worker."""
     environment = {name: value for name, value in os.environ.items() if name in _WORKER_ENV_NAMES}
     environment["PYTHONHASHSEED"] = str(seed)
+    for name in (
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "BLIS_NUM_THREADS",
+    ):
+        environment[name] = "1"
     return environment
 
 
@@ -73,6 +85,72 @@ def _emit(value: dict[str, Any], *, as_json: bool) -> None:
         return
     for key, item in value.items():
         typer.echo(f"{key}: {item}")
+
+
+@ml_app.command()
+def capabilities(
+    worker_project: Annotated[Path | None, typer.Option("--worker-project")] = None,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Inspect installed isolated model capabilities without training or installation."""
+    try:
+        project, _ = _worker_project(worker_project)
+        entrypoint = project / ".venv" / "bin" / "alpha-qlib-worker"
+        try:
+            entrypoint.lstat()
+        except FileNotFoundError:
+            _emit(
+                {
+                    "schema_version": 1,
+                    "qlib_version": None,
+                    "backends": [
+                        {
+                            "name": name,
+                            "status": "missing_dependency",
+                            "reason": "isolated worker entrypoint is not installed; "
+                            "backend dependencies have not been inspected",
+                            "versions": {},
+                        }
+                        for name in tabular_model_names()
+                    ],
+                },
+                as_json=as_json,
+            )
+            return
+        if not entrypoint.is_file():
+            raise MLContractError("isolated worker entrypoint is not a file")
+        uv = shutil.which("uv")
+        if uv is None:
+            raise MLContractError("uv is required to inspect the isolated Qlib worker")
+        command = [
+            uv,
+            "run",
+            "--project",
+            str(project),
+            "--locked",
+            "--no-sync",
+            "alpha-qlib-worker",
+            "capabilities",
+        ]
+        completed = subprocess.run(
+            command,
+            cwd=project,
+            env=_worker_environment(seed=7),
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        if completed.returncode:
+            raise MLContractError(
+                f"isolated capability inspection failed: {completed.stderr[-2000:]}"
+            )
+        payload = json.loads(completed.stdout)
+        if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+            raise MLContractError("isolated capability inspection returned an invalid contract")
+    except (MLContractError, OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(payload, as_json=as_json)
 
 
 @ml_app.command("export-input")
@@ -112,12 +190,45 @@ def prepare(
             help="optional lockfile whose SHA-256 must match worker_lock_hash",
         ),
     ] = None,
+    model: Annotated[
+        str | None,
+        typer.Option("--model", help="publish a schema3 tabular recipe in the new exchange"),
+    ] = None,
+    parameters_json: Annotated[
+        str | None,
+        typer.Option("--parameters-json", help="bounded model parameters as a JSON object"),
+    ] = None,
     as_json: Annotated[bool, typer.Option("--json", help="emit machine-readable JSON")] = False,
 ) -> None:
     """Validate and atomically publish a worker request bundle."""
     try:
-        request = prepare_exchange(spec, panel, exchange, worker_lock_path=worker_lock)
-    except MLContractError as exc:
+        if parameters_json is not None and model is None:
+            raise MLContractError("--parameters-json requires --model")
+
+        def unique_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            values: dict[str, Any] = {}
+            for key, value in pairs:
+                if key in values:
+                    raise MLContractError(f"duplicate model parameter {key}")
+                values[key] = value
+            return values
+
+        override = (
+            None
+            if model is None
+            else {
+                "name": model,
+                "parameters": json.loads(parameters_json or "{}", object_pairs_hook=unique_pairs),
+            }
+        )
+        request = prepare_exchange(
+            spec,
+            panel,
+            exchange,
+            worker_lock_path=worker_lock,
+            model_override=override,
+        )
+    except (MLContractError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(
         {
@@ -129,6 +240,68 @@ def prepare(
         },
         as_json=as_json,
     )
+
+
+@ml_app.command()
+def compare(
+    exchanges: Annotated[list[Path], typer.Argument(help="2–10 completed comparable exchanges")],
+    output: Annotated[
+        Path | None, typer.Option("--output", help="immutable comparison JSON")
+    ] = None,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Compare lineage-bound predictions on identical frozen research inputs."""
+    try:
+        report = compare_exchanges(exchanges)
+        if output is not None:
+            publish_comparison(report, output)
+    except (MLContractError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(report, as_json=as_json)
+
+
+@ml_app.command("refit-plan")
+def refit_plan(
+    original: Annotated[Path, typer.Argument(help="original prepared schema3 exchange")],
+    changed: Annotated[Path, typer.Argument(help="declared engineering-world exchange")],
+    protocol: Annotated[Path, typer.Option("--protocol")],
+    protocol_sha256: Annotated[str, typer.Option("--protocol-sha256")],
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Verify frozen engineering inputs; no fits, admission or acceptance."""
+    try:
+        report = plan_refit(
+            original, changed, protocol_path=protocol, expected_protocol_sha256=protocol_sha256
+        )
+        if output is not None:
+            publish_refit_plan(report, output)
+    except (MLContractError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(report, as_json=as_json)
+
+
+@ml_app.command("refit-status")
+def refit_status(
+    record: Annotated[Path, typer.Argument(help="previously published engineering plan")],
+    original: Annotated[Path, typer.Argument(help="original prepared schema3 exchange")],
+    changed: Annotated[Path, typer.Argument(help="declared engineering-world exchange")],
+    protocol: Annotated[Path, typer.Option("--protocol")],
+    protocol_sha256: Annotated[str, typer.Option("--protocol-sha256")],
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Reverify a plan against current bytes; no dispatch or continuation."""
+    try:
+        report = status_refit_plan(
+            record,
+            original,
+            changed,
+            protocol_path=protocol,
+            expected_protocol_sha256=protocol_sha256,
+        )
+    except (MLContractError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit(report, as_json=as_json)
 
 
 @ml_app.command()

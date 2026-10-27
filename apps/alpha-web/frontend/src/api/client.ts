@@ -58,6 +58,9 @@ import type {
   MlExperimentPreflight,
   MlExperimentJobAccepted,
   MlServiceStatus,
+  MlCapabilities,
+  MlModelName,
+  MlModelParameters,
   MlTearSheetProjection,
   NativeTearSheetProjection,
   NullTiers,
@@ -706,6 +709,7 @@ export const api = {
   },
   developmentJob: (jobId: string): Promise<ControlJobDetail> =>
     getJSON(`/api/development/jobs/${encodeURIComponent(jobId)}?event_tail=true`),
+  mlCapabilities: (): Promise<MlCapabilities> => getJSON('/api/ml/capabilities'),
   mlStatus: (): Promise<MlServiceStatus> => getJSON('/api/ml/status'),
   mlExperiments: (projectId?: string | null): Promise<MlExperimentPage> => {
     const query = projectId ? `?project_id=${encodeURIComponent(projectId)}` : ''
@@ -727,8 +731,8 @@ export const api = {
       `/api/ml/exchanges/${encodeURIComponent(exchangeId)}/tear-sheet?${params.toString()}`,
     )
   },
-  createMlExperiment: (projectId: string): Promise<MlExperimentJobAccepted> =>
-    postJSON('/api/ml/experiments', { project_id: projectId }),
+  createMlExperiment: (projectId: string, model?: MlModelName, parameters?: MlModelParameters): Promise<MlExperimentJobAccepted> =>
+    postJSON('/api/ml/experiments', { project_id: projectId, ...(model ? { model, parameters: parameters ?? {} } : {}) }),
   paperSessions: (): Promise<PaperSession[]> => getJSON('/api/paper/sessions'),
   paperReadiness: (): Promise<PaperReadinessReport> => getJSON('/api/paper/readiness'),
   paperSession: (id: string): Promise<PaperSession> =>

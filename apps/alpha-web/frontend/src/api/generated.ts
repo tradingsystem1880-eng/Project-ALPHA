@@ -1117,6 +1117,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ml/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Capabilities
+         * @description Relay installed backend capability evidence from the isolated worker through CLI.
+         */
+        get: operations["get_capabilities_api_ml_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ml/exchanges": {
         parameters: {
             query?: never;
@@ -3255,6 +3275,28 @@ export interface paths {
          *     Versioned Workstation-v3 alias of `/api/evidence/{evidence_id}/review`.
          */
         post: operations["v3_review_evidence_api_v3_evidence__evidence_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v3/ml/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * V3 Get Capabilities
+         * @description Relay installed backend capability evidence from the isolated worker through CLI.
+         *
+         *     Versioned Workstation-v3 alias of `/api/ml/capabilities`.
+         */
+        get: operations["v3_get_capabilities_api_v3_ml_capabilities_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7406,6 +7448,37 @@ export interface components {
             /** Unpaywall Email */
             unpaywall_email: string;
         };
+        /** MlBackendCapability */
+        MlBackendCapability: {
+            /**
+             * Name
+             * @enum {string}
+             */
+            name: "lightgbm" | "linear" | "catboost" | "xgboost" | "double_ensemble";
+            /** Reason */
+            reason: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "missing_dependency" | "incompatible_dependency";
+            /** Versions */
+            versions: {
+                [key: string]: string;
+            };
+        };
+        /** MlCapabilities */
+        MlCapabilities: {
+            /** Backends */
+            backends: components["schemas"]["MlBackendCapability"][];
+            /** Qlib Version */
+            qlib_version: string | null;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+        };
         /** MlCosts */
         MlCosts: {
             /** Fee Bps */
@@ -7469,6 +7542,22 @@ export interface components {
             selection: "long_only_top_quintile_equal_weight";
             /** Timeline */
             timeline: components["schemas"]["MlPortfolioPoint"][];
+        };
+        /** MlDiagnosticState */
+        MlDiagnosticState: {
+            /** Degenerate Cross Sections */
+            degenerate_cross_sections: number;
+            /** Quantile Cross Sections */
+            quantile_cross_sections: number;
+            /** Reason */
+            reason: string;
+            /**
+             * Score Status
+             * @enum {string}
+             */
+            score_status: "degenerate" | "ties_present" | "nondegenerate";
+            /** Tied Cross Sections */
+            tied_cross_sections: number;
         };
         /** MlDiagnosticVersions */
         MlDiagnosticVersions: {
@@ -7594,7 +7683,7 @@ export interface components {
             /** Worker Kind */
             worker_kind: ("fake" | "qlib") | null;
         };
-        MlExperimentContract: components["schemas"]["MlExperimentContractV1"] | components["schemas"]["MlExperimentContractV2"];
+        MlExperimentContract: components["schemas"]["MlExperimentContractV1"] | components["schemas"]["MlExperimentContractV2"] | components["schemas"]["MlExperimentContractV3"];
         /** MlExperimentContractV1 */
         MlExperimentContractV1: {
             /** Config Hash */
@@ -7679,10 +7768,58 @@ export interface components {
             /** Worker Lock Hash */
             worker_lock_hash: string;
         };
+        /** MlExperimentContractV3 */
+        MlExperimentContractV3: {
+            /** Config Hash */
+            config_hash: string;
+            costs: components["schemas"]["MlCosts"];
+            /** Embargo Sessions */
+            embargo_sessions: number;
+            feature_recipe: components["schemas"]["MlFeatureRecipe"];
+            /** Folds */
+            folds: components["schemas"]["MlFold"][];
+            label_recipe: components["schemas"]["MlLabelRecipe"];
+            model: components["schemas"]["MlTabularModelRecipe"];
+            /** Panel Rows */
+            panel_rows: number;
+            /** Panel Sha256 */
+            panel_sha256: string;
+            portfolio: components["schemas"]["MlPortfolioRecipe"];
+            /** Purge Sessions */
+            purge_sessions: number;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 3;
+            /** Seed */
+            seed: number;
+            /** Snapshot Hash */
+            snapshot_hash: string;
+            /** Survivorship Warning */
+            survivorship_warning: string | null;
+            /** Universe */
+            universe: string[];
+            /** Universe Count */
+            universe_count: number;
+            /**
+             * Universe Membership
+             * @enum {string}
+             */
+            universe_membership: "point_in_time" | "current_membership";
+            /** Worker Lock Hash */
+            worker_lock_hash: string;
+        };
         /** MlExperimentGenerateRequest */
         MlExperimentGenerateRequest: {
             /** Experiment Id */
             experiment_id?: string | null;
+            /** Model */
+            model?: ("lightgbm" | "linear" | "catboost" | "xgboost" | "double_ensemble") | null;
+            /** Parameters */
+            parameters?: {
+                [key: string]: number | ("ols" | "ridge" | "lasso" | "nnls");
+            };
             /** Project Id */
             project_id: string;
             /**
@@ -7850,6 +7987,10 @@ export interface components {
         };
         /** MlFoldDiagnostic */
         MlFoldDiagnostic: {
+            /** Backend Versions */
+            backend_versions?: {
+                [key: string]: string;
+            } | null;
             /** Best Iteration */
             best_iteration: number;
             boundaries: components["schemas"]["MlFoldBoundaries"];
@@ -7857,12 +7998,20 @@ export interface components {
              * Fit Count
              * @enum {integer}
              */
-            fit_count: 1 | 2;
+            fit_count: 1 | 2 | 3 | 4 | 5 | 6;
             /** Fold */
             fold: number;
+            /** Importance Kind */
+            importance_kind?: string | null;
+            /** Model Backend */
+            model_backend?: string | null;
             /** Model Hash */
             model_hash: string;
             normalization: components["schemas"]["MlFoldNormalization"];
+            /** Resolved Parameters */
+            resolved_parameters?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
             /** Test Rows */
             test_rows: number;
             /** Train Rows */
@@ -8302,14 +8451,33 @@ export interface components {
             /** Worker Ready */
             worker_ready: boolean;
         };
+        /** MlTabularModelRecipe */
+        MlTabularModelRecipe: {
+            /**
+             * Name
+             * @enum {string}
+             */
+            name: "lightgbm" | "linear" | "catboost" | "xgboost" | "double_ensemble";
+            /** Parameters */
+            parameters: {
+                [key: string]: number | ("ols" | "ridge" | "lasso" | "nnls");
+            };
+        };
         /** MlTearSheet */
         MlTearSheet: {
+            /** Adapter Source Hash */
+            adapter_source_hash?: string | null;
             /** Authority */
             authority: string;
             /** Available */
             available: boolean;
+            /** Backend Versions */
+            backend_versions?: {
+                [key: string]: string;
+            } | null;
             /** Counterfactual Refit */
             counterfactual_refit: boolean;
+            diagnostic_state?: components["schemas"]["MlDiagnosticState"] | null;
             /** Exchange Id */
             exchange_id: string;
             /** Feature Importance */
@@ -8325,6 +8493,12 @@ export interface components {
             label_recipe: components["schemas"]["MlDiagnosticLabelRecipe"] | null;
             /** Membership Status */
             membership_status: ("current_membership_warning" | "declared_unverified") | null;
+            /** Model Backend */
+            model_backend?: string | null;
+            /** Model Parameters */
+            model_parameters?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
             portfolio: components["schemas"]["MlDiagnosticPortfolio"] | null;
             /** Quantile Returns */
             quantile_returns: components["schemas"]["MlQuantileReturn"][];
@@ -13809,6 +13983,35 @@ export interface operations {
             };
         };
     };
+    get_capabilities_api_ml_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MlCapabilities"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     get_exchanges_api_ml_exchanges_get: {
         parameters: {
             query?: {
@@ -17631,6 +17834,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvidenceRecord"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    v3_get_capabilities_api_v3_ml_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MlCapabilities"];
                 };
             };
             /** @description Stable, redacted Workstation error */

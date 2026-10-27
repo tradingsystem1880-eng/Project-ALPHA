@@ -18,8 +18,10 @@ from typing import Any, NoReturn
 
 import polars as pl
 
+from alpha_qlib_worker.tabular_contract import validate_parameters
+
 CONTRACT_SCHEMA_VERSION = 1
-SUPPORTED_CONTRACT_SCHEMA_VERSIONS = frozenset({1, 2})
+SUPPORTED_CONTRACT_SCHEMA_VERSIONS = frozenset({1, 2, 3})
 MIN_SYMBOLS = 20
 MIN_ALIGNED_SESSIONS = 756
 MIN_LABEL_BOUNDARY_GAP_SESSIONS = 1
@@ -362,21 +364,27 @@ def validate_request(exchange_dir: Path) -> WorkerRequest:
     }:
         _fail("unsupported label recipe")
     model = _exact(request["model"], {"name", "parameters"}, "model")
-    expected_model = "lightgbm" if request["schema_version"] == 1 else "rank_ensemble_v1"
-    if model["name"] != expected_model or not isinstance(model["parameters"], dict):
-        _fail("unsupported model recipe")
-    unknown_model_parameters = sorted(set(model["parameters"]) - set(_MODEL_PARAMETER_RULES))
-    if unknown_model_parameters:
-        _fail(f"unsupported model parameters: {unknown_model_parameters}")
-    for name, value in model["parameters"].items():
-        minimum, maximum, integer = _MODEL_PARAMETER_RULES[name]
-        if isinstance(value, bool) or not isinstance(value, int | float):
-            _fail(f"model parameter {name} must be a finite number")
-        number = float(value)
-        if not math.isfinite(number) or not minimum <= number <= maximum:
-            _fail(f"model parameter {name} is outside its bounded CPU recipe")
-        if integer and not number.is_integer():
-            _fail(f"model parameter {name} must be an integer")
+    if request["schema_version"] == 3:
+        try:
+            validate_parameters(model["name"], model["parameters"])
+        except (ValueError, TypeError) as exc:
+            _fail(str(exc))
+    else:
+        expected_model = "lightgbm" if request["schema_version"] == 1 else "rank_ensemble_v1"
+        if model["name"] != expected_model or not isinstance(model["parameters"], dict):
+            _fail("unsupported model recipe")
+        unknown_model_parameters = sorted(set(model["parameters"]) - set(_MODEL_PARAMETER_RULES))
+        if unknown_model_parameters:
+            _fail(f"unsupported model parameters: {unknown_model_parameters}")
+        for name, value in model["parameters"].items():
+            minimum, maximum, integer = _MODEL_PARAMETER_RULES[name]
+            if isinstance(value, bool) or not isinstance(value, int | float):
+                _fail(f"model parameter {name} must be a finite number")
+            number = float(value)
+            if not math.isfinite(number) or not minimum <= number <= maximum:
+                _fail(f"model parameter {name} is outside its bounded CPU recipe")
+            if integer and not number.is_integer():
+                _fail(f"model parameter {name} must be an integer")
     portfolio = _exact(request["portfolio"], {"selection", "weighting", "long_only"}, "portfolio")
     if portfolio != {
         "selection": "top_quintile",

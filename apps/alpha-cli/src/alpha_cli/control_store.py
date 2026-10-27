@@ -21,6 +21,7 @@ import uuid
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, date, datetime, timedelta
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Final, Literal, cast
 
@@ -74,7 +75,7 @@ from alpha_cli._control_schema import (
 from alpha_cli._control_schema import (
     _SCHEMA_V5_RECEIPT as _SCHEMA_V5_RECEIPT,
 )
-from alpha_cli._control_schema import _SCHEMA_V6_RECEIPT
+from alpha_cli._control_schema import _SCHEMA_V6_RECEIPT, _SCHEMA_V7
 from alpha_cli.artifact_contract import (
     ARTIFACT_CONTRACT_VERSION,
     MANIFEST_SCHEMA_VERSION,
@@ -149,7 +150,8 @@ OWNER_AUTH_PREVIOUS_SCHEMA_VERSION: Final = 2
 PREVIOUS_SCHEMA_VERSION: Final = 3
 V4_SCHEMA_VERSION: Final = 4
 V5_SCHEMA_VERSION: Final = 5
-SCHEMA_VERSION: Final = 6
+V6_SCHEMA_VERSION: Final = 6
+SCHEMA_VERSION: Final = 7
 DATABASE_NAME: Final = "workstation.sqlite3"
 _SEMANTIC_READ_ARTIFACTS: Final = ("d0_acceptance.json", "events.json", "chart-data.json")
 _SEMANTIC_READ_MAX_BYTES: Final = 8 * 1024 * 1024
@@ -190,7 +192,15 @@ ATTEMPT_STATUSES: Final = frozenset(
 )
 JOB_STATUSES: Final = frozenset({"queued", "running", "succeeded", "failed", "cancelled"})
 JOB_EVENT_TYPES: Final = frozenset(
-    {"created", "status", "heartbeat", "progress", "log", "result", "cancel_requested"}
+    {
+        "created",
+        "status",
+        "heartbeat",
+        "progress",
+        "log",
+        "result",
+        "cancel_requested",
+    }
 )
 EVIDENCE_STATUSES: Final = frozenset({"draft", "corroborated", "rejected", "superseded"})
 ASSOCIATION_METHODS: Final = frozenset(
@@ -487,6 +497,14 @@ _D0_LAUNCH_BUDGET: Final[dict[str, int]] = {
 _D0_MAX_LAUNCHES: Final = 3
 _D1_RESEARCH_KIND: Final = "d1-deep-research"
 _D1_MAX_LAUNCHES: Final = 3
+_D1_NATIVE_RESOURCE_KEYS: Final = (
+    "rdagent_native_v1_model_calls",
+    "rdagent_native_v1_input_tokens",
+    "rdagent_native_v1_output_tokens",
+    "rdagent_native_v1_loop_steps",
+    "rdagent_native_v1_tool_calls",
+    "rdagent_native_v1_cpu_milliseconds",
+)
 _D2_RESEARCH_KIND: Final = "sealed-confirmation"
 _RESEARCH_CAPTURE_NAMESPACE: Final = uuid.UUID("9df1357d-30fe-5c03-9f26-c7d594fdd91e")
 
@@ -1205,7 +1223,7 @@ def _apply_schema_v5_fresh(connection: sqlite3.Connection) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version in {V5_SCHEMA_VERSION, SCHEMA_VERSION}:
+        if locked_version in {V5_SCHEMA_VERSION, V6_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != 0:
@@ -1296,11 +1314,26 @@ def _heal_missing_schema_objects(connection: sqlite3.Connection) -> None:
     """
 
     _validate_protected_v5_schema(connection)
+    protected_reservation_tables = {
+        "research_launch_reservations",
+        "research_launch_attempt_links",
+    }
+    present_reservation_tables = {
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND name IN ('research_launch_reservations', 'research_launch_attempt_links')"
+        )
+    }
+    missing_reservation_tables = sorted(protected_reservation_tables - present_reservation_tables)
+    if missing_reservation_tables:
+        raise DataError("protected schema object missing: " + ", ".join(missing_reservation_tables))
     if not _missing_schema_objects(connection) and not _missing_source_record_columns(connection):
         return
     connection.execute("BEGIN IMMEDIATE")
     try:
         if _missing_schema_objects(connection):
+            _execute_static_sql_script(connection, _SCHEMA_V7)
             _execute_static_sql_script(connection, _SCHEMA)
             _execute_static_sql_script(connection, _SCHEMA_V2)
             _execute_static_sql_script(connection, _SCHEMA_V3)
@@ -1383,7 +1416,12 @@ def _migrate_schema_v1(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version in {V4_SCHEMA_VERSION, V5_SCHEMA_VERSION, SCHEMA_VERSION}:
+        if locked_version in {
+            V4_SCHEMA_VERSION,
+            V5_SCHEMA_VERSION,
+            V6_SCHEMA_VERSION,
+            SCHEMA_VERSION,
+        }:
             # Another process completed the migration while this connection waited for the lock.
             connection.commit()
             return
@@ -1404,7 +1442,12 @@ def _migrate_schema_v2(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version in {V4_SCHEMA_VERSION, V5_SCHEMA_VERSION, SCHEMA_VERSION}:
+        if locked_version in {
+            V4_SCHEMA_VERSION,
+            V5_SCHEMA_VERSION,
+            V6_SCHEMA_VERSION,
+            SCHEMA_VERSION,
+        }:
             connection.commit()
             return
         if locked_version != OWNER_AUTH_PREVIOUS_SCHEMA_VERSION:
@@ -1426,7 +1469,12 @@ def _migrate_schema_v3(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version in {V4_SCHEMA_VERSION, V5_SCHEMA_VERSION, SCHEMA_VERSION}:
+        if locked_version in {
+            V4_SCHEMA_VERSION,
+            V5_SCHEMA_VERSION,
+            V6_SCHEMA_VERSION,
+            SCHEMA_VERSION,
+        }:
             connection.commit()
             return
         if locked_version != PREVIOUS_SCHEMA_VERSION:
@@ -1447,7 +1495,7 @@ def _migrate_schema_v4(connection: sqlite3.Connection, database: Path) -> None:
     try:
         version_row = connection.execute("PRAGMA user_version").fetchone()
         locked_version = 0 if version_row is None else int(version_row[0])
-        if locked_version in {V5_SCHEMA_VERSION, SCHEMA_VERSION}:
+        if locked_version in {V5_SCHEMA_VERSION, V6_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if locked_version != V4_SCHEMA_VERSION:
@@ -1488,6 +1536,91 @@ def _validate_protected_v6_schema(connection: sqlite3.Connection) -> None:
         raise DataError("protected schema object owner_action_receipts v6 is invalid")
 
 
+@lru_cache(maxsize=1)
+def _expected_v7_reservation_schema() -> tuple[tuple[str, str, str], ...]:
+    """Read canonical v7 table/index SQL from the static DDL in a disposable memory DB."""
+    expected = sqlite3.connect(":memory:")
+    try:
+        _execute_static_sql_script(expected, _SCHEMA_V7)
+        rows = expected.execute(
+            "SELECT type, name, sql FROM sqlite_master WHERE sql IS NOT NULL "
+            "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        ).fetchall()
+        return tuple((str(row[0]), str(row[1]), str(row[2])) for row in rows)
+    finally:
+        expected.close()
+
+
+def _validate_protected_v7_schema(connection: sqlite3.Connection) -> None:
+    """Require exact reservation/link columns, constraints, and explicit indexes."""
+    _validate_protected_v6_schema(connection)
+    for object_type, name, expected_sql in _expected_v7_reservation_schema():
+        actual = connection.execute(
+            "SELECT type, sql FROM sqlite_master WHERE name = ?", (name,)
+        ).fetchone()
+        actual_sql = "" if actual is None or actual[1] is None else str(actual[1])
+        if (
+            actual is None
+            or str(actual[0]) != object_type
+            or "".join(actual_sql.casefold().split()) != "".join(expected_sql.casefold().split())
+        ):
+            raise DataError(f"protected schema object {name} v7 is invalid")
+    allowed_names = {name for _, name, _ in _expected_v7_reservation_schema()}
+    protected_tables = ("research_launch_reservations", "research_launch_attempt_links")
+    unexpected = connection.execute(
+        "SELECT type, name FROM sqlite_master "
+        "WHERE tbl_name IN (?, ?) AND name NOT LIKE 'sqlite_autoindex_%'",
+        protected_tables,
+    ).fetchall()
+    unexpected_names = sorted(str(row[1]) for row in unexpected if str(row[1]) not in allowed_names)
+    if unexpected_names:
+        raise DataError(
+            "protected schema has unexpected reservation objects: " + ", ".join(unexpected_names)
+        )
+
+
+@lru_cache(maxsize=1)
+def _expected_v6_pilot_reservation_schema() -> tuple[tuple[str, str, str], ...]:
+    """Derive the prior pilot-only reservation schema from canonical v7 DDL."""
+    phase_check_v7 = "check(phasein('pilot','deep_research'))"
+    phase_check_v6 = "check(phase='pilot')"
+    expected = []
+    for object_type, name, sql in _expected_v7_reservation_schema():
+        normalized = "".join(sql.casefold().split())
+        if name == "research_launch_reservations":
+            if phase_check_v7 not in normalized:
+                raise DataError("canonical v7 reservation phase constraint is invalid")
+            normalized = normalized.replace(phase_check_v7, phase_check_v6)
+        expected.append((object_type, name, normalized))
+    return tuple(expected)
+
+
+def _validate_protected_v6_pilot_reservation_schema(connection: sqlite3.Connection) -> None:
+    """Reject unexpected or incomplete reservation objects before the v6 rebuild drops them."""
+    for object_type, name, expected_sql in _expected_v6_pilot_reservation_schema():
+        actual = connection.execute(
+            "SELECT type, sql FROM sqlite_master WHERE name = ?", (name,)
+        ).fetchone()
+        actual_sql = (
+            ""
+            if actual is None or actual[1] is None
+            else "".join(str(actual[1]).casefold().split())
+        )
+        if actual is None or str(actual[0]) != object_type or actual_sql != expected_sql:
+            raise DataError(f"protected schema object {name} v6 is invalid")
+    allowed_names = {name for _, name, _ in _expected_v6_pilot_reservation_schema()}
+    unexpected = connection.execute(
+        "SELECT name FROM sqlite_master "
+        "WHERE tbl_name IN (?, ?) AND name NOT LIKE 'sqlite_autoindex_%'",
+        ("research_launch_reservations", "research_launch_attempt_links"),
+    ).fetchall()
+    unexpected_names = sorted(str(row[0]) for row in unexpected if str(row[0]) not in allowed_names)
+    if unexpected_names:
+        raise DataError(
+            "protected schema has unexpected reservation objects: " + ", ".join(unexpected_names)
+        )
+
+
 def _migrate_schema_v5(
     connection: sqlite3.Connection, database: Path, *, backup: bool = True
 ) -> None:
@@ -1496,7 +1629,7 @@ def _migrate_schema_v5(
     connection.execute("BEGIN IMMEDIATE")
     try:
         version = int(connection.execute("PRAGMA user_version").fetchone()[0])
-        if version == SCHEMA_VERSION:
+        if version in {V6_SCHEMA_VERSION, SCHEMA_VERSION}:
             connection.commit()
             return
         if version != V5_SCHEMA_VERSION:
@@ -1526,7 +1659,104 @@ def _migrate_schema_v5(
         ]
         if before != after or connection.execute("PRAGMA foreign_key_check").fetchall():
             raise DataError("local confirmation migration changed historical receipt integrity")
+        connection.execute(f"PRAGMA user_version = {V6_SCHEMA_VERSION}")
+        connection.commit()
+    except Exception:
+        if connection.in_transaction:
+            connection.rollback()
+        raise
+    finally:
+        connection.execute("PRAGMA foreign_keys = ON")
+
+
+def _migrate_schema_v6(
+    connection: sqlite3.Connection, database: Path, *, backup: bool = True
+) -> None:
+    """Widen the phase check while preserving reservation and terminal-link rows exactly."""
+    connection.execute("PRAGMA foreign_keys = OFF")
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+        if version == SCHEMA_VERSION:
+            connection.commit()
+            return
+        if version != V6_SCHEMA_VERSION:
+            raise DataError(f"unsupported control store schema version {version}")
+        _validate_protected_v6_schema(connection)
+        if backup:
+            _verified_receipt_backup(connection, database, V6_SCHEMA_VERSION)
+        reservation_sql = connection.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' "
+            "AND name='research_launch_reservations'"
+        ).fetchone()
+        normalized = "" if reservation_sql is None else "".join(str(reservation_sql[0]).split())
+        if "CHECK(phaseIN('pilot','deep_research'))" in normalized:
+            if connection.execute("PRAGMA foreign_key_check").fetchall():
+                raise DataError("research reservation migration found invalid foreign keys")
+            connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+            _validate_protected_v7_schema(connection)
+            connection.commit()
+            return
+        if "CHECK(phase='pilot')" not in normalized:
+            raise DataError("control store v6 research reservation schema is invalid")
+
+        _validate_protected_v6_pilot_reservation_schema(connection)
+
+        reservations_before = [
+            tuple(row)
+            for row in connection.execute(
+                "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+            )
+        ]
+        links_before = [
+            tuple(row)
+            for row in connection.execute(
+                "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+            )
+        ]
+        for index_name in (
+            "idx_research_launch_reservations_project",
+            "idx_research_launch_attempt_links_attempt",
+        ):
+            connection.execute(f'DROP INDEX IF EXISTS "{index_name}"')
+        connection.execute(
+            "ALTER TABLE research_launch_attempt_links "
+            "RENAME TO research_launch_attempt_links_v6_old"
+        )
+        connection.execute(
+            "ALTER TABLE research_launch_reservations RENAME TO research_launch_reservations_v6_old"
+        )
+        _execute_static_sql_script(connection, _SCHEMA_V7)
+        connection.execute(
+            """INSERT INTO research_launch_reservations
+            SELECT * FROM research_launch_reservations_v6_old"""
+        )
+        connection.execute(
+            """INSERT INTO research_launch_attempt_links
+            SELECT * FROM research_launch_attempt_links_v6_old"""
+        )
+        connection.execute("DROP TABLE research_launch_attempt_links_v6_old")
+        connection.execute("DROP TABLE research_launch_reservations_v6_old")
+        reservations_after = [
+            tuple(row)
+            for row in connection.execute(
+                "SELECT * FROM research_launch_reservations ORDER BY reservation_id"
+            )
+        ]
+        links_after = [
+            tuple(row)
+            for row in connection.execute(
+                "SELECT * FROM research_launch_attempt_links ORDER BY reservation_id"
+            )
+        ]
+        if (
+            reservations_before != reservations_after
+            or links_before != links_after
+            or connection.execute("PRAGMA foreign_key_check").fetchall()
+        ):
+            raise DataError("research reservation migration changed historical row integrity")
         connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        _validate_protected_v7_schema(connection)
         connection.commit()
     except Exception:
         if connection.in_transaction:
@@ -1560,6 +1790,91 @@ def _budget_values(value: object, *, require_minimum: bool) -> dict[str, int | f
             raise DataError(f"research budget {key!r} must be a non-negative finite number")
         result[key] = item
     return result
+
+
+def _d1_native_budget(value: object) -> dict[str, int | float]:
+    """Validate every explicitly approved dimension for a native D1 reservation."""
+    budget = _budget_values(value, require_minimum=True)
+    unknown_native = {
+        key
+        for key in budget
+        if key.startswith("rdagent_native_") and key not in _D1_NATIVE_RESOURCE_KEYS
+    }
+    if unknown_native:
+        raise DataError("research contract contains unsupported native resource dimensions")
+    missing = set(_D1_NATIVE_RESOURCE_KEYS) - budget.keys()
+    if missing:
+        raise DataError("native D1 admission requires every approved version-1 resource dimension")
+    for key in _D1_NATIVE_RESOURCE_KEYS:
+        budget_value = budget[key]
+        if (
+            isinstance(budget_value, bool)
+            or not isinstance(budget_value, int)
+            or budget_value < 0
+            or budget_value > 2**63 - 1
+        ):
+            raise DataError(f"research contract budget {key!r} must be a non-negative integer")
+    if "wall_seconds" not in budget:
+        raise DataError("native D1 admission requires an explicit wall_seconds budget")
+    return budget
+
+
+def _d1_native_spec(
+    *,
+    project_id: str,
+    contract_id: str,
+    job_id: str,
+    attempt_number: int,
+    payload: Mapping[str, object],
+    native_manifest_sha256: str,
+) -> dict[str, object]:
+    budget = _d1_native_budget(payload.get("budget"))
+    plan = payload.get("analysis_plan")
+    if not isinstance(plan, Mapping):
+        raise DataError("native D1 admission requires the frozen analysis_plan")
+    hashes = payload.get("hashes")
+    if not isinstance(hashes, Mapping):
+        raise DataError("native D1 admission requires approved implementation fingerprints")
+    required_hashes = {"code", "dependency_lock", "environment", "evaluator", "data"}
+    if set(hashes) != required_hashes:
+        raise DataError("native D1 admission requires the exact approved fingerprint set")
+    fingerprints: dict[str, str | None] = {}
+    for key in sorted(required_hashes):
+        value = hashes[key]
+        if key == "data" and value is None:
+            fingerprints[key] = None
+        else:
+            fingerprints[key] = _research_fingerprint(value, f"native D1 {key} fingerprint")
+    if _SHA256_RE.fullmatch(native_manifest_sha256) is None:
+        raise DataError("native D1 manifest fingerprint must be a SHA-256 digest")
+    if (
+        isinstance(attempt_number, bool)
+        or not isinstance(attempt_number, int)
+        or attempt_number < 1
+        or attempt_number > _D1_MAX_LAUNCHES
+    ):
+        raise DataError("native D1 attempt_number must be in 1..3")
+    invocation_spec: dict[str, object] = {
+        "schema": "RDagentNativeInvocationSpecV1",
+        "schema_version": 1,
+        "project_id": _canonical_uuid(project_id, "project_id"),
+        "contract_id": _require_content_id(contract_id, "contract_id", prefix="rc"),
+        "job_id": _canonical_uuid(job_id, "job_id"),
+        "attempt_number": attempt_number,
+        "contract_payload_sha256": hashlib.sha256(
+            _canonical_json(payload, "approved native D1 contract").encode("utf-8")
+        ).hexdigest(),
+        "analysis_plan_sha256": hashlib.sha256(
+            _canonical_json(plan, "approved native D1 analysis plan").encode("utf-8")
+        ).hexdigest(),
+        "approved_budget": dict(sorted(budget.items())),
+        "implementation_fingerprints": fingerprints,
+        "native_manifest_sha256": native_manifest_sha256,
+    }
+    invocation_spec["spec_sha256"] = hashlib.sha256(
+        _canonical_json(invocation_spec, "native D1 invocation spec").encode("utf-8")
+    ).hexdigest()
+    return invocation_spec
 
 
 def _research_review_state(row: sqlite3.Row | None) -> str:
@@ -1694,6 +2009,7 @@ class ControlStore:
                 PREVIOUS_SCHEMA_VERSION,
                 V4_SCHEMA_VERSION,
                 V5_SCHEMA_VERSION,
+                V6_SCHEMA_VERSION,
                 SCHEMA_VERSION,
             }:
                 raise DataError(f"unsupported control store schema version {version}")
@@ -1721,6 +2037,10 @@ class ControlStore:
             if current_version == V5_SCHEMA_VERSION:
                 _migrate_schema_v5(connection, database, backup=not fresh)
             _validate_protected_v6_schema(connection)
+            current_version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+            if current_version == V6_SCHEMA_VERSION:
+                _migrate_schema_v6(connection, database, backup=not fresh)
+            _validate_protected_v7_schema(connection)
             # Journal-mode negotiation is deliberately after the version/migration path.
             # SQLite treats changing the mode as a database-wide write; doing it before the
             # migration lock lets concurrent openers fail with SQLITE_BUSY before BEGIN
@@ -1738,7 +2058,7 @@ class ControlStore:
             raise
 
     def _open_readonly(self) -> sqlite3.Connection:
-        """Open an existing complete v6 store without initialization or repair.
+        """Open an existing complete v7 store without initialization or repair.
 
         SQLite may use its WAL/SHM sidecars to provide a consistent read snapshot. This
         connection never changes journal settings and never uses ``immutable=1``; only
@@ -1890,7 +2210,7 @@ class ControlStore:
                     "research_source_records columns: " + ", ".join(missing_source_columns)
                 )
             _validate_protected_v5_schema(connection)
-            _validate_protected_v6_schema(connection)
+            _validate_protected_v7_schema(connection)
             handed_off = True
             return connection
         except (OSError, sqlite3.Error) as exc:
@@ -2187,6 +2507,17 @@ class ControlStore:
         data_hash = hashes.get("data")
         if data_hash is not None:
             _research_fingerprint(data_hash, "research contract data hash")
+        from alpha_cli._native_rule_protocol import is_rule_contract, validate_rule_contract
+
+        if is_rule_contract(payload):
+            validate_rule_contract(payload)
+            if row["scope"] != "exploration":
+                raise DataError("fixed rule protocol cannot authorize confirmation")
+        elif isinstance(analysis_plan, Mapping) and analysis_plan.get("schema") in {
+            "FrozenRulePositionsPlanV1",
+            "FrozenRuleCostedPlanV1",
+        }:
+            raise DataError("fixed rule plan requires its registered operator")
         parent_id = row["parent_contract_id"]
         if row["scope"] == "exploration" and isinstance(parent_id, str):
             prior_decision = connection.execute(
@@ -2290,6 +2621,7 @@ class ControlStore:
         recovery: str | None,
         at: str,
     ) -> sqlite3.Row:
+        ControlStore._require_no_native_owner(connection, project_id=project_id)
         prior = ControlStore._latest_research_phase(connection, project_id)
         sequence = 1 if prior is None else int(prior["sequence"]) + 1
         if prior is not None and (
@@ -2599,6 +2931,20 @@ class ControlStore:
             "deep_research": "research_deep",
             "sealed_confirmation": "research_confirm",
         }.get(phase)
+        from alpha_cli._native_rule_protocol import is_rule_contract, validate_rule_contract
+
+        if is_rule_contract(contract_payload):
+            validate_rule_contract(contract_payload)
+            expected_command = {
+                "pilot": "research_rule_pilot_v1",
+                "deep_research": "research_rule_native_v1",
+            }.get(phase)
+            if expected_command is None:
+                raise DataError("fixed rule protocol has no confirmation command")
+            from alpha_cli._native_rule_protocol import contract_is_costed
+
+            if phase == "deep_research" and contract_is_costed(contract_payload):
+                expected_command = "research_rule_costed_native_v1"
         expected: dict[str, object] = {
             "command": expected_command,
             "kind": "research",
@@ -2616,6 +2962,14 @@ class ControlStore:
             "source_fingerprint": contract_hash,
             "execution_fingerprint": config_fingerprint,
         }
+        if is_rule_contract(contract_payload):
+            expected.update(
+                {
+                    "synthetic": True,
+                    "real_market_evidence": False,
+                    "scientific_acceptance": "not_admitted",
+                }
+            )
         if phase == "pilot":
             protocol = contract_payload.get("protocol")
             operator = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
@@ -2741,6 +3095,24 @@ class ControlStore:
     ) -> dict[str, object]:
         """Reverify one D0 run and every mandatory acceptance outcome."""
 
+        from alpha_cli._native_rule_protocol import is_rule_contract
+
+        if is_rule_contract(contract_payload):
+            from alpha_cli._native_rule_artifacts import d0_fingerprint, validate_rule_artifacts
+
+            if config_fingerprint != d0_fingerprint(contract_payload):
+                raise DataError("fixed rule D0 execution fingerprint changed")
+            self._require_research_run(
+                run_id,
+                project_id=project_id,
+                contract_id=contract_id,
+                contract_payload=contract_payload,
+                phase="pilot",
+                config_fingerprint=config_fingerprint,
+            )
+            run_dir, manifest = self._verified_run(run_id)
+            validate_rule_artifacts(run_dir, manifest, contract_payload)
+            return manifest
         protocol = contract_payload.get("protocol")
         bound_operator = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
         crypto_crowding = (
@@ -2953,6 +3325,31 @@ class ControlStore:
             config_fingerprint=cast(str, config_fingerprint),
         )
         if phase == "deep_research" and attempt.get("status") == "completed":
+            from alpha_cli._native_rule_protocol import is_rule_contract
+
+            if is_rule_contract(contract_payload):
+                from alpha_cli._native_rule_artifacts import validate_rule_artifacts
+
+                run_dir, manifest = self._verified_run(run_id)
+                details = attempt.get("details")
+                receipt_metadata = cast(dict[str, dict[str, object]], manifest["artifacts"])[
+                    "native_receipt.json"
+                ]
+                if not isinstance(details, Mapping) or details.get("native_receipt_ref") != {
+                    "artifact": "native_receipt.json",
+                    "content_sha256": receipt_metadata["sha256"],
+                }:
+                    raise DataError("fixed rule attempt has no exact native receipt reference")
+                validate_rule_artifacts(run_dir, manifest, contract_payload)
+                metadata = cast(dict[str, dict[str, object]], manifest["artifacts"])[
+                    "rule_positions.json"
+                ]
+                if not isinstance(details, Mapping) or details.get("rule_positions_ref") != {
+                    "artifact": "rule_positions.json",
+                    "content_sha256": metadata["sha256"],
+                }:
+                    raise DataError("fixed rule attempt has no exact position artifact reference")
+                return manifest
             details = attempt.get("details")
             if not isinstance(details, Mapping) or "gate_packet_evidence_ref" not in details:
                 raise DataError("completed D1 attempt has no typed evidence reference")
@@ -5114,6 +5511,7 @@ class ControlStore:
         clean_reason = _required_text(reason, "research review reason")
         timestamp = _at(at)
         with self._transaction(write=True) as connection:
+            self._require_no_native_owner(connection, project_id=project_id)
             row = self._require_research_contract(connection, project_id, contract_id)
             if row["scope"] != clean_scope:
                 raise DataError("research review scope does not match the immutable contract")
@@ -5133,6 +5531,19 @@ class ControlStore:
             approved_payload: dict[str, object] | None = None
             if clean_decision == "approve":
                 approved_payload = self._validate_research_contract_for_approval(connection, row)
+                from alpha_cli._native_rule_protocol import (
+                    is_rule_contract,
+                    require_rule_confirmation,
+                )
+
+                if is_rule_contract(approved_payload):
+                    require_rule_confirmation(
+                        connection,
+                        project_id,
+                        contract_id,
+                        clean_actor,
+                        self._research_case_revision_locked(connection, project_id),
+                    )
                 # New exploration approvals use resolved family parameters. This policy
                 # must not run in shared validators used by historical launch/admission.
                 # Confirmation and the separate crypto plan retain their contracts.
@@ -5466,6 +5877,7 @@ class ControlStore:
             raise DataError("research running reconciliation flag must be boolean")
         timestamp = _at(at)
         with self._transaction(write=True) as connection:
+            self._require_no_native_owner(connection, project_id=project_id)
             self._require_research_contract(connection, project_id, contract_id)
             phase = self._latest_research_phase(connection, project_id)
             if phase is None or phase["contract_id"] != contract_id:
@@ -5771,6 +6183,225 @@ class ControlStore:
             ).fetchone()
         if row is None:  # pragma: no cover
             raise DataError("control store failed to persist research launch reservation")
+        return self._research_reservation_view(cast(sqlite3.Row, row))
+
+    def build_d1_native_invocation_spec(
+        self,
+        project_id: str,
+        contract_id: str,
+        job_id: str,
+        *,
+        attempt_number: int,
+        native_manifest_sha256: str,
+    ) -> dict[str, object]:
+        """Build an inert identity for a future native proposal.
+
+        ``native_manifest_sha256`` is caller-supplied identity data here. It is not verified
+        against a pinned executable checkout and does not authorize dispatch.
+        """
+        with self._transaction(write=False) as connection:
+            contract = self._require_research_contract(connection, project_id, contract_id)
+            review = self._latest_research_review(connection, contract_id)
+            phase = self._latest_research_phase(connection, project_id)
+            if (
+                contract["scope"] != "exploration"
+                or _research_review_state(review) != "approved"
+                or phase is None
+                or phase["phase"] != "deep_research"
+                or phase["contract_id"] != contract_id
+            ):
+                raise DataError("native invocation spec requires the active approved D1 contract")
+            payload = self._validate_research_contract_for_approval(connection, contract)
+            return _d1_native_spec(
+                project_id=project_id,
+                contract_id=contract_id,
+                job_id=job_id,
+                attempt_number=attempt_number,
+                payload=payload,
+                native_manifest_sha256=native_manifest_sha256,
+            )
+
+    def reserve_d1_native_research_launch(
+        self,
+        project_id: str,
+        contract_id: str,
+        job_id: str,
+        *,
+        native_manifest_sha256: str,
+        at: datetime | None = None,
+    ) -> dict[str, object]:
+        """Atomically reserve the remaining approved envelope for one inert native D1 job.
+
+        The reservation remains charged in full. Actual-usage release requires a trusted
+        supervisor receipt and recovery integration, neither of which exists in this slice.
+        """
+        clean_job_id = _canonical_uuid(job_id, "job_id")
+        timestamp = _at(at)
+        with self._transaction(write=True) as connection:
+            contract = self._require_research_contract(connection, project_id, contract_id)
+            review = self._latest_research_review(connection, contract_id)
+            phase = self._latest_research_phase(connection, project_id)
+            execution = self._latest_research_execution(connection, project_id)
+            if (
+                contract["scope"] != "exploration"
+                or _research_review_state(review) != "approved"
+                or phase is None
+                or phase["phase"] != "deep_research"
+                or phase["contract_id"] != contract_id
+                or not isinstance(execution, sqlite3.Row)
+                or execution["state"] != "running"
+                or execution["contract_id"] != contract_id
+                or execution["active_job_id"] != clean_job_id
+            ):
+                raise DataError("native D1 reservation requires the active approved running job")
+            job = self._require_job(connection, clean_job_id)
+            if (
+                job["kind"] != "research:event-study"
+                or job["project_id"] != project_id
+                or job["status"] != "running"
+            ):
+                raise DataError("native D1 reservation requires its running research job")
+            if self._active_job_cancellation(connection, clean_job_id):
+                raise DataError("native D1 cancellation blocks launch reservation")
+            request = _decode_json(job["request_json"], "native D1 research job request")
+            if (
+                not isinstance(request, dict)
+                or request.get("stage") != "rdagent_native"
+                or request.get("contract_id") != contract_id
+                or request.get("job_id") != clean_job_id
+            ):
+                raise DataError("native D1 research job request has an invalid invocation binding")
+            spec = request.get("native_invocation_spec")
+            if not isinstance(spec, dict):
+                raise DataError("native D1 research job is missing its typed invocation spec")
+            attempt_number = request.get("attempt_number")
+            payload = self._validate_research_contract_for_approval(connection, contract)
+            expected_spec = _d1_native_spec(
+                project_id=project_id,
+                contract_id=contract_id,
+                job_id=clean_job_id,
+                attempt_number=attempt_number,  # type: ignore[arg-type]
+                payload=payload,
+                native_manifest_sha256=native_manifest_sha256,
+            )
+            if spec != expected_spec:
+                raise DataError("native D1 invocation spec does not match the approved contract")
+            config_fingerprint = str(expected_spec["spec_sha256"])
+
+            existing_rows = connection.execute(
+                """SELECT r.* FROM research_launch_reservations AS r
+                JOIN research_execution_events AS e
+                    ON e.project_id = r.project_id AND e.sequence = r.execution_sequence
+                WHERE r.project_id = ? AND r.contract_id = ? AND r.phase = 'deep_research'
+                    AND r.kind = ? AND e.active_job_id = ?""",
+                (project_id, contract_id, _D1_RESEARCH_KIND, clean_job_id),
+            ).fetchall()
+            if existing_rows:
+                if len(existing_rows) != 1:
+                    raise DataError("native D1 job has conflicting launch reservations")
+                prior = cast(sqlite3.Row, existing_rows[0])
+                if (
+                    prior["config_fingerprint"] != config_fingerprint
+                    or prior["launch_number"] != attempt_number
+                ):
+                    raise DataError("native D1 job replay changed its reserved invocation identity")
+                return self._research_reservation_view(prior)
+
+            from alpha_cli._native_rule_protocol import is_rule_contract
+
+            if is_rule_contract(payload):
+                if attempt_number != 1:
+                    raise DataError("fixed rule study permits exactly one trial")
+                prior_studies = connection.execute(
+                    """SELECT c.payload_json FROM research_launch_reservations r
+                    JOIN research_contracts c ON c.contract_id=r.contract_id
+                    WHERE r.phase='deep_research'"""
+                ).fetchall()
+                if any(is_rule_contract(json.loads(row["payload_json"])) for row in prior_studies):
+                    raise DataError("fixed rule study already consumed its one trial exposure")
+            count_row = connection.execute(
+                """SELECT COUNT(*) AS count FROM research_launch_reservations
+                WHERE project_id = ? AND contract_id = ? AND phase = 'deep_research'
+                    AND kind = ?""",
+                (project_id, contract_id, _D1_RESEARCH_KIND),
+            ).fetchone()
+            unlinked_row = connection.execute(
+                """SELECT COUNT(*) AS count FROM research_attempt_records AS a
+                LEFT JOIN research_launch_attempt_links AS l ON l.attempt_id = a.attempt_id
+                WHERE a.project_id = ? AND a.contract_id = ? AND a.kind = ?
+                    AND l.attempt_id IS NULL""",
+                (project_id, contract_id, _D1_RESEARCH_KIND),
+            ).fetchone()
+            launch_number = (
+                int(cast(sqlite3.Row, count_row)["count"])
+                + int(cast(sqlite3.Row, unlinked_row)["count"])
+                + 1
+            )
+            if launch_number > _D1_MAX_LAUNCHES:
+                raise DataError(
+                    "deep research stopped after the initial attempt and two safe retries"
+                )
+            if attempt_number != launch_number:
+                raise DataError("native D1 job attempt_number does not match the next launch slot")
+
+            budget_limit = _d1_native_budget(payload.get("budget"))
+            if any(
+                key != "wall_seconds" and not isinstance(value, int)
+                for key, value in budget_limit.items()
+            ):
+                raise DataError("native D1 admission requires integer exposure budgets")
+            lineage_ids = [contract_id]
+            parent_id = contract["parent_contract_id"]
+            if isinstance(parent_id, str):
+                lineage_ids.append(parent_id)
+            elapsed, _ = self._research_lineage_accounting(
+                connection, project_id=project_id, contract_ids=lineage_ids
+            )
+            budget_reserved: dict[str, int | float] = {}
+            for key, limit in budget_limit.items():
+                remaining = limit - elapsed.get(key, 0)
+                if remaining < 0:
+                    raise DataError(f"research lineage already exceeds approved {key!r} budget")
+                budget_reserved[key] = remaining
+            if not any(budget_reserved[key] > 0 for key in _D1_NATIVE_RESOURCE_KEYS):
+                raise DataError("native D1 admission has no remaining approved resource budget")
+
+            execution_sequence = int(execution["sequence"])
+            reservation_identity: dict[str, object] = {
+                "schema_version": 1,
+                "project_id": project_id,
+                "contract_id": contract_id,
+                "phase": "deep_research",
+                "kind": _D1_RESEARCH_KIND,
+                "launch_number": launch_number,
+                "config_fingerprint": config_fingerprint,
+                "budget_reserved": budget_reserved,
+                "execution_sequence": execution_sequence,
+            }
+            reservation_id = _content_id("rl", reservation_identity)
+            connection.execute(
+                """INSERT INTO research_launch_reservations (
+                    reservation_id, project_id, contract_id, phase, kind, launch_number,
+                    config_fingerprint, budget_reserved_json, execution_sequence, reserved_at
+                ) VALUES (?, ?, ?, 'deep_research', ?, ?, ?, ?, ?, ?)""",
+                (
+                    reservation_id,
+                    project_id,
+                    contract_id,
+                    _D1_RESEARCH_KIND,
+                    launch_number,
+                    config_fingerprint,
+                    _canonical_json(budget_reserved, "native D1 reserved budget"),
+                    execution_sequence,
+                    timestamp,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM research_launch_reservations WHERE reservation_id = ?",
+                (reservation_id,),
+            ).fetchone()
+        if row is None:  # pragma: no cover
+            raise DataError("control store failed to persist native D1 reservation")
         return self._research_reservation_view(cast(sqlite3.Row, row))
 
     def count_research_attempts(self, project_id: str, contract_id: str, *, kind: str) -> int:
@@ -6884,6 +7515,7 @@ class ControlStore:
         )
         timestamp = _at(at)
         with self._transaction(write=True) as connection:
+            self._require_no_native_owner(connection, project_id=project_id)
             contract = self._require_research_contract(connection, project_id, contract_id)
             review = self._latest_research_review(connection, contract_id)
             if _research_review_state(review) != "approved":
@@ -11273,6 +11905,64 @@ class ControlStore:
         return cast(sqlite3.Row, row)
 
     @staticmethod
+    def _has_native_claim(connection: sqlite3.Connection, job_id: str) -> bool:
+        return (
+            connection.execute(
+                "SELECT 1 FROM job_events WHERE job_id=? AND event_type='native_claim' LIMIT 1",
+                (job_id,),
+            ).fetchone()
+            is not None
+        )
+
+    @staticmethod
+    def _require_no_native_owner(
+        connection: sqlite3.Connection, *, project_id: str | None = None, job_id: str | None = None
+    ) -> None:
+        if job_id is not None:
+            protected = ControlStore._has_native_claim(connection, job_id)
+        else:
+            protected = (
+                connection.execute(
+                    """SELECT 1 FROM jobs j JOIN job_events e ON e.job_id=j.job_id
+                WHERE j.project_id=? AND j.status IN ('queued','running')
+                    AND e.event_type='native_claim' LIMIT 1""",
+                    (project_id,),
+                ).fetchone()
+                is not None
+            )
+        if protected:
+            raise DataError("native process ownership requires its protected lifecycle operation")
+
+    def claim_native_fixture(self, job_id: str, owner: object) -> dict[str, object]:
+        """Internal synthetic-only admission; never accepts a caller receipt dictionary."""
+        from alpha_cli._native_fixture_store import claim
+
+        return claim(self, job_id, owner)
+
+    def record_native_fixture_observation(
+        self, job_id: str, observation: object
+    ) -> dict[str, object]:
+        from alpha_cli._native_fixture_store import record
+
+        return record(self, job_id, observation)
+
+    def heartbeat_native_fixture(self, job_id: str, owner: object) -> None:
+        from alpha_cli._native_fixture_store import heartbeat
+
+        heartbeat(self, job_id, owner)
+
+    def native_fixture_status(self, job_id: str, *, reconnect: bool = False) -> dict[str, object]:
+        """Observe/reconcile the same owner; this operation never launches or signals a process."""
+        from alpha_cli._native_fixture_store import status
+
+        return status(self, job_id, reconnect=reconnect)
+
+    def cancel_native_fixture(self, job_id: str, *, reason: str) -> dict[str, object]:
+        from alpha_cli._native_fixture_store import cancel
+
+        return cancel(self, job_id, reason)
+
+    @staticmethod
     def _require_monotonic(prior: object, current: str, field: str) -> None:
         if not isinstance(prior, str) or current < prior:
             raise DataError(f"control {field} precedes prior job update")
@@ -11361,6 +12051,7 @@ class ControlStore:
         clean_payload = _json_object(payload, "job event payload")
         timestamp = _at(at)
         with self._transaction(write=True) as connection:
+            self._require_no_native_owner(connection, job_id=job_id)
             job = self._require_job(connection, job_id)
             if job["status"] in _TERMINAL_JOB_STATUSES:
                 raise DataError(f"cannot append to terminal job {job_id!r}")
@@ -11401,6 +12092,7 @@ class ControlStore:
         clean_payload = _json_object(payload, "job result")
         timestamp = _at(at)
         with self._transaction(write=True) as connection:
+            self._require_no_native_owner(connection, job_id=job_id)
             job = self._require_job(connection, job_id)
             if job["status"] in _TERMINAL_JOB_STATUSES:
                 raise DataError(f"cannot append to terminal job {job_id!r}")
@@ -11445,6 +12137,7 @@ class ControlStore:
             raise DataError("result_run_id is only valid for succeeded jobs")
         timestamp = _at(at)
         with self._transaction(write=True) as connection:
+            self._require_no_native_owner(connection, job_id=job_id)
             job = self._require_job(connection, job_id)
             prior_status = str(job["status"])
             if prior_status in _TERMINAL_JOB_STATUSES:
@@ -11549,6 +12242,10 @@ class ControlStore:
                 (stale_before,),
             ).fetchall()
             for job in rows:
+                if self._has_native_claim(connection, str(job["job_id"])):
+                    # Lease age proves no process termination. Keep capacity and the full
+                    # reservation occupied until the protected owner records cleanup.
+                    continue
                 self._require_monotonic(job["updated_at"], timestamp, "reconciliation timestamp")
                 sequence = int(job["last_sequence"]) + 1
                 payload = {"from": job["status"], "to": "failed", "reason": clean_reason}

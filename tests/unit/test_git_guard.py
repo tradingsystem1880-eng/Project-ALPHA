@@ -1,3 +1,4 @@
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -57,6 +58,24 @@ def test_protected_configuration_requires_tree_bound_review(repo: Path) -> None:
     gate.write_stamp(repo, "full", steps=[], duration=0)
     code, message = git_guard.check_commit(repo)
     assert code != 0 and "review" in message
+
+
+def test_protected_only_change_commits_after_full_scope_attested_review(repo: Path) -> None:
+    (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
+    git(repo, "add", "CLAUDE.md")
+    gate.write_stamp(repo, "full", steps=[], duration=0)
+    verdict = {
+        "verdict": "APPROVE",
+        "findings": [],
+        "reviewed_diff_hash": gate.scoped_diff_hash(repo, gate.matches_risk),
+        "reviewed_tree_hash": gate.compute_tree_hash(repo),
+        "files_reviewed": [],
+    }
+    assert gate.attest(repo, "review", json.dumps(verdict)) != 0
+    assert git_guard.check_commit(repo)[0] != 0
+    verdict["files_reviewed"] = ["CLAUDE.md"]
+    assert gate.attest(repo, "review", json.dumps(verdict)) == 0
+    assert git_guard.check_commit(repo) == (0, "")
 
 
 def test_install_is_idempotent(repo: Path) -> None:

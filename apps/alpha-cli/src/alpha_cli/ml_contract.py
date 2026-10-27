@@ -22,7 +22,7 @@ from typing import Any, NoReturn
 import polars as pl
 
 CONTRACT_SCHEMA_VERSION = 1
-SUPPORTED_CONTRACT_SCHEMA_VERSIONS = frozenset({1, 2})
+SUPPORTED_CONTRACT_SCHEMA_VERSIONS = frozenset({1, 2, 3})
 INPUT_ANCHOR_FILENAME = "input_anchor.json"
 MIN_SYMBOLS = 20
 MIN_ALIGNED_SESSIONS = 756
@@ -92,6 +92,31 @@ _MODEL_PARAMETER_RULES: dict[str, tuple[float, float, bool]] = {
     "num_threads": (1.0, 8.0, True),
 }
 
+_TABULAR_PARAMETER_RULES: dict[str, dict[str, tuple[float, float, bool]]] = {
+    "lightgbm": _MODEL_PARAMETER_RULES,
+    "linear": {"alpha": (0.0, 1_000_000.0, False)},
+    "catboost": {
+        "num_boost_round": (1.0, 5000.0, True),
+        "early_stopping_rounds": (1.0, 1000.0, True),
+        "depth": (1.0, 10.0, True),
+        "learning_rate": (0.0001, 1.0, False),
+        "l2_leaf_reg": (0.0, 1_000_000.0, False),
+        "num_threads": (1.0, 8.0, True),
+    },
+    "xgboost": {
+        "num_boost_round": (1.0, 5000.0, True),
+        "early_stopping_rounds": (1.0, 1000.0, True),
+        "max_depth": (1.0, 16.0, True),
+        "learning_rate": (0.0001, 1.0, False),
+        "subsample": (0.01, 1.0, False),
+        "colsample_bytree": (0.01, 1.0, False),
+        "reg_alpha": (0.0, 1_000_000.0, False),
+        "reg_lambda": (0.0, 1_000_000.0, False),
+        "num_threads": (1.0, 8.0, True),
+    },
+    "double_ensemble": {**_MODEL_PARAMETER_RULES, "num_models": (2.0, 6.0, True)},
+}
+
 _REQUEST_FIELDS = {
     "schema_version",
     "snapshot_hash",
@@ -137,6 +162,11 @@ _RESULT_FIELDS = {
 }
 _RESULT_V2_FIELDS = _RESULT_FIELDS | {"ensemble_diagnostics"}
 _INPUT_ANCHOR_FIELDS = {"schema_version", "request_sha256", "panel_sha256"}
+
+
+def tabular_model_names() -> tuple[str, ...]:
+    """Names accepted by the exchange contract, without runtime availability claims."""
+    return tuple(_TABULAR_PARAMETER_RULES)
 
 
 class MLContractError(ValueError):
@@ -497,11 +527,30 @@ def _validate_recipe_objects(request: dict[str, Any]) -> None:
         model["name"] != "rank_ensemble_v1" or not isinstance(model["parameters"], dict)
     ):
         raise MLContractError("schema v2 model must be rank_ensemble_v1 with a parameters object")
-    unknown_parameters = sorted(set(model["parameters"]) - set(_MODEL_PARAMETER_RULES))
+    rules = _MODEL_PARAMETER_RULES
+    if request["schema_version"] == 3:
+        if (
+            not isinstance(model["name"], str)
+            or model["name"] not in _TABULAR_PARAMETER_RULES
+            or not isinstance(model["parameters"], dict)
+        ):
+            raise MLContractError("unsupported tabular model recipe")
+        rules = _TABULAR_PARAMETER_RULES[model["name"]]
+    allowed = set(rules)
+    if request["schema_version"] == 3 and model["name"] == "linear":
+        allowed.add("estimator")
+        estimator = model["parameters"].get("estimator", "ridge")
+        if not isinstance(estimator, str) or estimator not in {"ols", "ridge", "lasso", "nnls"}:
+            raise MLContractError("linear estimator must be ols, ridge, lasso or nnls")
+        if estimator in {"ols", "nnls"} and model["parameters"].get("alpha", 0) != 0:
+            raise MLContractError("linear alpha is only supported for ridge or lasso")
+    unknown_parameters = sorted(set(model["parameters"]) - allowed)
     if unknown_parameters:
         raise MLContractError(f"unsupported LightGBM parameters: {unknown_parameters}")
     for name, value in model["parameters"].items():
-        minimum, maximum, integer = _MODEL_PARAMETER_RULES[name]
+        if request["schema_version"] == 3 and model["name"] == "linear" and name == "estimator":
+            continue
+        minimum, maximum, integer = rules[name]
         if isinstance(value, bool) or not isinstance(value, int | float):
             raise MLContractError(f"model.parameters.{name} must be a finite number")
         number = float(value)
@@ -625,6 +674,8 @@ def _validate_request_payload(
         )
     if warning is not None and not isinstance(warning, str):
         raise MLContractError("survivorship_warning must be null or a string")
+    if request["schema_version"] == 3 and membership == "point_in_time":
+        raise MLContractError("schema 3 point_in_time requires a verified membership schedule")
     _validate_recipe_objects(request)
 
     panel_meta = _require_exact_keys(request["panel"], {"path", "sha256", "rows"}, "panel")
@@ -650,6 +701,7 @@ def prepare_exchange(
     exchange_dir: Path,
     *,
     worker_lock_path: Path | None = None,
+    model_override: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Validate source inputs and atomically publish an immutable worker request bundle."""
     spec_path = Path(spec_path)
@@ -663,12 +715,15 @@ def prepare_exchange(
     _require_exact_keys(draft, _DRAFT_FIELDS, "experiment spec")
     if draft.get("universe_membership") == "point_in_time":
         raise MLContractError(
-            "point_in_time is unsupported for new requests: schema versions 1 and 2 do not "
+            "point_in_time is unsupported for new requests: supported contracts do not "
             "carry a membership schedule; use current_membership only if that is the intended "
             "universe and retain its survivorship warning"
         )
     panel = _read_parquet(panel_path, "panel source")
     request = copy.deepcopy(draft)
+    if model_override is not None:
+        request["schema_version"] = 3
+        request["model"] = copy.deepcopy(model_override)
     request["panel"] = {
         "path": "panel.parquet",
         "sha256": sha256_file(panel_path),
@@ -739,7 +794,7 @@ def _validate_result_payload(
     exchange_dir: Path,
 ) -> None:
     request_schema = int(validated_request.request["schema_version"])
-    expected_fields = _RESULT_FIELDS if request_schema == 1 else _RESULT_V2_FIELDS
+    expected_fields = _RESULT_V2_FIELDS if request_schema == 2 else _RESULT_FIELDS
     _require_exact_keys(result, expected_fields, "result")
     if result["schema_version"] != request_schema:
         raise MLContractError("result schema_version is unsupported")

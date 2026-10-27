@@ -122,6 +122,37 @@ def test_project_generation_post_returns_opaque_pipeline_job(
     assert "/" not in response.text
 
 
+def test_project_generation_without_model_requests_no_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    launches: list[dict[str, object]] = []
+
+    def launch(**kwargs: object) -> dict[str, object]:
+        launches.append(kwargs)
+        return {
+            "job_id": "00000000-0000-4000-8000-000000000003",
+            "status": "queued",
+            "action": "generate-experiment",
+            "project_id": "project-1",
+            "experiment_id": "ex_" + "a" * 64,
+            "input_bundle_id": "b" * 32,
+            "exchange_id": "c" * 32,
+        }
+
+    monkeypatch.setattr(_ml, "experiment_preflight", lambda **kwargs: {"ready": True})
+    monkeypatch.setattr(_ml, "launch_experiment_generation", launch)
+    client = _client(tmp_path, monkeypatch)
+
+    assert client.post("/api/ml/experiments", json={"project_id": "project-1"}).status_code == 202
+    assert launches[0]["model"] is None
+    assert launches[0]["parameters"] == {}
+    rejected = client.post(
+        "/api/ml/experiments", json={"project_id": "project-1", "parameters": {"alpha": 2.0}}
+    )
+    assert rejected.status_code == 422
+    assert len(launches) == 1
+
+
 def test_project_generation_preflight_route_is_typed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

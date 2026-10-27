@@ -122,6 +122,49 @@ def verify_manifest_artifacts(rdir: Path, manifest: Mapping[str, Any]) -> None:
             f"artifact set mismatch at {rdir}: declared {sorted(declared)}, "
             f"actual {sorted(actual_names)}"
         )
+    rule_sets = {
+        "research_rule_pilot_v1": {"baseline.json", "control.json", "d0_acceptance.json"},
+        "research_rule_native_v1": {
+            "baseline.json",
+            "control.json",
+            "rule_positions.json",
+            "native_receipt.json",
+        },
+    }
+    rule_sets["research_rule_costed_native_v1"] = {
+        "baseline.json",
+        "control.json",
+        "rule_positions.json",
+        "native_receipt.json",
+        "economics.json",
+        "projections.json",
+    }
+    rule_sets["research_rule_projection_v1"] = {
+        "raw_result.json",
+        "equity_curve.parquet",
+        "trades.parquet",
+        "decision_trace.parquet",
+        "orders.parquet",
+        "fills.parquet",
+        "execution_trace.parquet",
+        "indicator_series.parquet",
+        "chart_annotations.parquet",
+        "calendar_returns.parquet",
+        "benchmark_comparison.parquet",
+        "exposure_turnover.parquet",
+        "return_distribution.parquet",
+        "rolling_metrics.parquet",
+        "trade_statistics.parquet",
+    }
+    command = manifest.get("command")
+    if isinstance(command, str) and command in rule_sets:
+        if (
+            set(declared) != rule_sets[command]
+            or manifest.get("scientific_acceptance") != "not_admitted"
+        ):
+            raise DataError("fixed rule artifact set or acceptance changed")
+        if any((rdir / name).is_symlink() for name in declared):
+            raise DataError("fixed rule artifacts must be regular files")
     if manifest.get("command") == "research_pilot":
         required = set(RESEARCH_PILOT_REQUIRED_ARTIFACTS)
         if set(declared) != required:

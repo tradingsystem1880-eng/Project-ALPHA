@@ -1859,3 +1859,468 @@ candidate-local `.venv` and mypy present, and Atlas outputs fresh. It reported t
 zero quant targets. Frontend freshness paths matched the index. The preflight's own mypy entries
 remain correctly labeled `scope_only` and `not_run`; the passing mypy result above came from a
 separate command. No full gate, publication, merge, or deployment was performed for this follow-up.
+## 2026-10-26 — Synthetic native lifecycle candidate (local, inactive)
+
+Adds protected typed native lifecycle events and atomic failure/cancellation closure using existing
+ControlStore records. A detached trusted owner runs fixed synthetic payloads in a disposable fixture
+workspace on the explicit linux-posix-v1 profile. Reconnect never dispatches or signals saved PIDs.
+Unknown owner/cleanup remains nonterminal with capacity occupied and the reservation fully charged.
+Clean return code zero records process completion pending scientific admission, not a completed D1
+attempt. Ordinary D0 and deterministic deep execution remain on their existing paths.
+
+No new schema/table, migration, dependencies, production dispatcher or native/provider/LLM calls.
+Local public-only focused qualification is separate from full-gate and real-native acceptance.
+Activation still requires executable qualification, physical worker isolation, stronger containment
+where claimed, external effect limits, scientific output admission and compatible-writer cutover.
+See `docs/superpowers/plans/2026-10-26-synthetic-native-lifecycle.md` for the bounded implementation.
+
+### 2026-10-26 — Adversarial synthetic lifecycle continuation (local)
+
+The isolated continuation freezes completion observations and shares a single retained-child cleanup
+result between the lease and owner. No-spawn completion prevents later dispatch; launch preparation
+rechecks expiry before Popen. Known synthetic escapes remain quarantined with capacity and the full
+reservation held, even after their original process group has exited. No schema or admission changes.
+
+Public fault cases cover both cancellation/completion transaction orders and duplicate calls, owner
+SIGKILL after closure writes before commit, stopped-owner expiry, interrupted/provenance-lost cleanup,
+and blocked journal publication. Journal stalls can delay process termination: this slice supplies no
+hard wall-time bound or security sandbox. Native activation and aggregate qualification remain separate.
+Running lease failures deterministically record `owner_error`; owner return never means scientific
+success. Startup and outcome-publication errors still propagate.
+
+### 2026-10-26 — Journal-independent synthetic cleanup candidate
+
+The fixture owner arms its existing lease thread at retained Popen before post-spawn verification
+or journal publication. Safety callbacks use only local monotonic time, a bounded nonblocking
+cancel-only Unix datagram socket and shared one-attempt process-group cleanup. SQLite heartbeat
+and outcome reporting stay on the owner thread. Native cancellation sends the live stop request
+before database access; the owner atomically records received intent with its observation using
+existing job events. Socket delivery never proves cleanup or releases capacity/budget.
+
+Delayed immutable start observations can be retried after physical cleanup, never by re-dispatching.
+A reaped leader cannot authorize signalling a surviving numeric group; uncertainty remains charged.
+Blocked or failed reporting retains the slot until verified cleanup is durably recorded. Journal
+append times can lag execution. Ordinary OS scheduling, owner death, denied cleanup and escaped
+processes still limit enforcement; no hard real-time or hostile-code containment claim is made.
+No new dependency, schema, application dispatch route, security setting or native workflow is added.
+
+The first comprehensive independent audit blocked a passing candidate on concurrent leader reaping
+before group signalling. Native-only observation now uses Linux waitid(WNOWAIT) under the shared
+cleanup lock, retaining the child identity until after the final possible signal. Loss of wait
+ownership or a group still visible after reap stays uncertain with no further destructive signal.
+Default durable-lease callers preserve their previous polling/cleanup path. Red race receipts and
+the blocked candidate remain preserved alongside the corrected public regression evidence.
+
+Follow-up red cases showed that retaining an exited leader through blocked start/heartbeat reporting
+could mislabel successful execution as timeout. The safety loop now cleans observed normal exits
+without reporting work. The dedicated entry establishes default SIGCHLD before claims/spawn;
+the host profile rejects other dispositions. Trusted in-process tests require no auto-reaping flags,
+outside reaper or concurrent signal-disposition mutation. These are explicit process ownership
+assumptions, not a hostile same-UID sandbox guarantee.
+
+### 2026-10-26 — Pinned native loop conformance development candidate
+
+Added an isolated `workers/rdagent` dependency lock and a fixed synthetic extension of the real
+upstream LoopBase/LoopMeta at `484776c211e4fbbeef03e0ec00d6bbee7362a4f4`. The complete supplied
+source tree is verified before importing. The extension inherits native scheduling and signed
+checkpoint serialization, uses actual Scenario/Experiment/Hypothesis/Trace types and preserves
+explicit synthetic feedback labels and metric units/values. Stock RDLoop and provider backends
+are excluded. Root dependencies and locks are unchanged.
+
+Explicit public tests cover native stages, roundtrip/resume, concurrent and stale continuation
+rejection, cancellation/quiescence, tampered source/checkpoints, and fixture pre-effect allowance.
+Native step_n is post-effect and is explicitly not admission authority. Cancellation demonstrates
+the upstream in-memory cursor advance without a successful checkpoint. The live fixture owner
+drains native tasks before allowing another continuation; cancelled owners cannot resume.
+
+These are development conformance results, not ALPHA ControlStore accounting integration,
+scientific evidence or production release qualification. The previous process lifecycle candidate
+is unchanged. No public dispatch route, cross-owner recovery, native activation or full-gate claim
+is added. Fresh independent review of the exact final candidate is required before acceptance.
+
+Independent review blocked the first native-loop candidate on an import-provenance gap: placing
+the external source root first on sys.path could shadow the reviewed probe or dependency modules,
+and the bootstrap verifier could use an existing worker bytecode cache. Eight fixed sentinel
+regressions reproduced these failures. The correction removes general source-root import access,
+binds upstream and worker imports to their intended directories/files, rejects source-root shadows,
+and establishes a fresh fixture cache before local imports. All successful continuation probes now
+require real upstream and worker source hashes. The blocked candidate and red receipts are retained;
+the corrected descendant requires a fresh review against its own exact tree.
+
+**2026-10-26 bounded W04 native admission candidate:** Connected one fixed pinned native
+LoopBase/LoopMeta synthetic child to the existing approved D1 ControlStore reservation and
+trusted process owner. The claim checks actual approved worker/code/lock/environment/evaluator
+fingerprints, one reserved variant and positive CPU allocation; the existing ephemeral stage
+guard consumes the reserved loop allowance before each operator. Signed checkpoints bind the
+job, reservation, invocation and same live owner. The existing lease supervises the actual child;
+exact labels and metric names/values/units are checked only after actual process-group cleanup.
+All successful labels remain pending scientific admission / not_admitted. Failure/cancellation
+reconciles through the existing records, and cleanup/result/journal uncertainty retains capacity
+and the full charge. No lifecycle event fields or schemas changed. Study mandates and the closed
+scientific operator registry remain unchanged; generic study/trial admission, complete CPU/token
+metering, scientific artifact admission, cross-owner recovery and production activation remain
+unqualified. Four guard mutants and separate launch-object/zero-CPU red-green checks discriminate
+missing enforcement. The explicit public regression selection passed 400 tests; scoped Ruff/mypy,
+FeaturePlan validation and all 13 import contracts passed. A controller-death fixture teardown
+race was fixed by awaiting owner lock release before deleting its scratch directory. Earlier
+failure receipts are preserved. This is an uncommitted local candidate, with fresh independent
+review pending and no full gate or scientific run. See the bounded W04 admission plan and the
+local `/workspace/alpha-native-w04-admission-receipts` evidence directory.
+
+## 2026-10-26 — Frozen-rule native study prerequisite, integration blocked
+
+Added an internal immutable request for a fixed daily synthetic `close>10` RuleSpec and a new
+always-flat `close<0` position control. Canonical rules, actual five-bar bytes, dataset/artifact
+identity, UTC cutoff, horizon and units are frozen. Public engineering tests call the existing
+rule_signal and compare with independent hand-specified positions; no statistical estimator or
+market evidence is added. NativeLaunch refuses study-bearing requests before source measurement,
+claim or child effects, including with an existing approved synthetic double-bottom reservation.
+D0/D1 authority still admits the double-bottom protocol; no rules/control registration is
+invented. The isolated worker lacks the qualified ALPHA rule dependency closure. Consequently
+scientific native execution, study/trial outcome accounting, metrics/provenance admission and
+W08 completion remain blocked/incomplete. See
+`docs/superpowers/plans/2026-10-26-native-rule-study-boundary.md` for the acceptance map.
+
+## 2026-10-26 — Closed synthetic native rule workflow candidate
+
+The earlier rule prerequisite refusal is superseded only for two exact synthetic engineering
+protocol versions with persisted real local owner confirmation and immutable approved contracts.
+The actual pinned LoopBase/LoopMeta child now executes real rule_signal and, for the separate
+costed dataset, the canonical Nautilus engine before Feedback. Same-live checkpoint continuation,
+one-family trial limits, existing full reservation accounting and protected immutable completion
+are exercised. Independent cash/fill arithmetic matches12558.21 baseline versus12000 flat control;
+scientific_acceptance remains not_admitted. Two canonical result projections reuse existing
+snapshot/sidecar/chart/comparison APIs and share one trial. Self-rehashed altered equity is rejected.
+Fresh worker profiles bind complete local source, preserved metadata and installed dependency bytes;
+only the declared import subset is qualified. Root/old worker locks and environments are unchanged.
+
+The broad explicit public selection passed 612 tests with no skips; the subsequently strengthened
+projection/authority suite passed 27. Application/test typing passed 15 files plus the strengthened
+test, worker typing passed 6 files against actual upstream annotations, and all 13 import contracts
+passed. Scoped Ruff/format and canonical Atlas freshness are recorded in the executor receipts.
+Existing context maps now link a lean validation dependency backlog while retaining full Qlib,
+native RD-Agent and wider W01–W19 scope. Final candidate review remains pending. This is an uncommitted candidate,
+not full-gate/release approval. Four other-owner transfers failed to materialize; their patches and
+compatibility remain blocked. Real discovery, empirical W08 and full report/UI acceptance remain
+unqualified. See [current plan](superpowers/plans/2026-10-26-native-rule-authority.md) for exact
+authority, source paths, receipt map, blockers, rollback and resume.
+
+
+## 2026-10-26 — Native workflow assembly onto current integration (pending qualification)
+
+Preserved original tree d67a13e88ced67e234dd0183ad7fd01ed8c53e74 and its receipts. Applied its full
+e635 delta once in an isolated bc5b58351cc334d36112167c9463a80184411cc6 checkout. Source merged
+without conflicts; retained both build histories and regenerated Atlas. Moved detailed native
+invariants from the operating manual to the existing current plan to preserve the canonical
+manual-size guard. Fresh scoped verification and independent review are pending. No handoff,
+private-suite, rendered UI, scientific or production acceptance is inherited. No commits/publication.
+
+
+### Native assembly independent review corrections (2026-10-26)
+
+The fresh comprehensive source review reproduced two high defects: self-rehashed projection
+semantic fields were accepted, and a raw-result/artifact rewrite passed completed-case reads
+without changing the database. Preserved failed probes and initial BLOCK report live in the
+assembly executor packet. The correction derives exact projection identities/semantic fields,
+binds the supervisor's same bounded-read receipt bytes in the existing trusted outcome, publishes
+those captured bytes, and pins their full reference in immutable attempt details. No SQL schema,
+ledger, _run_deep or production recovery change. Original process-only payloads retain V1 shape;
+new closed rule outcomes have an additive versioned rule_result binding. Historical unbound rule
+completion fails closed; mixed-reader/writer activation remains blocked.
+
+Focused corrected authority/artifact/public-read checks passed27; final lifecycle/adversarial/journal
+checks passed81. Test portability now requires explicit source/profile opt-in, configured broken
+runtimes fail, and receipt copies are opt-in. Harness cleanup no longer signals saved/reaped groups;
+intentional orphans use retained verified Linux pidfds, ordinary teardown requests live-owner stop.
+The initial broad assembly run612passed and47preflight tests predate these corrections. Fresh final
+broad regression and exact-tree independent re-review remain pending in the acceptance packet.
+The root runtime was recreated offline from unchanged locks; canonical preflight then passed.
+No full gate/private-suite/scientific/UI-release qualification, publication or activation is claimed.
+
+Clarification from final independent probes: the general research_case_summary reader returns
+metadata and revalidates D0 only; its unchanged response after a D1 artifact rewrite was not proof
+of accepting numerical D1 evidence. Verified completion and verified_research_attempt are the new
+full receipt-binding boundary. Standalone artifact consistency checks and generic UI/report readers
+confer no ControlStore authority. Both repaired v1/v2 baseline/restore reads and semantic/raw tamper
+rejections were independently observed at the intended verified boundary.
+
+Final assembly review also demonstrated a mutable nested observation alias despite a read-only
+outer mapping. The closed rule-result binding is now detached and frozen at issuance, and journal
+serialization owns a separate plain copy. Both alias-mutation red cases and the real rule workflow
+passed focused correction tests. Final public regression, independent review and the actual
+canonical working-tree fingerprint are recorded in the existing assembly acceptance packet;
+earlier SHA256-of-index-tree calculations are not substitutes for gate.compute_tree_hash.
+The preserved original candidates, source-transfer holds and missing-private-suite obligation remain.
+
+### Native assembly: recovered terminal public receipts
+
+The interrupted session's saved commands completed on source tree
+`d9fc9658686eb3247f284d7a0a65943dc88e6c11`:616 public tests passed with no skips,47
+integration-preflight tests plus two subtests passed, strict typing passed for27 root/test and9
+worker files, lint/format passed for36 changed Python files,13 import contracts held, and canonical
+cheap preflight/plan/profile checks passed. Receipts54–63 are preserved in the existing assembly
+packet. The final source-review verdict had not completed at interruption and is being completed
+independently; consult that packet rather than infer acceptance from these checks. The ensuing
+status-only documentation refresh receives fresh Atlas/preflight checks and an explicitly distinct
+final identity. No full gate/private-suite/UI/empirical acceptance or publication is claimed.
+
+Final review AR-006 reproduced synthetic snapshot source/date relabeling through consistent
+artifact rehashing. The closed native projection now compares against a fresh canonical expected
+snapshot from the fixed synthetic study, including full provenance and declared symbol/action
+identity. Existing altered evidence is rejected without repair. Fourteen public lineage cases
+failed before correction; focused and final exact-tree results are retained in the assembly packet.
+This is an additional repair after d9fc/ef811; their earlier passes do not qualify the new code.
+
+### Native full-gate followthrough candidate
+
+The reviewed46e4f02 synthetic checkpoint remains physically preserved. A separate bc5-based
+qualification worktree starts from that exact tree. The first complete backend pytest/coverage
+step passed6210 tests but failed one monitor-fault test and produced22 archive teardown errors;
+coverage93.04% exceeded the93% floor. The archive failures used an opt-in receipt directory before
+its parent existed; the next invocation explicitly prepares that output path. The monitor test
+injected its safety-loop fault before payload readiness, allowing cleanup to win that race. Its
+repair arms the injected fault only after observed readiness, retaining the existing cleanup
+deadline and assertions. No production behavior, admission/accounting or migration code changes.
+
+The owner clarified that ordinary unchanged-lock project dependency setup is authorized; earlier
+no-full-gate/runtime restrictions are historical to their recorded scope. The existing canonical
+full gate is now the requested qualification action. Its actual terminal outcome and any remaining
+source/runtime failures are preserved in the executor's engineering-gate-followthrough packet.
+No private-suite, real-data/scientific, rendered native-UI or deployment acceptance follows from
+engineering checks. No Library-transfer workaround or Qlib adapter change is included.
+
+
+
+## 2026-10-26 Qlib tabular first-wave local candidate
+
+Implemented in isolated `Project-ALPHA-handover/qlib-tabular-wave1-20261026`, branch
+`codex/qlib-tabular-wave1-20261026`, from delivery baseline
+`bc5b58351cc334d36112167c9463a80184411cc6`. The dirty primary checkout was not edited.
+[Plan, recipe ledger and evidence route](superpowers/plans/2026-10-26-qlib-tabular-wave1.md)
+are linked from the existing context index and Quant Platform model row; Atlas is regenerated.
+The initially missing expanded scope authority was subsequently supplied as parent-verified
+Library v1 section9/page9 planning text; the complete document was not materialized locally.
+The upstream inventory denominator54355232463878d2eebb91fe0ee5fa7fa1f5976c remains distinct
+from the unchanged Qlib0.9.7 worker pin and da920b7 runtime reference.
+
+Additive schema3 selects LightGBM, Linear OLS/ridge/lasso/NNLS, CatBoost, XGBoost and upstream
+DoubleEnsemble. Legacy1/2 remain covered. Available backends really fit synthetic folds;
+CatBoost/XGBoost execution remains blocked by missing/unapproved optional dependencies.
+The existing CLI and ML UI carry selection, dependency status, fold-local lineage and explicit
+degenerate-score diagnostics. Comparisons bind identical frozen inputs, source/version lineage
+and stable artifact bytes. Economics remain canonical-engine-only for new schema3 diagnostics.
+There is no new control-store schema, RD-Agent protocol, admission authority or alternate backtester.
+
+Focused evidence:269 root ML regression tests;48 isolated worker tests;420 frontend unit tests;
+24 focused canonical ML browser cases. Six real worker processes each emitted2420 finite aligned
+synthetic predictions with native reload parity and measured peak RSS609402880–655228928bytes.
+One synthetic ridge exchange replayed through the existing canonical engine for121periods with
+explicit1bps fee/2bps slippage and promotion_eligible=false. Independent Astra review reproduced
+and verified fixes for comparison source replacement, hidden Lasso nonconvergence and misleading
+degenerate-score quantiles; source-drift and native thread bounds were also addressed.
+
+These results are bounded implementation evidence. See the plan and local `.alpha/state/qlib-tabular-wave1/`
+receipts for the final candidate tree, complete changed paths, gate attempts and exact failures.
+Full aggregate acceptance, Linux screenshot qualification, optional backend runtime qualification,
+authentic private-suite coverage, real-data/discovery approval, empirical economics and promotion
+remain separate. No commit, push, PR, merge, deployment or owner-data acquisition is claimed.
+
+
+**Same-task qualification follow-up:** The exact73daaeae local candidate passed all six canonical
+components and Astra's scoped review; receipts/source are preserved in its checkpoint directory.
+Read-only current-package inspection identified bounded compatible CatBoost1.2.10 and
+XGBoost3.4.1 CPU routes. The existing tabular plan now records all eight ADR-0011 proposal items
+before additive isolated-worker adoption. No existing Qlib/NumPy/root pin may change. Optional
+execution remains unverified until actual lifecycle tests; further edits invalidate the first
+stamp for the new tree and require fresh independent review/full verification.
+
+
+**Bounded optional runtime implementation completed locally:** CatBoost1.2.10 and XGBoost3.4.1
+now execute on macOS ARM in the isolated worker. The217-package lock preserves all212 prior
+versions and every211 non-project package record, adds no GPU runtime dependencies and persists
+wheel-only guards. Final corrected source2070a9e4a11fc627b793456774e73b768c6240ec3a2ac220438abf7983492c64
+passes68 worker tests; root ML269, frontend431 and focused browsers27 pass. Eight actual recipes
+each publish2420 finite aligned predictions, validate through existing web contracts and compare
+with immutable retry. New canonical Cat/XGB synthetic replays use explicit costs and remain
+non-promotable. Astra verified selected-tree early-stop state and original/reloaded inference
+thread bounds after reproduced failures; all prior trials/checkpoints remain preserved. ML list
+labels now state prepared/prediction-pending/recorded evidence without inferring validation.
+The plan's final-verification-summary link records exact final tree/review/aggregate outcome;
+pending or absent receipts confer no pass. Linux/Windows transport, authentic private coverage,
+empirical/data approval and promotion remain separate; no new local dependency authorization
+is needed for these verified pins. No GitHub publication or accepted-stack upgrade occurred.
+
+
+## 2026-10-26 — Qlib W11 successor engineering packet (in progress)
+
+The five-backend/eight-recipe wave remains sealed at tree
+`8df4b89561feee778cbf13909d28ca019b40bf20`, with its49-step/six-component full gate and
+Astra review preserved in its original worktree. The isolated successor
+`Project-ALPHA-handover/qlib-w11-refit-20261026` materializes that exact tree before edits;
+its baseline commit remains `bc5b58351cc334d36112167c9463a80184411cc6`. Predecessor acceptance
+is not inherited. See the [W11 packet plan](superpowers/plans/2026-10-26-qlib-w11-refit.md)
+for supplied planning authority, scope, frozen engineering controls and next action.
+
+Read-only inspection confirms real train-only normalization and fresh model fits already exist.
+The genuine delta is observed component input/state provenance and a private fixture-only
+single-world refit route, initially for ridge and DoubleEnsemble. Application planning/audit/status
+must remain read-only. The integrated native registry has no W11 executor or W06 generic fit
+reservation/ancestry contract; the reviewed six-module statistical source is unavailable. Neither
+is reconstructed or replaced. Governed execution, statistical qualification and promotion remain
+blocked. A transient Mac disconnect occurred before new fits; actual successor state was checked
+after reconnection, with no uncertain source mutation found. New implementation/tests/review and
+a fresh full gate are pending; this is an implementation checkpoint, not a passing receipt.
+
+Subsequent source recovery: the approved native/W06 Library archive was materialized and verified
+at516,864bytes/SHA256 `dd4d1c35e703bb9cc22bd2e76a79260b911a83e457f4d7901417d35ac7eb8525`.
+Its actual patch reproduced producer tree `f15c906378fec2d4581564ecdf6cc610005c1ac8` on the common
+base. W11 partial tree `b93f4d091fefa3a86aa580849ac4458360970a46` was frozen before reconciliation
+in isolated `Project-ALPHA-handover/qlib-w11-native-20261026`. Both originals remain read-only.
+This closes source availability only: Qlib protocol registration, fit-unit charging, world/reuse
+ancestry and runtime/exposure qualification remain blocked. No real ControlStore was opened.
+Pure call-graph and fixture eligibility tests have executed; actual W11 model fits, final review
+and the assembled-tree canonical gate are still pending at this checkpoint.
+
+The qualified predecessor was separately saved as Library `libfile_9c1b50c894dc819198579d0db90b503e`
+v0,1,579,619bytes/SHA256 `6bb178052083a489564670042de412bdb8408c7cac75c23e4de0b654bf80b7c8`.
+Its exact patch reproduces tree `8df4b89561feee778cbf13909d28ca019b40bf20`; its sanitized handoff
+omits the panel and contains no W11 changes. Linux execution and authentic private coverage remain
+unqualified. Packaging, source application and upload receipts are under the active successor's
+`.alpha/state/qlib-w11-refit/`; no checkpoint acceptance transfers to this assembly.
+
+Bounded W11 engineering execution subsequently completed:67 pure worker and62 CLI checks;
+14 actual ridge/DoubleEnsemble worlds,2 expected cancellations,45 native fits and30 normalizer
+fits;12 non-common mechanical oracles and both canonical economic controls passed. Source-bound
+programme receipts and explicit remaining authority/statistical limits are linked from the dated
+plan. Peak RSS was838,926,336bytes. The assembled-tree full gate and final independent review
+remain separate required receipts; this entry does not grant scientific acceptance or promotion.
+
+
+## 2026-10-26 W05 integration successor (local; qualification pending)
+
+Preserved W11/native/tabular tree `a284def9502c20884ecf9740867db0810dc9ec83` remains unchanged.
+This successor reconciles actual PR92 source (`fc6da893` → reviewed `f0ba4c34` → merge `98190e3b`
+with `e635e6cb`) and the single reviewed W05 combined patch (`220b9b02`). PR92 production/test
+bytes match the reviewed transport source; its generated maps are regenerated for the successor.
+The W05 timezone fix is included once. See the [integration plan](superpowers/plans/2026-10-26-w05-research-integration.md)
+for code, current checks, source identities, recovery and deferred final gate.
+
+Imported producer behavior notes below describe the reviewed source; their historical tests do not
+constitute verification of this successor.
+
+
+**Tiingo transport-error redaction (2026-10-24)** — `TiingoAdapter.fetch` converts URL, timeout,
+incomplete-read, and OS transport failures into type-only `DataError` messages and suppresses their
+exception context for both bounded and unbounded reads. HTTP status errors, response-size limits,
+parsing, and adapter result contracts are unchanged. Synthetic offline tests cover both read paths,
+oversized responses, normal responses, and response cleanup.
+
+
+**W05 bounded daily reference qualification (2026-10-26)** — A synthetic receipt-backed
+Tiingo-format path exercises normalization, immutable snapshots, reopened typed queries,
+partial-response quarantine, revisions, future-append invariance, raw/split-adjusted values,
+and integrity rejection. Named IANA-zone cutoffs exposed a Polars timezone mismatch; PIT
+comparison now normalizes the same instant to UTC, with spring/fall DST boundary regressions.
+This is engineering reference evidence only. No suitable existing provider snapshot was
+identified in the inspected public tracked paths. Historical source availability and revision
+vintages remain unverified: daily session labels and retrieval times do not prove publication
+times. A frozen rule/instrument/window and admissible raw receipt/snapshot remain W05 prerequisites.
+
+**W05 opt-in acquisition budgets (2026-10-26)** — The existing Binance spot daily REST acquisition
+accepts paired request/body-byte caps. One invocation shares its budget across pages and transport
+attempts, including failed attempts and enabled 429 retries. Strict mode refuses redirects before
+following them and aborts after interrupted reads. Defaults for other callers remain unchanged.
+Synthetic transport tests exercise the real urllib handler chain; no market capture occurred.
+Budgets constrain application HTTP attempts and body reads, not socket/TLS traffic, hidden buffering,
+or separate invocations. A short terminal page is not proof of complete requested-window coverage.
+
+Current integration status: local source and test review found no blocking defects; consolidated
+public regression passed 358 tests. Final exact-tree check/review receipts are linked from the plan.
+No full-gate stamp transfers. Native portability and full combined-tree gate remain blocked;
+query/report/navigation source handoffs remain unavailable. Existing `data candles --manifest-id`
+and member-level snapshot contracts are the current query seams, not the unpublished query/restore
+work. No real acquisition, accepted discovery interval, scientific qualification or publication.
+
+
+## 2026-10-26 combined Mac portability qualification
+
+Preserved W05 successor `b0b9c8ea` and earlier W11/tabular checkpoints remain unchanged.
+Verified native incremental archive `libfile_229009c0e56481918322aacbfcc0881b` reproduces
+`f15c9063` → `35e762d5` exactly; actual consumer native production/test base hashes match.
+The following producer notes describe imported source, not a Mac aggregate result.
+
+
+**Native source portability follow-through (2026-10-26; qualification pending).** Explicit Linux
+guards type the retained-child observer and Linux-only fixture probes for Darwin development.
+Native modules avoid unconditional Windows `fcntl` imports; unsupported hosts and unavailable
+observation capabilities reject before startup effects. Synthetic regression tests cover import
+and no-effect rejection. Retained PID ownership, cancellation, uncertainty and charged-capacity
+semantics are preserved. Windows-wide typing/runtime and non-Linux native execution remain
+unsupported. Focused receipts, independent review and the final exact-tree gate determine
+qualification; the previous candidate's receipts remain historical evidence.
+
+**Native platform test requirements (2026-10-26; aggregate qualification pending).** Real Linux
+owner fixtures now declare their platform before setup. Portable rejection/accounting tests retain
+generic synthetic stores and verify job existence, no native events and no payload. A discriminating
+failed-start test preserves an injected startup exception and verifies retained-process reaping
+when the escape barrier directory is absent. POSIX lease coverage, LoopBase conformance and the
+coverage policy are unchanged; actual macOS aggregate coverage remains unqualified.
+
+Actual Mac qualification is in progress in the isolated successor. The [combined plan](superpowers/plans/2026-10-26-mac-portability-qualification.md)
+links source reconciliation, preserved original failures, actual checks and final review.
+Linux producer 49-stage/93.05% evidence and Darwin-target typing are not a Mac gate stamp.
+Existing schema-v7 writable-open migration remains; synthetic stores only. Source reversal is
+not database rollback. No scientific/private-suite acceptance or native Mac activation follows.
+
+
+### Combined Mac portability follow-up (2026-10-26)
+
+Verified native incremental f15c9063 → 35e762d5 was reconciled into an isolated
+successor of b0b9c8ea. Actual Mac typing passed 883 files; the first aggregate attempt
+failed with two missing-worker capability routes and 91.60% coverage against 93%.
+A bounded readiness fix and portable approval-integrity verification follow; aggregate
+acceptance is not granted by the producer Linux result or targeted checks. Exact final
+receipts and next action are linked by the [Mac qualification plan](superpowers/plans/2026-10-26-mac-portability-qualification.md).
+
+
+### Portable-evidence successor (2026-10-26, in progress)
+
+The isolated 24f checkpoint completed 48/49 canonical commands; only 93% backend coverage failed
+(6,298 tests passed, 149 skipped, 2 subtests; 91.6468%). Parent directed a meaningful portable-test
+successor after a 363-module/210-function public coverage audit. It targets charged SQL readers,
+closure atomicity, independent fixed costed-result validation and immutable artifacts/projections;
+it does not emulate Linux or claim that the 761-statement gap is all kernel-dependent. See the
+[existing qualification plan](superpowers/plans/2026-10-26-mac-portability-qualification.md) and
+`.alpha/state/portable-evidence/`. No inherited aggregate acceptance.
+
+Portable reader/accounting, D0 artifact and numerical/projection checks now include
+nonzero-charge preservation, rollback, rehashed corruption and typed malformed-value
+rejection. Narrow economics-validator repairs preserve canonical costs/returns and authority.
+The exact successor identity, check receipts and residual statement inventory are recorded by
+the qualification plan above; aggregate qualification depends on its actual final receipt.
+No new platform skips or coverage-policy changes are part of this successor.
+
+The first portable checkpoint passed 6,403 tests and failed the unchanged 93% coverage
+floor at 92.0014%. A bounded reservation-admission follow-up addresses stale/malformed
+bindings and charged replay identity. Final exact-tree evidence is linked by the same
+qualification plan; intermediate coverage is not aggregate acceptance.
+
+## 2026-10-27 Linux cloud qualification stabilization (not accepted)
+
+Behavior changes on the integrated candidate: web ML experiment generation keeps the experiment's
+frozen recipe unless a model is explicitly chosen (no silent schema-3 override); the synthetic native
+owner child inherits its validated workspace `TMPDIR`; RD-Agent probe results report the source pin as
+`expected`/`verified`/`not_verified` instead of constant commit and archive fields. Test-only repairs
+establish the suspended-owner precondition and pin the lock-held fail-closed case.
+Gate run 2 on the intermediate tree passed every backend step except coverage (6,563 passed, 0 failed,
+55 skipped, 92.85% against 93%). Native suites passed 111/111 with a derived root of the pinned
+`rdagent/` source; archive bytes were not verified. Five unchanged Linux visual baselines fail in the
+cloud container; protected tests were absent and not executed. Details and open findings are in the
+[native rule plan](superpowers/plans/2026-10-26-native-rule-authority.md#cloud-qualification-stabilization-2026-10-27)
+and the [tabular plan](superpowers/plans/2026-10-26-qlib-tabular-wave1.md#cloud-qualification-stabilization-2026-10-27).
+
+Review-scope alignment (same stabilization): review attestation now requires `files_reviewed` to
+cover the Git guard's full review scope (risk-tier, protected control plane, hooks and guarded
+config), and `/review-gate` uses that scope; see the
+[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27).
+Gate run 4 passed every component on tree `844612d4`; this change creates a new candidate.

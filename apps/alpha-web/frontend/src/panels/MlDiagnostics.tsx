@@ -201,7 +201,7 @@ function FoldBoundaries({ folds }: { folds: MlFoldDiagnosticProjection[] }) {
       </svg>
       <div className="ml-fold-legend mono"><span><i className="train" />TRAIN</span><span><i className="validation" />VALIDATION</span><span><i className="test" />TEST</span><span>UTC SESSION BOUNDARIES</span></div>
       <table className="blotter compact" aria-label="ML fold boundary and fit details"><thead><tr><th>fold</th><th>train</th><th>validation</th><th>test</th><th className="r">rows T/V/T</th><th className="r">best iter</th><th>model / normalization</th></tr></thead><tbody>
-        {folds.map((fold) => <tr key={fold.fold}><td className="mono">F{fold.fold}</td><td className="mono">{fold.boundaries.train_start.slice(0, 10)} → {fold.boundaries.train_end.slice(0, 10)}</td><td className="mono">{fold.boundaries.validation_start.slice(0, 10)} → {fold.boundaries.validation_end.slice(0, 10)}</td><td className="mono">{fold.boundaries.test_start.slice(0, 10)} → {fold.boundaries.test_end.slice(0, 10)}</td><td className="num">{fold.train_rows.toLocaleString()} / {fold.validation_rows.toLocaleString()} / {fold.test_rows.toLocaleString()}</td><td className="num">{fold.best_iteration}</td><td className="mono ml-hash-cell" title={`${fold.model_hash} · ${fold.normalization.statistics_hash}`}>{shortId(fold.model_hash)} · {shortId(fold.normalization.statistics_hash)} · FIT {fold.fit_count}</td></tr>)}
+        {folds.map((fold) => <tr key={fold.fold}><td className="mono">F{fold.fold}</td><td className="mono">{fold.boundaries.train_start.slice(0, 10)} → {fold.boundaries.train_end.slice(0, 10)}</td><td className="mono">{fold.boundaries.validation_start.slice(0, 10)} → {fold.boundaries.validation_end.slice(0, 10)}</td><td className="mono">{fold.boundaries.test_start.slice(0, 10)} → {fold.boundaries.test_end.slice(0, 10)}</td><td className="num">{fold.train_rows.toLocaleString()} / {fold.validation_rows.toLocaleString()} / {fold.test_rows.toLocaleString()}</td><td className="num">{fold.best_iteration}</td><td className="mono ml-hash-cell" title={`${fold.model_hash} · ${fold.normalization.statistics_hash}`}>{shortId(fold.model_hash)} · {shortId(fold.normalization.statistics_hash)} · FIT {fold.fit_count}{fold.model_backend ? <span> · {fold.model_backend}</span> : null}{fold.resolved_parameters ? <details><summary>Resolved parameters</summary><code>{JSON.stringify(fold.resolved_parameters)}</code></details> : null}</td></tr>)}
       </tbody></table>
     </div>
   )
@@ -250,7 +250,7 @@ function Provenance({ sheet, summary }: { sheet: MlTearSheetProjection; summary:
       <div><span>LIGHTGBM</span><code>{sheet.versions?.lightgbm ?? '—'}</code></div>
       <div><span>AUTHORITY</span><code>{sheet.authority}</code></div>
       <div><span>FEATURE RECIPE</span><code>{sheet.feature_recipe?.name ?? summary?.feature_recipe ?? '—'} · {sheet.feature_recipe?.feature_count ?? '—'} features</code></div>
-      <div><span>MODEL / STATUS</span><code>{summary?.model ?? 'LightGBM'} · {summary?.status ?? '—'}</code></div>
+      <div><span>MODEL / STATUS</span><code>{sheet.model_backend ?? summary?.model ?? 'not recorded'} · {summary?.status ?? '—'}</code></div>
     </div>
   )
 }
@@ -286,11 +286,20 @@ export function MlDiagnosticsBody({
       <Section title="Score distribution" right={<span className="muted">worker diagnostics · model-score units</span>}><ScoreDistribution sheet={sheet} /></Section>
       <div className="ml-diagnostic-two-up">
         <Section title="IC / RankIC timeline" right={<span className="muted">aligned OOS targets · UTC</span>}><IcTimeline sheet={sheet} /></Section>
-        <Section title="Quantile returns" right={<span className="muted">worker signal analysis · association only</span>}><QuantileReturns sheet={sheet} /></Section>
+        <Section title="Quantile returns" right={<span className="muted">worker signal analysis · association only</span>}>
+          {sheet.diagnostic_state ? (
+            <div className="workbench-notice" role="status" aria-label="Model score diagnostic state">
+              <strong>SCORES {sheet.diagnostic_state.score_status.replaceAll('_', ' ').toUpperCase()}</strong>
+              <span>{sheet.diagnostic_state.reason}</span>
+              <span className="mono">CROSS-SECTIONS · DEGENERATE {sheet.diagnostic_state.degenerate_cross_sections} · TIED {sheet.diagnostic_state.tied_cross_sections} · QUANTILE {sheet.diagnostic_state.quantile_cross_sections}</span>
+            </div>
+          ) : null}
+          <QuantileReturns sheet={sheet} />
+        </Section>
       </div>
       <Section title="Gross, costed, benchmark, excess & turnover" right={<span className="muted">diagnostic portfolio · declared costs</span>}><PortfolioDiagnostics sheet={sheet} /></Section>
       <div className="ml-diagnostic-two-up lower">
-        <Section title="Feature importance" right={<span className="muted">mean LightGBM gain / split count</span>}><FeatureImportance sheet={sheet} /></Section>
+        <Section title="Feature importance" right={<span className="muted">{sheet.feature_importance.length ? 'recorded tree gain / split count' : 'importance not emitted by this backend'}</span>}><FeatureImportance sheet={sheet} /></Section>
         <Section title="Fold boundaries" right={<span className="muted">fit counts per fold · train-only normalization</span>}><FoldBoundaries folds={sheet.folds} /></Section>
       </div>
       <Section title="Training history" right={<span className="muted">bounded worker history · no interpolation</span>}><div className="ml-training-grid">{sheet.folds.map((fold) => <TrainingHistoryChart key={fold.fold} fold={fold} />)}</div></Section>

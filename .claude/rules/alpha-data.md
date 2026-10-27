@@ -16,7 +16,7 @@ Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `
 | `snapshot.py` | Immutable hashed snapshots + manifest; copies/hashes legacy or v2 provenance sidecars and rejects source relabelling | `create_snapshot`, `verify_snapshot` |
 | `ingest.py` | Persist a `FetchResult` | `store_fetch_result` |
 | `adapters/base.py` | Adapter seam + versioned source identity/receipt | `DatasetIdentity`, `FetchReceipt`, `FetchResult`, `DataAdapter` protocol |
-| `adapters/tiingo_adapter.py` | Authoritative stock/ETF EOD: raw OHLCV, explicit split/dividend actions, adjusted-field consistency check, redacted receipt | `TiingoAdapter`, `parse_tiingo_eod` (pure) |
+| `adapters/tiingo_adapter.py` | Authoritative stock/ETF EOD: raw OHLCV, explicit split/dividend actions, adjusted-field consistency check, redacted receipt; transport failures expose only exception type with suppressed context, while bounded reads retain their byte ceiling | `TiingoAdapter`, `parse_tiingo_eod` (pure) |
 | `pipeline.py` | Immutable receipt/candidate/quarantine, calendar/correction/cross-source quality gate, merged promotion backup/recovery | `stage_and_promote`, `promote_quarantined`, `rollback_interrupted_promotion` |
 | `adapters/yfinance_adapter.py` | Equities (splits+divs); reconstructs RAW prices from Yahoo's split-adjusted series, fail-loud discontinuity check | `YFinanceAdapter`, `parse_yfinance_history` (pure) |
 | `adapters/ccxt_adapter.py` | Crypto 1m/5m/1h/1d OHLCV (UTC; validated `coinbase|binance`; **paginated** past per-call caps; completed intervals only; venue-qualified provenance). The historical `fetch(date,date)` daily contract is preserved and delegates to the additive timeframe seam | `SUPPORTED_CCXT_EXCHANGES`, `CCXTAdapter.fetch`, `CCXTAdapter.fetch_timeframe`, `parse_ccxt_ohlcv` (pure) |
@@ -48,6 +48,12 @@ Canonical manifests, raw lineage, payloads and historical verification remain in
 inventories and new explicit-ID admission exclude retired inputs; full storage audits include
 them. Warning data and referenced artifacts remain. Malformed receipts fail closed.
 
+`PointInTimeReader.as_of` normalizes named-zone cutoffs to UTC before comparing bar timestamps, preserving the
+inclusive instant across DST. This does not establish provider publication or revision availability.
+That bar-read path rejects naive cutoffs before reading data; host-local timezone supplies no offset.
+Opt-in Binance spot daily REST budgets span pages and HTTP attempts; strict mode refuses redirects.
+Body-byte accounting includes returned chunks and overflow probes. Unknown interrupted reads abort
+budget reuse. Socket/TLS traffic and hidden transport buffering are outside this accounting boundary.
 Typed PIT reads validate bars only after cutoff filtering. `PointInTimeSource.as_of` translates
 Pydantic bar-validation failures to chained `DataError` with symbol, timestamp and reason;
 invalid visible rows are never skipped or coerced. CLI callers retain their typed usage-error
