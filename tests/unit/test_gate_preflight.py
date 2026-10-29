@@ -281,6 +281,24 @@ class TestGatePreflight(unittest.TestCase):
             self.assertNotIn("blocks_preflight", result)
             self.assertEqual(set(_backend_mutation_targets(root)), set(QUANT_PATHS))
 
+    def test_selection_reports_the_shared_comparison_context(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = _synthetic_repo(Path(temporary) / "repo")
+            for base in (_DEFAULT_BASE, "does-not-exist"):
+                if base is _DEFAULT_BASE:
+                    _set_ref(root)
+                result = _selection(root, base)
+                with patch.dict(os.environ):
+                    if base is _DEFAULT_BASE:
+                        os.environ.pop("ALPHA_GATE_BASE", None)
+                    else:
+                        os.environ["ALPHA_GATE_BASE"] = str(base)
+                    context = gate_components.comparison_context(root)
+                self.assertEqual(result["requested_ref"], context["reference"])
+                self.assertEqual(result["resolved_ref"], context["resolved_base"])
+                self.assertEqual(result["merge_base"], context["merge_base"])
+                self.assertEqual(result["selection_mode"], context["selection_mode"])
+
     def test_missing_default_and_invalid_explicit_refs_report_fallback(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = _synthetic_repo(Path(temporary) / "repo")

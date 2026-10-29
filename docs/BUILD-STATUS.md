@@ -2324,3 +2324,126 @@ cover the Git guard's full review scope (risk-tier, protected control plane, hoo
 config), and `/review-gate` uses that scope; see the
 [gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27).
 Gate run 4 passed every component on tree `844612d4`; this change creates a new candidate.
+
+## 2026-10-27 Linux cloud qualification checkpoint published (not accepted)
+
+Published checkpoint: branch `claude/cloud-qualification-c95f9d4d-20261027`, commit
+`2e0832c735d97c7da93cb79c0cce23e533dd7f1a`, tree `c95f9d4d803bef4be552736a79a4855e5bea5bf9`
+(parent `bc5b58351cc334d36112167c9463a80184411cc6`), unmerged; no pull request, merge or deployment.
+On that exact tree the full gate passed all six components (49 steps) in the Linux cloud container,
+superseding the visual-baseline and gate run 4 notes above for that tree only. A formal independent
+review returned APPROVE with seven low findings under the one-time absent-private-suite exception
+recorded in `.claude/agents/independent-reviewer.md` for that candidate only; private
+`tests/holdout/` coverage is UNVERIFIED, never PASS. The two earlier formal BLOCKs of tree
+`3c3b0d28` remain correct history. Hosted CI has not run: `ci.yml` triggers only on pushes to
+`main` and on pull requests.
+
+This entry and the routing lines added with it are a later, unpublished documentation successor;
+the checkpoint's gate and review results do not qualify these or any other modified contents.
+
+Current active work is that unpublished Linux cloud foundation successor: navigation/handoff
+routing and gate/review freshness repair (see the
+[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)).
+The published commit above is the preserved qualification checkpoint, not the active stage. The Mac
+portability successor stays open with its requirements intact but is deferred: not the current stage
+or active owner, and not abandoned scope.
+
+Canonical
+[Packet 1](context/feature-readiness-checklist-2026-10-27.md#packet-1-close-the-successor-exact-tree-gate)
+is unchanged. Its interrupted de074 successor and 48-of-49 result are preserved historical
+prerequisite evidence, not the current c95 result and not a completed feature; no equivalence
+between Packet 1 and the current successor is asserted. CHK27-PV01 resolves only through the
+private map and is not independently repository-accessible evidence.
+
+Evidence locations differ. In the repository: the published commit and the linked plan sections.
+Container-local and git-ignored, so not durable repository evidence: the gate stamp and component
+receipts under `.alpha/state/`. Session receipts, logs and review outputs live outside the
+repository; delivery of the final evidence package to the owner is pending, not completed.
+
+Open blockers: successor private-suite acceptance is unresolved and the exception covers no later
+change; stale Darwin ML-lab baselines; unconfirmed root cause of the native lease/cleanup flake;
+the about 21-byte `TMPDIR` limit from the AF_UNIX socket path; unverified RD-Agent archive SHA;
+the gate stamp and review consumption gap (commit-time checks bound only the tree hash and the
+risk-tier diff; a repair is implemented in the unpublished successor, see the
+[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#commit-time-gate-and-review-provenance-2026-10-27),
+but not yet full-gated or independently reviewed); the
+[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)
+statements that no owner exception or reviewer policy changed are no longer current (an appended
+note there corrects them; the original lines are kept); the missing `alpha ml refit-plan`/`refit-status` entries in `.claude/rules/alpha-cli.md`; the open but deferred
+[Mac portability successor](superpowers/plans/2026-10-26-mac-portability-qualification.md#handoff-and-next-action).
+Full scope stays with the
+[canonical feature checklist](context/feature-readiness-checklist-2026-10-27.md).
+
+## 2026-10-28 Native costed claim and lease fixture repairs (unpublished, not accepted)
+
+The native fixture claim now admits the rule runtime `rule_profile` as the environment value it
+has just verified against the approved implementation fingerprint, instead of hashing the
+runtime a second time. This removes about 4s from the costed owner's in-deadline preparation
+and closes an unapproved-profile binding gap; every other trust-boundary check is unchanged.
+
+The durable-lease silent-child test holds its child until release instead of relying on a fixed
+0.25s lifetime.
+
+Gate run 7 on the preceding tree failed (2 tests) and remains the failed checkpoint. These
+changes are not yet full-gated or formally reviewed; private coverage is UNVERIFIED. Details:
+[native plan](superpowers/plans/2026-10-26-native-rule-authority.md#cloud-foundation-successor-native-and-lease-runtime-findings-2026-10-28).
+
+## 2026-10-28 Foundation batch: pre-run evidence preservation and opt-in cloud bootstrap
+
+Gate entry routes (`run_full`, `run_component`, `run_gate`) now copy existing stamp, receipt,
+review/quant attestation and coverage files to a hash-named, verified, mode-read-only checkpoint
+before replacing them, once per run, and stop before any overwrite if that copy cannot be verified.
+`scripts/cloud_setup.sh` gains opt-in (`ALPHA_CLOUD_FOUNDATION=1`) guard, exclude, pinned RD-Agent,
+qualified-venv validation, fontconfig and `origin/main` reporting steps. The native plan carries
+the stage contract and ordered foundation backlog. The gate8 checkpoint (tree `fd960490`, public
+full gate passed, review BLOCK) is separate; this batch is unqualified. Details:
+[native plan](superpowers/plans/2026-10-26-native-rule-authority.md#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation).
+
+## 2026-10-28 Gate10/gate11 startup repairs (unpublished, not accepted)
+
+Gate10 failed one lifecycle start test with its cause undetermined, because the owner log was not
+retained. The gate11 retry failed three browser cases. The successor tree adds:
+- a lazy CLI command-group dispatch: `data symbols` 4.19 s to 1.22 s;
+- deferred native-loop imports on the synthetic start path:
+  - supervisor import 2.39 s to 0.65 s;
+  - the status/claim path's `CostedRuleStudy` edge (1.44 s), which the first fix missed;
+- event-based lifecycle readiness in place of an incidental 6 s fixture bound. It has named prompt
+  no-start failures and a hang guard only. The production owner deadline is unchanged.
+- diagnostic-only failure retention.
+
+Each change has a discriminating regression and independent review. A native compatibility
+confirmation passed 254 with 0 skipped. Open findings:
+- the TMPDIR-inheritance regression ran a 2 s `success` owner that timed out four times under
+  `-n 4` (one before payload spawn, three after). No plan sets a start-up bound for it, so it now
+  passes an explicit 5 s fixture budget. The default and every strict expiry test are unchanged.
+  Why only this test timed out, while siblings with the same budget did not, was not established;
+- cold-I/O margin after the fix not independently measured; readiness margins are recorded per run.
+
+Gate12 on the approved candidate failed in backend pytest (4 failed, 1 error) and was not
+published. The independent review found no evidence of a production regression:
+- three sibling 2 s success-precondition owners ended in `timeout`, two of them by preparation
+  expiry, so the asymmetry above did not hold;
+- one test asserted on a conservative bound;
+- a setup error is consistent with an unwaited owner `Popen` in cancel-pending (not proven).
+
+Test-only repairs followed:
+- explicit 5 s budgets for those three tests;
+- `finally` cleanup with a red-to-green regression;
+- a bounded wait on the owned owner `Popen` when a stop cannot be delivered. There is no signal,
+  and a still-live owner fails loudly;
+- a readiness-based delayed-start assertion. Defaults, strict expiry
+controls and production are unchanged. Focused 25/25 and native compatibility 425/425 passed. No
+full gate has run on the repaired tree. Review remains BLOCK on the absent private holdout suite.
+
+Gate13 on the owner-approved `11b8540e` failed only in the atlas tests and was not published. The
+startup-margin receipt was 3.770 s.
+- Cause: the lazy CLI dispatch had silently removed all 24 CLI→module edges from the atlas map, and
+  had made a CLI documentation drift test vacuous.
+- Repair: the extractor reads the `GROUPS` registry and fails loudly on an unreadable shape; the
+  drift test reads the registry.
+- Disclosed as truthful: 26 `main → *_cmds` static `depends_on` edges are absent because those
+  imports are runtime registry imports, and one edge is absent because the reviewed claim repair
+  removed its import.
+- Checks: atlas 104/104; drift and docs 54/54. No full gate on the repaired tree.
+Details:
+[native plan](superpowers/plans/2026-10-26-native-rule-authority.md#gate10gate11-repairs-and-retained-diagnostics-2026-10-28).

@@ -2,7 +2,13 @@
 
 Status: available synthetic workflow assembled onto bc5; scoped public regressions and cheap checks passed. Exact source identity, independent final-review disposition and remaining acceptance blockers are in the assembly packet below. Engineering only, no empirical approval.
 
+**Current active work (2026-10-27):** the unpublished Linux cloud foundation successor to the published checkpoint below: navigation/handoff routing and gate/review freshness repair. Stage contract, evidence identities and ordered backlog: [Foundation stage contract and handoff](#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation). Status and blockers: [build record](../../BUILD-STATUS.md#2026-10-27-linux-cloud-qualification-checkpoint-published-not-accepted); review-scope repair: [gate preflight plan](2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27). The Mac successor below is preserved and deferred: its open status and requirements stand, but it is not the current stage or active owner, and its scope is not abandoned.
+
+**Canonical Packet 1 relation (2026-10-27, operational clarification):** the unchanged [Packet 1](../../context/feature-readiness-checklist-2026-10-27.md#packet-1-close-the-successor-exact-tree-gate) describes an interrupted de074 successor and its 48-of-49 result. That description is preserved historical prerequisite evidence: it is not the current c95 result and marks no feature complete. The published c95 checkpoint has public Linux gate and review evidence with private holdout coverage UNVERIFIED; the current foundation successor remains unpublished and unqualified. CHK27-PV01 resolves only through the private map and is not independently repository-accessible evidence. No equivalence between Packet 1 and this successor is asserted.
+
 **Successor (open):** [Combined Mac portability qualification](2026-10-26-mac-portability-qualification.md#handoff-and-next-action), pending slice "Independent review and final successor qualification".
+
+**Preserved published qualification checkpoint (Linux cloud, 2026-10-27, unmerged, not accepted):** branch `claude/cloud-qualification-c95f9d4d-20261027`, commit `2e0832c735d97c7da93cb79c0cce23e533dd7f1a` (tree `c95f9d4d803bef4be552736a79a4855e5bea5bf9`). Stage, repairs and limits: [Cloud qualification stabilization](#cloud-qualification-stabilization-2026-10-27); gate, review, evidence locations and blockers: [build record](../../BUILD-STATUS.md#2026-10-27-linux-cloud-qualification-checkpoint-published-not-accepted). Full scope: [canonical feature checklist](../../context/feature-readiness-checklist-2026-10-27.md); supporting history only: [build readiness handoff](../../context/build-readiness-handoff-2026-10-27.md). This pointer was added after that checkpoint and is not part of its tested tree.
 
 ```json
 {
@@ -172,7 +178,7 @@ the preserved original source. Fresh assembly evidence is in the separate `assem
 
 Portable source evidence is the public test code and these contract/worker instructions. Local
 execution receipts are **executor-only**, outside git:
-`/workspace/alpha-native-rule-authority-receipts/`. The final `REPORT.md` and candidate identity JSON
+`/workspace/alpha-native-rule-authority-receipts/` (executor-local, not durable; absent from cloud sessions). The final `REPORT.md` and candidate identity JSON
 there provide the exact patch/tree hashes and command/exit map. Preserve all numbered red receipts.
 Notable checkpoints:18 actual v1 native;19 terminal;25 failed serializer;26 canonical compiled-engine
 probe;33 costed native;34 existing projections;36 interruption recovery;40 capacity-masked trial
@@ -188,7 +194,7 @@ inspection. They are engineering artifacts and never imported into an owner data
 
 Scoped checks use the root environment read-only, candidate source PYTHONPATH, disposable
 ALPHA_DATA_DIR and sanitized provider credentials. Native checks explicitly set
-ALPHA_RDAGENT_SOURCE=/workspace/scratch/rdagent-484776-complete. The receipt commands are the
+ALPHA_RDAGENT_SOURCE=/workspace/scratch/rdagent-484776-complete (executor-local, not durable; absent from cloud sessions). The receipt commands are the
 reproduction source of truth; no heavy full gate, hidden/holdout data or provider calls are included.
 Worker typing resolves actual external upstream annotations with follow-imports=silent; missing
 optional upstream dependencies remain outside this narrow profile. Full root/worker locks are
@@ -281,11 +287,11 @@ production activation. See the W04 plan for acceptance and rollback limits.
 ## Current integration assembly
 
 The original frozen e635-based candidate is preserved at tree `d67a13e88ced67e234dd0183ad7fd01ed8c53e74`.
-The isolated `/workspace/Project-ALPHA-native-workflow-assembly` applies its full prerequisite delta
+The isolated `/workspace/Project-ALPHA-native-workflow-assembly` (executor-local, not durable; absent from cloud sessions) applies its full prerequisite delta
 to integration `bc5b58351cc334d36112167c9463a80184411cc6`. Production files merged cleanly; build
 history keeps both branches, and Atlas outputs are regenerated. Assembly verification and independent
 review dispositions are recorded in the exact-identity packet; original receipts do not qualify this
-new tree. Current assembly receipts and final identity live in `/workspace/alpha-native-rule-authority-receipts/assembly/`.
+new tree. Current assembly receipts and final identity live in `/workspace/alpha-native-rule-authority-receipts/assembly/` (executor-local, not durable; absent from cloud sessions).
 Read the assembly REPORT and identity before resuming; do not apply the patch again in that checkout.
 Other-owner handoffs remain unavailable and have not been reconstructed or integrated.
 
@@ -427,3 +433,366 @@ are read unbounded after a separate symlink check; uncertain or foreign-epoch jo
 exit; `publish_rule_run` writes files inside the open SQLite transaction. Worker: `verify_source`
 relies on the caller's `sys.pycache_prefix`; the audit hook omits `os.exec*`/`posix_spawn`/`fork`;
 the economics and positions profiles pin different `pytz`/`tqdm` versions.
+
+## Cloud foundation successor: native and lease runtime findings, 2026-10-28
+
+Unpublished successor; not full-gated or formally reviewed yet. Gate run 7 on content tree
+`f4f955d4` failed backend pytest ("2 failed, 6654 passed, 10 skipped, 2 subtests passed";
+coverage 93.18%). That tree is kept as the failed checkpoint.
+
+**Costed native owner budget.** `test_one_actual_native_rule_execution[True]` closed with
+`reason=timeout`, `returncode=-15`, `elapsed_seconds` about 20.2, and failed reproducibly.
+
+The owner's deadline starts at `_Owner.__init__` and covers launch preparation. Inside it,
+the costed path ran three full re-hashes of the 1.06 GB economics `site-packages` before spawn,
+about 4s each:
+- two inside one `claim`: line 278 via `implementation_fingerprints`, and line 320 for
+  `rule_profile`;
+- one at the pre-spawn `command()` check.
+
+The worker (about 7.6–8.3s) then exited at about +20.2–20.5s. Post-exit verification is not
+deadline-gated.
+
+The 20s value is chosen by the tests; no production caller exists and the product bound is
+`<= 60`. The repair makes `claim` admit `rule_profile` as exactly the `environment` value it
+has just verified against the approved fingerprint, instead of re-hashing:
+- one measurement per claim;
+- every pre-clock, pre-spawn, worker and completion check unchanged;
+- no cache, and no change to the deadline or thresholds.
+
+It also closes a binding gap: previously a self-consistent venv swap between the two claim
+measurements could admit an unapproved profile identity.
+
+Behaviour change: a runtime change after the claim now fails at `command()` as
+`owner_error`/`no_payload_spawn_attempted` with the claim committed, rather than inside the claim.
+
+Regressions:
+- the claim admits the approved value with one measurement; red against the old code;
+- three changes-after-claim fail closed before trusted completion.
+
+Bounded real runs at `seconds=20` all completed with `exit`/`pending_scientific_admission`:
+5 clean (`elapsed_seconds` 20.73–22.95) and 3 under owned hashing load (21.18–21.92). The
+worker-exit margin is only about 1–3s.
+
+**Lease silent-child test.** The fixed 0.25s child lifetime made `heartbeats >= 2` depend on
+renewal latency. A single renewal stall of about 0.25s reproduces "1 >= 2". The test now holds
+a silent child until release, re-reads the final heartbeat before the post-stop reconcile, and
+cleans up only its owned child. A lease that never renews still fails (0 >= 2).
+
+**Runtime contract: orphan reaping.** In this container PID 1 (`/process_api
+--firecracker-init`) reaps orphaned zombies about 1.93s after a group SIGKILL (20 of 20).
+`terminate_and_reap` and lease cancellation verify group exit within 0.2s, so tests with
+orphaned descendants pass only under the gate's Linux pytest owner. `scripts/run_owned_test.py`
+is a `PR_SET_CHILD_SUBREAPER`; under it 2 tests passed 3 of 3, and as plain `pytest` they
+failed 3 of 3. Run Linux pytest through the gate or that owner. Plain pytest results for these
+tests are not evidence.
+
+**Open (pre-existing, not fixed):**
+- the `rule-profile.json` double-read race (`_native_rule_environment.py:45`/`:85`;
+  `rule_probe.py:17`/`:28`);
+- venv `.pth`/site code runs before the worker's checks under `-I`;
+- the claim holds its write transaction while hashing;
+- completion's duplicate measurement;
+- `cpu_milliseconds` not enforced.
+
+**Costed success-fixture budget and cleanup (same successor).** Even after the claim repair, the
+test's literal `seconds=20` and outer `process.wait(timeout=30)` lacked headroom under the
+canonical gate wrapper at `-n 4`. One run failed at the outer 30s wait, and the leaked owner `Popen`
+then raised `ResourceWarning` inside an unrelated test in the same worker.
+
+The test now uses `NATIVE_SUCCESS_FIXTURE_SECONDS = 45`, within the product's `0 < seconds <= 60`
+contract and the pilot's 300s wall budget, and an outer wait of that plus 45s. On an outer-wait
+failure it sends the datagram stop request to only its owned owner, waits 15s, then terminates or
+kills that `Popen`. It never signals numeric pids or groups. If no outcome was recorded, it attaches
+a "payload group may remain" note naming the recorded leader pid, and the original failure is
+re-raised.
+
+Production deadline start and semantics are unchanged. Deadline and fail-closed behaviour stay
+pinned by tests that set their own deadlines. The lost timing canary for the duplicate hash is
+covered deterministically by the claim regressions.
+
+Canonical wrapper `-n 4`, 4 runs (2 focused sets, 2 native-module runs): all passed. Costed owner
+`elapsed_seconds` 20.62–22.37 (`exit`), including the roughly 4s post-exit verification;
+positions 6.94–7.70.
+
+## Foundation stage contract and handoff (ICM-aligned, ALPHA adaptation)
+
+**Source and labels.** The structure follows the Interpretable Context Methodology: arXiv
+[2603.16021v2](https://arxiv.org/pdf/2603.16021v2) by Jake Van Clief and David McDermott, and the
+companion repository [RinDig/Interpretable-Context-Methodology](https://github.com/RinDig/Interpretable-Context-Methodology)
+at `02ba5d85c7871b75c7c702a2d8da6524723d53d4`. The scope notes are as summarized by the owner and
+were not re-derived here:
+- **Paper:** sequential stages with human review; no performance benchmark; staleness propagation
+  left as future work.
+- **ALPHA adaptation (labelled):** automated independent review, and stale-input rejection at
+  consumption.
+- **Not adopted:** the companion convention that a non-empty output directory means complete. Here
+  completion binds artifact identity, checks and review state.
+
+Each fact has one home:
+- routing: `CLAUDE.md` and this plan's front matter;
+- stage contract: this section;
+- constraints: `.claude/rules/` and ADRs;
+- artifacts: `.alpha/state/` receipts and checkpoints.
+
+**Stage: cloud foundation successor.**
+- **Inputs:**
+  - this plan: front "Current active work", "Cloud foundation successor: native and lease runtime
+    findings, 2026-10-28", and this section;
+  - [build record](../../BUILD-STATUS.md) "2026-10-28 Native costed claim and lease fixture repairs";
+  - [gate preflight plan](2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27);
+  - [harness](../../operations/claude-code-harness.md);
+  - README "Linux cloud development setup" and `workers/rdagent/README.md` "Reproduce";
+  - `scripts/gate.py`, `scripts/gate_components.py`, `scripts/git_guard.py`, `scripts/cloud_setup.sh`.
+- **Outputs:**
+  - the candidate worktree;
+  - `.alpha/state/gate-stamp.json` plus six `component-*.json` receipts;
+  - `.alpha/state/review-verdict.json`;
+  - pre-run checkpoints `.alpha/state/gate-checkpoints/pre-run-<manifest hash>/`;
+  - dated checkpoints `.alpha/state/portable-evidence/<name>/`.
+- **Evidence identity:**
+  - `compute_tree_hash`;
+  - the stamp's `comparison` binding (reference, resolved base, merge base, selection mode);
+  - each receipt's `definition_hash`;
+  - the review's `reviewed_tree_hash` and `bound_review_diff_hash`;
+  - each checkpoint's `MANIFEST.tsv` (path, bytes, SHA-256).
+- **Status values**, each read from an existing mechanism:
+  - **passed:** `uv run python scripts/gate.py check --tier full` exits 0 (`full_stamp_usable`). This
+    covers public checks only.
+  - **failed:** a receipt has `status: failed`, or the gate exits non-zero.
+  - **blocked:** a required input or verdict is absent or BLOCK, such as the holdout suite or a
+    BLOCK review.
+  - **stale:** `check` reports a tree, base, definition or review-scope mismatch.
+  - **Stage complete:** requires passed, plus an APPROVE review bound to the same tree, plus an owner
+    decision.
+
+**Resume and stale-input rejection.** On re-entry:
+1. Run `gate.py orient` and `gate.py check --tier full`.
+2. Compare the current `compute_tree_hash` with the checkpoint's recorded tree.
+
+A match with a usable stamp resumes. Anything else is stale and is rerun, never inherited.
+`git_guard` rejects stale or unbound evidence at commit. Every `run_full`, `run_component` and
+`run_gate` entry first copies the allowlisted stamp, receipts, review/quant attestations and
+coverage files into a hash-named, verified, mode-read-only checkpoint. If that copy cannot be
+verified, the run stops before any overwrite. These checkpoints are not immutable against the
+root user. `gate.py attest` overwrites review/quant attestations without this preservation. A failed
+attempt keeps its `.incomplete-*` staging copy in `gate-checkpoints/`; these copies and the
+checkpoints are retained without a retention bound and are not cleaned up. Staleness is not
+propagated between stages automatically.
+
+**Storage classes.**
+- **Durable:** git-tracked files on a pushed branch.
+- **Ignored local:** clone-only, lost when the container is reclaimed:
+  - `.alpha/state/**` (receipts, checkpoints, `runtime/fontconfig/`);
+  - `workers/rdagent/.venv-*-qualified/`;
+  - the derived RD-Agent root.
+- **Transient:** `/tmp`, session scratch, and the `/workspace/...` executor paths above, which are
+  executor-local and not durable.
+- **Reproduction:** `ALPHA_CLOUD_FOUNDATION=1 bash scripts/cloud_setup.sh` (README). It validates
+  every environment against its recorded rule profile with `measure_rule_environment` (owner approval binds later, at claim) and never rebuilds a validated one.
+  An interrupted build is detected by its `.incomplete` marker and kept; README "Linux cloud
+  development setup" gives the explicit retirement step.
+
+**Checkpoints (distinct; no self-hash).**
+- **Gate8 (dated):** `.alpha/state/portable-evidence/cloud-foundation-fd960490-gate8-20261028/`,
+  `MANIFEST.tsv` SHA-256 `d48814f9213fc1f33c911ab329d6b5c06e672adbd9491dbe5f3013a51886c84d`.
+  - Content tree `fd960490c663a451699ee4918fd329b2c728ca22`, `compute_tree_hash`
+    `e2188ecb9669feed6881894a19f8068280f04002eb538bbaf5b64d2e56152cd8`, against
+    `origin/main` = merge base `99f2d472`.
+  - Public full gate passed (six components, one stable tree).
+  - Independent review: BLOCK (holdout absent). Not accepted. Its `reviewed_diff_hash`
+    `e3b0c442…b855` is correct: that field is the risk-tier scoped diff hash, and no risk-tier path
+    changed. The verdict records were never attested; an author transcription of the later batch
+    verdict was abridged and is superseded by the verbatim hand-back.
+- **New batch:** this section, the opt-in bootstrap and pre-run preservation are a later,
+  **unqualified** tree. Its identity is recorded with its own gate and review, not here.
+
+**Ownership.**
+- `/home/user/project-alpha` (branch `claude/cloud-foundation-successor-f4f955d4`, unpushed) is
+  authoritative for the successor.
+- The original checkout holds the failed gate7 checkpoint (`f4f955d4`) and the c95 evidence.
+
+Cleanup and refactor are not complete (backlog items 1 and 4).
+
+**Ordered foundation backlog.**
+1. **Workspace and file ownership.** Stated above. Moving or retiring duplicate checkouts and old
+   evidence is an owner decision; nothing is deleted.
+2. **Scoped context, handoff and evidence separation.** This section. Missing: one fresh-context
+   navigator retrieval recorded as acceptance.
+3. **Enforceable Software Team controls.** Implemented:
+   - stamp and review binding;
+   - consumption checks;
+   - pre-run preservation.
+
+   Missing: the holdout suite, an owner decision, and an early clear failure when descendant tests
+   run outside `scripts/run_owned_test.py`.
+4. **Targeted bloat/refactor.** Only the reviewer's low `changed_paths` wrapper is in scope. Broad
+   bloat remains an explicit open item.
+5. **Reproducible cloud bootstrap.** Opt-in `cloud_setup.sh` steps, with idempotent re-entry
+   demonstrated; build, validation, dirty-source and interrupted-build paths are covered by stubbed
+   tests. Missing:
+   - a fresh-container run that creates the venvs;
+   - acquiring the pinned source without an existing pristine checkout (no alternate fetch route
+     is provided).
+
+## Gate10/gate11 repairs and retained diagnostics, 2026-10-28
+
+**Gate10 (c88 candidate `15fa86f9`).** It failed the lifecycle start precondition
+(`test_controller_death_preserves_same_owner_for_cancel`, "synthetic payload did not start"). Its
+owner log was not retained, so **the gate10 cause stays undetermined**.
+- A single retry, gate11, failed three browser cases.
+- Neither run produced a stamp.
+- The independent review withdrew its APPROVE. The attestation was retired unchanged into ignored
+  evidence.
+
+**Successor repairs.** Each has a discriminating regression and the same independent reviewer.
+
+- **Lazy CLI group dispatch** (`alpha_cli/main.py`). One registry feeds the full `app` and the
+  console entry, which loads only the invoked group.
+  - `alpha data symbols --json`: idle cost went from 4.19 s / 4.70 CPU-s to 1.22 s / 1.47 CPU-s,
+    with identical output.
+  - The three gate11 browser cases now pass singly.
+  - A 15 s picker wait inside a passing assertion remains unexplained and is disclosed.
+- **Deferred native-loop imports on the synthetic start path.**
+  - The first fix made `NativeLaunch` lazy in `native_supervisor.py` (supervisor import: 2.39 s to
+    0.65 s). Its regression covered only that import, so **it missed the real heavy edge**.
+  - `_native_fixture_store` imported `CostedRuleStudy` at module level. That reached
+    `alpha_research` and `scipy` on every status read and claim, including inside the owner's 5 s
+    preparation deadline.
+  - That import now sits in the rule-only claim branch. A status- and claim-path regression was red
+    before this change and green after.
+  - Status path in a fresh interpreter: 0.49 s. The removed edge costs 1.44 s.
+- **Lifecycle readiness.** The fixed 6 s `_until_started` bound was an incidental fixture bound, not
+  a start-up contract; the only time contract is the owner `seconds` deadline, which is unchanged.
+  It was replaced with event-based readiness:
+  - ready means the payload marker AND the claim;
+  - named prompt failures, in check order: terminal or quarantined, then launcher exit, then owner
+    gone before claim (a non-blocking lock probe, released at once);
+  - a 60 s hang guard, which is not a requirement;
+  - an opt-in, conservative birth-based owner-deadline check for the three callers whose post-ready
+    checks need a live owner;
+  - cheap polling, with a store read only every 0.5 s or once the marker exists.
+
+  Real-process negatives cover:
+  - terminal no-start;
+  - launcher exit;
+  - owner death before claim, through a real AF_UNIX path-length bind failure;
+  - a slow pre-owner launcher.
+
+  Quarantine before readiness has no dedicated test.
+- **Diagnostic-only failure retention** in the controller-death test. It records status, the owner
+  log and file times, and capture never masks the original assertion.
+
+**Cold-start reproduction (pre-claim-import fix, retained evidence).** The gate10 failure recurred on a
+freshly started container.
+- The owner was alive with an empty log and claimed only after the 6 s window.
+- It then honoured the stop: `cancelled`, `no_payload_spawn_attempted`, 2.50 s of 5 s used.
+- Phases:
+  - controller import: 1.06 s;
+  - controller status read: 2.26 s;
+  - owner start to control socket: 1.11 s;
+  - claim: more than 1.6 s.
+- The independent review attributes this largely to the claim-path import, now removed. The
+  historical gate10 cause stays unproven.
+
+**TMPDIR regression budget.**
+- `test_owner_child_inherits_the_workspace_temp_directory` is the TMPDIR-inheritance regression
+  above. It has no start-up bound. It used the 2 s default of `start_synthetic_owner` with the
+  `success` fixture, and at `-n 4` it timed out four times (receipts sealed in
+  `lifecycle-readiness-claim-import-20261028`):
+  - once during launch preparation, with no payload spawned, at 2.2417 s;
+  - three times after the payload spawned, killed with returncode -15 at 2.218–2.245 s.
+- With independent-review endorsement, it now passes `seconds=5`. That is the existing fixture
+  convention for a normal outcome after cold starts.
+- Unchanged:
+  - the default of 2.0;
+  - production enforcement;
+  - its two sibling 2 s tests;
+  - every strict expiry test (`seconds=0.001`, the insufficient-deadline test, and the adversarial
+    preparation-expiry cases).
+
+**Open findings.**
+- The asymmetry is not established. The siblings with the same 2 s budget were not observed
+  failing. With n = 4, chance cannot be separated from a TMPDIR-specific cost.
+- Cold-I/O margin after the claim-import fix has not been independently measured.
+  - The controller-death test records `start_ready_seconds` and
+    `start_deadline_remaining_lower_bound` on every run.
+  - Qualification reports the minimum and the sample count from the owned compatibility run and the
+    final full gate.
+  - A lower bound below 1.0 s blocks.
+
+**Status before gate12.** Targeted failures and helper checks pass: 16. One finite native
+compatibility confirmation: 254 passed, 0 skipped.
+
+**Gate12 (approved candidate `2a67bad6`, failed, not published).** One full gate failed in backend
+pytest: 4 failed, 1 error, 6703 passed, all on one xdist worker. The independent review found no
+evidence of a production regression; the owner's in-deadline path only lost work. Its
+classification:
+- Three sibling tests ran 2 s `success`/`failure` owners that ended in `timeout`:
+  - normal-exit and cancel-pending hit preparation expiry (`no_payload_spawn_attempted`, 2.22 s and
+    2.10 s);
+  - `failure-2` recorded `timeout` instead of `exit`; its elapsed time and phase were not logged.
+- The earlier "only the TMPDIR test" asymmetry therefore did not hold. Two seconds was a success
+  precondition in each, not a start-up requirement.
+- The delayed-start test asserted `>= 1.0` on the conservative birth-based bound, which also
+  counts pre-deadline start-up. It read 0.939.
+- The controller-death test errored at setup on a `ResourceWarning` for an unwaited owner `Popen`.
+  This is consistent with cancel-pending, which had no `finally`, but not proven: the creating
+  test and the worker identity were not logged. The leak did not cause the three timeouts, which
+  are separate fail-closed outcomes.
+
+**Test-only repairs after gate12.**
+- The three success-precondition tests pass `seconds=5`, the existing cold-start convention, with
+  the same not-a-requirement comment.
+- Cancel-pending reaps its owner in `finally`. A regression injects a readiness failure after the
+  owner binds its stop endpoint and requires the owner to be waited. It is red on the old test and
+  green on the new one.
+- The delayed-start test asserts readiness after more than 7 s, which suffices because spawn
+  refuses dispatch once the owner deadline has passed. It records the bound without asserting on
+  it.
+- Unchanged: the default of 2.0, `("wait", 0.3)`, every strict expiry, no-start, crash and
+  quarantine test, production, and the controller-death `>= 1.0 s` readiness precondition.
+- Cleanup on every failure path. Cancel-pending requests owner cleanup on every failure path.
+  Its owner `Popen` is waited whenever the stop request is delivered or the owner has already
+  exited.
+- Undeliverable stop. If stop delivery stays uncertain for 3 s, the shared `_stop_test_owner` waits
+  only on that exact owned `Popen`, with no signal and no takeover. The bound is the claimed fixture
+  `seconds` (finite, 0–60 s under the synthetic contract, otherwise 10) plus the existing 8 s
+  cleanup allowance.
+- Still live after the bound. A still-live owner then fails loudly with "live owner stop is
+  uncertain" and is never reported cleaned. Its `Popen` may remain unwaited, and a later GC
+  `ResourceWarning` can error an unrelated test. This applies equally to the pre-existing siblings.
+- Tests for the bounded wait. Deterministic tests cover an undeliverable stop that is reaped after
+  the owner's own deadline (red against the earlier helper) and a still-live owner that fails
+  loudly without a signal.
+- Checks: the focused cleanup and expiry negative set passed 25/25. One native compatibility set
+  passed 425/425 with 0 skipped, before the bounded wait. Afterwards the two bounded-wait tests and
+  the original cleanup regression passed 3/3.
+
+**Gate13 (owner-approved `11b8540e`, failed, not published).**
+- Results: backend, frontend, literature and qlib passed. The controller-death startup-margin receipt
+  was unique: ready 1.485 s, lower bound 3.770 s. Atlas `tests` failed 1/102:
+  `test_groups_call_their_cmds_module`.
+- Cause: a genuine regression from the lazy CLI dispatch. The atlas `cli_tree` extractor read
+  group→module edges only from static `from alpha_cli.X import …` plus `add_typer(alias, name=…)`,
+  and `main.py` now registers groups through the `GROUPS` literal.
+- Effect on the generated graph: it had lost all 24 CLI→module `calls` edges. The earlier Atlas
+  "fresh" result compared against that already degraded output.
+- A second silent case: the CLI-awareness drift test's `add_typer` regex matched 0 names (24 at the
+  base), so it passed vacuously.
+
+**Atlas repair.**
+- The extractor also reads the `GROUPS` literal, with line provenance. It raises on any GROUPS shape
+  it cannot read, so it can no longer yield zero edges silently.
+- Two new atlas tests check the exact 24 registry pairs and the malformed-registry failure. Both
+  were red before the fix.
+- The drift test reads `alpha_cli.main.GROUPS` and requires all 24 names.
+- Regenerated graph: the 24 `calls` pairs are identical to the base.
+- `depends_on` disclosure. The 26 `main → *_cmds` edges are absent, because those imports are now
+  runtime registry imports, not static ones; they appear only as registry data and the restored
+  `calls` edges. The `_native_fixture_store → _native_rule_environment` edge is absent, because the
+  reviewed claim repair removed that import. Import-linter contracts are unaffected (intra-package).
+- Checks: atlas suite 104/104; drift, docs and lazy-CLI tests 54/54.
+
+**Status.** No full gate on the repaired tree. Review is BLOCK: the private holdout suite is absent,
+and the approved exception covers only `2f9d0c3d`, not this tree.

@@ -118,8 +118,19 @@ The CLI, Workstation, and MCP share the configured data store and authority rule
 
 With `uv`, Python 3.12, Node/npm, GNU `timeout`, and Chromium system libraries already available,
 run `bash scripts/cloud_setup.sh`. It installs locked root/frontend dependencies and pinned
-Chromium, then runs CLI and browser-runtime smokes. It does not provision isolated workers or
-replace app E2E tests and the full gate.
+Chromium, then runs CLI and browser-runtime smokes. It does not replace app E2E tests and the full
+gate. With `ALPHA_CLOUD_FOUNDATION=1` it also installs the Git guards, appends the two worker-venv
+excludes, regenerates the verified fontconfig below into `.alpha/state/runtime/fontconfig/` and
+reports (never fetches) `origin/main`. Adding `ALPHA_RDAGENT_PRISTINE` and `ALPHA_RDAGENT_SOURCE`
+verifies the pinned checkout, builds the derived root and qualified worker venvs only when absent,
+and validates existing ones against their recorded rule profile. Each step fails loud; none claims readiness.
+A venv build writes `.alpha/state/runtime/rdagent-venv-<profile>.incomplete` first and renames it to
+`.built-<UTC>` only after the new environment validates. If that marker remains, a re-run keeps a venv
+that now validates in place and otherwise refuses, preserving the partial venv. Only then, and only for
+a marker in exactly the script's own one-line format, `ALPHA_RDAGENT_RETIRE_INTERRUPTED=1` moves the
+venv and marker unchanged to `.alpha/state/runtime/interrupted/<profile>-<UTC>/` (kept as evidence, not
+runnable because its paths name the original location) and builds afresh. Unmarked environments are
+never moved, and nothing is deleted.
 
 Persist these environment-level settings separately so later shells inherit them:
 

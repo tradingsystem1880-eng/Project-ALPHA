@@ -26,6 +26,20 @@ step and is not asserted by the presence of those files.** Verify `core.hooksPat
 tests before claiming commit enforcement is active. Git hooks are bypassable local convenience
 checks; CI must independently verify changes.
 
+At commit time the guard also requires the full stamp's recorded comparison base (reference,
+resolved commit, merge base and selection mode) and all six component receipts to match the current
+base and component definitions; only the interpreter path is abstracted between the gate and the
+hook. Review attestations must carry the current `reviewed_tree_hash` and bind the review-scope paths
+and diff, so later review-scope edits invalidate them; legacy stamps and review records fail closed.
+`gate.py check --tier full` applies the same stamp check; the statusline and Stop hook report
+tree-only freshness. The recorded interpreter is diagnostic, not
+enforced.
+Before `gate.py full`, `component` or `fast` replaces any of that evidence, an explicit allowlist
+(stamp, receipts, review/quant attestations, coverage files) is copied to a hash-verified,
+mode-read-only `.alpha/state/gate-checkpoints/` entry; if that fails, the run stops before overwriting.
+A failed attempt leaves its `.incomplete-*` staging copy (possibly read-only) in place and names it;
+nothing cleans these up and checkpoints have no retention bound. `gate.py attest` is not covered.
+
 ## Thin Claude adapter
 
 `scripts/claude_hooks.py` is stdlib-only and has precisely four entrypoints:

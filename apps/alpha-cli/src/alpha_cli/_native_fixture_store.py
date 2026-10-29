@@ -14,7 +14,6 @@ import sys
 from collections.abc import Mapping
 from typing import cast
 
-from alpha_cli._native_rule_economics import CostedRuleStudy
 from alpha_cli.control_store import (
     ControlStore,
     _at,
@@ -273,14 +272,12 @@ def claim(store: ControlStore, job_id: str, owner: object) -> dict[str, object]:
                 != owner.native.fingerprint
             ):
                 raise DataError("native worker manifest differs from the reserved invocation")
-            if (
-                request["native_invocation_spec"]["implementation_fingerprints"]
-                != owner.native.implementation_fingerprints()
-            ):
+            fingerprints = owner.native.implementation_fingerprints()
+            if request["native_invocation_spec"]["implementation_fingerprints"] != fingerprints:
                 raise DataError("native worker differs from approved implementation fingerprints")
             rule_extra: dict[str, object] = {}
             if owner.native.study is not None:
-                from alpha_cli._native_rule_environment import measure_rule_environment
+                from alpha_cli._native_rule_economics import CostedRuleStudy
                 from alpha_cli._native_rule_protocol import (
                     require_rule_confirmation,
                     worker_request,
@@ -317,9 +314,8 @@ def claim(store: ControlStore, job_id: str, owner: object) -> dict[str, object]:
                     raise DataError("rule baseline/control require two exposures and five stages")
                 rule_extra = {
                     "rule_request": worker_request(isinstance(owner.native.study, CostedRuleStudy)),
-                    "rule_profile": measure_rule_environment(
-                        isinstance(owner.native.study, CostedRuleStudy)
-                    ),
+                    # Bind the environment just verified against the approved bytes.
+                    "rule_profile": fingerprints["environment"],
                     "study_id": owner.native.study.content_sha256,
                     "trial_id": reservation["reservation_id"],
                     "owner_receipt_id": receipt_id,

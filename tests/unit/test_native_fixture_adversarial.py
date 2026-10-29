@@ -298,7 +298,7 @@ def test_suspended_owner_expiry_never_authorizes_takeover(case: Case) -> None:
     before = store.research_case_summary(PROJECT_ID)["elapsed_budget"]
     process = start_synthetic_owner(root, JOB, fixture="wait", seconds=2)
     try:
-        _until_started(root, store)
+        _until_started(root, store, process)
         _suspend_owner(process, store, holding_write=False)
         claim = store.native_fixture_status(JOB)["claim"]
         time.sleep(2.1)
@@ -327,7 +327,7 @@ def test_owner_suspended_inside_write_transaction_fails_closed_without_takeover(
     before = store.research_case_summary(PROJECT_ID)["elapsed_budget"]
     process = start_synthetic_owner(root, JOB, fixture="wait", seconds=10)
     try:
-        _until_started(root, store)
+        _until_started(root, store, process)
         claim = store.native_fixture_status(JOB)["claim"]
         _suspend_owner(process, store, holding_write=True)
         # Even a reader's connection setup may block here; only the fail-closed result matters.
@@ -373,7 +373,7 @@ def test_detached_escape_retains_charge_and_capacity_after_owner_exit(case: Case
     escaped_verified = False
     exited = select.poll()
     try:
-        _until_started(root, store)
+        _until_started(root, store, process)
         deadline = time.monotonic() + 3
         while not marker.exists() and time.monotonic() < deadline:
             time.sleep(0.01)
@@ -623,7 +623,7 @@ def test_lease_and_owner_share_one_cleanup_across_failure_paths(
         with supervisor._open_lock(root, JOB) as lock, ThreadPoolExecutor(max_workers=1) as pool:
             running = pool.submit(supervisor._run_owner, root, JOB, "descendant", 5, lock)
             if mode == "cancellation":
-                _until_started(root, store)
+                _until_started(root, store, None)  # in-process owner: no launcher
                 store.cancel_native_fixture(JOB, reason="cancel the retained synthetic group")
             try:
                 running.result(timeout=8)

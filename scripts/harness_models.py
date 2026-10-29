@@ -34,6 +34,7 @@ class GateStamp(_Strict):
     tree_hash: str
     duration_seconds: float
     steps: list[GateStep]
+    comparison: dict[str, str | None] | None = None
 
 
 class QuantClaim(_Strict):
@@ -115,9 +116,11 @@ class ReviewVerdict(_Strict):
 
 
 class ReviewAttestation(_Strict):
-    schema_version: Literal[2] = 2
+    schema_version: Literal[3] = 3
     created_at: str
     verdict: ReviewVerdict
+    bound_review_paths: list[str]
+    bound_review_diff_hash: str
 
 
 class OnceToken(_Strict):

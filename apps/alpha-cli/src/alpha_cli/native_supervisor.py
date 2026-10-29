@@ -25,12 +25,14 @@ from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import BinaryIO, Literal
+from typing import TYPE_CHECKING, BinaryIO, Literal
 
-from alpha_cli._native_loop_admission import NativeLaunch
 from alpha_cli.control_store import ControlStore
 from alpha_cli.durable_lease import DurableJobLease, _observe_retained_child, terminate_and_reap
 from alpha_core import DataError
+
+if TYPE_CHECKING:
+    from alpha_cli._native_loop_admission import NativeLaunch
 
 if sys.platform != "win32":
     import fcntl
@@ -39,6 +41,13 @@ Fixture = Literal["success", "failure", "wait", "descendant", "escape", "native_
 _FIXTURES = {"success", "failure", "wait", "descendant", "escape", "native_loop"}
 _MARKER = "ALPHA synthetic native lifecycle v1\n"
 _SEAL = object()
+
+
+def _native_launch_type() -> type[NativeLaunch]:
+    """The canonical NativeLaunch class, imported only on native-loop paths that use it."""
+    from alpha_cli._native_loop_admission import NativeLaunch
+
+    return NativeLaunch
 
 
 class _FixtureDeadlineExpired(DataError):
@@ -176,7 +185,7 @@ class _Owner:
         self.root = _fixture_root(root)
         self.job_id = job_id
         self.fixture = fixture
-        if (native is not None and type(native) is not NativeLaunch) or (
+        if (native is not None and type(native) is not _native_launch_type()) or (
             (fixture == "native_loop") != (native is not None)
         ):
             raise DataError("native loop fixture requires its fixed launch identity")
@@ -616,7 +625,7 @@ def start_synthetic_owner(
     """Start one trusted owner only. Reconnect is a separate, non-spawning store operation."""
     _fixture_root(root)
     host_identity()
-    if (native is not None and type(native) is not NativeLaunch) or (
+    if (native is not None and type(native) is not _native_launch_type()) or (
         (fixture == "native_loop") != (native is not None)
     ):
         raise DataError("native loop fixture requires its fixed launch identity")
@@ -706,7 +715,7 @@ def _entry() -> None:
         native = (
             None
             if args.native_source is None
-            else NativeLaunch(
+            else _native_launch_type()(
                 args.native_source, args.native_mode, study=study, authority=authority
             )
         )

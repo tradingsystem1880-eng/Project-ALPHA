@@ -196,7 +196,7 @@ def test_sqlite_writer_lock_cannot_block_physical_cleanup(
     )
     writer = sqlite3.connect(root / "control" / "workstation.sqlite3", isolation_level=None)
     try:
-        _until_started(root, store)
+        _until_started(root, store, process)
         pid = _pid(root)
         deadline = time.monotonic() + 5
         while True:
@@ -277,7 +277,7 @@ def test_malformed_and_wrong_job_control_messages_cannot_dispatch_or_stop_anothe
     root, store, _, _ = case
     process = start_synthetic_owner(root, JOB, fixture="wait", seconds=10)
     try:
-        _until_started(root, store)
+        _until_started(root, store, process)
         pid = _pid(root)
         endpoint = root / "control" / f"native-{JOB}.stop"
         with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as sender:

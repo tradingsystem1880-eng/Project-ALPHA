@@ -110,3 +110,36 @@ Reviewer template alignment (owner-approved): `.claude/agents/independent-review
 review-scope diffs. Only those two lines changed; holdout execution, BLOCK discipline, exceptions,
 the verdict schema and the risk-scoped `reviewed_diff_hash` are unchanged. A regression binds the
 literal template, the command's review-scope list and attestation of a supplied protected path.
+
+Later on 2026-10-27 a one-time absent-private-suite exception for candidate `3c3b0d28` was
+appended to the same reviewer file with owner approval (see its 2026-10-27 section); the two
+statements above describe this alignment change only and are no longer current constraints:
+the reviewer file now also carries that candidate-scoped exception.
+The remaining gate/review freshness repair (commit-time binding of component definitions,
+comparison base and review scope) is current active work of the unpublished Linux cloud foundation
+successor; status and blockers are in the
+[build record](../../BUILD-STATUS.md#2026-10-27-linux-cloud-qualification-checkpoint-published-not-accepted).
+
+## Commit-time gate and review provenance, 2026-10-27
+
+Unpublished foundation successor; not yet full-gated or independently reviewed.
+`gate_components.comparison_context` is the single comparison-base resolution: reference
+(`ALPHA_GATE_BASE` verbatim when set, else `origin/main`), resolved commit via
+`--end-of-options`, merge base from that commit, selection mode and changed paths. `changed_paths`,
+the backend definition and preflight's `mutation_selection` use it. Preflight output is unchanged for
+resolvable and unresolvable refs; an OS or subprocess error while resolving the ref now yields
+`selection_error` and the conservative fallback instead of propagating (fails safe).
+`run_full` computes it once, records its binding in the stamp and every receipt with the receipt's
+interpreter, and writes no stamp if the base moved during the run. `full_stamp_usable` (Git guard and
+`gate.py check --tier full`) rejects a missing or changed binding, a missing, altered or stale receipt
+or definition; the interpreter path is the only abstracted command element. Unrelated refs do not
+invalidate; a different reference string does even at the same commit. Receipts record
+the interpreter that ran the gate, but it is not itself bound: arguments equal to it are abstracted, so
+a gate run under any interpreter can satisfy the hook's portable comparison.
+
+Review attestation now requires the current `reviewed_tree_hash` and stores the review-scope paths
+and diff hash (schema 3); `review_verdict_valid` requires them unchanged, alongside the existing
+risk-tier `reviewed_diff_hash`. Schema-2 records and stamps without a binding still parse but never
+qualify. The reviewer reports `reviewed_tree_hash` itself, so local code proves only that the attested
+tree equals the claimed one. No threshold, exclusion, reviewer instruction or hook changed. Design:
+three read-only design reviews ending DESIGN-OK (session receipts, not repository evidence).

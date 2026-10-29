@@ -47,4 +47,130 @@ try {
     await browser.close();
 }
 JS
+
+if [ "${ALPHA_CLOUD_FOUNDATION:-}" = 1 ]; then
+    # Opt-in clone-local foundation; idempotent, fails loud, never fetches or claims readiness.
+    cd "$root"
+    echo 'cloud-setup: Git guards'
+    uv run --locked python -B scripts/git_guard.py install
+    exclude="$(git rev-parse --git-path info/exclude)"
+    mkdir -p "$(dirname -- "$exclude")"
+    touch "$exclude"
+    for entry in /workers/rdagent/.venv-rule-qualified/ /workers/rdagent/.venv-economics-qualified/; do
+        grep -qxF -- "$entry" "$exclude" || printf '%s\n' "$entry" >>"$exclude"
+    done
+
+    if [ -n "${ALPHA_RDAGENT_PRISTINE:-}" ]; then
+        pin=484776c211e4fbbeef03e0ec00d6bbee7362a4f4
+        echo "cloud-setup: RD-Agent pristine checkout at $pin"
+        derived="${ALPHA_RDAGENT_SOURCE:?ALPHA_RDAGENT_SOURCE must name the derived RD-Agent root}"
+        head="$(git -C "$ALPHA_RDAGENT_PRISTINE" rev-parse HEAD)"
+        if [ "$head" != "$pin" ] || [ -n "$(git -C "$ALPHA_RDAGENT_PRISTINE" status --porcelain)" ]; then
+            echo "cloud-setup: $ALPHA_RDAGENT_PRISTINE is not the unmodified pinned commit ($head)" >&2
+            exit 1
+        fi
+        if [ ! -e "$derived" ]; then
+            partial="$(mktemp -d "$derived.partial.XXXXXX")"
+            cp -a "$ALPHA_RDAGENT_PRISTINE/rdagent" "$ALPHA_RDAGENT_PRISTINE/LICENSE" \
+                "$ALPHA_RDAGENT_PRISTINE/pyproject.toml" "$partial/"
+            mv -T "$partial" "$derived"
+        fi
+        uv run --locked python -B -c 'import sys; from pathlib import Path; sys.path.insert(0, "workers/rdagent"); from source_pin import verify_source; print("cloud-setup: RD-Agent source tree", verify_source(Path(sys.argv[1])))' "$derived"
+        runtime="$root/.alpha/state/runtime"
+        stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+        mkdir -p "$runtime"
+        measure() {
+            uv run --locked python -B -c 'import sys; from alpha_cli._native_rule_environment import measure_rule_environment; print(measure_rule_environment(sys.argv[1] == "economics"))' "$1"
+        }
+        for profile in rule economics; do
+            venv="workers/rdagent/.venv-$profile-qualified"
+            marker="$runtime/rdagent-venv-$profile.incomplete"
+            if [ -e "$marker" ]; then
+                # Only a marker this script wrote identifies an owned, never-validated build.
+                if [ "$(wc -l <"$marker")" != 1 ] || ! grep -qxE 'build started [0-9]{8}T[0-9]{6}Z' "$marker"; then
+                    echo "cloud-setup: $marker was not written by an interrupted build here; inspect it, nothing moved" >&2
+                    exit 1
+                fi
+                if [ -e "$venv" ] && measure "$profile" >/dev/null 2>&1; then
+                    echo "cloud-setup: $venv validates despite an interrupted-build marker; kept in place"
+                elif [ "${ALPHA_RDAGENT_RETIRE_INTERRUPTED:-}" != 1 ]; then
+                    echo "cloud-setup: $venv setup was interrupted ($(cat "$marker")); partial contents are preserved." >&2
+                    echo "cloud-setup: rerun with ALPHA_RDAGENT_RETIRE_INTERRUPTED=1 to move them unchanged to $runtime/interrupted/ and build afresh" >&2
+                    exit 1
+                else
+                    retired="$runtime/interrupted/$profile-$stamp"
+                    mkdir -p "$runtime/interrupted"
+                    mkdir "$retired"
+                    [ ! -e "$venv" ] || mv -T "$venv" "$retired/venv"
+                    mv "$marker" "$retired/marker"
+                    echo "cloud-setup: interrupted $profile environment retired to $retired (not runnable; its paths name $venv)"
+                fi
+            fi
+            if [ ! -e "$venv" ]; then
+                flag=""
+                [ "$profile" = economics ] && flag="--economics"
+                printf 'build started %s\n' "$stamp" >"$marker"
+                uv venv --python 3.12 "$venv"
+                uv pip install --python "$venv/bin/python" --require-hashes --no-deps \
+                    -r "workers/rdagent/$profile-requirements.lock"
+                .venv/bin/python -B workers/rdagent/install_rule_profile.py ${flag:+"$flag"}
+            fi
+            # Every environment, new or existing, is validated against its recorded rule profile.
+            identity="$(measure "$profile")"
+            if [ -e "$marker" ]; then
+                printf 'validated %s identity %s\n' "$stamp" "$identity" >>"$marker"
+                mv "$marker" "$runtime/rdagent-venv-$profile.built-$stamp"
+            fi
+            echo "cloud-setup: qualified $profile environment $identity"
+        done
+    fi
+
+    if [ -e /etc/fonts/conf.d/56-prefer-inter.conf ]; then
+        # Stock recipe from README "Linux cloud development setup", verified 2026-10-27.
+        echo 'cloud-setup: task-scoped fontconfig without 56-prefer-inter.conf'
+        rules="$(for f in /etc/fonts/conf.d/*; do
+            [ "${f##*/}" = 56-prefer-inter.conf ] ||
+                printf '%s %s\n' "${f##*/}" "$(sha256sum <"$(readlink -f "$f")" | cut -d' ' -f1)"
+        done | sort | sha256sum | cut -d' ' -f1)"
+        stock="$(sha256sum </etc/fonts/fonts.conf | cut -d' ' -f1)"
+        if [ "$stock" != 93a23ba073996edb8b42d6c89ebc2ec5fd2101ce82cb65ba0db358dabf55ca22 ] ||
+            [ "$rules" != 8e3428b1839f280d6e6d73dba5c55fdf22c9ea0ee4039499004a6915053322f9 ]; then
+            echo "cloud-setup: system fontconfig differs from the verified recipe ($stock, $rules)" >&2
+            exit 1
+        fi
+        cfg="$root/.alpha/state/runtime/fontconfig"
+        derive() {
+            sed "s#<include ignore_missing=\"yes\">conf.d</include>#<include ignore_missing=\"yes\">$cfg/conf.d</include>#" \
+                /etc/fonts/fonts.conf
+        }
+        expected="$(for f in /etc/fonts/conf.d/*; do
+            [ "${f##*/}" = 56-prefer-inter.conf ] || printf '%s %s\n' "${f##*/}" "$(readlink -f "$f")"
+        done)"
+        if [ -e "$cfg" ]; then
+            actual="$(for f in "$cfg"/conf.d/*; do printf '%s %s\n' "${f##*/}" "$(readlink "$f")"; done)"
+            if ! derive | cmp -s - "$cfg/fonts.conf" || [ "$actual" != "$expected" ]; then
+                echo "cloud-setup: $cfg differs from the verified recipe; inspect it, nothing replaced" >&2
+                exit 1
+            fi
+        else
+            mkdir -p "$root/.alpha/state/runtime"
+            partial="$(mktemp -d "$cfg.partial.XXXXXX")"
+            mkdir "$partial/conf.d"
+            while read -r name target; do
+                ln -s "$target" "$partial/conf.d/$name"
+            done <<<"$expected"
+            derive >"$partial/fonts.conf"
+            mv -T "$partial" "$cfg"
+        fi
+        echo "cloud-setup: for later shells: export FONTCONFIG_FILE=$cfg/fonts.conf"
+    else
+        echo 'cloud-setup: no 56-prefer-inter.conf image rule; system fontconfig used unchanged'
+    fi
+
+    if base="$(git rev-parse --verify --quiet refs/remotes/origin/main)"; then
+        echo "cloud-setup: refs/remotes/origin/main resolves to $base"
+    else
+        echo 'cloud-setup: refs/remotes/origin/main does not resolve; not fetched (gate comparison base unavailable)'
+    fi
+fi
 echo 'cloud-setup: ready (root provisioning and browser-runtime smoke only; frontend E2E and full gate remain separate)'

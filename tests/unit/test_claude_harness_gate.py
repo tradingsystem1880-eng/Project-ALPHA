@@ -324,6 +324,7 @@ class TestAttest:
             "findings": [],
             "reviewed_diff_hash": gate.scoped_diff_hash(repo, gate.matches_risk),
             "files_reviewed": gate.scoped_changed_paths(repo, gate.matches_risk),
+            "reviewed_tree_hash": gate.compute_tree_hash(repo),
         }
         verdict.update(overrides)
         return verdict
@@ -362,6 +363,43 @@ class TestAttest:
             ],
         )
         assert gate.attest(repo, "review", json.dumps(verdict)) != 0
+        assert not gate.review_verdict_valid(repo)
+
+    def test_review_attest_requires_the_current_reviewed_tree(self, repo: Path) -> None:
+        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
+        verdict = self._review(repo, files_reviewed=["CLAUDE.md"])
+        missing = {key: value for key, value in verdict.items() if key != "reviewed_tree_hash"}
+        assert gate.attest(repo, "review", json.dumps(missing)) != 0
+        (repo / "tracked.py").write_text("x = 9\n")
+        assert gate.attest(repo, "review", json.dumps(verdict)) != 0, "out-of-scope edit"
+        verdict = self._review(repo, files_reviewed=["CLAUDE.md"])
+        (repo / "CLAUDE.md").write_text("Edited after review\n")
+        assert gate.attest(repo, "review", json.dumps(verdict)) != 0, "protected edit"
+        assert not gate.review_verdict_valid(repo)
+
+    def test_protected_scope_change_after_attest_invalidates_review(self, repo: Path) -> None:
+        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
+        verdict = self._review(repo, files_reviewed=["CLAUDE.md"])
+        assert gate.attest(repo, "review", json.dumps(verdict)) == 0
+        assert gate.review_verdict_valid(repo)
+        (repo / "CLAUDE.md").write_text("Edited after review\n")
+        assert not gate.review_verdict_valid(repo), "protected content changed"
+        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
+        assert gate.review_verdict_valid(repo)
+        rules = repo / ".claude" / "rules"
+        rules.mkdir(parents=True)
+        (rules / "new.md").write_text("new rule\n")
+        assert not gate.review_verdict_valid(repo), "review scope gained a protected path"
+
+    def test_legacy_review_attestation_fails_closed(self, repo: Path) -> None:
+        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
+        verdict = self._review(repo, files_reviewed=["CLAUDE.md"])
+        assert gate.attest(repo, "review", json.dumps(verdict)) == 0
+        path = repo / gate.STATE_DIR / gate.REVIEW_VERDICT_FILE
+        artifact = gate.read_json(path)
+        assert artifact is not None and artifact["schema_version"] == 3
+        legacy = {"schema_version": 2, "created_at": artifact["created_at"], "verdict": verdict}
+        gate.write_json_atomic(path, legacy)
         assert not gate.review_verdict_valid(repo)
 
     def test_review_attest_rejects_stale_diff_hash(self, repo: Path) -> None:

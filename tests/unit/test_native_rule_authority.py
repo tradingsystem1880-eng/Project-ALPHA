@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import subprocess
 import sys
 from copy import deepcopy
 from pathlib import Path
@@ -17,7 +18,57 @@ from alpha_core import DataError
 from tests.unit.test_research_control_store import PROJECT_ID
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from alpha_cli._native_loop_admission import NativeLaunch
+
+
+# Success-fixture owner allowance within the product's 0 < seconds <= 60 contract; deadline
+# behaviour is pinned separately by tests that set their own deadlines.
+NATIVE_SUCCESS_FIXTURE_SECONDS = 45
+
+
+def _stop_owned_owner(
+    root: Path, job: str, process: subprocess.Popen[bytes], failure: BaseException
+) -> None:
+    """Stop only this test's owner; report, never take over, a possibly remaining payload."""
+    from alpha_cli.native_supervisor import _request_live_stop
+
+    killed = False
+    try:
+        _request_live_stop(root, job)
+    except Exception as exc:
+        failure.add_note(f"owner stop request failed: {exc!r}")
+    try:
+        process.wait(timeout=15)
+    except Exception as exc:
+        failure.add_note(f"owner did not exit after stop request: {exc!r}")
+    if process.poll() is None:
+        killed = True
+        try:
+            process.terminate()
+            process.wait(timeout=5)
+        except Exception as exc:
+            failure.add_note(f"owner did not exit after terminate: {exc!r}")
+            try:
+                process.kill()
+                process.wait()
+            except Exception as kill_exc:
+                failure.add_note(f"owner kill failed: {kill_exc!r}")
+    try:
+        status = ControlStore(root).native_fixture_status(job)
+    except Exception as exc:
+        failure.add_note(f"owner status unreadable after cleanup: {exc!r}")
+        return
+    if status.get("state") != "unclaimed" and (killed or status.get("outcome") is None):
+        pid_path = root / f"payload-{job}" / "payload.pid"
+        leader = pid_path.read_text().strip() if pid_path.is_file() else "unknown"
+        reason = (
+            "no recorded outcome"
+            if status.get("outcome") is None
+            else "owner killed after recording its outcome"
+        )
+        failure.add_note(f"native payload group may remain: {reason}; leader pid {leader}")
 
 
 @pytest.fixture
@@ -688,7 +739,11 @@ def _assert_snapshot_rewrite_rejected(
 @pytest.mark.parametrize("costed", [False, True])
 @pytest.mark.skipif(sys.platform != "linux", reason="requires the Linux native owner profile")
 def test_one_actual_native_rule_execution(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, costed: bool, configured_rule_source: Path
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    record_property: Callable[[str, object], None],
+    costed: bool,
+    configured_rule_source: Path,
 ) -> None:
     if sys.platform != "linux":
         pytest.skip("requires the Linux native owner profile")
@@ -733,9 +788,19 @@ def test_one_actual_native_rule_execution(
 
         with pytest.raises(DataError, match="trusted clean native outcome"):
             complete_rule_trial(store, job, launch)
-        process = start_synthetic_owner(root, job, fixture="native_loop", seconds=20, native=launch)
-        assert process.wait(timeout=30) == 0, (root / "control" / f"native-{job}.log").read_text()
+        process = start_synthetic_owner(
+            root, job, fixture="native_loop", seconds=NATIVE_SUCCESS_FIXTURE_SECONDS, native=launch
+        )
+        try:
+            code = process.wait(timeout=NATIVE_SUCCESS_FIXTURE_SECONDS + 45)
+        except BaseException as failure:
+            _stop_owned_owner(root, job, process, failure)
+            raise
+        assert code == 0, (root / "control" / f"native-{job}.log").read_text()
         status = store.native_fixture_status(job)
+        outcome = cast(dict[str, object], status.get("outcome") or {})
+        record_property("native_owner_elapsed_seconds", outcome.get("elapsed_seconds"))
+        record_property("native_owner_reason", outcome.get("reason"))
         assert status["state"] == "pending_scientific_admission", {
             **status,
             "logs": {str(p.relative_to(root)): p.read_text() for p in root.rglob("*.log")},
@@ -905,7 +970,13 @@ def test_one_actual_native_rule_execution(
             ):
                 shutil.copy2(root / f"payload-{job}" / name, evidence / name)
         with pytest.raises(DataError, match="reconnect only"):
-            start_synthetic_owner(root, job, fixture="native_loop", seconds=20, native=launch)
+            start_synthetic_owner(
+                root,
+                job,
+                fixture="native_loop",
+                seconds=NATIVE_SUCCESS_FIXTURE_SECONDS,
+                native=launch,
+            )
 
 
 @pytest.mark.parametrize(
@@ -1062,6 +1133,160 @@ def test_qualified_installed_bytes_are_rechecked_before_admission(
     monkeypatch.setattr(Path, "read_bytes", changed_read)
     with pytest.raises(DataError, match="installed rule runtime bytes changed"):
         measure_rule_environment(costed)
+
+
+@pytest.mark.parametrize("costed", [False, True])
+def test_claim_admits_the_rule_profile_verified_against_approved_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, costed: bool
+) -> None:
+    """One claim measures the rule runtime once and admits exactly that approved value."""
+    if sys.platform != "linux":
+        pytest.skip("requires the Linux native owner profile")
+    from datetime import timedelta
+
+    import alpha_cli._native_loop_admission as admission
+    import alpha_cli._native_rule_environment as environment
+    from alpha_cli._native_loop_admission import NativeLaunch
+    from alpha_cli._native_rule_authority import RuleAuthority
+    from alpha_cli._native_rule_protocol import selected_study
+    from alpha_cli.native_supervisor import _open_lock, _Owner, synthetic_workspace
+    from tests.unit.test_research_control_store import START, _native_d1_job
+
+    approved = hashlib.sha256(b"approved rule runtime").hexdigest()
+    replaced = hashlib.sha256(b"replaced rule runtime").hexdigest()
+    # Only the source/venv measurements are stubbed; implementation fingerprints stay real.
+    monkeypatch.setattr(environment, "measure_rule_environment", lambda costed=False: approved)
+    monkeypatch.setattr(admission, "measure_native_proposal", lambda *args: "f" * 64)
+    job = "3c0c6b3e-6f3e-4a3c-9a52-6d1b9f2e8a10"
+    with synthetic_workspace() as root:
+        _pilot(root, environment.rule_implementation_fingerprints(costed), costed=costed)
+        store = ControlStore(root)
+        cid = str(store.research_case_summary(PROJECT_ID)["active_contract_id"])
+        launch = NativeLaunch(
+            tmp_path.resolve(),
+            "INCONCLUSIVE",
+            study=selected_study(costed),
+            authority=RuleAuthority(root, PROJECT_ID, cid),
+        )
+        _native_d1_job(
+            store,
+            cid,
+            job_id=job,
+            manifest_sha256=launch.fingerprint,
+            started_at=START + timedelta(minutes=12),
+        )
+        store.reserve_d1_native_research_launch(
+            PROJECT_ID, cid, job, native_manifest_sha256=launch.fingerprint
+        )
+        calls: list[bool] = []
+
+        def changes_after_first_measure(costed: bool = False) -> str:
+            calls.append(costed)
+            return approved if len(calls) == 1 else replaced
+
+        with _open_lock(root, job) as lock:
+            owner = _Owner(root, job, "native_loop", 60, lock, native=launch)
+            owner.open_control()
+            try:
+                with monkeypatch.context() as claim:
+                    claim.setattr(
+                        environment, "measure_rule_environment", changes_after_first_measure
+                    )
+                    store.claim_native_fixture(job, owner)
+            finally:
+                owner.close_control()
+        assert owner.native_admission is not None
+        assert owner.native_admission["rule_profile"] == approved
+        assert calls == [costed]
+
+
+@pytest.mark.parametrize("mutation", ["site_bytes", "venv_identity", "admitted_profile"])
+def test_rule_runtime_changed_after_claim_fails_closed_before_trusted_completion(
+    monkeypatch: pytest.MonkeyPatch,
+    capfd: pytest.CaptureFixture[str],
+    mutation: str,
+    configured_rule_source: Path,
+) -> None:
+    """Changes between admission and use are refused; nothing reaches trusted completion."""
+    if sys.platform != "linux":
+        pytest.skip("requires the Linux native owner profile")
+    from datetime import timedelta
+
+    from alpha_cli._native_loop_admission import WORKER, NativeLaunch
+    from alpha_cli._native_rule_authority import RuleAuthority
+    from alpha_cli._native_rule_completion import complete_rule_trial
+    from alpha_cli._native_rule_environment import rule_implementation_fingerprints
+    from alpha_cli._native_rule_protocol import selected_study
+    from alpha_cli.native_supervisor import _open_lock, _run_owner, synthetic_workspace
+    from tests.unit.test_research_control_store import START, _native_d1_job
+
+    job = "8f0e2d6a-4b1c-4e7d-9a3f-2c5b7e1d0f84"
+    runtime = WORKER / ".venv-economics-qualified"
+    targets = {
+        "site_bytes": runtime / "lib/python3.12/site-packages/alpha_strategies/rules.py",
+        "venv_identity": runtime / "pyvenv.cfg",
+    }
+    with synthetic_workspace() as root:
+        _pilot(root, rule_implementation_fingerprints(True), costed=True)
+        store = ControlStore(root)
+        cid = str(store.research_case_summary(PROJECT_ID)["active_contract_id"])
+        launch = NativeLaunch(
+            configured_rule_source,
+            "INCONCLUSIVE",
+            study=selected_study(True),
+            authority=RuleAuthority(root, PROJECT_ID, cid),
+        )
+        _native_d1_job(
+            store,
+            cid,
+            job_id=job,
+            manifest_sha256=launch.fingerprint,
+            started_at=START + timedelta(minutes=12),
+        )
+        store.reserve_d1_native_research_launch(
+            PROJECT_ID, cid, job, native_manifest_sha256=launch.fingerprint
+        )
+        claim = ControlStore.claim_native_fixture
+        read_bytes = Path.read_bytes
+
+        def changed_read(path: Path) -> bytes:
+            raw = read_bytes(path)
+            return raw + b"\n# substituted bytes\n" if path == targets.get(mutation) else raw
+
+        def change_after_claim(self: ControlStore, job_id: str, owner: Any) -> Any:
+            result = claim(self, job_id, owner)
+            if mutation == "admitted_profile":
+                owner.native_admission["rule_profile"] = "0" * 64
+            else:
+                monkeypatch.setattr(Path, "read_bytes", changed_read)
+            return result
+
+        monkeypatch.setattr(ControlStore, "claim_native_fixture", change_after_claim)
+        expected = {
+            "site_bytes": "installed rule runtime bytes changed",
+            "venv_identity": "native launch bytes changed after admission",
+        }
+        with _open_lock(root, job) as lock:
+            if mutation in expected:
+                with pytest.raises(DataError, match=expected[mutation]):
+                    _run_owner(root, job, "native_loop", 60, lock, native=launch)
+            else:
+                _run_owner(root, job, "native_loop", 60, lock, native=launch)
+        monkeypatch.setattr(Path, "read_bytes", read_bytes)
+        status = store.native_fixture_status(job)
+        outcome = cast(dict[str, object], status["outcome"])
+        assert status["state"] == "closed"
+        if mutation in expected:
+            assert outcome["reason"] == "owner_error"
+            assert outcome["cleanup_scope"] == "no_payload_spawn_attempted"
+            assert not (root / f"payload-{job}" / "receipt.json").exists()
+        else:
+            assert outcome["reason"] == "exit"
+            assert outcome["returncode"] != 0
+            assert "rule_result" not in outcome
+            assert "rule profile differs from committed admission" in capfd.readouterr().err
+        with pytest.raises(DataError, match="trusted clean native outcome"):
+            complete_rule_trial(store, job, launch)
 
 
 def test_runtime_inventory_rejects_cache_and_symlink(tmp_path: Path) -> None:

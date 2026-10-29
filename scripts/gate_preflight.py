@@ -263,22 +263,6 @@ def mutation_selection(root: Path) -> dict[str, Any]:
     environment_ref = os.environ.get("ALPHA_GATE_BASE")
     base_source = "environment" if environment_ref is not None else "default"
     requested_ref = environment_ref if environment_ref is not None else "origin/main"
-    ref_result = _git(
-        root,
-        "rev-parse",
-        "--verify",
-        "--quiet",
-        "--end-of-options",
-        f"{requested_ref}^{{commit}}",
-    )
-    resolved_ref = ref_result.stdout.strip() if ref_result.returncode == 0 else None
-    if ref_result.returncode == 0 and resolved_ref:
-        ref_status = "available"
-    elif ref_result.returncode == 1:
-        ref_status = "unavailable"
-    else:
-        ref_status = "unknown"
-
     git_results: list[tuple[tuple[str, ...], subprocess.CompletedProcess[str]]] = []
 
     def bounded_git(git_root: Path, *args: str, check: bool = False) -> str:
@@ -289,17 +273,29 @@ def mutation_selection(root: Path) -> dict[str, Any]:
         return result.stdout
 
     try:
-        paths = gate_components.changed_paths(root, git_runner=bounded_git)
+        context = gate_components.comparison_context(root, git_runner=bounded_git)
     except (OSError, RuntimeError, subprocess.SubprocessError):
         paths = None
         selection_error = True
     else:
+        paths = context["paths"]
         selection_error = False
 
-    merge_result = next(
-        (result for args, result in git_results if args and args[0] == "merge-base"),
-        None,
+    def recorded(command: str) -> subprocess.CompletedProcess[str] | None:
+        return next((result for args, result in git_results if args and args[0] == command), None)
+
+    ref_result = recorded("rev-parse")
+    resolved_ref = (
+        ref_result.stdout.strip() if ref_result is not None and ref_result.returncode == 0 else None
     )
+    if ref_result is not None and ref_result.returncode == 0 and resolved_ref:
+        ref_status = "available"
+    elif ref_result is not None and ref_result.returncode == 1:
+        ref_status = "unavailable"
+    else:
+        ref_status = "unknown"
+
+    merge_result = recorded("merge-base")
     merge_base = (
         merge_result.stdout.strip()
         if merge_result is not None and merge_result.returncode == 0
@@ -307,7 +303,7 @@ def mutation_selection(root: Path) -> dict[str, Any]:
     )
     if merge_result is not None and merge_result.returncode == 0 and merge_base:
         merge_status = "available"
-    elif merge_result is not None and (merge_result.returncode == 1 or ref_status == "unavailable"):
+    elif (merge_result is not None and merge_result.returncode == 1) or ref_status == "unavailable":
         merge_status = "unavailable"
     else:
         merge_status = "unknown"

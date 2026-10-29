@@ -660,6 +660,7 @@ def write_stamp(
     steps: list[tuple[str, float, bool]],
     duration: float,
     tested_tree: str | None = None,
+    comparison: dict[str, str | None] | None = None,
 ) -> None:
     from harness_models import GateStamp, GateStep
 
@@ -670,6 +671,7 @@ def write_stamp(
         tree_hash=tested_tree if tested_tree is not None else compute_tree_hash(root),
         duration_seconds=duration,
         steps=[GateStep(name=name, seconds=seconds, ok=ok) for name, seconds, ok in steps],
+        comparison=comparison,
     )
     write_json_atomic(_state_dir(root) / STAMP_FILE, stamp.model_dump())
     append_audit(root, "stamp_written", f"tier={tier} duration={duration:.1f}s")
@@ -754,6 +756,13 @@ def attest(root: Path, kind: str, payload_text: str) -> int:
     if getattr(report, field) != want:
         print(f"attest rejected: {field} must be {want} to attest", file=sys.stderr)
         return 1
+    if isinstance(report, ReviewVerdict) and report.reviewed_tree_hash != compute_tree_hash(root):
+        print(
+            "attest rejected: reviewed_tree_hash is missing or does not match the current tree; "
+            "run a fresh /review-gate",
+            file=sys.stderr,
+        )
+        return 1
     if isinstance(report, ReviewVerdict) and report.reviewed_diff_hash != scoped_diff_hash(
         root, matches_risk
     ):
@@ -781,7 +790,12 @@ def attest(root: Path, kind: str, payload_text: str) -> int:
         )
         detail = f"claims={len(report.claims)}"
     else:
-        artifact = ReviewAttestation(created_at=_now(), verdict=report)
+        artifact = ReviewAttestation(
+            created_at=_now(),
+            verdict=report,
+            bound_review_paths=scoped_changed_paths(root, matches_review),
+            bound_review_diff_hash=scoped_diff_hash(root, matches_review),
+        )
         detail = f"findings={len(report.findings)}"
     write_json_atomic(_state_dir(root) / state_file, artifact.model_dump())
     append_audit(root, event, detail)
@@ -794,10 +808,17 @@ def quant_attestation_valid(root: Path) -> bool:
 
 
 def review_verdict_valid(root: Path) -> bool:
-    verdict = (read_json(_state_dir(root) / REVIEW_VERDICT_FILE) or {}).get("verdict")
-    if not isinstance(verdict, dict) or verdict.get("verdict") != "APPROVE":
+    """APPROVE bound to the current risk diff and review-scope content; legacy fails closed."""
+    artifact = read_json(_state_dir(root) / REVIEW_VERDICT_FILE) or {}
+    verdict = artifact.get("verdict")
+    if artifact.get("schema_version") != 3 or not isinstance(verdict, dict):
         return False
-    return verdict.get("reviewed_diff_hash") == scoped_diff_hash(root, matches_risk)
+    return (
+        verdict.get("verdict") == "APPROVE"
+        and verdict.get("reviewed_diff_hash") == scoped_diff_hash(root, matches_risk)
+        and artifact.get("bound_review_paths") == scoped_changed_paths(root, matches_review)
+        and artifact.get("bound_review_diff_hash") == scoped_diff_hash(root, matches_review)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1060,6 +1081,10 @@ def gate_steps(tier: str, root: Path | None = None) -> list[tuple[str, list[str]
 def run_gate(root: Path, tier: str, *, runner: Runner | None = None) -> int:
     """Run the tiered gate; stamp only on full success. Mirrors CI's check job."""
     run = runner or _env_runner
+    from gate_components import preserve_prior_evidence  # deferred: gate_components imports gate
+
+    if not preserve_prior_evidence(root):
+        return 1
     clear_stamp(root)
     tested_tree = compute_tree_hash(root)
     started = time.monotonic()
@@ -1407,10 +1432,15 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(payload, sort_keys=True) if args.json else render_orientation(payload))
         return 0
     if args.command == "check":
-        if stamp_is_valid(root, args.tier):
+        valid, reason = stamp_is_valid(root, args.tier), "no stamp for the current tree"
+        if valid and args.tier == "full":
+            from gate_components import full_stamp_usable
+
+            valid, reason = full_stamp_usable(root, read_json(_state_dir(root) / STAMP_FILE) or {})
+        if valid:
             print(f"stamp valid for tier {args.tier}")
             return 0
-        print(f"no valid {args.tier} stamp for current tree — run gate.py {args.tier}")
+        print(f"no valid {args.tier} stamp ({reason}) — run gate.py {args.tier}")
         return 1
     if args.command == "attest":
         return attest(root, args.kind, sys.stdin.read())
