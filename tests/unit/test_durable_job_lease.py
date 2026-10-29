@@ -82,7 +82,15 @@ def test_silent_child_renews_lease_and_only_becomes_reconcilable_after_stop(
         heartbeats += 1
         store.append_job_event(job_id, event_type="heartbeat", payload={"surface": "test"})
 
-    child = _silent_child()
+    # Held until released, so renewal observation never races a fixed child lifetime.
+    child = subprocess.Popen(
+        [sys.executable, "-c", "import sys; sys.stdin.read()"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        start_new_session=True,
+    )
     lease = DurableJobLease(
         child,
         renew=renew,
@@ -90,37 +98,52 @@ def test_silent_child_renews_lease_and_only_becomes_reconcilable_after_stop(
         interval_seconds=0.03,
         label="test silent child",
     )
-    lease.start()
-    deadline = time.monotonic() + 1
-    while heartbeats < 2 and child.poll() is None and time.monotonic() < deadline:
-        time.sleep(0.005)
-    assert heartbeats >= 2
-    assert child.poll() is None
-    row = store.get_job(job_id)
-    heartbeat_at = datetime.fromisoformat(str(row["heartbeat_at"]).replace("Z", "+00:00"))
-    assert (
-        store.reconcile_interrupted_jobs(
-            stale_after_seconds=30,
-            at=heartbeat_at + timedelta(seconds=29),
+    try:
+        lease.start()
+        deadline = time.monotonic() + 1
+        while heartbeats < 2 and child.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.005)
+        assert heartbeats >= 2
+        assert child.poll() is None
+        row = store.get_job(job_id)
+        heartbeat_at = datetime.fromisoformat(str(row["heartbeat_at"]).replace("Z", "+00:00"))
+        assert (
+            store.reconcile_interrupted_jobs(
+                stale_after_seconds=30,
+                at=heartbeat_at + timedelta(seconds=29),
+            )
+            == []
         )
-        == []
-    )
-    assert store.heavyweight_job_capacity()["active_count"] == 1
-    with pytest.raises(DataError, match="heavyweight job capacity is occupied"):
-        store.create_job(
-            kind="kronos_forecast",
-            request={"test": "second reservation"},
-            job_id="77777777-7777-4777-8777-777777777777",
-        )
+        assert store.heavyweight_job_capacity()["active_count"] == 1
+        with pytest.raises(DataError, match="heavyweight job capacity is occupied"):
+            store.create_job(
+                kind="kronos_forecast",
+                request={"test": "second reservation"},
+                job_id="77777777-7777-4777-8777-777777777777",
+            )
 
-    child.communicate(timeout=2)
-    lease.stop()
-    lease.raise_if_failed()
-    reconciled = store.reconcile_interrupted_jobs(
-        stale_after_seconds=30,
-        at=heartbeat_at + timedelta(seconds=31),
-    )
-    assert [item["job_id"] for item in reconciled] == [job_id]
+        child.communicate(timeout=2)
+        lease.stop()
+        lease.raise_if_failed()
+        # Renewal continued until release; stale only relative to the final heartbeat.
+        final = store.get_job(job_id)
+        heartbeat_at = datetime.fromisoformat(str(final["heartbeat_at"]).replace("Z", "+00:00"))
+        reconciled = store.reconcile_interrupted_jobs(
+            stale_after_seconds=30,
+            at=heartbeat_at + timedelta(seconds=31),
+        )
+        assert [item["job_id"] for item in reconciled] == [job_id]
+    finally:
+        lease.stop_renewal()
+        if child.poll() is None:
+            if child.stdin is not None:
+                child.stdin.close()
+            child.terminate()
+            try:
+                child.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait()
 
 
 def test_exited_leader_keeps_descendant_group_leased_until_audited_cancellation(

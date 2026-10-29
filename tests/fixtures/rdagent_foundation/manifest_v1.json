@@ -1,0 +1,90 @@
+{
+  "authority": "none",
+  "authority_map": {
+    "d1_launch_d2_closure_promotion": "human_owner_actions",
+    "data_snapshots_execution_results_evidence": "existing_alpha_data_engine_evidence_services",
+    "native_trace_checkpoints": "derived_references_only",
+    "permission_revision_reservation_attempt_budgets": "alpha_cli_control_store",
+    "scientific_continuation": "rdagent_native_extension"
+  },
+  "content_sha256": "143e5b093aee320fbd29c612aa2f15a791a44b8fe9cae35cd0251d9bcb61f8b0",
+  "contract_roles": {
+    "artifact_reference": "ResearchArtifactRef",
+    "d1_mandate_reference": "ExplorationMandateV1",
+    "intermediate_feedback": "not_defined",
+    "terminal_report": "ResearchGatePacketV1",
+    "workspace_reference": "StudyWorkspaceManifestV1"
+  },
+  "execution_enabled": false,
+  "intended_native_primitive": {
+    "loop_base": "rdagent.utils.workflow.loop.LoopBase",
+    "loop_metaclass": "rdagent.utils.workflow.loop.LoopMeta",
+    "stages": [
+      "direct_exp_gen",
+      "coding",
+      "running",
+      "feedback",
+      "record"
+    ]
+  },
+  "native_runtime_qualification": "not_run",
+  "purpose": "preparatory_contract",
+  "schema": "RDNativeFoundationManifestV1",
+  "schema_version": 1,
+  "source_inventory": [
+    {
+      "git_blob_sha": "f93c51f95bf24737a79a414c4e5436e4bef2a91f",
+      "path": "rdagent/components/workflow/rd_loop.py",
+      "symbols": [
+        "rdagent.components.workflow.rd_loop.RDLoop",
+        "rdagent.components.workflow.rd_loop.RDLoop.direct_exp_gen",
+        "rdagent.components.workflow.rd_loop.RDLoop.coding",
+        "rdagent.components.workflow.rd_loop.RDLoop.running",
+        "rdagent.components.workflow.rd_loop.RDLoop.feedback",
+        "rdagent.components.workflow.rd_loop.RDLoop.record"
+      ]
+    },
+    {
+      "git_blob_sha": "bfcb59679766ec0939a49f514c12ec2554d5cb11",
+      "path": "rdagent/utils/workflow/loop.py",
+      "symbols": [
+        "rdagent.utils.workflow.loop.LoopBase",
+        "rdagent.utils.workflow.loop.LoopMeta"
+      ]
+    },
+    {
+      "git_blob_sha": "07783067494b95bb8a3a00de83d3667fd37aabf8",
+      "path": "rdagent/core/evaluation.py",
+      "symbols": [
+        "rdagent.core.evaluation.Feedback"
+      ]
+    },
+    {
+      "git_blob_sha": "b333c069b16c383248b700e5530536edd6daeb78",
+      "path": "rdagent/core/scenario.py",
+      "symbols": [
+        "rdagent.core.scenario.Scenario"
+      ]
+    },
+    {
+      "git_blob_sha": "e77e15b2ef75a7d46072c5e0b06ccf1c7e05d7ef",
+      "path": "rdagent/core/experiment.py",
+      "symbols": [
+        "rdagent.core.experiment.Experiment",
+        "rdagent.core.experiment.ExperimentPlan",
+        "rdagent.core.experiment.Task",
+        "rdagent.core.experiment.Workspace"
+      ]
+    }
+  ],
+  "source_revisions": {
+    "alpha": {
+      "commit": "99f2d472dd4511b446e1198ae80201e7207d089d",
+      "repository": "tradingsystem1880-eng/Project-ALPHA"
+    },
+    "rd_agent": {
+      "commit": "484776c211e4fbbeef03e0ec00d6bbee7362a4f4",
+      "repository": "microsoft/RD-Agent"
+    }
+  }
+}

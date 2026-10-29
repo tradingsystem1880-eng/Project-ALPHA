@@ -118,8 +118,19 @@ The CLI, Workstation, and MCP share the configured data store and authority rule
 
 With `uv`, Python 3.12, Node/npm, GNU `timeout`, and Chromium system libraries already available,
 run `bash scripts/cloud_setup.sh`. It installs locked root/frontend dependencies and pinned
-Chromium, then runs CLI and browser-runtime smokes. It does not provision isolated workers or
-replace app E2E tests and the full gate.
+Chromium, then runs CLI and browser-runtime smokes. It does not replace app E2E tests and the full
+gate. With `ALPHA_CLOUD_FOUNDATION=1` it also installs the Git guards, appends the two worker-venv
+excludes, regenerates the verified fontconfig below into `.alpha/state/runtime/fontconfig/` and
+reports (never fetches) `origin/main`. Adding `ALPHA_RDAGENT_PRISTINE` and `ALPHA_RDAGENT_SOURCE`
+verifies the pinned checkout, builds the derived root and qualified worker venvs only when absent,
+and validates existing ones against their recorded rule profile. Each step fails loud; none claims readiness.
+A venv build writes `.alpha/state/runtime/rdagent-venv-<profile>.incomplete` first and renames it to
+`.built-<UTC>` only after the new environment validates. If that marker remains, a re-run keeps a venv
+that now validates in place and otherwise refuses, preserving the partial venv. Only then, and only for
+a marker in exactly the script's own one-line format, `ALPHA_RDAGENT_RETIRE_INTERRUPTED=1` moves the
+venv and marker unchanged to `.alpha/state/runtime/interrupted/<profile>-<UTC>/` (kept as evidence, not
+runnable because its paths name the original location) and builds afresh. Unmarked environments are
+never moved, and nothing is deleted.
 
 Persist these environment-level settings separately so later shells inherit them:
 
@@ -136,6 +147,29 @@ SEMGREP_VERSION_CACHE_PATH=/tmp/project-alpha-semgrep/semgrep_version
 The setup script respects configured paths and creates the Semgrep file's parent directory.
 If temporary assets are not retained, rerun setup synchronously before browser work. Download or
 host-library failures require correcting the environment before claiming readiness.
+
+Some cloud images add `/etc/fonts/conf.d/56-prefer-inter.conf` (owned by no package; observed
+SHA-256 `1e74ca86…5a9e`), which aliases `-apple-system`, `Segoe UI`, `system-ui` and `sans-serif`
+to system Inter. Chromium then renders the chrome stack with that system font, while Linux visual
+baselines record the app's self-hosted `Inter Variable` webfont. Run browser checks with a derived
+fontconfig that omits only that rule; leave `/etc` and every other rule unchanged:
+
+```sh
+if [ -e /etc/fonts/conf.d/56-prefer-inter.conf ]; then
+  cfg="$(mktemp -d /tmp/project-alpha-fontconfig.XXXXXX)" && mkdir "$cfg/conf.d"
+  for f in /etc/fonts/conf.d/*; do
+    [ "${f##*/}" = 56-prefer-inter.conf ] || ln -s "$(readlink -f "$f")" "$cfg/conf.d/${f##*/}"
+  done
+  sed "s#<include ignore_missing=\"yes\">conf.d</include>#<include ignore_missing=\"yes\">$cfg/conf.d</include>#" \
+    /etc/fonts/fonts.conf > "$cfg/fonts.conf"
+  export FONTCONFIG_FILE="$cfg/fonts.conf"
+fi
+```
+
+Verified 2026-10-27 with fontconfig 2.15.0, Playwright 1.61.1 and Chromium 149.0.7827.55: the
+derived `fonts.conf` differs from the system file (`93a23ba0…ca22`) only in that include line, and
+the 40 linked rules (name plus target SHA-256, sorted) hash to `8e3428b1…22f9`. Without the image
+rule, use the system configuration unchanged.
 
 </details>
 

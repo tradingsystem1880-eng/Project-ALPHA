@@ -9,7 +9,9 @@ import platform
 import resource
 import shutil
 import sys
+import tempfile
 from collections.abc import Mapping
+from contextlib import ExitStack
 from dataclasses import asdict
 from importlib.metadata import version
 from pathlib import Path
@@ -155,22 +157,40 @@ def _run_literature_worker(argv: list[str], *, timeout_seconds: int = 180) -> di
     uv_executable = shutil.which("uv")
     if uv_executable is None or not Path(uv_executable).is_absolute():
         raise DataError("the pinned literature worker runtime is unavailable")
-    completed = subprocess.run(  # noqa: S603 - fixed executable and closed argument vector
-        [uv_executable, "run", "--project", str(worker_dir), "literature-worker", *argv],
-        capture_output=True,
-        text=True,
-        timeout=timeout_seconds,
-        check=False,
-        env={
-            "LANG": "C.UTF-8",
-            "LC_ALL": "C.UTF-8",
-            "PATH": os.defpath,
-            "UV_NO_CONFIG": "1",
-            "UV_OFFLINE": "1",
-        },
-        start_new_session=True,
-        preexec_fn=_apply_literature_worker_limits,
-    )
+    child_env = {
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "PATH": os.defpath,
+        "UV_NO_CONFIG": "1",
+        "UV_OFFLINE": "1",
+    }
+    with ExitStack() as cleanup:
+        configured_cache = os.environ.get("UV_CACHE_DIR")
+        if configured_cache is None:
+            cache_dir = cleanup.enter_context(
+                tempfile.TemporaryDirectory(prefix="alpha-literature-uv-cache-")
+            )
+        else:
+            cache_path = Path(configured_cache)
+            if (
+                not configured_cache
+                or "\x00" in configured_cache
+                or not cache_path.is_dir()
+                or not os.access(cache_path, os.W_OK | os.X_OK)
+            ):
+                raise DataError("configured UV_CACHE_DIR must be an existing writable directory")
+            cache_dir = configured_cache
+        child_env["UV_CACHE_DIR"] = str(cache_dir)
+        completed = subprocess.run(  # noqa: S603 - fixed executable and closed argument vector
+            [uv_executable, "run", "--project", str(worker_dir), "literature-worker", *argv],
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            check=False,
+            env=child_env,
+            start_new_session=True,
+            preexec_fn=_apply_literature_worker_limits,
+        )
     if completed.returncode != 0:
         raise DataError(
             completed.stderr.strip() or completed.stdout.strip() or "literature worker failed"
@@ -1315,11 +1335,29 @@ def sources_acquire(
 @sources_app.command("screen")
 def sources_screen(
     source_id: str,
+    project_id: str | None = typer.Option(None, "--project-id", help="required for a page read"),
+    page: int | None = typer.Option(None, "--page", help="one-based extracted page number"),
+    char_offset: int = typer.Option(0, "--char-offset", help="page character offset"),
+    char_limit: int = typer.Option(4_000, "--char-limit", help="maximum page characters"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
-    """Show one immutable source for manual screening; Gate 1 records no screening mutation."""
+    """Read source details or a bounded page slice; never screen claims or change research state."""
     try:
-        row = _store().get_research_source_context(source_id)
+        store = _store()
+        if page is None:
+            if project_id is not None or char_offset != 0 or char_limit != 4_000:
+                raise DataError("project id and page offsets require --page")
+            row = store.get_research_source_context(source_id)
+        else:
+            if project_id is None:
+                raise DataError("a project id is required for a research source page read")
+            row = store.get_research_source_page(
+                project_id,
+                source_id,
+                page,
+                char_offset=char_offset,
+                char_limit=char_limit,
+            )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(row, json_out=json_out, fallback=f"research source {row['source_id']}")

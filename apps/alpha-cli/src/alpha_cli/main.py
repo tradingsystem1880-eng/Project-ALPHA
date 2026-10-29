@@ -2,73 +2,98 @@
 
 from __future__ import annotations
 
+import importlib
+import sys
+from typing import TYPE_CHECKING
+
 import typer
 
-from alpha_cli.assistant_cmds import assistant_app
-from alpha_cli.backtest_cmds import backtest_app
-from alpha_cli.chart_cmds import chart_app
-from alpha_cli.crypto_data_cmds import crypto_data_app
-from alpha_cli.data_cmds import data_app
-from alpha_cli.evidence_cmds import evidence_app
-from alpha_cli.figures_cmds import figures_app
-from alpha_cli.forecast_cmds import forecast_app
-from alpha_cli.info_cmds import info_app
-from alpha_cli.ml_cmds import ml_app
-from alpha_cli.monte_carlo_cmds import monte_carlo_app
-from alpha_cli.optim_cmds import optim_app
-from alpha_cli.owner_auth_cmds import owner_auth_app
-from alpha_cli.paper_cmds import paper_app
-from alpha_cli.project_cmds import project_app
-from alpha_cli.propfirm_cmds import propfirm_app
-from alpha_cli.provider_cmds import provider_app
-from alpha_cli.quantpad_data_cmds import quantpad_data_app
-from alpha_cli.report_cmds import report as _report
-from alpha_cli.research_cmds import research_app
-from alpha_cli.risk_cmds import risk_app
-from alpha_cli.rules_cmds import rules_app
-from alpha_cli.scan_cmds import scan_app
-from alpha_cli.strategy_candidate_cmds import strategy_candidate_app
-from alpha_cli.suite_cmds import suite_app
-from alpha_cli.validate_cmds import validate as _validate
-
-app = typer.Typer(help="Project ALPHA command-line interface.")
-app.add_typer(data_app, name="data")
-app.add_typer(crypto_data_app, name="crypto-data")
-app.add_typer(backtest_app, name="backtest")
-app.add_typer(forecast_app, name="forecast")
-app.add_typer(optim_app, name="optim")
-app.add_typer(paper_app, name="paper")
-app.add_typer(propfirm_app, name="propfirm")
-app.add_typer(provider_app, name="provider")
-app.add_typer(quantpad_data_app, name="quantpad-data")
-app.add_typer(info_app, name="info")
-app.add_typer(owner_auth_app, name="owner-auth")
-app.add_typer(risk_app, name="risk")
-app.add_typer(research_app, name="research")
-app.add_typer(figures_app, name="figures")
-app.add_typer(project_app, name="project")
-app.add_typer(evidence_app, name="evidence")
-app.add_typer(ml_app, name="ml")
-app.add_typer(monte_carlo_app, name="monte-carlo")
-app.add_typer(chart_app, name="chart")
-app.add_typer(rules_app, name="rules")
-app.add_typer(assistant_app, name="assistant")
-app.add_typer(scan_app, name="scan")
-app.add_typer(suite_app, name="suite")
-app.add_typer(strategy_candidate_app, name="strategy-candidate")
-app.command(name="validate")(_validate)
-app.command(name="report")(_report)
+# The one command registry: (name, module, attribute). ``app`` mounts every entry; the console
+# entry mounts only the invoked group, so a CLI-backed read never imports unrelated engines.
+GROUPS: tuple[tuple[str, str, str], ...] = (
+    ("data", "alpha_cli.data_cmds", "data_app"),
+    ("crypto-data", "alpha_cli.crypto_data_cmds", "crypto_data_app"),
+    ("backtest", "alpha_cli.backtest_cmds", "backtest_app"),
+    ("forecast", "alpha_cli.forecast_cmds", "forecast_app"),
+    ("optim", "alpha_cli.optim_cmds", "optim_app"),
+    ("paper", "alpha_cli.paper_cmds", "paper_app"),
+    ("propfirm", "alpha_cli.propfirm_cmds", "propfirm_app"),
+    ("provider", "alpha_cli.provider_cmds", "provider_app"),
+    ("quantpad-data", "alpha_cli.quantpad_data_cmds", "quantpad_data_app"),
+    ("info", "alpha_cli.info_cmds", "info_app"),
+    ("owner-auth", "alpha_cli.owner_auth_cmds", "owner_auth_app"),
+    ("risk", "alpha_cli.risk_cmds", "risk_app"),
+    ("research", "alpha_cli.research_cmds", "research_app"),
+    ("figures", "alpha_cli.figures_cmds", "figures_app"),
+    ("project", "alpha_cli.project_cmds", "project_app"),
+    ("evidence", "alpha_cli.evidence_cmds", "evidence_app"),
+    ("ml", "alpha_cli.ml_cmds", "ml_app"),
+    ("monte-carlo", "alpha_cli.monte_carlo_cmds", "monte_carlo_app"),
+    ("chart", "alpha_cli.chart_cmds", "chart_app"),
+    ("rules", "alpha_cli.rules_cmds", "rules_app"),
+    ("assistant", "alpha_cli.assistant_cmds", "assistant_app"),
+    ("scan", "alpha_cli.scan_cmds", "scan_app"),
+    ("suite", "alpha_cli.suite_cmds", "suite_app"),
+    ("strategy-candidate", "alpha_cli.strategy_candidate_cmds", "strategy_candidate_app"),
+)
+COMMANDS: tuple[tuple[str, str, str], ...] = (
+    ("validate", "alpha_cli.validate_cmds", "validate"),
+    ("report", "alpha_cli.report_cmds", "report"),
+)
 
 
-@app.callback(invoke_without_command=True)
-def _root(ctx: typer.Context) -> None:
-    """Project ALPHA. Run a subcommand, e.g. `alpha info`."""
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
+def _group(name: str, module: str, attribute: str) -> typer.Typer:
+    group: typer.Typer = getattr(importlib.import_module(module), attribute)
+    if name == "research":
+        from alpha_cli.local_pdf_cmds import import_pdf_command
+
+        if not any(info.name == "import-pdf" for info in group.registered_commands):
+            group.command(name="import-pdf")(import_pdf_command)
+    return group
+
+
+def _root_app(groups: tuple[tuple[str, str, str], ...], *, commands: bool) -> typer.Typer:
+    root = typer.Typer(help="Project ALPHA command-line interface.")
+    for name, module, attribute in groups:
+        root.add_typer(_group(name, module, attribute), name=name)
+    if commands:
+        for name, module, attribute in COMMANDS:
+            root.command(name=name)(getattr(importlib.import_module(module), attribute))
+
+    @root.callback(invoke_without_command=True)
+    def _root(ctx: typer.Context) -> None:
+        """Project ALPHA. Run a subcommand, e.g. `alpha info`."""
+        if ctx.invoked_subcommand is None:
+            typer.echo(ctx.get_help())
+
+    return root
+
+
+_FULL: typer.Typer | None = None
+
+if TYPE_CHECKING:
+    app: typer.Typer  # provided by __getattr__; importers keep the precise type
+
+
+def _full_app() -> typer.Typer:
+    """The complete CLI, built from the registry on first use."""
+    global _FULL
+    if _FULL is None:
+        _FULL = _root_app(GROUPS, commands=True)
+    return _FULL
+
+
+def __getattr__(name: str) -> typer.Typer:
+    if name == "app":
+        return _full_app()
+    raise AttributeError(name)
 
 
 def main() -> None:
-    app()
+    invoked = sys.argv[1] if len(sys.argv) > 1 else None
+    selected = tuple(group for group in GROUPS if group[0] == invoked)
+    # Root help, completion, root commands and unknown names keep the complete app.
+    (_root_app(selected, commands=False) if selected else _full_app())()
 
 
 if __name__ == "__main__":

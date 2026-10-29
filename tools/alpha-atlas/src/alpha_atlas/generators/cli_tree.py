@@ -5,7 +5,8 @@ output of `alpha info commands --all --json`, refreshed explicitly via
 `python -m alpha_atlas.generate --refresh-cli`. It lives outside generated/
 because it is an input: generation stays deterministic and offline, and the
 CLI is never subprocessed during a normal build. Group→module `calls` edges
-come from the `add_typer` registrations in main.py, with file:line provenance.
+come from the `add_typer` registrations or the `GROUPS` registry literal in main.py,
+with file:line provenance.
 """
 
 from __future__ import annotations
@@ -52,7 +53,35 @@ def _typer_registrations(source: str) -> list[tuple[str, str, int]]:
             )
             if module and isinstance(name, str):
                 out.append((name, module, node.lineno))
+    out.extend(_registry_groups(tree))
     return out
+
+
+def _registry_groups(tree: ast.Module) -> list[tuple[str, str, int]]:
+    """(group name, alpha_cli module, line) from a module-level GROUPS literal, if present."""
+    for node in tree.body:
+        targets = node.targets if isinstance(node, ast.Assign) else [getattr(node, "target", None)]
+        if not isinstance(node, ast.Assign | ast.AnnAssign) or not any(
+            isinstance(t, ast.Name) and t.id == "GROUPS" for t in targets
+        ):
+            continue
+        rows: list[tuple[str, str, int]] = []
+        elements = node.value.elts if isinstance(node.value, ast.Tuple) else None
+        for element in elements or []:
+            values = element.elts if isinstance(element, ast.Tuple) else []
+            if len(values) != 3 or not all(
+                isinstance(v, ast.Constant) and isinstance(v.value, str) for v in values
+            ):
+                elements = None
+                break
+            name, module = (str(v.value) for v in values[:2])  # type: ignore[attr-defined]
+            if module.startswith("alpha_cli."):
+                rows.append((name, module, element.lineno))
+        if not elements:
+            # A registry this extractor cannot read must not silently yield zero edges.
+            raise ValueError("main.py GROUPS must be a tuple of (name, module, attr) str literals")
+        return rows
+    return []
 
 
 def extract(root: Path) -> tuple[Fragment, dict[str, str]]:

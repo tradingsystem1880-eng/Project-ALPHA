@@ -8,7 +8,7 @@ from datetime import UTC
 import polars as pl
 from pydantic import AwareDatetime
 
-from alpha_core import CorporateAction
+from alpha_core import CorporateAction, DataError
 from alpha_data.corporate import cash_dividends, known_actions, split_factor
 from alpha_data.store import ParquetStore
 
@@ -31,9 +31,12 @@ class PointInTimeReader:
         self._actions = actions
 
     def as_of(self, symbol: str, when: AwareDatetime) -> pl.DataFrame:
+        if when.tzinfo is None or when.utcoffset() is None:
+            raise DataError("PIT cutoff must be timezone-aware")
         # bars arrive ts-sorted from the store; downstream positional reads depend on it
-        bars = self._store.read_bars(symbol).filter(pl.col("ts") <= when)  # firewall
-        when_date = when.astimezone(UTC).date()
+        when_utc = when.astimezone(UTC)
+        bars = self._store.read_bars(symbol).filter(pl.col("ts") <= when_utc)  # firewall
+        when_date = when_utc.date()
         known = known_actions(self._actions.get(symbol, []), when_date)  # knowledge gate
         # Price channel: only actions that have already gone ex may rescale prices. A split that
         # is announced but still in the future has not happened yet - every visible bar trades at

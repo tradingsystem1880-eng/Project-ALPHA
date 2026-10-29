@@ -12,6 +12,7 @@ inside write paths and degrades to a loud error if unavailable.
 
 CLI:
     python3 scripts/gate.py fast|full          # run the tiered gate, stamp on success
+    python3 scripts/gate.py preflight [--json] # read-only candidate qualification
     python3 scripts/gate.py check --tier fast  # exit 0 iff a valid stamp covers the tier
     python3 scripts/gate.py attest --kind quant|review   # JSON report on stdin
     python3 scripts/gate.py override --reason "..."      # legacy token; Git guards ignore it
@@ -64,6 +65,7 @@ OWNER_TOKEN_ENV = "ALPHA_OWNER_TOKEN"
 AGENT_ACK_LIMIT = 3
 
 TIER_RANK = {"fast": 1, "full": 2}
+FULL_GATE_MYPY_COMMAND = ("uv", "run", "mypy", "packages", "apps", "tests")
 
 # claude_hooks.py subcommands; doctor verifies every one is wired in settings.json.
 HOOK_NAMES = (
@@ -154,7 +156,7 @@ def _git_lines(root: Path, *args: str) -> list[str]:
     return [line for line in _git(root, *args, check=False).splitlines() if line.strip()]
 
 
-def repo_root(start: Path | None = None) -> Path:
+def repo_root(start: Path | None = None, *, timeout: float | None = None) -> Path:
     """Resolve the enclosing repository root (worktree-correct) from cwd."""
     where = start or Path.cwd()
     out = subprocess.run(
@@ -162,6 +164,7 @@ def repo_root(start: Path | None = None) -> Path:
         capture_output=True,
         text=True,
         check=True,
+        timeout=timeout,
     )
     return Path(out.stdout.strip())
 
@@ -296,6 +299,27 @@ def matches_risk(path: str) -> bool:
     if posix.startswith("packages/alpha-backtest/src/") and posix.endswith(".py"):
         return True
     return posix in _RISK_CLI_FILES
+
+
+_REVIEW_CONFIG_EXACT = frozenset(
+    {
+        "pyproject.toml",
+        "scripts/git_guard.py",
+        "scripts/gate_components.py",
+        "scripts/wheel_smoke.py",
+    }
+)
+
+
+def matches_review(path: str) -> bool:
+    """Paths whose commit needs tree-bound independent review (the Git guard's scope)."""
+    posix = _posix(path)
+    return (
+        matches_risk(posix)
+        or protected_reason(posix) is not None
+        or posix.startswith(".githooks/")
+        or posix in _REVIEW_CONFIG_EXACT
+    )
 
 
 def protected_reason(path: str, content: str = "") -> str | None:
@@ -636,6 +660,7 @@ def write_stamp(
     steps: list[tuple[str, float, bool]],
     duration: float,
     tested_tree: str | None = None,
+    comparison: dict[str, str | None] | None = None,
 ) -> None:
     from harness_models import GateStamp, GateStep
 
@@ -646,6 +671,7 @@ def write_stamp(
         tree_hash=tested_tree if tested_tree is not None else compute_tree_hash(root),
         duration_seconds=duration,
         steps=[GateStep(name=name, seconds=seconds, ok=ok) for name, seconds, ok in steps],
+        comparison=comparison,
     )
     write_json_atomic(_state_dir(root) / STAMP_FILE, stamp.model_dump())
     append_audit(root, "stamp_written", f"tier={tier} duration={duration:.1f}s")
@@ -716,7 +742,7 @@ def attest(root: Path, kind: str, payload_text: str) -> int:
     elif kind == "review":
         model, field, want = ReviewVerdict, "verdict", "APPROVE"
         label, matcher, state_file, event = (
-            "risk-tier", matches_risk, REVIEW_VERDICT_FILE, "review_attested",
+            "review-scope", matches_review, REVIEW_VERDICT_FILE, "review_attested",
         )  # fmt: skip
     else:
         print(f"attest rejected: unknown kind {kind!r}", file=sys.stderr)
@@ -729,6 +755,13 @@ def attest(root: Path, kind: str, payload_text: str) -> int:
         return 1
     if getattr(report, field) != want:
         print(f"attest rejected: {field} must be {want} to attest", file=sys.stderr)
+        return 1
+    if isinstance(report, ReviewVerdict) and report.reviewed_tree_hash != compute_tree_hash(root):
+        print(
+            "attest rejected: reviewed_tree_hash is missing or does not match the current tree; "
+            "run a fresh /review-gate",
+            file=sys.stderr,
+        )
         return 1
     if isinstance(report, ReviewVerdict) and report.reviewed_diff_hash != scoped_diff_hash(
         root, matches_risk
@@ -757,7 +790,12 @@ def attest(root: Path, kind: str, payload_text: str) -> int:
         )
         detail = f"claims={len(report.claims)}"
     else:
-        artifact = ReviewAttestation(created_at=_now(), verdict=report)
+        artifact = ReviewAttestation(
+            created_at=_now(),
+            verdict=report,
+            bound_review_paths=scoped_changed_paths(root, matches_review),
+            bound_review_diff_hash=scoped_diff_hash(root, matches_review),
+        )
         detail = f"findings={len(report.findings)}"
     write_json_atomic(_state_dir(root) / state_file, artifact.model_dump())
     append_audit(root, event, detail)
@@ -770,10 +808,17 @@ def quant_attestation_valid(root: Path) -> bool:
 
 
 def review_verdict_valid(root: Path) -> bool:
-    verdict = (read_json(_state_dir(root) / REVIEW_VERDICT_FILE) or {}).get("verdict")
-    if not isinstance(verdict, dict) or verdict.get("verdict") != "APPROVE":
+    """APPROVE bound to the current risk diff and review-scope content; legacy fails closed."""
+    artifact = read_json(_state_dir(root) / REVIEW_VERDICT_FILE) or {}
+    verdict = artifact.get("verdict")
+    if artifact.get("schema_version") != 3 or not isinstance(verdict, dict):
         return False
-    return verdict.get("reviewed_diff_hash") == scoped_diff_hash(root, matches_risk)
+    return (
+        verdict.get("verdict") == "APPROVE"
+        and verdict.get("reviewed_diff_hash") == scoped_diff_hash(root, matches_risk)
+        and artifact.get("bound_review_paths") == scoped_changed_paths(root, matches_review)
+        and artifact.get("bound_review_diff_hash") == scoped_diff_hash(root, matches_review)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -946,6 +991,7 @@ HARNESS_SCRIPTS = (
     "scripts/run_owned_test.py",
     "scripts/gate.py",
     "scripts/gate_components.py",
+    "scripts/gate_preflight.py",
     "scripts/git_guard.py",
     "scripts/wheel_smoke.py",
     "scripts/check_semgrep_contracts.py",
@@ -970,7 +1016,7 @@ def gate_steps(tier: str, root: Path | None = None) -> list[tuple[str, list[str]
         ("ruff check", ["uv", "run", "ruff", "check", "."]),
         ("ruff format", ["uv", "run", "ruff", "format", "--check", "."]),
         ("import contracts", ["uv", "run", "lint-imports"]),
-        ("mypy", ["uv", "run", "mypy", "packages", "apps", "tests"]),
+        ("mypy", list(FULL_GATE_MYPY_COMMAND)),
         ("mypy harness", ["uv", "run", "mypy", *harness_files]),
         ("harness lint", [sys.executable, "scripts/gate.py", "lint-harness"]),
     ]
@@ -1035,6 +1081,10 @@ def gate_steps(tier: str, root: Path | None = None) -> list[tuple[str, list[str]
 def run_gate(root: Path, tier: str, *, runner: Runner | None = None) -> int:
     """Run the tiered gate; stamp only on full success. Mirrors CI's check job."""
     run = runner or _env_runner
+    from gate_components import preserve_prior_evidence  # deferred: gate_components imports gate
+
+    if not preserve_prior_evidence(root):
+        return 1
     clear_stamp(root)
     tested_tree = compute_tree_hash(root)
     started = time.monotonic()
@@ -1292,6 +1342,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("fast")
     sub.add_parser("full")
+    preflight_p = sub.add_parser("preflight", help="read-only candidate qualification checks")
+    preflight_p.add_argument("--json", action="store_true")
     component_p = sub.add_parser("component")
     component_p.add_argument(
         "name", choices=("backend", "frontend", "literature", "qlib", "atlas", "eval")
@@ -1352,6 +1404,18 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
+    if args.command == "preflight":
+        sys.dont_write_bytecode = True
+        from gate_preflight import render_report, root_resolution_failure_report, run_preflight
+
+        try:
+            root = repo_root(timeout=10)
+        except (OSError, subprocess.SubprocessError) as exc:
+            code, report = root_resolution_failure_report(Path.cwd(), exc)
+        else:
+            code, report = run_preflight(root)
+        print(json.dumps(report, indent=2, sort_keys=True) if args.json else render_report(report))
+        return code
     root = repo_root()
     if args.command in ("attest", "override", "ack", "baseline", "plan-check"):
         _reexec_with_pydantic(root)
@@ -1368,10 +1432,15 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(payload, sort_keys=True) if args.json else render_orientation(payload))
         return 0
     if args.command == "check":
-        if stamp_is_valid(root, args.tier):
+        valid, reason = stamp_is_valid(root, args.tier), "no stamp for the current tree"
+        if valid and args.tier == "full":
+            from gate_components import full_stamp_usable
+
+            valid, reason = full_stamp_usable(root, read_json(_state_dir(root) / STAMP_FILE) or {})
+        if valid:
             print(f"stamp valid for tier {args.tier}")
             return 0
-        print(f"no valid {args.tier} stamp for current tree — run gate.py {args.tier}")
+        print(f"no valid {args.tier} stamp ({reason}) — run gate.py {args.tier}")
         return 1
     if args.command == "attest":
         return attest(root, args.kind, sys.stdin.read())

@@ -9684,6 +9684,92 @@
         "title": "LiteratureDiscoveryRequest",
         "type": "object"
       },
+      "MlBackendCapability": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "enum": [
+              "lightgbm",
+              "linear",
+              "catboost",
+              "xgboost",
+              "double_ensemble"
+            ],
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "missing_dependency",
+              "incompatible_dependency"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Versions",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "reason",
+          "versions"
+        ],
+        "title": "MlBackendCapability",
+        "type": "object"
+      },
+      "MlCapabilities": {
+        "additionalProperties": false,
+        "properties": {
+          "backends": {
+            "items": {
+              "$ref": "#/components/schemas/MlBackendCapability"
+            },
+            "title": "Backends",
+            "type": "array"
+          },
+          "qlib_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qlib Version"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "qlib_version",
+          "backends"
+        ],
+        "title": "MlCapabilities",
+        "type": "object"
+      },
       "MlCosts": {
         "additionalProperties": false,
         "properties": {
@@ -9835,6 +9921,48 @@
         "title": "MlDiagnosticPortfolio",
         "type": "object"
       },
+      "MlDiagnosticState": {
+        "additionalProperties": false,
+        "properties": {
+          "degenerate_cross_sections": {
+            "minimum": 0.0,
+            "title": "Degenerate Cross Sections",
+            "type": "integer"
+          },
+          "quantile_cross_sections": {
+            "minimum": 0.0,
+            "title": "Quantile Cross Sections",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "score_status": {
+            "enum": [
+              "degenerate",
+              "ties_present",
+              "nondegenerate"
+            ],
+            "title": "Score Status",
+            "type": "string"
+          },
+          "tied_cross_sections": {
+            "minimum": 0.0,
+            "title": "Tied Cross Sections",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score_status",
+          "reason",
+          "degenerate_cross_sections",
+          "tied_cross_sections",
+          "quantile_cross_sections"
+        ],
+        "title": "MlDiagnosticState",
+        "type": "object"
+      },
       "MlDiagnosticVersions": {
         "additionalProperties": false,
         "properties": {
@@ -9891,6 +10019,14 @@
             "title": "Label",
             "type": "string"
           },
+          "membership_status": {
+            "enum": [
+              "current_membership_warning",
+              "declared_unverified"
+            ],
+            "title": "Membership Status",
+            "type": "string"
+          },
           "next_required_step": {
             "title": "Next Required Step",
             "type": "string"
@@ -9924,6 +10060,7 @@
         "required": [
           "schema_version",
           "authority",
+          "membership_status",
           "rows",
           "symbols",
           "targets",
@@ -10013,6 +10150,21 @@
             "title": "Exchange Id",
             "type": "string"
           },
+          "membership_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "current_membership_warning",
+                  "declared_unverified"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Membership Status"
+          },
           "prediction_rows": {
             "anyOf": [
               {
@@ -10075,6 +10227,7 @@
         "required": [
           "exchange_id",
           "status",
+          "membership_status",
           "worker_kind",
           "prediction_rows",
           "diagnostic_only",
@@ -10164,6 +10317,21 @@
             "title": "Exchange Id",
             "type": "string"
           },
+          "membership_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "current_membership_warning",
+                  "declared_unverified"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Membership Status"
+          },
           "prediction_rows": {
             "anyOf": [
               {
@@ -10216,6 +10384,7 @@
         "required": [
           "exchange_id",
           "status",
+          "membership_status",
           "worker_kind",
           "prediction_rows",
           "diagnostic_only",
@@ -10231,6 +10400,9 @@
           },
           {
             "$ref": "#/components/schemas/MlExperimentContractV2"
+          },
+          {
+            "$ref": "#/components/schemas/MlExperimentContractV3"
           }
         ]
       },
@@ -10496,6 +10668,137 @@
         "title": "MlExperimentContractV2",
         "type": "object"
       },
+      "MlExperimentContractV3": {
+        "additionalProperties": false,
+        "properties": {
+          "config_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Config Hash",
+            "type": "string"
+          },
+          "costs": {
+            "$ref": "#/components/schemas/MlCosts"
+          },
+          "embargo_sessions": {
+            "minimum": 0.0,
+            "title": "Embargo Sessions",
+            "type": "integer"
+          },
+          "feature_recipe": {
+            "$ref": "#/components/schemas/MlFeatureRecipe"
+          },
+          "folds": {
+            "items": {
+              "$ref": "#/components/schemas/MlFold"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Folds",
+            "type": "array"
+          },
+          "label_recipe": {
+            "$ref": "#/components/schemas/MlLabelRecipe"
+          },
+          "model": {
+            "$ref": "#/components/schemas/MlTabularModelRecipe"
+          },
+          "panel_rows": {
+            "minimum": 1.0,
+            "title": "Panel Rows",
+            "type": "integer"
+          },
+          "panel_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Panel Sha256",
+            "type": "string"
+          },
+          "portfolio": {
+            "$ref": "#/components/schemas/MlPortfolioRecipe"
+          },
+          "purge_sessions": {
+            "minimum": 0.0,
+            "title": "Purge Sessions",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 3,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "seed": {
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "snapshot_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Snapshot Hash",
+            "type": "string"
+          },
+          "survivorship_warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Survivorship Warning"
+          },
+          "universe": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 512,
+            "minItems": 20,
+            "title": "Universe",
+            "type": "array"
+          },
+          "universe_count": {
+            "maximum": 512.0,
+            "minimum": 20.0,
+            "title": "Universe Count",
+            "type": "integer"
+          },
+          "universe_membership": {
+            "enum": [
+              "point_in_time",
+              "current_membership"
+            ],
+            "title": "Universe Membership",
+            "type": "string"
+          },
+          "worker_lock_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Worker Lock Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshot_hash",
+          "config_hash",
+          "worker_lock_hash",
+          "universe",
+          "universe_count",
+          "universe_membership",
+          "survivorship_warning",
+          "feature_recipe",
+          "label_recipe",
+          "portfolio",
+          "costs",
+          "folds",
+          "purge_sessions",
+          "embargo_sessions",
+          "seed",
+          "panel_sha256",
+          "panel_rows",
+          "schema_version",
+          "model"
+        ],
+        "title": "MlExperimentContractV3",
+        "type": "object"
+      },
       "MlExperimentGenerateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -10510,6 +10813,48 @@
               }
             ],
             "title": "Experiment Id"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "enum": [
+                  "lightgbm",
+                  "linear",
+                  "catboost",
+                  "xgboost",
+                  "double_ensemble"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "enum": [
+                    "ols",
+                    "ridge",
+                    "lasso",
+                    "nnls"
+                  ],
+                  "type": "string"
+                }
+              ]
+            },
+            "maxProperties": 32,
+            "title": "Parameters",
+            "type": "object"
           },
           "project_id": {
             "maxLength": 64,
@@ -10991,6 +11336,20 @@
       "MlFoldDiagnostic": {
         "additionalProperties": false,
         "properties": {
+          "backend_versions": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend Versions"
+          },
           "best_iteration": {
             "title": "Best Iteration",
             "type": "integer"
@@ -11001,7 +11360,11 @@
           "fit_count": {
             "enum": [
               1,
-              2
+              2,
+              3,
+              4,
+              5,
+              6
             ],
             "title": "Fit Count",
             "type": "integer"
@@ -11010,6 +11373,28 @@
             "title": "Fold",
             "type": "integer"
           },
+          "importance_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Importance Kind"
+          },
+          "model_backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Backend"
+          },
           "model_hash": {
             "pattern": "^[0-9a-f]{64}$",
             "title": "Model Hash",
@@ -11017,6 +11402,20 @@
           },
           "normalization": {
             "$ref": "#/components/schemas/MlFoldNormalization"
+          },
+          "resolved_parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Parameters"
           },
           "test_rows": {
             "title": "Test Rows",
@@ -12172,9 +12571,67 @@
         "title": "MlServiceStatus",
         "type": "object"
       },
+      "MlTabularModelRecipe": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "enum": [
+              "lightgbm",
+              "linear",
+              "catboost",
+              "xgboost",
+              "double_ensemble"
+            ],
+            "title": "Name",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "enum": [
+                    "ols",
+                    "ridge",
+                    "lasso",
+                    "nnls"
+                  ],
+                  "type": "string"
+                }
+              ]
+            },
+            "maxProperties": 32,
+            "title": "Parameters",
+            "type": "object"
+          }
+        },
+        "required": [
+          "parameters",
+          "name"
+        ],
+        "title": "MlTabularModelRecipe",
+        "type": "object"
+      },
       "MlTearSheet": {
         "additionalProperties": false,
         "properties": {
+          "adapter_source_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Source Hash"
+          },
           "authority": {
             "title": "Authority",
             "type": "string"
@@ -12183,9 +12640,33 @@
             "title": "Available",
             "type": "boolean"
           },
+          "backend_versions": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend Versions"
+          },
           "counterfactual_refit": {
             "title": "Counterfactual Refit",
             "type": "boolean"
+          },
+          "diagnostic_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MlDiagnosticState"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "exchange_id": {
             "pattern": "^[0-9a-f]{16,64}$",
@@ -12243,6 +12724,46 @@
                 "type": "null"
               }
             ]
+          },
+          "membership_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "current_membership_warning",
+                  "declared_unverified"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Membership Status"
+          },
+          "model_backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Backend"
+          },
+          "model_parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Parameters"
           },
           "portfolio": {
             "anyOf": [
@@ -12303,6 +12824,7 @@
           "exchange_id",
           "authority",
           "label",
+          "membership_status",
           "counterfactual_refit",
           "versions",
           "feature_recipe",
@@ -12387,6 +12909,14 @@
             "title": "Diagnostic Only",
             "type": "boolean"
           },
+          "membership_status": {
+            "enum": [
+              "current_membership_warning",
+              "declared_unverified"
+            ],
+            "title": "Membership Status",
+            "type": "string"
+          },
           "prediction_rows": {
             "minimum": 1.0,
             "title": "Prediction Rows",
@@ -12417,6 +12947,7 @@
         },
         "required": [
           "status",
+          "membership_status",
           "worker_kind",
           "worker_implementation_version",
           "prediction_rows",
@@ -25491,6 +26022,38 @@
         ]
       }
     },
+    "/api/ml/capabilities": {
+      "get": {
+        "description": "Relay installed backend capability evidence from the isolated worker through CLI.",
+        "operationId": "get_capabilities_api_ml_capabilities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlCapabilities"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Get Capabilities",
+        "tags": [
+          "ml-research"
+        ]
+      }
+    },
     "/api/ml/exchanges": {
       "get": {
         "operationId": "get_exchanges_api_ml_exchanges_get",
@@ -31653,6 +32216,39 @@
         "tags": [
           "workstation-v3",
           "development"
+        ]
+      }
+    },
+    "/api/v3/ml/capabilities": {
+      "get": {
+        "description": "Relay installed backend capability evidence from the isolated worker through CLI.\n\nVersioned Workstation-v3 alias of `/api/ml/capabilities`.",
+        "operationId": "v3_get_capabilities_api_v3_ml_capabilities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlCapabilities"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "V3 Get Capabilities",
+        "tags": [
+          "workstation-v3",
+          "ml-research"
         ]
       }
     },

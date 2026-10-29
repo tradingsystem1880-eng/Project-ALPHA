@@ -1,12 +1,14 @@
+import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import gate
 import git_guard
 import pytest
 
-from tests.unit._harness_support import git
+from tests.unit._harness_support import git, pass_full_gate
 
 
 def test_unstamped_commit_is_rejected(repo: Path) -> None:
@@ -22,10 +24,10 @@ def test_partial_staging_does_not_inherit_worktree_stamp(repo: Path) -> None:
     assert code != 0 and "staged" in reason
 
 
-def test_exact_staged_tree_accepts_full_stamp(repo: Path) -> None:
+def test_exact_staged_tree_accepts_full_stamp(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     (repo / "tracked.py").write_text("x = 2\n")
     git(repo, "add", "tracked.py")
-    gate.write_stamp(repo, "full", steps=[], duration=0)
+    pass_full_gate(repo, monkeypatch)
     assert git_guard.check_commit(repo) == (0, "")
 
 
@@ -51,12 +53,34 @@ def test_install_refuses_unrelated_existing_hooks(repo: Path) -> None:
         git_guard.install(repo)
 
 
-def test_protected_configuration_requires_tree_bound_review(repo: Path) -> None:
+def test_protected_configuration_requires_tree_bound_review(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
     git(repo, "add", "CLAUDE.md")
-    gate.write_stamp(repo, "full", steps=[], duration=0)
+    pass_full_gate(repo, monkeypatch)
     code, message = git_guard.check_commit(repo)
     assert code != 0 and "review" in message
+
+
+def test_protected_only_change_commits_after_full_scope_attested_review(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
+    git(repo, "add", "CLAUDE.md")
+    pass_full_gate(repo, monkeypatch)
+    verdict = {
+        "verdict": "APPROVE",
+        "findings": [],
+        "reviewed_diff_hash": gate.scoped_diff_hash(repo, gate.matches_risk),
+        "reviewed_tree_hash": gate.compute_tree_hash(repo),
+        "files_reviewed": [],
+    }
+    assert gate.attest(repo, "review", json.dumps(verdict)) != 0
+    assert git_guard.check_commit(repo)[0] != 0
+    verdict["files_reviewed"] = ["CLAUDE.md"]
+    assert gate.attest(repo, "review", json.dumps(verdict)) == 0
+    assert git_guard.check_commit(repo) == (0, "")
 
 
 def test_install_is_idempotent(repo: Path) -> None:
@@ -68,14 +92,16 @@ def test_install_is_idempotent(repo: Path) -> None:
 @pytest.mark.parametrize(
     "original", ["CLAUDE.md", "packages/alpha-research/src/alpha_research/estimate.py"]
 )
-def test_rename_out_of_review_scope_still_requires_review(repo: Path, original: str) -> None:
+def test_rename_out_of_review_scope_still_requires_review(
+    repo: Path, original: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     source = repo / original
     source.parent.mkdir(parents=True, exist_ok=True)
     source.write_text("protected original contents\n")
     git(repo, "add", original)
     git(repo, "commit", "-m", "test: original protected path")
     git(repo, "mv", original, "ordinary.md")
-    gate.write_stamp(repo, "full", steps=[], duration=0)
+    pass_full_gate(repo, monkeypatch)
     code, message = git_guard.check_commit(repo)
     assert code != 0 and "review" in message
 
@@ -90,7 +116,7 @@ def test_reviewed_quant_rename_still_requires_quant_evidence(
     git(repo, "add", original)
     git(repo, "commit", "-m", "test: original quant path")
     git(repo, "mv", original, "ordinary.md")
-    gate.write_stamp(repo, "full", steps=[], duration=0)
+    pass_full_gate(repo, monkeypatch)
     monkeypatch.setattr(gate, "review_verdict_valid", lambda root: True)
     gate.write_json_atomic(
         repo / gate.STATE_DIR / gate.REVIEW_VERDICT_FILE,
@@ -123,3 +149,96 @@ def test_real_git_commit_invokes_guard(repo: Path) -> None:
     )
     assert result.returncode != 0
     assert "No full gate result" in result.stderr
+
+
+def _hooked_repo(repo: Path) -> Path:
+    """Commit the guard scripts before installing the hook, so setup never needs a bypass."""
+    source = Path(__file__).resolve().parents[2]
+    shutil.copytree(source / ".githooks", repo / ".githooks")
+    (repo / "scripts").mkdir()
+    for name in ("gate.py", "git_guard.py", "gate_components.py"):
+        shutil.copy2(source / "scripts" / name, repo / "scripts" / name)
+    git(repo, "add", ".")
+    git(repo, "commit", "--quiet", "-m", "chore: guard fixture")
+    git_guard.install(repo)
+    git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+    return repo
+
+
+@pytest.mark.parametrize("move_base", [False, True])
+def test_real_hook_consumes_gate_evidence_from_a_different_interpreter(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, move_base: bool
+) -> None:
+    _hooked_repo(repo)
+    monkeypatch.delenv("ALPHA_GATE_BASE", raising=False)
+    monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
+    (repo / "tracked.py").write_text("x = 7\n")
+    git(repo, "add", "tracked.py")
+    monkeypatch.setattr(sys, "executable", "/gate/venv/bin/python")
+    pass_full_gate(repo, monkeypatch)
+    stamp = gate.read_json(repo / gate.STATE_DIR / gate.STAMP_FILE)
+    assert stamp is not None and stamp["comparison"]["selection_mode"] == "exact_diff"
+    if move_base:
+        moved = git(repo, "commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "fetched")
+        git(repo, "update-ref", "refs/remotes/origin/main", moved)
+    result = subprocess.run(
+        ["git", "commit", "-m", "test: ordinary change"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if move_base:
+        assert result.returncode != 0
+        assert "comparison base" in result.stderr
+    else:
+        assert result.returncode == 0, result.stderr
+
+
+def test_legacy_full_stamp_without_comparison_is_rejected(repo: Path) -> None:
+    (repo / "tracked.py").write_text("x = 2\n")
+    git(repo, "add", "tracked.py")
+    gate.write_stamp(repo, "full", steps=[], duration=0)
+    code, message = git_guard.check_commit(repo)
+    assert code != 0 and "stale" in message
+
+
+def test_schema_two_review_record_is_never_valid(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
+    git(repo, "add", "CLAUDE.md")
+    pass_full_gate(repo, monkeypatch)
+    gate.write_json_atomic(
+        repo / gate.STATE_DIR / gate.REVIEW_VERDICT_FILE,
+        {
+            "schema_version": 2,
+            "created_at": "2026-10-27T00:00:00+00:00",
+            "verdict": {
+                "verdict": "APPROVE",
+                "findings": [],
+                "reviewed_diff_hash": gate.scoped_diff_hash(repo, gate.matches_risk),
+                "reviewed_tree_hash": gate.compute_tree_hash(repo),
+                "files_reviewed": ["CLAUDE.md"],
+            },
+        },
+    )
+    assert not gate.review_verdict_valid(repo)
+    code, message = git_guard.check_commit(repo)
+    assert code != 0 and "review" in message
+
+
+def test_head_moved_after_attest_invalidates_the_review(repo: Path) -> None:
+    (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
+    verdict = {
+        "verdict": "APPROVE",
+        "findings": [],
+        "reviewed_diff_hash": gate.scoped_diff_hash(repo, gate.matches_risk),
+        "reviewed_tree_hash": gate.compute_tree_hash(repo),
+        "files_reviewed": ["CLAUDE.md"],
+    }
+    assert gate.attest(repo, "review", json.dumps(verdict)) == 0
+    assert gate.review_verdict_valid(repo)
+    git(repo, "add", "CLAUDE.md")
+    git(repo, "commit", "--quiet", "-m", "chore: unhooked fixture commit")
+    assert not gate.review_verdict_valid(repo)

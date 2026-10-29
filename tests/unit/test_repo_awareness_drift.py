@@ -55,8 +55,10 @@ class TestModuleMapAwareness:
 
 class TestCliAwareness:
     def test_every_typer_subapp_is_documented(self) -> None:
-        main = (ROOT / "apps/alpha-cli/src/alpha_cli/main.py").read_text()
-        names = re.findall(r'add_typer\([^,]+,\s*name="([^"]+)"', main)
+        from alpha_cli.main import GROUPS
+
+        names = [name for name, _, _ in GROUPS]
+        assert len(names) == 24, "the sub-app registry must not be checked vacuously"
         docs = _docs_text()
         missing = [n for n in names if f"`alpha {n}" not in docs and f"`{n}`" not in docs]
         assert missing == [], f"undocumented CLI sub-apps: {missing}"

@@ -35,8 +35,9 @@ It composes the repo's existing skills — `karpathy-guidelines` (always),
 4. **Gate** — `uv run python scripts/gate.py full` before a commit. Installed Git
    hooks bind the staged tree to verification; CI checks the shared component commands.
    Never soften or summarize away a failing step. See `docs/operations/claude-code-harness.md`.
-5. **Review** — risk-tier paths need `/review-gate` (independent APPROVE bound to
-   the current tree); quant paths need `/verify-quant` (PASS attestation bound to
+5. **Review** — review-scope paths (risk-tier, protected control plane, hooks and guarded
+   config) need `/review-gate` (independent APPROVE bound to the current tree); quant
+   paths need `/verify-quant` (PASS attestation bound to
    the quant diff). BLOCK findings are fixed and re-reviewed, never argued away.
 6. **Docs honesty** — CLAUDE.md / spec / plan-doc status updates land in the same
    change as the code they describe (repo rule). Run

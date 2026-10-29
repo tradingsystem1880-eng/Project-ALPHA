@@ -4,6 +4,11 @@ version = "0.1.0"
 description = "Isolated JSON/Parquet worker boundary for Project ALPHA cross-sectional ML."
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "catboost==1.2.10; (sys_platform == 'darwin' and (platform_machine == 'arm64' or platform_machine == 'x86_64')) or (sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')) or (sys_platform == 'win32' and (platform_machine == 'AMD64' or platform_machine == 'x86_64'))",
+    "xgboost==3.4.1; sys_platform == 'darwin' and (platform_machine == 'arm64' or platform_machine == 'x86_64')",
+    "xgboost-cpu==3.4.1; (sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')) or (sys_platform == 'win32' and (platform_machine == 'AMD64' or platform_machine == 'x86_64' or platform_machine == 'ARM64' or platform_machine == 'arm64'))",
+    "graphviz==0.21",
+    "plotly==7.1.0",
     "lightgbm==4.6.0",
     "numpy==2.2.6",
     "pandas==2.3.3",
@@ -13,6 +18,10 @@ dependencies = [
 
 [project.scripts]
 alpha-qlib-worker = "alpha_qlib_worker.__main__:main"
+
+[tool.uv]
+# Only the new registry packages must stay wheel-only; Qlib's existing Gym build remains valid.
+no-build-package = ["catboost", "xgboost", "xgboost-cpu", "graphviz", "plotly"]
 
 [dependency-groups]
 dev = [

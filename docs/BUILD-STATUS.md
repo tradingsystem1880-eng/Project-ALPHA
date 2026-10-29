@@ -18,6 +18,8 @@ current-status paragraph, which is maintained there and may be newer than the co
 below. With ADR-0027/0028, that paragraph takes precedence over the dated narratives
 below wherever they conflict. Append new delivery records HERE.
 
+**2026-10-23 local candidate — unscheduled ML membership guard:** On main `99f2d472dd4511b446e1198ae80201e7207d089d`, schema versions 1 and 2 could accept `point_in_time` without a membership schedule. This local protective slice rejects that declaration at new export/preparation, retains `current_membership` only with its visible warning, and leaves historical artifacts byte-identical and inspectable with a `declared_unverified` status carried through CLI and web result/evaluation/tear-sheet projections. Existing frozen unscheduled PIT inputs cannot be trained or replayed by ALPHA/Qlib. No promotion gate changed; no schedule-v2 or date-varying model support is claimed. Focused synthetic contract, exporter, CLI, worker and web response tests passed; independent review approved the guard and read-only web projection. The full gate was not run, and this patch is not committed or merged.
+
 **Current research-program status (2026-08-11):** R1–R6 are implemented and integrated, and the
 scientific-authority hardening in ADR-0027 is complete. The private local implementation is
 complete; production, distribution, sale, hosting, and multi-user readiness are permanently out of
@@ -1603,3 +1605,861 @@ The first corrected-tree aggregate attempt passed backend, frontend/browser, lit
 and passed Atlas tests, then stopped on stale generated Atlas graph/input/unknowns outputs.
 Their canonical regeneration is part of this change; the failed attempt remains preserved and is
 not aggregate acceptance. Final regenerated-tree results remain in the separate task receipts.
+
+## 2026-10-22 — Technical-chart cursor inspection (unaccepted)
+
+On clean supplied base `99f2d472dd4511b446e1198ae80201e7207d089d` (isolated branch `work`), the
+existing Technical · Bokeh chart now supports exact candle/study inspection by hover, touch tap, and
+focused Left/Right/Home/End/Escape keys. Selection uses the returned candle index and aligned backend
+overlay value, preserves `—` for missing study points, publishes the existing UTC linked cursor, and
+clears on chart recomposition so the header returns to the latest returned candle. Classic/Default
+grammar and optional Market · Lightweight are preserved. No backend, API, dependency, or research
+artifact changes. The deterministic E2E uses mocked synthetic bars and is not research evidence.
+
+Focused evidence: renderer unit tests 3 passed; technical-chart Chromium reference spec 18 passed,
+including keyboard/touch value identity, study-change stale clearing, loading/empty/503 states, and
+both theme screenshots; TypeScript build check and warning-denying lint passed. The packaged SPA
+build passed with existing Vite dependency-eval/chunk-size warnings. Visual captures and exact
+candidate/recovery patch are in `/workspace/task-evidence/alpha-chart-inspection/`. Independent
+read-only review approved the implementation and scoped evidence. This is not a full repository gate
+or feature-release acceptance. No commit, publication, or merge was made.
+
+## 2026-10-23 — Strict alpha-study feature schema versions
+
+`FeatureInputRefV1` and `FeatureValueV1` now reject schema-version values that are not
+integers equal to `1`, including JSON booleans and floating-point `1.0`. Public
+regressions cover valid round trips with unchanged content hashes, both top-level
+readers, nested input references, unsupported and missing versions, semantic tampering,
+extra keys, and boolean feature scalars. Valid serialized output and hashes remain
+unchanged. No schema migration, dependency, store, or authority change was introduced.
+Private external coverage remains **UNVERIFIED**.
+
+## 2026-10-23 — Boolean guard for frozen baseline numeric inputs
+
+`alpha research diagnostic run-plan` previously accepted JSON booleans in numeric plan fields and
+`schema_version`: `seed: true` became `1`, `target_vol: true` became `1.0`, and
+`schema_version: true` became `1` before plan identity was calculated. Focused regressions reproduce
+all three conversions. The existing `BaselineExecutionPlan` now rejects booleans in numeric fields
+and `schema_version` while preserving Pydantic's existing numeric-string and integral-float
+coercions; a compatibility test verifies equivalent inputs retain the same normalized plan hash.
+This is a fail-closed input-contract change only: no metrics, experiment lineage, reservation,
+semantic freeze, strategy behavior or authority changed. The focused module passed all 40 tests when
+run through `scripts/run_owned_test.py`, and an independent review approved the bounded patch. The
+canonical full gate was not run. No commit or publication was made.
+
+## 2026-10-21 — Stooq interrupted-response error boundary candidate
+
+An offline probe through the real Stooq adapter and `data pull` on accepted main
+`b2556c0ede016f99dba687187b6e9f501bedd5cb` reproduced connection-reset and truncated-body
+exceptions escaping with exit 1 and no diagnostic. Timeout and URL-error controls
+already produced typed exit-2 errors. The narrow candidate translates connection
+errors and incomplete HTTP reads to chained `DataError`, preserving the existing
+HTTP-rejection message. It does not retry, parse partial bytes, fall back to another
+provider or publish partial history. Public adapter/CLI regression tests cover the
+interrupted reads, original cause, response cleanup and absence of publication.
+Fresh focused/full validation and independent exact-diff review remain required;
+this offline reproduction establishes neither live-provider acceptance nor release
+acceptance. Original probe and failed test attempts remain in private task evidence.
+
+A separate dated correction in the owner-actions register supersedes its preserved
+August 19 branch-only harness advice: accepted main tracks the two named harness
+files. Their presence does not establish hook installation, trust, permissions or
+local readiness. The old inspection date and historical text remain unchanged.
+
+## 2026-10-22 — Empty component gate definitions fail closed
+
+On isolated candidate `codex/gate-empty-steps-fail-closed`, based on accepted main
+`99f2d472dd4511b446e1198ae80201e7207d089d`, empty component definitions now return failure
+and cannot validate a component receipt or produce a full stamp. The focused
+`tests/unit/test_gate_components.py` run passed (34 tests); the two new regressions first
+reproduced the fail-open behavior on the base. This is a bounded candidate result only:
+the aggregate gate remains outstanding. An independent read-only review found no actionable
+issues; the reviewer did not run tests. No commit or publication was performed.
+
+## 2026-10-22 — Pinned Semgrep tooling candidate
+
+On isolated branch `work` at baseline `99f2d472dd4511b446e1198ae80201e7207d089d` (clean before
+edits), the gate and float-contract checker now share `scripts/semgrep_runner.py`. It requests exact
+Semgrep 1.181.0 through isolated `uvx --from semgrep==1.181.0`, verifies `--version` before each
+scan, and returns a failure on a missing tool, failed invocation, or mismatch. The existing rule
+file and both callers' scan arguments are retained; application and worker lockfiles are unchanged.
+Offline Semgrep-focused tests passed 12/12, including both callers, exact argv, version mismatch,
+scanner failure and no stamp after a failed gate step on the initial implementation candidate. The
+implementation remains local and uncommitted; subsequent candidate-specific checks are recorded in
+the task handoff. This entry does not claim repository acceptance, publication or merge.
+
+Cold-cache requalification later exposed that the gate adapter combined `uvx` stdout and stderr,
+so first-install diagnostics polluted the exact version comparison and stopped before any scan. The
+shared runner now checks only the probe's exact stdout, keeps bootstrap diagnostics separate,
+propagates probe failures, and preserves both streams in failure logs. Both callers also emit stderr
+from successful invocations so cold-cache bootstrap diagnostics remain visible. Added offline
+regressions cover bootstrap stderr with the exact pin, wrong/empty/extra stdout, misleading version
+text in diagnostics, failed bootstrap, both callers, scan arguments and full scan failures. The
+failed cold-cache full-gate attempt is preserved in durable task evidence; it exposed the adapter
+issue before any scan began. This entry makes no private-suite or release-qualification claim.
+
+## 2026-10-24 — Local PR81–88 UI integration derivative
+
+Disposable local derivative of the independently reviewed eight-PR candidate at
+`76f85e673fe7e6d08a488a9da3dc6a85d0a7ddf6` (tree
+`07d6416459764fd64f75e49cfba5cfea47ac346b`). It combines the separately reviewed investigation
+selection-epoch, RunDetail trade-loading, Saved Workspaces load-ownership and ML Diagnostics
+canonical-replay navigation fixes, their public browser regressions, the RunDetail manual note and
+the ML navigation guide. The generated SPA was rebuilt once using Node.js 22.23.4 and the existing
+locked frontend dependencies. Focused oxlint, TypeScript/Vite production build and all 17 real-panel
+browser cases passed (11 on `chromium-minimum`; 6 selector cases on `chromium-reference-only` with
+project dependencies disabled). The build reports the existing Bokeh direct-`eval` and large-chunk
+warnings. No dependency or lockfile changed. Exact test output and source-candidate identities are
+preserved in `/tmp/alpha-pr81-88-ui-integration-20261024.md` and its adjacent logs.
+
+PR85 adds `membership_status` fields to ML response projections; compatibility with external strict
+clients consuming those response schemas remains unverified and is not covered by this UI-focused
+qualification.
+
+This is local focused qualification only: the canonical full gate and private coverage are
+outstanding. It does not authorize upstream integration, merge, publication or release acceptance.
+
+## 2026-10-24 — RunDetail summary/catalogue request ownership correction
+
+Separate local derivative of the PR81–88 UI integration tree
+`3c3fcd4485e0a9c26cf471bd50caf8e0124c1d9a`. RunDetail now tags summary detail, request error and
+figure catalogue values with their selected run ID and request epoch, and derives renderable values
+only when both match the current route. The `RunDetail hides A summary and figures while B detail
+and catalogue are pending` real-panel regression failed on the preserved pre-fix tree after
+observing both A's summary and catalogue under B; it passes after the owner guard. Additional tests
+cover a stale B detail error after A→B→A and delayed detail/catalogue completion after report
+unmount. All 7 RunDetail tests pass; the combined 20-case focus passes (14 `chromium-minimum`, 6
+`chromium-reference-only --no-deps`). Node.js 22.23.4 TypeScript/Vite build and targeted lint pass;
+the existing Bokeh direct-`eval` and large-chunk warnings remain. No lockfile or dependency changed.
+
+This remains focused local evidence, not canonical full-gate or private-coverage acceptance. The
+external strict-client caveat for PR85 and the earlier unresolved process-reaping diagnosis remain.
+
+**Bounded literature page reads (2026-10-24)** — `get_research_source` now optionally reads one
+project-bound page and character slice from an already acquired extraction. The CLI reuses the
+existing immutable extraction hash reader, verifies source/extraction binding and the selected
+page hash, caps each result at 8,000 characters, enforces the extractor's 200-page ceiling, and
+labels text `UNTRUSTED_SOURCE`. An over-limit extraction is marked truncated without retaining
+partial text by the current worker, and page reads refuse any `truncated` artifact before returning
+text. The legacy source preview also returns extraction status/warnings and can include bounded
+page previews if present; it is not a full-paper review signal. The original source preview call
+and all 62 MCP tool names remain compatible. The literature-review
+protocol now requires metric/estimand definitions, units, sample and horizon, estimator and
+uncertainty, assumptions, evidence/inference separation, reproducibility limits, and a falsifiable
+extension linked to a registered analysis family; undefined metrics stay unknown. The change adds no
+provider, full-text acquisition route, analysis family, model, or authority. Selected store,
+protocol, CLI, and MCP regression checks passed; provider health was not tested. Neither source
+preview nor page read screens claims or advances research status. Opening `ControlStore` retains
+its existing schema/migration work and missing development-stage-row repair, which can write local
+control data when needed; that lifecycle behavior was not changed by this reader. The scoped test
+set passed 202 tests before the patch, 207 on its initial version, 6 targeted checks after the
+page-type correction, and 209 on the qualified final patch. Ruff lint/format and mypy also passed
+on the eight changed Python paths.
+
+**Deferred SSRN scope** — no SSRN adapter or access route is configured by the page-reader change.
+Keep any follow-up metadata-first: use Crossref/OpenAlex SSRN identifiers only where their actual
+coverage and linkage are verified; preserve the exact SSRN id, DOI, working-paper status, known
+version and retrieval provenance, and a content hash for any lawfully acquired text. A permanent
+DOI is not proof that historical full text is immutable or retained. Default to explicit
+metadata-only/access-unavailable states. Full-text intake requires a verified permitted route or
+an owner-provided PDF, with source attribution and rights handled under SSRN's [preprint FAQ](https://www.elsevier.support/ssrn/news/welcome-to-ssrn-elseviers-preprint-server),
+[DOI/version guidance](https://www.elsevier.support/ssrn/answer/doi), and [reuse guidance](https://www.elsevier.support/ssrn/answer/can-i-repurpose-content-available-on-ssrn).
+Dataset/code relationship retrieval is a separate follow-up; linked code remains inert and must
+never be executed as part of paper review. No SSRN API, host allowlist, automatic full-text fetch,
+or corpus reuse permission is assumed here.
+
+**Offline literature worker cache (2026-10-24)** — `_run_literature_worker` now passes only the
+existing credential-free, offline child environment plus `UV_CACHE_DIR`. A valid configured cache
+is preserved; otherwise the launch gets a temporary cache removed after the subprocess exits.
+Invalid explicit cache paths fail before worker startup rather than silently switching caches.
+Focused tests cover the configured and temporary paths, cleanup on success/failure, read-only home,
+and environment isolation. A real synthetic owner-PDF CLI import and page read passed with no
+inherited cache setting and a read-only home; no provider request or owner paper was used.
+
+**Read-only qualification preflight (2026-10-25)** — Added `python3 scripts/gate.py preflight
+[--json]` to identify known blockers before the full gate. It checks only allowlisted public
+tracked prerequisites and Git alternates; reports branch, commit, Python/uv and CPU/memory/disk;
+shares the existing manual-size predicate; reuses `gate.lint_harness` and the canonical Atlas
+`--check`; and checks that the full-gate mypy command includes `tests` (`scope_only`) without
+executing mypy (`not_run`). It does not install or repair anything, run test suites, or rewrite Atlas
+outputs. The initial synthetic `unittest` module passed 8/8 and
+`git diff --check` passed; the dated `FeaturePlan` validates. On branch
+`codex/alpha-preflight-20261025` at baseline
+`e635e6cb5bc7b9fa688dc524998d7fe1ff8eebdc`, initial preflight found all 173 required public paths
+present, no Git alternates, the manual-size result at 5,965/6,000 bytes, Python 3.12 and uv
+available, canonical harness lint passing, and full-gate mypy scope covering tests. It returned 1 because the local
+`.venv` is missing and generated Atlas outputs are stale. The report showed 5 logical CPUs, about
+17.0 GiB available RAM and 29.8 GiB free disk. Independent review found no remaining code findings.
+At that point pytest was unavailable without creating an environment; the authorized follow-up
+verification is recorded below.
+
+**Qualification preflight follow-up (2026-10-25)** — On the same branch and baseline, the owner
+authorized the repository's root-only `uv sync --locked`, canonical Atlas generation, focused tests,
+canonical typing and cheap checks. Sync succeeded; `pyproject.toml` and `uv.lock` remained clean.
+The canonical Atlas generator was run with the root candidate `.venv`; its `--check` confirmed all
+8 generated outputs fresh. Final preflight JSON reports no blockers, all 173 allowlisted public
+paths present, no alternates, manual size 5,965/6,000 bytes, local `.venv` and mypy present, and
+Node/npm available. The mypy rows remain `scope_only` and `not_run`, respectively; separate executed
+commands passed `uv run mypy packages apps tests` (857 source files) and the canonical harness mypy
+command (18 files). Focused repository pytest passed 15 tests, including the synthetic preflight
+suite and shared manual-size test. Changed-file Ruff check/format, import contracts (13 kept, 0
+broken), harness lint, plan validation, Semgrep's pinned contract probe, and `git diff --check`
+passed. Semgrep verified the existing 1.181.0 pin and detected all four synthetic leaky comparisons.
+Independent review found no remaining findings. The initial blocked JSON and exit status remain preserved outside the worktree
+at `/workspace/alpha-preflight-initial-blocked.json` and
+`/workspace/alpha-preflight-initial-blocked.exit` (SHA-256: `465e75c44a0840bf8716a27dab640aae12d104d5db2a0f52fe3b46aab2d59b0d` and
+`4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865`). The first Semgrep probe
+attempt was interrupted with exit 130; after the owner confirmed the existing pinned `uvx` package
+workflow was authorized, it passed on retry. The first exit is preserved at
+`/workspace/alpha-preflight-semgrep-exit-130.json`; the successful result is at
+`/workspace/alpha-preflight-semgrep-contract-result.json`. No project dependency or lockfile
+changed. At completion of that follow-up, no full gate or publication had been performed.
+
+**Qualification preflight canonical gate attempt (2026-10-25)** — The owner subsequently authorized
+one canonical full gate on the reviewed candidate. Its backend component completed 11 of 12 steps
+successfully; the full public-test run reported 5,987 passed, 10 skipped, and one failure, with
+93.12% coverage against the unchanged 93.0% floor. The failure was
+`tests/unit/test_claude_harness_gate.py::TestDoctor::test_doctor_passes_on_wired_repo`: the
+synthetic wired-repository fixture kept a hardcoded harness script list and omitted newly registered
+`scripts/gate_preflight.py`. This exposed fixture drift without changing gate scope, thresholds, or
+production behavior. The backend receipt records `stable_tree: true`, failed step `pytest +
+coverage`, and original candidate fingerprint
+`73c350a90902b139fba989885208dc53012e51ab6d7dccf8dd47ab5a302c138d`. The preserved run log is
+`/workspace/alpha-preflight-full-gate.log` (SHA-256
+`092086bfdb5f1d9f1afdfed40ae3ef89123212e9a83c7bc2fe3fcc1e6d001770`); the backend receipt is
+`/workspace/alpha-preflight-backend-failed-receipt.json` (SHA-256
+`d7e668811d88330c9a6696a3eb8af02494d23ecab1ec0e7b1296ecc87e1344f5`). No full-gate stamp was
+written. The minimal correction updates the synthetic fixture to iterate canonical
+`gate.HARNESS_SCRIPTS`; independent read-only review found it keeps the fixture aligned with
+`gate.doctor()`. The corrected candidate's outcome is determined by its exact-tree checks and
+canonical gate receipt; this first attempt does not claim aggregate acceptance or publication.
+
+**Mutation-selection and freshness preflight follow-up (2026-10-26)** — Implemented in a separate
+worktree on branch `codex/alpha-preflight-selection-20261026`, based on the preserved qualified
+candidate tree `70e478836058e8da0f9b10e153e576029ce038f4`. The preflight now reports the canonical
+effective mutation base and resolution, exact-diff versus conservative-fallback selection and
+target count. Exact selection of every quant module is distinguished from fallback. Frontend API
+and SPA index alignment is checked only for the canonical freshness pathspecs; an actionable
+`index_setup` warning is explicitly separate from actual Atlas `generated_drift`. Synthetic tests
+cover explicit/default valid refs, missing/invalid/empty refs, exact and fallback target parity,
+unknown resolution, staged/unstaged outputs, sparse skip-worktree omissions, a missing canonical
+freshness step, and actual Atlas drift. Independent review found those two frontend-scope gaps; the
+diagnostic now requires both canonical freshness steps and verifies their tracked targets are
+present. Canonical backend selection logic remains authoritative through a shared target helper.
+
+The focused repository test run passed 25 tests with two sparse-target subtests; canonical
+`uv run --locked mypy packages apps
+tests` passed for 857 source files. Changed-file Ruff check/format, import contracts (13 kept, 0
+broken), harness lint, plan validation, canonical Atlas generation and `--check`, and
+`git diff --check` passed. The new worktree's existing locked root environment was created using
+`uv sync --locked`; the dependency and lock files did not change. Final read-only preflight JSON
+returned exit 0 with 173 required public paths present, no Git alternates, manual-size 5,965/6,000,
+candidate-local `.venv` and mypy present, and Atlas outputs fresh. It reported the available default
+`origin/main` ref, merge base `bf5baa75c8db0de8e85623c218fd89b1d4f5f668`, and an exact selection of
+zero quant targets. Frontend freshness paths matched the index. The preflight's own mypy entries
+remain correctly labeled `scope_only` and `not_run`; the passing mypy result above came from a
+separate command. No full gate, publication, merge, or deployment was performed for this follow-up.
+## 2026-10-26 — Synthetic native lifecycle candidate (local, inactive)
+
+Adds protected typed native lifecycle events and atomic failure/cancellation closure using existing
+ControlStore records. A detached trusted owner runs fixed synthetic payloads in a disposable fixture
+workspace on the explicit linux-posix-v1 profile. Reconnect never dispatches or signals saved PIDs.
+Unknown owner/cleanup remains nonterminal with capacity occupied and the reservation fully charged.
+Clean return code zero records process completion pending scientific admission, not a completed D1
+attempt. Ordinary D0 and deterministic deep execution remain on their existing paths.
+
+No new schema/table, migration, dependencies, production dispatcher or native/provider/LLM calls.
+Local public-only focused qualification is separate from full-gate and real-native acceptance.
+Activation still requires executable qualification, physical worker isolation, stronger containment
+where claimed, external effect limits, scientific output admission and compatible-writer cutover.
+See `docs/superpowers/plans/2026-10-26-synthetic-native-lifecycle.md` for the bounded implementation.
+
+### 2026-10-26 — Adversarial synthetic lifecycle continuation (local)
+
+The isolated continuation freezes completion observations and shares a single retained-child cleanup
+result between the lease and owner. No-spawn completion prevents later dispatch; launch preparation
+rechecks expiry before Popen. Known synthetic escapes remain quarantined with capacity and the full
+reservation held, even after their original process group has exited. No schema or admission changes.
+
+Public fault cases cover both cancellation/completion transaction orders and duplicate calls, owner
+SIGKILL after closure writes before commit, stopped-owner expiry, interrupted/provenance-lost cleanup,
+and blocked journal publication. Journal stalls can delay process termination: this slice supplies no
+hard wall-time bound or security sandbox. Native activation and aggregate qualification remain separate.
+Running lease failures deterministically record `owner_error`; owner return never means scientific
+success. Startup and outcome-publication errors still propagate.
+
+### 2026-10-26 — Journal-independent synthetic cleanup candidate
+
+The fixture owner arms its existing lease thread at retained Popen before post-spawn verification
+or journal publication. Safety callbacks use only local monotonic time, a bounded nonblocking
+cancel-only Unix datagram socket and shared one-attempt process-group cleanup. SQLite heartbeat
+and outcome reporting stay on the owner thread. Native cancellation sends the live stop request
+before database access; the owner atomically records received intent with its observation using
+existing job events. Socket delivery never proves cleanup or releases capacity/budget.
+
+Delayed immutable start observations can be retried after physical cleanup, never by re-dispatching.
+A reaped leader cannot authorize signalling a surviving numeric group; uncertainty remains charged.
+Blocked or failed reporting retains the slot until verified cleanup is durably recorded. Journal
+append times can lag execution. Ordinary OS scheduling, owner death, denied cleanup and escaped
+processes still limit enforcement; no hard real-time or hostile-code containment claim is made.
+No new dependency, schema, application dispatch route, security setting or native workflow is added.
+
+The first comprehensive independent audit blocked a passing candidate on concurrent leader reaping
+before group signalling. Native-only observation now uses Linux waitid(WNOWAIT) under the shared
+cleanup lock, retaining the child identity until after the final possible signal. Loss of wait
+ownership or a group still visible after reap stays uncertain with no further destructive signal.
+Default durable-lease callers preserve their previous polling/cleanup path. Red race receipts and
+the blocked candidate remain preserved alongside the corrected public regression evidence.
+
+Follow-up red cases showed that retaining an exited leader through blocked start/heartbeat reporting
+could mislabel successful execution as timeout. The safety loop now cleans observed normal exits
+without reporting work. The dedicated entry establishes default SIGCHLD before claims/spawn;
+the host profile rejects other dispositions. Trusted in-process tests require no auto-reaping flags,
+outside reaper or concurrent signal-disposition mutation. These are explicit process ownership
+assumptions, not a hostile same-UID sandbox guarantee.
+
+### 2026-10-26 — Pinned native loop conformance development candidate
+
+Added an isolated `workers/rdagent` dependency lock and a fixed synthetic extension of the real
+upstream LoopBase/LoopMeta at `484776c211e4fbbeef03e0ec00d6bbee7362a4f4`. The complete supplied
+source tree is verified before importing. The extension inherits native scheduling and signed
+checkpoint serialization, uses actual Scenario/Experiment/Hypothesis/Trace types and preserves
+explicit synthetic feedback labels and metric units/values. Stock RDLoop and provider backends
+are excluded. Root dependencies and locks are unchanged.
+
+Explicit public tests cover native stages, roundtrip/resume, concurrent and stale continuation
+rejection, cancellation/quiescence, tampered source/checkpoints, and fixture pre-effect allowance.
+Native step_n is post-effect and is explicitly not admission authority. Cancellation demonstrates
+the upstream in-memory cursor advance without a successful checkpoint. The live fixture owner
+drains native tasks before allowing another continuation; cancelled owners cannot resume.
+
+These are development conformance results, not ALPHA ControlStore accounting integration,
+scientific evidence or production release qualification. The previous process lifecycle candidate
+is unchanged. No public dispatch route, cross-owner recovery, native activation or full-gate claim
+is added. Fresh independent review of the exact final candidate is required before acceptance.
+
+Independent review blocked the first native-loop candidate on an import-provenance gap: placing
+the external source root first on sys.path could shadow the reviewed probe or dependency modules,
+and the bootstrap verifier could use an existing worker bytecode cache. Eight fixed sentinel
+regressions reproduced these failures. The correction removes general source-root import access,
+binds upstream and worker imports to their intended directories/files, rejects source-root shadows,
+and establishes a fresh fixture cache before local imports. All successful continuation probes now
+require real upstream and worker source hashes. The blocked candidate and red receipts are retained;
+the corrected descendant requires a fresh review against its own exact tree.
+
+**2026-10-26 bounded W04 native admission candidate:** Connected one fixed pinned native
+LoopBase/LoopMeta synthetic child to the existing approved D1 ControlStore reservation and
+trusted process owner. The claim checks actual approved worker/code/lock/environment/evaluator
+fingerprints, one reserved variant and positive CPU allocation; the existing ephemeral stage
+guard consumes the reserved loop allowance before each operator. Signed checkpoints bind the
+job, reservation, invocation and same live owner. The existing lease supervises the actual child;
+exact labels and metric names/values/units are checked only after actual process-group cleanup.
+All successful labels remain pending scientific admission / not_admitted. Failure/cancellation
+reconciles through the existing records, and cleanup/result/journal uncertainty retains capacity
+and the full charge. No lifecycle event fields or schemas changed. Study mandates and the closed
+scientific operator registry remain unchanged; generic study/trial admission, complete CPU/token
+metering, scientific artifact admission, cross-owner recovery and production activation remain
+unqualified. Four guard mutants and separate launch-object/zero-CPU red-green checks discriminate
+missing enforcement. The explicit public regression selection passed 400 tests; scoped Ruff/mypy,
+FeaturePlan validation and all 13 import contracts passed. A controller-death fixture teardown
+race was fixed by awaiting owner lock release before deleting its scratch directory. Earlier
+failure receipts are preserved. This is an uncommitted local candidate, with fresh independent
+review pending and no full gate or scientific run. See the bounded W04 admission plan and the
+local `/workspace/alpha-native-w04-admission-receipts` evidence directory.
+
+## 2026-10-26 — Frozen-rule native study prerequisite, integration blocked
+
+Added an internal immutable request for a fixed daily synthetic `close>10` RuleSpec and a new
+always-flat `close<0` position control. Canonical rules, actual five-bar bytes, dataset/artifact
+identity, UTC cutoff, horizon and units are frozen. Public engineering tests call the existing
+rule_signal and compare with independent hand-specified positions; no statistical estimator or
+market evidence is added. NativeLaunch refuses study-bearing requests before source measurement,
+claim or child effects, including with an existing approved synthetic double-bottom reservation.
+D0/D1 authority still admits the double-bottom protocol; no rules/control registration is
+invented. The isolated worker lacks the qualified ALPHA rule dependency closure. Consequently
+scientific native execution, study/trial outcome accounting, metrics/provenance admission and
+W08 completion remain blocked/incomplete. See
+`docs/superpowers/plans/2026-10-26-native-rule-study-boundary.md` for the acceptance map.
+
+## 2026-10-26 — Closed synthetic native rule workflow candidate
+
+The earlier rule prerequisite refusal is superseded only for two exact synthetic engineering
+protocol versions with persisted real local owner confirmation and immutable approved contracts.
+The actual pinned LoopBase/LoopMeta child now executes real rule_signal and, for the separate
+costed dataset, the canonical Nautilus engine before Feedback. Same-live checkpoint continuation,
+one-family trial limits, existing full reservation accounting and protected immutable completion
+are exercised. Independent cash/fill arithmetic matches12558.21 baseline versus12000 flat control;
+scientific_acceptance remains not_admitted. Two canonical result projections reuse existing
+snapshot/sidecar/chart/comparison APIs and share one trial. Self-rehashed altered equity is rejected.
+Fresh worker profiles bind complete local source, preserved metadata and installed dependency bytes;
+only the declared import subset is qualified. Root/old worker locks and environments are unchanged.
+
+The broad explicit public selection passed 612 tests with no skips; the subsequently strengthened
+projection/authority suite passed 27. Application/test typing passed 15 files plus the strengthened
+test, worker typing passed 6 files against actual upstream annotations, and all 13 import contracts
+passed. Scoped Ruff/format and canonical Atlas freshness are recorded in the executor receipts.
+Existing context maps now link a lean validation dependency backlog while retaining full Qlib,
+native RD-Agent and wider W01–W19 scope. Final candidate review remains pending. This is an uncommitted candidate,
+not full-gate/release approval. Four other-owner transfers failed to materialize; their patches and
+compatibility remain blocked. Real discovery, empirical W08 and full report/UI acceptance remain
+unqualified. See [current plan](superpowers/plans/2026-10-26-native-rule-authority.md) for exact
+authority, source paths, receipt map, blockers, rollback and resume.
+
+
+## 2026-10-26 — Native workflow assembly onto current integration (pending qualification)
+
+Preserved original tree d67a13e88ced67e234dd0183ad7fd01ed8c53e74 and its receipts. Applied its full
+e635 delta once in an isolated bc5b58351cc334d36112167c9463a80184411cc6 checkout. Source merged
+without conflicts; retained both build histories and regenerated Atlas. Moved detailed native
+invariants from the operating manual to the existing current plan to preserve the canonical
+manual-size guard. Fresh scoped verification and independent review are pending. No handoff,
+private-suite, rendered UI, scientific or production acceptance is inherited. No commits/publication.
+
+
+### Native assembly independent review corrections (2026-10-26)
+
+The fresh comprehensive source review reproduced two high defects: self-rehashed projection
+semantic fields were accepted, and a raw-result/artifact rewrite passed completed-case reads
+without changing the database. Preserved failed probes and initial BLOCK report live in the
+assembly executor packet. The correction derives exact projection identities/semantic fields,
+binds the supervisor's same bounded-read receipt bytes in the existing trusted outcome, publishes
+those captured bytes, and pins their full reference in immutable attempt details. No SQL schema,
+ledger, _run_deep or production recovery change. Original process-only payloads retain V1 shape;
+new closed rule outcomes have an additive versioned rule_result binding. Historical unbound rule
+completion fails closed; mixed-reader/writer activation remains blocked.
+
+Focused corrected authority/artifact/public-read checks passed27; final lifecycle/adversarial/journal
+checks passed81. Test portability now requires explicit source/profile opt-in, configured broken
+runtimes fail, and receipt copies are opt-in. Harness cleanup no longer signals saved/reaped groups;
+intentional orphans use retained verified Linux pidfds, ordinary teardown requests live-owner stop.
+The initial broad assembly run612passed and47preflight tests predate these corrections. Fresh final
+broad regression and exact-tree independent re-review remain pending in the acceptance packet.
+The root runtime was recreated offline from unchanged locks; canonical preflight then passed.
+No full gate/private-suite/scientific/UI-release qualification, publication or activation is claimed.
+
+Clarification from final independent probes: the general research_case_summary reader returns
+metadata and revalidates D0 only; its unchanged response after a D1 artifact rewrite was not proof
+of accepting numerical D1 evidence. Verified completion and verified_research_attempt are the new
+full receipt-binding boundary. Standalone artifact consistency checks and generic UI/report readers
+confer no ControlStore authority. Both repaired v1/v2 baseline/restore reads and semantic/raw tamper
+rejections were independently observed at the intended verified boundary.
+
+Final assembly review also demonstrated a mutable nested observation alias despite a read-only
+outer mapping. The closed rule-result binding is now detached and frozen at issuance, and journal
+serialization owns a separate plain copy. Both alias-mutation red cases and the real rule workflow
+passed focused correction tests. Final public regression, independent review and the actual
+canonical working-tree fingerprint are recorded in the existing assembly acceptance packet;
+earlier SHA256-of-index-tree calculations are not substitutes for gate.compute_tree_hash.
+The preserved original candidates, source-transfer holds and missing-private-suite obligation remain.
+
+### Native assembly: recovered terminal public receipts
+
+The interrupted session's saved commands completed on source tree
+`d9fc9658686eb3247f284d7a0a65943dc88e6c11`:616 public tests passed with no skips,47
+integration-preflight tests plus two subtests passed, strict typing passed for27 root/test and9
+worker files, lint/format passed for36 changed Python files,13 import contracts held, and canonical
+cheap preflight/plan/profile checks passed. Receipts54–63 are preserved in the existing assembly
+packet. The final source-review verdict had not completed at interruption and is being completed
+independently; consult that packet rather than infer acceptance from these checks. The ensuing
+status-only documentation refresh receives fresh Atlas/preflight checks and an explicitly distinct
+final identity. No full gate/private-suite/UI/empirical acceptance or publication is claimed.
+
+Final review AR-006 reproduced synthetic snapshot source/date relabeling through consistent
+artifact rehashing. The closed native projection now compares against a fresh canonical expected
+snapshot from the fixed synthetic study, including full provenance and declared symbol/action
+identity. Existing altered evidence is rejected without repair. Fourteen public lineage cases
+failed before correction; focused and final exact-tree results are retained in the assembly packet.
+This is an additional repair after d9fc/ef811; their earlier passes do not qualify the new code.
+
+### Native full-gate followthrough candidate
+
+The reviewed46e4f02 synthetic checkpoint remains physically preserved. A separate bc5-based
+qualification worktree starts from that exact tree. The first complete backend pytest/coverage
+step passed6210 tests but failed one monitor-fault test and produced22 archive teardown errors;
+coverage93.04% exceeded the93% floor. The archive failures used an opt-in receipt directory before
+its parent existed; the next invocation explicitly prepares that output path. The monitor test
+injected its safety-loop fault before payload readiness, allowing cleanup to win that race. Its
+repair arms the injected fault only after observed readiness, retaining the existing cleanup
+deadline and assertions. No production behavior, admission/accounting or migration code changes.
+
+The owner clarified that ordinary unchanged-lock project dependency setup is authorized; earlier
+no-full-gate/runtime restrictions are historical to their recorded scope. The existing canonical
+full gate is now the requested qualification action. Its actual terminal outcome and any remaining
+source/runtime failures are preserved in the executor's engineering-gate-followthrough packet.
+No private-suite, real-data/scientific, rendered native-UI or deployment acceptance follows from
+engineering checks. No Library-transfer workaround or Qlib adapter change is included.
+
+
+
+## 2026-10-26 Qlib tabular first-wave local candidate
+
+Implemented in isolated `Project-ALPHA-handover/qlib-tabular-wave1-20261026`, branch
+`codex/qlib-tabular-wave1-20261026`, from delivery baseline
+`bc5b58351cc334d36112167c9463a80184411cc6`. The dirty primary checkout was not edited.
+[Plan, recipe ledger and evidence route](superpowers/plans/2026-10-26-qlib-tabular-wave1.md)
+are linked from the existing context index and Quant Platform model row; Atlas is regenerated.
+The initially missing expanded scope authority was subsequently supplied as parent-verified
+Library v1 section9/page9 planning text; the complete document was not materialized locally.
+The upstream inventory denominator54355232463878d2eebb91fe0ee5fa7fa1f5976c remains distinct
+from the unchanged Qlib0.9.7 worker pin and da920b7 runtime reference.
+
+Additive schema3 selects LightGBM, Linear OLS/ridge/lasso/NNLS, CatBoost, XGBoost and upstream
+DoubleEnsemble. Legacy1/2 remain covered. Available backends really fit synthetic folds;
+CatBoost/XGBoost execution remains blocked by missing/unapproved optional dependencies.
+The existing CLI and ML UI carry selection, dependency status, fold-local lineage and explicit
+degenerate-score diagnostics. Comparisons bind identical frozen inputs, source/version lineage
+and stable artifact bytes. Economics remain canonical-engine-only for new schema3 diagnostics.
+There is no new control-store schema, RD-Agent protocol, admission authority or alternate backtester.
+
+Focused evidence:269 root ML regression tests;48 isolated worker tests;420 frontend unit tests;
+24 focused canonical ML browser cases. Six real worker processes each emitted2420 finite aligned
+synthetic predictions with native reload parity and measured peak RSS609402880–655228928bytes.
+One synthetic ridge exchange replayed through the existing canonical engine for121periods with
+explicit1bps fee/2bps slippage and promotion_eligible=false. Independent Astra review reproduced
+and verified fixes for comparison source replacement, hidden Lasso nonconvergence and misleading
+degenerate-score quantiles; source-drift and native thread bounds were also addressed.
+
+These results are bounded implementation evidence. See the plan and local `.alpha/state/qlib-tabular-wave1/`
+receipts for the final candidate tree, complete changed paths, gate attempts and exact failures.
+Full aggregate acceptance, Linux screenshot qualification, optional backend runtime qualification,
+authentic private-suite coverage, real-data/discovery approval, empirical economics and promotion
+remain separate. No commit, push, PR, merge, deployment or owner-data acquisition is claimed.
+
+
+**Same-task qualification follow-up:** The exact73daaeae local candidate passed all six canonical
+components and Astra's scoped review; receipts/source are preserved in its checkpoint directory.
+Read-only current-package inspection identified bounded compatible CatBoost1.2.10 and
+XGBoost3.4.1 CPU routes. The existing tabular plan now records all eight ADR-0011 proposal items
+before additive isolated-worker adoption. No existing Qlib/NumPy/root pin may change. Optional
+execution remains unverified until actual lifecycle tests; further edits invalidate the first
+stamp for the new tree and require fresh independent review/full verification.
+
+
+**Bounded optional runtime implementation completed locally:** CatBoost1.2.10 and XGBoost3.4.1
+now execute on macOS ARM in the isolated worker. The217-package lock preserves all212 prior
+versions and every211 non-project package record, adds no GPU runtime dependencies and persists
+wheel-only guards. Final corrected source2070a9e4a11fc627b793456774e73b768c6240ec3a2ac220438abf7983492c64
+passes68 worker tests; root ML269, frontend431 and focused browsers27 pass. Eight actual recipes
+each publish2420 finite aligned predictions, validate through existing web contracts and compare
+with immutable retry. New canonical Cat/XGB synthetic replays use explicit costs and remain
+non-promotable. Astra verified selected-tree early-stop state and original/reloaded inference
+thread bounds after reproduced failures; all prior trials/checkpoints remain preserved. ML list
+labels now state prepared/prediction-pending/recorded evidence without inferring validation.
+The plan's final-verification-summary link records exact final tree/review/aggregate outcome;
+pending or absent receipts confer no pass. Linux/Windows transport, authentic private coverage,
+empirical/data approval and promotion remain separate; no new local dependency authorization
+is needed for these verified pins. No GitHub publication or accepted-stack upgrade occurred.
+
+
+## 2026-10-26 — Qlib W11 successor engineering packet (in progress)
+
+The five-backend/eight-recipe wave remains sealed at tree
+`8df4b89561feee778cbf13909d28ca019b40bf20`, with its49-step/six-component full gate and
+Astra review preserved in its original worktree. The isolated successor
+`Project-ALPHA-handover/qlib-w11-refit-20261026` materializes that exact tree before edits;
+its baseline commit remains `bc5b58351cc334d36112167c9463a80184411cc6`. Predecessor acceptance
+is not inherited. See the [W11 packet plan](superpowers/plans/2026-10-26-qlib-w11-refit.md)
+for supplied planning authority, scope, frozen engineering controls and next action.
+
+Read-only inspection confirms real train-only normalization and fresh model fits already exist.
+The genuine delta is observed component input/state provenance and a private fixture-only
+single-world refit route, initially for ridge and DoubleEnsemble. Application planning/audit/status
+must remain read-only. The integrated native registry has no W11 executor or W06 generic fit
+reservation/ancestry contract; the reviewed six-module statistical source is unavailable. Neither
+is reconstructed or replaced. Governed execution, statistical qualification and promotion remain
+blocked. A transient Mac disconnect occurred before new fits; actual successor state was checked
+after reconnection, with no uncertain source mutation found. New implementation/tests/review and
+a fresh full gate are pending; this is an implementation checkpoint, not a passing receipt.
+
+Subsequent source recovery: the approved native/W06 Library archive was materialized and verified
+at516,864bytes/SHA256 `dd4d1c35e703bb9cc22bd2e76a79260b911a83e457f4d7901417d35ac7eb8525`.
+Its actual patch reproduced producer tree `f15c906378fec2d4581564ecdf6cc610005c1ac8` on the common
+base. W11 partial tree `b93f4d091fefa3a86aa580849ac4458360970a46` was frozen before reconciliation
+in isolated `Project-ALPHA-handover/qlib-w11-native-20261026`. Both originals remain read-only.
+This closes source availability only: Qlib protocol registration, fit-unit charging, world/reuse
+ancestry and runtime/exposure qualification remain blocked. No real ControlStore was opened.
+Pure call-graph and fixture eligibility tests have executed; actual W11 model fits, final review
+and the assembled-tree canonical gate are still pending at this checkpoint.
+
+The qualified predecessor was separately saved as Library `libfile_9c1b50c894dc819198579d0db90b503e`
+v0,1,579,619bytes/SHA256 `6bb178052083a489564670042de412bdb8408c7cac75c23e4de0b654bf80b7c8`.
+Its exact patch reproduces tree `8df4b89561feee778cbf13909d28ca019b40bf20`; its sanitized handoff
+omits the panel and contains no W11 changes. Linux execution and authentic private coverage remain
+unqualified. Packaging, source application and upload receipts are under the active successor's
+`.alpha/state/qlib-w11-refit/`; no checkpoint acceptance transfers to this assembly.
+
+Bounded W11 engineering execution subsequently completed:67 pure worker and62 CLI checks;
+14 actual ridge/DoubleEnsemble worlds,2 expected cancellations,45 native fits and30 normalizer
+fits;12 non-common mechanical oracles and both canonical economic controls passed. Source-bound
+programme receipts and explicit remaining authority/statistical limits are linked from the dated
+plan. Peak RSS was838,926,336bytes. The assembled-tree full gate and final independent review
+remain separate required receipts; this entry does not grant scientific acceptance or promotion.
+
+
+## 2026-10-26 W05 integration successor (local; qualification pending)
+
+Preserved W11/native/tabular tree `a284def9502c20884ecf9740867db0810dc9ec83` remains unchanged.
+This successor reconciles actual PR92 source (`fc6da893` → reviewed `f0ba4c34` → merge `98190e3b`
+with `e635e6cb`) and the single reviewed W05 combined patch (`220b9b02`). PR92 production/test
+bytes match the reviewed transport source; its generated maps are regenerated for the successor.
+The W05 timezone fix is included once. See the [integration plan](superpowers/plans/2026-10-26-w05-research-integration.md)
+for code, current checks, source identities, recovery and deferred final gate.
+
+Imported producer behavior notes below describe the reviewed source; their historical tests do not
+constitute verification of this successor.
+
+
+**Tiingo transport-error redaction (2026-10-24)** — `TiingoAdapter.fetch` converts URL, timeout,
+incomplete-read, and OS transport failures into type-only `DataError` messages and suppresses their
+exception context for both bounded and unbounded reads. HTTP status errors, response-size limits,
+parsing, and adapter result contracts are unchanged. Synthetic offline tests cover both read paths,
+oversized responses, normal responses, and response cleanup.
+
+
+**W05 bounded daily reference qualification (2026-10-26)** — A synthetic receipt-backed
+Tiingo-format path exercises normalization, immutable snapshots, reopened typed queries,
+partial-response quarantine, revisions, future-append invariance, raw/split-adjusted values,
+and integrity rejection. Named IANA-zone cutoffs exposed a Polars timezone mismatch; PIT
+comparison now normalizes the same instant to UTC, with spring/fall DST boundary regressions.
+This is engineering reference evidence only. No suitable existing provider snapshot was
+identified in the inspected public tracked paths. Historical source availability and revision
+vintages remain unverified: daily session labels and retrieval times do not prove publication
+times. A frozen rule/instrument/window and admissible raw receipt/snapshot remain W05 prerequisites.
+
+**W05 opt-in acquisition budgets (2026-10-26)** — The existing Binance spot daily REST acquisition
+accepts paired request/body-byte caps. One invocation shares its budget across pages and transport
+attempts, including failed attempts and enabled 429 retries. Strict mode refuses redirects before
+following them and aborts after interrupted reads. Defaults for other callers remain unchanged.
+Synthetic transport tests exercise the real urllib handler chain; no market capture occurred.
+Budgets constrain application HTTP attempts and body reads, not socket/TLS traffic, hidden buffering,
+or separate invocations. A short terminal page is not proof of complete requested-window coverage.
+
+Current integration status: local source and test review found no blocking defects; consolidated
+public regression passed 358 tests. Final exact-tree check/review receipts are linked from the plan.
+No full-gate stamp transfers. Native portability and full combined-tree gate remain blocked;
+query/report/navigation source handoffs remain unavailable. Existing `data candles --manifest-id`
+and member-level snapshot contracts are the current query seams, not the unpublished query/restore
+work. No real acquisition, accepted discovery interval, scientific qualification or publication.
+
+
+## 2026-10-26 combined Mac portability qualification
+
+Preserved W05 successor `b0b9c8ea` and earlier W11/tabular checkpoints remain unchanged.
+Verified native incremental archive `libfile_229009c0e56481918322aacbfcc0881b` reproduces
+`f15c9063` → `35e762d5` exactly; actual consumer native production/test base hashes match.
+The following producer notes describe imported source, not a Mac aggregate result.
+
+
+**Native source portability follow-through (2026-10-26; qualification pending).** Explicit Linux
+guards type the retained-child observer and Linux-only fixture probes for Darwin development.
+Native modules avoid unconditional Windows `fcntl` imports; unsupported hosts and unavailable
+observation capabilities reject before startup effects. Synthetic regression tests cover import
+and no-effect rejection. Retained PID ownership, cancellation, uncertainty and charged-capacity
+semantics are preserved. Windows-wide typing/runtime and non-Linux native execution remain
+unsupported. Focused receipts, independent review and the final exact-tree gate determine
+qualification; the previous candidate's receipts remain historical evidence.
+
+**Native platform test requirements (2026-10-26; aggregate qualification pending).** Real Linux
+owner fixtures now declare their platform before setup. Portable rejection/accounting tests retain
+generic synthetic stores and verify job existence, no native events and no payload. A discriminating
+failed-start test preserves an injected startup exception and verifies retained-process reaping
+when the escape barrier directory is absent. POSIX lease coverage, LoopBase conformance and the
+coverage policy are unchanged; actual macOS aggregate coverage remains unqualified.
+
+Actual Mac qualification is in progress in the isolated successor. The [combined plan](superpowers/plans/2026-10-26-mac-portability-qualification.md)
+links source reconciliation, preserved original failures, actual checks and final review.
+Linux producer 49-stage/93.05% evidence and Darwin-target typing are not a Mac gate stamp.
+Existing schema-v7 writable-open migration remains; synthetic stores only. Source reversal is
+not database rollback. No scientific/private-suite acceptance or native Mac activation follows.
+
+
+### Combined Mac portability follow-up (2026-10-26)
+
+Verified native incremental f15c9063 → 35e762d5 was reconciled into an isolated
+successor of b0b9c8ea. Actual Mac typing passed 883 files; the first aggregate attempt
+failed with two missing-worker capability routes and 91.60% coverage against 93%.
+A bounded readiness fix and portable approval-integrity verification follow; aggregate
+acceptance is not granted by the producer Linux result or targeted checks. Exact final
+receipts and next action are linked by the [Mac qualification plan](superpowers/plans/2026-10-26-mac-portability-qualification.md).
+
+
+### Portable-evidence successor (2026-10-26, in progress)
+
+The isolated 24f checkpoint completed 48/49 canonical commands; only 93% backend coverage failed
+(6,298 tests passed, 149 skipped, 2 subtests; 91.6468%). Parent directed a meaningful portable-test
+successor after a 363-module/210-function public coverage audit. It targets charged SQL readers,
+closure atomicity, independent fixed costed-result validation and immutable artifacts/projections;
+it does not emulate Linux or claim that the 761-statement gap is all kernel-dependent. See the
+[existing qualification plan](superpowers/plans/2026-10-26-mac-portability-qualification.md) and
+`.alpha/state/portable-evidence/`. No inherited aggregate acceptance.
+
+Portable reader/accounting, D0 artifact and numerical/projection checks now include
+nonzero-charge preservation, rollback, rehashed corruption and typed malformed-value
+rejection. Narrow economics-validator repairs preserve canonical costs/returns and authority.
+The exact successor identity, check receipts and residual statement inventory are recorded by
+the qualification plan above; aggregate qualification depends on its actual final receipt.
+No new platform skips or coverage-policy changes are part of this successor.
+
+The first portable checkpoint passed 6,403 tests and failed the unchanged 93% coverage
+floor at 92.0014%. A bounded reservation-admission follow-up addresses stale/malformed
+bindings and charged replay identity. Final exact-tree evidence is linked by the same
+qualification plan; intermediate coverage is not aggregate acceptance.
+
+## 2026-10-27 Linux cloud qualification stabilization (not accepted)
+
+Behavior changes on the integrated candidate: web ML experiment generation keeps the experiment's
+frozen recipe unless a model is explicitly chosen (no silent schema-3 override); the synthetic native
+owner child inherits its validated workspace `TMPDIR`; RD-Agent probe results report the source pin as
+`expected`/`verified`/`not_verified` instead of constant commit and archive fields. Test-only repairs
+establish the suspended-owner precondition and pin the lock-held fail-closed case.
+Gate run 2 on the intermediate tree passed every backend step except coverage (6,563 passed, 0 failed,
+55 skipped, 92.85% against 93%). Native suites passed 111/111 with a derived root of the pinned
+`rdagent/` source; archive bytes were not verified. Five unchanged Linux visual baselines fail in the
+cloud container; protected tests were absent and not executed. Details and open findings are in the
+[native rule plan](superpowers/plans/2026-10-26-native-rule-authority.md#cloud-qualification-stabilization-2026-10-27)
+and the [tabular plan](superpowers/plans/2026-10-26-qlib-tabular-wave1.md#cloud-qualification-stabilization-2026-10-27).
+
+Review-scope alignment (same stabilization): review attestation now requires `files_reviewed` to
+cover the Git guard's full review scope (risk-tier, protected control plane, hooks and guarded
+config), and `/review-gate` uses that scope; see the
+[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27).
+Gate run 4 passed every component on tree `844612d4`; this change creates a new candidate.
+
+## 2026-10-27 Linux cloud qualification checkpoint published (not accepted)
+
+Published checkpoint: branch `claude/cloud-qualification-c95f9d4d-20261027`, commit
+`2e0832c735d97c7da93cb79c0cce23e533dd7f1a`, tree `c95f9d4d803bef4be552736a79a4855e5bea5bf9`
+(parent `bc5b58351cc334d36112167c9463a80184411cc6`), unmerged; no pull request, merge or deployment.
+On that exact tree the full gate passed all six components (49 steps) in the Linux cloud container,
+superseding the visual-baseline and gate run 4 notes above for that tree only. A formal independent
+review returned APPROVE with seven low findings under the one-time absent-private-suite exception
+recorded in `.claude/agents/independent-reviewer.md` for that candidate only; private
+`tests/holdout/` coverage is UNVERIFIED, never PASS. The two earlier formal BLOCKs of tree
+`3c3b0d28` remain correct history. Hosted CI has not run: `ci.yml` triggers only on pushes to
+`main` and on pull requests.
+
+This entry and the routing lines added with it are a later, unpublished documentation successor;
+the checkpoint's gate and review results do not qualify these or any other modified contents.
+
+Current active work is that unpublished Linux cloud foundation successor: navigation/handoff
+routing and gate/review freshness repair (see the
+[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)).
+The published commit above is the preserved qualification checkpoint, not the active stage. The Mac
+portability successor stays open with its requirements intact but is deferred: not the current stage
+or active owner, and not abandoned scope.
+
+Canonical
+[Packet 1](context/feature-readiness-checklist-2026-10-27.md#packet-1-close-the-successor-exact-tree-gate)
+is unchanged. Its interrupted de074 successor and 48-of-49 result are preserved historical
+prerequisite evidence, not the current c95 result and not a completed feature; no equivalence
+between Packet 1 and the current successor is asserted. CHK27-PV01 resolves only through the
+private map and is not independently repository-accessible evidence.
+
+Evidence locations differ. In the repository: the published commit and the linked plan sections.
+Container-local and git-ignored, so not durable repository evidence: the gate stamp and component
+receipts under `.alpha/state/`. Session receipts, logs and review outputs live outside the
+repository; delivery of the final evidence package to the owner is pending, not completed.
+
+Open blockers: successor private-suite acceptance is unresolved and the exception covers no later
+change; stale Darwin ML-lab baselines; unconfirmed root cause of the native lease/cleanup flake;
+the about 21-byte `TMPDIR` limit from the AF_UNIX socket path; unverified RD-Agent archive SHA;
+the gate stamp and review consumption gap (commit-time checks bound only the tree hash and the
+risk-tier diff; a repair is implemented in the unpublished successor, see the
+[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#commit-time-gate-and-review-provenance-2026-10-27),
+but not yet full-gated or independently reviewed); the
+[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)
+statements that no owner exception or reviewer policy changed are no longer current (an appended
+note there corrects them; the original lines are kept); the missing `alpha ml refit-plan`/`refit-status` entries in `.claude/rules/alpha-cli.md`; the open but deferred
+[Mac portability successor](superpowers/plans/2026-10-26-mac-portability-qualification.md#handoff-and-next-action).
+Full scope stays with the
+[canonical feature checklist](context/feature-readiness-checklist-2026-10-27.md).
+
+## 2026-10-28 Native costed claim and lease fixture repairs (unpublished, not accepted)
+
+The native fixture claim now admits the rule runtime `rule_profile` as the environment value it
+has just verified against the approved implementation fingerprint, instead of hashing the
+runtime a second time. This removes about 4s from the costed owner's in-deadline preparation
+and closes an unapproved-profile binding gap; every other trust-boundary check is unchanged.
+
+The durable-lease silent-child test holds its child until release instead of relying on a fixed
+0.25s lifetime.
+
+Gate run 7 on the preceding tree failed (2 tests) and remains the failed checkpoint. These
+changes are not yet full-gated or formally reviewed; private coverage is UNVERIFIED. Details:
+[native plan](superpowers/plans/2026-10-26-native-rule-authority.md#cloud-foundation-successor-native-and-lease-runtime-findings-2026-10-28).
+
+## 2026-10-28 Foundation batch: pre-run evidence preservation and opt-in cloud bootstrap
+
+Gate entry routes (`run_full`, `run_component`, `run_gate`) now copy existing stamp, receipt,
+review/quant attestation and coverage files to a hash-named, verified, mode-read-only checkpoint
+before replacing them, once per run, and stop before any overwrite if that copy cannot be verified.
+`scripts/cloud_setup.sh` gains opt-in (`ALPHA_CLOUD_FOUNDATION=1`) guard, exclude, pinned RD-Agent,
+qualified-venv validation, fontconfig and `origin/main` reporting steps. The native plan carries
+the stage contract and ordered foundation backlog. The gate8 checkpoint (tree `fd960490`, public
+full gate passed, review BLOCK) is separate; this batch is unqualified. Details:
+[native plan](superpowers/plans/2026-10-26-native-rule-authority.md#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation).
+
+## 2026-10-28 Gate10/gate11 startup repairs (unpublished, not accepted)
+
+Gate10 failed one lifecycle start test with its cause undetermined, because the owner log was not
+retained. The gate11 retry failed three browser cases. The successor tree adds:
+- a lazy CLI command-group dispatch: `data symbols` 4.19 s to 1.22 s;
+- deferred native-loop imports on the synthetic start path:
+  - supervisor import 2.39 s to 0.65 s;
+  - the status/claim path's `CostedRuleStudy` edge (1.44 s), which the first fix missed;
+- event-based lifecycle readiness in place of an incidental 6 s fixture bound. It has named prompt
+  no-start failures and a hang guard only. The production owner deadline is unchanged.
+- diagnostic-only failure retention.
+
+Each change has a discriminating regression and independent review. A native compatibility
+confirmation passed 254 with 0 skipped. Open findings:
+- the TMPDIR-inheritance regression ran a 2 s `success` owner that timed out four times under
+  `-n 4` (one before payload spawn, three after). No plan sets a start-up bound for it, so it now
+  passes an explicit 5 s fixture budget. The default and every strict expiry test are unchanged.
+  Why only this test timed out, while siblings with the same budget did not, was not established;
+- cold-I/O margin after the fix not independently measured; readiness margins are recorded per run.
+
+Gate12 on the approved candidate failed in backend pytest (4 failed, 1 error) and was not
+published. The independent review found no evidence of a production regression:
+- three sibling 2 s success-precondition owners ended in `timeout`, two of them by preparation
+  expiry, so the asymmetry above did not hold;
+- one test asserted on a conservative bound;
+- a setup error is consistent with an unwaited owner `Popen` in cancel-pending (not proven).
+
+Test-only repairs followed:
+- explicit 5 s budgets for those three tests;
+- `finally` cleanup with a red-to-green regression;
+- a bounded wait on the owned owner `Popen` when a stop cannot be delivered. There is no signal,
+  and a still-live owner fails loudly;
+- a readiness-based delayed-start assertion. Defaults, strict expiry
+controls and production are unchanged. Focused 25/25 and native compatibility 425/425 passed. No
+full gate has run on the repaired tree. Review remains BLOCK on the absent private holdout suite.
+
+Gate13 on the owner-approved `11b8540e` failed only in the atlas tests and was not published. The
+startup-margin receipt was 3.770 s.
+- Cause: the lazy CLI dispatch had silently removed all 24 CLI→module edges from the atlas map, and
+  had made a CLI documentation drift test vacuous.
+- Repair: the extractor reads the `GROUPS` registry and fails loudly on an unreadable shape; the
+  drift test reads the registry.
+- Disclosed as truthful: 26 `main → *_cmds` static `depends_on` edges are absent because those
+  imports are runtime registry imports, and one edge is absent because the reviewed claim repair
+  removed its import.
+- Checks: atlas 104/104; drift and docs 54/54. No full gate on the repaired tree.
+
+PR #95 follow-up:
+- Hosted coverage: 92.91% was repaired with public synthetic contract tests, measured 93.01%;
+  threshold unchanged.
+- Gates 15 and 16 failed on owner no-starts; the causes of their uninstrumented stalls (10.2088 s
+  and 5.9752 s) stay UNKNOWN.
+- Phase capture localized a production defect: the owner's claim lazily imported heavy validators,
+  about 1 s, under the store write lock and inside the deadline window.
+- Fix: `_run_owner` now preloads them before the deadline starts.
+  - The deadline start point, poll-point checks, budgets and assertions are unchanged.
+  - About 0.8-0.9 s of claim-validator import work moved out of the deadline window and the store
+    write lock. Total owner start-up latency is unchanged.
+  - A regression test pins the no-import-under-lock invariant on the synthetic-fixture claim path;
+    it was red, now green. Rule-native claims still hash the runtime under the write lock
+    (pre-existing, disclosed).
+- Focused native set: 453/453.
+Details:
+[native plan](superpowers/plans/2026-10-26-native-rule-authority.md#gate10gate11-repairs-and-retained-diagnostics-2026-10-28).

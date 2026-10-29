@@ -375,3 +375,11 @@ report remains proposal context. No instruction embedded in that report authoriz
 runtime edits, external network/dependency work, new authority, or a change to the
 MCP surface. Any later slice requires its own implementation, verification, and
 current-state documentation update where behavior changes.
+
+## 2026-10-23 follow-up — V1 schema-version reader strictness
+
+A public regression reproduced Python equality accepting `True` and `1.0` as schema
+version `1` in `FeatureInputRefV1` and `FeatureValueV1`. Both readers now require an
+integer value of `1`; valid serialized output and content hashes remain unchanged.
+The regression coverage is in `tests/unit/study/test_values.py`. This follow-up adds
+no new authority and does not attest private external coverage.

@@ -6,7 +6,7 @@
 // provenance keep their views under the same tree. Governance watermarks are one chip in the
 // title bar whose title carries the full sentences.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { api } from '../../api/client'
 import type { FigureCatalogue, RunDetail as RunDetailData, TradeRow } from '../../api/types'
@@ -30,6 +30,13 @@ import { Risk } from './Risk'
 import { RunInvestigation } from '../RunInvestigation'
 import { TradesTab } from './TradesTab'
 
+type TradesState =
+  | { runId: string; status: 'loading' }
+  | { runId: string; status: 'ready'; rows: TradeRow[] }
+  | { runId: string; status: 'error'; error: string }
+
+type RunOwned<T> = { runId: string; requestId: number; value: T }
+
 /** Hand the browser a CSV file; the rows are the trades projection exactly. */
 function downloadCsv(name: string, text: string): void {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }))
@@ -44,46 +51,65 @@ export function RunDetail(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
   const { explain } = useSettings()
   const runId = panelLink.linked.runId ?? ''
-  const [detail, setDetail] = useState<RunDetailData | null>(null)
-  const [trades, setTrades] = useState<TradeRow[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [catalogue, setCatalogue] = useState<FigureCatalogue | null>(null)
+  const detailRequestId = useRef(0)
+  const [detailState, setDetailState] = useState<RunOwned<RunDetailData> | null>(null)
+  const [tradeState, setTradeState] = useState<TradesState>({ runId, status: 'loading' })
+  const [errorState, setErrorState] = useState<RunOwned<string> | null>(null)
+  const [catalogueState, setCatalogueState] = useState<RunOwned<FigureCatalogue | null> | null>(null)
   const [view, setView] = useState('summary')
   const [investigating, setInvestigating] = useState(false)
 
   useEffect(() => {
+    const requestId = ++detailRequestId.current
     if (!runId) {
-      setDetail(null)
+      setDetailState(null)
+      setErrorState(null)
+      setCatalogueState(null)
       return
     }
     let live = true
-    setDetail(null)
-    setError(null)
+    const ownsRequest = () => live && detailRequestId.current === requestId
+    setDetailState(null)
+    setTradeState({ runId, status: 'loading' })
+    setErrorState(null)
     setView('summary')
-    setCatalogue(null)
+    setCatalogueState(null)
     api
       .figures(runId)
-      .then((value) => live && setCatalogue(value))
-      .catch(() => live && setCatalogue(null))
+      .then((value) => ownsRequest() && setCatalogueState({ runId, requestId, value }))
+      .catch(() => ownsRequest() && setCatalogueState({ runId, requestId, value: null }))
     api
       .run(runId)
       .then((value) => {
-        if (!live) return
-        setDetail(value)
+        if (!ownsRequest()) return
+        setDetailState({ runId, requestId, value })
         if (value.has_trades) {
+          setTradeState({ runId, status: 'loading' })
           api
             .trades(runId)
-            .then((rows) => live && setTrades(rows))
-            .catch(() => live && setTrades([]))
+            .then((rows) => ownsRequest() && setTradeState({ runId, status: 'ready', rows }))
+            .catch((cause: unknown) => ownsRequest() && setTradeState({ runId, status: 'error', error: String(cause) }))
         } else {
-          setTrades([])
+          setTradeState({ runId, status: 'ready', rows: [] })
         }
       })
-      .catch((cause: unknown) => live && setError(String(cause)))
+      .catch((cause: unknown) => ownsRequest() && setErrorState({ runId, requestId, value: String(cause) }))
     return () => {
       live = false
     }
   }, [runId])
+
+  // Each projection is tagged with both the selected run and its request epoch. Derive the
+  // renderable value during render, before effects clear state after a route transition.
+  const detail = detailState?.runId === runId && detailState.requestId === detailRequestId.current
+    ? detailState.value
+    : null
+  const error = errorState?.runId === runId && errorState.requestId === detailRequestId.current
+    ? errorState.value
+    : null
+  const catalogue = catalogueState?.runId === runId && catalogueState.requestId === detailRequestId.current
+    ? catalogueState.value
+    : null
 
   const onLaunch = useMemo(
     () => (command: string, args: string) => openStrategyLab({ command, args }),
@@ -100,6 +126,12 @@ export function RunDetail(props: PanelHandleProps) {
   if (!detail) return <Placeholder big="Loading run…" />
 
   const manifest = detail.manifest
+  // A run switch renders before its effect runs. Keep rows and their status tagged with their
+  // owner so the prior run can never leak into the new run's tree, table, or CSV export.
+  const selectedTradeState: TradesState = tradeState.runId === runId
+    ? tradeState
+    : { runId, status: 'loading' }
+  const trades = selectedTradeState.status === 'ready' ? selectedTradeState.rows : []
   // ADR-0026: an override-launched run keeps its exploratory marker on every report surface.
   const gateWatermark = researchGateWatermark(detail)
   const command = asStr(manifest.command)
@@ -111,7 +143,7 @@ export function RunDetail(props: PanelHandleProps) {
     kind: detail.kind,
     isValidate,
     hasTrades: Boolean(detail.has_trades),
-    tradeCount: detail.has_trades ? trades.length : null,
+    tradeCount: detail.has_trades && selectedTradeState.status === 'ready' ? trades.length : null,
     items: catalogue?.items ?? [],
   })
   const leaves = tree.flatMap((group) => group.leaves)
@@ -144,6 +176,12 @@ export function RunDetail(props: PanelHandleProps) {
       case 'gates':
         return <Gates manifest={manifest as ValidateManifest} />
       case 'trades':
+        if (selectedTradeState.status === 'loading') {
+          return <Placeholder big="Loading trades…">Waiting for this run’s trade projection.</Placeholder>
+        }
+        if (selectedTradeState.status === 'error') {
+          return <Placeholder big="Could not load trades">{selectedTradeState.error}</Placeholder>
+        }
         return <TradesTab trades={trades} runId={runId} />
       case 'stress':
         return <Risk manifest={manifest as ValidateManifest} runId={runId} />
@@ -179,12 +217,24 @@ export function RunDetail(props: PanelHandleProps) {
         <button
           type="button"
           className="btn"
-          disabled={!trades.length}
-          title={trades.length ? 'Download the trades projection as CSV, exactly as served' : 'No trades to export'}
+          disabled={selectedTradeState.status !== 'ready' || !trades.length}
+          title={selectedTradeState.status === 'loading'
+            ? 'Waiting for this run’s trades'
+            : selectedTradeState.status === 'error'
+              ? 'Trades are unavailable; CSV export is disabled'
+              : trades.length
+                ? 'Download the trades projection as CSV, exactly as served'
+                : 'No trades to export'}
           onClick={() => downloadCsv(`${runId.slice(0, 8)}-trades.csv`, tradesCsv(trades))}
         >
           Export CSV
         </button>
+        {detail.has_trades && selectedTradeState.status === 'loading'
+          ? <span className="muted" role="status">Loading trades for selected run</span>
+          : null}
+        {detail.has_trades && selectedTradeState.status === 'error'
+          ? <span className="muted" role="alert">Trades unavailable for selected run</span>
+          : null}
         {firstFigure ? (
           <a
             className="btn"

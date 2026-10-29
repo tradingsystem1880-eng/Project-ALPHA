@@ -28,22 +28,14 @@ def check_commit(root: Path) -> tuple[int, str]:
             1,
             "The staged tree differs from the tested worktree; stage the exact tested contents.",
         )
+    import gate_components  # deferred: the stamp checks above need only gate
+
+    usable, reason = gate_components.full_stamp_usable(root, stamp)
+    if not usable:
+        return 1, f"Full gate evidence is stale: {reason}. Run uv run python scripts/gate.py full."
     # Classify both the removed and added paths even when Git detects a rename.
     paths = gate._git(root, "diff", "--cached", "--no-renames", "--name-only", "-z").split("\0")
-    review_paths = [
-        path
-        for path in paths
-        if gate.matches_risk(path)
-        or gate.protected_reason(path)
-        or path.startswith(".githooks/")
-        or path
-        in {
-            "pyproject.toml",
-            "scripts/git_guard.py",
-            "scripts/gate_components.py",
-            "scripts/wheel_smoke.py",
-        }
-    ]
+    review_paths = [path for path in paths if gate.matches_review(path)]
     if review_paths:
         artifact = gate.read_json(root / gate.STATE_DIR / gate.REVIEW_VERDICT_FILE) or {}
         verdict = artifact.get("verdict", {})

@@ -52,8 +52,8 @@ def _exchange(path: Path) -> Path:
         "schema_version": 1,
         "snapshot_hash": "a" * 64,
         "universe": symbols,
-        "universe_membership": "point_in_time",
-        "survivorship_warning": None,
+        "universe_membership": "current_membership",
+        "survivorship_warning": "Current membership; survivorship-biased.",
         "feature_recipe": {"name": "alpha158", "version": 1, "parameters": {}},
         "label_recipe": {
             "name": "next_session_open_to_open",
@@ -155,6 +155,22 @@ def test_fake_worker_refuses_overwrite_and_corrupt_request(tmp_path: Path) -> No
     (wrong_lock / "request.json").write_bytes(canonical_json_bytes(request))
     with pytest.raises(RuntimeError, match="executing worker lock"):
         run_fake(wrong_lock, worker_lock_path=worker_lock)
+
+
+def test_worker_rejects_declared_point_in_time_membership(tmp_path: Path) -> None:
+    exchange = _exchange(tmp_path / "unverified-membership")
+    request_path = exchange / "request.json"
+    request = json.loads(request_path.read_text())
+    request["universe_membership"] = "point_in_time"
+    request["survivorship_warning"] = None
+    request["config_hash"] = compute_config_hash(request)
+    request_path.write_bytes(canonical_json_bytes(request))
+
+    with pytest.raises(RuntimeError, match="point_in_time.*unverified"):
+        validate_request(exchange)
+
+    assert not (exchange / "predictions.parquet").exists()
+    assert not (exchange / "result.json").exists()
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,24 @@
 # Bounded discovery workflow
 
+## Optional daily acquisition budget
+
+For a separately approved discovery interval and UUID-verified storage destination,
+`alpha crypto-data acquire binance market_bars BTCUSDT --base BTC --quote USDT --category spot
+--frequency 1d --start START --end END --max-requests 2 --max-total-bytes 33554432 --json`
+uses one shared budget for that invocation. Both positive caps are required; strict mode permits
+only bounded Binance spot daily REST bars, without `--period`. No redirects are followed.
+The proposed 2020-01-01 through 2023-01-01 exclusive capture would use
+`--start 2020-01-01T00:00:00Z --end 2022-12-31T23:59:59.999Z`; these dates are not approved
+by this documentation. Discovery designation and matching mounted storage remain prerequisites.
+
+The byte ceiling covers application response-body reads, including overflow probes and known
+partial chunks. Reaching the exact aggregate ceiling before proving EOF fails conservatively,
+without reading an extra byte. Opaque interrupted reads abort further budget use; their hidden
+transport bytes cannot be measured. TCP/TLS traffic and internal buffering are not bounded.
+The budget resets for each explicit invocation; it grants no permission to repeat a capture.
+The existing 100-page limit, host/MIME checks and per-response limits still apply. Partial terminal
+pages do not establish complete coverage, and retrieval time does not prove historical availability.
+
 Use for an open research question, indicator investigation or model request. This is a discovery procedure; existing case, source-pack, one-shot confirmation and owner gates still apply.
 
 1. State the exact target, decision time, permitted data window and intended output. Inspect available commands and verified snapshot coverage before drafting variants. Record the current question, baseline, maximum three candidates, inspected/failed attempts and stop rule in one append-only ledger.
@@ -21,6 +40,12 @@ Write a JSON plan (use your verified snapshot and symbol):
 ```
 
 Run `alpha research diagnostic run-plan plan.json`. The closed configuration supports the momentum lookback/skip/volatility/rebalance settings, costs, leverage up to one, starting cash, validation train/test/embargo and seed. It fixes CASH/long-only, 252 periods/year and one worker. Existing validation default null/resampling settings are retained. There are no arbitrary commands, extra flags, owner overrides or tuning loops. Strategies other than `ts_momentum` and `rules` require a separate operator; do not relabel this baseline as a regime study or a completed general research question.
+
+JSON booleans are rejected for numeric plan fields and `schema_version` before the frozen plan is
+hashed; otherwise `true` could silently become `1` or `1.0`. Existing Pydantic numeric coercions
+remain supported, including numeric strings and integer-valued floats for integer fields, and
+normalize to the same plan representation as equivalent JSON numbers. The JSON date string remains
+supported.
 
 The controller verifies the frozen snapshot, dispatches at most two child commands sequentially, awaits their terminal outcomes, checks configuration/source identity, reconciles session timestamps against the snapshot and existing walk-forward splitter, and publishes `research_executions/<identity>/receipt.json` with a hash manifest. Baseline and validation populations stay separate. A failed baseline prevents validation. Measurement completion is separate from the validation PASS/FAIL result; completed negative results remain evidence, never admission.
 

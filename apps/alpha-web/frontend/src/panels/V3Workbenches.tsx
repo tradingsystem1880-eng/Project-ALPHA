@@ -10,6 +10,7 @@ import type {
   MlExperimentPage,
   MlExperimentPreflight,
   MlServiceStatus,
+  MlCapabilities,
   ProjectDetail,
   ProjectSummary,
   SuiteAction,
@@ -22,6 +23,14 @@ import { fmtPct, shortId } from '../util/format'
 import { isActiveControlJob, refreshDurableJobs } from './durableJobs'
 import { strategyGateLock } from './researchGateModel'
 import { projectStageRows, sandboxCandidateSummary } from './v3Models'
+import {
+  EXPERIMENT_RECIPE,
+  ML_MODELS,
+  type MlModelChoice,
+  mlExperimentEvidenceLabel,
+  mlLaunchRequest,
+  selectedModelCapability,
+} from './mlResearchModel'
 
 function ContextLine() {
   const linked = useLinked()
@@ -651,6 +660,10 @@ export function DevelopmentCenter() {
 export function MlResearch() {
   const linked = useLinked()
   const [status, setStatus] = useState<MlServiceStatus | null>(null)
+  const [capabilities, setCapabilities] = useState<MlCapabilities | null>(null)
+  const [capabilityError, setCapabilityError] = useState<string | null>(null)
+  const [model, setModel] = useState<MlModelChoice>(EXPERIMENT_RECIPE)
+  const [estimator, setEstimator] = useState<'ols' | 'ridge' | 'lasso' | 'nnls'>('ridge')
   const [experiments, setExperiments] = useState<MlExperimentPage | null>(null)
   const [preflight, setPreflight] = useState<MlExperimentPreflight | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -661,6 +674,12 @@ export function MlResearch() {
   useEffect(() => {
     let live = true
     setStatus(null); setExperiments(null); setPreflight(null); setError(null)
+    setCapabilities(null); setCapabilityError(null)
+    api.mlCapabilities().then((next) => {
+      if (live) setCapabilities(next)
+    }).catch((reason: unknown) => {
+      if (live) setCapabilityError(String(reason))
+    })
     api.mlStatus().then(async (next) => {
       if (!live) return
       setStatus(next)
@@ -724,13 +743,15 @@ export function MlResearch() {
     }
   }, [activeJobId, linked.projectId])
 
-  const ready = preflight?.ready === true && linked.projectId !== null
+  const backend = model === EXPERIMENT_RECIPE ? null : selectedModelCapability(capabilities, model)
+  const ready = preflight?.ready === true && linked.projectId !== null && (model === EXPERIMENT_RECIPE || backend?.status === 'available')
   async function createExperiment() {
     if (!ready || !linked.projectId) return
     setBusy(true)
     setError(null)
     try {
-      const accepted = await api.createMlExperiment(linked.projectId)
+      const request = mlLaunchRequest(model, estimator)
+      const accepted = await api.createMlExperiment(linked.projectId, request.model, request.parameters)
       setActiveJobId(accepted.job_id)
       setJobState(accepted.status)
     } catch (reason) {
@@ -760,9 +781,11 @@ export function MlResearch() {
             ))}
           </section>
         ) : null}
+        {model === EXPERIMENT_RECIPE ? <div className="workbench-notice" role="status" aria-label="Selected ML backend capability"><strong>EXPERIMENT RECIPE</strong><span>No model override · the exchange keeps the experiment's frozen recipe and schema.</span><span className="muted">Dependency probe only · numerical qualification is separate.</span></div> : <div className="workbench-notice" role="status" aria-label="Selected ML backend capability"><strong>{backend?.status === 'available' ? 'DEPENDENCIES AVAILABLE' : 'MODEL BLOCKED'}</strong><span>{capabilityError ? `Worker capability probe failed: ${capabilityError}` : backend ? `${backend.name}: ${backend.status.replaceAll('_', ' ')}${backend.reason ? ` · ${backend.reason}` : ''}` : capabilities ? 'Selected model was not reported by the worker capability probe.' : 'Checking worker model dependencies…'}</span><span className="muted">Dependency probe only · numerical qualification is separate.</span></div>}
         <div className="ml-spec-grid">
           <div><span className="eyebrow">Recipe</span><span>Alpha158-style</span></div>
-          <div><span className="eyebrow">Model</span><span>LightGBM · CPU</span></div>
+          <div><label className="eyebrow" htmlFor="ml-model">Model · CPU</label><select id="ml-model" aria-label="ML model" className="field" value={model} disabled={busy} onChange={(event) => setModel(event.target.value as MlModelChoice)}><option value={EXPERIMENT_RECIPE}>Experiment recipe (no override)</option>{ML_MODELS.map((choice) => <option key={choice.name} value={choice.name}>{choice.label} (schema-3 override)</option>)}</select></div>
+          {model === 'linear' ? <div><label className="eyebrow" htmlFor="ml-linear-estimator">Linear estimator</label><select id="ml-linear-estimator" aria-label="Linear estimator" className="field" value={estimator} disabled={busy} onChange={(event) => setEstimator(event.target.value as typeof estimator)}><option value="ols">OLS</option><option value="ridge">Ridge</option><option value="lasso">Lasso</option><option value="nnls">NNLS</option></select></div> : null}
           <div><span className="eyebrow">Target</span><span>next-session open → open</span></div>
           <div><span className="eyebrow">Replay</span><span>long-only top quintile · equal weight</span></div>
           <div><span className="eyebrow">Minimum universe</span><span className="mono">{status?.min_symbols ?? 20} symbols</span></div>
@@ -782,7 +805,7 @@ export function MlResearch() {
                   <span>Costed <b className="mono">{fmtPct(experiment.metrics.costed_return)}</b></span>
                 </div>
                 <div className="mono muted">{experiment.universe_size} symbols · {experiment.aligned_sessions} sessions · {experiment.folds} folds</div>
-                <div className="ml-validation-label">{experiment.counterfactual_refit ? 'COUNTERFACTUAL REFIT VALIDATED' : 'OOS REPLAY VALIDATED — MODEL NOT RECOMPUTED UNDER COUNTERFACTUAL'}</div>
+                <div className="ml-validation-label">{mlExperimentEvidenceLabel(experiment)}</div>
               </div>
             ))}
           </div>
@@ -793,7 +816,7 @@ export function MlResearch() {
             <div className="tear-gap"><div className="tear-gap-title">Feature importance</div><div className="tear-gap-state mono">NO VALIDATED ML ARTIFACT</div></div>
           </div>
         )}
-        <button className="btn primary" disabled={!ready || busy} onClick={createExperiment} title={ready ? 'Generate the exact preflighted experiment through the isolated worker service' : 'Every server-verified preflight check must pass'}>{busy ? `ML job ${jobState ?? 'queued'}…` : 'Generate preflighted ML experiment'}</button>
+        <button className="btn primary" disabled={!ready || busy} onClick={createExperiment} title={ready ? 'Generate the exact preflighted experiment through the isolated worker service' : 'Every server-verified preflight check and the selected worker backend must be available'}>{busy ? `ML job ${jobState ?? 'queued'}…` : 'Generate preflighted ML experiment'}</button>
         {status === null && !error ? <span className="muted mono">CHECKING ISOLATED WORKER READINESS…</span> : null}
         {status && !status.available ? <span className="muted mono">BUTTON DISABLED · {status.message ?? 'isolated worker service unavailable'}</span> : null}
         {status?.available && status.worker_ready && !linked.projectId ? <span className="muted mono">SELECT OR CREATE A STRATEGY PROJECT IN DEVELOPMENT CENTER TO ENABLE TRAINING</span> : null}

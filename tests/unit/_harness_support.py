@@ -29,6 +29,15 @@ def build_harness_repo(root: Path) -> Path:
     return root
 
 
+def pass_full_gate(repo: Path, monkeypatch: Any) -> None:
+    """Stamp ``repo`` through the real full-gate path with every command succeeding."""
+    import gate
+    import gate_components
+
+    monkeypatch.setattr(gate, "_env_runner", lambda *args, **kwargs: (True, 0.0, ""))
+    assert gate_components.run_full(repo) == 0
+
+
 def git(cwd: Path, *args: str, check: bool = True) -> str:
     result = subprocess.run(
         ["git", "-C", str(cwd), *args],

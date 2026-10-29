@@ -91,7 +91,13 @@ class FeatureInputRefV1:
             },
             "FeatureInputRefV1",
         )
-        if data["schema"] != "FeatureInputRefV1" or data["schema_version"] != 1:
+        schema_version = data["schema_version"]
+        if (
+            data["schema"] != "FeatureInputRefV1"
+            or isinstance(schema_version, bool)
+            or not isinstance(schema_version, int)
+            or schema_version != 1
+        ):
             raise DataError("unsupported FeatureInputRefV1 schema")
         if data["lineage_verification"] != "unverified_reference":
             raise DataError("FeatureInputRefV1 cannot claim verified lineage")
@@ -218,7 +224,13 @@ class FeatureValueV1:
             raise DataError("role must be geometry, state, or factor")
         if not isinstance(value_type, str) or value_type not in {"bool", "int", "float", "str"}:
             raise DataError("value_type is invalid")
-        if data["schema"] != "FeatureValueV1" or data["schema_version"] != 1:
+        schema_version = data["schema_version"]
+        if (
+            data["schema"] != "FeatureValueV1"
+            or isinstance(schema_version, bool)
+            or not isinstance(schema_version, int)
+            or schema_version != 1
+        ):
             raise DataError("unsupported FeatureValueV1 schema")
         if data["lineage_verification"] != "unverified_reference":
             raise DataError("FeatureValueV1 cannot claim verified lineage")

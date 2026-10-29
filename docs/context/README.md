@@ -5,6 +5,14 @@ These maps introduce no product scope, permissions, or new source of authority.
 
 - [Software Team](software-team.md): engineering boundaries, discovery and verification.
 - [ALPHA Quant Platform](alpha-quant-platform.md): data, research, validation and surfaces.
+- [Validation dependencies and open acceptance](alpha-quant-platform.md#validation-dependencies-and-open-acceptance): lean Master v1 §12 W06/W09–W12/W14/W17 tasks; full Qlib/native RD-Agent and wider W01–W19 scope retained.
+- [Canonical feature readiness checklist (2026-10-27 reconciled)](feature-readiness-checklist-2026-10-27.md): sole full-scope owner; repository mirror of the source DOCX with SHA/version provenance. Plans link here rather than copy it; it marks no feature done.
+- [Build readiness handoff (2026-10-27, v1)](build-readiness-handoff-2026-10-27.md): supporting historical-as-of intake evidence, not a roadmap or acceptance denominator.
+- [Current synthetic native workflow](../superpowers/plans/2026-10-26-native-rule-authority.md): code, scoped test/failure receipts, blocked real input, rollback and resume.
+
+- [Qlib tabular first wave](../superpowers/plans/2026-10-26-qlib-tabular-wave1.md): isolated candidate, recipe states, source provenance, checks and remaining qualification; integration/acceptance remain separate.
+- [Qlib W11 refit packet](../superpowers/plans/2026-10-26-qlib-w11-refit.md): successor engineering scope and frozen controls; W06 admission/accounting and statistical qualification remain blocked.
+- [W05 research integration successor](../superpowers/plans/2026-10-26-w05-research-integration.md): reviewed PR92/UTC/request-budget source, synthetic checks and recovery; final combined gate deferred.
 - [Foundation status baseline (2026-10-18)](../BUILD-STATUS.md#2026-10-18-foundation-status): verified deliveries, pending evidence and deferred scope; see later dated updates for new checks.
 - [Mac handover update (2026-10-19)](../BUILD-STATUS.md#2026-10-19-mac-handover-update): current bounded workstation evidence and remaining physical handover blockers.
 - [Mac workstation handover refresh](../operations/mac-workstation-handover-2026-10-19.md): bounded startup/UI evidence and the remaining physical handover blockers.
@@ -50,11 +58,20 @@ Representative checks identify bounded verification locations, not complete capa
 Last source inspection for these maps: commit
 `dd5a924d709b8d60c97492043f2a82dac976105a` (2026-10-16).
 This identifies the inspected base, not a passing test run or a commit containing this draft.
-Each capability row inherits that inspection reference; linked tests are representative
+Exception: the closed synthetic native row and validation-dependency section were source-inspected
+on the preserved e635e6cb-based candidate on 2026-10-26. Native source is now assembled onto bc5;
+scoped public regressions and cheap checks passed. Their linked current plan and executor
+packet identify the tested source, final review disposition and blocked acceptance obligations. This does not refresh unrelated rows or claim unavailable
+navigation handoff integration. Other capability rows inherit the original inspection reference; linked tests are representative
 verification locations, not executed evidence. Missing relationships remain explicit.
 Protected test targets are checked by path/Git metadata only; their content was not inspected.
 Executed checks require their own command, exit, scope and tested-tree receipt.
 A receipt from another tree or environment does not certify this draft.
+
+The Qlib model-candidate row has an additional bounded inspection on delivery baseline
+`bc5b58351cc334d36112167c9463a80184411cc6` plus the local tabular candidate diff (2026-10-26).
+Its linked plan records fresh checks and exact remaining gates; this does not update the
+inspection or acceptance status of unrelated rows.
 
 [Atlas](../../tools/alpha-atlas/README.md) supplies the existing provenance model:
 `owner`, `created_from`, `last_verified_commit`, source anchors and computed evidence levels.
@@ -117,3 +134,5 @@ Verify licenses, redistribution rights, source attribution and quotation permiss
 private retention permission does not establish public redistribution rights.
 Publish only explicitly authorized, sanitized derivatives with their own provenance.
 Private verification alone grants neither public intake nor research/execution authority.
+
+- [Combined Mac portability qualification](../superpowers/plans/2026-10-26-mac-portability-qualification.md): actual Mac source reconciliation, failure diagnosis and exact-tree gate; native runtime remains Linux-only.

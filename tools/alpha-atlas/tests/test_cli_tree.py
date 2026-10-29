@@ -1,8 +1,27 @@
 """CLI extractor: leaves + groups from the committed command cache, calls edges to modules."""
 
+import ast
 from pathlib import Path
 
-from alpha_atlas.generators.cli_tree import CACHE_REL, extract
+import pytest
+
+from alpha_atlas.generators.cli_tree import CACHE_REL, MAIN_REL, _typer_registrations, extract
+
+
+def _registry(repo_root: Path) -> set[tuple[str, str]]:
+    """The (group, module) pairs of main.py's GROUPS literal, read independently."""
+    tree = ast.parse((repo_root / MAIN_REL).read_text())
+    value = next(
+        node.value
+        for node in tree.body
+        if isinstance(node, ast.AnnAssign | ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "GROUPS"
+            for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+        )
+    )
+    assert value is not None
+    return {(name, module) for name, module, _ in ast.literal_eval(value)}
 
 
 class TestCliTree:
@@ -36,3 +55,23 @@ class TestCliTree:
         )
         assert edge.evidence.provenance[0].source == "apps/alpha-cli/src/alpha_cli/main.py"
         assert edge.evidence.provenance[0].line is not None
+
+    def test_every_registry_group_calls_its_module(self, repo_root: Path) -> None:
+        fragment, _ = extract(repo_root)
+        registry = _registry(repo_root)
+        assert len(registry) == 24
+        calls = {
+            (e.source.removeprefix("cli:alpha "), e.target.removeprefix("module:"))
+            for e in fragment.edges
+            if e.type == "calls" and e.source.startswith("cli:alpha ")
+        }
+        assert calls == registry
+        assert all(
+            e.evidence.provenance[0].source == MAIN_REL
+            for e in fragment.edges
+            if e.type == "calls" and e.source.startswith("cli:alpha ")
+        )
+
+    def test_a_malformed_registry_fails_loudly(self) -> None:
+        with pytest.raises(ValueError, match="GROUPS"):
+            _typer_registrations('GROUPS = (("data", "alpha_cli.data_cmds"),)\n')

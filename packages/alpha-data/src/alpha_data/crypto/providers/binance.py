@@ -19,7 +19,7 @@ import polars as pl
 from alpha_core import DataError
 
 from ..storage import sha256_file
-from ._wire import epoch_ms_to_utc, fetch_bounded, validate_book_sides
+from ._wire import RequestBudget, epoch_ms_to_utc, fetch_bounded, validate_book_sides
 
 type BinanceArchiveMarket = Literal["spot", "um", "cm"]
 type BinanceKlineSource = Literal["archive_csv", "rest_json"]
@@ -518,7 +518,9 @@ def binance_public_api_url(
     return f"{_PUBLIC_API_ROOTS[category]}/{resource}?{query}"
 
 
-def fetch_binance_public_api(url: str, *, timeout_seconds: int = 30) -> bytes:
+def fetch_binance_public_api(
+    url: str, *, timeout_seconds: int = 30, budget: RequestBudget | None = None
+) -> bytes:
     """Fetch one bounded keyless Binance market-data response with redirect revalidation."""
     if not 1 <= timeout_seconds <= 60:
         raise DataError("Binance public API timeout must be between 1 and 60 seconds")
@@ -536,6 +538,7 @@ def fetch_binance_public_api(url: str, *, timeout_seconds: int = 30) -> bytes:
         max_bytes=max_bytes,
         timeout_seconds=timeout_seconds,
         mime_message="response MIME is invalid",
+        budget=budget,
     )
 
 

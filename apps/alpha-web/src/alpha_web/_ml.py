@@ -229,6 +229,19 @@ def _contract(request: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _declared_membership_status(request: dict[str, Any] | None) -> str | None:
+    """Describe the saved membership claim without treating it as schedule evidence."""
+    if request is None:
+        return None
+    membership = request.get("universe_membership")
+    if membership == "point_in_time":
+        return "declared_unverified"
+    warning = request.get("survivorship_warning")
+    if membership == "current_membership" and isinstance(warning, str) and warning.strip():
+        return "current_membership_warning"
+    return None
+
+
 def _exchange_summary(exchange_id: str, path: Path) -> dict[str, Any]:
     request_path = path / "request.json"
     result_path = path / "result.json"
@@ -244,6 +257,7 @@ def _exchange_summary(exchange_id: str, path: Path) -> dict[str, Any]:
     return {
         "exchange_id": exchange_id,
         "status": status,
+        "membership_status": _declared_membership_status(request),
         "config_hash": None if request is None else request.get("config_hash"),
         "snapshot_hash": None if request is None else request.get("snapshot_hash"),
         "worker_kind": (
@@ -278,12 +292,19 @@ def exchange_detail(exchange_id: str, *, data_dir: Path) -> dict[str, Any]:
     result_path = path / "result.json"
     result_summary: dict[str, Any] | None = None
     if result_path.is_file():
-        _run_json(["ml", "import", str(path), "--json"], data_dir=data_dir)
+        imported = _object(
+            _run_json(["ml", "import", str(path), "--json"], data_dir=data_dir),
+            "ML import",
+        )
+        membership_status = imported.get("membership_status")
+        if membership_status not in {"current_membership_warning", "declared_unverified"}:
+            raise MlError("ML import omitted a valid membership status")
         result = _json_object(result_path, "ML result")
         worker = _object(result.get("worker"), "worker")
         predictions = _object(result.get("predictions"), "predictions")
         result_summary = {
             "status": result.get("status"),
+            "membership_status": membership_status,
             "worker_kind": worker.get("kind"),
             "worker_implementation_version": worker.get("implementation_version"),
             "prediction_rows": predictions.get("rows"),
@@ -338,6 +359,10 @@ def _fold_diagnostics(raw: object, *, history_limit: int) -> list[dict[str, Any]
         result.append(
             {
                 "fold": fold.get("fold"),
+                "model_backend": fold.get("model_backend"),
+                "resolved_parameters": fold.get("resolved_parameters"),
+                "backend_versions": fold.get("backend_versions"),
+                "importance_kind": fold.get("importance_kind"),
                 "fit_count": fold.get("fit_count"),
                 "train_rows": fold.get("train_rows"),
                 "validation_rows": fold.get("validation_rows"),
@@ -378,15 +403,28 @@ def exchange_tearsheet(
     path = _exchange_dir(exchange_id, data_dir=data_dir)
     result_path = path / "result.json"
     if not result_path.is_file():
+        request_path = path / "request.json"
+        request = _json_object(request_path, "ML request") if request_path.is_file() else None
+        membership_status = _declared_membership_status(request)
         return {
             "available": False,
             "exchange_id": exchange_id,
             "authority": "unavailable",
-            "label": "Worker result is not available",
+            "label": (
+                "Worker result is unavailable; point_in_time membership is declared but unverified"
+                if membership_status == "declared_unverified"
+                else "Worker result is not available"
+            ),
+            "membership_status": membership_status,
             "counterfactual_refit": False,
             "versions": None,
+            "model_backend": None,
+            "model_parameters": None,
+            "backend_versions": None,
+            "adapter_source_hash": None,
             "feature_recipe": None,
             "label_recipe": None,
+            "diagnostic_state": None,
             "score_distribution": None,
             "ic": None,
             "quantile_returns": [],
@@ -400,17 +438,34 @@ def exchange_tearsheet(
             "timeline_has_more": False,
         }
     evaluation = evaluate_exchange(exchange_id, data_dir=data_dir)
+    membership_status = evaluation.get("membership_status")
+    if membership_status not in {"current_membership_warning", "declared_unverified"}:
+        raise MlError("ML evaluation omitted a valid membership status")
+    evaluation_label = evaluation.get("label")
+    if not isinstance(evaluation_label, str):
+        raise MlError("ML evaluation omitted its label")
+    unverified_membership = membership_status == "declared_unverified"
     diagnostics = _object(evaluation.get("diagnostics"), "worker diagnostics")
     if diagnostics.get("authority") != "qlib_diagnostic_only":
         return {
             "available": False,
             "exchange_id": exchange_id,
             "authority": "diagnostic_unavailable",
-            "label": "Typed Qlib diagnostics are unavailable for this worker mode",
+            "label": (
+                evaluation_label
+                if unverified_membership
+                else "Typed Qlib diagnostics are unavailable for this worker mode"
+            ),
+            "membership_status": membership_status,
             "counterfactual_refit": False,
             "versions": None,
+            "model_backend": None,
+            "model_parameters": None,
+            "backend_versions": None,
+            "adapter_source_hash": None,
             "feature_recipe": None,
             "label_recipe": None,
+            "diagnostic_state": None,
             "score_distribution": None,
             "ic": None,
             "quantile_returns": [],
@@ -426,35 +481,53 @@ def exchange_tearsheet(
     signal = _object(diagnostics.get("signal_analysis"), "signal analysis")
     raw_ic = _object(signal.get("ic"), "IC diagnostics")
     ic_rows = _objects(raw_ic.get("by_target"), "IC timeline")
-    raw_portfolio = _object(signal.get("portfolio"), "diagnostic portfolio")
-    portfolio_rows = _objects(raw_portfolio.get("timeline"), "portfolio timeline")
-    if len(ic_rows) != len(portfolio_rows):
+    request = _json_object(path / "request.json", "ML request")
+    portfolio_absent = request.get("schema_version") == 3 and signal.get("portfolio") is None
+    raw_portfolio = (
+        None if portfolio_absent else _object(signal.get("portfolio"), "diagnostic portfolio")
+    )
+    portfolio_rows = (
+        []
+        if raw_portfolio is None
+        else _objects(raw_portfolio.get("timeline"), "portfolio timeline")
+    )
+    if raw_portfolio is not None and len(ic_rows) != len(portfolio_rows):
         raise MlError("Qlib IC and portfolio diagnostic timelines are misaligned")
     selected_ic = ic_rows[timeline_offset : timeline_offset + timeline_limit]
     selected_portfolio = portfolio_rows[timeline_offset : timeline_offset + timeline_limit]
     feature_rows = _objects(diagnostics.get("feature_importance"), "feature importance")
     score = _object(diagnostics.get("score_distribution"), "score distribution")
-    portfolio = {
-        key: raw_portfolio.get(key)
-        for key in (
-            "selection",
-            "declared_costs",
-            "periods",
-            "gross_total_return",
-            "costed_total_return",
-            "benchmark_total_return",
-            "costed_excess_total_return",
-            "mean_turnover",
-        )
-    }
-    portfolio["timeline"] = selected_portfolio
+    portfolio = (
+        None
+        if raw_portfolio is None
+        else {
+            key: raw_portfolio.get(key)
+            for key in (
+                "selection",
+                "declared_costs",
+                "periods",
+                "gross_total_return",
+                "costed_total_return",
+                "benchmark_total_return",
+                "costed_excess_total_return",
+                "mean_turnover",
+            )
+        }
+    )
+    if portfolio is not None:
+        portfolio["timeline"] = selected_portfolio
     return {
         "available": True,
         "exchange_id": exchange_id,
         "authority": diagnostics.get("authority"),
-        "label": diagnostics.get("label"),
+        "label": evaluation_label if unverified_membership else diagnostics.get("label"),
+        "membership_status": membership_status,
         "counterfactual_refit": diagnostics.get("counterfactual_refit"),
         "versions": diagnostics.get("versions"),
+        "model_backend": diagnostics.get("model_backend"),
+        "model_parameters": diagnostics.get("model_parameters"),
+        "backend_versions": diagnostics.get("backend_versions"),
+        "adapter_source_hash": diagnostics.get("adapter_source_hash"),
         "feature_recipe": diagnostics.get("feature_recipe"),
         "label_recipe": diagnostics.get("label_recipe"),
         "score_distribution": {
@@ -466,15 +539,16 @@ def exchange_tearsheet(
             "rank_mean": _optional_finite(raw_ic.get("rank_mean"), "RankIC mean"),
             "by_target": selected_ic,
         },
+        "diagnostic_state": signal.get("diagnostic_state"),
         "quantile_returns": signal.get("quantile_returns"),
         "portfolio": portfolio,
         "feature_importance": feature_rows[:feature_limit],
         "feature_importance_truncated": len(feature_rows) > feature_limit,
         "folds": _fold_diagnostics(diagnostics.get("folds"), history_limit=history_limit),
-        "timeline_total": len(portfolio_rows),
+        "timeline_total": len(ic_rows),
         "timeline_offset": timeline_offset,
         "timeline_limit": timeline_limit,
-        "timeline_has_more": timeline_offset + timeline_limit < len(portfolio_rows),
+        "timeline_has_more": timeline_offset + timeline_limit < len(ic_rows),
     }
 
 
@@ -1438,6 +1512,11 @@ def launch_input_generation(
     }
 
 
+def capabilities(*, data_dir: Path) -> dict[str, Any]:
+    """Probe worker-owned optional dependencies through the public CLI seam."""
+    return _object(_run_json(["ml", "capabilities", "--json"], data_dir=data_dir), "capabilities")
+
+
 def _current_experiment(project_id: str, *, data_dir: Path) -> str:
     project = _object(
         _run_json(
@@ -1458,8 +1537,21 @@ def launch_experiment_generation(
     project_id: str,
     experiment_id: str | None,
     timeout_seconds: int,
+    model: str | None = None,
+    parameters: Mapping[str, int | float | str] | None = None,
 ) -> dict[str, Any]:
-    """One-click input export plus immutable exchange preparation for a project experiment."""
+    """One-click input export plus immutable exchange preparation for a project experiment.
+
+    Without ``model`` the exchange keeps the experiment's frozen recipe and schema; only an
+    explicit model publishes a schema-3 override.
+    """
+    if model is None and parameters:
+        raise MlError("model parameters require an explicit model override")
+    override = (
+        []
+        if model is None
+        else ["--model", model, "--parameters-json", _canonical_json(dict(parameters or {}))]
+    )
     resolved_experiment = experiment_id or _current_experiment(project_id, data_dir=data_dir)
     input_bundle_id = new_input_id()
     exchange_id = new_exchange_id()
@@ -1471,6 +1563,8 @@ def launch_experiment_generation(
         raise MlError("isolated worker project/lock is unavailable")
     safe_request: dict[str, object] = {
         "action": "generate-experiment",
+        "model": model,
+        "parameters": dict(parameters or {}),
         "project_id": project_id,
         "experiment_id": resolved_experiment,
         "input_bundle_id": input_bundle_id,
@@ -1508,6 +1602,7 @@ def launch_experiment_generation(
                 str(exchange_dir),
                 "--worker-lock",
                 str(lock),
+                *override,
                 "--json",
             ],
             prepare_timeout,
@@ -1642,6 +1737,7 @@ __all__ = [
     "MlBusyError",
     "MlError",
     "MlNotFoundError",
+    "capabilities",
     "evaluate_exchange",
     "exchange_detail",
     "exchange_result",

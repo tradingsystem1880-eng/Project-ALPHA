@@ -14,7 +14,15 @@ import polars as pl
 from typer.testing import CliRunner
 
 from alpha_cli.main import app
-from alpha_cli.ml_contract import MIN_ALIGNED_SESSIONS, MIN_SYMBOLS, PANEL_COLUMNS
+from alpha_cli.ml_contract import (
+    INPUT_ANCHOR_FILENAME,
+    MIN_ALIGNED_SESSIONS,
+    MIN_SYMBOLS,
+    PANEL_COLUMNS,
+    canonical_json_bytes,
+    compute_config_hash,
+    sha256_file,
+)
 
 
 def _write_inputs(
@@ -177,6 +185,45 @@ def test_offline_ml_cli_round_trip(tmp_path: Path) -> None:
     )
     assert repeated.exit_code == 0, repeated.output
     assert (run_dir / "manifest.json").read_bytes() == before
+
+
+def test_ml_train_refuses_frozen_unverified_point_in_time_request(tmp_path: Path) -> None:
+    repo = Path(__file__).parents[2]
+    worker_lock = repo / "workers/qlib/uv.lock"
+    spec, panel = _write_inputs(
+        tmp_path,
+        worker_lock_hash=hashlib.sha256(worker_lock.read_bytes()).hexdigest(),
+    )
+    exchange = tmp_path / "legacy-exchange"
+    runner = CliRunner()
+    prepared = runner.invoke(app, ["ml", "prepare", str(spec), str(panel), str(exchange), "--json"])
+    assert prepared.exit_code == 0, prepared.output
+
+    request_path = exchange / "request.json"
+    request = json.loads(request_path.read_text(encoding="utf-8"))
+    request["universe_membership"] = "point_in_time"
+    request["survivorship_warning"] = None
+    request["config_hash"] = compute_config_hash(request)
+    request_path.write_bytes(canonical_json_bytes(request))
+    (exchange / INPUT_ANCHOR_FILENAME).write_bytes(
+        canonical_json_bytes(
+            {
+                "schema_version": request["schema_version"],
+                "request_sha256": sha256_file(request_path),
+                "panel_sha256": sha256_file(exchange / "panel.parquet"),
+            }
+        )
+    )
+
+    trained = runner.invoke(
+        app,
+        ["ml", "train", str(exchange), "--mode", "fake", "--no-sync", "--json"],
+    )
+
+    assert trained.exit_code != 0
+    assert "declared but unverified" in trained.output
+    assert not (exchange / "predictions.parquet").exists()
+    assert not (exchange / "result.json").exists()
 
 
 def test_ml_cli_fails_cleanly_on_invalid_bundle(tmp_path: Path) -> None:

@@ -10,10 +10,11 @@ import json
 import math
 import time
 from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from email.message import Message
-from typing import Final, cast
-from urllib.request import Request
+from typing import Any, Final, cast
+from urllib.request import HTTPRedirectHandler, Request
 
 from alpha_core import DataError
 
@@ -62,6 +63,62 @@ def _retry_after_delay(headers: Message | None, attempt: int) -> float:
     return min(10.0, max(backoff, provider_delay))
 
 
+@dataclass
+class RequestBudget:
+    """One invocation's HTTP attempts and application body bytes, never socket traffic."""
+
+    max_requests: int
+    max_bytes: int
+    requests_used: int = field(default=0, init=False)
+    bytes_read: int = field(default=0, init=False)
+    failed: bool = field(default=False, init=False)
+
+    def __post_init__(self) -> None:
+        if any(
+            type(value) is not int or value <= 0 for value in (self.max_requests, self.max_bytes)
+        ):
+            raise DataError("request and byte budgets must be positive integers")
+
+    def reserve_request(self) -> None:
+        if self.failed:
+            raise DataError("request budget aborted after transport failure")
+        if self.requests_used >= self.max_requests:
+            raise DataError("total request budget exhausted")
+        if self.bytes_read >= self.max_bytes:
+            raise DataError("total response byte budget exhausted")
+        self.requests_used += 1
+
+
+class _NoBudgetRedirect(HTTPRedirectHandler):
+    def redirect_request(
+        self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str
+    ) -> None:
+        return None
+
+
+def _read_budgeted(response: Any, budget: RequestBudget, max_bytes: int) -> bytes:
+    import http.client  # noqa: PLC0415
+
+    chunks: list[bytes] = []
+    size = 0
+    while True:
+        remaining = budget.max_bytes - budget.bytes_read
+        if remaining <= 0:
+            raise DataError("total response byte budget exhausted before EOF")
+        try:
+            chunk = bytes(response.read(min(65536, remaining, max_bytes + 1 - size)))
+        except http.client.IncompleteRead as exc:
+            budget.bytes_read += len(exc.partial)
+            raise
+        budget.bytes_read += len(chunk)
+        size += len(chunk)
+        if size > max_bytes:
+            raise DataError("response exceeds the byte limit")
+        if not chunk:
+            return b"".join(chunks)
+        chunks.append(chunk)
+
+
 def fetch_bounded(
     request_or_url: str | Request,
     *,
@@ -73,6 +130,7 @@ def fetch_bounded(
     mime_message: str = "response MIME is not JSON",
     report_http_code: bool = False,
     retry_429: bool = False,
+    budget: RequestBudget | None = None,
 ) -> bytes:
     """Read one bounded response, revalidating the redirect host, the MIME and the byte cap."""
     import urllib.error  # noqa: PLC0415
@@ -84,26 +142,50 @@ def fetch_bounded(
         else request_or_url
     )
     max_attempts = 4 if retry_429 else 1
+    if budget is not None and not request.full_url.startswith(host_prefix):
+        raise DataError(f"{provider} request host is invalid")
+    opener = urllib.request.build_opener(_NoBudgetRedirect()) if budget is not None else None
     payload: bytes | None = None
     for attempt in range(max_attempts):
+        if budget is not None:
+            budget.reserve_request()
         try:
-            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            context = (
+                urllib.request.urlopen(request, timeout=timeout_seconds)  # noqa: S310
+                if opener is None
+                else opener.open(request, timeout=timeout_seconds)
+            )
+            with context as response:
                 if not str(response.geturl()).startswith(host_prefix):
                     raise DataError(f"{provider} redirect host is invalid")
                 content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
                 if content_type not in content_types:
                     raise DataError(f"{provider} {mime_message}")
-                payload = bytes(response.read(max_bytes + 1))
+                payload = (
+                    bytes(response.read(max_bytes + 1))
+                    if budget is None
+                    else _read_budgeted(response, budget, max_bytes)
+                )
             break
         except urllib.error.HTTPError as exc:
+            if budget is not None:
+                exc.close()
             if retry_429 and exc.code == 429 and attempt < max_attempts - 1:
+                if budget is not None and budget.requests_used >= budget.max_requests:
+                    raise DataError("total request budget exhausted") from exc
                 time.sleep(_retry_after_delay(exc.headers, attempt))
                 continue
             if report_http_code:
                 raise DataError(f"{provider} request failed with HTTP {exc.code}") from exc
             raise DataError(f"{provider} request failed") from exc
         except (urllib.error.URLError, TimeoutError) as exc:
+            if budget is not None:
+                budget.failed = True
             raise DataError(f"{provider} request failed") from exc
+        except BaseException:
+            if budget is not None:
+                budget.failed = True
+            raise
     if payload is None:
         raise DataError(f"{provider} request failed")
     if len(payload) > max_bytes:

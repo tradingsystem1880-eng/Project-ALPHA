@@ -486,6 +486,13 @@
     {
       "method": "GET",
       "mode": "automatic",
+      "operation_id": "get_capabilities_api_ml_capabilities_get",
+      "path": "/api/ml/capabilities",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
       "operation_id": "get_exchanges_api_ml_exchanges_get",
       "path": "/api/ml/exchanges",
       "reason": "Safe read exercised against an isolated temporary store."
@@ -1301,6 +1308,13 @@
       "operation_id": "v3_review_evidence_api_v3_evidence__evidence_id__review_post",
       "path": "/api/v3/evidence/{evidence_id}/review",
       "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "automatic",
+      "operation_id": "v3_get_capabilities_api_v3_ml_capabilities_get",
+      "path": "/api/v3/ml/capabilities",
+      "reason": "Safe read exercised against an isolated temporary store."
     },
     {
       "method": "GET",

@@ -1,84 +1,76 @@
-# Project ALPHA — Agent Operating Manual
+# ALPHA Operating Manual
 
 Authority: `docs/governance/capability-authority-matrix.md`.
 
-Private owner research: validate edge after costs. Python 3.12/uv; no hosting/distribution.
+Private research. Python 3.12/uv; no hosting/distribution.
 
 ## Rules (path-scoped)
 
-Load `karpathy-guidelines`; `incremental-implementation` for multi-file work;
-`code-simplification` for refactors; `code-review-and-quality` before merge;
-`verification-before-completion` before claims. Use `alpha-feature-workflow` for nontrivial work;
-quant changes need primary sources. Skills: `.agents/skills/`. One mutator per overlapping slice.
+Load `karpathy-guidelines`; multi-file work: `incremental-implementation`; refactors: `code-simplification`;
+merge: `code-review-and-quality`; claims: `verification-before-completion`. Use
+`alpha-feature-workflow` for nontrivial work; quant needs primary sources. Skills:
+`.agents/skills/`. One mutator per slice.
 
-Applicable rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`,
+Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`,
 `alpha-backtest.md`, `alpha-validation.md`, `alpha-research.md`, `alpha-forecast.md`,
 `alpha-patterns.md`, `alpha-study.md`, `alpha-cli.md`, `alpha-mcp.md`, `alpha-web.md`,
 `quant.md`, `tests.md`, `docs.md`.
 
-## Architecture DAG
+## Import DAG
 
-[pyproject.toml](pyproject.toml) import-linter enforces boundaries:
-core imports nothing internal; data/patterns/research/validation/forecast import only core;
-strategies on core+patterns; backtest on core+data; study on core+data+patterns+research.
-Only `alpha_cli` composes engine and validation. Web/MCP sit above core and supported public CLI
-seams; actions and engine-backed projections subprocess CLI, never the engine in-process.
-Study is projection-only: no persistence or approval authority. Isolate Qlib/literature workers. Run `uv run lint-imports` after import changes.
+[pyproject.toml](pyproject.toml) import-linter enforces: core imports nothing internal; data/patterns/research/validation/forecast import only core; strategies core+patterns; backtest core+data; study core+data+patterns+research. Only `alpha_cli` composes engine and validation. Web/MCP sit above core and supported public CLI seams; actions and engine-backed projections subprocess CLI, never engine in-process. Study is projection-only: no persistence or approval authority. Isolate Qlib/literature workers. Import changes: `uv run lint-imports`.
 
-## Scientific and application invariants
+## Invariants
 
-- All data/strategy reads use point-in-time `as_of`; bias guards poison future data and have leaky
-  controls. Decide at close t, fill at open t+1. Corporate actions have knowledge/application clocks;
-  dividends are cash at pay_date. Details: [domain contracts](docs/operations/research-platform-contracts.md).
-- Fail loud on invalid/non-finite/disordered data and degenerate statistics. No swallowed errors.
-  Retry WAL SQLITE_BUSY within its existing budget. Polars is default; pandas only at sanctioned
-  vendor edges. Keep strict typing.
-- Runs, snapshots, receipts and admitted evidence are immutable and hash-bound. Keep historical
-  readers/migrations. Seeds/execution fingerprints are deterministic; D0/D1 seeds
-  are frozen, not settings-derived. Reverify reads/copy generations; retirement/retries preserve bytes.
-- Research precedes strategy. D1 stays in discovery; owner-approved D2 is one-shot. Promotion
-  requires verified evidence and owner decision. Screening and Monte Carlo path risk are not proof of edge.
-- Explicit local owner confirmation (ADR-0038), paper opt-ins, provider/venue/unit boundaries and no-live-capital
-  routing remain mandatory. UI/MCP output, account state and engineering checks confer no authority.
-  Existing owner-auth actions remain the bounded path; no inferred approvals.
-- Tests under `tests/holdout/` may run, but agents never read or edit them. Proposed tests go in
-  `tests/holdout_seed/`. No owner data, credentials or hidden tests in discovery indexes.
-- Research ships CLI-first. The [edge workspace](docs/superpowers/plans/2026-09-30-edge-workspace.md) connects
-  charts, conditions and advisory Codex. Drafts confer no authority; terminal docks, verified
-  charts and local confirmation follow ADR-0038.
+- All data/strategy reads use aware-UTC point-in-time `as_of`; bias guards poison future data and have leaky controls.
+  Decide at close t, fill at open t+1. Corporate actions have knowledge/application clocks; dividends
+  are cash at pay_date. [Domain contracts](docs/operations/research-platform-contracts.md).
+- Fail loud on invalid/non-finite/disordered data or degenerate statistics; never swallow errors. Type
+  interrupted Stooq reads; retry WAL SQLITE_BUSY within existing budget. Polars default; pandas only
+  at sanctioned vendor edges; type strictly. Tiingo transport: type-only.
+- Runs/snapshots/receipts/admitted evidence are immutable and hash-bound. Preserve
+  readers/migrations. Seeds/execution fingerprints are deterministic; D0/D1 seeds are frozen, not
+  settings-derived. Reverify reads/copy generations; retirement/retries preserve bytes.
+- Research precedes strategy. D1 stays in discovery; owner-approved D2 is one-shot. Promote only
+  after verified evidence and owner decision. Screening and Monte Carlo path risk are not proof of edge.
+- Require explicit local owner confirmation (ADR-0038), paper opt-ins, provider/venue/unit boundaries
+  and no-live-capital routing. UI/MCP output, account state and engineering checks confer no authority.
+  Existing owner-auth actions are the bounded path; infer no approvals.
+- Agents may run tests in `tests/holdout/` but never read or edit them. Put proposed tests in
+  `tests/holdout_seed/`. Keep owner data, credentials and hidden tests out of discovery indexes.
+- Research is CLI-first. [Edge workspace](docs/superpowers/plans/2026-09-30-edge-workspace.md) links
+  charts, conditions and advisory Codex. Drafts confer no authority; terminal docks, verified charts
+  and local confirmation follow ADR-0038.
 
 ## Commands
 
-- Full (size guard): `uv run python scripts/gate.py full`.
+- Full: `uv run python scripts/gate.py full`.
 - Components: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
-  `literature`, `qlib`, `atlas`, `eval`); full requires all.
-- Discovery: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;
-  `alpha info procedures --json`. Default catalog remains launch-form compatible.
+  `literature`, `qlib`, `atlas`, `eval`); empty steps fail; full needs all.
+- Discover: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;
+  `alpha info procedures --json`. Catalog supports launch forms.
 - Install: `uv sync --locked`; cloud: [README](README.md).
 - Tests: `uv run pytest -q -m "not network"`; bias: `uv run pytest -q -m bias_guard`.
   Gate owns Linux pytest; build before browsers.
+- Semgrep uses fail-closed `scripts/semgrep_runner.py`, pinned and checked at 1.181.0.
 
-**2026-09-16:** [delivery record](docs/superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md).
-Checks, discovery, V2 plans and frozen-input screening delivered. Install Git guards
-in new checkouts. Claude adapters provide orientation and native-boundary safety only.
-Require a fresh full stamp; never bypass checks.
-[ADR-0037](docs/adr/0037-agent-neutral-research-engineering.md) separates engineering
-ceremony changes from unchanged application authority.
-[Harness](docs/operations/claude-code-harness.md): checkpoint, 96-mutant cap, intake/exceptions, CSS staging.
+**2026-09-16:** [delivery](docs/superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md),
+[ADR-0037](docs/adr/0037-agent-neutral-research-engineering.md): agent-neutral checks; application
+authority unchanged. Install Git guards; require a fresh full stamp; no bypass.
+[Harness](docs/operations/claude-code-harness.md): checkpoint, mutant cap, intake, CSS staging.
+[Benchmark](tools/alpha-eval/README.md); research [workflow](docs/operations/bounded-research-workflow.md) and [Codex investigations](docs/operations/codex-investigations.md) remain advisory.
 
-[Benchmark](tools/alpha-eval/README.md): Codex-only; preserve history/isolation.
-Research: [bounded CLI workflow](docs/operations/bounded-research-workflow.md);
-[Codex investigations](docs/operations/codex-investigations.md). Advisory only.
+## Evidence
 
-## Current evidence
-
-Read [architecture](docs/ARCHITECTURE.md), [ADRs](docs/adr/README.md),
-rules in `.claude/rules/`, [build record](docs/BUILD-STATUS.md) and [contracts](docs/operations/research-platform-contracts.md).
-Use fresh source/tests. Provider acceptance requires passing receipts.
+See [architecture](docs/ARCHITECTURE.md), [ADRs](docs/adr/README.md), `.claude/rules/` and
+[build record + schema](docs/BUILD-STATUS.md).
+Provider acceptance requires passing receipts. Binance opt-in caps: HTTP attempts/body bytes.
 
 [Development loop](docs/operations/development-loop.md): focused checks.
-Behavior changes: update this manual and append `docs/BUILD-STATUS.md`.
-Preserve user work; local checks do not confer acceptance.
+Behavior changes: update manual/build. Preserve user work; local checks do not confer acceptance.
 
-UI: [terminal guide](apps/alpha-web/frontend/README.md): charts, UTC, exact exports, no-project browsing.
-ML: v1/LightGBM; v2/rank_ensemble_v1.
+UI: [terminal guide](apps/alpha-web/frontend/README.md): UTC charts, exact exports, no-project browsing. RunDetail binds selected-run outputs and loading/error/empty states.
+ML: v1/LightGBM; v2/rank ensemble; v3/tabular (workers/qlib/README.md). Missing worker blocks; refit grants no admission.
+
+Native rule/control (Linux only): local confirmation, pinned LoopBase/LoopMeta, canonical engine, immutable artifacts,
+full-charge accounting; strict integer IDs/counts and finite curves; no public/scientific authority. [Plan/handoff](docs/superpowers/plans/2026-10-26-native-rule-authority.md).

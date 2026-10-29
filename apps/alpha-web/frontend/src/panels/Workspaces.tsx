@@ -10,7 +10,7 @@
  * Documents written by the old shell still carry their layout blob; it is read and ignored.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { api } from '../api/client'
 import type { PanelHandleProps } from '../context/panelHandle'
@@ -27,6 +27,7 @@ export function Workspaces(_props: PanelHandleProps) {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const loadSequence = useRef(0)
 
   const refresh = useCallback(() => {
     api
@@ -36,6 +37,10 @@ export function Workspaces(_props: PanelHandleProps) {
   }, [])
 
   useEffect(refresh, [refresh])
+
+  useEffect(() => () => {
+    loadSequence.current += 1
+  }, [])
 
   const save = async () => {
     const slug = slugify(name)
@@ -61,11 +66,14 @@ export function Workspaces(_props: PanelHandleProps) {
   }
 
   const load = async (slug: string) => {
+    const request = ++loadSequence.current
+    setError(null)
     try {
       const doc = await api.getWorkspace(slug)
+      if (request !== loadSequence.current) return
       if (doc.linked_context) restoreLinked(doc.linked_context)
     } catch (cause) {
-      setError(String(cause))
+      if (request === loadSequence.current) setError(String(cause))
     }
   }
 

@@ -28,7 +28,15 @@ from alpha_qlib_worker.contract import (
     validate_request,
 )
 from alpha_qlib_worker.features import alpha158_feature_names, alpha158_features
+from alpha_qlib_worker.fit_provenance import (
+    FitInvocation,
+    FitTrace,
+    row_digest,
+    validate_reference_graph,
+    value_digest,
+)
 from alpha_qlib_worker.rank_ensemble import rank_ensemble_v1
+from alpha_qlib_worker.tabular_adapters import fit_tabular
 
 
 class WorkerDependencyError(RuntimeError):
@@ -38,22 +46,27 @@ class WorkerDependencyError(RuntimeError):
 class _MemoryDataset:
     """Small DatasetH-compatible adapter for already-verified, in-memory fold frames."""
 
-    def __init__(self, frames: Mapping[str, pd.DataFrame]) -> None:
+    def __init__(self, frames: Mapping[str, pd.DataFrame], *, flatten_single: bool = False) -> None:
+        self._flatten_single = flatten_single
         self._frames = dict(frames)
         self.segments = {name: name for name in self._frames}
 
     def prepare(
         self,
-        segment: str,
+        segment: str | Sequence[str],
         col_set: str | Sequence[str] = "__all",
         data_key: str = "infer",
         **_: object,
-    ) -> pd.DataFrame:
+    ) -> Any:
         del data_key
+        if not isinstance(segment, str):
+            return [self.prepare(name, col_set=col_set) for name in segment]
         frame = self._frames[segment]
         if col_set == "__all__":
             return frame
         if isinstance(col_set, str):
+            if self._flatten_single:
+                return frame[col_set]
             return frame.loc[:, frame.columns.get_level_values(0) == col_set]
         requested = set(col_set)
         return frame.loc[:, frame.columns.get_level_values(0).isin(requested)]
@@ -228,41 +241,271 @@ def _select_split(
     return features, labels, metadata
 
 
-def _normalize_label(labels: pd.Series, targets: pd.Series) -> pd.Series:
-    frame = pd.DataFrame({"label": labels, "target": targets}, index=labels.index)
+def _interval_records(request: WorkerRequest, metadata: pd.DataFrame) -> list[list[str]]:
+    sessions = [pd.Timestamp(session) for session in request.sessions]
+    following = dict(zip(sessions[:-1], sessions[1:], strict=True))
+    available = {
+        (pd.Timestamp(session), symbol): pd.Timestamp(known)
+        for session, symbol, known in request.panel.select(
+            "session_ts", "symbol", "available_at"
+        ).iter_rows()
+    }
+    records: list[list[str]] = []
+    for row, target_raw in metadata["target_ts"].items():
+        if not isinstance(row, tuple) or len(row) != 2 or not isinstance(row[1], str):
+            raise RuntimeError("provenance requires canonical origin/symbol row keys")
+        origin_raw, symbol = row
+        origin, target = pd.Timestamp(origin_raw), pd.Timestamp(target_raw)
+        if following.get(origin) != target or target not in following:
+            raise RuntimeError("provenance requires the declared one-session target interval")
+        end = following[target]
+        feature_known, label_known = available[(origin, symbol)], available[(end, symbol)]
+        if feature_known >= target or label_known < end:
+            raise RuntimeError("provenance availability clock violates the target interval")
+        records.append(
+            [
+                origin.isoformat(),
+                str(symbol),
+                target.isoformat(),
+                end.isoformat(),
+                feature_known.isoformat(),
+                label_known.isoformat(),
+            ]
+        )
+    return records
 
-    def normalize(group: pd.Series) -> pd.Series:
-        std = float(group.std(ddof=0))
-        if not math.isfinite(std) or std <= 0.0:
-            return pd.Series(0.0, index=group.index)
-        return (group - float(group.mean())) / std
 
-    return frame.groupby("target", sort=False, observed=True)["label"].transform(normalize)
+def _scope_provenance(
+    features: pd.DataFrame,
+    labels: pd.Series | None,
+    metadata: pd.DataFrame,
+    records: list[list[str]],
+) -> dict[str, Any]:
+    if (
+        not features.index.equals(metadata.index)
+        or len(features) != len(records)
+        or (labels is not None and not labels.index.equals(features.index))
+        or not records
+    ):
+        raise RuntimeError("provenance scope rows are empty or misaligned")
+    windows: dict[str, str] = {}
+    for name, column in [
+        ("origin", 0),
+        ("target", 2),
+        ("label_end", 3),
+        ("feature_known_at", 4),
+        ("label_known_at", 5),
+    ]:
+        values = [record[column] for record in records]
+        windows[f"{name}_start"], windows[f"{name}_end"] = min(values), max(values)
+    return {
+        "row_count": len(features),
+        "origin_session_count": len({record[0] for record in records}),
+        "target_session_count": len({record[2] for record in records}),
+        "outcome_interval_count": len({(record[2], record[3]) for record in records}),
+        "event_cluster_count": len({(record[2], record[3]) for record in records}),
+        "row_ids_sha256": row_digest(features),
+        "feature_values_sha256": value_digest(features),
+        "label_values_sha256": value_digest(labels) if labels is not None else None,
+        "target_sessions_sha256": value_digest(pd.Index(metadata["target_ts"])),
+        "intervals_sha256": value_digest(records),
+        "windows": windows,
+    }
+
+
+def _fold_input_provenance(
+    request: WorkerRequest,
+    samples: pd.DataFrame,
+    fold: dict[str, Any],
+    *,
+    train: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
+    validation: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
+    test: tuple[pd.DataFrame, None, pd.DataFrame],
+) -> dict[str, Any]:
+    segments = {"train": train, "validation": validation, "test": test}
+    records = {name: _interval_records(request, meta) for name, (_, _, meta) in segments.items()}
+    scopes = {
+        name: _scope_provenance(features, labels, meta, records[name])
+        for name, (features, labels, meta) in segments.items()
+    }
+
+    def excluded(left: datetime, right: datetime) -> dict[str, Any]:
+        selected = (
+            samples.loc[
+                (samples["target_ts"] > left) & (samples["target_ts"] < right),
+                ["datetime", "instrument", "target_ts"],
+            ]
+            .sort_values(["datetime", "instrument"], kind="mergesort")
+            .set_index(["datetime", "instrument"])
+        )
+        return {
+            "row_count": len(selected),
+            "row_ids_sha256": row_digest(selected),
+            "intervals_sha256": value_digest(_interval_records(request, selected)),
+        }
+
+    train_cutoff = scopes["validation"]["windows"]["feature_known_at_start"]
+    validation_cutoff = scopes["test"]["windows"]["feature_known_at_start"]
+    if pd.Timestamp(scopes["train"]["windows"]["label_known_at_end"]) > pd.Timestamp(
+        train_cutoff
+    ) or pd.Timestamp(scopes["validation"]["windows"]["label_known_at_end"]) > pd.Timestamp(
+        validation_cutoff
+    ):
+        raise RuntimeError("fitted labels were unavailable at the next segment origin")
+    intervals = {
+        name: sorted({(record[2], record[3]) for record in role_records})
+        for name, role_records in records.items()
+    }
+    overlaps = sum(
+        1
+        for left, right in [("train", "validation"), ("train", "test"), ("validation", "test")]
+        for left_start, left_end in intervals[left]
+        for right_start, right_end in intervals[right]
+        if left_start < right_end and right_start < left_end
+    )
+    if overlaps:
+        raise RuntimeError("fitted and evaluation label intervals overlap")
+    session_index = {session: index for index, session in enumerate(request.sessions)}
+    return {
+        "scopes": scopes,
+        "exclusions": {
+            "interval_policy": "aligned_session_open_to_next_open_half_open",
+            "horizon_sessions": 1,
+            "purge_sessions": int(request.payload["purge_sessions"]),
+            "embargo_sessions": int(request.payload["embargo_sessions"]),
+            "train_validation_gap_sessions": session_index[fold["validation_start"]]
+            - session_index[fold["train_end"]]
+            - 1,
+            "validation_test_gap_sessions": session_index[fold["test_start"]]
+            - session_index[fold["validation_end"]]
+            - 1,
+            "train_validation": excluded(fold["train_end"], fold["validation_start"]),
+            "validation_test": excluded(fold["validation_end"], fold["test_start"]),
+            "train_label_cutoff": train_cutoff,
+            "validation_label_cutoff": validation_cutoff,
+            "cross_split_interval_overlap_count": overlaps,
+            "dependence_policy": "same_target_session_across_symbols_is_dependent",
+            "general_event_clusters": "not_evaluated",
+        },
+    }
+
+
+def _seal_fold_provenance(
+    trace: FitTrace,
+    *,
+    fold: int,
+    model_hash: str,
+    inputs: dict[str, Any],
+    model_name: str,
+    parameters: Mapping[str, Any],
+) -> dict[str, Any]:
+    sealed = trace.seal()
+    events = {event["component"]: event for event in sealed["events"]}
+    normalizer = events.get("normalizer", {})
+    train = inputs["scopes"]["train"]
+    if (
+        normalizer.get("input_row_ids_sha256", {}).get("train") != train["row_ids_sha256"]
+        or normalizer.get("input_hashes", {}).get("train") != train["feature_values_sha256"]
+        or normalizer.get("input_row_counts", {}).get("train") != train["row_count"]
+    ):
+        raise RuntimeError("normalizer consumed a different raw training scope")
+    for role in ["train", "validation"]:
+        label = events.get(f"label.{role}", {})
+        scope = inputs["scopes"][role]
+        if (
+            label.get("input_hashes", {}).get("labels") != scope["label_values_sha256"]
+            or label.get("input_hashes", {}).get("target_sessions")
+            != scope["target_sessions_sha256"]
+            or label.get("input_row_ids_sha256", {}).get("labels") != scope["row_ids_sha256"]
+            or label.get("input_row_counts", {}).get("labels") != scope["row_count"]
+        ):
+            raise RuntimeError("label transform consumed a different raw label scope")
+    graph_status = validate_reference_graph(sealed, name=model_name, parameters=parameters)
+    return {
+        "fold": fold,
+        "model_hash": model_hash,
+        **inputs,
+        **sealed,
+        "graph_status": graph_status,
+    }
+
+
+def _normalize_label(
+    labels: pd.Series,
+    targets: pd.Series,
+    *,
+    recorder: FitTrace | None = None,
+    component: str = "label",
+) -> pd.Series:
+    token = (
+        recorder.begin(
+            component, "transform", {"labels": labels, "target_sessions": pd.Index(targets)}
+        )
+        if recorder is not None
+        else None
+    )
+    try:
+        frame = pd.DataFrame({"label": labels, "target": targets}, index=labels.index)
+
+        def normalize(group: pd.Series) -> pd.Series:
+            std = float(group.std(ddof=0))
+            if not math.isfinite(std) or std <= 0.0:
+                return pd.Series(0.0, index=group.index)
+            return (group - float(group.mean())) / std
+
+        result = frame.groupby("target", sort=False, observed=True)["label"].transform(normalize)
+        if recorder is not None and token is not None:
+            recorder.complete(token, {"state": result, "normalized_labels": result})
+        return result
+    except BaseException as exc:
+        if recorder is not None and token is not None:
+            recorder.failed(token, exc)
+        raise
 
 
 def _normalize_features(
     train: pd.DataFrame,
     others: Sequence[pd.DataFrame],
+    *,
+    recorder: FitTrace | None = None,
 ) -> tuple[pd.DataFrame, list[pd.DataFrame], str, int]:
-    median = train.median(axis=0, skipna=True)
-    all_missing = int(median.isna().sum())
-    median = median.fillna(0.0)
-    filled_train = train.fillna(median)
-    center = filled_train.mean(axis=0)
-    scale = filled_train.std(axis=0, ddof=0).replace(0.0, 1.0).fillna(1.0)
-    normalized_train = (filled_train - center) / scale
-    normalized_others = [(frame.fillna(median) - center) / scale for frame in others]
-    for frame in [normalized_train, *normalized_others]:
-        if not np.isfinite(frame.to_numpy(dtype="float64")).all():
-            raise RuntimeError("fold-local feature normalization produced non-finite values")
-    payload = {
-        "method": "train_only_median_then_zscore",
-        "median": [float(value) for value in median],
-        "center": [float(value) for value in center],
-        "scale": [float(value) for value in scale],
-    }
-    normalization_hash = hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
-    return normalized_train, normalized_others, normalization_hash, all_missing
+    token = recorder.begin("normalizer", "fit", {"train": train}) if recorder is not None else None
+    try:
+        median = train.median(axis=0, skipna=True)
+        all_missing = int(median.isna().sum())
+        median = median.fillna(0.0)
+        filled_train = train.fillna(median)
+        center = filled_train.mean(axis=0)
+        scale = filled_train.std(axis=0, ddof=0).replace(0.0, 1.0).fillna(1.0)
+        normalized_train = (filled_train - center) / scale
+        normalized_others = [(frame.fillna(median) - center) / scale for frame in others]
+        for frame in [normalized_train, *normalized_others]:
+            if not np.isfinite(frame.to_numpy(dtype="float64")).all():
+                raise RuntimeError("fold-local feature normalization produced non-finite values")
+        payload = {
+            "method": "train_only_median_then_zscore",
+            "median": [float(value) for value in median],
+            "center": [float(value) for value in center],
+            "scale": [float(value) for value in scale],
+        }
+        normalization_hash = hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
+        if recorder is not None and token is not None:
+            recorder.complete(
+                token,
+                {
+                    "state": payload,
+                    "train_features": normalized_train,
+                    **{
+                        f"other_{index}_features": frame
+                        for index, frame in enumerate(normalized_others)
+                    },
+                },
+            )
+        return normalized_train, normalized_others, normalization_hash, all_missing
+    except BaseException as exc:
+        if recorder is not None and token is not None:
+            recorder.failed(token, exc)
+        raise
 
 
 def _qlib_frame(
@@ -302,6 +545,7 @@ def _fold_model(
     fold: dict[str, Any],
     qlib_module: ModuleType,
     lightgbm_module: ModuleType,
+    fit_trace: FitTrace | None = None,
 ) -> tuple[
     pl.DataFrame,
     dict[str, Any],
@@ -309,6 +553,10 @@ def _fold_model(
     pl.DataFrame | None,
 ]:
     del lightgbm_module
+    schema3 = request.payload["schema_version"] == 3
+    if not schema3 and fit_trace is not None:
+        raise RuntimeError("fitted-component traces require schema 3")
+    trace = fit_trace if fit_trace is not None else (FitTrace() if schema3 else None)
     train_x, train_y, train_meta = _select_split(
         samples,
         start=fold["train_start"],
@@ -327,64 +575,111 @@ def _fold_model(
         end=fold["test_end"],
         require_label=False,
     )
-    train_x, (valid_x, test_x), normalization_hash, all_missing = _normalize_features(
-        train_x, [valid_x, test_x]
+    input_provenance = (
+        _fold_input_provenance(
+            request,
+            samples,
+            fold,
+            train=(train_x, train_y, train_meta),
+            validation=(valid_x, valid_y, valid_meta),
+            test=(test_x, None, test_meta),
+        )
+        if schema3
+        else None
     )
-    train_y = _normalize_label(train_y, train_meta["target_ts"])
-    valid_y = _normalize_label(valid_y, valid_meta["target_ts"])
+    train_x, (valid_x, test_x), normalization_hash, all_missing = _normalize_features(
+        train_x, [valid_x, test_x], recorder=trace
+    )
+    train_y = _normalize_label(
+        train_y, train_meta["target_ts"], recorder=trace, component="label.train"
+    )
+    valid_y = _normalize_label(
+        valid_y, valid_meta["target_ts"], recorder=trace, component="label.validation"
+    )
     dataset = _MemoryDataset(
         {
             "train": _qlib_frame(train_x, train_y),
             "valid": _qlib_frame(valid_x, valid_y),
             "test": _qlib_frame(test_x),
-        }
+        },
+        flatten_single=request.payload["schema_version"] == 3,
     )
-    params = resolve_model_parameters(request.payload["model"]["parameters"])
-    rounds = int(params.pop("num_boost_round"))
-    early = int(params.pop("early_stopping_rounds"))
-    seed = int(request.payload["seed"])
-    model_class = importlib.import_module("qlib.contrib.model.gbdt").LGBModel
-    model = model_class(
-        loss="mse",
-        num_boost_round=rounds,
-        early_stopping_rounds=early,
-        objective="regression",
-        metric="l2",
-        device_type="cpu",
-        deterministic=True,
-        force_col_wise=True,
-        seed=seed,
-        bagging_seed=seed,
-        feature_fraction_seed=seed,
-        data_random_seed=seed,
-        verbosity=-1,
-        **params,
-    )
-    recorder = _ensure_qlib_runtime(qlib_module)
+    tabular_diagnostic: dict[str, Any] | None = None
     evaluations: dict[str, Any] = {}
-    with (
-        _qlib_runtime_directory(),
-        recorder.start(
-            experiment_name=f"alpha-{request.payload['config_hash'][:12]}",
-            recorder_name=f"fold-{fold['fold']}",
-        ),
-    ):
-        model.fit(dataset, verbose_eval=0, evals_result=evaluations)
-        scores = model.predict(dataset, segment="test")
-    booster = model.model
-    if booster is None:
-        raise RuntimeError(f"Qlib fold {fold['fold']} did not produce a LightGBM booster")
-    model_text = booster.model_to_string(num_iteration=booster.best_iteration)
-    model_hash = hashlib.sha256(model_text.encode("utf-8")).hexdigest()
-    importance = [
-        (name, float(gain), int(split))
-        for name, gain, split in zip(
-            alpha158_feature_names(),
-            booster.feature_importance(importance_type="gain"),
-            booster.feature_importance(importance_type="split"),
-            strict=True,
+    scores: Any
+    if request.payload["schema_version"] == 3:
+        recorder = _ensure_qlib_runtime(qlib_module)
+        with _qlib_runtime_directory():
+            recorder.start_exp(
+                experiment_name=f"alpha-{request.payload['config_hash'][:12]}",
+                recorder_name=f"fold-{fold['fold']}",
+            )
+            try:
+                fitted = fit_tabular(
+                    dataset,
+                    name=request.payload["model"]["name"],
+                    raw=request.payload["model"]["parameters"],
+                    seed=int(request.payload["seed"]),
+                    recorder=trace,
+                )
+            except BaseException:
+                recorder.end_exp("FAILED")
+                raise
+            else:
+                recorder.end_exp("FINISHED")
+        scores, model_hash, importance = fitted.scores, fitted.model_hash, fitted.importance
+        tabular_diagnostic = fitted.diagnostics
+        best_iteration = int(tabular_diagnostic["best_iteration"])
+        evaluations = tabular_diagnostic["training_history"]
+        seed = int(request.payload["seed"])
+    else:
+        params = resolve_model_parameters(request.payload["model"]["parameters"])
+        rounds = int(params.pop("num_boost_round"))
+        early = int(params.pop("early_stopping_rounds"))
+        seed = int(request.payload["seed"])
+        model_class = importlib.import_module("qlib.contrib.model.gbdt").LGBModel
+        model = model_class(
+            loss="mse",
+            num_boost_round=rounds,
+            early_stopping_rounds=early,
+            objective="regression",
+            metric="l2",
+            device_type="cpu",
+            deterministic=True,
+            force_col_wise=True,
+            seed=seed,
+            bagging_seed=seed,
+            feature_fraction_seed=seed,
+            data_random_seed=seed,
+            verbosity=-1,
+            **params,
         )
-    ]
+        recorder = _ensure_qlib_runtime(qlib_module)
+        evaluations = {}
+        with (
+            _qlib_runtime_directory(),
+            recorder.start(
+                experiment_name=f"alpha-{request.payload['config_hash'][:12]}",
+                recorder_name=f"fold-{fold['fold']}",
+            ),
+        ):
+            model.fit(dataset, verbose_eval=0, evals_result=evaluations)
+            scores = model.predict(dataset, segment="test")
+        booster = model.model
+        if booster is None:
+            raise RuntimeError(f"Qlib fold {fold['fold']} did not produce a LightGBM booster")
+        model_text = booster.model_to_string(num_iteration=booster.best_iteration)
+        model_hash = hashlib.sha256(model_text.encode("utf-8")).hexdigest()
+        best_iteration = int(booster.best_iteration)
+        importance = [
+            (name, float(gain), int(split))
+            for name, gain, split in zip(
+                alpha158_feature_names(),
+                booster.feature_importance(importance_type="gain"),
+                booster.feature_importance(importance_type="split"),
+                strict=True,
+            )
+        ]
     availability = {
         (row[0], row[1]): row[2]
         for row in request.panel.select("symbol", "session_ts", "available_at").iter_rows()
@@ -484,7 +779,7 @@ def _fold_model(
         "train_rows": len(train_x),
         "validation_rows": len(valid_x),
         "test_rows": len(test_x),
-        "best_iteration": int(booster.best_iteration),
+        "best_iteration": best_iteration,
         "model_hash": model_hash,
         "normalization": {
             "method": "train_only_median_then_zscore",
@@ -504,6 +799,18 @@ def _fold_model(
             )
         },
     }
+    if tabular_diagnostic is not None:
+        diagnostic.update(tabular_diagnostic)
+        if trace is None or input_provenance is None:
+            raise RuntimeError("schema 3 fitted-component observation is missing")
+        diagnostic["_fit_provenance"] = _seal_fold_provenance(
+            trace,
+            fold=int(fold["fold"]),
+            model_hash=model_hash,
+            inputs=input_provenance,
+            model_name=request.payload["model"]["name"],
+            parameters=tabular_diagnostic["resolved_parameters"],
+        )
     if ridge_diagnostic is not None:
         diagnostic["ridge"] = ridge_diagnostic
         diagnostic["feature_importance"] = [
@@ -555,10 +862,12 @@ def _portable_diagnostics(
     qlib_version: str,
     lightgbm_version: str,
     ensemble_diagnostics: pl.DataFrame | None = None,
+    adapter_source_hash: str | None = None,
 ) -> dict[str, Any]:
     score = predictions.get_column("score")
     importance_rows: list[dict[str, str | float]] = []
-    for index, name in enumerate(alpha158_feature_names()):
+    importance_features = alpha158_feature_names() if all(importances) else ()
+    for index, name in enumerate(importance_features):
         gains = [fold[index][1] for fold in importances]
         splits = [fold[index][2] for fold in importances]
         importance_rows.append(
@@ -620,6 +929,24 @@ def _portable_diagnostics(
         "counterfactual_refit": False,
         "label": "OOS prediction contract validated — canonical ALPHA replay pending",
     }
+    if request.payload["schema_version"] == 3:
+        result["portfolio_replay"]["reason"] = (
+            "run alpha ml replay for canonical synchronized multi-asset execution "
+            "with declared costs"
+        )
+        if adapter_source_hash is None:
+            raise RuntimeError(
+                "schema 3 diagnostics require the captured adapter source fingerprint"
+            )
+        result.update(
+            {
+                "model_backend": request.payload["model"]["name"],
+                "model_parameters": fold_diagnostics[0]["resolved_parameters"],
+                "backend_versions": fold_diagnostics[0]["backend_versions"],
+                "upstream_source_hash": fold_diagnostics[0]["upstream_source_hash"],
+                "adapter_source_hash": adapter_source_hash,
+            }
+        )
     if ensemble_diagnostics is not None:
         disagreement = ensemble_diagnostics.get_column("disagreement")
         result["rank_ensemble_v1"] = {
@@ -689,6 +1016,9 @@ def _diagnostic_signal_analysis(
     quantile_values: dict[int, list[float]] = {value: [] for value in range(1, 6)}
     timeline: list[dict[str, Any]] = []
     ic_timeline: list[dict[str, Any]] = []
+    degenerate_cross_sections = 0
+    tied_cross_sections = 0
+    quantile_cross_sections = 0
     for target, cross_section in frame.groupby("target_ts", sort=True, observed=True):
         target_timestamp = pd.Timestamp(cast(Any, target))
         if target_timestamp not in realized.index:
@@ -729,13 +1059,31 @@ def _diagnostic_signal_analysis(
             }
         )
 
-        ascending = resolved.sort_values(
-            ["score", "symbol"], ascending=[True, True], kind="mergesort"
-        )
-        for position, value in enumerate(ascending["realized_return"]):
-            quantile = min(5, position * 5 // len(ascending) + 1)
-            quantile_values[quantile].append(float(value))
+        if request.payload["schema_version"] == 3:
+            distinct_scores = resolved["score"].nunique()
+            if distinct_scores <= 1:
+                degenerate_cross_sections += 1
+            if distinct_scores < len(resolved):
+                tied_cross_sections += 1
+            else:
+                quantile_cross_sections += 1
+                ascending = resolved.sort_values(
+                    ["score", "symbol"], ascending=[True, True], kind="mergesort"
+                )
+                for position, value in enumerate(ascending["realized_return"]):
+                    quantile = min(5, position * 5 // len(ascending) + 1)
+                    quantile_values[quantile].append(float(value))
 
+        else:
+            ascending = resolved.sort_values(
+                ["score", "symbol"], ascending=[True, True], kind="mergesort"
+            )
+            for position, value in enumerate(ascending["realized_return"]):
+                quantile = min(5, position * 5 // len(ascending) + 1)
+                quantile_values[quantile].append(float(value))
+
+        if request.payload["schema_version"] == 3:
+            continue
         top_count = max(1, math.ceil(len(resolved) * 0.2))
         selected = resolved.head(top_count)
         weight = 1.0 / top_count
@@ -765,7 +1113,7 @@ def _diagnostic_signal_analysis(
             }
         )
     turnovers = [float(row["turnover"]) for row in timeline]
-    return {
+    analysis: dict[str, Any] = {
         "authority": "qlib_diagnostic_only",
         "ic": {
             "mean": _mean_or_none(ic_values),
@@ -780,7 +1128,9 @@ def _diagnostic_signal_analysis(
             }
             for quantile, values in quantile_values.items()
         ],
-        "portfolio": {
+        "portfolio": None
+        if request.payload["schema_version"] == 3
+        else {
             "selection": "long_only_top_quintile_equal_weight",
             "declared_costs": costs,
             "periods": len(timeline),
@@ -793,13 +1143,54 @@ def _diagnostic_signal_analysis(
         },
     }
 
+    if request.payload["schema_version"] == 3:
+        analysis["quantile_returns"] = [
+            row for row in analysis["quantile_returns"] if row["observations"]
+        ]
+        analysis["diagnostic_state"] = {
+            "score_status": "degenerate"
+            if degenerate_cross_sections == len(ic_timeline)
+            else "ties_present"
+            if tied_cross_sections
+            else "nondegenerate",
+            "reason": "tied score cross-sections are excluded from quantile groups"
+            if tied_cross_sections
+            else "all cross-sections have distinct scores",
+            "degenerate_cross_sections": degenerate_cross_sections,
+            "tied_cross_sections": tied_cross_sections,
+            "quantile_cross_sections": quantile_cross_sections,
+        }
+    return analysis
 
-def _publish(path: Path, writer: Callable[[Path], object]) -> None:
+
+def source_fingerprint() -> str:
+    sources = (
+        "real.py",
+        "features.py",
+        "fit_provenance.py",
+        "contract.py",
+        "tabular.py",
+        "tabular_contract.py",
+        "tabular_adapters.py",
+    )
+    return hashlib.sha256(
+        canonical_json_bytes({name: sha256_file(Path(__file__).parent / name) for name in sources})
+    ).hexdigest()
+
+
+def _publish(
+    path: Path,
+    writer: Callable[[Path], object],
+    *,
+    before_publish: Callable[[], None] | None = None,
+) -> None:
     fd, raw_temp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     os.close(fd)
     temp = Path(raw_temp)
     try:
         writer(temp)
+        if before_publish is not None:
+            before_publish()
         if path.exists():
             if path.stat().st_size == temp.stat().st_size and sha256_file(path) == sha256_file(
                 temp
@@ -817,13 +1208,43 @@ def _publish(path: Path, writer: Callable[[Path], object]) -> None:
         temp.unlink(missing_ok=True)
 
 
-def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
+def run_real(
+    exchange_dir: Path, *, worker_lock_path: Path, _observation: FitInvocation | None = None
+) -> dict[str, Any]:
+    """Run one exchange; optionally expose its private in-memory component observations."""
+    observation = _observation if _observation is not None else FitInvocation()
+    observation.start()
+    try:
+        result = _run_real(exchange_dir, worker_lock_path=worker_lock_path, observation=observation)
+    except BaseException as exc:
+        observation.failed(exc)
+        raise
+    observation.complete()
+    return result
+
+
+def _run_real(
+    exchange_dir: Path, *, worker_lock_path: Path, observation: FitInvocation
+) -> dict[str, Any]:
     """Train one deterministic CPU LightGBM per declared fold and publish portable OOS scores."""
     exchange_dir = Path(exchange_dir)
     result_path = exchange_dir / "result.json"
     if result_path.exists():
         raise RuntimeError("worker result already exists; refusing to overwrite immutable exchange")
     request = validate_request(exchange_dir)
+    adapter_hash = source_fingerprint() if request.payload["schema_version"] == 3 else None
+    request_hash = value_digest(request.payload)
+
+    def verify_source() -> None:
+        if adapter_hash is not None and source_fingerprint() != adapter_hash:
+            raise RuntimeError("worker adapter source changed during execution")
+        if adapter_hash is not None and (
+            sha256_file(exchange_dir / "request.json") != request_hash
+            or sha256_file(exchange_dir / "panel.parquet") != request.payload["panel"]["sha256"]
+            or sha256_file(worker_lock_path) != request.payload["worker_lock_hash"]
+        ):
+            raise RuntimeError("worker input identity changed during execution")
+
     worker_lock_path = Path(worker_lock_path)
     if worker_lock_path.is_symlink() or not worker_lock_path.is_file():
         raise RuntimeError(f"worker lock must be a regular file: {worker_lock_path}")
@@ -833,6 +1254,7 @@ def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
             "worker_lock_hash does not match the executing worker lock: "
             f"expected {actual_lock_hash}"
         )
+    verify_source()
     qlib_module, lightgbm_module = require_real_dependencies()
     _official_feature_names()
     features = alpha158_features(request.panel)
@@ -840,15 +1262,22 @@ def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
     prediction_frames: list[pl.DataFrame] = []
     ensemble_frames: list[pl.DataFrame] = []
     fold_diagnostics: list[dict[str, Any]] = []
+    provenance_folds: list[dict[str, Any]] = []
     importances: list[list[tuple[str, float, int]]] = []
     for fold in request.folds:
+        trace = FitTrace() if adapter_hash is not None else None
+        if trace is not None:
+            observation.folds[int(fold["fold"])] = trace
         predictions, diagnostic, importance, ensemble_diagnostics = _fold_model(
             request=request,
             samples=samples,
             fold=fold,
             qlib_module=qlib_module,
             lightgbm_module=lightgbm_module,
+            fit_trace=trace,
         )
+        if adapter_hash is not None:
+            provenance_folds.append(diagnostic.pop("_fit_provenance"))
         prediction_frames.append(predictions)
         fold_diagnostics.append(diagnostic)
         importances.append(importance)
@@ -859,8 +1288,23 @@ def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
     )
     if not combined.get_column("score").is_finite().all():
         raise RuntimeError("real worker produced non-finite OOS scores")
+    fit_provenance: dict[str, Any] | None = None
+    if adapter_hash is not None:
+        fit_provenance = {
+            "schema_version": 1,
+            "authority": "engineering_provenance_only",
+            "request_sha256": request_hash,
+            "panel_sha256": request.payload["panel"]["sha256"],
+            "worker_source_sha256": adapter_hash,
+            "worker_lock_sha256": actual_lock_hash,
+            "seed": int(request.payload["seed"]),
+            "model": request.payload["model"],
+            "folds": provenance_folds,
+        }
+        fit_provenance["provenance_sha256"] = value_digest(fit_provenance)
+    verify_source()
     predictions_path = exchange_dir / "predictions.parquet"
-    _publish(predictions_path, combined.write_parquet)
+    _publish(predictions_path, combined.write_parquet, before_publish=verify_source)
     combined_ensemble = (
         pl.concat(ensemble_frames).sort(["fold", "split", "target_ts", "symbol", "origin_ts"])
         if ensemble_frames
@@ -868,7 +1312,7 @@ def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
     )
     ensemble_path = exchange_dir / "ensemble_diagnostics.parquet"
     if combined_ensemble is not None:
-        _publish(ensemble_path, combined_ensemble.write_parquet)
+        _publish(ensemble_path, combined_ensemble.write_parquet, before_publish=verify_source)
     diagnostics = _portable_diagnostics(
         request,
         combined,
@@ -877,7 +1321,10 @@ def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
         qlib_version=str(getattr(qlib_module, "__version__", "unknown")),
         lightgbm_version=str(getattr(lightgbm_module, "__version__", "unknown")),
         ensemble_diagnostics=combined_ensemble,
+        adapter_source_hash=adapter_hash,
     )
+    if fit_provenance is not None:
+        diagnostics["fit_provenance"] = fit_provenance
     result: dict[str, Any] = {
         "schema_version": request.payload["schema_version"],
         "status": "succeeded",
@@ -904,5 +1351,9 @@ def run_real(exchange_dir: Path, *, worker_lock_path: Path) -> dict[str, Any]:
             "sha256": sha256_file(ensemble_path),
             "rows": combined_ensemble.height,
         }
-    _publish(result_path, lambda path: path.write_bytes(canonical_json_bytes(result)))
+    _publish(
+        result_path,
+        lambda path: path.write_bytes(canonical_json_bytes(result)),
+        before_publish=verify_source,
+    )
     return result
