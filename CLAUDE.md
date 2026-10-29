@@ -31,8 +31,9 @@ Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`
 - Runs/snapshots/receipts/admitted evidence are immutable and hash-bound. Preserve
   readers/migrations. Seeds/execution fingerprints are deterministic; D0/D1 seeds are frozen, not
   settings-derived. Reverify reads/copy generations; retirement/retries preserve bytes.
-- Research precedes strategy. D1 stays in discovery; owner-approved D2 is one-shot. Promote only
-  after verified evidence and owner decision. Screening and Monte Carlo path risk are not proof of edge.
+- Research precedes strategy. D1 stays discovery-only; owner-approved D2 is one-shot. Promote after
+  verified evidence and owner decision. Screening/Monte Carlo path risk is not proof of edge.
+  D1: CLI rules.
 - Require explicit local owner confirmation (ADR-0038), paper opt-ins, provider/venue/unit boundaries
   and no-live-capital routing. UI/MCP output, account state and engineering checks confer no authority.
   Existing owner-auth actions are the bounded path; infer no approvals.

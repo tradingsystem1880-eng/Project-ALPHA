@@ -24,6 +24,7 @@ from alpha_cli.control_store import (
     ControlStore,
     ResearchContractScope,
     ResearchDisposition,
+    ResearchExecutionState,
     ResearchOutcome,
     ResearchPhase,
     ResearchResponsibility,
@@ -2108,6 +2109,128 @@ def _research_job_checkpoint(
     store.append_job_event(job_id, event_type="heartbeat", payload={"checkpoint": checkpoint})
 
 
+def _recover_published_d1_attempt(
+    store: ControlStore,
+    *,
+    project_id: str,
+    contract_id: str,
+    contract: Mapping[str, object],
+    attempt_number: int,
+    config_fingerprint: str,
+) -> tuple[dict[str, object], dict[str, object]] | None:
+    """Admit an already-published D1 run from the exact interrupted job journal.
+
+    A missing run directory means no immutable run was published and exact execution may
+    continue. A present but incomplete or invalid directory is an integrity failure and must
+    stop instead of being overwritten or treated as a fresh attempt.
+    """
+    for journal in store.list_failed_d1_recovery_journals(
+        project_id, contract_id, attempt_number=attempt_number
+    ):
+        events = journal.get("events")
+        if not isinstance(events, list):
+            continue
+        run_id: str | None = None
+        for event in events:
+            if not isinstance(event, Mapping) or event.get("event_type") != "progress":
+                continue
+            payload = event.get("payload")
+            candidate = None if not isinstance(payload, Mapping) else payload.get("run_id")
+            if (
+                isinstance(payload, Mapping)
+                and payload.get("d1_run_identity") == 1
+                and isinstance(candidate, str)
+                and len(candidate) == 16
+                and all(character in "0123456789abcdef" for character in candidate)
+            ):
+                run_id = candidate
+        if run_id is None:
+            continue
+
+        run_dir = AlphaSettings().data_dir / "runs" / run_id
+        if run_dir.is_symlink():
+            raise DataError(
+                f"interrupted D1 run {run_id} has an unsafe artifact directory; "
+                "recovery stopped without launching another attempt"
+            )
+        if not run_dir.exists():
+            continue
+        if not run_dir.is_dir():
+            raise DataError(
+                f"interrupted D1 run {run_id} has an unsafe artifact directory; "
+                "recovery stopped without launching another attempt"
+            )
+        verified_dir, manifest = store._verified_run(run_id)
+        store._require_research_run(
+            run_id,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract_payload=contract,
+            phase="deep_research",
+            config_fingerprint=config_fingerprint,
+        )
+        analyses_path = verified_dir / D1_ANALYSES_ARTIFACT
+        if analyses_path.is_symlink() or not analyses_path.is_file():
+            raise DataError(f"interrupted D1 run {run_id} has no verified analyses artifact")
+        try:
+            analyses_bytes = analyses_path.read_bytes()
+            artifacts = manifest.get("artifacts")
+            analyses_metadata = (
+                None if not isinstance(artifacts, Mapping) else artifacts.get(D1_ANALYSES_ARTIFACT)
+            )
+            if not isinstance(analyses_metadata, Mapping) or hashlib.sha256(
+                analyses_bytes
+            ).hexdigest() != analyses_metadata.get("sha256"):
+                raise DataError(f"interrupted D1 run {run_id} analyses failed hash verification")
+            analyses = json.loads(analyses_bytes.decode("utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise DataError(f"interrupted D1 run {run_id} analyses cannot be read") from exc
+        measurements = analyses.get("measurements") if isinstance(analyses, Mapping) else None
+        budget = measurements.get("budget") if isinstance(measurements, Mapping) else None
+        variants_used = None if not isinstance(budget, Mapping) else budget.get("variants_used")
+        if (
+            isinstance(variants_used, bool)
+            or not isinstance(variants_used, int)
+            or variants_used < 0
+        ):
+            raise DataError(f"interrupted D1 run {run_id} has invalid measured variant usage")
+        attempt = store.record_research_attempt(
+            project_id,
+            contract_id,
+            kind="d1-deep-research",
+            status="completed",
+            config_fingerprint=config_fingerprint,
+            budget_used={"variants": variants_used},
+            details={
+                "attempt_number": attempt_number,
+                "evidence_zone": "D1",
+                "finding": (
+                    "The frozen analysis plan executed on the discovery share; findings were "
+                    "mechanically re-verified from raw measurements."
+                ),
+                "gate_packet_evidence_ref": {
+                    "artifact": D1_EVIDENCE_ARTIFACT,
+                    "content_sha256": _manifest_artifact_sha256(manifest, D1_EVIDENCE_ARTIFACT),
+                },
+            },
+            run_id=run_id,
+        )
+        case = store.research_case_summary(project_id)
+        if case["execution_state"] in {"queued", "failed"}:
+            store.transition_research_execution(
+                project_id,
+                to_state="idle",
+                contract_id=contract_id,
+                actor="system",
+                reason="recovered the verified immutable D1 run from its interrupted job journal",
+                next_action=_D1_NEXT_ACTION_AFTER,
+                responsibility="owner",
+                checkpoint="d1:complete",
+            )
+        return manifest, attempt
+    return None
+
+
 def _checkpoint_failed_research_run(
     store: ControlStore,
     project_id: str,
@@ -2192,9 +2315,8 @@ def _checkpoint_failed_research_run(
 def _run_deep(project_id: str, *, json_out: bool) -> None:
     """Execute the frozen analysis plan as one governed, capacity-bound durable D1 job.
 
-    The executor is deterministic, so kill-and-resume is exact re-execution: an interrupted
-    launch republishes byte-identical artifacts under the same run identity and the attempt
-    is recorded on the retry.
+    The deterministic run identity is journaled before analysis. Recovery verifies and admits
+    an already-published immutable run before considering exact re-execution.
     """
     store = _store()
     try:
@@ -2226,6 +2348,14 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
                 and recovered_manifest.get("evidence_zone") == "D1"
             ):
                 if execution_state in {"queued", "running"}:
+                    active_job_id = case.get("active_job_id")
+                    if isinstance(active_job_id, str):
+                        active_job = store.get_job(active_job_id)
+                        if active_job.get("status") in {"queued", "running"}:
+                            raise DataError(
+                                "completed D1 attempt is awaiting durable job reconciliation; "
+                                "its owner host is unverified"
+                            )
                     store.transition_research_execution(
                         project_id,
                         to_state="idle",
@@ -2257,6 +2387,25 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
                 "deep research stopped after the initial attempt and two safe retries; owner "
                 "revision or disposition is required"
             )
+        published_recovery = _recover_published_d1_attempt(
+            store,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract=payload,
+            attempt_number=attempt_number,
+            config_fingerprint=_registered_d1_execution_fingerprint(payload),
+        )
+        if published_recovery is not None:
+            recovered_manifest, recovered_attempt = published_recovery
+            case = store.research_case_summary(project_id)
+            _emit(
+                {"manifest": recovered_manifest, "attempt": recovered_attempt, "case": case},
+                json_out=json_out,
+                fallback=(
+                    f"recovered D1 run {recovered_manifest['run_id']}; owner review required"
+                ),
+            )
+            return
         protocol = payload.get("protocol")
         authority = (
             None if not isinstance(protocol, Mapping) else protocol.get("boundary_authority")
@@ -2319,6 +2468,13 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
                 checkpoint=checkpoint,
             )
 
+        def on_run_identity(run_id: str) -> None:
+            store.append_job_event(
+                job_id,
+                event_type="progress",
+                payload={"d1_run_identity": 1, "run_id": run_id},
+            )
+
         try:
             if crypto_observations is not None and crypto_boundary is not None:
                 manifest = run_crypto_crowding_deep(
@@ -2329,6 +2485,7 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
                     observations=crypto_observations,
                     boundary=crypto_boundary,
                     on_checkpoint=on_checkpoint,
+                    on_run_identity=on_run_identity,
                 )
             elif bars is not None:
                 manifest = run_deep_research(
@@ -2339,6 +2496,7 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
                     bars=bars,
                     boundary=sealed_boundary,
                     on_checkpoint=on_checkpoint,
+                    on_run_identity=on_run_identity,
                 )
             else:  # pragma: no cover - authority dispatch above is exhaustive.
                 raise DataError("deep research has no executable registered dataset")
@@ -3629,10 +3787,39 @@ def cancel(
     actor: str = typer.Option("owner", "--actor", help="who cancels (owner or codex)"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
-    """Return active research execution to idle without changing its evidence phase."""
+    """Request active-job cancellation or return unowned work to idle."""
     store = _store()
     try:
         case = store.research_case_summary(project_id)
+        active_job_id = case.get("active_job_id")
+        if isinstance(active_job_id, str):
+            cancellation = store.request_job_cancellation(
+                active_job_id,
+                actor=actor,
+                reason=reason,
+            )
+            row = store.research_case_summary(project_id)
+            _emit(
+                {"case": row, "job_cancellation": cancellation},
+                json_out=json_out,
+                fallback=f"requested cancellation for active research job {active_job_id}",
+            )
+            return
+        execution_state = str(case["execution_state"])
+        if case.get("phase") == "deep_research" and execution_state in {
+            "queued",
+            "running",
+            "paused",
+        }:
+            raise DataError(
+                "cannot safely cancel deep research without a bound durable job; "
+                "owner status remains ambiguous"
+            )
+        if execution_state == "running" or cast(int, case["unfinalized_launch_count"]) > 0:
+            raise DataError(
+                "cannot safely cancel research while unbound execution or launch ownership "
+                "remains unresolved"
+            )
         store.transition_research_execution(
             project_id,
             to_state="idle",
@@ -3642,6 +3829,7 @@ def cancel(
             next_action="Owner chooses whether to revise, park, or resume the case.",
             responsibility="owner",
             checkpoint=cast(str | None, case["checkpoint"]),
+            expected_state=cast(ResearchExecutionState, execution_state),
         )
         row = store.research_case_summary(project_id)
     except DataError as exc:

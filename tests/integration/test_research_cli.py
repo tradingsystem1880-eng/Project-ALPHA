@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
 import sqlite3
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from threading import Event
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 
 import pytest
 from typer.testing import CliRunner
@@ -17,8 +21,9 @@ from typer.testing import CliRunner
 from alpha_cli import control_store as control_store_module
 from alpha_cli import research_cmds
 from alpha_cli.artifact_contract import artifact_metadata
-from alpha_cli.control_store import ControlStore
+from alpha_cli.control_store import ControlStore, ResearchExecutionState
 from alpha_cli.main import app
+from alpha_cli.research_d1 import D1_ANALYSES_ARTIFACT, run_deep_research
 from alpha_core import DataError
 from alpha_research import CryptoCrowdingObservationV1
 from tests.fixtures.cli_fixtures import seed_store
@@ -747,6 +752,59 @@ def test_pause_resume_and_cancel_preserve_the_active_contract(
     assert cancelled["active_contract_id"] == contract_id
 
 
+def test_cancel_does_not_clear_a_queued_state_that_started_after_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "Synthetic queued cancel race fixture")
+    project = cast(dict[str, object], captured["project"])
+    contract = cast(dict[str, object], captured["contract"])
+    project_id = str(project["project_id"])
+    contract_id = str(contract["contract_id"])
+    store = ControlStore(tmp_path)
+    store.transition_research_execution(
+        project_id,
+        to_state="queued",
+        contract_id=contract_id,
+        actor="codex",
+        reason="Queue a bounded triage checkpoint.",
+        next_action="Inspect the synthetic case.",
+        responsibility="codex",
+    )
+
+    original_summary = ControlStore.research_case_summary
+    raced = False
+
+    def summary_then_start(
+        current_store: ControlStore, current_project_id: str
+    ) -> dict[str, object]:
+        nonlocal raced
+        case = original_summary(current_store, current_project_id)
+        if not raced:
+            raced = True
+            current_store.transition_research_execution(
+                current_project_id,
+                to_state="running",
+                contract_id=contract_id,
+                actor="system",
+                reason="Synthetic concurrent D0 reservation transition.",
+                next_action="The launch owner now has the execution slot.",
+                responsibility="codex",
+                checkpoint="d0:running:1",
+            )
+        return case
+
+    monkeypatch.setattr(ControlStore, "research_case_summary", summary_then_start)
+    cancelled = runner.invoke(
+        app,
+        ["research", "cancel", project_id, "--reason", "Synthetic concurrent cancel.", "--json"],
+    )
+    assert cancelled.exit_code != 0
+    assert "changed before the requested transition" in cancelled.output
+    final_case = original_summary(store, project_id)
+    assert final_case["execution_state"] == "running"
+
+
 def test_owner_can_reject_and_replace_an_exploration_contract(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1289,6 +1347,15 @@ def test_pilot_failures_checkpoint_and_stop_after_two_safe_retries(
         assert case["checkpoint"] == f"d0:failed:{attempt_number}"
         assert case["execution_state"] == ("blocked" if attempt_number == 3 else "failed")
         assert case["phase"] == ("research_decision" if attempt_number == 3 else "pilot")
+        if attempt_number == 1:
+            assert case["unfinalized_launch_count"] == 0
+            cancelled = _invoke(
+                "cancel",
+                project_id,
+                "--reason",
+                "Cancel after the synchronous pilot failure was durably checkpointed.",
+            )
+            assert cancelled["execution_state"] == "idle"
         if attempt_number < 3:
             resumed = _invoke("resume", project_id)
             assert resumed["execution_state"] == "queued"
@@ -1419,7 +1486,7 @@ def test_store_failure_after_successful_pilot_never_fabricates_a_failed_attempt(
     assert recovered_case["remaining_launches"] == 1
 
 
-def test_hard_crashes_consume_launch_slots_budget_and_deny_a_fourth_launch(
+def test_hard_crashes_consume_launch_slots_and_keep_unresolved_execution_bound(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
@@ -1505,26 +1572,24 @@ def test_hard_crashes_consume_launch_slots_budget_and_deny_a_fourth_launch(
     assert database.execute("SELECT COUNT(*) FROM research_launch_attempt_links").fetchone() == (0,)
     database.close()
 
-    _invoke("cancel", project_id, "--reason", "Stop after the exhausted crash budget.")
-    _invoke(
-        "decide",
-        project_id,
-        "--outcome",
-        "INVALID",
-        "--disposition",
-        "park",
-        "--actor",
-        "owner",
-        "--reason",
-        "Three hard crashes exhausted the durable launch budget.",
+    cancelled = runner.invoke(
+        app,
+        [
+            "research",
+            "cancel",
+            project_id,
+            "--reason",
+            "Stop after the exhausted crash budget.",
+            "--json",
+        ],
     )
-    packet = _invoke("report", project_id)
-    layers = cast(dict[str, object], packet["layers"])
-    appendix = cast(dict[str, object], layers["technical_appendix"])
-    assert len(cast(list[object], appendix["launch_reservation_ledger"])) == 3
-    assert appendix["launch_attempt_link_ledger"] == []
-    budget_ledger = cast(list[dict[str, object]], appendix["budget_ledger"])
-    assert budget_ledger[0]["used"] == {
+    assert cancelled.exit_code != 0
+    assert "launch ownership remains unresolved" in cancelled.output
+    unresolved = store.research_case_summary(project_id)
+    assert unresolved["execution_state"] == "running"
+    assert unresolved["active_job_id"] is None
+    assert unresolved["unfinalized_launch_count"] == 3
+    assert unresolved["elapsed_budget"] == {
         "source_requests": 0,
         "variants": 9,
         "wall_seconds": 3,
@@ -3429,3 +3494,569 @@ def test_run_deep_failures_checkpoint_and_exact_reexecution_resumes(
     assert manifest["evidence_zone"] == "D1"
     assert attempt["status"] == "completed"
     assert cast(dict[str, object], attempt["details"])["attempt_number"] == 2
+
+
+def test_stale_reconcile_keeps_d1_capacity_without_proven_owner_host(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = _approved_deep_ready_project()
+    runner_entered = Event()
+    release_runner = Event()
+
+    def blocked_runner(*args: Any, **kwargs: Any) -> dict[str, object]:
+        runner_entered.set()
+        if not release_runner.wait(timeout=10):
+            raise AssertionError("test did not release the synthetic D1 runner")
+        raise DataError("controlled synthetic D1 runner exit")
+
+    monkeypatch.setattr(research_cmds, "run_deep_research", blocked_runner)
+    process_probes: list[tuple[int, int]] = []
+
+    def local_pid_miss(pid: int, signal: int) -> None:
+        process_probes.append((pid, signal))
+        raise ProcessLookupError
+
+    monkeypatch.setattr(os, "kill", local_pid_miss)
+    reconciled: list[dict[str, object]] = []
+    worker_was_live = False
+    active_count_after_reconcile = -1
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(
+            runner.invoke,
+            app,
+            ["research", "run", "deep", project_id, "--json"],
+        )
+        try:
+            assert runner_entered.wait(timeout=10)
+            store = ControlStore(tmp_path)
+            jobs = [
+                job
+                for job in store.list_jobs()
+                if job["kind"] == "research:event-study"
+                and job["project_id"] == project_id
+                and job["status"] == "running"
+            ]
+            assert len(jobs) == 1
+            assert jobs[0]["status"] == "running"
+            request = cast(dict[str, object], jobs[0]["request"])
+            assert "owner_host_id" not in request
+            terminalized = runner.invoke(
+                app,
+                [
+                    "project",
+                    "job-status",
+                    str(jobs[0]["job_id"]),
+                    "failed",
+                    "--terminal-error",
+                    "synthetic operator attempt",
+                    "--json",
+                ],
+            )
+            assert terminalized.exit_code != 0
+            assert "generic job-status cannot release research capacity" in terminalized.output
+            assert store.get_job(str(jobs[0]["job_id"]))["status"] == "running"
+            assert store.heavyweight_job_capacity()["active_count"] == 1
+            heartbeat = datetime.fromisoformat(str(jobs[0]["heartbeat_at"]).replace("Z", "+00:00"))
+            reconciled = store.reconcile_interrupted_jobs(
+                reason="synthetic stale-heartbeat boundary",
+                stale_after_seconds=30,
+                at=heartbeat + timedelta(seconds=31),
+            )
+            worker_was_live = not future.done()
+            active_count = store.heavyweight_job_capacity()["active_count"]
+            assert isinstance(active_count, int)
+            active_count_after_reconcile = active_count
+        finally:
+            release_runner.set()
+        result = future.result(timeout=10)
+
+    assert result.exit_code != 0
+    assert worker_was_live is True
+    assert reconciled == [] and active_count_after_reconcile == 1, (
+        "stale-heartbeat reconciliation released capacity without a proven owner host: "
+        f"reconciled={reconciled!r}, "
+        f"active_count={active_count_after_reconcile}"
+    )
+    assert process_probes == [], "a local PID miss cannot establish that a remote owner stopped"
+
+
+def test_stale_reconcile_keeps_d2_capacity_without_proven_owner_host(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id, contract_id, _ = _confirmation_ready_project(tmp_path)
+    _approve_confirmation(project_id, contract_id)
+    runner_entered = Event()
+    release_runner = Event()
+
+    def blocked_runner(*args: Any, **kwargs: Any) -> dict[str, object]:
+        runner_entered.set()
+        if not release_runner.wait(timeout=10):
+            raise AssertionError("test did not release the synthetic D2 runner")
+        raise DataError("controlled synthetic D2 runner exit")
+
+    monkeypatch.setattr(research_cmds, "run_confirmation", blocked_runner)
+    process_probes: list[tuple[int, int]] = []
+
+    def local_pid_miss(pid: int, signal: int) -> None:
+        process_probes.append((pid, signal))
+        raise ProcessLookupError
+
+    monkeypatch.setattr(os, "kill", local_pid_miss)
+    reconciled: list[dict[str, object]] = []
+    active_count_after_reconcile = -1
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(
+            runner.invoke,
+            app,
+            ["research", "run", "confirm", project_id, "--json"],
+        )
+        try:
+            assert runner_entered.wait(timeout=10)
+            store = ControlStore(tmp_path)
+            jobs = [
+                job
+                for job in store.list_jobs()
+                if job["kind"] == "research:event-study"
+                and job["project_id"] == project_id
+                and job["status"] == "running"
+            ]
+            assert len(jobs) == 1
+            assert jobs[0]["status"] == "running"
+            assert cast(dict[str, object], jobs[0]["request"])["stage"] == "confirm"
+            reconcile_at = _age_job_heartbeat(store, str(jobs[0]["job_id"]))
+            reconciled = store.reconcile_interrupted_jobs(
+                reason="synthetic stale D2 job with no trusted owner-host identity",
+                stale_after_seconds=30,
+                at=reconcile_at,
+            )
+            active_count = store.heavyweight_job_capacity()["active_count"]
+            assert isinstance(active_count, int)
+            active_count_after_reconcile = active_count
+            active_case = store.research_case_summary(project_id)
+            assert active_case["execution_state"] == "running"
+            assert active_case["active_job_id"] == jobs[0]["job_id"]
+            assert active_case["d2_state"] == "authorized"
+        finally:
+            release_runner.set()
+        result = future.result(timeout=10)
+
+    assert result.exit_code != 0
+    assert reconciled == [] and active_count_after_reconcile == 1
+    assert process_probes == [], "a local PID miss cannot establish that a remote owner stopped"
+
+
+def _age_job_heartbeat(store: ControlStore, job_id: str) -> datetime:
+    """Create a stale heartbeat without advancing the test beyond wall-clock time."""
+    stale = datetime.now(UTC) - timedelta(seconds=31)
+    with sqlite3.connect(store._database_path()) as connection:
+        connection.execute(
+            "UPDATE jobs SET heartbeat_at = ? WHERE job_id = ?",
+            (stale.isoformat(timespec="microseconds").replace("+00:00", "Z"), job_id),
+        )
+    return datetime.now(UTC)
+
+
+def test_simultaneous_d1_requests_keep_one_active_owner_and_attempt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = _approved_deep_ready_project()
+    actual_runner = run_deep_research
+    runner_entered = Event()
+    release_runner = Event()
+    manifests: list[dict[str, Any]] = []
+
+    def blocked_runner(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        runner_entered.set()
+        if not release_runner.wait(timeout=10):
+            raise AssertionError("test did not release the synthetic D1 runner")
+        manifest = actual_runner(*args, **kwargs)
+        manifests.append(manifest)
+        return manifest
+
+    monkeypatch.setattr(research_cmds, "run_deep_research", blocked_runner)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        first = pool.submit(research_cmds._run_deep, project_id, json_out=True)
+        assert runner_entered.wait(timeout=10)
+        second = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
+        store = ControlStore(tmp_path)
+        assert second.exit_code != 0
+        assert "must be idle or explicitly queued" in second.output
+        assert store.heavyweight_job_capacity()["active_count"] == 1
+        assert len([job for job in store.list_jobs() if job["kind"] == "research:event-study"]) == 1
+        release_runner.set()
+        first.result(timeout=10)
+
+    case = ControlStore(tmp_path).research_case_summary(project_id)
+    assert case["execution_state"] == "idle"
+    assert len(manifests) == 1
+    assert (
+        ControlStore(tmp_path).count_research_attempts(
+            project_id, str(case["active_contract_id"]), kind="d1-deep-research"
+        )
+        == 1
+    )
+
+
+def test_retry_recovers_published_d1_run_after_terminal_job_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = _approved_deep_ready_project()
+    store = ControlStore(tmp_path)
+    target_contract_id = str(store.research_case_summary(project_id)["active_contract_id"])
+
+    # These failed journals share some identity fields with the target but must never be
+    # admitted as its interrupted attempt.
+    mismatched_requests = (
+        {"stage": "deep", "contract_id": target_contract_id, "attempt_number": 2},
+        {"stage": "deep", "contract_id": target_contract_id, "attempt_number": 1.0},
+        {"stage": "pilot", "contract_id": target_contract_id, "attempt_number": 1},
+        {
+            "stage": "deep",
+            "contract_id": "00000000-0000-4000-8000-000000000001",
+            "attempt_number": 1,
+        },
+    )
+    for request in mismatched_requests:
+        decoy = store.create_research_job(
+            project_id, contract_id=target_contract_id, request=request
+        )
+        store.set_job_status(str(decoy["job_id"]), "failed", terminal_error="synthetic decoy")
+
+    other_project = store.create_project(
+        name="Synthetic cross-project D1 lookup decoy",
+        hypothesis="This synthetic project exists only to scope a journal lookup fixture.",
+        falsification_criterion="Never execute or admit the synthetic journal.",
+    )
+    other_project_id = str(other_project["project_id"])
+    cross_project_decoy = store._create_job(
+        kind="research:event-study",
+        request={"stage": "deep", "contract_id": target_contract_id, "attempt_number": 1},
+        project_id=other_project_id,
+        experiment_id=None,
+        job_id=None,
+        at=None,
+        allow_reserved=True,
+    )
+    store.set_job_status(
+        str(cross_project_decoy["job_id"]), "failed", terminal_error="synthetic cross-project decoy"
+    )
+
+    actual_runner = run_deep_research
+    run_manifests: list[dict[str, Any]] = []
+
+    def counted_runner(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        manifest = actual_runner(*args, **kwargs)
+        run_manifests.append(manifest)
+        return manifest
+
+    class SimulatedProcessInterruption(BaseException):
+        """Stop between immutable run publication and D1 attempt recording."""
+
+    record_attempt = ControlStore.record_research_attempt
+    interrupt_next_d1_record = True
+
+    def interrupted_record(store: ControlStore, *args: Any, **kwargs: Any) -> dict[str, object]:
+        nonlocal interrupt_next_d1_record
+        if (
+            interrupt_next_d1_record
+            and kwargs.get("kind") == "d1-deep-research"
+            and kwargs.get("status") == "completed"
+        ):
+            interrupt_next_d1_record = False
+            raise SimulatedProcessInterruption
+        return record_attempt(store, *args, **kwargs)
+
+    monkeypatch.setattr(research_cmds, "run_deep_research", counted_runner)
+    monkeypatch.setattr(ControlStore, "record_research_attempt", interrupted_record)
+    with pytest.raises(SimulatedProcessInterruption):
+        research_cmds._run_deep(project_id, json_out=True)
+
+    assert len(run_manifests) == 1
+    first_run_id = str(run_manifests[0]["run_id"])
+    assert (tmp_path / "runs" / first_run_id / "manifest.json").is_file()
+    store = ControlStore(tmp_path)
+    case_before_recovery = store.research_case_summary(project_id)
+    assert case_before_recovery["execution_state"] == "running"
+    assert (
+        store.count_research_attempts(
+            project_id, str(case_before_recovery["active_contract_id"]), kind="d1-deep-research"
+        )
+        == 0
+    )
+    active_job_id = str(case_before_recovery["active_job_id"])
+
+    # Even though this test process knows the simulated command exited, a shared data path may
+    # belong to another host. A local PID miss must not release a D1 job without host proof.
+    reconcile_at = _age_job_heartbeat(store, active_job_id)
+    local_pid_probes: list[tuple[int, int]] = []
+
+    def local_pid_miss(pid: int, signal: int) -> None:
+        local_pid_probes.append((pid, signal))
+        raise ProcessLookupError
+
+    monkeypatch.setattr(os, "kill", local_pid_miss)
+    reconciled = store.reconcile_interrupted_jobs(
+        reason="synthetic stale D1 job with no trusted owner-host identity",
+        stale_after_seconds=30,
+        at=reconcile_at,
+    )
+    assert reconciled == []
+    assert local_pid_probes == []
+    unresolved_case = store.research_case_summary(project_id)
+    assert unresolved_case["execution_state"] == "running"
+    assert unresolved_case["active_job_id"] == active_job_id
+    assert store.heavyweight_job_capacity()["active_count"] == 1
+
+    # Isolate artifact recovery from owner-liveness policy with a synthetic already-terminal
+    # journal. This fixture does not claim that PID inspection proves the owner stopped.
+    failed_job = store.set_job_status(
+        active_job_id,
+        "failed",
+        terminal_error="synthetic owner-confirmed process interruption",
+    )
+    assert failed_job["status"] == "failed"
+    store.transition_research_execution(
+        project_id,
+        to_state="failed",
+        contract_id=str(case_before_recovery["active_contract_id"]),
+        actor="system",
+        reason="synthetic terminal job fixture for artifact-recovery contract",
+        next_action="Owner reviews the interrupted D1 job.",
+        responsibility="owner",
+        active_job_id=None,
+        checkpoint="d1:orphaned:1",
+    )
+
+    # The legacy global page now omits the journal, while the identity-scoped read finds only
+    # the exact project/contract/stage/attempt and its event marker from one read snapshot.
+    newer_jobs_at = datetime.now(UTC)
+    for index in range(505):
+        store.create_job(
+            kind="support:background",
+            request={"ordinal": index},
+            at=newer_jobs_at + timedelta(seconds=index + 1),
+        )
+    assert active_job_id not in {str(job["job_id"]) for job in store.list_jobs(limit=500)}
+    matching_journals = store.list_failed_d1_recovery_journals(
+        project_id, str(case_before_recovery["active_contract_id"]), attempt_number=1
+    )
+    assert [str(journal["job_id"]) for journal in matching_journals] == [active_job_id]
+    matched_events = cast(list[dict[str, object]], matching_journals[0]["events"])
+    assert any(
+        isinstance(event.get("payload"), dict)
+        and cast(dict[str, object], event["payload"]).get("run_id") == first_run_id
+        for event in matched_events
+    )
+
+    # A terminal journal can resume and attach the verified artifact without recomputation.
+    resume = runner.invoke(
+        app,
+        ["research", "resume", project_id, "--json"],
+    )
+    assert resume.exit_code == 0, resume.output
+    retry = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
+    assert retry.exit_code == 0, retry.output
+    recovered = cast(dict[str, object], json.loads(retry.output))
+    manifest = cast(dict[str, object], recovered["manifest"])
+    attempt = cast(dict[str, object], recovered["attempt"])
+
+    assert manifest["run_id"] == first_run_id
+    assert cast(dict[str, object], attempt["details"])["attempt_number"] == 1
+    assert len(run_manifests) == 1, "recovery recomputed an already-published D1 run"
+    assert (
+        store.count_research_attempts(
+            project_id, str(case_before_recovery["active_contract_id"]), kind="d1-deep-research"
+        )
+        == 1
+    )
+
+    exact_replay = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
+    assert exact_replay.exit_code == 0, exact_replay.output
+    replayed = cast(dict[str, object], json.loads(exact_replay.output))
+    assert cast(dict[str, object], replayed["attempt"])["attempt_id"] == attempt["attempt_id"]
+    assert len(run_manifests) == 1
+
+
+@pytest.mark.parametrize("state", ["queued", "running", "paused"])
+def test_cancel_keeps_unbound_d1_execution_when_owner_is_ambiguous(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, state: str
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = _approved_deep_ready_project()
+    store = ControlStore(tmp_path)
+    case = store.research_case_summary(project_id)
+    contract_id = str(case["active_contract_id"])
+    store.transition_research_execution(
+        project_id,
+        to_state="queued",
+        contract_id=contract_id,
+        actor="codex",
+        reason="Create an unbound synthetic D1 lifecycle state.",
+        next_action="Run D1 only after its durable job is bound.",
+        responsibility="codex",
+        checkpoint="d1:queued",
+    )
+    if state != "queued":
+        store.transition_research_execution(
+            project_id,
+            to_state=cast(ResearchExecutionState, state),
+            contract_id=contract_id,
+            actor="system",
+            reason="Advance only the synthetic D1 lifecycle state.",
+            next_action="Owner status remains unresolved without a bound job.",
+            responsibility="owner",
+            checkpoint=f"d1:{state}:1",
+        )
+
+    cancelled = runner.invoke(
+        app,
+        ["research", "cancel", project_id, "--reason", "Ambiguous D1 owner.", "--json"],
+    )
+    assert cancelled.exit_code != 0
+    assert "owner status remains ambiguous" in cancelled.output
+    after = store.research_case_summary(project_id)
+    assert after["execution_state"] == state
+    assert after["active_job_id"] is None
+
+
+def test_cancel_requests_active_d1_job_without_clearing_its_owner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = _approved_deep_ready_project()
+    runner_entered = Event()
+    release_runner = Event()
+
+    def blocked_runner(*args: Any, **kwargs: Any) -> dict[str, object]:
+        runner_entered.set()
+        if not release_runner.wait(timeout=10):
+            raise AssertionError("test did not release the synthetic D1 runner")
+        cast(Any, kwargs["on_checkpoint"])("synthetic-cancel-boundary")
+        raise AssertionError("D1 checkpoint ignored the durable cancellation request")
+
+    monkeypatch.setattr(research_cmds, "run_deep_research", blocked_runner)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(
+            runner.invoke,
+            app,
+            ["research", "run", "deep", project_id, "--json"],
+        )
+        assert runner_entered.wait(timeout=10)
+        store = ControlStore(tmp_path)
+        before = store.research_case_summary(project_id)
+        job_id = str(before["active_job_id"])
+        cancelled = runner.invoke(
+            app,
+            [
+                "research",
+                "cancel",
+                project_id,
+                "--reason",
+                "Synthetic cancellation while the D1 owner is active.",
+                "--json",
+            ],
+        )
+        assert cancelled.exit_code == 0, cancelled.output
+        after_request = store.research_case_summary(project_id)
+        assert after_request["execution_state"] == "running"
+        assert after_request["active_job_id"] == job_id
+        assert store.job_cancellation_requested(job_id)
+        release_runner.set()
+        result = future.result(timeout=10)
+
+    assert result.exit_code != 0
+    assert store.get_job(job_id)["status"] == "cancelled"
+    final_case = store.research_case_summary(project_id)
+    assert final_case["execution_state"] == "failed"
+    assert final_case["active_job_id"] is None
+    assert (
+        store.count_research_attempts(
+            project_id, str(final_case["active_contract_id"]), kind="d1-deep-research"
+        )
+        == 1
+    )
+
+
+@pytest.mark.parametrize("corruption", ["artifact_hash", "dangling_symlink"])
+def test_corrupt_published_d1_run_fails_closed_during_recovery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corruption: str
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    project_id = _approved_deep_ready_project()
+    actual_runner = run_deep_research
+    run_manifests: list[dict[str, Any]] = []
+
+    def counted_runner(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        manifest = actual_runner(*args, **kwargs)
+        run_manifests.append(manifest)
+        return manifest
+
+    class SimulatedProcessInterruption(BaseException):
+        """Stop between immutable run publication and D1 attempt recording."""
+
+    record_attempt = ControlStore.record_research_attempt
+    interrupt_next_d1_record = True
+
+    def interrupted_record(store: ControlStore, *args: Any, **kwargs: Any) -> dict[str, object]:
+        nonlocal interrupt_next_d1_record
+        if (
+            interrupt_next_d1_record
+            and kwargs.get("kind") == "d1-deep-research"
+            and kwargs.get("status") == "completed"
+        ):
+            interrupt_next_d1_record = False
+            raise SimulatedProcessInterruption
+        return record_attempt(store, *args, **kwargs)
+
+    monkeypatch.setattr(research_cmds, "run_deep_research", counted_runner)
+    monkeypatch.setattr(ControlStore, "record_research_attempt", interrupted_record)
+    with pytest.raises(SimulatedProcessInterruption):
+        research_cmds._run_deep(project_id, json_out=True)
+    run_id = str(run_manifests[0]["run_id"])
+    run_dir = tmp_path / "runs" / run_id
+    if corruption == "artifact_hash":
+        analyses_path = run_dir / D1_ANALYSES_ARTIFACT
+        analyses_path.write_bytes(analyses_path.read_bytes() + b" ")
+    else:
+        shutil.rmtree(run_dir)
+        run_dir.symlink_to(tmp_path / "missing-run-target", target_is_directory=True)
+
+    store = ControlStore(tmp_path)
+    job = next(row for row in store.list_jobs() if row["kind"] == "research:event-study")
+    request = cast(dict[str, object], job["request"])
+    terminalized = store.set_job_status(
+        str(job["job_id"]),
+        "failed",
+        terminal_error="synthetic terminal job fixture for artifact-integrity check",
+    )
+    assert terminalized["status"] == "failed"
+    store.transition_research_execution(
+        project_id,
+        to_state="failed",
+        contract_id=str(request["contract_id"]),
+        actor="system",
+        reason="synthetic terminal job fixture for artifact-integrity check",
+        next_action="Owner reviews the interrupted D1 job.",
+        responsibility="owner",
+        active_job_id=None,
+        checkpoint=f"d1:orphaned:{request['attempt_number']}",
+    )
+    resumed = runner.invoke(app, ["research", "resume", project_id, "--json"])
+    assert resumed.exit_code == 0, resumed.output
+    retry = runner.invoke(app, ["research", "run", "deep", project_id, "--json"])
+
+    assert retry.exit_code != 0
+    assert len(run_manifests) == 1, "corrupt published output was recomputed or overwritten"
+    assert store.heavyweight_job_capacity()["active_count"] == 0
+    assert store.research_case_summary(project_id)["execution_state"] == "queued"
+    request = cast(dict[str, object], job["request"])
+    assert (
+        store.count_research_attempts(
+            project_id, str(request["contract_id"]), kind="d1-deep-research"
+        )
+        == 0
+    )

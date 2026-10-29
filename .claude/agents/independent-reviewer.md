@@ -456,3 +456,21 @@ full gate and a fresh independent review of the final tree, including this secti
 mandatory, with normal attestation and Git guards. No bypass, override, force push,
 protection change, deployment, trading, threshold or CI weakening, or later-change permission
 beyond the bounded PR #95 scope is granted. PRs #92 and #93 are not altered.
+
+
+## PR93 recovery/cancellation through-delivery absence exception — 2026-10-29
+
+The owner approved applying the absence-only private-suite exception to the retained PR93
+recovery/cancellation work through delivery, retaining all checks and independent review.
+Authorization: user message `Sentinel_7ff5bfff4b508191b72a464f00d48d81`,
+2026-10-29T20:04:44.173549Z, “yes i aspprive all permissoons”, responding to the explicit
+bounded PR93 proposal relayed by parent thread `01a17c01-519d-72f8-9bee-bbc43c37b03f`.
+Scope is the retained PR93 work and necessary reconciliation/corrections described in
+`docs/superpowers/plans/2026-10-29-pr93-recovery-reconciliation.md`, based on final published
+PR95 `2b967311be376cb1f96159d2137f964b05c03c77`, through its successor delivery.
+Only documented absence of `tests/holdout/` is informational and nonblocking. Record private
+coverage UNVERIFIED, never PASS; do not read or modify private contents or fabricate tests.
+Present-suite failures, other unrunnable checks and software findings still BLOCK. Preserve all
+assertions, thresholds, guards, required full verification and fresh exact-tree independent review.
+This grants no unrelated exception or research/trading authority. Publication remains subject to
+parent coordination, verified PR95 merge to main and normal guarded repository delivery.
