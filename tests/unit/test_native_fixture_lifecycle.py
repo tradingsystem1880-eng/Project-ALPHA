@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import fcntl
+import functools
 import hashlib
 import inspect
 import json
@@ -38,6 +39,7 @@ from alpha_cli.native_supervisor import (
     synthetic_workspace,
 )
 from alpha_core import DataError
+from tests.unit._native_phase_capture import read as read_owner_phases
 from tests.unit.test_research_control_store import (
     PROJECT_ID,
     _approved_native_d1,
@@ -90,7 +92,10 @@ def _until(store: ControlStore, state: str, seconds: float = 8) -> dict[str, obj
         if result["state"] == state:
             return result
         time.sleep(0.02)
-    raise AssertionError(f"expected {state}; last state {result}")
+    failure = AssertionError(f"expected {state}; last state {result}")
+    if result.get("outcome") is not None or result.get("state") == "quarantined":
+        _retain(failure, functools.partial(_note_no_start, failure, store._data_dir, store, result))
+    raise failure
 
 
 @contextlib.contextmanager
@@ -335,7 +340,11 @@ def _until_started(
             # make a dead, quarantined or finished owner look ready. Each job's payload directory
             # and claim are one-shot, so a marker can only belong to this claimed owner.
             if status.get("outcome") is not None or status["state"] == "quarantined":
-                raise AssertionError(f"owner reached a terminal state without starting: {status}")
+                failure = AssertionError(
+                    f"owner reached a terminal state without starting: {status}"
+                )
+                _retain(failure, functools.partial(_note_no_start, failure, root, store, status))
+                raise failure
             if launcher_exited:
                 assert process is not None
                 raise AssertionError(
@@ -573,6 +582,49 @@ def _startup_facts(root: Path, store: ControlStore, started: float) -> dict[str,
                     files[str(path.relative_to(root))] = "removed during capture"
     facts["files"] = files
     return facts
+
+
+def _no_start_facts(root: Path, store: ControlStore, status: dict[str, object]) -> str:
+    """Diagnostic-only, read-only evidence to localize an owner's no-start; never a cause claim."""
+    claim = cast(dict[str, object] | None, status.get("claim")) or {}
+    facts: dict[str, object] = {
+        "claim": {key: claim.get(key) for key in ("owner_birth", "owner_pid", "seconds")},
+        "outcome": status.get("outcome"),
+        "clock_pair": {"wall": time.time(), "monotonic": time.monotonic()},
+        "clock_ticks": os.sysconf("SC_CLK_TCK"),
+    }
+    with open("/proc/uptime") as uptime:
+        facts["boot_wall"] = time.time() - float(uptime.read().split()[0])
+    with store._transaction(write=False) as connection:
+        facts["job_events"] = [
+            (str(row["event_type"]), str(row["occurred_at"]))
+            for row in connection.execute(
+                "SELECT event_type, occurred_at FROM job_events WHERE job_id=? ORDER BY sequence",
+                (JOB,),
+            )
+        ]
+    files: dict[str, object] = {}
+    if (root / "control").is_dir():
+        for path in sorted((root / "control").iterdir()):
+            with contextlib.suppress(FileNotFoundError):
+                stat = path.stat()
+                files[path.name] = {"mtime": stat.st_mtime, "size": stat.st_size}
+    facts["control_files"] = files
+    log = root / "control" / f"native-{JOB}.log"
+    facts["owner_log"] = log.read_text(errors="replace")[-4000:] if log.exists() else None
+    pressure: dict[str, object] = {}
+    for name in ("loadavg", "pressure/cpu", "pressure/io"):
+        with contextlib.suppress(OSError):
+            pressure[name] = Path("/proc", name).read_text().strip()
+    facts["host_pressure"] = pressure
+    facts["owner_phases"] = read_owner_phases(root)  # only test-launched -c owners record these
+    return f"owner no-start evidence: {json.dumps(facts, default=str)}"
+
+
+def _note_no_start(
+    failure: BaseException, root: Path, store: ControlStore, status: dict[str, object]
+) -> None:
+    failure.add_note(_no_start_facts(root, store, status))
 
 
 def _retain(failure: BaseException, record: Callable[[], None]) -> None:

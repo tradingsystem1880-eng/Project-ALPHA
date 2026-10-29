@@ -2445,5 +2445,21 @@ startup-margin receipt was 3.770 s.
   imports are runtime registry imports, and one edge is absent because the reviewed claim repair
   removed its import.
 - Checks: atlas 104/104; drift and docs 54/54. No full gate on the repaired tree.
+
+PR #95 follow-up:
+- Hosted coverage: 92.91% was repaired with public synthetic contract tests, measured 93.01%;
+  threshold unchanged.
+- Gates 15 and 16 failed on owner no-starts; the causes of their uninstrumented stalls (10.2088 s
+  and 5.9752 s) stay UNKNOWN.
+- Phase capture localized a production defect: the owner's claim lazily imported heavy validators,
+  about 1 s, under the store write lock and inside the deadline window.
+- Fix: `_run_owner` now preloads them before the deadline starts.
+  - The deadline start point, poll-point checks, budgets and assertions are unchanged.
+  - About 0.8-0.9 s of claim-validator import work moved out of the deadline window and the store
+    write lock. Total owner start-up latency is unchanged.
+  - A regression test pins the no-import-under-lock invariant on the synthetic-fixture claim path;
+    it was red, now green. Rule-native claims still hash the runtime under the write lock
+    (pre-existing, disclosed).
+- Focused native set: 453/453.
 Details:
 [native plan](superpowers/plans/2026-10-26-native-rule-authority.md#gate10gate11-repairs-and-retained-diagnostics-2026-10-28).

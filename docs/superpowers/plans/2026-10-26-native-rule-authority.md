@@ -794,5 +794,42 @@ classification:
   reviewed claim repair removed that import. Import-linter contracts are unaffected (intra-package).
 - Checks: atlas suite 104/104; drift, docs and lazy-CLI tests 54/54.
 
-**Status.** No full gate on the repaired tree. Review is BLOCK: the private holdout suite is absent,
-and the approved exception covers only `2f9d0c3d`, not this tree.
+**Hosted coverage (PR #95 `cf9d53b`).**
+- Hosted `check` passed every test but failed coverage: 92.91% against the unchanged 93.0%.
+- Cause: the native completion, admission and environment modules are tested only with an explicit
+  `ALPHA_RDAGENT_SOURCE`, which hosted CI does not provision.
+- Repair: `test_native_public_contracts.py` adds public synthetic fail-closed contract tests, which
+  qualify nothing native. Hosted-equivalent backend coverage measured 93.01%. Threshold and
+  exclusions are unchanged.
+
+**Gate15 (`29cee4a7`) and gate16 (`b21389e5`) failed.** In each, one owner timed out before its
+payload started (`no_payload_spawn_attempted`):
+- gate15: a 2 s owner, elapsed 10.2088 s; cause UNKNOWN;
+- gate16: a 5 s `-c` owner, elapsed 5.9752 s.
+
+Test repairs:
+- the suspended-owner test now asserts expiry while stopped, by construction;
+- both shared readiness helpers attach read-only no-start evidence;
+- `-c` owners record test-only phase timings.
+
+Localized defect (measured idle, from the phase capture):
+- The owner's claim validated its reserved contract inside `BEGIN IMMEDIATE`. There it lazily
+  imported `alpha_research` (numpy/scipy) and the rule-plan chain: 872 modules, about 1 s, held under
+  the store write lock and inside the deadline window.
+- `_run_owner` now loads those validators before `_Owner.__init__` starts the deadline. The claim
+  then imports nothing under the lock, the claim body takes about 3 ms, and owner init to first
+  deadline check takes about 35 ms.
+- The deadline start point (`_Owner.__init__`), its poll-point checks, budgets and assertions are
+  unchanged. About 0.8-0.9 s of claim-validator import work, which previously ran incidentally
+  inside the deadline window and under the store write lock, now runs before the deadline starts.
+- Total owner start-up latency is unchanged; only the transaction and deadline-window latency fell.
+- The no-import-under-lock regression covers the synthetic-fixture claim path. Rule-native claims
+  still hash the runtime under the write lock (pre-existing, disclosed).
+- Regression: `test_owner_claim_imports_nothing_while_holding_the_store_write_lock`, red then green.
+- This demonstrated defect does not establish the cause of the uninstrumented gate15 or gate16
+  stalls; both stay UNKNOWN. Whether it removes the stall under full-gate load is shown only by the
+  final gate.
+
+**Status.** Review is BLOCK until the final gate and the formal review on the final tree. The
+private holdout suite stays UNVERIFIED, under the owner's bounded PR #95 correction scope
+(2026-10-29T20:03:54Z).

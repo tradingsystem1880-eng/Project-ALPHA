@@ -509,6 +509,13 @@ def _run_owner(
     *,
     native: NativeLaunch | None = None,
 ) -> None:
+    # The claim validates the reserved contract with lazily imported heavy validators (boundary:
+    # numpy/scipy; rule plan: backtest/patterns). Load them before the deadline starts and
+    # before the claim takes the store write lock.
+    from alpha_cli._native_rule_protocol import validate_rule_plan  # noqa: F401
+    from alpha_cli.research_analysis_plan import validate_analysis_plan  # noqa: F401
+    from alpha_research import research_d2_boundary_from_dict  # noqa: F401
+
     owner = _Owner(root, job_id, fixture, seconds, lock, native=native)
     store = ControlStore(root)
     owner.open_control()

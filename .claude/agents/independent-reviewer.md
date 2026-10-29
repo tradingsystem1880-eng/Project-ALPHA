@@ -331,3 +331,128 @@ checks and reviews pass. No bypass, override, force push, protection change,
 deployment, trading, private source access, test/guard/threshold/CI weakening, standing
 exception or later-change permission is granted. PRs #92 and #93 are not altered; #89
 may be shown merged by GitHub but is not manually closed or discarded.
+
+## Coverage-repaired candidate: one-time absent-private-suite decision (2026-10-29)
+
+The owner was asked, in Sentinel_ad7884d7f6908191a5ec23da1ae4c3d0
+(2026-10-29T12:50:08.181433Z), to "approve extending the missing-private-suite exception
+to version d21537c3 plus its approval record, then updating PR #95 and merging after
+full checks and review pass. The private suite remains unverified." The owner answered
+"yes i approve" in Sentinel_d3e287fc8de08191ba554e4207417183 (2026-10-29T12:55:05.807157Z).
+
+Scope: only base commit `2e0832c735d97c7da93cb79c0cce23e533dd7f1a`, the unchanged
+35-path coverage-repaired content tree `d21537c3480997827ca266ca3c77a060339d6f4e`
+(`gate.compute_tree_hash` `364ffa902009bf382e6abac2de60df741a942dccfb292f17de3114bc8b2f22d5`;
+`git diff --binary 2e0832c735d97c7da93cb79c0cce23e533dd7f1a` with new tests intent-to-add,
+SHA256 `89fb164aac8e4df07e73fb28723192d6445290310eb1bc34eb40f64de00108ff`), plus only this
+appended section. Relative to published PR head `cf9d53b2ea0fa2d2cff502e2aeeefd7572653839`,
+that tree adds only `tests/unit/test_native_public_contracts.py` and regenerated Atlas
+metadata; production, CI configuration, the 93.0% coverage threshold and exclusions are
+unchanged. Verify that
+`git diff --name-only d21537c3480997827ca266ca3c77a060339d6f4e <final tree>` lists exactly
+`.claude/agents/independent-reviewer.md`, and that the final file starts with blob
+`61d4ae32d03b13294af7e73e399b53632550afb3`'s bytes unchanged. Any other difference is
+outside this exception.
+
+Within that scope, documented ABSENCE of `tests/holdout/` is informational and
+nonblocking. Private coverage stays UNVERIFIED, never PASS; synthetic public fixtures do
+not qualify any native runtime, source pin or rule profile. Actual failures, collection
+errors in a present or nonempty suite, any other unrunnable check, a component that does
+not run, a hosted coverage result below the unchanged threshold, and every other blocking
+finding still BLOCK, including a controller-death startup-margin receipt below 1.0 s, or a
+missing one, in the final full gate. The earlier de539d1d, 2e359532, 2f9d0c3d and 8eb1f5b9
+decisions, the failed gates 12 and 13, the published cf9d53b checkpoint and its hosted
+coverage failure, and the prior formal BLOCKs remain correct history; this section does
+not extend to any later code. A fresh full gate and a fresh independent review of the
+final tree, including this section, remain mandatory, with normal attestation and Git
+guards. Authorized: one guarded commit of that final tree, a normal push updating PR #95,
+and a merge only after the normal required checks and reviews pass. No bypass, override,
+force push, protection change, deployment, trading, private source access,
+test/guard/threshold/CI weakening, standing exception or later-change permission is
+granted. PRs #92 and #93 are not altered; #89 may be shown merged by GitHub but is not
+manually closed or discarded.
+
+## Suspended-owner-repaired candidate: one-time absent-private-suite decision (2026-10-29)
+
+The owner was asked, in Sentinel_2e409ce56fe481918ae41e9b52e89673
+(2026-10-29T13:41:31Z), to "approve the missing-private-suite exception for version
+430c5ee1 plus its approval record, then updating PR #95 and merging only after full
+checks and review pass." The owner answered "yeds i approve" in
+Sentinel_206d129debf48191a06f03b388b1e51e (2026-10-29T19:48:18.738521Z).
+
+Scope: only base commit `2e0832c735d97c7da93cb79c0cce23e533dd7f1a`, the unchanged
+35-path suspended-owner-repaired content tree `430c5ee1b98d78b76ac07ca16ceb8e486753e904`
+(`gate.compute_tree_hash` `6ddbd12072992475d4c2cba72e25f5a4e5f7c92ba243070ef11b35c73d664045`;
+`git diff --binary 2e0832c735d97c7da93cb79c0cce23e533dd7f1a` with new tests intent-to-add,
+SHA256 `7b02ded0ac5610cd9cddf49b33bd83171c39031be39109f2aae84b09103e8c41`), plus only this
+appended section. Relative to the failed gate15 tree `dbb6cc217bf334fd2247afb91e968f9c2412555a`,
+that tree changes only `tests/unit/test_native_fixture_adversarial.py` and regenerated Atlas
+metadata; production, CI configuration, the 93.0% coverage threshold, exclusions, the 2.0 s
+default and strict-expiry tests are unchanged. Verify that
+`git diff --name-only 430c5ee1b98d78b76ac07ca16ceb8e486753e904 <final tree>` lists exactly
+`.claude/agents/independent-reviewer.md`, and that the final file starts with blob
+`34e8f4c1df0a23d491677e2836e3b8e984b511ba`'s bytes unchanged. Any other difference is
+outside this exception.
+
+Within that scope, documented ABSENCE of `tests/holdout/` is informational and
+nonblocking. Private coverage stays UNVERIFIED, never PASS; synthetic public fixtures do
+not qualify any native runtime, source pin or rule profile. Actual failures, collection
+errors in a present or nonempty suite, any other unrunnable check, a component that does
+not run, a hosted coverage result below the unchanged threshold, and every other blocking
+finding still BLOCK, including a controller-death startup-margin receipt below 1.0 s, or a
+missing one, in the final full gate. The gate15 failure on 29cee4a7 and its 10.2088 s
+preparation stall remain disclosed history with cause UNKNOWN. The earlier de539d1d,
+2e359532, 2f9d0c3d, 8eb1f5b9 and d21537c3 decisions, the failed gates 12, 13 and 15, the
+published cf9d53b checkpoint and its hosted coverage failure, the review APPROVE/REVISE
+sequence and the prior formal BLOCKs remain correct history; this section does not extend
+to any later code. A fresh full gate and a fresh independent review of the final tree,
+including this section, remain mandatory, with normal attestation and Git guards.
+Authorized: one guarded commit of that final tree, a normal push updating PR #95, and a
+merge only after the normal required checks and reviews pass. No bypass, override, force
+push, protection change, deployment, trading, private source access,
+test/guard/threshold/CI weakening, standing exception or later-change permission is
+granted. PRs #92 and #93 are not altered; #89 may be shown merged by GitHub but is not
+manually closed or discarded.
+
+## PR #95 bounded-correction scope record: final repair candidate (2026-10-29)
+
+The owner was asked, in Sentinel_ce01b68f74248191a2b42e2cc62cb87c
+(2026-10-29T19:57:45Z): "may the missing-private-suite exception cover necessary fixes
+through completion of PR #95, with all existing checks, independent review and the
+private-suite limitation retained?" The owner answered "yes i approve" in
+Sentinel_98ef72120a448191b23464aac7864076 (2026-10-29T20:03:54.651894Z). That scope covers
+only necessary corrections through delivery of PR #95. It is not a public-test waiver, grants
+no protected-source access, and does not cover PR #93 or future features.
+
+Genuine scope of this candidate: base commit `2e0832c735d97c7da93cb79c0cce23e533dd7f1a`, the
+pre-record content tree `d1e6800ca3b936974ca1888093b29c4f7ba6944a`
+(`gate.compute_tree_hash` `42da9b7d6cc08d188b4b91c8daf03d3ae34969928f6fc3c8b5ef2289cc2bbc4d`;
+`git diff --binary 2e0832c735d97c7da93cb79c0cce23e533dd7f1a` with new tests intent-to-add,
+SHA256 `f033ba6e8a9243b2c17a1c37df658de73789342652549f5db26c31167dca082d`), plus only this
+appended section. Relative to the published PR head `cf9d53b2ea0fa2d2cff502e2aeeefd7572653839`
+the necessary corrections are:
+- public synthetic contract tests for the hosted coverage failure;
+- the suspended-owner premise repair;
+- shared no-start evidence retention and test-only `-c` owner phase capture;
+- the demonstrated production defect fix in `native_supervisor._run_owner`, which preloads the
+  claim validators before the deadline starts so the claim imports nothing under the store
+  write lock, with its regression;
+- the earlier owner records, docs and regenerated Atlas.
+
+Production deadline start, poll-point checks, budgets, the 2.0 s default, strict-expiry tests,
+coverage threshold and exclusions are unchanged. Verify that
+`git diff --name-only d1e6800ca3b936974ca1888093b29c4f7ba6944a <final tree>` lists exactly
+`.claude/agents/independent-reviewer.md`, and that the final file starts with blob
+`d04e376a0cb8ccd1145c2a7ea9420bfa4f67f043`'s bytes unchanged.
+
+Within that scope, documented ABSENCE of `tests/holdout/` is informational and nonblocking;
+private coverage stays UNVERIFIED, never PASS, and synthetic fixtures qualify nothing native.
+Actual failures, any component that does not run, a hosted coverage result below the
+unchanged threshold, a missing or sub-1.0 s controller-death margin receipt, and every other
+blocking finding still BLOCK. The failed gates 12, 13, 15 and 16, the stall causes recorded
+UNKNOWN for gates 15 and 16, the published cf9d53b checkpoint and its hosted coverage failure,
+the review APPROVE/REVISE history and the prior formal BLOCKs remain correct history. A fresh
+full gate and a fresh independent review of the final tree, including this section, remain
+mandatory, with normal attestation and Git guards. No bypass, override, force push,
+protection change, deployment, trading, threshold or CI weakening, or later-change permission
+beyond the bounded PR #95 scope is granted. PRs #92 and #93 are not altered.

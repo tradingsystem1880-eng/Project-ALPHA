@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import select
 import signal
@@ -15,7 +16,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -23,11 +24,15 @@ from alpha_cli.control_store import ControlStore
 from alpha_cli.durable_lease import DurableJobLease, terminate_and_reap
 from alpha_cli.native_supervisor import start_synthetic_owner
 from alpha_core import DataError
+from tests.unit._native_phase_capture import PHASE_INSTALL, PHASE_PRELUDE
 from tests.unit.test_native_fixture_lifecycle import (
     _ESCAPE_RELEASE_BARRIER,
     JOB,
     Case,
     _owner,
+    _owner_deadline_remaining,
+    _retain,
+    _startup_facts,
     _stop_test_owner,
     _until,
     _until_started,
@@ -190,12 +195,16 @@ def test_owner_killed_before_closure_commit_leaves_no_partial_terminal_state(cas
     root, store, _, _ = case
     before = store.research_case_summary(PROJECT_ID)["elapsed_budget"]
     marker = root / "closure-written"
-    code = """import sys,time
+    code = (
+        PHASE_PRELUDE
+        + """import sys,time
 from pathlib import Path
 from alpha_cli import _native_fixture_store as storage
 from alpha_cli.native_supervisor import _open_lock,_run_owner
 root=Path(sys.argv[1]); job=sys.argv[2]
-original=storage._failure_close
+"""
+        + PHASE_INSTALL
+        + """original=storage._failure_close
 def pause(*args,**kwargs):
     original(*args,**kwargs)
     (root/'closure-written').write_text('uncommitted synthetic closure')
@@ -204,6 +213,7 @@ storage._failure_close=pause
 with _open_lock(root,job) as lock:
     _run_owner(root,job,'failure',3,lock)
 """
+    )
     process = subprocess.Popen([sys.executable, "-c", code, str(root), JOB])
     try:
         deadline = time.monotonic() + 8
@@ -293,15 +303,60 @@ def _suspend_owner(
     raise AssertionError("could not suspend the owner at the requested write-lock state")
 
 
+def _expiry_facts(root: Path, store: ControlStore, observed: dict[str, float]) -> str:
+    """Diagnostic-only: align the owner's wall-clock journal with this test's monotonic times."""
+    facts = _startup_facts(root, store, observed["begun"])
+    facts["observed_monotonic"] = observed
+    facts["clock_pair"] = {"wall": time.time(), "monotonic": time.monotonic()}
+    with open("/proc/uptime") as uptime:
+        facts["boot_wall"] = time.time() - float(uptime.read().split()[0])
+    facts["clock_ticks"] = os.sysconf("SC_CLK_TCK")
+    with store._transaction(write=False) as connection:
+        facts["job_events"] = [
+            (str(row["event_type"]), str(row["occurred_at"]))
+            for row in connection.execute(
+                "SELECT event_type, occurred_at FROM job_events WHERE job_id=? ORDER BY sequence",
+                (JOB,),
+            )
+        ]
+    return f"suspended-owner precondition evidence: {json.dumps(facts, default=str)}"
+
+
 def test_suspended_owner_expiry_never_authorizes_takeover(case: Case) -> None:
     root, store, _, _ = case
     before = store.research_case_summary(PROJECT_ID)["elapsed_budget"]
-    process = start_synthetic_owner(root, JOB, fixture="wait", seconds=2)
+    observed = {"begun": time.monotonic()}
+    # Fixture budget for reaching readiness and a stop; not a start-up requirement. Expiry
+    # during suspension is guaranteed by the derived wait below, not by this value.
+    process = start_synthetic_owner(root, JOB, fixture="wait", seconds=10)
     try:
-        _until_started(root, store, process)
-        _suspend_owner(process, store, holding_write=False)
-        claim = store.native_fixture_status(JOB)["claim"]
-        time.sleep(2.1)
+        try:
+            _until_started(root, store, process)
+            observed["ready"] = time.monotonic()
+            _suspend_owner(process, store, holding_write=False)
+            observed["suspended"] = time.monotonic()
+            status = store.native_fixture_status(JOB)
+            claim = cast(dict[str, object], status["claim"])
+            assert status["outcome"] is None, "owner recorded an outcome before suspension"
+            remaining = _owner_deadline_remaining(claim)
+            observed["remaining_lower_bound"] = remaining
+            assert remaining > 0.1, "owner was not suspended before its deadline (precondition)"
+            # Fixture precondition, derived: the deadline (set before readiness) has now passed
+            # while the owner is stopped, whatever its preparation took.
+            expiry = observed["ready"] + float(cast(float, claim["seconds"])) + 0.1
+            time.sleep(max(0.0, expiry - time.monotonic()))
+            observed["expired"] = time.monotonic()
+            stat = Path(f"/proc/{process.pid}/stat").read_text()
+            state = stat.rsplit(")", 1)[1].split()[0]
+            assert state in {"T", "t"}, "owner was not still stopped at its deadline (premise)"
+            outcome = store.native_fixture_status(JOB)["outcome"]
+            assert outcome is None, "owner recorded an outcome while suspended (premise)"
+        except AssertionError as failure:
+            add_note = failure.add_note
+            _retain(failure, lambda: add_note(_expiry_facts(root, store, observed)))
+            raise
+        # Still our live, unreaped child (no exit, no PID reuse); stopped state asserted above.
+        assert process.poll() is None
         assert store.reconcile_interrupted_jobs(at=datetime.now(UTC) + timedelta(days=1)) == []
         assert store.native_fixture_status(JOB, reconnect=True)["claim"] == claim
         with pytest.raises(DataError, match="occupied; reconnect only"):
@@ -360,9 +415,9 @@ def test_detached_escape_retains_charge_and_capacity_after_owner_exit(case: Case
     marker = root / f"payload-{JOB}" / "descendant.pid"
     release = marker.parent / "release-escape"
     code = (
-        "import sys\nfrom pathlib import Path\n"
+        PHASE_PRELUDE + "import sys\nfrom pathlib import Path\n"
         "from alpha_cli import native_supervisor as supervisor\n"
-        "root=Path(sys.argv[1]); job=sys.argv[2]\n"
+        "root=Path(sys.argv[1]); job=sys.argv[2]\n" + PHASE_INSTALL + ""
         "supervisor._PAYLOAD=supervisor._PAYLOAD.replace("
         f"'    time.sleep(0.1)\\n', {_ESCAPE_RELEASE_BARRIER!r})\n"
         "with supervisor._open_lock(root,job) as lock:\n"
@@ -522,12 +577,16 @@ def test_blocked_publication_keeps_capacity_and_full_charge_until_cleanup(
     root, store, _, _ = case
     before = store.research_case_summary(PROJECT_ID)["elapsed_budget"]
     marker, release = root / "publication-blocked", root / "release-publication"
-    code = """import sys,time
+    code = (
+        PHASE_PRELUDE
+        + """import sys,time
 from pathlib import Path
 from alpha_cli.control_store import ControlStore
 from alpha_cli.native_supervisor import _open_lock,_run_owner
 root=Path(sys.argv[1]); job=sys.argv[2]
-original=ControlStore.record_native_fixture_observation
+"""
+        + PHASE_INSTALL
+        + """original=ControlStore.record_native_fixture_observation
 def blocked(self,job,observation):
     if observation.kind=='native_started':
         (root/'publication-blocked').write_text('synthetic storage stall')
@@ -537,6 +596,7 @@ ControlStore.record_native_fixture_observation=blocked
 with _open_lock(root,job) as lock:
     _run_owner(root,job,'wait',3,lock)
 """
+    )
     process = subprocess.Popen([sys.executable, "-c", code, str(root), JOB])
     try:
         deadline = time.monotonic() + 8
