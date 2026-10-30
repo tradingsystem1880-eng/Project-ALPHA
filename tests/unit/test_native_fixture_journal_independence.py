@@ -56,10 +56,32 @@ def _stopped(pid: int, *, seconds: float = 1.0) -> float:
 def _pid(root: Path) -> int:
     marker = root / f"payload-{JOB}" / "payload.pid"
     deadline = time.monotonic() + 5
-    while not marker.exists() and time.monotonic() < deadline:
+    while time.monotonic() < deadline:
+        if marker.exists():
+            # write_text creates the file before publishing its PID contents.
+            contents = marker.read_text()
+            if contents:
+                return int(contents)
         time.sleep(0.01)
-    assert marker.exists(), "fixed synthetic payload did not publish readiness"
-    return int(marker.read_text())
+    raise AssertionError("fixed synthetic payload did not publish readiness")
+
+
+def test_payload_pid_waits_for_marker_contents(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    marker = tmp_path / f"payload-{JOB}" / "payload.pid"
+    marker.parent.mkdir()
+    marker.touch()
+    read_text = Path.read_text
+
+    def finish_publication(path: Path, *args: Any, **kwargs: Any) -> str:
+        value = read_text(path, *args, **kwargs)
+        if path == marker and not value:
+            marker.write_text(str(os.getpid()))
+        return value
+
+    monkeypatch.setattr(Path, "read_text", finish_publication)
+    assert _pid(tmp_path) == os.getpid()
 
 
 @contextlib.contextmanager

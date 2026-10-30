@@ -10036,7 +10036,11 @@
             "type": "integer"
           },
           "schema_version": {
-            "const": 1,
+            "enum": [
+              1,
+              2,
+              3
+            ],
             "title": "Schema Version",
             "type": "integer"
           },

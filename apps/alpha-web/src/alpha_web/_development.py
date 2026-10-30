@@ -118,22 +118,18 @@ def project_detail(project_id: str, *, data_dir: Path, lineage_limit: int) -> di
         rows = _objects(project.get(key), f"project {key}")
         truncation[key] = bool(upstream_truncation.get(key, False)) or len(rows) > lineage_limit
         project[key] = rows[-lineage_limit:]
-    links = _objects(project["stage_run_links"], "stage links")
-    for link in links:
-        history = _objects(link.get("state_history"), "stage state history")
-        link["state_history_truncated"] = (
-            bool(link.get("state_history_truncated", False)) or len(history) > lineage_limit
-        )
-        link["state_history"] = history[-lineage_limit:]
-    project["stage_run_links"] = links
-    stages = _objects(project["stage_states"], "experiment stage states")
-    for stage in stages:
-        history = _objects(stage.get("state_history"), "experiment stage state history")
-        stage["state_history_truncated"] = (
-            bool(stage.get("state_history_truncated", False)) or len(history) > lineage_limit
-        )
-        stage["state_history"] = history[-lineage_limit:]
-    project["stage_states"] = stages
+    for key, rows_label, history_label in (
+        ("stage_run_links", "stage links", "stage state history"),
+        ("stage_states", "experiment stage states", "experiment stage state history"),
+    ):
+        rows = _objects(project[key], rows_label)
+        for row in rows:
+            history = _objects(row.get("state_history"), history_label)
+            row["state_history_truncated"] = (
+                bool(row.get("state_history_truncated", False)) or len(history) > lineage_limit
+            )
+            row["state_history"] = history[-lineage_limit:]
+        project[key] = rows
     project["truncated"] = truncation
     return project
 

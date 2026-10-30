@@ -19,6 +19,41 @@ from pathlib import Path
 from types import FrameType
 
 _GRACE_SECONDS = 2.0
+_OWNER_ENV = "ALPHA_TEST_OWNER"
+
+
+def _process_identity(pid: int) -> tuple[int, int]:
+    fields = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()
+    return int(fields[1]), int(fields[19])  # parent PID and birth ticks
+
+
+def require_test_owner() -> None:
+    """Check the Linux orphan-test precondition, not application authority."""
+    if sys.platform != "linux":
+        return
+    guidance = (
+        "Linux orphan-dependent tests require scripts/run_owned_test.py: "
+        "uv run python scripts/run_owned_test.py -- uv run pytest <selection>"
+    )
+    try:
+        owner, born = map(int, os.environ.get(_OWNER_ENV, "").split(":"))
+        if owner <= 1 or born < 0:
+            raise ValueError("invalid owner identity")
+        ancestor, _ = _process_identity(os.getpid())
+        while ancestor > 1:
+            parent, birth = _process_identity(ancestor)
+            if ancestor == owner:
+                arguments = Path(f"/proc/{owner}/cmdline").read_bytes().split(b"\0")
+                if (
+                    birth == born
+                    and Path(os.fsdecode(arguments[1])).resolve() == Path(__file__).resolve()
+                ):
+                    return
+                break
+            ancestor = parent
+    except (OSError, ValueError, IndexError) as exc:
+        raise RuntimeError(guidance) from exc
+    raise RuntimeError(guidance)
 
 
 def _enable_subreaper() -> None:
@@ -73,7 +108,11 @@ def main(argv: list[str]) -> int:
 
     for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         signal.signal(sig, interrupted)
-    process = subprocess.Popen(command, start_new_session=True)
+    # Publish only after prctl succeeded. Birth ticks reject stale PID reuse;
+    # consumers also check ancestry and this script's actual command path.
+    _, birth = _process_identity(os.getpid())
+    environment = {**os.environ, _OWNER_ENV: f"{os.getpid()}:{birth}"}
+    process = subprocess.Popen(command, start_new_session=True, env=environment)
     deadline = None if limit is None else time.monotonic() + limit
     timed_out = False
     status: int | None = None

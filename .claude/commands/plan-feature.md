@@ -23,4 +23,6 @@ Follow `.agents/skills/alpha-feature-workflow/SKILL.md`. Steps:
 5. Run `uv run python scripts/gate.py plan-check <plan doc>` and paste its
    output; fix the block until it passes.
 6. Present the plan summary (assumptions, rejected alternative, pre-mortem,
-   slices) and wait for approval before implementing.
+   slices). Continue implementation when the task already authorizes it. Ask for
+   approval only when the proposed work needs authority or scope not yet granted;
+   continue independent authorized work while that question is pending.

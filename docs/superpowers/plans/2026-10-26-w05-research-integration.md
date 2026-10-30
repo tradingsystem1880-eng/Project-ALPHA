@@ -1,5 +1,10 @@
 # W05 research integration successor
 
+> Evidence navigation: `.alpha/state/` paths below name ignored, machine-local receipts.
+> These are handoff locations, not repository links.
+> Their contents and continued availability are not established by this checkout;
+> retain the dated result and pending-evidence limits recorded below.
+
 **Delivery state:** Completed local integration packet; aggregate qualification blocked pending native portability repair and final full gate.
 
 **Successor (open):** [Combined Mac portability qualification](2026-10-26-mac-portability-qualification.md#handoff-and-next-action), pending slice "Independent review and final successor qualification".
@@ -79,7 +84,7 @@ The complete prerequisite chain is `fc6da893` → independently reviewed transpo
 The reviewed W05 patch from that base to `220b9b02` is applied once. All production and test
 bytes match producer source except Ruff-only formatting in the CLI scope predicate.
 The public source lineage, patch hashes and immutable predecessor identity are in
-[source-lineage.json](../../../.alpha/state/w05-integration/source-lineage.json).
+source-lineage.json (`.alpha/state/w05-integration/source-lineage.json`).
 
 - [Tiingo redaction](../../../packages/alpha-data/src/alpha_data/adapters/tiingo_adapter.py) and
   [public regression](../../../tests/unit/test_tiingo_bounded_fetch.py) preserve PR92.
@@ -95,8 +100,8 @@ The public source lineage, patch hashes and immutable predecessor identity are i
 
 Consolidated public regression: **358 passed**, including eight new integration cases.
 The regression command and exact log are in
-[final-public-regression.json](../../../.alpha/state/w05-integration/final-public-regression.json).
-The [final evidence record](../../../.alpha/state/w05-integration/final-evidence.json) binds the
+final-public-regression.json (`.alpha/state/w05-integration/final-public-regression.json`).
+The final evidence record (`.alpha/state/w05-integration/final-evidence.json`) binds the
 candidate tree, source manifest, final focused checks and independent Astra review.
 Initial red tests, fixture/typing repairs, formatting failure, mistaken test/module invocation,
 and sandboxed uv failures are retained alongside successful checks. Pinned offline Semgrep

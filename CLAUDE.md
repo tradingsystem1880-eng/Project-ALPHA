@@ -24,7 +24,7 @@ Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`
 
 - All data/strategy reads use aware-UTC point-in-time `as_of`; bias guards poison future data and have leaky controls.
   Decide at close t, fill at open t+1. Corporate actions have knowledge/application clocks; dividends
-  are cash at pay_date. [Domain contracts](docs/operations/research-platform-contracts.md).
+  are cash at pay_date. [Query contracts](docs/operations/research-platform-contracts.md).
 - Fail loud on invalid/non-finite/disordered data or degenerate statistics; never swallow errors. Type
   interrupted Stooq reads; retry WAL SQLITE_BUSY within existing budget. Polars default; pandas only
   at sanctioned vendor edges; type strictly. Tiingo transport: type-only.
@@ -49,7 +49,7 @@ Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`
 - Components: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
   `literature`, `qlib`, `atlas`, `eval`); empty steps fail; full needs all.
 - Discover: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;
-  `alpha info procedures --json`. Catalog supports launch forms.
+  `alpha info procedures --json`. [Map](docs/context/README.md).
 - Install: `uv sync --locked`; cloud: [README](README.md).
 - Tests: `uv run pytest -q -m "not network"`; bias: `uv run pytest -q -m bias_guard`.
   Gate owns Linux pytest; build before browsers.
@@ -67,8 +67,8 @@ See [architecture](docs/ARCHITECTURE.md), [ADRs](docs/adr/README.md), `.claude/r
 [build record + schema](docs/BUILD-STATUS.md).
 Provider acceptance requires passing receipts. Binance opt-in caps: HTTP attempts/body bytes.
 
-[Development loop](docs/operations/development-loop.md): focused checks.
-Behavior changes: update manual/build. Preserve user work; local checks do not confer acceptance.
+[Development loop](docs/operations/development-loop.md): focused checks, owned tests, UV cache.
+Behavior changes: update manual/build. Local checks confer no acceptance.
 
 UI: [terminal guide](apps/alpha-web/frontend/README.md): UTC charts, exact exports, no-project browsing. RunDetail binds selected-run outputs and loading/error/empty states.
 ML: v1/LightGBM; v2/rank ensemble; v3/tabular (workers/qlib/README.md). Missing worker blocks; refit grants no admission.

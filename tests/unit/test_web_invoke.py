@@ -75,6 +75,39 @@ def test_web_cli_environment_scopes_provider_credentials_to_exact_commands(
     assert "UNRELATED_SHELL_STATE" not in coingecko | ibkr
 
 
+@pytest.mark.parametrize("command", [["ml", "capabilities", "--json"], ["backtest", "run", "SPY"]])
+@pytest.mark.parametrize("configured", [False, True])
+def test_web_cli_environment_preserves_only_configured_uv_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: list[str], configured: bool
+) -> None:
+    cache = str(tmp_path / "uv-cache")
+    if configured:
+        monkeypatch.setenv("UV_CACHE_DIR", cache)
+    else:
+        monkeypatch.delenv("UV_CACHE_DIR", raising=False)
+    forbidden = {"HOME", "CODEX_HOME", "OPENAI_API_KEY", "ALPHA_TEST_OWNER", "UNRELATED_STATE"}
+    for name in forbidden:
+        monkeypatch.setenv(name, "fixture-only-must-not-cross")
+
+    environment = _catalog._cli_environment(tmp_path, command)
+
+    assert environment.get("UV_CACHE_DIR") == (cache if configured else None)
+    assert not forbidden.intersection(environment)
+
+
+@pytest.mark.parametrize("operation", ["capabilities", "train"])
+def test_web_ml_environment_preserves_configured_worker_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    cache = str(tmp_path / "uv-cache")
+    monkeypatch.setenv("UV_CACHE_DIR", cache)
+    monkeypatch.setenv("ALPHA_TIINGO_API_KEY", "synthetic-provider-key")
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "synthetic-auth-home"))
+    environment = _catalog._cli_environment(tmp_path, ["ml", operation])
+    assert environment["UV_CACHE_DIR"] == cache
+    assert not {"ALPHA_TIINGO_API_KEY", "CODEX_HOME"}.intersection(environment)
+
+
 def test_web_investigation_run_preserves_only_codex_auth_home(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -304,6 +337,7 @@ def test_spawn_failure_drops_memory_handle_when_failure_projection_is_malformed(
     assert job_id not in _invoke.JOBS
 
 
+@pytest.mark.usefixtures("owned_test_process")
 def test_live_heavyweight_cancel_reaps_a_sigterm_ignoring_nested_child(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -370,6 +404,7 @@ def test_live_heavyweight_cancel_reaps_a_sigterm_ignoring_nested_child(
                 os.kill(nested_pid, signal.SIGKILL)
 
 
+@pytest.mark.usefixtures("owned_test_process")
 def test_durable_startup_status_failure_reaps_the_entire_process_group(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

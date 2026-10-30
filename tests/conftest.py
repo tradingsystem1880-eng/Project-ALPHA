@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 import pytest
+from run_owned_test import require_test_owner
 
 from tests._tiers import classify_platform
 
@@ -22,6 +23,15 @@ for _name in ("GITHUB_ACTIONS", "FORCE_COLOR", "PY_COLORS"):
     os.environ.pop(_name, None)
 
 _ROOT = Path(__file__).resolve().parent.parent
+
+
+@pytest.fixture
+def owned_test_process() -> None:
+    """Reject unsupported orphan tests before their bodies launch processes."""
+    try:
+        require_test_owner()
+    except RuntimeError as exc:
+        pytest.fail(str(exc), pytrace=False)
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

@@ -210,6 +210,65 @@ def test_normalized_publication_is_bound_to_raw_input_dataset_and_quality(tmp_pa
         )
 
 
+def test_read_verified_normalized_rechecks_kind_hash_lineage_and_size(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    raw_payload = b"raw"
+    raw_handle = store.begin_staging(
+        provider="defillama", receipt_id="a" * 64, logical_name="defi_tvl.json", expected_bytes=3
+    )
+    raw_handle = store.append_staging(raw_handle, raw_payload)
+    raw = store.publish_staging(raw_handle, expected_sha256=hashlib.sha256(raw_payload).hexdigest())
+    payload = b"PAR1-bounded-normalized-fixture"
+    digest = hashlib.sha256(payload).hexdigest()
+    dataset = CryptoDatasetIdentityV1(
+        provider="defillama",
+        venue="defillama",
+        market_type="network",
+        family="defi_tvl",
+        instrument="ethereum",
+        base_asset=None,
+        quote_asset="USD",
+        frequency="1d",
+        units="usd",
+        timestamp_convention="utc_day_start_available_next_day",
+    )
+    quality = CryptoQualityReportV1(
+        dataset_sha256=digest,
+        method_version="crypto-quality-v1",
+        state="qualified",
+        failures=(),
+        warnings=(),
+        observed_start=datetime(2026, 1, 1, tzinfo=UTC),
+        observed_end=datetime(2026, 1, 1, tzinfo=UTC),
+        row_count=1,
+        correction_lineage=(),
+    )
+    normalized = store.publish_normalized(
+        payload,
+        dataset=dataset,
+        input_manifest_ids=(str(raw["manifest_id"]),),
+        quality=quality,
+    )
+
+    manifest, reopened = store.read_verified_normalized(
+        str(normalized["manifest_id"]), max_bytes=len(payload)
+    )
+
+    assert manifest == normalized
+    assert reopened == payload
+    with pytest.raises(DataError, match="size limit"):
+        store.read_verified_normalized(str(normalized["manifest_id"]), max_bytes=len(payload) - 1)
+    with pytest.raises(DataError, match="size limit"):
+        store.read_verified_normalized(str(normalized["manifest_id"]), max_bytes=33 * 1024 * 1024)
+    with pytest.raises(DataError, match="normalized"):
+        store.read_verified_normalized(str(raw["manifest_id"]), max_bytes=100)
+
+    artifact = store.bulk_root / str(normalized["artifact_key"])
+    artifact.write_bytes(b"tampered")
+    with pytest.raises(DataError, match="integrity"):
+        store.read_verified_normalized(str(normalized["manifest_id"]), max_bytes=100)
+
+
 def test_staging_metadata_resumes_exact_offset(tmp_path: Path) -> None:
     store = _store(tmp_path)
     first = store.begin_staging(

@@ -80,7 +80,9 @@ def _read_owner_pdf(path: Path) -> tuple[bytes, str]:
     if no_follow is None:
         raise DataError("this platform cannot safely reject a symlinked owner PDF")
     selected = path.expanduser()
-    flags = os.O_RDONLY | no_follow | getattr(os, "O_CLOEXEC", 0)
+    # O_NONBLOCK: a FIFO or device must not block the open before the fstat regular-file check
+    # rejects it; it has no effect on reading a regular file.
+    flags = os.O_RDONLY | no_follow | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NONBLOCK", 0)
     try:
         descriptor = os.open(selected, flags)
     except OSError as exc:

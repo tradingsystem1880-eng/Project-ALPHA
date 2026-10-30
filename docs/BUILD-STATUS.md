@@ -1,5 +1,30 @@
 # Project ALPHA — Build Status (delivery history)
 
+**2026-10-25 local candidate — bounded DefiLlama snapshot query:** On isolated branch
+`codex/storage-snapshot-query-audit` from verified commit `e635e6cb5bc7b9fa688dc524998d7fe1ff8eebdc`,
+added `alpha crypto-data snapshot-query SNAPSHOT_ID` for exactly one `defi_tvl` member. The reader
+checks volume UUID, exact snapshot/member identity, manifest and raw lineage, artifact hash, quality,
+and schema. It caps normalized Parquet at 32 MiB, the raw receipt at 8 MiB, accepted input at 50,000
+rows, and each page at 1,000 rows; `has_more` and `next_offset` make continuation explicit. A
+50,001st row is only a rejection sentinel. Fixed-width selected columns contribute about 1.2 MB /
+1.15 MiB at the accepted row cap before Polars internal buffers; this is a logical materialization
+bound, not an OS-enforced decompression or process-RSS ceiling. JSON retains observation and
+availability clocks, USD units, artifact/dataset/raw-response hashes, provider schema/parser
+versions, and receipt fetch time. `available_at` uses only the parser's next-UTC-day convention;
+fetch time is retrieval evidence, every result sets `point_in_time_claim=false`, and no historical
+publication time is inferred.
+
+Synthetic focused storage/query/CLI tests passed (39); DefiLlama fixture/acquisition tests passed
+(21); public fixture/harness checks passed (14); manual-size tests passed (23). Root Ruff check and
+format passed (1,001 files); strict mypy passed across packages/apps/tests (859 files) and harness
+scripts (17 files); import contracts kept all 13 rules. Atlas lock/sync, lint/format, package mypy
+(23 files), full non-network tests (102 passed, one Starlette deprecation warning), and generated
+freshness (8 outputs) passed. Root and Atlas lock/sync, harness lint, plan-check, and `git diff
+--check` passed. Independent read-only review approved the byte/row/page bounds and confirmed no
+silent truncation or historical point-in-time claim. Changed-files Semgrep passed (198.2 seconds),
+and the Semgrep contract check passed. No full gate, DuckDB/dependency change, migration, provider
+call, commit, merge, deployment, or publication was performed.
+
 **2026-10-02 crypto provider and archive hygiene work (in progress):** Added DefiLlama public
 reference data for protocol TVL, stablecoin supply, current yield-pool snapshots, and exact-pool
 history across parser, qualification, CLI acquisition, typed API, and Data Manager surfaces. The
@@ -2494,3 +2519,301 @@ absence-only private-suite exception for this bounded PR93 work through delivery
 coverage remains UNVERIFIED. All other checks and independent review remain mandatory.
 Final aggregate/review outcomes are recorded in the candidate evidence; historical receipts are
 not reused. Publication waits for verified PR95 integration into main and parent coordination.
+
+## 2026-10-30 Software Team workflow candidate
+
+Based on merged main `f847581`, the existing development workflow now has the missing scoped
+Linux orphan-test precondition. The test-process owner publishes PID/birth identity after enabling
+subreaping; the two orphan-dependent durable-lease tests reject absent/stale/unrelated owners
+before their bodies launch processes. Actual direct and pytest-worker launches through the owner
+pass. This diagnostic precondition does not confer authority or independently prove another
+process's subreaper flag. Existing descendant cleanup assertions and time budgets are unchanged.
+
+The canonical feature/incremental skills and implement/plan commands now agree with the focused
+development loop: carry authorized work through fixes, QA, independent review and context upkeep;
+group related verified slices when coherent; require the unchanged exact-tree full gate and
+independent approval before every actual commit. Existing roles are reused. No new team framework,
+product research agent, statistical threshold, guard bypass or private-suite exception is added.
+
+The failing-first setup probe observed the original missing precondition (expected nonzero,
+observed exit 0). After implementation, 58 process-owner/lease tests passed, including real worker
+inheritance and invalid identity cases. Existing harness/skills, Git guard, component receipts,
+awareness and manual checks passed: 322 passed, 1 optional upstream-plugin check skipped.
+Scoped Ruff, mypy and harness lint passed. These are focused results only. At writing, the final
+six-component gate and independent review are pending; their exact-tree receipts belong in the
+candidate evidence. Private coverage remains UNVERIFIED and requires a new scoped owner decision
+before formal delivery; publication also awaits parent authorization. See the
+[completion plan](superpowers/plans/2026-10-30-software-team-completion.md).
+
+### Orphan-precondition scope completion, 2026-10-30
+
+The narrow candidate subsequently passed the canonical six-component gate on unchanged Git tree
+`6c14cc8c1fea8c4b693f9fda2a74053fd8667a1d`; its original patch and receipts remain preserved.
+Independent review reported no source findings but remained BLOCK for the absent private suite.
+That pass does not qualify this expanded tree.
+
+A bounded public process-test inventory found five further tests requiring prompt external
+orphan reaping: research interruption, suite leader-exit cancellation, suite nested-worker
+cancellation, workstation nested-child cancellation and workstation startup-abort cleanup.
+Each failed with its original assertions and budgets when a diagnostic supervisor retained
+adopted zombies until pytest exited; the outer owner retained final cleanup responsibility.
+This controlled missing-reaper premise does not measure PID 1 behavior. Five missing early
+guards also failed the setup regression matrix (5 failed, 2 passed) before implementation.
+
+All seven dependent tests now request the existing fixture, with direct and pytest-worker
+acceptance coverage. The five covering modules passed 135 tests. Actual unsupported invocations
+of all seven were then rejected before their bodies spawned descendants, with no adopted orphan
+left by those refusals. Application code, cleanup assertions and budgets are unchanged.
+Cooperative parent reaping, direct-child cleanup, pidfd exit-only checks, stopped-execution checks,
+mocks and tests that launch the owner themselves retain their existing contracts. The test-layer
+rule records how future externally reaped cases join the fixture and acceptance matrix.
+
+At writing, expanded-tree aggregate verification and independent review remain pending. The
+task-scoped absent-private-suite decision and publication authorization remain pending; private
+coverage is UNVERIFIED. The filesystem owner's zero-byte manual discovery-link replacement is
+reserved for combined integration; no duplicate link is added here.
+
+### Configured UV cache portability correction, 2026-10-30
+
+The expanded candidate's first aggregate stopped in backend coverage: 2 failed, 6,713 passed,
+61 skipped, 2 subtests passed; coverage reached the unchanged 93.0% floor at 93.01%. Both failures
+were parameter-free ML capability routes returning 422. The failed run and earlier narrow pass
+remain preserved; neither qualifies this corrected tree.
+
+Targeted diagnosis reproduced both failures alone and after a neighboring mock test in reversed
+order. Clean pinned main `f847581` passed both before isolated worker installation and failed both
+afterward. Its relevant production/test files were byte-identical to the expanded candidate.
+The web-to-CLI allowlist discarded configured `UV_CACHE_DIR`, so installed-worker invocation
+used an unwritable default cache. Direct CLI/worker output was valid schema version 1; forwarding
+only the cache variable in a diagnostic process made both routes return valid 200 responses.
+Thus worker availability exposed an existing environment-portability defect, rather than an
+owner-guard regression or response-schema mismatch.
+
+The correction adds only the non-secret `UV_CACHE_DIR` name to the existing process allowlist.
+A portable configured/absent regression was red first (2 failed, 2 passed), then the focused
+web/CLI/worker set passed 38 tests, including both original API cases. HOME, CODEX_HOME,
+OPENAI_API_KEY, owner metadata and unrelated shell fields remain excluded in the tested ML and
+generic command environments. Worker failure propagation, no-sync inspection and response
+validation remain unchanged. Claude-owned response-schema and local-PDF files are untouched.
+
+At writing, corrected-tree independent review and final aggregate verification remain pending.
+Private coverage remains UNVERIFIED; the task-scoped absence-only decision cannot waive public
+failures. Publication authorization remains pending. The manual's cache pointer brings it to
+5,998 bytes; the filesystem owner's zero-byte discovery-link substitution remains compatible.
+
+### Through-delivery absence decision and recorded-tree qualification, 2026-10-30
+
+The corrected implementation passed all six canonical gate components on unchanged Git tree
+`cf154fec628d71dd92122aa0df1cca40b4d8989c`. The gate started at 05:15:41 UTC; its stamp and six
+component receipts remain preserved. This pass validates the cache correction with the installed
+worker present and retains the earlier failure and clean-main diagnostic history.
+
+At 05:41 UTC the owner approved the bounded absence-only private-suite exception through delivery
+for cleanup/refactor, file-system, Software Team and two-bug follow-up work, including necessary
+integration fixes. The reviewer policy now records that task scope, rather than requiring another
+owner decision for each changed tree. Private coverage remains UNVERIFIED; no private source was
+read or edited and no actual failure is waived. Private authorization provenance stays outside
+publication payloads. Normal public checks, exact-tree verification, independent review and Git
+guards remain mandatory; no GitHub APPROVE review or protection bypass is authorized.
+
+The approval record is itself a protected source change. At writing, its final tree still requires
+fresh full verification and independent attestation. No earlier stamp is rebound or reused as that
+tree's acceptance. Publication remains subject to coordination and its separate authorization.
+
+
+## 2026-10-30 Delivery status and bounded cloud cleanup reconciliation
+
+Direct GitHub and Git parentage checks confirm [PR95](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/95)
+merged at `dabdb08fee9ee4637339d26016d85acf16937546` and
+[PR96](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/96) at
+`f847581f2703f6b5b36aeccdf877c4354a19e176`. Their head CI runs
+[40962372679](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/40962372679) and
+[40972171573](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/40972171573)
+each completed with seven successful listed jobs. The plans now distinguish those delivered
+engineering packages from their historical unpublished/BLOCK checkpoints; earlier failure and
+UNKNOWN-cause records remain unchanged. Private coverage remains UNVERIFIED.
+
+The [bounded cleanup/refactor successor](superpowers/plans/2026-10-30-project-lineage-projection-refactor.md)
+consolidates project-history policy and removes the test-only `changed_paths` wrapper in favor of
+`comparison_context`; existing selection and gate semantics are retained. ADR/governance routes
+and local receipt references are cleaned up. The prior 12-path checkpoint passed all six public
+components/49 steps on `01bf937e`; the expanded successor needs its own final gate and review.
+No prior private-suite exception is inherited, and no publication or merge has occurred.
+
+The [existing hygiene plan](superpowers/plans/2026-10-08-repository-hygiene.md#cloud-visible-ledger-reconciliation-2026-10-30)
+records the observed cloud branch/path/operation ledger, retained refs and verified move of the
+cancelled docs-only predecessor. The saved Mac ledger, physical storage and historical owner-side
+counts remain unverified and separately blocked; no unique local data was deleted. This bounded
+cloud reconciliation does not declare the broader cleanup/refactor programme complete.
+
+
+### Cleanup aggregate re-entry findings (2026-10-30)
+
+The expanded `f1550eca` gate stopped at backend pytest: three failures, 6,711 passes, 61 skips,
+two passed subtests; coverage met the unchanged floor at 93.01%. Complete failed evidence is
+preserved privately by the [cleanup plan](superpowers/plans/2026-10-30-project-lineage-projection-refactor.md#aggregate-re-entry-findings-and-bounded-repairs).
+One synthetic cancellation test read an empty PID marker between creation and content write.
+Its deterministic regression was red, then green after the test reader waited for contents
+within the same five-second bound. Production supervisor, budgets and exact-once assertions stay.
+
+Two automatic ML capability aliases exposed a separate installed-worker re-entry defect:
+web-to-CLI filtering dropped configured `UV_CACHE_DIR`, already allowed by CLI-to-worker launch,
+and uv failed cache initialization. ML subprocesses now retain that nonsecret runtime setting.
+Credential/auth-home routing, isolation and locked/no-sync launches are preserved. Both actual
+installed-worker routes return HTTP 200; no P2 router/API or generated client contract changed.
+
+The properly owned focused selection passed 102 tests after these repairs; scoped typing,
+lint and format passed. An earlier direct invocation lacked the required process owner and
+failed two reaping checks; that attempt is retained, and the same assertions passed under the
+existing ownership runner. Final assembled gate/review remain required; no actual failure is
+waived by the pending task-scoped private-suite decision.
+
+## 2026-10-30 — Queryable context filesystem candidate
+
+On main `f847581f2703f6b5b36aeccdf877c4354a19e176` (including PR96), the isolated Atlas tool
+now computes project-intent, feature, task, decision, history and reference queries directly
+from existing tracked documents. It retains exact file hashes, heading ancestry, line ranges,
+source status text and an explicit list of matching excerpts omitted by the selection budget.
+JSON handoffs bind the whole allowlisted corpus, retrieval code, query policy and expiry;
+validation replays them and rejects changed/added/missing sources, stale policy, expired clocks
+and altered payloads. Markdown and plain-text views support direct inspection. No new knowledge
+graph, database, folder hierarchy, scientific authority or autonomous execution is introduced.
+
+The [delivery record](superpowers/plans/2026-10-30-queryable-context-filesystem.md) maps H26
+from the sole canonical feature checklist to the implementation and the actual primary ICM
+paper (arXiv2603.16021v2, 21 pages) plus pinned companion source. Mechanical invalidation and
+expiry are ALPHA adaptations, not demonstrated performance gains from the paper. Existing
+source ownership, decisions, provenance and dated plans remain authoritative in their own homes.
+
+Focused current context regressions passed 16 cases and strict Atlas typing passed 25 source
+files. An earlier Atlas-wide candidate passed 119 tests before the additional final regression;
+final producer, aggregate and independent-review evidence remain separate exact-tree obligations.
+Local Git guards were installed. Patch checkpoints are retained under ignored
+`.alpha/state/context-delivery/`; this entry claims no commit, publication, merge or aggregate
+acceptance. No private holdout files were found through tracked-path metadata; their content was
+not read, coverage remains UNVERIFIED and prior scoped exceptions do not cover this delivery.
+This context filesystem is separate from bulk-document storage and backups. Mac backup remains
+owned elsewhere and unavailable; ignored query receipts are not durable backups.
+
+### File-system delivery: owner absence-only decision, 2026-10-30
+
+The owner approved the bounded missing-private-suite exception through delivery for the
+cleanup/refactor, file-system, Software Team and two-bug follow-up workstreams at 05:41 UTC,
+including necessary integration fixes. The exact request, response, scope and unchanged
+requirements are recorded in the existing
+[file-system plan](superpowers/plans/2026-10-30-queryable-context-filesystem.md#owner-absence-only-decision--2026-10-30).
+Documented absence alone is now informational for this delivery; private coverage remains
+UNVERIFIED. No actual failure or other required check is waived, and no GitHub APPROVE review
+or protection bypass is authorized. Earlier absence-only BLOCKs remain correct history.
+
+All six public components passed before this approval metadata on exact tree
+`65bb2cd19462836e77c8619ea736399514d33f598fccfc91bc7fc2a73479f9ce`, with a valid full stamp,
+120 passing Atlas tests, fresh six-route navigator evidence and source-bound handoff/reopen
+evidence. That checkpoint is preserved separately. The approval record changes the candidate;
+its final exact-tree qualification, independent review and normal attestation remain required.
+Commit/publication/PR/merge preparation remains subject to parent coordination of the exact
+payload and branch. No Mac backup, bulk storage or wider scientific completion is claimed.
+
+### File-system qualification: configured ML cache transport repair
+
+The real approval-record aggregate failed two public capability-route cases with HTTP 422;
+6,695 cases passed, 61 skipped and coverage reached 93.01% against the unchanged 93% floor.
+The private-suite exception does not waive those actual failures. After Qlib was installed,
+the web-to-CLI environment dropped the configured `UV_CACHE_DIR` and the installed worker's
+`uv` could not initialize its protected fallback cache. The direct CLI succeeded with the
+configured cache inherited. Failure evidence remains preserved.
+
+A two-line command-scoped transport repair now preserves the configured cache for ML commands
+only. Its failing-first public regression and the existing credential/auth-home isolation and
+two real capability-route checks passed (5 cases); changed lint/format passed. No ML response
+schema or PDF source was changed. The
+[existing delivery plan](superpowers/plans/2026-10-30-queryable-context-filesystem.md#required-integration-repair-configured-ml-worker-cache)
+records this necessary integration fix. Final source/producer reconciliation, exact-tree full
+qualification and independent review remain required; private coverage stays UNVERIFIED under
+the approved absence-only scope. No failed check, threshold or authority boundary is waived.
+
+### Combined foundation integration candidate, 2026-10-30
+
+The Software Team batch passed all six public components and independent review on Git tree
+`80dbba4d52d15cce1d66f7b233a7637f11cf3a56`; its installed guards accepted commit
+`b49e187392f4eb1132df2db5536d70203e91747f`, normally pushed to its named branch. Cleanup
+commit `8f3d8b4394c3eabb08dda2ce21a9b18eb363aac0` was fetched through configured origin and
+matched the producer's tree. Its supplemental disposition patch matched the supplied 4,472-byte
+SHA-256 before applying. The filesystem's eight source blocks matched every individual hash
+and the full 49,497-byte payload (`500395592164e585c30087ba773924dd9ca40312dd74634e214d386caa301002`).
+Library byte downloads failed; no further Library download was attempted after coordination.
+
+Both append-only histories are retained, and the manual's context-map link uses the agreed
+byte-neutral substitution. The combined implementation retains the canonical process allowlist
+entry for configured non-secret UV_CACHE_DIR; cache configuration is not a provider credential
+and is available to generic CLI commands. The duplicate ML-only clause is removed, while
+capabilities/train provider/auth-home exclusions complement the configured/absent ML and generic
+command regression. The historical producer ML-only repair above describes its earlier tree.
+The empty PID-marker readiness correction, history projection refactor and scoped orphan-test
+preconditions retain their original lifecycle assertions and budgets. Queryable context remains
+engineering navigation, separate from product research agents and scientific admission.
+
+The [single reviewer-policy record](../.claude/agents/independent-reviewer.md#four-workstream-through-delivery-absence-exception--2026-10-30)
+records the approved through-delivery absence exception. Private coverage stays UNVERIFIED;
+actual checks, exact-tree review and installed Git guards remain mandatory. The owner's repository
+delivery instruction authorizes coordinated commits/pushes; this candidate has not merged to main.
+Focused combined cleanup checks passed 139 tests and scoped Ruff passed. Atlas regeneration,
+fresh context handoff demonstration and final combined-tree gate/review are separate remaining
+obligations at this entry; no standalone receipt qualifies this assembled tree. Final receipts
+and publication disposition are retained in the exact candidate's ignored evidence directory.
+
+
+## 2026-10-30 — Recover stranded bounded snapshot query
+
+The existing snapshot-query slice from `4710a00392cc40739f97ed49890a85ac911ec6e0` is
+reconciled onto main `f847581f2703f6b5b36aeccdf877c4354a19e176` in an isolated successor.
+Original history and main's PR95/96 protections remain intact. Selected member/raw-lineage
+verification replaces whole-store payload scanning for this query. Byte ceilings precede payload
+hashing; mixed families and unsafe metadata paths fail closed. Availability/fetch-time disclosures
+and `point_in_time_claim=false` remain. Stored chain cells are not decoded; the chain label comes
+from manifest identity. Generic snapshot verification and admission remain separate.
+
+Inherited checks passed 39 cases; four discriminating regressions failed before correction.
+Corrected focused checks passed 45 cases including the availability poison/control. Independent
+early review identified repeated unchanged captures with distinct raw receipts; exact retained
+`--manifest-id` reopening resolves ambiguity without rewriting the snapshot contract.
+[Scope and owner decision](superpowers/plans/2026-10-25-crypto-snapshot-query.md#cleanup-recovery--2026-10-30).
+Private coverage stays UNVERIFIED under the scoped absence-only exception. Final full/review/CI
+acceptance belongs to external exact-tree evidence; no historical receipt is reused.
+
+The first full attempt stopped at backend coverage: 6,716 cases passed, 61 skipped and two
+subtests passed, but 92.98% missed the unchanged 93% floor. Added public malformed-input and
+lineage regressions address new-reader error paths; no production code or threshold changes.
+A fresh complete gate and final independent review are required for this corrected tree.
+
+## 2026-10-29 PR #95 post-merge advisory findings (follow-up)
+
+After PR #95 merged, the advisory Codex review raised two P2 findings in code from the preserved
+integration history; both were verified as real:
+- `GET /api/ml/exchanges/{id}/evaluation` rejected schema 2 and 3 exchanges: `MlEvaluation`
+  allowed only version 1, while `ml evaluate` keeps the request's contract version.
+- The owner-selected local PDF import blocked indefinitely on a FIFO before its regular-file
+  check could reject it.
+
+Fixes:
+- The response model accepts the CLI's supported versions; OpenAPI and the client were regenerated.
+- The PDF open uses `O_NONBLOCK`; the regular-file, symlink, size and replacement checks are
+  unchanged.
+
+Regressions: every supported evaluation version (parametrized over the CLI's supported set, so a
+new CLI version fails until the web contract follows), a bounded FIFO rejection, and a negative
+control that an unsupported version is still rejected. Versions 2 and 3 and the FIFO case were red
+before the fix; version 1 and the negative control passed before and after.
+
+
+## 2026-10-30 — Coordinated P2 and snapshot follow-on assembly
+
+A separate integration candidate retains foundation PR97 `d1aa8157`, P2 PR98 `daece223` and
+qualified snapshot recovery `6eb4d5df`. The supported ML v1/v2/v3 response and nonblocking PDF
+FIFO rejection coexist with foundation UV-cache/ownership/context controls and exact-manifest
+snapshot reopening. Production/test bytes are verified against their source commits; shared
+reviewer and delivery histories retain all scopes and failures. Derived Atlas output is regenerated
+from the complete tree. The combined candidate requires its own exact-tree full gate and
+independent review; no prior individual pass accepts this assembly. Private coverage stays
+UNVERIFIED under the existing task-scoped absence-only decisions. Main and existing PRs are not
+mutated during preparation. See the [follow-on execution record](superpowers/plans/2026-10-25-crypto-snapshot-query.md#coordinated-follow-on-assembly--2026-10-30).

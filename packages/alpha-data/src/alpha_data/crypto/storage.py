@@ -9,6 +9,7 @@ import os
 import plistlib
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
 from collections.abc import Callable, Iterator
@@ -29,6 +30,7 @@ from .contracts import (
 )
 
 _SAFE = re.compile(r"^[A-Za-z0-9._:-]+$")
+_MAX_NORMALIZED_READ_BYTES = 32 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -637,6 +639,7 @@ class CryptoBulkStore:
             raise DataError("invalid crypto manifest id")
         _safe_component(manifest_id, "manifest id")
         path = self.manifest_root / f"{manifest_id}.json"
+        _reject_symlink_path(Path(path.anchor), path)
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
@@ -693,6 +696,62 @@ class CryptoBulkStore:
                 if parent_kind != expected_kind and not legacy_raw:
                     raise DataError("crypto manifest input lineage has the wrong artifact kind")
         return raw
+
+    def read_verified_normalized(
+        self, manifest_id: object, *, max_bytes: int
+    ) -> tuple[dict[str, object], bytes]:
+        """Return bounded normalized bytes whose manifest, lineage, and exact payload verify."""
+        if (
+            not isinstance(max_bytes, int)
+            or isinstance(max_bytes, bool)
+            or not 1 <= max_bytes <= _MAX_NORMALIZED_READ_BYTES
+        ):
+            raise DataError(
+                "crypto normalized read size limit must be between 1 and "
+                f"{_MAX_NORMALIZED_READ_BYTES} bytes"
+            )
+        self.verify_readable()
+        manifest = self._manifest_metadata(manifest_id)
+        if manifest.get("artifact_kind") != "normalized":
+            raise DataError("crypto artifact is not normalized")
+        artifact_bytes = manifest.get("artifact_bytes")
+        artifact_hash = manifest.get("artifact_sha256")
+        artifact_key = manifest.get("artifact_key")
+        if (
+            not isinstance(artifact_bytes, int)
+            or isinstance(artifact_bytes, bool)
+            or not 0 <= artifact_bytes <= max_bytes
+            or not isinstance(artifact_hash, str)
+            or not isinstance(artifact_key, str)
+        ):
+            raise DataError("crypto normalized artifact exceeds the read size limit")
+        # Preflight bounds before the existing streaming payload/lineage verification.
+        if self.verify_manifest(manifest_id) != manifest:
+            raise DataError("crypto normalized manifest changed during verification")
+        artifact = self.bulk_root / artifact_key
+        _reject_symlink_path(self.bulk_root, artifact)
+        flags = (
+            os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+        )
+        try:
+            descriptor = os.open(artifact, flags)
+            with os.fdopen(descriptor, "rb") as stream:
+                before = os.fstat(stream.fileno())
+                if not stat.S_ISREG(before.st_mode) or before.st_size != artifact_bytes:
+                    raise DataError("crypto normalized artifact changed after verification")
+                payload = stream.read(max_bytes + 1)
+                after = os.fstat(stream.fileno())
+        except OSError as exc:
+            raise DataError("crypto normalized artifact could not be read safely") from exc
+        if (
+            len(payload) != artifact_bytes
+            or len(payload) > max_bytes
+            or (before.st_dev, before.st_ino, before.st_size)
+            != (after.st_dev, after.st_ino, after.st_size)
+            or hashlib.sha256(payload).hexdigest() != artifact_hash
+        ):
+            raise DataError("crypto normalized artifact integrity failure")
+        return manifest, payload
 
     def metadata_inventory(self, *, include_retired: bool = False) -> tuple[dict[str, object], ...]:
         """Hash-verified discovery metadata, NOT verified artifact or lineage evidence.

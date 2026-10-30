@@ -201,6 +201,19 @@ authority. An explicit typed registration
 re-verifies every external member before recording the snapshot through the historical research
 `snapshot` kind with `snapshot_schema=CryptoSnapshotV1`; proposal preflight still admits it only
 when a registered operator declares compatibility.
+`alpha crypto-data snapshot-query SNAPSHOT_ID` reopens exactly one `defi_tvl` member as bounded
+rows after verifying its snapshot membership, normalized bytes, raw receipt lineage, units, and
+schema. The output keeps observation time, artifact and dataset hashes, provider schema/parser
+versions, and raw fetch time. `available_at` is filtered only under the parser's next-UTC-day
+convention; this does not establish a source publication timestamp or a historical point-in-time
+claim. Limits are 32 MiB per normalized Parquet artifact, 50,000 input rows, and 1,000 output rows
+per page. The reader schema-checks before decoding, decodes only fixed-width timestamp/value
+columns with a row cap, derives the chain label from the hashed dataset identity, and returns
+`has_more`/`next_offset` for continuation. This bounds materialized data but is not an
+OS-enforced process-RSS ceiling; Polars may use additional internal buffers. The reader does not
+write to snapshots or artifacts and supports no other member family. Exact `--manifest-id`
+selection preserves original raw provenance when unchanged recaptures share a snapshot ID;
+ambiguous selection otherwise fails closed.
 CoinGecko full-market reference uses ordered 250-row pages through one short terminal page, bounded
 to 100 pages. GeckoTerminal top-pool catalogs use exactly five 20-row pages per network. Each page
 is a separate immutable raw receipt and the combined normalized catalog preserves that order. The
@@ -439,40 +452,11 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 
 ## 6. Key Decisions (ADR index)
 
-| ADR | Decision | Status |
-|---|---|---|
-| [0001](adr/0001-strict-layered-dag.md) | Strict layered DAG enforced by `import-linter` (not convention) | Accepted |
-| [0003](adr/0003-t+1-fill-encoding.md) | t+1 fills via a dual-event feed (`QuoteTick` at open + close-stamped decision `Bar`) | Accepted |
-| [0004](adr/0004-two-clock-corporate-actions.md) | Two-clock corporate actions; dividends decoupled as cash, never folded into prices | Accepted |
-| [0005](adr/0005-point-in-time-firewall.md) | A single point-in-time `as_of` firewall, guarded by future-poison tests | Accepted |
-| [0006](adr/0006-two-tier-null-model.md) | Two-tier null (returns-level surrogate + full-engine synthetic OHLCV); both must pass | Accepted |
-| [0007](adr/0007-deterministic-run-id-and-seeds.md) | Historical v1/v2 content IDs + positional child seeds | Superseded by 0013 for v3 |
-| [0008](adr/0008-vendored-kronos-and-alpha-forecast-layer.md) | Vendored Kronos model behind a layer-1 `alpha_forecast` facade | Accepted |
-| [0009](adr/0009-forecast-leakage-and-tier2-cost-policy.md) | Pretrain-leakage policy + cache-first engine integration for model strategies | Accepted |
-| [0010](adr/0010-local-kronos-weights-offline-policy.md) | Local Kronos weights and code-wired offline loading policy | Accepted |
-| [0011](adr/0011-evidence-gated-external-integrations.md) | Evidence-gated adoption of external integrations | Accepted |
-| [0012](adr/0012-operational-paper-sessions.md) | Operational paper sessions remain separate from deterministic research runs | Accepted |
-| [0013](adr/0013-run-identity-v3-and-causal-artifacts.md) | V3 execution fingerprints, semantic seeds, immutable artifact contracts, and causal chart traces | Accepted |
-| [0014](adr/0014-cli-owned-development-control-plane.md) | SQLite project/stage/job/holdout state is CLI-owned external lineage | Accepted |
-| [0015](adr/0015-evidence-ledger-not-agent-memory.md) | Append-only cited evidence replaces opaque agent memory | Accepted |
-| [0016](adr/0016-isolated-qlib-worker.md) | Qlib/LightGBM remain in a separately locked process with validated prediction exchange | Accepted |
-| [0017](adr/0017-authoritative-daily-data-and-broker-paper-boundary.md) | Qualify authoritative daily data before releasing broker-paper intents | Accepted |
-| [0018](adr/0018-quantpad-external-research-data-boundary.md) | Separate QuantPad MCP discovery from API/SDK bulk research data | Accepted |
-| [0019](adr/0019-governed-research-cases-before-strategy-development.md) | Govern finite research cases before strategy development | Accepted |
-| [0020](adr/0020-intraday-event-research-is-not-daily-validation-evidence.md) | Keep intraday event research outside daily validation and paper evidence | Accepted |
-| [0021](adr/0021-research-workstation-read-plane-and-command-center.md) | Research workstation read plane | Accepted |
-| [0022](adr/0022-codex-collaboration-surface.md) | Structured Codex collaboration surface | Accepted |
-| [0023](adr/0023-research-dataset-registration-and-quantpad-lane.md) | Registered research datasets and QuantPad lane | Accepted |
-| [0024](adr/0024-literature-acquisition-worker-and-claim-model.md) | Isolated literature acquisition and claim evidence | Accepted |
-| [0025](adr/0025-empirical-d1-research-runner-admission.md) | Governed empirical D1 admission | Accepted |
-| [0026](adr/0026-d2-confirmation-readiness-gate-promotion-override.md) | One-shot D2, promotion, and exploratory override | Accepted |
-| [0027](adr/0027-tiered-research-readiness-semantics.md) | Python-authoritative tiered readiness | Accepted |
-| [0028](adr/0028-governed-market-state-and-model-candidates.md) | Governed market-state and model candidates | Accepted |
-| [0029](adr/0029-four-family-monte-carlo-validation.md) | Required four-family Monte Carlo path-risk validation | Accepted |
-| [0030](adr/0030-touch-id-owner-presence-for-research-actions.md) | Legacy per-action WebAuthn; ordinary local confirmation superseded by ADR-0038 | Accepted |
-| [0031](adr/0031-provider-readiness-and-paper-acceptance-v2.md) | Receipted provider readiness and mechanically reverified paper acceptance | Accepted |
+The [canonical ADR index](adr/README.md) lists every decision, status and date,
+including supersession. The decision bullets above explain the current architectural
+boundaries; consult the individual ADRs for rationale and trade-offs.
 
-Current ADR navigation, including ADR-0032 through ADR-0038, is maintained in the [ADR index](adr/README.md). Options and screener functionality are CLI modules, not separate workspace packages.
+Options and screener functionality are CLI modules, not separate workspace packages.
 
 ## 7. References
 
@@ -491,8 +475,6 @@ Current ADR navigation, including ADR-0032 through ADR-0038, is maintained in th
 - [`superpowers/specs/2026-08-12-four-family-monte-carlo-validation.md`](superpowers/specs/2026-08-12-four-family-monte-carlo-validation.md) — required four-family path-risk stage, immutable evidence, and owner-review contract.
 - [`governance/2026-07-19-dependency-license-matrix.md`](governance/2026-07-19-dependency-license-matrix.md) — direct dependency and upstream-candidate license disposition.
 - [`governance/2026-07-19-post-v2-risk-register.md`](governance/2026-07-19-post-v2-risk-register.md) — live risk ownership and acceptance evidence.
-
-| [0038](adr/0038-local-confirmation-and-terminal-archive-charts.md) | Local confirmation and verified terminal archive charts | Accepted |
 
 ## Reference quant workstation (2026-10-03)
 

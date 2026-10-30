@@ -108,6 +108,23 @@ full acceptance still requires the unchanged canonical gate on the exact candida
 
 ## Retrieve narrowly
 
+For project intent, feature scope, active/historical tasks and decisions, use Atlas's
+[source-bound context queries](../../tools/alpha-atlas/README.md#query-project-intent-features-tasks-and-decisions).
+For example, from `tools/alpha-atlas/`:
+
+```sh
+uv run python -m alpha_atlas.context query H26 --kind feature --format markdown
+uv run python -m alpha_atlas.context query 'stage contract' --kind task --limit 4
+```
+
+This computes a view of existing tracked sources with cited excerpts and explicit omissions.
+It does not add these maps to the generated graph or replace source-anchor semantic review.
+JSON handoffs expire and must pass `alpha_atlas.context check RECEIPT.json` before reuse;
+changed corpus bytes or retrieval policy invalidate them. See the
+[implementation and research mapping](../superpowers/plans/2026-10-30-queryable-context-filesystem.md).
+Context retrieval is separate from bulk document storage and backups; the unavailable Mac's
+local backup remains a separate owner task.
+
 From the repository root, use the existing interfaces when authorized:
 
 ```sh
@@ -116,7 +133,7 @@ alpha info commands --all --json
 alpha info procedures --json
 ```
 
-These are discovery commands, not permission to execute an operational procedure.
+The command catalog supports launch forms. These are discovery commands, not permission to execute an operational procedure.
 Follow a capability's research → decision → plan → source/test links; consult the
 relevant package rule for symbol detail instead of copying module inventories here.
 

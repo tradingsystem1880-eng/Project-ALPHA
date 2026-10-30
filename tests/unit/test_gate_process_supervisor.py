@@ -12,6 +12,32 @@ import gate
 import pytest
 
 RUNNER = Path(__file__).resolve().parents[2] / "scripts/run_owned_test.py"
+ORPHAN_NODES = (
+    "tests/unit/test_durable_job_lease.py::test_exited_leader_keeps_descendant_group_leased_until_audited_cancellation",
+    "tests/unit/test_durable_job_lease.py::test_terminate_and_reap_kills_sigterm_ignoring_nested_child",
+    "tests/unit/test_research_execution.py::test_sigterm_reaps_child_and_returns_interrupted",
+    "tests/unit/test_suite_executor.py::test_suite_heartbeats_and_cancels_after_leader_exits_with_live_descendant",
+    "tests/unit/test_suite_executor.py::test_suite_cancellation_kills_and_reaps_nested_worker_group",
+    "tests/unit/test_web_invoke.py::test_live_heavyweight_cancel_reaps_a_sigterm_ignoring_nested_child",
+    "tests/unit/test_web_invoke.py::test_durable_startup_status_failure_reaps_the_entire_process_group",
+)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux orphan ownership precondition")
+@pytest.mark.parametrize("node", ORPHAN_NODES)
+def test_unwrapped_orphan_test_fails_during_setup(node: str) -> None:
+    environment = dict(os.environ)
+    environment.pop("ALPHA_TEST_OWNER", None)
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "--setup-only", node],
+        cwd=RUNNER.parent.parent,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "run_owned_test.py" in result.stdout + result.stderr
 
 
 def run_owned(code: str) -> subprocess.CompletedProcess[str]:
@@ -21,6 +47,75 @@ def run_owned(code: str) -> subprocess.CompletedProcess[str]:
         text=True,
         timeout=15,
     )
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux owner ancestry contract")
+@pytest.mark.parametrize("workers", [[], ["-n", "1"]], ids=["direct", "xdist"])
+def test_owned_orphan_test_runs_through_descendants(workers: list[str]) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(RUNNER),
+            "--",
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            *workers,
+            *ORPHAN_NODES,
+        ],
+        cwd=RUNNER.parent.parent,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert f"{len(ORPHAN_NODES)} passed" in result.stdout
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux owner identity contract")
+@pytest.mark.parametrize("identity", ["", "bad", "1:0", "999999999:1", "0:0"])
+def test_invalid_owner_identity_is_rejected(identity: str) -> None:
+    code = (
+        f"import os,sys; sys.path.insert(0,{str(RUNNER.parent)!r}); "
+        "from run_owned_test import require_test_owner; "
+        f"os.environ['ALPHA_TEST_OWNER']={identity!r}; require_test_owner()"
+    )
+    result = run_owned(code)
+    assert result.returncode != 0
+    assert "Linux orphan-dependent tests require scripts/run_owned_test.py" in result.stderr
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux owner identity contract")
+@pytest.mark.parametrize("replacement", ["stale_birth", "unrelated", "self"])
+def test_inherited_identity_requires_live_matching_owner_ancestor(replacement: str) -> None:
+    code = f"""
+import os,subprocess,sys
+sys.path.insert(0,{str(RUNNER.parent)!r})
+from run_owned_test import _process_identity, require_test_owner
+with subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)']) as sibling:
+    try:
+        owner,birth=map(int,os.environ['ALPHA_TEST_OWNER'].split(':'))
+        if {replacement!r} == 'stale_birth': birth += 1
+        else:
+            owner=sibling.pid if {replacement!r} == 'unrelated' else os.getpid()
+            _,birth=_process_identity(owner)
+        os.environ['ALPHA_TEST_OWNER']=f'{{owner}}:{{birth}}'
+        require_test_owner()
+    finally:
+        sibling.terminate()
+        sibling.wait(timeout=5)
+"""
+    result = run_owned(code)
+    assert result.returncode != 0
+    assert "Linux orphan-dependent tests require scripts/run_owned_test.py" in result.stderr
+
+
+def test_non_linux_owner_precondition_is_inactive(monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = importlib.import_module("run_owned_test")
+    monkeypatch.setattr(runner.sys, "platform", "darwin")
+    monkeypatch.delenv("ALPHA_TEST_OWNER", raising=False)
+    runner.require_test_owner()
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux subreaper ownership contract")

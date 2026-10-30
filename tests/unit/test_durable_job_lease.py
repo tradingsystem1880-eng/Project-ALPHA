@@ -146,6 +146,7 @@ def test_silent_child_renews_lease_and_only_becomes_reconcilable_after_stop(
                 child.wait()
 
 
+@pytest.mark.usefixtures("owned_test_process")
 def test_exited_leader_keeps_descendant_group_leased_until_audited_cancellation(
     tmp_path: Path,
 ) -> None:
@@ -378,6 +379,7 @@ def test_nested_child_cleanup_does_not_hide_permission_error(
         _cleanup_nested_child(leader, None)
 
 
+@pytest.mark.usefixtures("owned_test_process")
 def test_terminate_and_reap_kills_sigterm_ignoring_nested_child(tmp_path: Path) -> None:
     ready_path = tmp_path / "nested-child-ready"
     leader_code = (

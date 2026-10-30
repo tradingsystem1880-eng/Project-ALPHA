@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 from alpha_cli.artifact_contract import artifact_contract
 from alpha_cli.control_store import ControlStore
 from alpha_cli.durable_lease import DEFAULT_TERMINATE_GRACE_SECONDS
+from alpha_cli.ml_contract import SUPPORTED_CONTRACT_SCHEMA_VERSIONS
 from alpha_web import _catalog, _ml
 from alpha_web.api import ml as ml_api
 from alpha_web.app import create_app
@@ -222,7 +223,8 @@ def ml_response_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple
             return {"status": "validated", "membership_status": membership_status}
         diagnostics = json.loads((exchange / "result.json").read_text())["diagnostics"]
         return {
-            "schema_version": 1,
+            # Mirrors `ml evaluate`: the evaluation keeps the request's contract version.
+            "schema_version": request["schema_version"],
             "authority": "diagnostic_only",
             "rows": 2500,
             "symbols": 20,
@@ -292,6 +294,39 @@ def test_ml_responses_preserve_existing_artifact_versions(
         assert response.json()["folds"][0]["fit_count"] == fit_count
         assert len(response.json()["ic"]["by_target"]) == 2
         assert len(response.json()["portfolio"]["timeline"]) == 2
+
+
+@pytest.mark.parametrize("schema_version", sorted(SUPPORTED_CONTRACT_SCHEMA_VERSIONS))
+def test_ml_evaluation_preserves_every_supported_contract_version(
+    ml_response_client: tuple[TestClient, Path], schema_version: int
+) -> None:
+    client, exchange = ml_response_client
+    request = json.loads((exchange / "request.json").read_text())
+    request["schema_version"] = schema_version
+    (exchange / "request.json").write_text(json.dumps(request))
+
+    response = client.get(f"/api/ml/exchanges/{EXCHANGE_ID}/evaluation")
+
+    assert response.status_code == 200
+    assert response.json()["schema_version"] == schema_version
+    assert response.json()["authority"] == "diagnostic_only"
+
+
+def test_ml_evaluation_rejects_an_unsupported_contract_version(
+    ml_response_client: tuple[TestClient, Path],
+) -> None:
+    client, exchange = ml_response_client
+    request = json.loads((exchange / "request.json").read_text())
+    request["schema_version"] = max(SUPPORTED_CONTRACT_SCHEMA_VERSIONS) + 1
+    (exchange / "request.json").write_text(json.dumps(request))
+
+    with pytest.raises(ResponseValidationError) as error:
+        client.get(f"/api/ml/exchanges/{EXCHANGE_ID}/evaluation")
+
+    assert any(
+        item["type"] == "literal_error" and item["loc"][:2] == ("response", "schema_version")
+        for item in error.value.errors()
+    ), error.value.errors()
 
 
 @pytest.mark.parametrize(

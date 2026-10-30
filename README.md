@@ -145,6 +145,8 @@ SEMGREP_VERSION_CACHE_PATH=/tmp/project-alpha-semgrep/semgrep_version
 ```
 
 The setup script respects configured paths and creates the Semgrep file's parent directory.
+Web ML subprocesses preserve the configured `UV_CACHE_DIR` through the existing isolated-worker
+environment, so installed-worker capability checks use the same writable cache as CLI checks.
 If temporary assets are not retained, rerun setup synchronously before browser work. Download or
 host-library failures require correcting the environment before claiming readiness.
 
