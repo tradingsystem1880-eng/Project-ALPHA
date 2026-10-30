@@ -744,9 +744,17 @@ def job_status(
     terminal_error: str | None = typer.Option(None),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
-    """Advance a durable job lifecycle."""
+    """Advance a generic durable job lifecycle."""
     try:
-        row = _store().set_job_status(
+        store = _store()
+        if status in {"succeeded", "failed", "cancelled"}:
+            job = store.get_job(job_id, event_limit=1)
+            if job["kind"] == "research:event-study":
+                raise DataError(
+                    "research job terminal status is owned by its executor; "
+                    "generic job-status cannot release research capacity"
+                )
+        row = store.set_job_status(
             job_id,
             cast(JobStatus, status),
             result_run_id=result_run_id,

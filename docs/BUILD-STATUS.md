@@ -2463,3 +2463,34 @@ PR #95 follow-up:
 - Focused native set: 453/453.
 Details:
 [native plan](superpowers/plans/2026-10-26-native-rule-authority.md#gate10gate11-repairs-and-retained-diagnostics-2026-10-28).
+
+
+## 2026-10-29 — Isolated PR93 recovery reconciliation on PR95
+
+The retained PR93 recovery and cancellation implementation is reconciled locally onto published
+PR95 `cf9d53b2ea0fa2d2cff502e2aeeefd7572653839`. Stale reconciliation independently retains native
+claims and ordinary D1/D2 research jobs: heartbeat age and a local PID miss cannot establish
+remote owner termination. Failed-D1 journals match the exact project, contract, deep stage and
+strict integer attempt in one SQLite snapshot; recovery reuses only immutable, verified D1
+publication. Active cancellation keeps the durable owner bound until checkpoint handling, and
+unbound cancellation uses an expected-state guard. PR92 redaction is already retained.
+
+Two pre-implementation controls failed on the published baseline; the integrated focused research
+suite passed 26 cases, generic job-store checks passed 6, and native/adjacent compatibility checks
+passed 57. Changed Python lint/format, strict typing and all 13 import contracts passed. The
+[reconciliation packet](superpowers/plans/2026-10-29-pr93-recovery-reconciliation.md) tracks the
+remaining exact-tree producer, Atlas and review evidence. No historical gate or missing-suite
+exception attests this candidate. Full qualification and reconciliation with Claude's final
+published test corrections remain pending; no commit, push, PR mutation or merge is claimed.
+
+
+### PR93 final-head qualification continuation
+
+The isolated recovery/cancellation candidate now retains final PR95 commit
+`2b967311be376cb1f96159d2137f964b05c03c77`, including native-supervisor validator preloading
+outside the claim write lock, explicit elapsed/deadline disclosures, final regression coverage
+and reviewer records. Atlas is regenerated from this combined tree. The owner approved an
+absence-only private-suite exception for this bounded PR93 work through delivery; absent private
+coverage remains UNVERIFIED. All other checks and independent review remain mandatory.
+Final aggregate/review outcomes are recorded in the candidate evidence; historical receipts are
+not reused. Publication waits for verified PR95 integration into main and parent coordination.
