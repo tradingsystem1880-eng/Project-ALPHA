@@ -1,4 +1,5 @@
-**Delivery state:** Completed implementation; exact-tree qualification and delivery results are recorded separately. Historical implementation checks below are not current-main acceptance.
+**Delivery state:** Completed — bounded scope delivered through [PR99](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/99).
+The [verified main receipt](../../BUILD-STATUS.md#2026-10-30--verified-combined-delivery-on-main) records qualification and seven passing post-merge jobs. Private coverage remains UNVERIFIED; broader product and Mac scope remain open.
 
 # Bounded crypto snapshot query
 

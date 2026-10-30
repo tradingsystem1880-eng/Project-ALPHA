@@ -2817,3 +2817,22 @@ from the complete tree. The combined candidate requires its own exact-tree full 
 independent review; no prior individual pass accepts this assembly. Private coverage stays
 UNVERIFIED under the existing task-scoped absence-only decisions. Main and existing PRs are not
 mutated during preparation. See the [follow-on execution record](superpowers/plans/2026-10-25-crypto-snapshot-query.md#coordinated-follow-on-assembly--2026-10-30).
+
+
+## 2026-10-30 — Verified combined delivery on main
+
+[PR99](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/99) normally merged as
+`6e451274f57304eeb6f3d4febfacb7eab756974c`. Its main tree
+`a37c03cc326ed7d257d25f927466b6fc2cb635bc` exactly matches the qualified combined candidate:
+all 49 public gate steps passed, backend coverage was 93.02%, independent review approved,
+and the exact-head Codex advisory review completed without findings.
+[Post-merge CI](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/41043555388)
+completed successfully at 11:10:01 UTC with all seven jobs passing.
+
+This delivers the bounded cleanup/refactor, Software Team workflow, source-bound context
+filesystem, retained snapshot query and P2 ML-schema/PDF repairs. PR97 and PR98 are merged
+by ancestry. After verifying successor content on main, PR80, PR91, PR92 and PR93 were closed
+as superseded; all branch heads and histories remain preserved. Earlier candidate and failure
+entries remain historical evidence. Private coverage stays UNVERIFIED under the approved
+absence-only exception. Mac-only inventory, physical storage/backup, broader cleanup and
+product acceptance gaps remain separately open; this receipt does not mark all features complete.
