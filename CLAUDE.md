@@ -67,8 +67,8 @@ See [architecture](docs/ARCHITECTURE.md), [ADRs](docs/adr/README.md), `.claude/r
 [build record + schema](docs/BUILD-STATUS.md).
 Provider acceptance requires passing receipts. Binance opt-in caps: HTTP attempts/body bytes.
 
-[Development loop](docs/operations/development-loop.md): focused checks.
-Behavior changes: update manual/build. Preserve user work; local checks do not confer acceptance.
+[Development loop](docs/operations/development-loop.md): focused checks, owned tests, UV cache.
+Behavior changes: update manual/build. Local checks confer no acceptance.
 
 UI: [terminal guide](apps/alpha-web/frontend/README.md): UTC charts, exact exports, no-project browsing. RunDetail binds selected-run outputs and loading/error/empty states.
 ML: v1/LightGBM; v2/rank ensemble; v3/tabular (workers/qlib/README.md). Missing worker blocks; refit grants no admission.

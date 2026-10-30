@@ -474,3 +474,22 @@ Present-suite failures, other unrunnable checks and software findings still BLOC
 assertions, thresholds, guards, required full verification and fresh exact-tree independent review.
 This grants no unrelated exception or research/trading authority. Publication remains subject to
 parent coordination, verified PR95 merge to main and normal guarded repository delivery.
+
+
+## Four-workstream through-delivery absence exception — 2026-10-30
+
+At 05:41 UTC the owner approved an absence-only private-suite exception through delivery for
+cleanup/refactor, file-system, Software Team and two-bug follow-up work, including necessary
+corrections and integration. This is task-scoped rather than bound to one candidate hash; it
+requires no renewed absence-only decision for each changed tree within those tasks. It grants
+no standing exception for unrelated future work. Authorization provenance is retained privately.
+
+Only documented absence of `tests/holdout/` is informational and nonblocking. Private coverage
+remains UNVERIFIED, never PASS. Do not read or edit private source or fabricate private tests.
+Present-suite failures, collection errors, other unrunnable checks and software findings still
+BLOCK. All actual public checks, unchanged coverage/mutation floors, fresh exact-final-tree full
+verification, independent review, normal attestation and Git guards remain mandatory.
+
+This grants no GitHub APPROVE review, protection/hook bypass, force push, deployment,
+research/trading authority or uncoordinated publication. Preserve prior decisions and verdicts as
+history; this decision supersedes absence-only blockers only within the four named workstreams.

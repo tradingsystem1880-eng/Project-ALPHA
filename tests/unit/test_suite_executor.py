@@ -466,6 +466,7 @@ def test_suite_selector_initialization_failure_reaps_spawned_group(
 
 
 @pytest.mark.skipif(not hasattr(os, "killpg"), reason="requires POSIX process groups")
+@pytest.mark.usefixtures("owned_test_process")
 def test_suite_heartbeats_and_cancels_after_leader_exits_with_live_descendant(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -615,6 +616,7 @@ def test_suite_cleanup_failure_has_priority_over_resource_close_errors(
 
 
 @pytest.mark.skipif(not hasattr(os, "killpg"), reason="requires POSIX process groups")
+@pytest.mark.usefixtures("owned_test_process")
 def test_suite_cancellation_kills_and_reaps_nested_worker_group(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

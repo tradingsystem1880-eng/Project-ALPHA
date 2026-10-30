@@ -2494,3 +2494,103 @@ absence-only private-suite exception for this bounded PR93 work through delivery
 coverage remains UNVERIFIED. All other checks and independent review remain mandatory.
 Final aggregate/review outcomes are recorded in the candidate evidence; historical receipts are
 not reused. Publication waits for verified PR95 integration into main and parent coordination.
+
+## 2026-10-30 Software Team workflow candidate
+
+Based on merged main `f847581`, the existing development workflow now has the missing scoped
+Linux orphan-test precondition. The test-process owner publishes PID/birth identity after enabling
+subreaping; the two orphan-dependent durable-lease tests reject absent/stale/unrelated owners
+before their bodies launch processes. Actual direct and pytest-worker launches through the owner
+pass. This diagnostic precondition does not confer authority or independently prove another
+process's subreaper flag. Existing descendant cleanup assertions and time budgets are unchanged.
+
+The canonical feature/incremental skills and implement/plan commands now agree with the focused
+development loop: carry authorized work through fixes, QA, independent review and context upkeep;
+group related verified slices when coherent; require the unchanged exact-tree full gate and
+independent approval before every actual commit. Existing roles are reused. No new team framework,
+product research agent, statistical threshold, guard bypass or private-suite exception is added.
+
+The failing-first setup probe observed the original missing precondition (expected nonzero,
+observed exit 0). After implementation, 58 process-owner/lease tests passed, including real worker
+inheritance and invalid identity cases. Existing harness/skills, Git guard, component receipts,
+awareness and manual checks passed: 322 passed, 1 optional upstream-plugin check skipped.
+Scoped Ruff, mypy and harness lint passed. These are focused results only. At writing, the final
+six-component gate and independent review are pending; their exact-tree receipts belong in the
+candidate evidence. Private coverage remains UNVERIFIED and requires a new scoped owner decision
+before formal delivery; publication also awaits parent authorization. See the
+[completion plan](superpowers/plans/2026-10-30-software-team-completion.md).
+
+### Orphan-precondition scope completion, 2026-10-30
+
+The narrow candidate subsequently passed the canonical six-component gate on unchanged Git tree
+`6c14cc8c1fea8c4b693f9fda2a74053fd8667a1d`; its original patch and receipts remain preserved.
+Independent review reported no source findings but remained BLOCK for the absent private suite.
+That pass does not qualify this expanded tree.
+
+A bounded public process-test inventory found five further tests requiring prompt external
+orphan reaping: research interruption, suite leader-exit cancellation, suite nested-worker
+cancellation, workstation nested-child cancellation and workstation startup-abort cleanup.
+Each failed with its original assertions and budgets when a diagnostic supervisor retained
+adopted zombies until pytest exited; the outer owner retained final cleanup responsibility.
+This controlled missing-reaper premise does not measure PID 1 behavior. Five missing early
+guards also failed the setup regression matrix (5 failed, 2 passed) before implementation.
+
+All seven dependent tests now request the existing fixture, with direct and pytest-worker
+acceptance coverage. The five covering modules passed 135 tests. Actual unsupported invocations
+of all seven were then rejected before their bodies spawned descendants, with no adopted orphan
+left by those refusals. Application code, cleanup assertions and budgets are unchanged.
+Cooperative parent reaping, direct-child cleanup, pidfd exit-only checks, stopped-execution checks,
+mocks and tests that launch the owner themselves retain their existing contracts. The test-layer
+rule records how future externally reaped cases join the fixture and acceptance matrix.
+
+At writing, expanded-tree aggregate verification and independent review remain pending. The
+task-scoped absent-private-suite decision and publication authorization remain pending; private
+coverage is UNVERIFIED. The filesystem owner's zero-byte manual discovery-link replacement is
+reserved for combined integration; no duplicate link is added here.
+
+### Configured UV cache portability correction, 2026-10-30
+
+The expanded candidate's first aggregate stopped in backend coverage: 2 failed, 6,713 passed,
+61 skipped, 2 subtests passed; coverage reached the unchanged 93.0% floor at 93.01%. Both failures
+were parameter-free ML capability routes returning 422. The failed run and earlier narrow pass
+remain preserved; neither qualifies this corrected tree.
+
+Targeted diagnosis reproduced both failures alone and after a neighboring mock test in reversed
+order. Clean pinned main `f847581` passed both before isolated worker installation and failed both
+afterward. Its relevant production/test files were byte-identical to the expanded candidate.
+The web-to-CLI allowlist discarded configured `UV_CACHE_DIR`, so installed-worker invocation
+used an unwritable default cache. Direct CLI/worker output was valid schema version 1; forwarding
+only the cache variable in a diagnostic process made both routes return valid 200 responses.
+Thus worker availability exposed an existing environment-portability defect, rather than an
+owner-guard regression or response-schema mismatch.
+
+The correction adds only the non-secret `UV_CACHE_DIR` name to the existing process allowlist.
+A portable configured/absent regression was red first (2 failed, 2 passed), then the focused
+web/CLI/worker set passed 38 tests, including both original API cases. HOME, CODEX_HOME,
+OPENAI_API_KEY, owner metadata and unrelated shell fields remain excluded in the tested ML and
+generic command environments. Worker failure propagation, no-sync inspection and response
+validation remain unchanged. Claude-owned response-schema and local-PDF files are untouched.
+
+At writing, corrected-tree independent review and final aggregate verification remain pending.
+Private coverage remains UNVERIFIED; the task-scoped absence-only decision cannot waive public
+failures. Publication authorization remains pending. The manual's cache pointer brings it to
+5,998 bytes; the filesystem owner's zero-byte discovery-link substitution remains compatible.
+
+### Through-delivery absence decision and recorded-tree qualification, 2026-10-30
+
+The corrected implementation passed all six canonical gate components on unchanged Git tree
+`cf154fec628d71dd92122aa0df1cca40b4d8989c`. The gate started at 05:15:41 UTC; its stamp and six
+component receipts remain preserved. This pass validates the cache correction with the installed
+worker present and retains the earlier failure and clean-main diagnostic history.
+
+At 05:41 UTC the owner approved the bounded absence-only private-suite exception through delivery
+for cleanup/refactor, file-system, Software Team and two-bug follow-up work, including necessary
+integration fixes. The reviewer policy now records that task scope, rather than requiring another
+owner decision for each changed tree. Private coverage remains UNVERIFIED; no private source was
+read or edited and no actual failure is waived. Private authorization provenance stays outside
+publication payloads. Normal public checks, exact-tree verification, independent review and Git
+guards remain mandatory; no GitHub APPROVE review or protection bypass is authorized.
+
+The approval record is itself a protected source change. At writing, its final tree still requires
+fresh full verification and independent attestation. No earlier stamp is rebound or reused as that
+tree's acceptance. Publication remains subject to coordination and its separate authorization.

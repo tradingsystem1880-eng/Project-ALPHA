@@ -4,6 +4,35 @@ Use a focused check while editing, then run final acceptance on the finished tre
 Complete code, documentation, generated contracts and assets before the full gate;
 changing them afterward invalidates its evidence.
 
+The implementing owner carries the authorized task through necessary fixes, covering QA,
+independent review findings, documentation/context upkeep and authorized delivery. Use existing
+development roles and context maps. Related slices can share one coherent commit; focused
+feedback is required during editing, and the unchanged full gate and required independent
+review apply before every actual commit. A line-count target does not force a commit or another
+aggregate run. Missing publication authority is resolved against a concrete qualified payload.
+
+On Linux, orphan-dependent lifecycle tests require the existing process owner:
+
+```sh
+uv run python scripts/run_owned_test.py -- uv run pytest -q tests/unit/test_durable_job_lease.py
+```
+
+The scoped `owned_test_process` fixture fails before those test bodies run when owner identity
+is missing, stale or not a live ancestor running the wrapper. Identity includes Linux process
+birth ticks and survives pytest workers. The wrapper publishes it after enabling subreaping;
+the child cannot independently inspect that ancestor's subreaper flag. This is an execution
+precondition, not a security or application-authority boundary. Ordinary focused tests remain
+runnable with plain pytest, and non-Linux execution keeps its existing behavior.
+The guarded cases cover durable leases, interrupted research execution, suite cancellation
+and workstation job cancellation/startup failure. Mere subprocess use does not establish this
+dependency: a parent that waits for its own children supplies its own reaping, and pidfd exit
+readiness or stopped-execution checks do not assert zombie disappearance.
+
+The web-to-CLI process environment preserves a configured `UV_CACHE_DIR` so isolated workers
+can use the runtime's writable cache when the default home cache is read-only. It does not invent
+a cache path when none is configured. HOME and credential filtering, worker exit/schema
+validation and installed-versus-missing readiness behavior retain their existing boundaries.
+
 | Change | Start here |
 | --- | --- |
 | Python behavior | `uv run pytest -q tests/unit/test_<feature>.py` and its covering integration tests |

@@ -25,14 +25,21 @@ It composes the repo's existing skills — `karpathy-guidelines` (always),
    context clean; you want file:line maps and applicable invariants, not file dumps.
    For risky areas also dispatch `invariants-auditor` in parallel.
 2. **Plan** — `/plan-feature`: a dated plan doc in `docs/superpowers/plans/`
-   (`YYYY-MM-DD-<slug>.md`, repo convention) with context, slices of ≤ ~100 lines
-   each, a per-slice verify command, and explicit DAG / look-ahead / determinism
-   impact. Never a 1-step plan; if it would be, no plan was needed.
+   (`YYYY-MM-DD-<slug>.md`, repo convention) with context, small coherent slices,
+   a focused per-slice verify command, and explicit DAG / look-ahead / determinism
+   impact. Slice by behavior and risk, not a line quota. Never a 1-step plan;
+   if it would be, no plan was needed. Existing task authorization covers routine
+   implementation choices; ask only when a real scope or authority gap remains.
 3. **TDD implement** — per slice: failing test → minimal code → green →
-   `/gate fast` → conventional commit. Data/strategy changes require a
+   focused covering checks → self-review → continue the next dependent slice.
+   Use `/gate fast` when broader backend feedback is useful; it excludes platform
+   tests and does not replace their covering checks. Data/strategy changes require a
    `@pytest.mark.bias_guard` future-poison test (see `tests/bias_guards/`).
    Load `incremental-implementation` for the slicing discipline.
-4. **Gate** — `uv run python scripts/gate.py full` before a commit. Installed Git
+4. **Gate** — finish code, docs and generated outputs, then stage the coherent
+   candidate and run `uv run python scripts/gate.py full` before every actual commit.
+   Related verified slices may share one commit; unrelated work remains separate.
+   No intermediate commit is required merely to advance to the next slice. Installed Git
    hooks bind the staged tree to verification; CI checks the shared component commands.
    Never soften or summarize away a failing step. See `docs/operations/claude-code-harness.md`.
 5. **Review** — review-scope paths (risk-tier, protected control plane, hooks and guarded
@@ -42,6 +49,17 @@ It composes the repo's existing skills — `karpathy-guidelines` (always),
 6. **Docs honesty** — CLAUDE.md / spec / plan-doc status updates land in the same
    change as the code they describe (repo rule). Run
    `verification-before-completion` before claiming done.
+
+The implementing owner stays responsible through necessary fixes, QA, review findings,
+documentation/context upkeep and authorized delivery. Use the existing `navigator`,
+`test-architect`, `independent-reviewer` and, when useful, `retrospective` roles;
+development roles are separate from product research agents. Handoffs identify the
+candidate, owned paths, remaining work, exact commands/results and missing authority.
+Delegate read-only review with the diff and binding hashes, without author justifications;
+never manufacture the verdict or treat an advisory second opinion as approval.
+Preserve failed-run evidence before retries. Changed contents invalidate prior evidence;
+reuse unchanged focused results only within their scope. Follow the
+[development loop](../../../docs/operations/development-loop.md) for final qualification.
 
 ## Non-negotiables inherited from CLAUDE.md
 

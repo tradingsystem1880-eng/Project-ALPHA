@@ -27,7 +27,17 @@ DEFAULT_TIMEOUT_SECONDS = 60.0
 _ANSI_CSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 _ANSI_OSC = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
 _PROCESS_ENV_NAMES = frozenset(
-    {"LANG", "LC_ALL", "LC_CTYPE", "PATH", "PYTHONPATH", "TMPDIR", "TZ", "VIRTUAL_ENV"}
+    {
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "PATH",
+        "PYTHONPATH",
+        "TMPDIR",
+        "TZ",
+        "UV_CACHE_DIR",
+        "VIRTUAL_ENV",
+    }
 )
 _DATA_ENV_NAMES = frozenset({"ALPHA_BULK_DATA_DIR", "ALPHA_BULK_VOLUME_UUID"})
 _PROVIDER_ENV_NAMES = {

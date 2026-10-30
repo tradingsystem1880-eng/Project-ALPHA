@@ -318,6 +318,7 @@ def test_interrupted_attempt_cannot_replenish_budget(
     assert len(result["attempts"]) == 1
 
 
+@pytest.mark.usefixtures("owned_test_process")
 def test_sigterm_reaps_child_and_returns_interrupted(tmp_path: Path) -> None:
     import os
     import signal

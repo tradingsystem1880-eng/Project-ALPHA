@@ -7,14 +7,14 @@ description: Delivers changes incrementally. Use when implementing any feature o
 
 ## Overview
 
-Build in thin vertical slices — implement one piece, test it, verify it, then expand. Avoid implementing an entire feature in one pass. Each increment should leave the system in a working, testable state. This is the execution discipline that makes large features manageable.
+Build in thin vertical slices — implement one piece, test it, verify it, then expand. Each increment should leave the system in a working, testable state. In Project ALPHA, the canonical `alpha-feature-workflow` and development loop control commit timing: focused checks while editing, then full verification and independent review of each actual commit candidate. Related slices may share a coherent commit.
 
 ## When to Use
 
 - Implementing any multi-file change
 - Building a new feature from a task breakdown
 - Refactoring existing code
-- Any time you're tempted to write more than ~100 lines before testing
+- When a slice is becoming difficult to review or verify before testing
 
 **When NOT to use:** Single-file, single-function changes where the scope is already minimal.
 
@@ -25,7 +25,7 @@ Build in thin vertical slices — implement one piece, test it, verify it, then 
 │                                      │
 │   Implement ──→ Test ──→ Verify ──┐  │
 │       ▲                           │  │
-│       └───── Commit ◄─────────────┘  │
+│       └───── Next slice ◄─────────┘  │
 │              │                       │
 │              ▼                       │
 │          Next slice                  │
@@ -36,9 +36,9 @@ Build in thin vertical slices — implement one piece, test it, verify it, then 
 For each slice:
 
 1. **Implement** the smallest complete piece of functionality
-2. **Test** — run the test suite (or write a test if none exists)
+2. **Test** — run focused covering tests (or write a test if none exists)
 3. **Verify** — confirm the slice works as expected (tests pass, build succeeds, manual check)
-4. **Commit** -- save your progress with a descriptive message (see `git-workflow-and-versioning` for atomic commit guidance)
+4. **Checkpoint** — record focused verification and slice status. Commit only a coherent candidate after the repository's full verification and required independent review.
 5. **Move to the next slice** — carry forward, don't restart
 
 ## Slicing Strategies
@@ -142,7 +142,7 @@ Each increment changes one logical thing. Don't mix concerns:
 
 ### Rule 2: Keep It Compilable
 
-After each increment, the project must build and existing tests must pass. Don't leave the codebase in a broken state between slices.
+After each increment, run the checks covering the behavior and contracts it changes; fix failures before dependent work. Build when the change affects build outputs. The final full gate verifies the complete candidate.
 
 ### Rule 3: Feature Flags for Incomplete Features
 
@@ -198,15 +198,13 @@ Be explicit about what's in scope and what's NOT in scope for each increment.
 
 ## Increment Checklist
 
-After each increment, verify with the repository's own commands (see the test-driven-development skill's Discover the Stack First section):
+After each increment, verify the affected behavior with the repository's focused commands:
 
 - [ ] The change does one thing and does it completely
-- [ ] All existing tests still pass (the repository's test command: `npm test`, `./gradlew test`, `pytest`, ...)
-- [ ] The build succeeds (the repository's build command)
-- [ ] Type checking passes, where the stack has one (`npx tsc --noEmit`, `mypy`, ...)
-- [ ] Linting passes (the repository's lint command)
+- [ ] Covering tests pass
+- [ ] Affected build, type and lint checks pass where relevant
 - [ ] The new functionality works as expected
-- [ ] The change is committed with a descriptive message
+- [ ] Slice status and focused evidence are recorded; any actual commit has full verification and required independent review
 
 **Note:** Run each verification command after a change that could affect it. After a successful run, don't repeat the same command unless the code has changed since — re-running on unchanged code adds no information.
 
@@ -216,14 +214,14 @@ After each increment, verify with the repository's own commands (see the test-dr
 |---|---|
 | "I'll test it all at the end" | Bugs compound. A bug in Slice 1 makes Slices 2-5 wrong. Test each slice. |
 | "It's faster to do it all at once" | It *feels* faster until something breaks and you can't find which of 500 changed lines caused it. |
-| "These changes are too small to commit separately" | Small commits are free. Large commits hide bugs and make rollbacks painful. |
+| "Every slice needs a commit" | Use focused feedback while editing; group related verified slices into a coherent candidate before full qualification. |
 | "I'll add the feature flag later" | If the feature isn't complete, it shouldn't be user-visible. Add the flag now. |
 | "This refactor is small enough to include" | Refactors mixed with features make both harder to review and debug. Separate them. |
 | "Let me run the build command again just to be sure" | After a successful run, repeating the same command adds nothing unless the code has changed since. Run it again after subsequent edits, not as reassurance. |
 
 ## Red Flags
 
-- More than 100 lines of code written without running tests
+- A slice grows beyond a coherent behavior without focused feedback
 - Multiple unrelated changes in a single increment
 - "Let me just quickly add this too" scope expansion
 - Skipping the test/verify step to move faster
@@ -238,7 +236,7 @@ After each increment, verify with the repository's own commands (see the test-dr
 
 After completing all increments for a task:
 
-- [ ] Each increment was individually tested and committed
+- [ ] Each increment was individually tested; actual commits are coherent and independently reviewed where required
 - [ ] The full test suite passes
 - [ ] The build is clean
 - [ ] The feature works end-to-end as specified
