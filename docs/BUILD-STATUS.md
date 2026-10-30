@@ -1,5 +1,30 @@
 # Project ALPHA — Build Status (delivery history)
 
+**2026-10-25 local candidate — bounded DefiLlama snapshot query:** On isolated branch
+`codex/storage-snapshot-query-audit` from verified commit `e635e6cb5bc7b9fa688dc524998d7fe1ff8eebdc`,
+added `alpha crypto-data snapshot-query SNAPSHOT_ID` for exactly one `defi_tvl` member. The reader
+checks volume UUID, exact snapshot/member identity, manifest and raw lineage, artifact hash, quality,
+and schema. It caps normalized Parquet at 32 MiB, the raw receipt at 8 MiB, accepted input at 50,000
+rows, and each page at 1,000 rows; `has_more` and `next_offset` make continuation explicit. A
+50,001st row is only a rejection sentinel. Fixed-width selected columns contribute about 1.2 MB /
+1.15 MiB at the accepted row cap before Polars internal buffers; this is a logical materialization
+bound, not an OS-enforced decompression or process-RSS ceiling. JSON retains observation and
+availability clocks, USD units, artifact/dataset/raw-response hashes, provider schema/parser
+versions, and receipt fetch time. `available_at` uses only the parser's next-UTC-day convention;
+fetch time is retrieval evidence, every result sets `point_in_time_claim=false`, and no historical
+publication time is inferred.
+
+Synthetic focused storage/query/CLI tests passed (39); DefiLlama fixture/acquisition tests passed
+(21); public fixture/harness checks passed (14); manual-size tests passed (23). Root Ruff check and
+format passed (1,001 files); strict mypy passed across packages/apps/tests (859 files) and harness
+scripts (17 files); import contracts kept all 13 rules. Atlas lock/sync, lint/format, package mypy
+(23 files), full non-network tests (102 passed, one Starlette deprecation warning), and generated
+freshness (8 outputs) passed. Root and Atlas lock/sync, harness lint, plan-check, and `git diff
+--check` passed. Independent read-only review approved the byte/row/page bounds and confirmed no
+silent truncation or historical point-in-time claim. Changed-files Semgrep passed (198.2 seconds),
+and the Semgrep contract check passed. No full gate, DuckDB/dependency change, migration, provider
+call, commit, merge, deployment, or publication was performed.
+
 **2026-10-02 crypto provider and archive hygiene work (in progress):** Added DefiLlama public
 reference data for protocol TVL, stablecoin supply, current yield-pool snapshots, and exact-pool
 history across parser, qualification, CLI acquisition, typed API, and Data Manager surfaces. The
@@ -2736,3 +2761,59 @@ Focused combined cleanup checks passed 139 tests and scoped Ruff passed. Atlas r
 fresh context handoff demonstration and final combined-tree gate/review are separate remaining
 obligations at this entry; no standalone receipt qualifies this assembled tree. Final receipts
 and publication disposition are retained in the exact candidate's ignored evidence directory.
+
+
+## 2026-10-30 — Recover stranded bounded snapshot query
+
+The existing snapshot-query slice from `4710a00392cc40739f97ed49890a85ac911ec6e0` is
+reconciled onto main `f847581f2703f6b5b36aeccdf877c4354a19e176` in an isolated successor.
+Original history and main's PR95/96 protections remain intact. Selected member/raw-lineage
+verification replaces whole-store payload scanning for this query. Byte ceilings precede payload
+hashing; mixed families and unsafe metadata paths fail closed. Availability/fetch-time disclosures
+and `point_in_time_claim=false` remain. Stored chain cells are not decoded; the chain label comes
+from manifest identity. Generic snapshot verification and admission remain separate.
+
+Inherited checks passed 39 cases; four discriminating regressions failed before correction.
+Corrected focused checks passed 45 cases including the availability poison/control. Independent
+early review identified repeated unchanged captures with distinct raw receipts; exact retained
+`--manifest-id` reopening resolves ambiguity without rewriting the snapshot contract.
+[Scope and owner decision](superpowers/plans/2026-10-25-crypto-snapshot-query.md#cleanup-recovery--2026-10-30).
+Private coverage stays UNVERIFIED under the scoped absence-only exception. Final full/review/CI
+acceptance belongs to external exact-tree evidence; no historical receipt is reused.
+
+The first full attempt stopped at backend coverage: 6,716 cases passed, 61 skipped and two
+subtests passed, but 92.98% missed the unchanged 93% floor. Added public malformed-input and
+lineage regressions address new-reader error paths; no production code or threshold changes.
+A fresh complete gate and final independent review are required for this corrected tree.
+
+## 2026-10-29 PR #95 post-merge advisory findings (follow-up)
+
+After PR #95 merged, the advisory Codex review raised two P2 findings in code from the preserved
+integration history; both were verified as real:
+- `GET /api/ml/exchanges/{id}/evaluation` rejected schema 2 and 3 exchanges: `MlEvaluation`
+  allowed only version 1, while `ml evaluate` keeps the request's contract version.
+- The owner-selected local PDF import blocked indefinitely on a FIFO before its regular-file
+  check could reject it.
+
+Fixes:
+- The response model accepts the CLI's supported versions; OpenAPI and the client were regenerated.
+- The PDF open uses `O_NONBLOCK`; the regular-file, symlink, size and replacement checks are
+  unchanged.
+
+Regressions: every supported evaluation version (parametrized over the CLI's supported set, so a
+new CLI version fails until the web contract follows), a bounded FIFO rejection, and a negative
+control that an unsupported version is still rejected. Versions 2 and 3 and the FIFO case were red
+before the fix; version 1 and the negative control passed before and after.
+
+
+## 2026-10-30 — Coordinated P2 and snapshot follow-on assembly
+
+A separate integration candidate retains foundation PR97 `d1aa8157`, P2 PR98 `daece223` and
+qualified snapshot recovery `6eb4d5df`. The supported ML v1/v2/v3 response and nonblocking PDF
+FIFO rejection coexist with foundation UV-cache/ownership/context controls and exact-manifest
+snapshot reopening. Production/test bytes are verified against their source commits; shared
+reviewer and delivery histories retain all scopes and failures. Derived Atlas output is regenerated
+from the complete tree. The combined candidate requires its own exact-tree full gate and
+independent review; no prior individual pass accepts this assembly. Private coverage stays
+UNVERIFIED under the existing task-scoped absence-only decisions. Main and existing PRs are not
+mutated during preparation. See the [follow-on execution record](superpowers/plans/2026-10-25-crypto-snapshot-query.md#coordinated-follow-on-assembly--2026-10-30).

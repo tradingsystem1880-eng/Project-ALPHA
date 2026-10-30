@@ -7598,9 +7598,9 @@ export interface components {
             rows: number;
             /**
              * Schema Version
-             * @constant
+             * @enum {integer}
              */
-            schema_version: 1;
+            schema_version: 1 | 2 | 3;
             score: components["schemas"]["MlEvaluationScore"];
             /** Symbols */
             symbols: number;

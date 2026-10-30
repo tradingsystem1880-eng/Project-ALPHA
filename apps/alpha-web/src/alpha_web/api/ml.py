@@ -289,7 +289,8 @@ class MlEvaluationScore(StrictModel):
 
 
 class MlEvaluation(StrictModel):
-    schema_version: Literal[1]
+    # `ml evaluate` keeps the request's version; see ml_contract.SUPPORTED_CONTRACT_SCHEMA_VERSIONS.
+    schema_version: Literal[1, 2, 3]
     authority: Literal["diagnostic_only"]
     membership_status: Literal["current_membership_warning", "declared_unverified"]
     rows: int

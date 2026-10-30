@@ -493,3 +493,46 @@ verification, independent review, normal attestation and Git guards remain manda
 This grants no GitHub APPROVE review, protection/hook bypass, force push, deployment,
 research/trading authority or uncoordinated publication. Preserve prior decisions and verdicts as
 history; this decision supersedes absence-only blockers only within the four named workstreams.
+
+
+## Stranded snapshot-query cleanup absence exception — 2026-10-30
+
+The owner-approved remaining-cleanup absence-only exception covers recovery and necessary
+reconciliation of existing snapshot-query commit `4710a00392cc40739f97ed49890a85ac911ec6e0`
+onto main `f847581f2703f6b5b36aeccdf877c4354a19e176` through delivery. Scope and exact
+authorization references are recorded in
+`docs/superpowers/plans/2026-10-25-crypto-snapshot-query.md#task-scoped-missing-private-suite-decision`.
+Verify scope and metadata independently. Documented absence of `tests/holdout/` alone is
+informational/nonblocking; private coverage stays UNVERIFIED, never PASS. Do not read/modify
+private contents or retry denied access. All present-suite failures, other required checks,
+software findings, fresh exact-tree independent review, public full gates, Git guards and
+hosted CI retain their normal requirements. No unrelated exception or authority is granted.
+
+
+## Two-bug follow-up through-delivery absence exception — 2026-10-30
+
+The owner was asked, in `Sentinel_f34bce300f4881919c0e610ebafb67fa` (2026-10-30 03:51 UTC):
+"do you approve the missing-private-suite exception through delivery for the cleanup/refactor,
+file-system, Software Team and two-bug follow-up tasks? All public checks, independent review
+and honest disclosure that private tests were not run remain mandatory." The owner answered
+"Yes I approve" in `Sentinel_98705aca9ff081919c43e10c7856c9fe` (2026-10-30 05:41 UTC).
+
+This record covers only the two-bug follow-up task and its necessary corrections through
+delivery; the other three tasks are recorded by their own owners. The task is the two verified
+PR #95 post-merge advisory P2 findings: `MlEvaluation.schema_version` accepting the CLI's
+supported contract versions (`apps/alpha-web/src/alpha_web/api/ml.py`, regenerated OpenAPI and
+client), and `O_NONBLOCK` on the owner PDF open (`apps/alpha-cli/src/alpha_cli/local_pdf_cmds.py`),
+with their regressions in `tests/unit/test_web_ml.py` and `tests/unit/test_research_local_pdf.py`,
+the appended `docs/BUILD-STATUS.md` entry, regenerated Atlas and this section. It is based on
+main `f847581f2703f6b5b36aeccdf877c4354a19e176`. Web `_catalog.py` `UV_CACHE_DIR` forwarding
+belongs to Software Team and is outside this task.
+
+Within that scope only documented ABSENCE of `tests/holdout/` is informational and nonblocking.
+Private coverage stays UNVERIFIED, never PASS; do not read or modify private contents or fabricate
+tests. Present-suite failures, any other unrunnable check, any component that does not run, a
+hosted coverage result below the unchanged threshold, a missing or sub-1.0 s controller-death
+margin receipt, and every other blocking finding still BLOCK. A fresh full gate and a fresh
+independent review of the final tree, including this section, remain mandatory, with normal
+attestation and Git guards. No GitHub APPROVE review, bypass, override, force push, protection
+change, deployment, trading, private source access, threshold or CI weakening, unrelated or
+standing exception is granted. PRs #92 and #93 are not altered.
