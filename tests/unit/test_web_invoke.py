@@ -75,6 +75,21 @@ def test_web_cli_environment_scopes_provider_credentials_to_exact_commands(
     assert "UNRELATED_SHELL_STATE" not in coingecko | ibkr
 
 
+@pytest.mark.parametrize("operation", ["capabilities", "train"])
+def test_web_ml_environment_preserves_configured_worker_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    cache = str(tmp_path / "uv-cache")
+    monkeypatch.setenv("UV_CACHE_DIR", cache)
+    monkeypatch.setenv("ALPHA_TIINGO_API_KEY", "synthetic-provider-key")
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "synthetic-auth-home"))
+    environment = _catalog._cli_environment(tmp_path, ["ml", operation])
+    assert environment["UV_CACHE_DIR"] == cache
+    assert not {"ALPHA_TIINGO_API_KEY", "CODEX_HOME"}.intersection(environment)
+    assert "UV_CACHE_DIR" not in _catalog._cli_environment(tmp_path, ["ml-extra", operation])
+    assert "UV_CACHE_DIR" not in _catalog._cli_environment(tmp_path, ["backtest", "run", "SPY"])
+
+
 def test_web_investigation_run_preserves_only_codex_auth_home(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

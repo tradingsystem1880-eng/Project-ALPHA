@@ -1,5 +1,10 @@
 # Combined Mac portability qualification
 
+> Evidence navigation: `.alpha/state/` paths below name ignored, machine-local receipts.
+> These are handoff locations, not repository links.
+> Their contents and continued availability are not established by this checkout;
+> retain the dated result and pending-evidence limits recorded below.
+
 **Delivery state:** Preserved 24f checkpoint reviewed with 48/49 checks passing; aggregate coverage failed. An isolated portable-evidence successor is in progress. No integration or acceptance.
 
 **Full scope:** owned by the [canonical feature readiness checklist](../../context/feature-readiness-checklist-2026-10-27.md); this plan covers only Mac portability qualification and marks no checklist feature done.
@@ -154,8 +159,8 @@ exercise the [approval reader](../../../apps/alpha-cli/src/alpha_cli/_native_rul
 The [native platform tests](../../../tests/unit/test_native_fixture_portability.py)
 retain unsupported-host rejection and explicit kernel prerequisites.
 
-[Final source identity](../../../.alpha/state/mac-portability/final-source.json)
-lists every changed path/hash. [Final verification evidence](../../../.alpha/state/mac-portability/final-evidence.json)
+Final source identity (`.alpha/state/mac-portability/final-source.json`)
+lists every changed path/hash. Final verification evidence (`.alpha/state/mac-portability/final-evidence.json`)
 is written after the frozen-tree checks finish; it records aggregate failure separately
 from passing source review and individual components. These local ignored receipts
 are preserved for handoff, not committed test or scientific evidence.
@@ -182,14 +187,14 @@ back a real database. No real database was used.
 ## Portable-evidence successor (2026-10-26)
 
 Parent-directed coverage audit is preserved in
-[the module/function inventory](../../../.alpha/state/mac-portability/coverage-scope-audit/audit.json).
+the module/function inventory (`.alpha/state/mac-portability/coverage-scope-audit/audit.json`).
 The 24f checkpoint has all 49 canonical commands accounted for: 48 passed, with statement
 coverage 51478/56170=91.6467865% below 93%. Branch coverage was not measured. The unchanged
 denominator needs 761 additional covered statements. This is not proved to be an exclusively
 Linux-dependent deficit: selected portable reader/accounting/validator/artifact functions have
 192 missing statements, before overlap and scenario design. Counts are ceilings, not gains.
 
-The [pre-execution bounded protocol](../../../.alpha/state/portable-evidence/portable-successor-protocol.json)
+The pre-execution bounded protocol (`.alpha/state/portable-evidence/portable-successor-protocol.json`)
 freezes ordinary synthetic charged-store fixtures, explicit untrusted lifecycle serialization
 inputs, and the existing two-role seven-bar canonical numerical fixture. There are no learned
 fits, native process launches, scientific replicates, provider calls or native admission claims.
@@ -224,8 +229,8 @@ The initial eight-case curve receipt includes seven structural/finiteness failur
 existing DataError whose message differed from the test expectation; it is not eight new bugs.
 Initial setup, lint and typing failures remain in the receipt directory as well.
 
-[Successor source manifest](../../../.alpha/state/portable-evidence/final-source.json) and
-[successor verification record](../../../.alpha/state/portable-evidence/final-evidence.json)
+Successor source manifest (`.alpha/state/portable-evidence/final-source.json`) and
+successor verification record (`.alpha/state/portable-evidence/final-evidence.json`)
 bind final results and remaining coverage by module to this successor. These receipts are
 created during final verification; until they exist, that verification is pending. The original
 21-failure diagnosis and 149-skip taxonomy remain in predecessor evidence: immediate Linux
@@ -242,7 +247,7 @@ Linux process ownership and separately approved source/runtime prerequisites.
 The preserved portable checkpoint `72809652a723b1597efd96873780bcfc152cc619` passed
 6,403 tests with 149 skips and two subtests, but failed coverage at 51,679/56,172
 (92.0014%); 561 further covered statements are required at that denominator. Its public
-[comparison inventory](../../../.alpha/state/portable-evidence/coverage-comparison.json)
+comparison inventory (`.alpha/state/portable-evidence/coverage-comparison.json`)
 records 201 more covered statements and two added production statements, with no exclusions.
 Branches remain unmeasured. The intermediate checkpoint's remaining components were not
 rerun while this bounded follow-up was being prepared.
@@ -252,8 +257,8 @@ bindings and changed replay identity before reservation effects, using ordinary 
 synthetic stores. It preserves full charges and has no native process/owner/profile capability.
 [Admission tests](../../../tests/unit/test_native_rule_portable_admission.py) and their
 pre-run rationale/receipts (13 focused tests passed, plus Ruff/format/mypy) live under `.alpha/state/portable-evidence/admission-followup/`.
-The final [source manifest](../../../.alpha/state/portable-evidence/admission-followup/final-source.json)
-and [verification record](../../../.alpha/state/portable-evidence/admission-followup/final-evidence.json)
+The final source manifest (`.alpha/state/portable-evidence/admission-followup/final-source.json`)
+and verification record (`.alpha/state/portable-evidence/admission-followup/final-evidence.json`)
 are this packet's completion authority for engineering checks; until present they remain pending.
 No result from either predecessor is transferred to the final source.
 

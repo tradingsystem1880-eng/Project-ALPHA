@@ -1,5 +1,7 @@
 # Finish outstanding work and establish a documented clean baseline
 
+**Current cloud reconciliation (2026-10-30):** The [cloud-visible ledger](#cloud-visible-ledger-reconciliation-2026-10-30) accounts for this executor and observed GitHub refs/PRs. The saved Mac path/branch/operation ledger remains unavailable and unverified; its preservation and owner-disposition obligations are still open. Earlier dated inventories below describe their own machines and checkpoints.
+
 **Current status — 2026-10-17:** The preserved chart/CASH recovery was accepted through [PR #55](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/55), and the bounded maintainability cleanup through [PR #58](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/58); both have seven successful required checks. This closes those named deliveries only, not every item in this broader historical hygiene plan. Preserve the dated incident record and keep private coverage UNVERIFIED.
 
 Earlier dated status and incident entries are preserved as historical records.
@@ -207,3 +209,32 @@ The dated claim above is preserved as history; the unavailable contents were not
 opened, recovered or verified and supply no current policy authority. Consult the
 current [operating manual](../../../CLAUDE.md) and [commit guard](../../../scripts/git_guard.py)
 for current requirements.
+
+
+## Cloud-visible ledger reconciliation (2026-10-30)
+
+Observed base: `f847581f2703f6b5b36aeccdf877c4354a19e176` (PR96); direct remote-main
+read-back agrees. The private ledger under `.alpha/state/project-cleanup-20261030/cloud-ledger/`
+records Git refs, porcelain path/status rows, stash metadata, operation outcomes, preservation
+checks and direct GitHub read-backs. It contains no owner-data or protected-test inventory.
+
+| Observed cloud item | Evidence and disposition |
+|---|---|
+| Owner checkout, branch `work` at PR95 merge `dabdb08f` | Clean tracked/untracked status; retained unchanged. No claim about ignored owner state. |
+| Active cleanup/refactor checkout at PR96 | Its staged source and planned follow-up are retained for one assembled delivery; fresh qualification remains required after each source change. |
+| Cancelled docs-only predecessor at PR96 | Its six-file delta matched the passed checkpoint. Moved into the task's private retained-checkpoint area; All 42,733 file/symlink entries are retained; 42,732 have identical metadata, while Git updated its own pointer timestamp. The tracked binary diff is byte-identical. Nothing was deleted; absolute-path venvs are preserved evidence, not runnable environments. |
+| Three local branch tips; no stash entries | All three committed tips are ancestors of the observed main. Uncommitted deltas and ignored evidence remain separately preserved; ancestry does not make them disposable. |
+| 48 remote branch heads and one archive tag | Exact tips reconciled: 40 ancestors of main, nine non-ancestors retained. The explicit backup branch and archive tag remain. No remote ref was changed or deleted. |
+| Open PR80, PR91, PR92 and PR93 | Direct PR read-backs confirm they remain open. Retain their source and discussion for explicit owner disposition; this ledger does not infer semantic delivery from ancestry or close them administratively. |
+
+The completed operation record covers read-only metadata/object fetches, creation of the two
+owned temporary worktrees, the preserved interrupted docs-only gate, the exact 49-step passed
+checkpoint, and the verified predecessor move. The passed checkpoint's source tree, patch,
+receipts and review are retained separately; later cleanup cannot inherit its stamp.
+
+This closes reconciliation and preservation disposition for the observed cloud items, not the
+historical owner-side handover. The reported 144 paths, original `454c940f` checkout, 126 status
+rows, 11 dirty Mac worktrees and physical storage were not available in this executor. Their
+item-level reconciliation and any retirement decision remain blocked on the saved ledger/Mac
+and owner disposition. Do not infer missing data is disposable or turn historical counts into a
+new verified inventory. Broader bloat remains open in the existing foundation plan.

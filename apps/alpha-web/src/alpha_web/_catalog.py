@@ -67,6 +67,9 @@ def _cli_environment(
 ) -> dict[str, str]:
     """Build the command-scoped environment allowed to cross the web-to-CLI boundary."""
     allowed = _PROCESS_ENV_NAMES | _DATA_ENV_NAMES | _credential_names_for_command(args)
+    if args[:1] == ["ml"]:
+        # The isolated worker already permits this nonsecret uv runtime-cache location.
+        allowed = allowed | frozenset({"UV_CACHE_DIR"})
     if args[:3] == ["research", "investigations", "run"]:
         # prepare() resolves the owner's auth reference, then replaces this with its
         # dedicated runtime home. Do not forward owner configuration to other commands.

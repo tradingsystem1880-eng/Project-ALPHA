@@ -2494,3 +2494,51 @@ absence-only private-suite exception for this bounded PR93 work through delivery
 coverage remains UNVERIFIED. All other checks and independent review remain mandatory.
 Final aggregate/review outcomes are recorded in the candidate evidence; historical receipts are
 not reused. Publication waits for verified PR95 integration into main and parent coordination.
+
+
+## 2026-10-30 Delivery status and bounded cloud cleanup reconciliation
+
+Direct GitHub and Git parentage checks confirm [PR95](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/95)
+merged at `dabdb08fee9ee4637339d26016d85acf16937546` and
+[PR96](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/96) at
+`f847581f2703f6b5b36aeccdf877c4354a19e176`. Their head CI runs
+[40962372679](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/40962372679) and
+[40972171573](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/40972171573)
+each completed with seven successful listed jobs. The plans now distinguish those delivered
+engineering packages from their historical unpublished/BLOCK checkpoints; earlier failure and
+UNKNOWN-cause records remain unchanged. Private coverage remains UNVERIFIED.
+
+The [bounded cleanup/refactor successor](superpowers/plans/2026-10-30-project-lineage-projection-refactor.md)
+consolidates project-history policy and removes the test-only `changed_paths` wrapper in favor of
+`comparison_context`; existing selection and gate semantics are retained. ADR/governance routes
+and local receipt references are cleaned up. The prior 12-path checkpoint passed all six public
+components/49 steps on `01bf937e`; the expanded successor needs its own final gate and review.
+No prior private-suite exception is inherited, and no publication or merge has occurred.
+
+The [existing hygiene plan](superpowers/plans/2026-10-08-repository-hygiene.md#cloud-visible-ledger-reconciliation-2026-10-30)
+records the observed cloud branch/path/operation ledger, retained refs and verified move of the
+cancelled docs-only predecessor. The saved Mac ledger, physical storage and historical owner-side
+counts remain unverified and separately blocked; no unique local data was deleted. This bounded
+cloud reconciliation does not declare the broader cleanup/refactor programme complete.
+
+
+### Cleanup aggregate re-entry findings (2026-10-30)
+
+The expanded `f1550eca` gate stopped at backend pytest: three failures, 6,711 passes, 61 skips,
+two passed subtests; coverage met the unchanged floor at 93.01%. Complete failed evidence is
+preserved privately by the [cleanup plan](superpowers/plans/2026-10-30-project-lineage-projection-refactor.md#aggregate-re-entry-findings-and-bounded-repairs).
+One synthetic cancellation test read an empty PID marker between creation and content write.
+Its deterministic regression was red, then green after the test reader waited for contents
+within the same five-second bound. Production supervisor, budgets and exact-once assertions stay.
+
+Two automatic ML capability aliases exposed a separate installed-worker re-entry defect:
+web-to-CLI filtering dropped configured `UV_CACHE_DIR`, already allowed by CLI-to-worker launch,
+and uv failed cache initialization. ML subprocesses now retain that nonsecret runtime setting.
+Credential/auth-home routing, isolation and locked/no-sync launches are preserved. Both actual
+installed-worker routes return HTTP 200; no P2 router/API or generated client contract changed.
+
+The properly owned focused selection passed 102 tests after these repairs; scoped typing,
+lint and format passed. An earlier direct invocation lacked the required process owner and
+failed two reaping checks; that attempt is retained, and the same assertions passed under the
+existing ownership runner. Final assembled gate/review remain required; no actual failure is
+waived by the pending task-scoped private-suite decision.

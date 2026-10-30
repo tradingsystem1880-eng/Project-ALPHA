@@ -77,17 +77,6 @@ def binding(context: dict[str, Any]) -> dict[str, Any]:
     return {key: context[key] for key in _BINDING_KEYS}
 
 
-def changed_paths(
-    root: Path,
-    base: str | None = None,
-    *,
-    git_runner: GitOutputRunner | None = None,
-) -> list[str] | None:
-    """Merge-base diff plus dirty/untracked files; unavailable history is not no change."""
-    paths: list[str] | None = comparison_context(root, base, git_runner=git_runner)["paths"]
-    return paths
-
-
 def mutation_targets(root: Path, paths: list[str] | None) -> list[str]:
     """Return the exact target set used by the backend mutation gate."""
     if paths is None:
