@@ -49,7 +49,7 @@ Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`
 - Components: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
   `literature`, `qlib`, `atlas`, `eval`); empty steps fail; full needs all.
 - Discover: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;
-  `alpha info procedures --json`. Catalog supports launch forms.
+  `alpha info procedures --json`. [Map](docs/context/README.md).
 - Install: `uv sync --locked`; cloud: [README](README.md).
 - Tests: `uv run pytest -q -m "not network"`; bias: `uv run pytest -q -m bias_guard`.
   Gate owns Linux pytest; build before browsers.

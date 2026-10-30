@@ -1,6 +1,6 @@
 # Reconcile retained PR93 recovery on PR95
 
-**Delivery state:** Implemented locally; focused verification, independent review and aggregate status recorded in task evidence. Final PR95 head integrated; aggregate qualification in progress.
+**Delivery state:** Completed bounded engineering delivery through [PR96](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/96), merged at `f847581f2703f6b5b36aeccdf877c4354a19e176`. The [delivery reconciliation](#delivery-reconciliation-2026-10-30) records the verified head and CI. Private coverage remains UNVERIFIED; later cleanup does not inherit this delivery's exception.
 
 ```json
 {
@@ -13,7 +13,7 @@
   "slices": [
     {"title": "Discriminating recovery and cancellation regressions", "verify": "uv run pytest -q tests/integration/test_research_cli.py -k 'cancel_does_not_clear or retry_recovers_published_d1'", "expected": "Controls fail on the published baseline before implementation.", "rollback": "Keep baseline and test patch separately.", "status": "done"},
     {"title": "Retain recovery, cancellation and both reconciliation protections", "verify": "Focused research CLI, control-store and native ownership tests plus changed-file static checks.", "expected": "Exact recovery and cancellation controls pass without releasing native or research capacity.", "rollback": "Retain isolated worktree and patch; do not alter PR95.", "status": "done"},
-    {"title": "Review and preserve local reconciliation", "verify": "Atlas regeneration/freshness, plan-check, independent review and exact patch/tree hashes.", "expected": "Reviewable local checkpoint; final-head reconciliation and full qualification explicitly pending.", "rollback": "Preserve evidence without commit or publication when repository gates remain pending.", "status": "in_progress"}
+    {"title": "Review and preserve local reconciliation", "verify": "Atlas regeneration/freshness, plan-check, independent review and exact patch/tree hashes.", "expected": "Final-head reconciliation, independent review and hosted CI recorded for the bounded PR96 delivery.", "rollback": "Preserve evidence without commit or publication when repository gates remain pending.", "status": "done"}
   ],
   "tier_impact": ["risk", "dag", "determinism"],
   "docs_to_update": ["CLAUDE.md", ".claude/rules/alpha-cli.md", "docs/BUILD-STATUS.md", "docs/superpowers/plans/2026-10-24-d1-job-recovery.md"],
@@ -41,3 +41,18 @@ validator preloading, deadline/elapsed disclosures, final tests and review appen
 The owner approved the bounded absence-only private-suite exception for this recovery/cancellation
 work through delivery (2026-10-29 20:04 UTC); private coverage stays UNVERIFIED, every other check
 and independent review remain mandatory. See the scoped reviewer appendix.
+
+
+## Delivery reconciliation (2026-10-30)
+
+[PR96](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/96) is merged, with head
+`e196fb3d24ab01976beb434bb7e53fdb62866359` and main merge
+`f847581f2703f6b5b36aeccdf877c4354a19e176`. Its first parent is the PR95 merge
+`dabdb08fee9ee4637339d26016d85acf16937546`; the final PR95 source is retained.
+Direct GitHub read-back agrees with local Git parentage. Head CI
+[40972171573](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/40972171573)
+completed successfully; all seven listed jobs succeeded. The PR's code-review summary names the
+same head and reports no unresolved findings. This replaces the earlier in-progress delivery
+status; the source/check history above remains preserved. The task's private-suite absence
+exception applies to this recovery/cancellation delivery only. New cleanup/refactor work requires
+its own qualification and owner decision; no old stamp or exception transfers.

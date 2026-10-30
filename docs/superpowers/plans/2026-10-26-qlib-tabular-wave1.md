@@ -1,5 +1,11 @@
 # Qlib tabular research, first wave
 
+> Evidence navigation: `.alpha/state/` paths below name ignored, machine-local receipts.
+> Receipt paths under `../qlib-tabular-wave1-20261026/` name a sibling worktree.
+> These are handoff locations, not repository links.
+> Their contents and continued availability are not established by this checkout;
+> retain the dated result and pending-evidence limits recorded below.
+
 **Delivery state:** Completed local implementation and bounded runtime checks — delivery integration and acceptance pending; final review/full-gate outcome is recorded separately below.
 
 Baseline: `integration/project-alpha-pr81-88-qualified-20261024`, exact commit
@@ -218,7 +224,7 @@ Score units differ across recipes; comparison output selects no winner and grant
 The existing ML Research selector and result/tear-sheet views relay the same CLI contracts.
 
 Local reproducibility evidence is retained under
-[`.alpha/state/qlib-tabular-wave1/`](../../../.alpha/state/qlib-tabular-wave1/), including
+`.alpha/state/qlib-tabular-wave1/`, including
 initial failures, synthetic exchanges, comparison bytes and final check logs. These ignored
 local receipts are supporting evidence, not committed release artifacts. The canonical gate
 retains its own component receipts under `.alpha/state/`; final response names the final
@@ -428,7 +434,7 @@ Astra closed **AR-004** after an actual early-stop regression showed all eight f
 
 The ML list now distinguishes prepared inputs, predictions awaiting canonical replay, recorded replay and recorded counterfactual refit. Metadata no longer becomes a “VALIDATED” claim. The27-case browser replay includes those states, dependency failures, degenerate/tied diagnostics and all three viewport accessibility checks; existing macOS snapshots pass. Linux ML screenshots remain unqualified.
 
-Exact final tree, changed paths, source patch, independent review and canonical-gate result remain in the sealed sibling worktree. The [final verification summary](../../../../qlib-tabular-wave1-20261026/.alpha/state/qlib-tabular-wave1/optional-backends/final-verification-summary.json) records that wave's outcome; it does not certify successor edits. The [first qualified checkpoint](../../../../qlib-tabular-wave1-20261026/.alpha/state/qlib-tabular-wave1/checkpoints/73daaeae84dc2a4a3fd5e8127dd1a3ad25e20582/verification-summary.json) remains independently preserved. No authentic private suite has been established; no hidden-source access or waiver is claimed. Current successor work is scoped by the [W11 refit packet](2026-10-26-qlib-w11-refit.md).
+Exact final tree, changed paths, source patch, independent review and canonical-gate result remain in the sealed sibling worktree. The final verification summary (`../qlib-tabular-wave1-20261026/.alpha/state/qlib-tabular-wave1/optional-backends/final-verification-summary.json`) records that wave's outcome; it does not certify successor edits. The first qualified checkpoint (`../qlib-tabular-wave1-20261026/.alpha/state/qlib-tabular-wave1/checkpoints/73daaeae84dc2a4a3fd5e8127dd1a3ad25e20582/verification-summary.json`) remains independently preserved. No authentic private suite has been established; no hidden-source access or waiver is claimed. Current successor work is scoped by the [W11 refit packet](2026-10-26-qlib-w11-refit.md).
 
 Current states: listed/adapter-implemented/local-runtime-executable and bounded synthetic checks complete for all eight recipes. Delivery integration, Linux/Windows native execution and screenshots, broader numerical calibration, authentic private coverage, real-data/discovery approval, empirical economics, counterfactual refitting and promotion remain pending. Persistent fitted-model reuse remains unsupported. No package decision is needed for the verified local pins; unsupported OS/ABI/source-build or accepted-stack upgrades require a separate decision.
 

@@ -5,6 +5,8 @@ release posture:
 
 | Document | Purpose | Last reviewed |
 |---|---|---|
+| [Capability authority matrix](capability-authority-matrix.md) | Canonical surface permissions and authority boundaries; generated from the implemented surfaces | Generated; see source provenance |
+| [OpenAPI operation classification](openapi-operation-classification.json) | Generated per-operation modes and authority reasons; checked against OpenAPI | Generated; see source provenance |
 | [Dependency/license matrix](2026-07-19-dependency-license-matrix.md) | Root, IB/Docker-extra, service, frontend-test, isolated-worker, and Research Scientist candidate inventory; upstream disposition and distribution gate | 2026-08-06 |
 | [Post-v2 + v3 risk register](2026-07-19-post-v2-risk-register.md) | Provider/paper, Workstation v3, and Research Scientist safety, determinism, authority, source, and release risks | 2026-08-07 |
 | [neurotrader888 technique provenance](2026-09-12-neurotrader888-provenance.md) | Licence/permission record and upstream-file → ALPHA-module map for the neurotrader888 technique port (MIT + owner-recorded author approval; IntramarketDifference re-implemented) | 2026-09-12 |

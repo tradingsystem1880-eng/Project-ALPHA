@@ -2594,3 +2594,145 @@ guards remain mandatory; no GitHub APPROVE review or protection bypass is author
 The approval record is itself a protected source change. At writing, its final tree still requires
 fresh full verification and independent attestation. No earlier stamp is rebound or reused as that
 tree's acceptance. Publication remains subject to coordination and its separate authorization.
+
+
+## 2026-10-30 Delivery status and bounded cloud cleanup reconciliation
+
+Direct GitHub and Git parentage checks confirm [PR95](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/95)
+merged at `dabdb08fee9ee4637339d26016d85acf16937546` and
+[PR96](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/96) at
+`f847581f2703f6b5b36aeccdf877c4354a19e176`. Their head CI runs
+[40962372679](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/40962372679) and
+[40972171573](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/40972171573)
+each completed with seven successful listed jobs. The plans now distinguish those delivered
+engineering packages from their historical unpublished/BLOCK checkpoints; earlier failure and
+UNKNOWN-cause records remain unchanged. Private coverage remains UNVERIFIED.
+
+The [bounded cleanup/refactor successor](superpowers/plans/2026-10-30-project-lineage-projection-refactor.md)
+consolidates project-history policy and removes the test-only `changed_paths` wrapper in favor of
+`comparison_context`; existing selection and gate semantics are retained. ADR/governance routes
+and local receipt references are cleaned up. The prior 12-path checkpoint passed all six public
+components/49 steps on `01bf937e`; the expanded successor needs its own final gate and review.
+No prior private-suite exception is inherited, and no publication or merge has occurred.
+
+The [existing hygiene plan](superpowers/plans/2026-10-08-repository-hygiene.md#cloud-visible-ledger-reconciliation-2026-10-30)
+records the observed cloud branch/path/operation ledger, retained refs and verified move of the
+cancelled docs-only predecessor. The saved Mac ledger, physical storage and historical owner-side
+counts remain unverified and separately blocked; no unique local data was deleted. This bounded
+cloud reconciliation does not declare the broader cleanup/refactor programme complete.
+
+
+### Cleanup aggregate re-entry findings (2026-10-30)
+
+The expanded `f1550eca` gate stopped at backend pytest: three failures, 6,711 passes, 61 skips,
+two passed subtests; coverage met the unchanged floor at 93.01%. Complete failed evidence is
+preserved privately by the [cleanup plan](superpowers/plans/2026-10-30-project-lineage-projection-refactor.md#aggregate-re-entry-findings-and-bounded-repairs).
+One synthetic cancellation test read an empty PID marker between creation and content write.
+Its deterministic regression was red, then green after the test reader waited for contents
+within the same five-second bound. Production supervisor, budgets and exact-once assertions stay.
+
+Two automatic ML capability aliases exposed a separate installed-worker re-entry defect:
+web-to-CLI filtering dropped configured `UV_CACHE_DIR`, already allowed by CLI-to-worker launch,
+and uv failed cache initialization. ML subprocesses now retain that nonsecret runtime setting.
+Credential/auth-home routing, isolation and locked/no-sync launches are preserved. Both actual
+installed-worker routes return HTTP 200; no P2 router/API or generated client contract changed.
+
+The properly owned focused selection passed 102 tests after these repairs; scoped typing,
+lint and format passed. An earlier direct invocation lacked the required process owner and
+failed two reaping checks; that attempt is retained, and the same assertions passed under the
+existing ownership runner. Final assembled gate/review remain required; no actual failure is
+waived by the pending task-scoped private-suite decision.
+
+## 2026-10-30 — Queryable context filesystem candidate
+
+On main `f847581f2703f6b5b36aeccdf877c4354a19e176` (including PR96), the isolated Atlas tool
+now computes project-intent, feature, task, decision, history and reference queries directly
+from existing tracked documents. It retains exact file hashes, heading ancestry, line ranges,
+source status text and an explicit list of matching excerpts omitted by the selection budget.
+JSON handoffs bind the whole allowlisted corpus, retrieval code, query policy and expiry;
+validation replays them and rejects changed/added/missing sources, stale policy, expired clocks
+and altered payloads. Markdown and plain-text views support direct inspection. No new knowledge
+graph, database, folder hierarchy, scientific authority or autonomous execution is introduced.
+
+The [delivery record](superpowers/plans/2026-10-30-queryable-context-filesystem.md) maps H26
+from the sole canonical feature checklist to the implementation and the actual primary ICM
+paper (arXiv2603.16021v2, 21 pages) plus pinned companion source. Mechanical invalidation and
+expiry are ALPHA adaptations, not demonstrated performance gains from the paper. Existing
+source ownership, decisions, provenance and dated plans remain authoritative in their own homes.
+
+Focused current context regressions passed 16 cases and strict Atlas typing passed 25 source
+files. An earlier Atlas-wide candidate passed 119 tests before the additional final regression;
+final producer, aggregate and independent-review evidence remain separate exact-tree obligations.
+Local Git guards were installed. Patch checkpoints are retained under ignored
+`.alpha/state/context-delivery/`; this entry claims no commit, publication, merge or aggregate
+acceptance. No private holdout files were found through tracked-path metadata; their content was
+not read, coverage remains UNVERIFIED and prior scoped exceptions do not cover this delivery.
+This context filesystem is separate from bulk-document storage and backups. Mac backup remains
+owned elsewhere and unavailable; ignored query receipts are not durable backups.
+
+### File-system delivery: owner absence-only decision, 2026-10-30
+
+The owner approved the bounded missing-private-suite exception through delivery for the
+cleanup/refactor, file-system, Software Team and two-bug follow-up workstreams at 05:41 UTC,
+including necessary integration fixes. The exact request, response, scope and unchanged
+requirements are recorded in the existing
+[file-system plan](superpowers/plans/2026-10-30-queryable-context-filesystem.md#owner-absence-only-decision--2026-10-30).
+Documented absence alone is now informational for this delivery; private coverage remains
+UNVERIFIED. No actual failure or other required check is waived, and no GitHub APPROVE review
+or protection bypass is authorized. Earlier absence-only BLOCKs remain correct history.
+
+All six public components passed before this approval metadata on exact tree
+`65bb2cd19462836e77c8619ea736399514d33f598fccfc91bc7fc2a73479f9ce`, with a valid full stamp,
+120 passing Atlas tests, fresh six-route navigator evidence and source-bound handoff/reopen
+evidence. That checkpoint is preserved separately. The approval record changes the candidate;
+its final exact-tree qualification, independent review and normal attestation remain required.
+Commit/publication/PR/merge preparation remains subject to parent coordination of the exact
+payload and branch. No Mac backup, bulk storage or wider scientific completion is claimed.
+
+### File-system qualification: configured ML cache transport repair
+
+The real approval-record aggregate failed two public capability-route cases with HTTP 422;
+6,695 cases passed, 61 skipped and coverage reached 93.01% against the unchanged 93% floor.
+The private-suite exception does not waive those actual failures. After Qlib was installed,
+the web-to-CLI environment dropped the configured `UV_CACHE_DIR` and the installed worker's
+`uv` could not initialize its protected fallback cache. The direct CLI succeeded with the
+configured cache inherited. Failure evidence remains preserved.
+
+A two-line command-scoped transport repair now preserves the configured cache for ML commands
+only. Its failing-first public regression and the existing credential/auth-home isolation and
+two real capability-route checks passed (5 cases); changed lint/format passed. No ML response
+schema or PDF source was changed. The
+[existing delivery plan](superpowers/plans/2026-10-30-queryable-context-filesystem.md#required-integration-repair-configured-ml-worker-cache)
+records this necessary integration fix. Final source/producer reconciliation, exact-tree full
+qualification and independent review remain required; private coverage stays UNVERIFIED under
+the approved absence-only scope. No failed check, threshold or authority boundary is waived.
+
+### Combined foundation integration candidate, 2026-10-30
+
+The Software Team batch passed all six public components and independent review on Git tree
+`80dbba4d52d15cce1d66f7b233a7637f11cf3a56`; its installed guards accepted commit
+`b49e187392f4eb1132df2db5536d70203e91747f`, normally pushed to its named branch. Cleanup
+commit `8f3d8b4394c3eabb08dda2ce21a9b18eb363aac0` was fetched through configured origin and
+matched the producer's tree. Its supplemental disposition patch matched the supplied 4,472-byte
+SHA-256 before applying. The filesystem's eight source blocks matched every individual hash
+and the full 49,497-byte payload (`500395592164e585c30087ba773924dd9ca40312dd74634e214d386caa301002`).
+Library byte downloads failed; no further Library download was attempted after coordination.
+
+Both append-only histories are retained, and the manual's context-map link uses the agreed
+byte-neutral substitution. The combined implementation retains the canonical process allowlist
+entry for configured non-secret UV_CACHE_DIR; cache configuration is not a provider credential
+and is available to generic CLI commands. The duplicate ML-only clause is removed, while
+capabilities/train provider/auth-home exclusions complement the configured/absent ML and generic
+command regression. The historical producer ML-only repair above describes its earlier tree.
+The empty PID-marker readiness correction, history projection refactor and scoped orphan-test
+preconditions retain their original lifecycle assertions and budgets. Queryable context remains
+engineering navigation, separate from product research agents and scientific admission.
+
+The [single reviewer-policy record](../.claude/agents/independent-reviewer.md#four-workstream-through-delivery-absence-exception--2026-10-30)
+records the approved through-delivery absence exception. Private coverage stays UNVERIFIED;
+actual checks, exact-tree review and installed Git guards remain mandatory. The owner's repository
+delivery instruction authorizes coordinated commits/pushes; this candidate has not merged to main.
+Focused combined cleanup checks passed 139 tests and scoped Ruff passed. Atlas regeneration,
+fresh context handoff demonstration and final combined-tree gate/review are separate remaining
+obligations at this entry; no standalone receipt qualifies this assembled tree. Final receipts
+and publication disposition are retained in the exact candidate's ignored evidence directory.

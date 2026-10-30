@@ -47,6 +47,8 @@ it remains at
 
 ## Still open
 
+**Cloud-only reconciliation (2026-10-30):** The [existing hygiene plan](../superpowers/plans/2026-10-08-repository-hygiene.md#cloud-visible-ledger-reconciliation-2026-10-30) now records the observed cloud refs, worktrees and preservation dispositions. The saved Mac path/branch/operation ledger and physical storage were unavailable and remain unverified; this does not close their owner-disposition obligations below.
+
 - Reconcile the full saved path, branch, and operation ledger and obtain owner
   disposition before retiring anything. Keep the original dirty checkout,
   archives, branches, and worktrees preserved until then.

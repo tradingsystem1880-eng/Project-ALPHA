@@ -237,7 +237,8 @@ def test_change_selection_includes_committed_and_untracked(repo: Path) -> None:
     git(repo, "add", "committed.py")
     git(repo, "commit", "-m", "test: committed change")
     (repo / "new.py").write_text("y = 1\n")
-    assert {"committed.py", "new.py"} <= set(gate_components.changed_paths(repo, base) or [])
+    context = gate_components.comparison_context(repo, base)
+    assert {"committed.py", "new.py"} <= set(context["paths"] or [])
 
 
 def test_component_failure_keeps_traceback_before_long_coverage_report(
@@ -261,7 +262,7 @@ def test_parallel_coverage_shards_do_not_change_repo_tree_hash(repo: Path) -> No
 
 
 def test_unknown_change_base_does_not_report_empty(repo: Path) -> None:
-    assert gate_components.changed_paths(repo, "missing-base") is None
+    assert gate_components.comparison_context(repo, "missing-base")["paths"] is None
 
 
 def test_backend_semgrep_does_not_depend_on_dirty_checkout() -> None:
@@ -426,7 +427,6 @@ def test_comparison_context_binds_reference_commit_and_merge_base(
         "selection_mode": "exact_diff",
         "paths": ["new.py"],
     }
-    assert gate_components.changed_paths(repo) == ["new.py"]
     monkeypatch.setenv("ALPHA_GATE_BASE", "origin/main")
     explicit = gate_components.comparison_context(repo)
     assert explicit["reference_source"] == "environment"
