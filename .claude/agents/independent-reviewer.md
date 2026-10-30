@@ -474,3 +474,17 @@ Present-suite failures, other unrunnable checks and software findings still BLOC
 assertions, thresholds, guards, required full verification and fresh exact-tree independent review.
 This grants no unrelated exception or research/trading authority. Publication remains subject to
 parent coordination, verified PR95 merge to main and normal guarded repository delivery.
+
+
+## Stranded snapshot-query cleanup absence exception — 2026-10-30
+
+The owner-approved remaining-cleanup absence-only exception covers recovery and necessary
+reconciliation of existing snapshot-query commit `4710a00392cc40739f97ed49890a85ac911ec6e0`
+onto main `f847581f2703f6b5b36aeccdf877c4354a19e176` through delivery. Scope and exact
+authorization references are recorded in
+`docs/superpowers/plans/2026-10-25-crypto-snapshot-query.md#task-scoped-missing-private-suite-decision`.
+Verify scope and metadata independently. Documented absence of `tests/holdout/` alone is
+informational/nonblocking; private coverage stays UNVERIFIED, never PASS. Do not read/modify
+private contents or retry denied access. All present-suite failures, other required checks,
+software findings, fresh exact-tree independent review, public full gates, Git guards and
+hosted CI retain their normal requirements. No unrelated exception or authority is granted.

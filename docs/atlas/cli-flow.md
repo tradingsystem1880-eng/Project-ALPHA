@@ -2,7 +2,7 @@
 
 # CLI flow
 
-231 leaf commands in 24 groups (from the committed `alpha info commands` cache); 9 MCP action tools bridge to CLI leaves via argv literals. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+232 leaf commands in 24 groups (from the committed `alpha info commands` cache); 9 MCP action tools bridge to CLI leaves via argv literals. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
 <!-- nodes: cli:alpha assistant|cli:alpha backtest|cli:alpha chart|cli:alpha crypto-data|cli:alpha data|cli:alpha evidence|cli:alpha figures|cli:alpha forecast|cli:alpha info|cli:alpha ml|cli:alpha monte-carlo|cli:alpha optim|cli:alpha owner-auth|cli:alpha paper|cli:alpha project|cli:alpha propfirm|cli:alpha provider|cli:alpha quantpad-data|cli:alpha research|cli:alpha risk|cli:alpha rules|cli:alpha scan|cli:alpha strategy-candidate|cli:alpha suite -->
 ```mermaid
@@ -126,6 +126,7 @@ cli:alpha suite
 | `alpha crypto-data profiles` | `--json` |
 | `alpha crypto-data quality` | `--json` |
 | `alpha crypto-data snapshot-create` | `--manifest-id`, `--asset-master-version`, `--json` |
+| `alpha crypto-data snapshot-query` | `--limit`, `--offset`, `--available-by`, `--manifest-id`, `--json` |
 | `alpha crypto-data snapshot-verify` | `--required-family`, `--purpose`, `--json` |
 | `alpha crypto-data snapshot-verify-crowding` | `--json` |
 | `alpha crypto-data snapshot-verify-hedged-basis` | `--json` |
