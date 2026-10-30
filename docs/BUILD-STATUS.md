@@ -2494,3 +2494,22 @@ absence-only private-suite exception for this bounded PR93 work through delivery
 coverage remains UNVERIFIED. All other checks and independent review remain mandatory.
 Final aggregate/review outcomes are recorded in the candidate evidence; historical receipts are
 not reused. Publication waits for verified PR95 integration into main and parent coordination.
+
+## 2026-10-29 PR #95 post-merge advisory findings (follow-up)
+
+After PR #95 merged, the advisory Codex review raised two P2 findings in code from the preserved
+integration history; both were verified as real:
+- `GET /api/ml/exchanges/{id}/evaluation` rejected schema 2 and 3 exchanges: `MlEvaluation`
+  allowed only version 1, while `ml evaluate` keeps the request's contract version.
+- The owner-selected local PDF import blocked indefinitely on a FIFO before its regular-file
+  check could reject it.
+
+Fixes:
+- The response model accepts the CLI's supported versions; OpenAPI and the client were regenerated.
+- The PDF open uses `O_NONBLOCK`; the regular-file, symlink, size and replacement checks are
+  unchanged.
+
+Regressions: every supported evaluation version (parametrized over the CLI's supported set, so a
+new CLI version fails until the web contract follows), a bounded FIFO rejection, and a negative
+control that an unsupported version is still rejected. Versions 2 and 3 and the FIFO case were red
+before the fix; version 1 and the negative control passed before and after.

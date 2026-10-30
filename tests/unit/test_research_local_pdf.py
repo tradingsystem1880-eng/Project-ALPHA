@@ -4,6 +4,8 @@ import hashlib
 import json
 import os
 import sqlite3
+import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import cast
@@ -145,6 +147,33 @@ def test_local_pdf_import_rejects_missing_non_regular_and_wrong_file_types(
         path.write_bytes(b"plain text, not a PDF")
     with pytest.raises(DataError):
         local_pdf_cmds._read_owner_pdf(path)
+
+
+_FIFO_PROBE = """
+import sys
+from pathlib import Path
+from alpha_cli import local_pdf_cmds
+from alpha_core import DataError
+try:
+    local_pdf_cmds._read_owner_pdf(Path(sys.argv[1]))
+except DataError as exc:
+    print(exc)
+"""
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="requires named pipes")
+def test_local_pdf_import_rejects_a_fifo_without_blocking(tmp_path: Path) -> None:
+    fifo = tmp_path / "selected.pdf"
+    os.mkfifo(fifo)  # no writer: a blocking open would wait forever
+    # A subprocess bounds the probe: a hang fails this test instead of the whole suite.
+    result = subprocess.run(
+        [sys.executable, "-c", _FIFO_PROBE, str(fifo)],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=True,
+    )
+    assert "owner-provided PDF must be a regular file" in result.stdout
 
 
 def test_local_pdf_import_rejects_final_symlinks(tmp_path: Path) -> None:
