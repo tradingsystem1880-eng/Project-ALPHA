@@ -674,7 +674,7 @@
     "tests/unit/test_claude_md_relocation.py": "da3f88d7014b904727e2a793542e9b909bccdae6efe9497063d96ec6aa8f1f84",
     "tests/unit/test_cli_data_ticker.py": "0ebec2f84f368b0fa933fef72eec649112327a9d00fd2a2ec31edabf1f49123e",
     "tests/unit/test_cli_entry_lazy_groups.py": "68f9ed7885cd6b95b59542917eb3028ba6e3824d4dc4a98ea77e2c61d799a8d0",
-    "tests/unit/test_cloud_setup.py": "9018d03a7fe1949c3f9526cf559d253c107d4864885ce633292e4d96a42682c0",
+    "tests/unit/test_cloud_setup.py": "a0be2d799dd62d18e1eb23d2e40b67354034c66a210ed246340d6aa395494e71",
     "tests/unit/test_cmma.py": "fa8dddaf61d222fba54e9cb977d4bfa77cddbc4849f2145cc019d02bee711c19",
     "tests/unit/test_codex_environment.py": "c1a404fb5490c89aaeefef21350d82abb8eb30dc9432b561ebdf8c928f2519bd",
     "tests/unit/test_codex_investigation.py": "741966b61bea786a74e05b1ee357fc1f0c32d0f2fe6a323517c08201cfbbcc26",

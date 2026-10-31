@@ -2836,3 +2836,26 @@ as superseded; all branch heads and histories remain preserved. Earlier candidat
 entries remain historical evidence. Private coverage stays UNVERIFIED under the approved
 absence-only exception. Mac-only inventory, physical storage/backup, broader cleanup and
 product acceptance gaps remain separately open; this receipt does not mark all features complete.
+
+## 2026-10-31 — Clean RD-Agent bootstrap qualification
+
+The existing foundation backlog's clean-environment and pinned-source acquisition checks now
+have executed evidence. `ALPHA_CLOUD_FOUNDATION=1 ALPHA_CLOUD_RDAGENT=1 bash scripts/cloud_setup.sh`
+explicitly acquires the fixed RD-Agent Git commit when absent, installs the previously omitted
+isolated launcher environment, then creates and validates the existing closed rule/economics
+profiles. Default root/browser setup and foundation-only non-fetching behavior stay intact.
+
+A fresh host workspace with empty task caches and a separate digest-pinned Python container
+both built from fresh public ALPHA/RD-Agent checkouts without existing project virtualenvs.
+Each passed 20 native-loop conformance tests; re-entry retained its two profile identities without
+refetching or recreating environments. The container reused locked download caches only and
+exited 0 at 02:11:42 UTC. The initial Dockerfile build failed before execution on a read-only
+client-state path; direct use of the pinned prebuilt image required no authentication, proxy,
+network-policy or protection changes. Detailed commands, pins, profile identities and limits
+are in the [bootstrap execution record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md).
+
+Focused setup regressions passed 26 tests with one host-specific fontconfig skip. Repository
+full qualification, independent review and hosted checks remain required for delivery of this
+candidate. README remains owned by its separate task. Archive bytes, upstream's whole dependency
+API, private coverage and Mac readiness remain UNVERIFIED; provisioning confers no execution,
+scientific or product authority. Historical failure and gate records remain preserved.

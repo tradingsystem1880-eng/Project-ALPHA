@@ -637,6 +637,11 @@ Historical backlog statement (2026-10-28): cleanup and refactor are not complete
    - acquiring the pinned source without an existing pristine checkout (no alternate fetch route
      is provided).
 
+Later evidence: the [2026-10-31 clean-bootstrap qualification](2026-10-31-clean-rdagent-bootstrap.md)
+closes these two specific missing engineering checks with a fresh host workspace and a fresh
+container. The dated backlog above remains historical; the explicit RD-Agent opt-in preserves
+minimal root/browser provisioning, and broader worker, private-suite and Mac scope is unchanged.
+
 ## Gate10/gate11 repairs and retained diagnostics, 2026-10-28
 
 **Gate10 (c88 candidate `15fa86f9`).** It failed the lifecycle start precondition

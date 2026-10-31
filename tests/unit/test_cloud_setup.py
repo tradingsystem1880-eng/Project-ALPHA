@@ -29,10 +29,14 @@ BOUNDED_COMMANDS = {STEPS[3]: "30s", STEPS[4]: "35s"}
 # Ambient values must never reach the script under test (the full gate sets some of them).
 FOUNDATION_VARS = {
     "ALPHA_CLOUD_FOUNDATION",
+    "ALPHA_CLOUD_RDAGENT",
     "ALPHA_RDAGENT_PRISTINE",
     "ALPHA_RDAGENT_SOURCE",
     "ALPHA_RDAGENT_RETIRE_INTERRUPTED",
     "FAKE_PIN_REPO",
+    "FAKE_FETCH_SOURCE",
+    "FAIL_FETCH",
+    "FETCH_LOG",
 }
 
 
@@ -82,8 +86,22 @@ if command == fail or (fail.startswith("*") and command.endswith(fail[1:])):
     git_stub.write_text(
         f"#!{sys.executable}\n"
         + f"REAL = {shutil.which('git')!r}\n"
-        + """import os, sys
+        + """import json, os, shutil, subprocess, sys
 args = sys.argv[1:]
+source = os.environ.get("FAKE_FETCH_SOURCE")
+if source and args[:1] == ["-C"] and args[2:3] == ["fetch"]:
+    remote = subprocess.check_output(
+        [REAL, "-C", args[1], "remote", "get-url", "origin"], text=True
+    ).strip()
+    with open(os.environ["FETCH_LOG"], "a") as log:
+        log.write(json.dumps({"args": args[2:], "remote": remote}) + "\\n")
+    if os.environ.get("FAIL_FETCH"):
+        print("injected source fetch failure", file=sys.stderr)
+        sys.exit(29)
+    shutil.copytree(source, args[1], dirs_exist_ok=True)
+    sys.exit(0)
+if source and args[:1] == ["-C"] and args[2:4] == ["checkout", "--detach"]:
+    sys.exit(0)
 fake = os.environ.get("FAKE_PIN_REPO")
 if fake and args == ["-C", fake, "rev-parse", "HEAD"]:
     print("484776c211e4fbbeef03e0ec00d6bbee7362a4f4")
@@ -327,6 +345,76 @@ def _build(profile: str) -> list[str]:
 
 def _validated(command: str, profile: str) -> bool:
     return command.endswith(VALIDATE + profile)
+
+
+def test_full_rdagent_requires_explicit_foundation(tmp_path: Path) -> None:
+    result, calls, _, _ = run_setup(tmp_path, overrides={"ALPHA_CLOUD_RDAGENT": "1"})
+    assert result.returncode != 0
+    assert "ALPHA_CLOUD_FOUNDATION=1" in result.stderr
+    assert calls == []
+
+
+def test_full_rdagent_installs_launcher_before_qualified_profiles(tmp_path: Path) -> None:
+    _checkout(tmp_path)
+    _pristine(tmp_path)
+    result, calls, _, _ = run_setup(tmp_path, overrides=_rdagent(tmp_path, ALPHA_CLOUD_RDAGENT="1"))
+    assert result.returncode == 0, result.stderr
+    commands = _commands(calls)
+    sync = commands.index("uv sync --locked --project workers/rdagent")
+    assert sync < commands.index(_build("rule")[0])
+    assert "RD-Agent launcher and closed profiles provisioned" in result.stdout
+    assert "ALPHA_RDAGENT_SOURCE=" in result.stdout
+
+
+def test_full_rdagent_launcher_failure_prevents_profile_creation(tmp_path: Path) -> None:
+    root = _checkout(tmp_path)
+    _pristine(tmp_path)
+    result, calls, _, _ = run_setup(
+        tmp_path,
+        fail="uv sync --locked --project workers/rdagent",
+        overrides=_rdagent(tmp_path, ALPHA_CLOUD_RDAGENT="1"),
+    )
+    assert result.returncode == 23
+    assert not any(command.startswith("uv venv") for command in _commands(calls))
+    assert not (root / "workers/rdagent/.venv-rule-qualified").exists()
+    assert "cloud-setup: ready" not in result.stdout
+
+
+@pytest.mark.parametrize("fail_fetch", [False, True])
+def test_full_rdagent_acquires_exact_pin_or_preserves_failed_partial(
+    tmp_path: Path, fail_fetch: bool
+) -> None:
+    root = _checkout(tmp_path)
+    source = _pristine(tmp_path)
+    runtime = root / ".alpha/state/runtime"
+    pristine = runtime / "rdagent-pristine"
+    fetch_log = tmp_path / "fetch.jsonl"
+    overrides = {
+        "ALPHA_CLOUD_FOUNDATION": "1",
+        "ALPHA_CLOUD_RDAGENT": "1",
+        "FAKE_FETCH_SOURCE": str(source),
+        "FAKE_PIN_REPO": str(pristine),
+        "FETCH_LOG": str(fetch_log),
+        "FAIL_FETCH": "1" if fail_fetch else "",
+    }
+    result, _, _, _ = run_setup(tmp_path, overrides=overrides)
+    assert json.loads(fetch_log.read_text()) == {
+        "args": ["fetch", "--depth", "1", "origin", PIN],
+        "remote": "https://github.com/microsoft/RD-Agent.git",
+    }
+    if fail_fetch:
+        assert result.returncode == 29
+        assert "injected source fetch failure" in result.stderr
+        assert not pristine.exists()
+        assert len(list(runtime.glob("rdagent-pristine.partial.*"))) == 1
+        assert "cloud-setup: ready" not in result.stdout
+    else:
+        assert result.returncode == 0, result.stderr
+        assert pristine.is_dir() and (runtime / "rdagent-source/rdagent").is_dir()
+        assert not list(runtime.glob("rdagent-pristine.partial.*"))
+        again, _, _, _ = run_setup(tmp_path, overrides=overrides)
+        assert again.returncode == 0, again.stderr
+        assert len(fetch_log.read_text().splitlines()) == 1, "re-entry must not fetch again"
 
 
 @pytest.mark.parametrize("problem", ["wrong_commit", "modified", "no_derived_root"])

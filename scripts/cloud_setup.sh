@@ -3,6 +3,11 @@
 set -Eeuo pipefail
 trap 'status=$?; printf "cloud-setup: FAILED at line %s: %s (exit %s)\n" "$LINENO" "$BASH_COMMAND" "$status" >&2; exit "$status"' ERR
 
+if [ "${ALPHA_CLOUD_RDAGENT:-}" = 1 ] && [ "${ALPHA_CLOUD_FOUNDATION:-}" != 1 ]; then
+    echo 'cloud-setup: ALPHA_CLOUD_RDAGENT=1 requires ALPHA_CLOUD_FOUNDATION=1' >&2
+    exit 1
+fi
+
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/project-alpha-uv-cache}"
 export UV_TOOL_DIR="${UV_TOOL_DIR:-/tmp/project-alpha-uv-tools}"
 export UV_LINK_MODE="${UV_LINK_MODE:-copy}"
@@ -49,7 +54,7 @@ try {
 JS
 
 if [ "${ALPHA_CLOUD_FOUNDATION:-}" = 1 ]; then
-    # Opt-in clone-local foundation; idempotent, fails loud, never fetches or claims readiness.
+    # Foundation alone never fetches; explicit RD-Agent provisioning may acquire its fixed pin.
     cd "$root"
     echo 'cloud-setup: Git guards'
     uv run --locked python -B scripts/git_guard.py install
@@ -59,6 +64,23 @@ if [ "${ALPHA_CLOUD_FOUNDATION:-}" = 1 ]; then
     for entry in /workers/rdagent/.venv-rule-qualified/ /workers/rdagent/.venv-economics-qualified/; do
         grep -qxF -- "$entry" "$exclude" || printf '%s\n' "$entry" >>"$exclude"
     done
+
+    if [ "${ALPHA_CLOUD_RDAGENT:-}" = 1 ]; then
+        runtime="$root/.alpha/state/runtime"
+        mkdir -p "$runtime"
+        export ALPHA_RDAGENT_PRISTINE="${ALPHA_RDAGENT_PRISTINE:-$runtime/rdagent-pristine}"
+        export ALPHA_RDAGENT_SOURCE="${ALPHA_RDAGENT_SOURCE:-$runtime/rdagent-source}"
+        if [ ! -e "$ALPHA_RDAGENT_PRISTINE" ]; then
+            pin=484776c211e4fbbeef03e0ec00d6bbee7362a4f4
+            partial="$(mktemp -d "$ALPHA_RDAGENT_PRISTINE.partial.XXXXXX")"
+            echo "cloud-setup: acquiring pinned RD-Agent in $partial (retained on failure)"
+            git init --quiet "$partial"
+            git -C "$partial" remote add origin https://github.com/microsoft/RD-Agent.git
+            GIT_TERMINAL_PROMPT=0 git -C "$partial" fetch --depth 1 origin "$pin"
+            GIT_LFS_SKIP_SMUDGE=1 git -C "$partial" checkout --detach --quiet FETCH_HEAD
+            mv -T "$partial" "$ALPHA_RDAGENT_PRISTINE"
+        fi
+    fi
 
     if [ -n "${ALPHA_RDAGENT_PRISTINE:-}" ]; then
         pin=484776c211e4fbbeef03e0ec00d6bbee7362a4f4
@@ -76,6 +98,10 @@ if [ "${ALPHA_CLOUD_FOUNDATION:-}" = 1 ]; then
             mv -T "$partial" "$derived"
         fi
         uv run --locked python -B -c 'import sys; from pathlib import Path; sys.path.insert(0, "workers/rdagent"); from source_pin import verify_source; print("cloud-setup: RD-Agent source tree", verify_source(Path(sys.argv[1])))' "$derived"
+        if [ "${ALPHA_CLOUD_RDAGENT:-}" = 1 ]; then
+            echo 'cloud-setup: locked isolated RD-Agent launcher'
+            uv sync --locked --project workers/rdagent
+        fi
         runtime="$root/.alpha/state/runtime"
         stamp="$(date -u +%Y%m%dT%H%M%SZ)"
         mkdir -p "$runtime"
@@ -123,6 +149,10 @@ if [ "${ALPHA_CLOUD_FOUNDATION:-}" = 1 ]; then
             fi
             echo "cloud-setup: qualified $profile environment $identity"
         done
+        if [ "${ALPHA_CLOUD_RDAGENT:-}" = 1 ]; then
+            echo 'cloud-setup: RD-Agent launcher and closed profiles provisioned; no execution authority or full-suite acceptance'
+            printf 'cloud-setup: for later shells: export ALPHA_RDAGENT_SOURCE=%q\n' "$derived"
+        fi
     fi
 
     if [ -e /etc/fonts/conf.d/56-prefer-inter.conf ]; then
