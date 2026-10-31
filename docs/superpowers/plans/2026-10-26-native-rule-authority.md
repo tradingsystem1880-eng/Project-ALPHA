@@ -582,6 +582,12 @@ attempt keeps its `.incomplete-*` staging copy in `gate-checkpoints/`; these cop
 checkpoints are retained without a retention bound and are not cleaned up. Staleness is not
 propagated between stages automatically.
 
+**2026-10-31 retention follow-on:** the explicit `gate.py checkpoints` dry-run inventory and
+opt-in verified archive route now prepare a bounded recent/current hot set without deleting
+originals. Incomplete or invalid copies stay excluded; total disk retention remains unbounded
+until a separately reviewed retirement. Restoration and exclusions are in the existing
+[harness guide](../../operations/claude-code-harness.md#checkpoint-retention-without-evidence-loss).
+
 **Storage classes.**
 - **Durable:** git-tracked files on a pushed branch.
 - **Ignored local:** clone-only, lost when the container is reclaimed:

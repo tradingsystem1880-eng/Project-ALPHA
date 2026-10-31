@@ -90,6 +90,7 @@ _PROTECTED_EXACT = frozenset(
         "scripts/gate.py",
         "scripts/run_owned_test.py",
         "scripts/gate_components.py",
+        "scripts/gate_checkpoints.py",
         "scripts/git_guard.py",
         "scripts/wheel_smoke.py",
         "scripts/repo_orientation.py",
@@ -991,6 +992,7 @@ HARNESS_SCRIPTS = (
     "scripts/run_owned_test.py",
     "scripts/gate.py",
     "scripts/gate_components.py",
+    "scripts/gate_checkpoints.py",
     "scripts/gate_preflight.py",
     "scripts/git_guard.py",
     "scripts/wheel_smoke.py",
@@ -1342,6 +1344,20 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("fast")
     sub.add_parser("full")
+    checkpoints_p = sub.add_parser(
+        "checkpoints", help="inventory/verify checkpoint archives; never delete"
+    )
+    checkpoints_p.add_argument(
+        "--keep",
+        type=int,
+        default=10,
+        help="retain newest verified checkpoints in addition to current receipts",
+    )
+    checkpoints_p.add_argument(
+        "--archive",
+        action="store_true",
+        help="copy older verified checkpoints into archives; retain source paths",
+    )
     preflight_p = sub.add_parser("preflight", help="read-only candidate qualification checks")
     preflight_p.add_argument("--json", action="store_true")
     component_p = sub.add_parser("component")
@@ -1417,6 +1433,17 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True) if args.json else render_report(report))
         return code
     root = repo_root()
+    if args.command == "checkpoints":
+        sys.dont_write_bytecode = True
+        from gate_checkpoints import inventory
+
+        try:
+            report = inventory(root, keep=args.keep, archive=args.archive)
+        except (OSError, ValueError) as exc:
+            print(f"checkpoint inventory failed: {exc}", file=sys.stderr)
+            return 1
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 0
     if args.command in ("attest", "override", "ack", "baseline", "plan-check"):
         _reexec_with_pydantic(root)
     if args.command == "fast":

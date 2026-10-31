@@ -758,6 +758,7 @@
     "tests/unit/test_forecast_timestamps.py": "4b0998beea4b9a7d82509f86ef3bf8847def8408ff6ef2869cd3fbbf027dcca2",
     "tests/unit/test_forecast_types.py": "166c7071330c2ae51ad9a971b0958326246dd74af27e7ad440ad7a120d4d5d2d",
     "tests/unit/test_forecast_vendor.py": "7939a0d04409acc28b6760418a62ad71f19e72920c4c1aea40df9295c140b499",
+    "tests/unit/test_gate_checkpoints.py": "2f9bbc4999b09c1f817431b8e1979e934cc4d119f3e1755c915c6759094f5916",
     "tests/unit/test_gate_components.py": "6987fe346f06370402fe98b5b1d066d59ba27c69664dc17c7267fe4aebf64e1d",
     "tests/unit/test_gate_preflight.py": "6d2d9fd354aa10d23a0eb577cac398932e9f010d9c4d25b049db89a4d2b71e94",
     "tests/unit/test_gate_process_supervisor.py": "37b2859b0d4975d40b5f56bbd51451bb6648dc5ab118ec919bed75ae06e7a6f4",

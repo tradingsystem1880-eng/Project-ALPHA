@@ -2836,3 +2836,31 @@ as superseded; all branch heads and histories remain preserved. Earlier candidat
 entries remain historical evidence. Private coverage stays UNVERIFIED under the approved
 absence-only exception. Mac-only inventory, physical storage/backup, broader cleanup and
 product acceptance gaps remain separately open; this receipt does not mark all features complete.
+
+
+## 2026-10-31 — Non-destructive checkpoint retention and branch recovery
+
+The existing gate now has an explicit dry-run checkpoint inventory and opt-in verified archive
+copy operation. Current/recent receipts, incomplete staging and invalid/symlinked entries remain
+excluded; every original remains intact. Archive members are verified against the allowlisted
+manifest, and changed sources or conflicting existing archives fail closed. This prepares a
+bounded hot-set proposal without pretending total disk retention has been pruned. The
+[harness guide](operations/claude-code-harness.md#checkpoint-retention-without-evidence-loss)
+contains exact commands and separate-directory restoration instructions.
+
+At observed main `2a8aa50b`, all 56 remote tips are preserved by exact local recovery refs and a
+verified Git bundle. The proposed separate-review batch includes 43 ancestor heads and eight
+historical delivered slices; five main/backup/active-work heads are excluded. Twenty targeted
+source/regression comparisons confirm historical successor preservation. No remote deletion,
+main mutation, private-test read or scientific/trading authority follows from this work. Mac-only
+state remains unverified. Focused tests cover archive round trips, corruption, source changes,
+symlink/path rejection and dry-run exclusions. Final exact-tree qualification and independent
+review are required before the guarded commit; private tests remain UNVERIFIED under the
+existing task-scoped absence-only approval. See the
+[retention plan](superpowers/plans/2026-10-31-checkpoint-retention.md).
+
+The first independent review blocked substituted FIFO manifests/archives that could hang the
+new inventory. Bounded probes reproduced both failures. The repair rejects nonregular opened
+descriptors without blocking and adds bounded real-CLI and archive-copy regressions; the original BLOCK and
+its source-bound gate evidence remain preserved. No failing check is waived by private-suite
+absence. Publication requires fresh qualification and review of the repaired source.
