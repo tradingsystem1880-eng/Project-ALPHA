@@ -1,6 +1,7 @@
 # Source-bound queryable context filesystem
 
-**Delivery state:** Implemented candidate; aggregate acceptance and independent review remain required.
+**Delivery state:** Completed — bounded scope delivered through [PR99](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/99).
+The [verified main receipt](../../BUILD-STATUS.md#2026-10-30--verified-combined-delivery-on-main) records qualification and seven passing post-merge jobs. Private coverage remains UNVERIFIED; broader product and Mac scope remain open.
 
 ```json
 {
@@ -17,7 +18,7 @@
     {"title": "Extract bounded tracked source sections and deterministic scoped queries", "verify": "Atlas tests/test_context.py, Ruff, strict mypy", "expected": "Project, feature, task, decision and history excerpts with exact source hashes and line ranges; no private inputs.", "rollback": "Remove only new context modules and their tests.", "status": "done"},
     {"title": "Bind handoff receipts to source bytes, policy, query and expiry", "verify": "Fresh, changed, deleted, added, expired and tampered receipt regressions", "expected": "JSON receipts and readable Markdown/plain text; validation rejects stale or modified payloads without updating them.", "rollback": "Remove receipt and CLI slice while preserving source extractor.", "status": "done"},
     {"title": "Preserve configured ML cache across the existing web-to-CLI boundary", "verify": "Failing-first cache regression, existing credential isolation checks and both real capability-route regressions", "expected": "Installed-worker capability reads use the configured UV cache without forwarding HOME or provider credentials; no ML schema or PDF source changes.", "rollback": "Restore only the canonical cache-name allowlist entry and its public cache regressions.", "status": "done"},
-    {"title": "Route, demonstrate, regenerate and independently review final candidate", "verify": "Atlas component, root consistency, canonical full gate and exact final-tree independent review", "expected": "Working source-backed demonstrations, preserved patch, explicit acceptance blockers and no backup claim.", "rollback": "Restore only this task's documentation and generated output changes from f847581.", "status": "in_progress"}
+    {"title": "Route, demonstrate, regenerate and independently review final candidate", "verify": "Atlas component, root consistency, canonical full gate and exact final-tree independent review", "expected": "Working source-backed demonstrations, preserved patch, explicit acceptance blockers and no backup claim.", "rollback": "Restore only this task's documentation and generated output changes from f847581.", "status": "done"}
   ],
   "tier_impact": ["dag"],
   "docs_to_update": ["tools/alpha-atlas/README.md", "docs/context/README.md", "CLAUDE.md", "docs/BUILD-STATUS.md"],

@@ -1,6 +1,7 @@
 # Software Team workflow completion
 
-**Delivery state:** Implementation complete; final qualification is recorded separately; coordinated publication pending.
+**Delivery state:** Completed — bounded scope delivered through [PR99](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/99).
+The [verified main receipt](../../BUILD-STATUS.md#2026-10-30--verified-combined-delivery-on-main) records qualification and seven passing post-merge jobs. Private coverage remains UNVERIFIED; broader product and Mac scope remain open.
 
 ```json
 {
