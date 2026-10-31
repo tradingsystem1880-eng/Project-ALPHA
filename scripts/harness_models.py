@@ -123,6 +123,12 @@ class ReviewAttestation(_Strict):
     bound_review_diff_hash: str
 
 
+class ReadmeReview(_Strict):
+    reviewed_tree_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    disposition: Literal["updated", "no_change"]
+    rationale: str = Field(min_length=20, max_length=2000)
+
+
 class OnceToken(_Strict):
     created_at: str
     reason: str

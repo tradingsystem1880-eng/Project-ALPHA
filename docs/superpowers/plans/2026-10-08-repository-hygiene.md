@@ -260,3 +260,34 @@ The detailed private ledger records exact tips, comparison provenance and action
 are disposition decisions and pending actions, not a claim that PR closure, branch retirement
 or final integration has occurred. Mac-only refs, stashes and saved owner-side paths remain
 uninspected until the Mac and its original ledger are available.
+
+
+### Cloud retention and disposition follow-on (2026-10-31)
+
+The earlier remote checkpoint above is historical. The [verified PR99 delivery receipt](../../BUILD-STATUS.md#2026-10-30--verified-combined-delivery-on-main)
+records the saved snapshot-query slice delivered and PR80/91/92/93 closed as superseded.
+The old pending/open language is not the current disposition. Native protections remain in
+PR96's control store; the old recovery branch's earlier whole tree must not replace it.
+
+At main `2a8aa50b5669f6645ecfb5c0e0e23fb8f932bf82`, all 56 remote heads have exact commit/tree
+records and recoverable local `refs/archive/cleanup-20261031/<original-branch>` refs. A verified
+Git bundle lists the same 56 tips. The existing private task area holds the compact manifest,
+bundle, 20 targeted source/regression comparisons and the precise proposed retirement batch;
+these local proof files are not public repository artifacts.
+
+The proposed batch has 43 ancestor heads and eight historical heads with accepted successors
+(PR54/57/58, Stooq, Tiingo, foundation contract, recovery and recovered snapshot query).
+Main, the explicit backup, both active README aliases and the head attached to a retained
+worktree are excluded. No remote branch is deleted or stale diff merged. Before any separate
+retirement, re-read exact remote tips, confirm no active owner/open PR/worktree depends on them,
+and copy the verified bundle/manifest to durable owner-controlled backup. Cloud-local copies
+alone are not durable recovery. Verify recovery refs and bundle identities there; moved heads
+require renewed reconciliation.
+
+Restore a preserved branch into a new local name with
+`git fetch /absolute/path/remote-heads.bundle refs/archive/cleanup-20261031/BRANCH:refs/heads/recovered/BRANCH`,
+then compare its commit and Git tree with the private manifest. Never overwrite active work.
+Checkpoint dry-run, archive and restoration commands are in the
+[harness guide](../../operations/claude-code-harness.md#checkpoint-retention-without-evidence-loss).
+The archive route verifies copies while retaining every original; deletion is a separate action.
+Mac-local branches, stashes, saved paths and physical storage remain unverified until accessible.

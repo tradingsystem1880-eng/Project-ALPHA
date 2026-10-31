@@ -582,6 +582,12 @@ attempt keeps its `.incomplete-*` staging copy in `gate-checkpoints/`; these cop
 checkpoints are retained without a retention bound and are not cleaned up. Staleness is not
 propagated between stages automatically.
 
+**2026-10-31 retention follow-on:** the explicit `gate.py checkpoints` dry-run inventory and
+opt-in verified archive route now prepare a bounded recent/current hot set without deleting
+originals. Incomplete or invalid copies stay excluded; total disk retention remains unbounded
+until a separately reviewed retirement. Restoration and exclusions are in the existing
+[harness guide](../../operations/claude-code-harness.md#checkpoint-retention-without-evidence-loss).
+
 **Storage classes.**
 - **Durable:** git-tracked files on a pushed branch.
 - **Ignored local:** clone-only, lost when the container is reclaimed:
@@ -636,6 +642,11 @@ Historical backlog statement (2026-10-28): cleanup and refactor are not complete
    - a fresh-container run that creates the venvs;
    - acquiring the pinned source without an existing pristine checkout (no alternate fetch route
      is provided).
+
+Later evidence: the [2026-10-31 clean-bootstrap qualification](2026-10-31-clean-rdagent-bootstrap.md)
+closes these two specific missing engineering checks with a fresh host workspace and a fresh
+container. The dated backlog above remains historical; the explicit RD-Agent opt-in preserves
+minimal root/browser provisioning, and broader worker, private-suite and Mac scope is unchanged.
 
 ## Gate10/gate11 repairs and retained diagnostics, 2026-10-28
 

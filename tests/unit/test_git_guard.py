@@ -156,7 +156,7 @@ def _hooked_repo(repo: Path) -> Path:
     source = Path(__file__).resolve().parents[2]
     shutil.copytree(source / ".githooks", repo / ".githooks")
     (repo / "scripts").mkdir()
-    for name in ("gate.py", "git_guard.py", "gate_components.py"):
+    for name in ("gate.py", "git_guard.py", "gate_components.py", "readme_review.py"):
         shutil.copy2(source / "scripts" / name, repo / "scripts" / name)
     git(repo, "add", ".")
     git(repo, "commit", "--quiet", "-m", "chore: guard fixture")

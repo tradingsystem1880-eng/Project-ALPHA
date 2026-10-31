@@ -21,7 +21,12 @@ CHECKPOINT_DIR = gate.STATE_DIR / "gate-checkpoints"
 PRESERVED_EVIDENCE = (
     *(
         gate.STATE_DIR / name
-        for name in (gate.STAMP_FILE, gate.REVIEW_VERDICT_FILE, gate.QUANT_ATTESTATION_FILE)
+        for name in (
+            gate.STAMP_FILE,
+            gate.REVIEW_VERDICT_FILE,
+            gate.QUANT_ATTESTATION_FILE,
+            "readme-review.json",
+        )
     ),
     *(gate.STATE_DIR / f"component-{name}.json" for name in COMPONENTS),
     Path(".coverage"),
