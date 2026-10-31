@@ -1,0 +1,157 @@
+name: README maintenance
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: readme-maintenance
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.base.outputs.sha }}
+      relevant: ${{ steps.prepare.outputs.changed }}
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - id: base
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - id: prepare
+        run: |
+          mkdir -p "$RUNNER_TEMP/readme-packet"
+          python scripts/readme_maintenance.py prepare --file "$RUNNER_TEMP/readme-packet/readme-prompt.txt"
+      - name: Package only bounded evidence and trusted validator
+        if: steps.prepare.outputs.changed == 'true'
+        run: |
+          cp .github/readme/schema.json scripts/readme_maintenance.py "$RUNNER_TEMP/readme-packet/"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: steps.prepare.outputs.changed == 'true'
+        with:
+          name: readme-evidence
+          path: ${{ runner.temp }}/readme-packet/
+          if-no-files-found: error
+          retention-days: 1
+
+  assess:
+    needs: prepare
+    if: needs.prepare.outputs.relevant == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    # No checkout: this fresh runner has no repository tree, Git history or private tests.
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: readme-evidence
+          path: ${{ runner.temp }}/readme-input
+      - run: mkdir -p "$RUNNER_TEMP/readme-home"
+      - name: Require authorized inference credential
+        env:
+          INFERENCE_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$INFERENCE_KEY" ]; then
+            echo "::error::README assessment blocked: OPENAI_API_KEY is not configured. README currency is unverified."
+            exit 1
+          fi
+      - name: Assess only the curated packet
+        uses: openai/codex-action@13e9c17417b29e9a276f73ec6ed7fb574137d3c3
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-version: '0.166.0'
+          model: gpt-6-astra
+          effort: low
+          permission-profile: ':read-only'
+          safety-strategy: drop-sudo
+          codex-home: ${{ runner.temp }}/readme-home
+          working-directory: ${{ runner.temp }}/readme-input
+          prompt-file: ${{ runner.temp }}/readme-input/readme-prompt.txt
+          output-schema-file: ${{ runner.temp }}/readme-input/schema.json
+          output-file: ${{ runner.temp }}/readme-result.json
+          codex-args: '["--skip-git-repo-check", "--ephemeral"]'
+      - name: Validate output before transferring it
+        env:
+          INFERENCE_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python "$RUNNER_TEMP/readme-input/readme_maintenance.py" validate-transfer --file "$RUNNER_TEMP/readme-result.json"
+      - name: Transfer only structured candidate, never transcripts or credentials
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: readme-candidate
+          path: ${{ runner.temp }}/readme-result.json
+          if-no-files-found: error
+          retention-days: 1
+
+  deliver:
+    needs: [prepare, assess]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write # Explicit CI dispatch avoids approval-waiting token-created PR events.
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ASSESSED_SHA: ${{ needs.prepare.outputs.sha }}
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          ref: ${{ needs.prepare.outputs.sha || 'main' }}
+          fetch-depth: 0
+      - name: Retire obsolete generated PRs even when generation failed
+        run: python scripts/readme_maintenance.py retire
+      - name: Surface failed assessment
+        if: needs.prepare.result != 'success' || (needs.prepare.outputs.relevant == 'true' && needs.assess.result != 'success')
+        run: |
+          echo "::error::README assessment failed. No update was published; inspect the assess job and rerun after repair."
+          exit 1
+      - name: Download candidate
+        if: needs.prepare.outputs.relevant == 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: readme-candidate
+          path: ${{ runner.temp }}/readme-candidate
+      - name: Check base and apply validated section
+        id: candidate
+        if: needs.prepare.outputs.relevant == 'true'
+        run: |
+          python scripts/readme_maintenance.py current --sha "$ASSESSED_SHA"
+          python scripts/readme_maintenance.py apply --file "$RUNNER_TEMP/readme-candidate/readme-result.json" --sha "$ASSESSED_SHA"
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        if: steps.candidate.outputs.changed == 'true'
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        if: steps.candidate.outputs.changed == 'true'
+        with:
+          node-version: '22'
+      - name: Install browser runtime for the unchanged full gate
+        if: steps.candidate.outputs.changed == 'true'
+        working-directory: apps/alpha-web/frontend
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Qualify exact README candidate and publish through Git guards
+        if: steps.candidate.outputs.changed == 'true'
+        run: |
+          uv sync --locked
+          uv run python scripts/git_guard.py install
+          uv run python scripts/readme_maintenance.py scope
+          git switch -c "codex/readme-$ASSESSED_SHA"
+          git add README.md
+          uv run python scripts/gate.py full
+          uv run python scripts/readme_maintenance.py scope
+          uv run python scripts/readme_maintenance.py current --sha "$ASSESSED_SHA"
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'docs(readme): refresh the project reader guide'
+          uv run python scripts/readme_maintenance.py publish --sha "$ASSESSED_SHA"
+      - name: Report outcome
+        if: success()
+        run: echo 'Assessment completed. No-op leaves README unchanged; a changed guide requires normal PR checks and owner review.' >> "$GITHUB_STEP_SUMMARY"

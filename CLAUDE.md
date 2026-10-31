@@ -58,7 +58,7 @@ Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`
 **2026-09-16:** [delivery](docs/superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md),
 [ADR-0037](docs/adr/0037-agent-neutral-research-engineering.md): agent-neutral checks; application
 authority unchanged. Install Git guards; require a fresh full stamp; no bypass.
-[Harness](docs/operations/claude-code-harness.md): checkpoint, mutant cap, intake, CSS staging.
+[Harness](docs/operations/claude-code-harness.md); [Guide](docs/operations/readme-maintenance.md).
 [Benchmark](tools/alpha-eval/README.md); research [workflow](docs/operations/bounded-research-workflow.md) and [Codex investigations](docs/operations/codex-investigations.md) remain advisory.
 
 ## Evidence

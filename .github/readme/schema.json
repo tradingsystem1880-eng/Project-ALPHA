@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "properties": {
+    "section": {"type": "string"},
+    "outside_section_drift": {"type": "boolean"}
+  },
+  "required": ["section", "outside_section_drift"],
+  "additionalProperties": false
+}

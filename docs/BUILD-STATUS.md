@@ -2836,3 +2836,19 @@ as superseded; all branch heads and histories remain preserved. Earlier candidat
 entries remain historical evidence. Private coverage stays UNVERIFIED under the approved
 absence-only exception. Mac-only inventory, physical storage/backup, broader cleanup and
 product acceptance gaps remain separately open; this receipt does not mark all features complete.
+
+## 2026-10-31 — README maintenance implementation candidate (not deployed)
+
+Added a bounded plain-English README reader guide and a merge-triggered Codex assessment workflow
+candidate. Generated updates are README-section-only, SHA-bound, schema-validated, independently
+isolated from delivery credentials, and delivered through the existing full gate/Git guards and
+normal docs PR review. Existing CI gains explicit manual dispatch and stale README branch checks;
+no application authority or trading behavior changes. Technical setup content remains intact.
+
+Focused fixture tests and qualification results are recorded in the
+[feature plan](superpowers/plans/2026-10-31-readme-maintenance.md); activation and recovery are in the
+[runbook](operations/readme-maintenance.md). The workflow is not active, and no live inference,
+hosted trigger or README PR has been demonstrated. No Actions inference credential is available
+in this task environment; repository secret availability is unverified. The private review suite is
+absent and prior delivery exceptions do not cover this new protected workflow. Full/public checks
+and normal independent review are still required; private coverage is UNVERIFIED, not PASS.

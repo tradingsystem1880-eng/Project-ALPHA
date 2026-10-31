@@ -14,6 +14,48 @@ explanations. A chart, a model answer, or a profitable backtest alone does not e
 fresh build at [fbdcbcf](https://github.com/tradingsystem1880-eng/Project-ALPHA/commit/fbdcbcfdf29aebe3fd43e38bf5ae4051cbf23b98), using the isolated real backend and synthetic test data. They show the
 product UI, not live market performance or an owner's account.*
 
+<!-- codex-reader-guide:start -->
+<!-- codex-reader-guide:base 2a8aa50b5669f6645ecfb5c0e0e23fb8f932bf82 -->
+## A plain-English guide
+
+Think of ALPHA as a research notebook with a testing laboratory attached. You bring a market
+question; it helps you organize the data, run a repeatable experiment, and inspect the evidence.
+It does not decide that an idea is safe to trade. A good-looking chart or a passing software test
+is not proof of a profitable strategy.
+
+The parts work together like this:
+
+- **The Workstation is the front desk.** Its charts, Research Cases, and reports help you explore
+  questions and inspect recorded results. Start with the [research workflow](#research-workflow)
+  and [Quickstart](#quickstart).
+- **The CLI is the coordinator.** The browser and agent tools ask it to perform supported actions.
+  It connects data, simulations, validation, and research records while keeping explicit owner
+  decisions separate from suggestions. See the [project map](docs/context/alpha-quant-platform.md).
+- **The research packages are the laboratory.** They keep data tied to what was known at the
+  time, simulate strategies with costs, and test competing explanations. Saved snapshots and
+  receipts let you check which inputs produced a result. See the [architecture](docs/ARCHITECTURE.md).
+- **Workers are separate specialist rooms.** Qlib model experiments and literature tools run in
+  their own environments. Their results still need qualification; an installed worker is not
+  approval to use a model. See the [Qlib guide](workers/qlib/README.md).
+- **Codex helps explain and investigate.** Its answers are advisory. Atlas helps find source-bound
+  project context; neither generated prose nor a context query grants research authority. See the
+  [context index](docs/context/README.md).
+- **The Software Team maintains the machinery.** It changes code, checks the result, and records
+  what was delivered. Those engineering checks are separate from approval of market evidence or
+  paper operations. See the [Software Team map](docs/context/software-team.md).
+
+A useful first session is to start the Workstation, capture a Research Case, and inspect what is
+missing before running an experiment. An empty installation has no acquired market data or
+research results. Follow the [operations runbook](docs/operations/README.md) for deliberate data
+setup; do not put credentials in Git or browser state.
+
+Charts, backtests, governed research records, validation tools, and bounded model experiments are
+implemented. Full counterfactual ML fold retraining and autonomous RD-Agent research remain
+unfinished or deferred. Paper paths require separate opt-ins and readiness evidence; **no
+live-capital route ships**. The [scope and limits](#implemented-scope-and-limits) and
+[authority matrix](docs/governance/capability-authority-matrix.md) explain these boundaries.
+<!-- codex-reader-guide:end -->
+
 ## Research workflow
 
 1. **Define the question.** Capture an idea as a Research Case; resolve the instrument, event
