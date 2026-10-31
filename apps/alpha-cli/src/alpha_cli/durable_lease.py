@@ -29,7 +29,7 @@ class DurableLeaseError(RuntimeError):
 
 
 class DurableLeaseCancelled(RuntimeError):
-    """The durable owner observed an audited cancellation request and reaped its child."""
+    """The owner reaped its child and completed its cancellation journal callback."""
 
 
 def _isolated_process_group_id(
@@ -278,13 +278,13 @@ class DurableJobLease:
 
     @property
     def failed(self) -> bool:
-        """Whether heartbeat renewal failed while the child was live."""
+        """Whether lifecycle handling or terminal publication failed."""
         with self._failure_lock:
             return self._failure is not None
 
     @property
     def cancelled(self) -> bool:
-        """Whether the owner observed and completed an audited cancellation request."""
+        """Whether cleanup and the cancellation journal callback both succeeded."""
         with self._failure_lock:
             return self._cancelled
 
@@ -367,16 +367,8 @@ class DurableJobLease:
         """Raise the distinct cancellation outcome after stop/join and child reap."""
         with self._failure_lock:
             cancelled = self._cancelled
-            cleanup_failure = self._cleanup_failure
-            journal_failure = self._journal_failure
-        if not cancelled:
-            return
-        details = [f"{self._label} was cancelled"]
-        if cleanup_failure is not None:
-            details.append(f"child cleanup also failed: {cleanup_failure}")
-        if journal_failure is not None:
-            details.append(f"cancelled journal update also failed: {journal_failure}")
-        raise DurableLeaseCancelled("; ".join(details))
+        if cancelled:
+            raise DurableLeaseCancelled(f"{self._label} was cancelled")
 
     def _run(self) -> None:
         while not self._stop.wait(self._interval_seconds):
@@ -441,8 +433,6 @@ class DurableJobLease:
                 self._failure_context = "child cleanup"
             self._stop.set()
             return
-        with self._failure_lock:
-            self._cancelled = True
         cancel_journal = self._cancel_journal
         if cancel_journal is not None:
             try:
@@ -450,6 +440,12 @@ class DurableJobLease:
             except Exception as journal_exc:
                 with self._failure_lock:
                     self._journal_failure = journal_exc
+                    self._failure = journal_exc
+                    self._failure_context = "cancellation publication"
+                self._stop.set()
+                return
+        with self._failure_lock:
+            self._cancelled = True
         self._stop.set()
 
     def _terminate(self) -> bool:

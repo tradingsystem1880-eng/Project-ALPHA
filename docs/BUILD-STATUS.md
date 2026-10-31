@@ -3015,3 +3015,21 @@ clocks; it discloses no forced liquidation and the final decision without a next
 without inventing an order. Missing older evidence remains explicitly not recorded. Numerical
 artifacts, economics and authority are unchanged. Focused/final qualification and guarded delivery
 are recorded in this follow-up's evidence; no real study or Mac access is involved.
+
+
+## 2026-10-31 — Truthful durable cancellation publication candidate
+
+The durable lease now completes cancellation only after verified child cleanup and a successful
+terminal-journal callback. Failed cancellation publication raises a lifecycle error. Workstation
+status prioritizes terminal errors over a local cancellation request. Uncertain terminal writes
+use bounded `project job-show` readback within the original deadline; a matching recorded status
+recovers a lost response. No second terminal transition is attempted. An uncommitted or unreadable
+outcome retains durable capacity for reconciliation. Existing physical cleanup protections remain.
+
+Public covering lifecycle/API tests: 92 passed through `scripts/run_owned_test.py`, including
+SIGTERM-ignoring descendants, cleanup failure, publication failure before commit, lost response
+after commit, readback failure/conflict and bounded actual CLI timeout. The original changed lease
+regression failed before the fix. Final aggregate verification and independent review remain
+separate delivery evidence; this entry does not assert either. Private coverage is UNVERIFIED
+under the recorded task-scoped four-workstream absence-only exception. No real study ran.
+See [plan](superpowers/plans/2026-10-31-durable-cancellation-publication.md).

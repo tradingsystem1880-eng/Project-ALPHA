@@ -159,3 +159,10 @@ Private traces, credentials, support identifiers and raw task conversations stay
 outside public documentation and publication payloads. See the
 [cleanup execution retrospective](retrospectives/2026-10-17-cleanup-execution.md) for dated observations and
 their evidence limits; keep incident history there rather than duplicating it here.
+
+Workstation cancellation distinguishes verified process-group cleanup from durable terminal
+publication. The lease reports cancellation only after its journal callback succeeds. Publication
+errors take precedence over a local cancellation request in UI/SSE status. An uncertain terminal
+write uses `project job-show --event-limit 1 --event-tail --json` within the original CLI deadline;
+matching job/status recovers a lost response. There is no second terminal write. Unresolved state
+remains reserved until authoritative reconciliation; process cleanup alone does not release it.
