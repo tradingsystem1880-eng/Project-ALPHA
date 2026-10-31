@@ -12,7 +12,7 @@ import { RecordedPanel } from './RecordedPanel'
 import { TradesTab } from './rundetail/TradesTab'
 
 const ROLES: DailyRuleRole[] = ['baseline', 'control']
-const SUMMARY: { key: keyof Omit<DailyRuleRoleSummary, 'run_id'>; label: string }[] = [
+const SUMMARY: { key: keyof Omit<DailyRuleRoleSummary, 'run_id' | 'terminal'>; label: string }[] = [
   { key: 'starting_equity', label: 'Starting equity' },
   { key: 'final_equity', label: 'Final equity' },
   { key: 'gross_pnl', label: 'PnL before commissions (spread/slippage included)' },
@@ -25,8 +25,21 @@ const SUMMARY: { key: keyof Omit<DailyRuleRoleSummary, 'run_id'>; label: string 
 ]
 
 function recorded(value: unknown): string {
-  return value === null || value === undefined ? 'not recorded'
+  return value === null || value === undefined || value === '' ? 'not recorded'
     : typeof value === 'object' ? JSON.stringify(value) : String(value)
+}
+
+function TerminalValuation({ terminal }: { terminal: DailyRuleRoleSummary['terminal'] }) {
+  if (!terminal) return <div>Terminal valuation not recorded.</div>
+  return <div style={{ textAlign: 'left', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+    <div>{terminal.valuation_basis === 'last_admitted_open_quote'
+      ? 'Last admitted opening quote' : 'Valuation basis not recorded'}: {recorded(terminal.opening_quote_at)}</div>
+    <div>Valuation event: {recorded(terminal.valuation_at)} (simulation ordering).</div>
+    <div>{terminal.terminal_liquidation === false ? 'No forced liquidation.' : 'Liquidation policy not recorded.'}</div>
+    <div>{terminal.terminal_decision === 'unfilled_without_next_admitted_quote' && terminal.final_decision_at
+      ? <>Final decision {terminal.final_decision_at}: no next admitted quote recorded; no fill inferred.</>
+      : 'Final decision not recorded.'}</div>
+  </div>
 }
 
 export function DailyRuleSummary({ evidence }: { evidence: DailyRuleEvidence }) {
@@ -54,7 +67,9 @@ export function DailyRuleSummary({ evidence }: { evidence: DailyRuleEvidence }) 
           {evidence.roles[role].run_id}
         </button>
       </td>)}</tr>{SUMMARY.map(item => <tr key={item.key} id={item.key === 'rejected' ? 'daily-rejected-counts' : undefined}><th scope="row">{item.label}</th>
-        {ROLES.map(role => <td className="num" key={role}>{recorded(evidence.roles[role][item.key])}</td>)}
+        {ROLES.map(role => <td className="num" key={role}>{recorded(evidence.roles[role][item.key])}
+          {item.key === 'final_equity' ? <TerminalValuation terminal={evidence.roles[role].terminal}/> : null}
+        </td>)}
       </tr>)}</tbody>
     </table>
   </section>

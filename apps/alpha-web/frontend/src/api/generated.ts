@@ -6420,6 +6420,31 @@ export interface components {
             run_id: string;
             /** Starting Equity */
             starting_equity: number;
+            terminal?: components["schemas"]["DailyRuleTerminalEvidence"] | null;
+        };
+        /** DailyRuleTerminalEvidence */
+        DailyRuleTerminalEvidence: {
+            /** Final Decision At */
+            final_decision_at: string;
+            /** Opening Quote At */
+            opening_quote_at: string;
+            /**
+             * Terminal Decision
+             * @constant
+             */
+            terminal_decision: "unfilled_without_next_admitted_quote";
+            /**
+             * Terminal Liquidation
+             * @constant
+             */
+            terminal_liquidation: false;
+            /** Valuation At */
+            valuation_at: string;
+            /**
+             * Valuation Basis
+             * @constant
+             */
+            valuation_basis: "last_admitted_open_quote";
         };
         /** DataSnapshotRow */
         DataSnapshotRow: {

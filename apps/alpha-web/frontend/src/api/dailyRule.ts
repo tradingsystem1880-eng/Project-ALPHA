@@ -1,6 +1,15 @@
 /** Read-only recorded daily-study projection. Values and units are supplied by the CLI. */
 export type DailyRuleRole = 'baseline' | 'control'
 
+export interface DailyRuleTerminalEvidence {
+  valuation_basis: 'last_admitted_open_quote'
+  valuation_at: string
+  opening_quote_at: string
+  terminal_liquidation: false
+  terminal_decision: 'unfilled_without_next_admitted_quote'
+  final_decision_at: string
+}
+
 export interface DailyRuleRoleSummary {
   run_id: string
   final_equity: number | null
@@ -12,6 +21,7 @@ export interface DailyRuleRoleSummary {
   gross_pnl: number | null
   net_pnl: number | null
   fees_total: number | null
+  terminal?: DailyRuleTerminalEvidence | null
 }
 
 export interface DailyRuleEvidence {

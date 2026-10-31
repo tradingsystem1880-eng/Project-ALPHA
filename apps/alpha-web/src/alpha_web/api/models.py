@@ -222,6 +222,15 @@ class DailyRuleAccountingPage(StrictModel):
     next_offset: int | None
 
 
+class DailyRuleTerminalEvidence(StrictModel):
+    valuation_basis: Literal["last_admitted_open_quote"]
+    valuation_at: str
+    opening_quote_at: str
+    terminal_liquidation: Literal[False]
+    terminal_decision: Literal["unfilled_without_next_admitted_quote"]
+    final_decision_at: str
+
+
 class DailyRuleRoleSummary(StrictModel):
     run_id: str
     starting_equity: float
@@ -233,6 +242,7 @@ class DailyRuleRoleSummary(StrictModel):
     fees_total: float
     net_pnl: float
     gross_pnl: float
+    terminal: DailyRuleTerminalEvidence | None = None
 
 
 class DailyRuleEvidenceResponse(StrictModel):

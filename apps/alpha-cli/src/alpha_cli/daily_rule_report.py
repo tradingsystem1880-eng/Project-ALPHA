@@ -213,6 +213,14 @@ def daily_rule_evidence(
             "fees_total": fees,
             "net_pnl": final - starting,
             "gross_pnl": final - starting + fees,
+            "terminal": {
+                "valuation_basis": frozen.economics.terminal_valuation,
+                "valuation_at": curve[-1][0],
+                "opening_quote_at": query["rows"][-1]["open_time"],
+                "terminal_liquidation": frozen.economics.terminal_liquidation,
+                "terminal_decision": frozen.economics.terminal_decision,
+                "final_decision_at": raw["decision_trace"][-1]["ts"],
+            },
         }
     if not selected_found:
         raise DataError("daily projection is not one of the parent's frozen selectors")

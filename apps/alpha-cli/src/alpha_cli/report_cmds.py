@@ -87,9 +87,40 @@ def report(
         for role, result in evidence["roles"].items():
             typer.echo(
                 f"{role}: run={result['run_id']} net_pnl={_fmt(result['net_pnl'])} "
+                f"final_equity={_fmt(result['final_equity'])} "
                 f"observed_fees={_fmt(result['fees_total'])} fills={result['fills']} "
                 f"closed_trades={result['n_trades']}"
             )
+            terminal = result.get("terminal")
+            if not isinstance(terminal, dict):
+                typer.echo("  Terminal valuation not recorded.")
+                continue
+            basis = (
+                "last admitted opening quote"
+                if terminal.get("valuation_basis") == "last_admitted_open_quote"
+                else "valuation basis not recorded"
+            )
+            typer.echo(
+                f"  {basis} {terminal.get('opening_quote_at') or 'not recorded'}; "
+                f"valuation event {terminal.get('valuation_at') or 'not recorded'} "
+                "(simulation ordering)."
+            )
+            typer.echo(
+                "  No forced liquidation."
+                if terminal.get("terminal_liquidation") is False
+                else "  Liquidation policy not recorded."
+            )
+            decision_at = terminal.get("final_decision_at")
+            if (
+                terminal.get("terminal_decision") == "unfilled_without_next_admitted_quote"
+                and decision_at
+            ):
+                typer.echo(
+                    f"  Final decision {decision_at}: no next admitted quote recorded; "
+                    "no fill inferred."
+                )
+            else:
+                typer.echo("  Final decision not recorded.")
 
     if manifest.get("command") in ("forecast_run", "forecast_eval"):  # Kronos forecasting
         model = manifest.get("model") or {}
