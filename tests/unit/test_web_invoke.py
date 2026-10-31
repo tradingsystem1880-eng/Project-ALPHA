@@ -265,7 +265,8 @@ def test_successful_process_with_terminal_projection_failure_is_not_reported_don
     assert job.status == "failed"
     assert job.terminal_error is not None
     assert "malformed JSON" in job.terminal_error
-    assert any(args[1:4] == ["job-status", job_id, "failed"] for args in calls)
+    assert not any(args[1:4] == ["job-status", job_id, "failed"] for args in calls)
+    assert any(args[1] == "job-show" for args in calls)
 
 
 def test_pump_thread_start_failure_reaps_child_before_releasing_capacity(

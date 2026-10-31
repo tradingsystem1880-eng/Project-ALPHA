@@ -937,5 +937,10 @@ def test_terminal_journal_failures_remain_visible_to_the_owner() -> None:
     while cancelled_child.poll() is None and time.monotonic() < deadline:
         time.sleep(0.01)
     cancelled.stop()
-    with pytest.raises(DurableLeaseCancelled, match="cancelled journal update also failed"):
-        cancelled.raise_if_cancelled()
+    assert not cancelled.cancelled
+    assert cancelled.failed
+    cancelled.raise_if_cancelled()
+    with pytest.raises(
+        DurableLeaseError, match="cancellation publication failed.*cancel journal unavailable"
+    ):
+        cancelled.raise_if_failed()

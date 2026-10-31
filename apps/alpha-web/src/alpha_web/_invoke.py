@@ -33,7 +33,12 @@ from alpha_cli.durable_lease import (
     terminate_and_reap,
 )
 from alpha_cli.job_capacity import heavyweight_job_kind_for_command
-from alpha_web._catalog import _cli_environment, _run_json, _strip_ansi
+from alpha_web._catalog import (
+    DEFAULT_TIMEOUT_SECONDS,
+    _cli_environment,
+    _run_json,
+    _strip_ansi,
+)
 
 _ALPHA_BIN = "alpha"  # console script on the venv PATH
 _RUN_ID_RE = re.compile(r"->\s+run\s+([0-9a-f]{16})\b")
@@ -89,10 +94,10 @@ class Job:
     def status(self) -> str:
         if not self.finished:
             return "running"
-        if self.cancelled:
-            return "cancelled"
         if self.terminal_error is not None:
             return "failed"
+        if self.cancelled:
+            return "cancelled"
         return "done" if self.returncode == 0 else "failed"
 
     def tail(self, start: int) -> list[str]:
@@ -267,10 +272,42 @@ def _set_durable_status(
     if terminal_error is not None:
         args.extend(["--terminal-error", terminal_error[:4096]])
     args.append("--json")
-    if timeout_seconds is None:
-        _run_json(args, data_dir=data_dir)
-    else:
-        _run_json(args, data_dir=data_dir, timeout_seconds=timeout_seconds)
+    if status not in {"cancelled", "succeeded", "failed"}:
+        _run_json(
+            args, data_dir=data_dir, timeout_seconds=timeout_seconds or DEFAULT_TIMEOUT_SECONDS
+        )
+        return
+    # A response can be lost after commit. Never issue a different terminal write
+    # to recover it; read the authoritative row within the existing call budget.
+    deadline = time.monotonic() + (timeout_seconds or DEFAULT_TIMEOUT_SECONDS)
+    try:
+        _run_json(args, data_dir=data_dir, timeout_seconds=deadline - time.monotonic())
+    except (RuntimeError, ValueError, OSError) as exc:
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            try:
+                row = _run_json(
+                    [
+                        "project",
+                        "job-show",
+                        job.job_id,
+                        "--event-limit",
+                        "1",
+                        "--event-tail",
+                        "--json",
+                    ],
+                    data_dir=data_dir,
+                    timeout_seconds=remaining,
+                )
+            except (RuntimeError, ValueError, OSError):
+                row = None
+            if (
+                isinstance(row, dict)
+                and row.get("job_id") == job.job_id
+                and row.get("status") == status
+            ):
+                return
+        raise RuntimeError(f"durable terminal state remains unverified: {exc}") from exc
 
 
 def _abort_before_pump(
@@ -331,7 +368,6 @@ def _renew_durable_heartbeat(job: Job, *, data_dir: Path) -> bool:
 
 
 def _mark_durable_cancelled(job: Job, *, data_dir: Path) -> None:
-    job.cancelled = True
     _set_durable_status(
         job,
         "cancelled",
@@ -483,13 +519,6 @@ def _pump(job: Job, proc: subprocess.Popen[str], data_dir: Path) -> None:
             )
         except (RuntimeError, ValueError, OSError) as exc:
             job.terminal_error = f"durable journal terminal update failed: {exc}"
-            with contextlib.suppress(RuntimeError, ValueError, OSError):
-                _set_durable_status(
-                    job,
-                    "failed",
-                    data_dir=data_dir,
-                    terminal_error="workstation could not complete the durable heavyweight journal",
-                )
             job._append(job.terminal_error)
         job.finished_at = time.time()
         job.finished = True
