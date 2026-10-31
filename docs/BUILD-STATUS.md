@@ -2852,3 +2852,21 @@ hosted trigger or README PR has been demonstrated. No Actions inference credenti
 in this task environment; repository secret availability is unverified. The private review suite is
 absent and prior delivery exceptions do not cover this new protected workflow. Full/public checks
 and normal independent review are still required; private coverage is UNVERIFIED, not PASS.
+
+## 2026-10-31 — Codex-session README upkeep replaces the API architecture
+
+Hunter's 01:53 UTC instruction supersedes the earlier API workflow candidate. The revision keeps
+the reader-friendly guide and moves upkeep into the existing Codex coding task before delivery.
+Native `gate.py attest --kind readme` evidence records updated/no-change reasoning and binds the
+final branch tree, main comparison and changed scope; installed Git guards require it. It checks
+local file links and freshness, not semantic truth, and makes no guarantee over arbitrary pushes.
+Existing full, independent-review and quant guards retain their normal authority.
+
+The separate inference workflow/schema/helper/tests, secret dependency and extra CI dispatch/
+Actions capability are removed. No new API use, credentials or spending setup is introduced.
+Old PR/head/run receipts remain superseded historical evidence. PR102 stays draft for the revised
+same-purpose implementation; the existing publication approval and scoped private absence-only
+exception cover necessary corrections. Private coverage is UNVERIFIED. Revised focused tests,
+exact-tree full qualification and independent review are required before its next guarded commit.
+See the [existing plan](superpowers/plans/2026-10-31-readme-maintenance.md) and
+[worked delivery workflow](operations/readme-maintenance.md).

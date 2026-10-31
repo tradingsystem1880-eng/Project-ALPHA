@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -24,13 +23,9 @@ jobs:
           enable-cache: true
       - name: Install (locked)
         run: uv sync --locked
-      - name: Reject stale generated README PRs
-        env:
-          README_HEAD_REF: ${{ github.head_ref || github.ref_name }}
-        run: python scripts/readme_maintenance.py verify-pr
       - name: Shared backend gate
         env:
-          ALPHA_GATE_BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'origin/main' }}
+          ALPHA_GATE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: uv run python scripts/gate.py component backend
 
   harness:

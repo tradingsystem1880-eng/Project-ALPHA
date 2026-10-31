@@ -43,6 +43,9 @@ The depth behind these items lives in `code-review-and-quality` (the five-axis r
 - [ ] Public interfaces, APIs, and user-facing behavior are documented
 - [ ] Architectural decisions worth preserving are recorded (see `documentation-and-adrs`)
 - [ ] Documentation describes the current state in timeless language, not the change history
+- [ ] The coding session reviewed README against final branch code, verified claims/links, and
+  updated it or recorded meaningful `no_change` evidence through `gate.py attest --kind readme`;
+  installed Git guards require the evidence to match the final tree and main comparison
 
 ### Ship-readiness
 - [ ] Security implications reviewed for any untrusted input, auth, or data handling (see `security-and-hardening`)

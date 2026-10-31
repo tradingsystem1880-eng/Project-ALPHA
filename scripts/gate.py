@@ -91,6 +91,7 @@ _PROTECTED_EXACT = frozenset(
         "scripts/run_owned_test.py",
         "scripts/gate_components.py",
         "scripts/git_guard.py",
+        "scripts/readme_review.py",
         "scripts/wheel_smoke.py",
         "scripts/repo_orientation.py",
         "scripts/claude_hooks.py",
@@ -716,6 +717,10 @@ def stamp_age_seconds(root: Path) -> float | None:
 
 def attest(root: Path, kind: str, payload_text: str) -> int:
     """Validate an agent-produced report and persist it bound to the in-scope diff."""
+    if kind == "readme":
+        from readme_review import attest as attest_readme
+
+        return attest_readme(root, payload_text)
     try:
         payload = json.loads(payload_text)
     except ValueError as exc:
@@ -993,6 +998,7 @@ HARNESS_SCRIPTS = (
     "scripts/gate_components.py",
     "scripts/gate_preflight.py",
     "scripts/git_guard.py",
+    "scripts/readme_review.py",
     "scripts/wheel_smoke.py",
     "scripts/check_semgrep_contracts.py",
     "scripts/repo_orientation.py",
@@ -1354,7 +1360,7 @@ def build_parser() -> argparse.ArgumentParser:
     check = sub.add_parser("check")
     check.add_argument("--tier", choices=("fast", "full"), default="fast")
     attest_p = sub.add_parser("attest")
-    attest_p.add_argument("--kind", choices=("quant", "review"), required=True)
+    attest_p.add_argument("--kind", choices=("quant", "review", "readme"), required=True)
     _CLEAR_HELP = "drop an armed token without using it (recorded in the journal)"
     override_p = sub.add_parser("override")
     override_p.add_argument("--reason")

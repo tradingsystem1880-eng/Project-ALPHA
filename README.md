@@ -14,8 +14,6 @@ explanations. A chart, a model answer, or a profitable backtest alone does not e
 fresh build at [fbdcbcf](https://github.com/tradingsystem1880-eng/Project-ALPHA/commit/fbdcbcfdf29aebe3fd43e38bf5ae4051cbf23b98), using the isolated real backend and synthetic test data. They show the
 product UI, not live market performance or an owner's account.*
 
-<!-- codex-reader-guide:start -->
-<!-- codex-reader-guide:base 2a8aa50b5669f6645ecfb5c0e0e23fb8f932bf82 -->
 ## A plain-English guide
 
 Think of ALPHA as a research notebook with a testing laboratory attached. You bring a market
@@ -54,7 +52,6 @@ implemented. Full counterfactual ML fold retraining and autonomous RD-Agent rese
 unfinished or deferred. Paper paths require separate opt-ins and readiness evidence; **no
 live-capital route ships**. The [scope and limits](#implemented-scope-and-limits) and
 [authority matrix](docs/governance/capability-authority-matrix.md) explain these boundaries.
-<!-- codex-reader-guide:end -->
 
 ## Research workflow
 
@@ -251,5 +248,11 @@ uv run python scripts/gate.py full
 
 It covers backend, frontend, literature, Qlib, Atlas, and eval components. Focused checks and old
 delivery records do not establish a fresh aggregate pass, research validity, or provider readiness.
+Before delivery, the Codex coding session reviews this README against the final branch code.
+It updates useful explanations and setup details when needed; a branch with no reader impact
+records a meaningful `no_change` decision without making a dummy README edit. Installed Git
+guards require fresh tree-bound review evidence. See [README upkeep](docs/operations/readme-maintenance.md)
+for the workflow, evidence command and enforcement limits. This adds no separate AI job or API key.
+
 The [context index](docs/context/README.md) links the deeper maps; the
 [build record](docs/BUILD-STATUS.md) preserves dated delivery evidence.

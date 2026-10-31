@@ -1,112 +1,101 @@
-# README maintenance
+# README upkeep during Codex delivery
 
-This workflow is implemented as a candidate change, **not deployed or live-verified**. It keeps the
-plain-English reader guide near the top of README aligned with merged code. Everything outside
-`codex-reader-guide:start/end` remains unchanged, including setup instructions, screenshots,
-research protocols and technical architecture. If Codex finds those details inaccurate, the run
-fails visibly and requires a normal correction; it does not quietly declare the README current.
+README upkeep is part of the existing Codex implementation task. The session that understands
+and changes the code also reviews and edits README **before delivering its branch**. It uses the
+current coding session; the checker makes no model call, introduces no API credential or spending
+setup, and adds no GitHub inference workflow. Normal engineering CI stays unchanged.
 
-## What happens after a merge
+## Coding-session workflow
 
-1. A push to `main` (including a merged branch) starts **README maintenance**. A manual run is also
-   available after deployment for recovery. It checks out current `main`, not an old event SHA.
-2. The helper compares tracked changes since the guide's last incorporated source SHA. Tests,
-   image-only changes and README-only changes do not need inference. Pending source changes
-   remain visible across cancelled runs because comparison is cumulative, not just the latest push.
-3. For relevant changes, Codex receives a bounded evidence packet: the existing README,
-   architecture, platform and authority maps, and changed tracked source/plan files. Deleted paths
-   remain listed. Private tests, untracked owner data, environment dumps and credentials are excluded.
-   Large files use explicitly labelled changed hunks; oversized diffs/packets fail loudly
-   instead of silently discarding evidence.
-4. A fresh inference job downloads only that packet, schema and trusted validator; it has no
-   repository checkout, Git history or private tests. Codex runs with pinned CLI/action versions,
-   read-only permissions, privilege reduction and fresh configuration. Product MCP servers are not loaded. Repository
-   content is explicitly untrusted data; there is no PR-body interpolation into executable commands.
-5. Only schema JSON can cross to the separate delivery job. Validation rejects unexpected fields,
-   nonlocal/missing evidence links, HTML, known secret patterns, exact injected credentials and
-   excessive text. A no-op changes no bytes. Changed prose replaces only the owned section.
-6. The exact README candidate passes the existing canonical full gate and installed Git guards
-   before a conventional Git commit. Only README may differ. The workflow pushes an ordinary
-   `codex/readme-<source SHA>` branch and opens a docs PR. It never pushes to `main`, force-pushes,
-   approves its own PR, fabricates a review receipt, changes branch protections or bypasses gates.
-7. Existing CI is explicitly dispatched on that branch. The CI backend rejects stale generated
-   README branches and verifies their SHA-bound README-only scope. Normal required checks and
-   owner review/authorized merge still apply. Automatic prose generation is not automatic approval.
+1. Read AGENTS.md, CLAUDE.md and the existing feature workflow. Fetch `origin/main` through the
+   already authorized repository route. Review the **whole final branch**, including earlier
+   commits, current architecture, implemented entry points and tracked plans. Plans are not proof
+   of implementation. Never inspect private tests, credentials or owner data for this review.
+2. Update README where readers need a different explanation: purpose, how components fit,
+   implemented versus planned work, practical entry points, setup and limitations. Preserve useful
+   accurate technical material and link deeper details. Keep plain English and a concise overview;
+   avoid an endless changelog. Verify claims against code and check affected links/anchors, including
+   external documentation when needed. Engineering tests do not establish trading readiness.
+3. If the final branch has no reader impact, leave README bytes unchanged and explain why its
+   existing statements remain accurate. An updated timestamp or pointless rewording is not upkeep.
+   `updated` means README differs from main somewhere on this branch; it need not change again in
+   every commit. A later internal fix can retain an earlier useful README update after fresh review.
+4. Finish code, docs and generated outputs. Stage the candidate and prepare a short native review
+   report. The existing full gate and independent review still apply. Any final-tree content change
+   or fetched-main movement invalidates the README evidence and requires review again.
 
-The model can still be wrong about meaning. The reviewer must check implemented-versus-planned
-claims against links and code. Lexical validation cannot prove semantic truth or guarantee that
-arbitrary sensitive text is absent. Never add credentials or private owner records to tracked source.
-Passing engineering checks does not establish a trading edge, provider acceptance or live readiness.
+Inspect the native scope and tree binding using the same Python seam as the existing review gate:
 
-## Authentication, permissions and cost
+```bash
+uv run python - <<'PY'
+import json
+import sys
+sys.path.insert(0, "scripts")
+import gate
+import readme_review
+root = gate.repo_root()
+print(json.dumps({"reviewed_tree_hash": gate.compute_tree_hash(root),
+                  "changed_paths": readme_review.context(root)["paths"]}, indent=2))
+PY
+```
 
-Official [Codex Action documentation](https://github.com/openai/codex-action) requires an inference
-API credential. A ChatGPT subscription or a local CLI login does not authenticate this Actions job.
-The implementation references an existing authorized repository secret named `OPENAI_API_KEY`;
-it does not create or configure one. No credential is available in the task environment, and
-repository secret existence has not been verified. No inference call or hosted workflow was run.
+Write the session's actual decision to a temporary JSON file (substitute the inspected tree hash):
 
-The smallest inference setup action is owner authorization to add an OpenAI project API key as the
-repository Actions secret `OPENAI_API_KEY`, with API billing and access to `gpt-6-astra`. Do not post
-it in chat or Git. This setup action is pending, not performed. No new GitHub App or PAT is needed.
-The workflow uses the repository's short-lived `GITHUB_TOKEN` for branch/PR delivery and CI dispatch.
-Its delivery job requests `contents: write`, `pull-requests: write` and `actions: write`; the model
-job has `contents: read`. The repo/org must already permit workflow-created PRs. If policy denies
-that, report the exact denial and ask the owner before changing the setting; never change it here.
+```json
+{
+  "reviewed_tree_hash": "<64-character final tree hash>",
+  "disposition": "updated",
+  "rationale": "README now explains the implemented delivery review step and links its native evidence command. Existing startup, research and authority limits remain accurate."
+}
+```
 
-The implementation itself touches protected workflow paths and needs independent review. The
-private `tests/holdout/` suite is absent. Under the current reviewer instructions that is a blocking
-unrun check for this new task; historical exceptions do not apply. Restore the original suite or
-obtain an explicitly scoped owner exception before guarded publication. Private coverage stays
-UNVERIFIED. No private content was read or modified.
+Use `no_change` when README has no branch diff, with a substantive reason specific to the task.
+Do not copy a stock rationale without doing the review. Record it through the existing gate:
 
-Relevant runs consume OpenAI API tokens plus GitHub Actions minutes. The input packet is capped
-at 500,000 characters, individual files at 80,000, output at 12,000 characters / 1,600 words, and
-assessment at 12 minutes. The prompt targets 900 words. Qualification may use up to 90 minutes,
-including all existing components and browser tests; CI then checks the committed branch again.
-There is no guarantee of a fixed dollar charge: pricing, model usage and runner billing vary.
-There is no persistent response cache; duplicate events may repeat an assessment, but they do not
-create a second PR for the same source SHA. Consider lower frequency only if cost becomes material.
+```bash
+uv run python scripts/gate.py attest --kind readme < /tmp/readme-review.json
+uv run python scripts/gate.py full
+```
 
-Pins checked 2026-10-31: OpenAI Action `13e9c17417b29e9a276f73ec6ed7fb574137d3c3`, Codex CLI
-`0.166.0`; checkout/upload/download/setup-uv/setup-node use full commit SHAs in the workflow. Review
-pin upgrades as ordinary protected code changes. The model name is explicit and API access must
-be validated at activation. See [Codex Action inputs and safety](https://github.com/openai/codex-action/blob/13e9c17417b29e9a276f73ec6ed7fb574137d3c3/README.md)
-and [GitHub workflow triggers](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
-Current GitHub documentation allows token-created PR runs in an approval-required state; explicit
-`workflow_dispatch` avoids depending on someone approving those runs. Existing protection rules
-still decide which checks/reviews are required; the workflow does not change those settings.
+Native evidence lives in ignored `.alpha/state/readme-review.json`, alongside existing gate and
+review records. It binds the final tree, fetched main comparison and changed paths, and records
+`updated` or `no_change` with a rationale. Local inline Markdown file targets must exist in the staged repository and are checked without network
+access. The checker rejects unknown comparison bases, stale trees/base/scope, wrong disposition,
+missing README, malformed reports and missing/out-of-repository local link targets. It does not
+write README or require a no-impact branch to edit it. Summarize the decision in the normal PR/task
+handoff; keep the existing feature plan rather than starting a separate documentation system.
 
-## Failure and recovery
+## Worked example: this task
 
-Runs are serialized and newer pushes cancel older work. Each publication checks `main` before
-commit and push/PR creation; stale work fails instead of rebasing generated prose onto unseen code.
-The delivery job closes obsolete bot-authored generated PRs, including after failed inference.
-Human branches and the separate delivery-marker branch are unaffected. Normal CI also rejects a
-generated PR whose source SHA no longer matches `main`. A final merge-time race is governed by
-existing branch protection: reviewers must not merge obsolete PRs. The workflow does not grant
-or imply a protection-policy change.
+The final branch adds native README review to the existing delivery guard. The coding session
+keeps the project's reader-friendly component guide, replaces the API-based upkeep instructions
+with this workflow, and adds a short README development paragraph explaining the real local
+review/evidence step. Existing startup commands and product limits are preserved. It records
+`updated` with a code-grounded rationale, then runs the full gate and independent review before a
+normal guarded commit/push. This is an actual change on this branch, not an invented product feature.
 
-A self-generated README merge has only README differences from its recorded base, so it does not
-call Codex again. If other source changes arrived meanwhile, the cumulative comparison assesses
-them. Human README-only edits are also no-ops when no source changes await incorporation.
-A semantically unchanged assessment preserves the original source marker; later assessments may
-revisit those still-relevant source changes. That costs tokens but cannot create an infinite PR loop.
+For a later task that only repairs an internal test fixture, the session reads the final diff and
+confirms that documented behavior, setup and limits remain accurate. If README has no branch diff,
+it records `no_change` with that concrete explanation and leaves the file untouched. The installed
+commit guard still requires fresh evidence for that final tree.
 
-Missing auth, action/API errors, failed output validation, oversize evidence, stale `main`, guard
-failure, failed CI dispatch or failed gates all produce a failed Actions run. No success marker is
-written on failure. The failed run is the visible drift signal; there is no silently successful
-fallback or guarantee that the guide is current. Inspect job logs before rerunning **README
-maintenance** on `main`. Model output artifacts expire after one day and never contain transcripts.
-A PR that exists but whose CI dispatch failed is recoverable by rerunning the workflow: its
-per-source branch/PR is reused and CI is dispatched again. A pushed branch without a PR is recovered only when its complete tree equals the newly tested
-candidate. Different bytes require inspection; never force-push or delete unknown changes.
+## Enforcement limits
 
-After authorized deployment, verify a manual run first, then merge one controlled reader-relevant
-source/documentation change through normal review. Record the real push run, resulting README PR,
-full gate, seven CI jobs and ordinary merge. Confirm that its README-only merge causes no further
-PR. Fixture tests are not this live verification.
+The installed local Git precommit guard blocks delivery commits without matching README review
+evidence, after checking the existing full-gate/staged-tree requirements. Review and quant guards
+retain their normal requirements. Evidence validates structure, freshness, branch scope and local
+file links; it **does not prove semantic correctness**, source truth, external URLs or every anchor.
+The coding session and normal reviewer remain responsible for claims and usefulness.
 
-Rollback is a normal PR removing `.github/workflows/readme-maintenance.yml`, reverting the small CI
-manual-trigger/freshness additions, and removing the bounded guide/helper if desired. Credentials
-and repository settings are separate owner-managed resources; this implementation creates none.
+This is local installed-hook feedback, not a guarantee over all arbitrary pushes. Clients without
+the repository's Git guards, bypassed hooks, merges made elsewhere and unrelated agents outside
+these instructions cannot be claimed covered. Existing CI tests the harness but a fresh GitHub
+checkout cannot recover the ignored local review record or prove that a particular session read
+the prose. Normal review, branch protections and owner-authorized publication/merge remain intact.
+Do not infer scientific, provider, paper or live-capital authority from this record.
+
+The earlier API-based PR head and its tests are preserved as superseded evidence. The revised
+branch removes that workflow, secret dependency, extra Actions write/dispatch capability and
+architecture-only scaffolding. No credentials, spending configuration or paid inference is needed
+for this delivery check. Private test coverage remains UNVERIFIED under the owner's task-scoped
+absence-only exception; all other required checks still block when they fail or cannot run.
