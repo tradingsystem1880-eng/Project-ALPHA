@@ -110,6 +110,10 @@ def validate_rule_plan(plan: Mapping[str, object], *, max_grid_cells: int) -> di
 
 
 def is_rule_contract(contract: Mapping[str, object]) -> bool:
+    from alpha_cli._native_daily_rule_identity import contract_is_daily
+
+    if contract_is_daily(contract):
+        return True
     protocol = contract.get("protocol")
     operator = protocol.get("d0_operator") if isinstance(protocol, Mapping) else None
     return isinstance(operator, Mapping) and operator.get("name") == NAME
@@ -131,6 +135,12 @@ def registered_rule_operator(costed: bool = False) -> dict[str, object]:
 
 
 def validate_rule_contract(contract: Mapping[str, object]) -> dict[str, object]:
+    from alpha_cli._native_daily_rule_identity import contract_is_daily
+
+    if contract_is_daily(contract):
+        from alpha_cli._native_daily_rule_protocol import validate_daily_contract
+
+        return validate_daily_contract(contract)
     costed = contract_is_costed(contract)
     protocol = contract.get("protocol")
     if not isinstance(protocol, Mapping) or canonical(protocol.get("d0_operator")) != canonical(

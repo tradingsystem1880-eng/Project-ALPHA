@@ -26,6 +26,10 @@ NATIVE_COMMAND = "research_rule_native_v1"
 
 
 def d0_fingerprint(contract: Mapping[str, object]) -> str:
+    from alpha_cli._native_daily_rule_protocol import contract_is_daily, validate_daily_contract
+
+    if contract_is_daily(contract):
+        return sha({"runtime": "DailyRuleD0V1", "operator": validate_daily_contract(contract)})
     return sha({"runtime": "SyntheticRuleD0V1", "operator": validate_rule_contract(contract)})
 
 
@@ -39,6 +43,20 @@ def publish_rule_run(
     native_receipt: Mapping[str, object] | None = None,
     native_receipt_bytes: bytes | None = None,
 ) -> dict[str, Any]:
+    from alpha_cli._native_daily_rule_protocol import contract_is_daily
+
+    if contract_is_daily(contract):
+        from alpha_cli._native_daily_rule_artifacts import publish_daily_rule_run
+
+        return publish_daily_rule_run(
+            data_dir,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract=contract,
+            execution_fingerprint=execution_fingerprint,
+            native_receipt=native_receipt,
+            native_receipt_bytes=native_receipt_bytes,
+        )
     if native_receipt is not None and (
         native_receipt_bytes is None
         or canonical(json.loads(native_receipt_bytes)) != canonical(native_receipt)
@@ -155,6 +173,13 @@ def publish_rule_run(
 def validate_rule_artifacts(
     rdir: Path, manifest: Mapping[str, object], contract: Mapping[str, object]
 ) -> None:
+    from alpha_cli._native_daily_rule_protocol import contract_is_daily
+
+    if contract_is_daily(contract):
+        from alpha_cli._native_daily_rule_artifacts import validate_daily_rule_artifacts
+
+        validate_daily_rule_artifacts(rdir, manifest, contract)
+        return
     operator = validate_rule_contract(contract)
     costed = contract_is_costed(contract)
     verify_manifest_artifacts(rdir, manifest)

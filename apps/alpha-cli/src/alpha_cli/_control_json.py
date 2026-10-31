@@ -32,21 +32,23 @@ def _clean_json(value: object, *, label: str, depth: int = 0) -> object:
     raise DataError(f"invalid control {label}: expected finite JSON values")
 
 
-def _json_object(value: Mapping[str, object], label: str) -> dict[str, object]:
+def _json_object(
+    value: Mapping[str, object], label: str, *, max_bytes: int = _MAX_JSON_BYTES
+) -> dict[str, object]:
     clean = _clean_json(value, label=label)
     if not isinstance(clean, dict):  # Mapping above makes this defensive branch unreachable.
         raise DataError(f"invalid control {label}: expected a JSON object")
-    _canonical_json(clean, label)
+    _canonical_json(clean, label, max_bytes=max_bytes)
     return clean
 
 
-def _canonical_json(value: object, label: str) -> str:
+def _canonical_json(value: object, label: str, *, max_bytes: int = _MAX_JSON_BYTES) -> str:
     try:
         result = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
     except (TypeError, ValueError) as exc:
         raise DataError(f"invalid control {label}: expected finite JSON values") from exc
-    if len(result.encode("utf-8")) > _MAX_JSON_BYTES:
-        raise DataError(f"invalid control {label}: JSON exceeds {_MAX_JSON_BYTES} bytes")
+    if len(result.encode("utf-8")) > max_bytes:
+        raise DataError(f"invalid control {label}: JSON exceeds {max_bytes} bytes")
     return result
 
 

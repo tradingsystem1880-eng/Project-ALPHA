@@ -20,20 +20,40 @@ async def _run(admission: dict[str, object]) -> dict[str, object]:
         if rule is not None
         else set()
     )
-    if (
-        set(admission) - extra
-        != {
-            "schema",
-            "job_id",
-            "reservation_id",
-            "spec_sha256",
-            "manifest_sha256",
-            "owner_id",
-            "mode",
-            "loop_steps",
+    if admission.get("schema") == "DailyNativeAdmissionV1":
+        daily_fields = {
+            "query_sha256",
+            "cpu_milliseconds",
+            "container_name",
+            "image_id",
+            "resource_fingerprint",
+            "container_id",
+            "deadline_monotonic_ns",
         }
-        or admission["schema"] != "SyntheticNativeAdmissionV1"
-    ):
+        deadline = admission.get("deadline_monotonic_ns")
+        if (
+            not daily_fields.issubset(admission)
+            or any(
+                type(admission.get(key)) is not str or not admission[key]
+                for key in ("container_name", "image_id", "resource_fingerprint", "container_id")
+            )
+            or type(deadline) is not int
+            or deadline <= 0
+        ):
+            raise ValueError(
+                "daily admission requires exact container and original deadline bindings"
+            )
+        extra.update(daily_fields)
+    if set(admission) - extra != {
+        "schema",
+        "job_id",
+        "reservation_id",
+        "spec_sha256",
+        "manifest_sha256",
+        "owner_id",
+        "mode",
+        "loop_steps",
+    } or admission["schema"] not in {"SyntheticNativeAdmissionV1", "DailyNativeAdmissionV1"}:
         raise ValueError("invalid synthetic admission identity")
     if Path.cwd().name != f"payload-{admission['job_id']}":
         raise ValueError("admitted native job/workspace mismatch")
@@ -59,10 +79,10 @@ async def _run(admission: dict[str, object]) -> dict[str, object]:
     (Path.cwd() / "payload.pid").write_text(str(os.getpid()))
     owner.fail_in_running = mode == "failure"
     try:
-        costed = (
-            isinstance(rule, dict)
-            and rule["study"].get("schema") == "FrozenRuleCostedReplaySyntheticV1"
-        )
+        costed = isinstance(rule, dict) and rule["study"].get("schema") in {
+            "FrozenRuleCostedReplaySyntheticV1",
+            "FrozenDailyRuleStudyV1",
+        }
         checkpoint = await owner.start(step_n=3 if costed else 1)
         assert checkpoint is not None
         checkpoint_hash = hashlib.sha256(checkpoint.read_bytes()).hexdigest()

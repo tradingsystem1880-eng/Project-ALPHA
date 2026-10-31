@@ -5,6 +5,7 @@ import {
   ARITY,
   EMPTY_FORM,
   OPERAND_EXAMPLES,
+  draftToForm,
   formToSpec,
   operandText,
   parseOperandText,
@@ -43,6 +44,58 @@ describe('operand text (the way the chart names things)', () => {
   it('round-trips through operandText', () => {
     for (const text of ['close', '30', 'sma:20', 'bbands:20:2:lower', 'macd:12:26:9:signal']) {
       expect(operandText(parseOperandText(text))).toBe(text)
+    }
+  })
+})
+
+describe('source lag identity in saved and draft rules', () => {
+  const spec = {
+    name: 'Twenty-day momentum',
+    history: 21,
+    long_when: [{ left: { source: 'close' }, op: '>', right: { source: 'close', lag: 20 } }],
+    short_when: [],
+  }
+
+  it('parses and displays bounded source lag, omitting canonical zero', () => {
+    expect(parseOperandText(' Close:lag:20 ')).toEqual({ source: 'close', lag: 20 })
+    expect(parseOperandText('high:lag:1999')).toEqual({ source: 'high', lag: 1999 })
+    expect(parseOperandText('low:lag:0')).toEqual({ source: 'low' })
+    expect(operandText({ source: 'close', lag: 20 })).toBe('close:lag:20')
+    expect(operandText({ source: 'low', lag: 0 })).toBe('low')
+  })
+
+  it.each(['close:lag:-1', 'close:lag:2000', 'close:lag:1.5', 'close:lag:1.0',
+    'close:lag:true', 'close:lag:', 'close:lag', 'close:20', 'close:lag:20:extra',
+    'close:unknown:20'])('rejects malformed source text %s', (text) => {
+    expect(() => parseOperandText(text)).toThrow(/lag/)
+  })
+
+  it('round-trips saved records and assistant drafts without changing the rule', () => {
+    const record: RuleRecord = {
+      name: 'momentum', spec_name: spec.name, sha256: 'abc', path: '/x/momentum.json',
+      history: 21, warmup: 21, long_conditions: ['close > close:lag:20'], short_conditions: [],
+      spec: { version: 1, ...spec },
+    }
+    const form = recordToForm(record)
+    expect(form.history).toBe('21')
+    expect(form.longRows).toEqual([{ left: 'close', op: '>', right: 'close:lag:20' }])
+    expect(formToSpec(form)).toEqual(spec)
+    expect(formToSpec(draftToForm({ version: 1, ...spec }))).toEqual(spec)
+  })
+
+  it.each([-1, 2000, 1.5, '20', true, null, undefined])(
+    'refuses malformed saved source lag %s instead of erasing it', (lag) => {
+      const malformed = { ...spec,
+        long_when: [{ left: { source: 'close' }, op: '>', right: { source: 'close', lag } }] }
+      expect(() => draftToForm(malformed)).toThrow(/lag/)
+    },
+  )
+
+  it('refuses unknown saved source fields and lag on non-source operands', () => {
+    for (const right of [{ source: 'close', lag: 20, future: true },
+      { value: 1, lag: 20 }, { indicator: 'sma', params: [20], lag: 1 }]) {
+      expect(() => draftToForm({ ...spec,
+        long_when: [{ left: { source: 'close' }, op: '>', right }] })).toThrow()
     }
   })
 })

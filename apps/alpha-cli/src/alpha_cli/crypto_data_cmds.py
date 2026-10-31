@@ -378,14 +378,16 @@ class BulkVolumeUnconfigured(DataError):
 
 
 def _bulk_store() -> CryptoBulkStore:
+    from alpha_cli.crypto_bulk_store import configured_crypto_bulk_store
+
     settings = AlphaSettings()
-    if not settings.bulk_volume_uuid:
+    if (
+        not settings.bulk_volume_uuid
+        and settings.bulk_storage_backend == "macos_volume_uuid"
+        and not (settings.data_dir / "crypto" / "storage-config.json").exists()
+    ):
         raise BulkVolumeUnconfigured("crypto bulk volume UUID is not configured")
-    return CryptoBulkStore(
-        bulk_root=settings.bulk_data_dir,
-        manifest_root=settings.data_dir / "crypto" / "manifests",
-        expected_volume_uuid=settings.bulk_volume_uuid,
-    )
+    return configured_crypto_bulk_store(settings)
 
 
 def _control_store() -> ControlStore:
@@ -1119,6 +1121,12 @@ def market_catalog(
 
 
 def _storage_blocker(message: str) -> str:
+    if "disposable" in message:
+        return "bulk_cloud_root_disposable"
+    if "cloud bulk root" in message and ("identity" in message or "symlink" in message):
+        return "bulk_cloud_root_identity_mismatch"
+    if "configuration" in message or "cannot also configure" in message:
+        return "bulk_storage_configuration_invalid"
     if "not mounted" in message:
         return "bulk_volume_not_mounted"
     if "UUID" in message:
@@ -1137,41 +1145,44 @@ def storage(
         False, "--metadata-only", help="mounted identity and metadata only"
     ),
 ) -> None:
-    """Verify the configured external volume and immutable inventory without probing providers."""
+    """Verify the configured bulk identity and inventory without probing providers."""
     settings = AlphaSettings()
     label = settings.bulk_data_dir.name or "bulk"
-    if not settings.bulk_volume_uuid:
-        _emit(
-            {
-                "state": "blocked",
-                "blocker": "bulk_volume_uuid_not_configured",
-                "bulk_root_label": label,
-                "manifest_count": 0,
-                "cache_bytes": 0,
-                "next_action": "Configure the reviewed Expansion volume UUID.",
-            },
-            json_out=json_out,
-        )
-        return
-    store = CryptoBulkStore(
-        bulk_root=settings.bulk_data_dir,
-        manifest_root=settings.data_dir / "crypto" / "manifests",
-        expected_volume_uuid=settings.bulk_volume_uuid,
-    )
+    backend = settings.bulk_storage_backend
     try:
+        store = _bulk_store()
+        label = store.bulk_root.name or "bulk"
+        backend = "cloud_root_identity" if store.cloud_root_identity else "macos_volume_uuid"
         capacity = (
             store.verify_readable() if metadata_only else store.verify_ready(required_bytes=0)
         )
         inventory = store.metadata_inventory() if metadata_only else store.inventory()
+    except BulkVolumeUnconfigured:
+        _emit(
+            {
+                "state": "blocked",
+                "blocker": "bulk_volume_uuid_not_configured",
+                "identity_backend": backend,
+                "bulk_root_label": label,
+                "manifest_count": 0,
+                "cache_bytes": 0,
+                "next_action": "Configure a reviewed Mac volume or an explicit durable cloud root.",
+            },
+            json_out=json_out,
+        )
+        return
     except DataError as exc:
+        if "cloud control_root" in str(exc):
+            backend = "cloud_root_identity"
         _emit(
             {
                 "state": "blocked",
                 "blocker": _storage_blocker(str(exc)),
+                "identity_backend": backend,
                 "bulk_root_label": label,
                 "manifest_count": 0,
                 "cache_bytes": 0,
-                "next_action": "Reconnect the reviewed Expansion volume and run this check again.",
+                "next_action": "Resolve the configured storage identity or capacity, then recheck.",
             },
             json_out=json_out,
         )
@@ -1179,6 +1190,7 @@ def storage(
     _emit(
         {
             "state": "ready",
+            "identity_backend": backend,
             "verification": "metadata_only" if metadata_only else "artifact_verified",
             "blocker": None,
             "bulk_root_label": label,

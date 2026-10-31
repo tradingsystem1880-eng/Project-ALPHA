@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
@@ -22,12 +23,13 @@ from nautilus_trader.model.data import QuoteTick
 from nautilus_trader.model.enums import AccountType, OmsType, OrderSide
 from nautilus_trader.model.events import OrderFilled
 from nautilus_trader.model.identifiers import InstrumentId, Venue
-from nautilus_trader.model.instruments import Instrument
+from nautilus_trader.model.instruments import CurrencyPair, Instrument
 from nautilus_trader.model.objects import Currency, Money
 from nautilus_trader.trading.strategy import Strategy
 
 from alpha_backtest.frictions import BpsFeeModel
 from alpha_backtest.results import (
+    AccountingTrace,
     BacktestResult,
     FillTrace,
     OrderTrace,
@@ -46,6 +48,89 @@ def _ns_to_dt(ns: int) -> datetime:
 def _sum_pnls(pnls: Any) -> float:
     """Sum a nautilus per-currency PnL dict to a float (single base currency in v1)."""
     return float(sum(money.as_double() for money in pnls.values()))
+
+
+class _AccountingRecorder(Actor):  # type: ignore[misc]  # nautilus Actor is untyped (Cython)
+    """Read actual CASH state after portfolio updates, without calculating trade cash."""
+
+    def __init__(self, instrument_id: InstrumentId, currency: Currency) -> None:
+        super().__init__()
+        self._iid = instrument_id
+        self._currency = currency
+        self._fees_total = 0.0
+        self.rows: list[AccountingTrace] = []
+        self.fills: list[tuple[AccountingTrace, str, float, float]] = []
+
+    def on_start(self) -> None:
+        self.subscribe_quote_ticks(self._iid)
+        # The portfolio's order-event subscription has priority 10. Read its
+        # updated account cache at priority 0; positions already exist in cache.
+        self.msgbus.subscribe(topic="events.order.*", handler=self.on_event, priority=0)
+
+    def on_stop(self) -> None:
+        self.msgbus.unsubscribe(topic="events.order.*", handler=self.on_event)
+
+    def _observe(self, ns: int, commission: float, *, filled: bool) -> AccountingTrace:
+        account = self.portfolio.account(self._iid.venue)
+        total = account.balance_total(self._currency) if account is not None else None
+        free = account.balance_free(self._currency) if account is not None else None
+        if total is None or free is None:
+            raise DataError("CASH accounting observation requires actual quote-currency balances")
+        position = sum(
+            float(item.signed_qty) for item in self.cache.positions_open(instrument_id=self._iid)
+        )
+        row = AccountingTrace(
+            ts=_ns_to_dt(ns),
+            instrument_id=str(self._iid),
+            currency=str(self._currency),
+            cash=total.as_double(),
+            cash_free=free.as_double(),
+            position_units=position,
+            commission=commission,
+            fees_total=self._fees_total,
+            event="fill" if filled else "opening_quote_before_fills",
+            fill_sequence_id=None,
+        )
+        self.rows.append(row)
+        return row
+
+    def on_quote_tick(self, quote: QuoteTick) -> None:
+        self._observe(int(quote.ts_event), 0.0, filled=False)
+
+    def on_event(self, event: Any) -> None:
+        if not isinstance(event, OrderFilled) or event.instrument_id != self._iid:
+            return
+        if event.commission.currency != self._currency:
+            raise DataError("CASH accounting observation requires quote-currency commission")
+        commission = event.commission.as_double()
+        self._fees_total += commission
+        row = self._observe(int(event.ts_event), commission, filled=True)
+        self.fills.append(
+            (
+                row,
+                "BUY" if event.order_side == OrderSide.BUY else "SELL",
+                float(event.last_qty),
+                float(event.last_px),
+            )
+        )
+
+    def canonical_rows(self, fills: Sequence[FillTrace]) -> list[AccountingTrace]:
+        linked: dict[int, int] = {}
+        for fill in fills:
+            matches = [
+                row
+                for row, side, quantity, price in self.fills
+                if row.ts == fill.ts
+                and side == fill.side
+                and quantity == fill.quantity
+                and price == fill.price
+            ]
+            if len(matches) != 1 or id(matches[0]) in linked:
+                raise DataError("observed accounting cannot uniquely reconcile canonical fills")
+            linked[id(matches[0])] = fill.sequence_id
+        if len(linked) != len(self.fills):
+            raise DataError("observed accounting has unlinked fills")
+        return [replace(row, fill_sequence_id=linked.get(id(row))) for row in self.rows]
 
 
 class _EquityRecorder(Actor):  # type: ignore[misc]  # nautilus Actor is untyped (Cython)
@@ -304,6 +389,7 @@ def run_backtest(
     leverage: float = 1.0,
     fee_bps: float = 0.0,
     dividends: Sequence[CorporateAction] = (),
+    accounting_trace: list[AccountingTrace] | None = None,
 ) -> BacktestResult:
     """Run ``strategy`` over ``data`` for ``instrument``; return counts + trade log + equity curve.
 
@@ -315,7 +401,16 @@ def run_backtest(
     instrument's quote currency. ``dividends`` are DIVIDEND
     ``CorporateAction``s for this instrument: cash is credited to the equity curve at pay date
     against the pre-ex holding (see ``_EquityRecorder``) — decoupled from prices, per spec §6.1.4.
+
+    Spot CurrencyPair CASH accounts hold separate quote and base balances, initialized with
+    quote cash and zero base units. An optional empty ``accounting_trace`` receives observed
+    account/position/commission rows only after successful execution and reconciliation. Its
+    quote rows precede fills; its fill rows follow the actual account update.
     """
+    if accounting_trace is not None and (
+        type(accounting_trace) is not list or account_type != AccountType.CASH or accounting_trace
+    ):
+        raise DataError("accounting observations require an empty output and a CASH account")
     if fee_bps < 0.0:
         raise DataError(f"fee_bps must be >= 0 (a negative fee pays you to trade), got {fee_bps}")
     # The account is denominated in the instrument's quote currency (USD for equities, USDT for a
@@ -334,12 +429,18 @@ def run_backtest(
     # MARGIN venue takes the configured leverage. (An oversized notional on CASH is then denied at
     # order time and surfaced via the rejection count, not crashed at venue setup.)
     venue_leverage = Decimal(str(leverage)) if account_type == AccountType.MARGIN else Decimal(1)
+    spot_cash = isinstance(instrument, CurrencyPair) and account_type == AccountType.CASH
+    starting_balances = [Money(starting_cash, currency)]
+    if spot_cash:
+        if currency != instrument.quote_currency:
+            raise DataError("spot CASH replay requires quote-currency starting cash")
+        starting_balances.append(Money(0, instrument.base_currency))
     engine.add_venue(
         venue=instrument.id.venue,
         oms_type=OmsType.NETTING,
         account_type=account_type,
-        base_currency=currency,
-        starting_balances=[Money(starting_cash, currency)],
+        base_currency=None if spot_cash else currency,
+        starting_balances=starting_balances,
         default_leverage=venue_leverage,
         fee_model=BpsFeeModel(fee_bps) if fee_bps > 0 else None,
         bar_execution=False,  # bars decide; quotes fill (t+1 open) — see module docstring
@@ -351,9 +452,14 @@ def run_backtest(
     if callable(configure_cash_execution):
         configure_cash_execution(fee_bps=fee_bps, account_type=account_type)
     recorder = _EquityRecorder(instrument.id, instrument.id.venue, starting_cash, dividends)
+    accounting = (
+        _AccountingRecorder(instrument.id, currency) if accounting_trace is not None else None
+    )
     engine.add_instrument(instrument)
     engine.add_data(list(data))
     engine.add_actor(recorder)
+    if accounting is not None:
+        engine.add_actor(accounting)
     engine.add_strategy(strategy)
     try:
         engine.run()
@@ -397,6 +503,14 @@ def run_backtest(
             benchmark_curve=benchmark_curve,
             benchmark_kind="passive_open_to_open_price_only",
         )
+        if accounting is not None:
+            assert accounting_trace is not None
+            if (
+                sum(row.event == "opening_quote_before_fills" for row in accounting.rows)
+                != n_sessions
+            ):
+                raise DataError("actual accounting observations do not cover every opening quote")
+            accounting_trace.extend(accounting.canonical_rows(fill_trace))
     finally:
         engine.dispose()
     return result

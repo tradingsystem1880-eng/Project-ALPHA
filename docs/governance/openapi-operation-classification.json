@@ -1060,6 +1060,13 @@
     {
       "method": "GET",
       "mode": "fixture_backed",
+      "operation_id": "run_daily_rule_evidence_api_runs__run_id__daily_rule_evidence_get",
+      "path": "/api/runs/{run_id}/daily-rule-evidence",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
       "operation_id": "run_equity_api_runs__run_id__equity_get",
       "path": "/api/runs/{run_id}/equity",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."

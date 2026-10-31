@@ -29,3 +29,15 @@ class RuleAuthority:
                 connection, self.project_id, self.contract_id, str(review["actor"])
             )
         return payload
+
+    def reopen_daily_inputs(self) -> None:
+        """Reverify consumed owner authority, exact storage and frozen query before effects."""
+        from alpha_cli._native_daily_rule_protocol import (
+            contract_is_daily,
+            reopen_daily_study,
+            study_from_contract,
+        )
+
+        payload = self.verify()
+        if contract_is_daily(payload):
+            reopen_daily_study(self.root, study_from_contract(payload))

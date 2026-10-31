@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 
+from alpha_cli._native_daily_rule_study import DailyRuleStudyV1
 from alpha_cli._native_fixture_store import _append, _events, _reservation
 from alpha_cli._native_loop_admission import NativeLaunch
 from alpha_cli._native_rule_artifacts import publish_rule_run, validate_rule_artifacts
@@ -25,6 +26,11 @@ def complete_rule_trial(
     if authority.root != store._data_dir:
         raise DataError("rule completion belongs to another store")
     contract = authority.verify()
+    daily = isinstance(launch.study, DailyRuleStudyV1)
+    if isinstance(launch.study, DailyRuleStudyV1):
+        from alpha_cli._native_daily_rule_protocol import reopen_daily_study
+
+        reopen_daily_study(store._data_dir, launch.study)
     work = store._data_dir / f"payload-{job_id}"
     with store._transaction(write=True) as connection:
         events = _events(connection, job_id)
@@ -36,16 +42,37 @@ def complete_rule_trial(
             or "native_uncertain" in events
             or outcome["reason"] != "exit"
             or outcome["returncode"] != 0
-            or outcome["cleanup_scope"] != "posix_process_group"
+            or outcome["cleanup_scope"]
+            != ("docker_container_and_posix_process_group" if daily else "posix_process_group")
             or store._active_job_cancellation(connection, job_id)
         ):
             raise DataError(
                 "rule completion requires trusted clean native outcome without uncertainty"
             )
+        if daily:
+            created = events.get("native_container_created")
+            started = events.get("native_started")
+            if (
+                not isinstance(created, dict)
+                or not isinstance(started, dict)
+                or created.get("container_id") != started.get("container_id")
+                or not isinstance(created.get("container_id"), str)
+                or any(
+                    created.get(key) != claim.get(key)
+                    for key in (
+                        "container_name",
+                        "image_id",
+                        "resource_fingerprint",
+                        "deadline_monotonic_ns",
+                    )
+                )
+            ):
+                raise DataError(
+                    "daily completion container/deadline differs from trusted claim and start"
+                )
         observed = outcome.get("rule_result")
-        if (
-            not isinstance(observed, dict)
-            or observed.get("schema") != "SyntheticNativeRuleObservationV1"
+        if not isinstance(observed, dict) or observed.get("schema") != (
+            "DailyNativeRuleObservationV1" if daily else "SyntheticNativeRuleObservationV1"
         ):
             raise DataError("rule completion requires its trusted observed receipt binding")
         existing = connection.execute(
@@ -88,7 +115,7 @@ def complete_rule_trial(
         )
         budget = json.loads(reservation["budget_reserved_json"])
         admission = {
-            "schema": "SyntheticNativeAdmissionV1",
+            "schema": "DailyNativeAdmissionV1" if daily else "SyntheticNativeAdmissionV1",
             "job_id": job_id,
             "reservation_id": reservation["reservation_id"],
             "spec_sha256": reservation["config_fingerprint"],
@@ -97,11 +124,26 @@ def complete_rule_trial(
             "mode": launch.mode,
             "loop_steps": budget["rdagent_native_v1_loop_steps"],
             "rule_request": worker_request(isinstance(launch.study, CostedRuleStudy)),
-            "rule_profile": measure_rule_environment(isinstance(launch.study, CostedRuleStudy)),
+            "rule_profile": measure_rule_environment(
+                daily or isinstance(launch.study, CostedRuleStudy)
+            ),
             "study_id": launch.study.content_sha256,
             "trial_id": reservation["reservation_id"],
             "owner_receipt_id": receipt_id,
         }
+        if isinstance(launch.study, DailyRuleStudyV1):
+            from alpha_cli._native_daily_rule_protocol import daily_worker_request
+
+            admission.update(
+                rule_request=daily_worker_request(launch.study),
+                query_sha256=launch.study.query_sha256,
+                cpu_milliseconds=budget["rdagent_native_v1_cpu_milliseconds"],
+                container_name=claim["container_name"],
+                image_id=claim["image_id"],
+                resource_fingerprint=claim["resource_fingerprint"],
+                deadline_monotonic_ns=claim["deadline_monotonic_ns"],
+                container_id=events["native_container_created"]["container_id"],
+            )
         receipt_bytes = launch.verify_result(work, admission)
         if hashlib.sha256(receipt_bytes).hexdigest() != observed["receipt_sha256"]:
             raise DataError("rule result changed from the trusted observed receipt")
@@ -143,6 +185,14 @@ def complete_rule_trial(
                 "content_sha256": manifest["artifacts"]["rule_positions.json"]["sha256"],
             },
         }
+        if isinstance(launch.study, DailyRuleStudyV1):
+            details.update(
+                synthetic_rule_engineering_only=launch.study.data_origin == "artificial_fixture",
+                daily_rule_discovery_only=True,
+                data_origin=launch.study.data_origin,
+                query_sha256=launch.study.query_sha256,
+                outcome=native_receipt["economics"]["outcome"],
+            )
         identity = {
             "schema_version": 1,
             "project_id": authority.project_id,
@@ -187,9 +237,15 @@ def complete_rule_trial(
                 int(reservation["execution_sequence"]) + 1,
                 authority.contract_id,
                 timestamp,
-                "Synthetic native position mechanics completed; no market evidence.",
-                "Review immutable synthetic artifacts; empirical acceptance remains blocked.",
-                "native:rule-engineering-complete",
+                "Exploratory daily rule/control completed; no promotion authority."
+                if daily
+                else "Synthetic native position mechanics completed; no market evidence.",
+                "Review immutable query, actual accounting and baseline/control report."
+                if daily
+                else "Review immutable synthetic artifacts; empirical acceptance remains blocked.",
+                "native:daily-rule-discovery-complete"
+                if daily
+                else "native:rule-engineering-complete",
             ),
         )
         row = connection.execute(

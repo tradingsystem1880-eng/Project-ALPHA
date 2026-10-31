@@ -809,6 +809,10 @@ def _is_crypto_crowding_contract(payload: Mapping[str, object]) -> bool:
 
 
 def _validate_registered_d0_contract(payload: Mapping[str, object]) -> dict[str, object]:
+    from alpha_cli._native_daily_rule_protocol import contract_is_daily, validate_daily_contract
+
+    if contract_is_daily(payload):
+        return validate_daily_contract(payload)
     return (
         validate_crypto_d0_contract(payload)
         if _is_crypto_crowding_contract(payload)
@@ -817,6 +821,12 @@ def _validate_registered_d0_contract(payload: Mapping[str, object]) -> dict[str,
 
 
 def _registered_d0_execution_fingerprint(payload: Mapping[str, object]) -> str:
+    from alpha_cli._native_daily_rule_protocol import contract_is_daily
+
+    if contract_is_daily(payload):
+        from alpha_cli._native_rule_artifacts import d0_fingerprint
+
+        return d0_fingerprint(payload)
     return (
         crypto_d0_execution_fingerprint(payload)
         if _is_crypto_crowding_contract(payload)
@@ -847,6 +857,18 @@ def _run_registered_d0_pilot(
     contract_id: str,
     contract: Mapping[str, object],
 ) -> dict[str, Any]:
+    from alpha_cli._native_daily_rule_protocol import contract_is_daily
+
+    if contract_is_daily(contract):
+        from alpha_cli._native_rule_artifacts import d0_fingerprint, publish_rule_run
+
+        return publish_rule_run(
+            data_dir,
+            project_id=project_id,
+            contract_id=contract_id,
+            contract=contract,
+            execution_fingerprint=d0_fingerprint(contract),
+        )
     if _is_crypto_crowding_contract(contract):
         return run_crypto_crowding_pilot(
             data_dir,
@@ -1397,6 +1419,34 @@ def proposal_options(
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(row, json_out=json_out, fallback=f"proposal options for {project_id}")
+
+
+@research_app.command("draft-daily")
+def draft_daily(
+    project_id: str,
+    source_pack_id: str = typer.Option(...),
+    snapshot_id: str = typer.Option(...),
+    normalized_manifest_id: str = typer.Option(...),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Freeze the bounded daily rule/control recipe; existing local approval is still required."""
+    from alpha_cli.daily_native_cmds import draft_daily_request
+
+    try:
+        record = draft_daily_request(
+            project_id,
+            data_dir=AlphaSettings().data_dir,
+            source_pack_id=source_pack_id,
+            snapshot_id=snapshot_id,
+            normalized_manifest_id=normalized_manifest_id,
+        )
+    except DataError as error:
+        raise typer.BadParameter(str(error)) from error
+    _emit(
+        record,
+        json_out=json_out,
+        fallback=f"Daily draft {record['contract_id']} awaits owner confirmation.",
+    )
 
 
 @research_app.command("draft")
@@ -2323,6 +2373,18 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
         payload, case = _case_payload(store, project_id)
         if case["phase"] != "deep_research":
             raise DataError("deep research requires the deep_research phase (complete D0 first)")
+        from alpha_cli._native_daily_rule_protocol import contract_is_daily
+
+        if contract_is_daily(payload):
+            from alpha_cli.daily_native_cmds import run_daily_deep
+
+            result = run_daily_deep(project_id, data_dir=AlphaSettings().data_dir)
+            _emit(
+                result,
+                json_out=json_out,
+                fallback="Daily native study: inspect the recorded job and artifacts.",
+            )
+            return
         contract_id = str(case["active_contract_id"])
         if not isinstance(payload.get("analysis_plan"), Mapping):
             raise DataError(
@@ -2988,7 +3050,17 @@ def run_research(
                 "synthetic pilot stopped after the initial attempt and two safe retries; owner "
                 "revision or disposition is required"
             )
-        if _implementation_drifted(payload.get("hashes")):
+        from alpha_cli._native_daily_rule_protocol import contract_is_daily, study_from_contract
+
+        if contract_is_daily(payload):
+            from alpha_cli._native_rule_environment import rule_implementation_fingerprints
+
+            drifted = payload.get("hashes") != rule_implementation_fingerprints(
+                True, daily_study=study_from_contract(payload)
+            )
+        else:
+            drifted = _implementation_drifted(payload.get("hashes"))
+        if drifted:
             raise DataError(
                 "approved research implementation fingerprints no longer match the executable "
                 "code, dependency lock, evaluator, or environment; create and approve a revised "

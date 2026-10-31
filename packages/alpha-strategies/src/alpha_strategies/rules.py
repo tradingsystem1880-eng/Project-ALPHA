@@ -19,6 +19,8 @@ Design choices, each deliberate:
 
 Sources are limited to ``high``/``low``/``close`` because that is the history the vol-target base
 strategy keeps; volume and open rules can be added when the base keeps them.
+Source operands may declare a nonnegative integer ``lag``: ``close`` with ``lag: 20`` reads
+the close twenty completed bars before the decision bar. Omitted/zero lag preserves V1 bytes.
 """
 
 from __future__ import annotations
@@ -103,11 +105,12 @@ class Operand:
     params: tuple[float, ...] = ()
     field: str | None = None
     value: float | None = None
+    lag: int = 0
 
     @property
     def label(self) -> str:
         if self.kind == "source":
-            return str(self.source)
+            return f"{self.source}:lag:{self.lag}" if self.lag else str(self.source)
         if self.kind == "value":
             return _fmt(float(self.value or 0.0))
         head = ":".join([str(self.indicator), *(_fmt(p) for p in self.params)])
@@ -116,6 +119,8 @@ class Operand:
     @property
     def bars_needed(self) -> int:
         """Bars required before this operand has a finite value on the last bar."""
+        if self.kind == "source":
+            return self.lag + 1
         if self.kind != "indicator":
             return 1
         p = [int(v) for v in self.params]  # a decay rate is never read as a window
@@ -137,7 +142,7 @@ class Operand:
 
     def to_json(self) -> dict[str, object]:
         if self.kind == "source":
-            return {"source": self.source}
+            return {"source": self.source, "lag": self.lag} if self.lag else {"source": self.source}
         if self.kind == "value":
             return {"value": self.value}
         params = [int(p) if float(p).is_integer() else float(p) for p in self.params]
@@ -233,10 +238,13 @@ def _window(value: object, where: str) -> float:
 def parse_operand(payload: object, where: str) -> Operand:
     raw = _require_mapping(payload, where)
     if "source" in raw:
-        _reject_unknown(raw, {"source"}, where)
+        _reject_unknown(raw, {"source", "lag"}, where)
         if raw["source"] not in SOURCES:
             raise DataError(f"{where}.source must be one of {list(SOURCES)}, got {raw['source']!r}")
-        return Operand(kind="source", source=raw["source"])
+        lag = raw.get("lag", 0)
+        if type(lag) is not int or not 0 <= lag < MAX_HISTORY:
+            raise DataError(f"{where}.lag must be an integer between 0 and {MAX_HISTORY - 1}")
+        return Operand(kind="source", source=raw["source"], lag=lag)
     if "value" in raw:
         _reject_unknown(raw, {"value"}, where)
         return Operand(kind="value", value=_number(raw["value"], f"{where}.value"))
@@ -373,7 +381,13 @@ def operand_series(series: OHLCV, operand: Operand) -> FloatArray:
     """The operand's value on every bar of ``series``; warm-up bars are NaN, never a guess."""
     n = len(series)
     if operand.kind == "source":
-        return np.asarray(getattr(series, str(operand.source)), dtype=np.float64)
+        source = np.asarray(getattr(series, str(operand.source)), dtype=np.float64)
+        if not operand.lag:
+            return source
+        values = np.full(n, np.nan, dtype=np.float64)
+        if operand.lag < n:
+            values[operand.lag :] = source[: n - operand.lag]
+        return values
     if operand.kind == "value":
         return np.full(n, float(operand.value or 0.0), dtype=np.float64)
     p = [int(v) if float(v).is_integer() else float(v) for v in operand.params]

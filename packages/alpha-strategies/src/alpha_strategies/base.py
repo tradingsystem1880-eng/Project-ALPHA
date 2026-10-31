@@ -137,8 +137,26 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         allow_short: bool = True,
         size_on_equity: bool = False,
         halt_drawdown: float | None = None,
+        fixed_quantity: float | None = None,
+        fixed_entry_once: bool = False,
     ) -> None:
         super().__init__()
+        if type(fixed_entry_once) is not bool or (fixed_entry_once and fixed_quantity is None):
+            raise DataError("single entry attempt requires explicit fixed quantity")
+        if fixed_quantity is not None and (
+            type(fixed_quantity) not in (int, float)
+            or not math.isfinite(fixed_quantity)
+            or fixed_quantity <= 0
+            or allow_short is not False
+            or size_on_equity is not False
+            or halt_drawdown is not None
+            or type(rebalance_every) is not int
+            or rebalance_every != 1
+        ):
+            raise DataError("fixed quantity requires positive finite units, daily long/flat sizing")
+        self._fixed_quantity = fixed_quantity
+        self._fixed_entry_once = fixed_entry_once
+        self._fixed_entry_attempted = False
         if halt_drawdown is not None and not 0.0 < halt_drawdown < 1.0:
             raise DataError(f"halt_drawdown must be in (0, 1) or None, got {halt_drawdown}")
         self._iid = instrument_id
@@ -158,7 +176,9 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         self._halt_drawdown = halt_drawdown
         self._peak_equity = capital
         self.halted = False
-        self._min_history = max(min_history, vol_window + 1)
+        self._min_history = (
+            min_history if fixed_quantity is not None else max(min_history, vol_window + 1)
+        )
         self._closes: list[float] = []
         self._highs: list[float] = []
         self._lows: list[float] = []
@@ -453,6 +473,16 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
             reason = "flat_signal" if signal == 0 else "short_disallowed"
             self._record_decision(bar, signal=signal, target_quantity=0.0, reason=reason)
             return
+        if self._fixed_quantity is not None:
+            complete = self._fixed_entry_once and self._fixed_entry_attempted
+            self._target_units = self.net_units if complete else self._fixed_quantity
+            self._record_decision(
+                bar,
+                signal=signal,
+                target_quantity=self._target_units,
+                reason="control_entry_attempt_complete" if complete else "fixed_quantity_target",
+            )
+            return
         annualized_vol = realized_volatility(
             self._closes[-(self._vol_window + 1) :], periods_per_year=self._periods_per_year
         )
@@ -481,6 +511,8 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
             return
         target = self._target_units
         self._target_units = None
+        if self._fixed_entry_once and target > 0.0:
+            self._fixed_entry_attempted = True
         delta = target - self.net_units
         risk = self._paper_risk
         if risk is not None:
