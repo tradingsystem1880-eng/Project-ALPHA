@@ -73,3 +73,22 @@ using `uv sync --locked --reinstall` with `UV_LINK_MODE=hardlink` to recover dis
 Original source/profile evidence and prior gate receipts remain preserved. Archive bytes,
 upstream's whole application dependency environment, private suites and Mac readiness remain
 UNVERIFIED. This is provisioning and bounded synthetic conformance, not execution authority.
+
+## Coordinated foundation integration — 2026-10-31
+
+The final candidate combines bootstrap `8051ac33bc80ccd5ccf3b335d5659ec873960087`,
+checkpoint retention `c260c5136ef956139eaca649e228fd859d17ab70` and native README review
+`3db13037ed2445206b3c386556a38d1721c4653c` against main `2a8aa50b`. The complete README
+branch delta is retained, including its reader guide and removal of the superseded API route.
+Both gate command registries/handlers coexist; README review evidence is retained by the
+checkpoint allowlist. A real archive round-trip regression verifies that the receipt survives
+byte-for-byte without being restored or accepted as a current review.
+
+Shared build histories retain all three source records. README adds the explicit bootstrap
+opt-in and dry-run/verified-archive commands; its native session decision must bind this final
+tree and fetched main. Atlas is regenerated from all combined sources. Original source heads
+are preserved by normal ancestry merges; attaching remaining ancestry may reuse acceptance
+only when the exact source tree, comparisons, README scope and all component definitions stay
+unchanged and normal guards pass. The combined candidate requires its own full gate and
+independent review; no individual source receipt accepts this assembly. Private coverage remains
+UNVERIFIED and broader product/Mac scope is unchanged.

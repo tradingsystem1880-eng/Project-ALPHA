@@ -2859,3 +2859,80 @@ full qualification, independent review and hosted checks remain required for del
 candidate. README remains owned by its separate task. Archive bytes, upstream's whole dependency
 API, private coverage and Mac readiness remain UNVERIFIED; provisioning confers no execution,
 scientific or product authority. Historical failure and gate records remain preserved.
+
+
+## 2026-10-31 — Non-destructive checkpoint retention and branch recovery
+
+The existing gate now has an explicit dry-run checkpoint inventory and opt-in verified archive
+copy operation. Current/recent receipts, incomplete staging and invalid/symlinked entries remain
+excluded; every original remains intact. Archive members are verified against the allowlisted
+manifest, and changed sources or conflicting existing archives fail closed. This prepares a
+bounded hot-set proposal without pretending total disk retention has been pruned. The
+[harness guide](operations/claude-code-harness.md#checkpoint-retention-without-evidence-loss)
+contains exact commands and separate-directory restoration instructions.
+
+At observed main `2a8aa50b`, all 56 remote tips are preserved by exact local recovery refs and a
+verified Git bundle. The proposed separate-review batch includes 43 ancestor heads and eight
+historical delivered slices; five main/backup/active-work heads are excluded. Twenty targeted
+source/regression comparisons confirm historical successor preservation. No remote deletion,
+main mutation, private-test read or scientific/trading authority follows from this work. Mac-only
+state remains unverified. Focused tests cover archive round trips, corruption, source changes,
+symlink/path rejection and dry-run exclusions. Final exact-tree qualification and independent
+review are required before the guarded commit; private tests remain UNVERIFIED under the
+existing task-scoped absence-only approval. See the
+[retention plan](superpowers/plans/2026-10-31-checkpoint-retention.md).
+
+The first independent review blocked substituted FIFO manifests/archives that could hang the
+new inventory. Bounded probes reproduced both failures. The repair rejects nonregular opened
+descriptors without blocking and adds bounded real-CLI and archive-copy regressions; the original BLOCK and
+its source-bound gate evidence remain preserved. No failing check is waived by private-suite
+absence. Publication requires fresh qualification and review of the repaired source.
+
+## 2026-10-31 — README maintenance implementation candidate (not deployed)
+
+Added a bounded plain-English README reader guide and a merge-triggered Codex assessment workflow
+candidate. Generated updates are README-section-only, SHA-bound, schema-validated, independently
+isolated from delivery credentials, and delivered through the existing full gate/Git guards and
+normal docs PR review. Existing CI gains explicit manual dispatch and stale README branch checks;
+no application authority or trading behavior changes. Technical setup content remains intact.
+
+Focused fixture tests and qualification results are recorded in the
+[feature plan](superpowers/plans/2026-10-31-readme-maintenance.md); activation and recovery are in the
+[runbook](operations/readme-maintenance.md). The workflow is not active, and no live inference,
+hosted trigger or README PR has been demonstrated. No Actions inference credential is available
+in this task environment; repository secret availability is unverified. The private review suite is
+absent and prior delivery exceptions do not cover this new protected workflow. Full/public checks
+and normal independent review are still required; private coverage is UNVERIFIED, not PASS.
+
+## 2026-10-31 — Codex-session README upkeep replaces the API architecture
+
+Hunter's 01:53 UTC instruction supersedes the earlier API workflow candidate. The revision keeps
+the reader-friendly guide and moves upkeep into the existing Codex coding task before delivery.
+Native `gate.py attest --kind readme` evidence records updated/no-change reasoning and binds the
+final branch tree, main comparison and changed scope; installed Git guards require it. It checks
+local file links and freshness, not semantic truth, and makes no guarantee over arbitrary pushes.
+Existing full, independent-review and quant guards retain their normal authority.
+
+The separate inference workflow/schema/helper/tests, secret dependency and extra CI dispatch/
+Actions capability are removed. No new API use, credentials or spending setup is introduced.
+Old PR/head/run receipts remain superseded historical evidence. PR102 stays draft for the revised
+same-purpose implementation; the existing publication approval and scoped private absence-only
+exception cover necessary corrections. Private coverage is UNVERIFIED. Revised focused tests,
+exact-tree full qualification and independent review are required before its next guarded commit.
+See the [existing plan](superpowers/plans/2026-10-31-readme-maintenance.md) and
+[worked delivery workflow](operations/readme-maintenance.md).
+
+## 2026-10-31 — Combined foundation follow-on preparation
+
+The coordinated candidate combines retained bootstrap `8051ac33`, checkpoint retention `c260c513`
+and native README review `3db13037`. The README source's full branch delta preserves its reader
+guide and removes the superseded API scaffolding; `.github` has no net change from main. The
+checkpoint inventory/archive and README attestation registries both remain active. A focused
+archive regression preserves the new README evidence bytes without restoring them as current
+acceptance. Root README now explains the explicit clean-bootstrap mode and non-deleting evidence
+commands, while retaining product authority and incomplete-scope boundaries.
+
+Each source's dated evidence and failures remain intact. Final Atlas output, a native README
+session decision, one coherent full gate and independent review must accept the assembled tree;
+individual source passes are not aggregate acceptance. Original heads remain preserved as
+ancestors through normal guarded merges. See the [integration execution record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#coordinated-foundation-integration--2026-10-31).

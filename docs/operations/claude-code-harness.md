@@ -38,7 +38,29 @@ Before `gate.py full`, `component` or `fast` replaces any of that evidence, an e
 (stamp, receipts, review/quant attestations, coverage files) is copied to a hash-verified,
 mode-read-only `.alpha/state/gate-checkpoints/` entry; if that fails, the run stops before overwriting.
 A failed attempt leaves its `.incomplete-*` staging copy (possibly read-only) in place and names it;
-nothing cleans these up and checkpoints have no retention bound. `gate.py attest` is not covered.
+gate execution never deletes these copies. `gate.py attest` is not covered.
+
+### Checkpoint retention without evidence loss
+
+`uv run python scripts/gate.py checkpoints` prints a dry-run JSON inventory. It reads only
+allowlisted gate/coverage evidence, verifies checkpoint manifests and records receipt commit/tree
+identities as historical evidence. Current receipt contents and the newest ten other verified
+checkpoints are retained; `--keep N` changes that proposed hot-set count. Incomplete copies,
+symlinks, unknown entries and invalid checkpoints are excluded for separate investigation.
+
+`uv run python scripts/gate.py checkpoints --archive --keep 10` copies older verified checkpoints
+to `.alpha/state/gate-checkpoint-archives/`. Every archive member is checked against the source
+manifest; source changes or a different existing archive fail closed. Evidence reads use
+nonblocking opens and reject nonregular descriptors, including substituted FIFOs. The report gives archive
+SHA256 values. Original checkpoint paths remain intact; there is no automatic pruning or age-only
+deletion. Failed archive staging is preserved. Review the exact inventory and recovery proof before
+any separate retirement decision; this command does not bound total disk usage by deleting data.
+
+To restore, verify the reported SHA256, create a new empty directory, then run
+`python -m tarfile -e /absolute/path/pre-run-ID.tar.gz /absolute/path/new-empty-directory`.
+Compare its `MANIFEST.tsv` paths, sizes and SHA256 values before explicit reconciliation. Never
+extract over current receipts or treat restored historical verification as current qualification.
+Keep archives and inventories private; no owner data, credentials or private tests belong in them.
 
 ## Thin Claude adapter
 

@@ -36,7 +36,16 @@ It composes the repo's existing skills — `karpathy-guidelines` (always),
    tests and does not replace their covering checks. Data/strategy changes require a
    `@pytest.mark.bias_guard` future-poison test (see `tests/bias_guards/`).
    Load `incremental-implementation` for the slicing discipline.
-4. **Gate** — finish code, docs and generated outputs, then stage the coherent
+4. **README review, then gate** — the existing Codex implementation session reviews
+   README against the final branch, including earlier commits, current architecture and tracked
+   plans. Explain the project in plain English; keep setup/technical information accurate and useful;
+   distinguish implemented/planned work and limits. Verify changed claims and links; tests do not
+   establish empirical or live readiness. Update README when readers need it. Otherwise record a
+   substantive `no_change` rationale without cosmetic churn. Use the native
+   [README evidence workflow](../../../docs/operations/readme-maintenance.md): fetch main, finish
+   source/docs/generated outputs, then `gate.py attest --kind readme` for the exact final tree.
+   This uses the current coding session; do not add an API job or separate model invocation.
+   Finish code, docs and generated outputs, then stage the coherent
    candidate and run `uv run python scripts/gate.py full` before every actual commit.
    Related verified slices may share one commit; unrelated work remains separate.
    No intermediate commit is required merely to advance to the next slice. Installed Git

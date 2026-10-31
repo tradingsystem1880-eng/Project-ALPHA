@@ -50,6 +50,11 @@ def check_commit(root: Path) -> tuple[int, str]:
             )
     if any(gate.matches_quant(path) for path in paths) and not gate.quant_attestation_valid(root):
         return 1, "Quant changes require source-verification evidence for the current diff."
+    from readme_review import check as check_readme
+
+    readme_ok, reason = check_readme(root)
+    if not readme_ok:
+        return 1, f"{reason}. Review/update README and run gate.py attest --kind readme."
     return 0, ""
 
 
