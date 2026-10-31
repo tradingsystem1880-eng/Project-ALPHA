@@ -270,3 +270,24 @@ Size evidence from the artificial1096-day source fixture: raw104110 bytes, Parqu
 JSON336083 bytes, snapshot774 bytes and source manifests4657 bytes. A completed native workspace
 measured9389056 bytes across19 files. Tens of MiB is a planning estimate for one study, not an actual
 Binance measurement; admitted publication remains bounded at32 MiB and scratchIO is distinct.
+
+## Portable contract coverage after PR105
+
+The first hosted check on `344b7334` passed 7,108 tests and skipped74 runtime-dependent cases,
+but failed the unchanged93% coverage floor at92.38%. The local qualified-runtime aggregate had
+passed at93.0732%. These are different execution environments; neither result replaces the other.
+The hosted gaps included all123 restoration statements,66 completion statements and70 daily
+dispatch statements. The private-suite absence exception does not excuse this public failure.
+
+Additional portable public tests exercise the actual contracts through artificial observed-input
+fixtures: consumed owner confirmation, existing reservations, canonical-engine accounting,
+receipt/code/query/container bindings, fail-closed interrupted dispatch, missing-only recovery,
+all-conflicts preflight and preservation of later authoritative reservations. Only external
+runtime measurements and worker transport are fixture ports; these tests confer no native
+process, physical-resource or market acceptance. Runtime-only tests and their skip conditions
+remain unchanged. No source files, coverage exclusions or thresholds are relaxed.
+
+Final qualification uses the CI runtime selection with the qualified-source environment unset,
+alongside separate focused native-runtime evidence. Measured coverage and hosted delivery results
+belong in the handoff/PR evidence after the coherent tree is checked. Real acquisition and study
+execution remain blocked on admitted retained storage, with no real-study allowance consumed.

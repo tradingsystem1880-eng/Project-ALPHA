@@ -2988,3 +2988,12 @@ same pinned mount/device/owner, plus a hosting/retention decision. None is confi
 acquisition was not attempted without storage; no provider denial or uncertain download is claimed.
 These are native implementation and artificial acceptance proofs, not a market conclusion or
 completion of Packet3’s real-data demonstration.
+
+**2026-10-31 — PR105 hosted contract-coverage repair.** The committed native slice passed the local
+six-component gate at93.0732% public coverage. Its hosted backend passed7,108 tests with74 runtime
+skips but failed the unchanged93% floor at92.38%; the other six hosted jobs passed, and automatic
+advisory review reported no findings. Additional public portable tests now target real approval,
+reservation, receipt, accounting, dispatch and restoration contracts through explicit artificial
+external-runtime ports. They supplement qualified native-process tests; skips and acceptance
+limits remain explicit. Production logic, coverage policy and the real-study storage blocker are
+unchanged. Final repaired-tree qualification and hosted results are recorded in delivery evidence.

@@ -59,6 +59,9 @@ recovery and the existing reports. Artificial fixtures exercise the actual RD-Ag
 hard 1 GiB container limit; they establish no market result. The approved real-data demonstration
 still needs a durable cloud location for both its data and authoritative research records.
 Its data are discovery only, and modeled next-open prices are not verified live fills.
+Portable contract tests separately exercise approval binding, accounting, tamper rejection and
+missing-only recovery. Native-process acceptance still requires the installed pinned runtime;
+runtime-only skips remain visible in environments that do not provide it.
 
 ## Research workflow
 
