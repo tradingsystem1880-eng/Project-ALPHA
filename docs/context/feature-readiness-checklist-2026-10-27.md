@@ -1185,6 +1185,23 @@ Stop rollback and next action. Missing export/read-back blocks its actual consum
 
 #### Packet 3 Complete one real native rule and control study
 
+2026-10-31 native implementation checkpoint (real study still incomplete): the registered daily
+route now connects exact owner/query/runtime binding, existing native ownership and reservations,
+canonical fixed-unit execution/accounting, cancellation, immutable completion, missing-only evidence
+restore and V1 report readers/UI. Artificial runs exercised the actual pinned five-stage loop under
+a hard1 GiB Docker boundary, including interrupted publication and later-reservation preservation.
+The approved real-data demonstration has not begun: no admitted retention/recovery path is configured
+for both bulk data and authoritative control/manifests/runs. Private coverage remains UNVERIFIED
+under the owner’s bounded Packet3 absence-only exception. Full-tree qualification remains separate.
+See the [active implementation record](../superpowers/plans/2026-10-31-packet3-daily-rule.md).
+
+2026-10-31 implementation checkpoint (not complete): [active implementation and exact proposed
+terms](../superpowers/plans/2026-10-31-packet3-daily-rule.md). Exact source lag, UTC-day feed,
+bounded verified price-query and inert frozen-study identity have artificial-fixture coverage.
+Real operator/admission/worker/completion/report integration remains pending, as do supported cloud
+storage and exact economic/resource confirmation. No market execution or W01–W19 completion
+claim follows from these prerequisite checks; the full scope below remains unchanged.
+
 Goal and reason. Produce one useful inspectable research conclusion, including a supported null, rather than search until profit appears. Scope: W05/W07/W08/W19a-W19c with Packet 7 V1.
 
 Prerequisite evidence. Accepted named native route; frozen daily rule or supported ts_momentum plus one predeclared control; legitimate bounded data and rights/clock/universe/adjustment/quality manifest; cost/accounting, exposure normalization and resource/repair bounds; decision criteria or explicit exploratory claim. W19 restore first uses a legacy accepted study or independent reference.

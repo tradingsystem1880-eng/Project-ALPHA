@@ -19,7 +19,14 @@ from alpha_strategies.rules import RuleSpec, evaluate_rules, operand_series, tra
 
 
 class RuleStrategy(VolTargetStrategy):
-    """Be long while every ``long_when`` holds, short while every ``short_when`` holds."""
+    """Be long while every ``long_when`` holds, short while every ``short_when`` holds.
+
+    Explicit ``fixed_quantity`` selects daily long/flat fixed units instead of volatility
+    sizing: no quantity changes while long, flatten on a flat signal, same units on re-entry.
+    It requires ``allow_short=False`` and keeps the shared next-open affordability checks.
+    ``fixed_entry_once`` consumes the first positive entry attempt even if unaffordable;
+    subsequent long decisions hold actual units, supporting a strict buy-and-hold control.
+    """
 
     def __init__(
         self,
@@ -36,6 +43,8 @@ class RuleStrategy(VolTargetStrategy):
         allow_short: bool = True,
         size_on_equity: bool = False,
         halt_drawdown: float | None = None,
+        fixed_quantity: float | None = None,
+        fixed_entry_once: bool = False,
     ) -> None:
         super().__init__(
             instrument_id=instrument_id,
@@ -50,6 +59,8 @@ class RuleStrategy(VolTargetStrategy):
             allow_short=allow_short,
             size_on_equity=size_on_equity,
             halt_drawdown=halt_drawdown,
+            fixed_quantity=fixed_quantity,
+            fixed_entry_once=fixed_entry_once,
         )
         self._spec = spec
 

@@ -50,14 +50,26 @@ def evaluate(request: dict[str, Any], profile_sha: str) -> dict[str, object]:
     # The exact versioned clocks and canonical rows were validated before admission.
     bars = request["bars"]
     raw = json.dumps(bars, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    daily = study.get("schema") == "FrozenDailyRuleStudyV1"
     costed = study.get("schema") == "FrozenRuleCostedReplaySyntheticV1"
-    data_hash = study["data_sha256"] if costed else study["data_artifact"]["content_sha256"]
-    if hashlib.sha256(raw).hexdigest() != data_hash:
-        raise ValueError("rule bars changed after admission")
-    visible = bars if costed else [row for row in bars if row[2] <= study["cutoff"]]
-    high, low, close = (2, 3, 4) if costed else (4, 5, 6)
+    if daily:
+        query = json.loads(study["query_document"])
+        expected_bars = [
+            [row[key] for key in ("open_time", "open", "high", "low", "close", "base_volume")]
+            for row in query["rows"]
+        ]
+        if bars != expected_bars or len(bars) != 1096:
+            raise ValueError("daily bars changed after exact query admission")
+        if hashlib.sha256(study["query_document"].encode()).hexdigest() != study["query_sha256"]:
+            raise ValueError("daily query changed after admission")
+    else:
+        data_hash = study["data_sha256"] if costed else study["data_artifact"]["content_sha256"]
+        if hashlib.sha256(raw).hexdigest() != data_hash:
+            raise ValueError("rule bars changed after admission")
+    visible = bars if costed or daily else [row for row in bars if row[2] <= study["cutoff"]]
+    high, low, close = (2, 3, 4) if costed or daily else (4, 5, 6)
     positions = []
-    for key in ("rules_spec", "control_spec"):
+    for key in ("rules_spec",) if daily else ("rules_spec", "control_spec"):
         spec = rule_spec_from_json(study[key])
         positions.append(
             [
@@ -67,11 +79,17 @@ def evaluate(request: dict[str, Any], profile_sha: str) -> dict[str, object]:
                     [b[low] for b in visible[:stop]],
                     [b[close] for b in visible[:stop]],
                 )
-                for stop in range(2, len(visible) + 1)
+                for stop in range(21 if daily else 2, len(visible) + 1)
             ]
         )
+    if daily:
+        positions.append([1] * len(positions[0]))
     result = {
-        "schema": "SyntheticRulePositionsV2" if costed else "SyntheticRulePositionsV1",
+        "schema": "DailyRulePositionsV1"
+        if daily
+        else "SyntheticRulePositionsV2"
+        if costed
+        else "SyntheticRulePositionsV1",
         "study_sha256": request["study_sha256"],
         "baseline": positions[0],
         "control": positions[1],
@@ -80,11 +98,17 @@ def evaluate(request: dict[str, Any], profile_sha: str) -> dict[str, object]:
         "real_market_evidence": False,
         "scientific_acceptance": "not_admitted",
     }
+    if daily:
+        result.update(
+            data_origin=study["data_origin"],
+            evidence_zone="D1",
+            real_market_evidence=study["data_origin"] == "captured_provider_history",
+        )
     economics = None
-    if costed:
+    if costed or daily:
         from costed_probe import execute
 
-        economics = execute(study)
+        economics = execute({**study, "bars": bars} if daily else study)
     origins = {}
     for name, module in tuple(sys.modules.items()):
         if name.startswith(

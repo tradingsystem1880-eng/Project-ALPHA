@@ -28,6 +28,7 @@ from .contracts import (
     canonical_bytes,
     require_utc,
 )
+from .root_identity import CloudBulkRootIdentityV1
 
 _SAFE = re.compile(r"^[A-Za-z0-9._:-]+$")
 _MAX_NORMALIZED_READ_BYTES = 32 * 1024 * 1024
@@ -142,7 +143,8 @@ class CryptoBulkStore:
         *,
         bulk_root: Path,
         manifest_root: Path,
-        expected_volume_uuid: str,
+        expected_volume_uuid: str | None = None,
+        cloud_root_identity: CloudBulkRootIdentityV1 | None = None,
         volume_uuid: Callable[[Path], str] = macos_volume_uuid,
         capacity: Callable[[Path], Capacity] = _disk_capacity,
         reserve_fraction: float = 0.15,
@@ -150,12 +152,17 @@ class CryptoBulkStore:
     ) -> None:
         self.bulk_root = Path(bulk_root)
         self.manifest_root = Path(manifest_root)
-        self.expected_volume_uuid = expected_volume_uuid.strip().upper()
+        self.expected_volume_uuid = (
+            expected_volume_uuid.strip().upper() if expected_volume_uuid is not None else None
+        )
+        self.cloud_root_identity = cloud_root_identity
         self._volume_uuid = volume_uuid
         self._capacity = capacity
         self.reserve_fraction = reserve_fraction
         self.minimum_free_bytes = minimum_free_bytes
-        if not self.expected_volume_uuid:
+        if cloud_root_identity is not None and expected_volume_uuid is not None:
+            raise DataError("bulk storage must select exactly one identity backend")
+        if cloud_root_identity is None and not self.expected_volume_uuid:
             raise DataError("bulk volume UUID must be configured")
         if not 0 <= reserve_fraction < 1:
             raise DataError("bulk reserve fraction must be between zero and one")
@@ -170,9 +177,14 @@ class CryptoBulkStore:
         """Verify mounted identity and capacity without a write probe or artifact scan."""
         if not self.bulk_root.is_dir() or self.bulk_root.is_symlink():
             raise DataError("configured crypto bulk volume is not mounted")
-        if self._volume_uuid(self.bulk_root).strip().upper() != self.expected_volume_uuid:
-            raise DataError("configured crypto bulk volume UUID does not match")
+        self._verify_identity()
         return self._capacity(self.bulk_root)
+
+    def _verify_identity(self) -> None:
+        if self.cloud_root_identity is not None:
+            self.cloud_root_identity.verify(self.bulk_root)
+        elif self._volume_uuid(self.bulk_root).strip().upper() != self.expected_volume_uuid:
+            raise DataError("configured crypto bulk volume UUID does not match")
 
     def verify_ready(self, *, required_bytes: int) -> Capacity:
         if (
@@ -183,9 +195,7 @@ class CryptoBulkStore:
             raise DataError("required bulk bytes must be a non-negative integer")
         if not self.bulk_root.is_dir() or self.bulk_root.is_symlink():
             raise DataError("configured crypto bulk volume is not mounted")
-        actual = self._volume_uuid(self.bulk_root).strip().upper()
-        if actual != self.expected_volume_uuid:
-            raise DataError("configured crypto bulk volume UUID does not match")
+        self._verify_identity()
         capacity = self._capacity(self.bulk_root)
         reserve = max(int(capacity.total_bytes * self.reserve_fraction), self.minimum_free_bytes)
         if capacity.free_bytes - required_bytes < reserve:

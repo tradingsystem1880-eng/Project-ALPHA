@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import json
 import math
 import os
 import signal
@@ -25,13 +26,15 @@ from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, BinaryIO, Literal
+from typing import TYPE_CHECKING, BinaryIO, Literal, TypeGuard
 
 from alpha_cli.control_store import ControlStore
 from alpha_cli.durable_lease import DurableJobLease, _observe_retained_child, terminate_and_reap
 from alpha_core import DataError
 
 if TYPE_CHECKING:
+    from alpha_cli._native_daily_rule_container import DailyRuleContainer
+    from alpha_cli._native_daily_rule_study import DailyRuleStudyV1
     from alpha_cli._native_loop_admission import NativeLaunch
 
 if sys.platform != "win32":
@@ -41,6 +44,14 @@ Fixture = Literal["success", "failure", "wait", "descendant", "escape", "native_
 _FIXTURES = {"success", "failure", "wait", "descendant", "escape", "native_loop"}
 _MARKER = "ALPHA synthetic native lifecycle v1\n"
 _SEAL = object()
+
+
+def _is_daily_study(study: object) -> TypeGuard[DailyRuleStudyV1]:
+    if type(study).__module__ != "alpha_cli._native_daily_rule_study":
+        return False
+    from alpha_cli._native_daily_rule_study import DailyRuleStudyV1
+
+    return type(study) is DailyRuleStudyV1
 
 
 def _native_launch_type() -> type[NativeLaunch]:
@@ -115,6 +126,32 @@ def synthetic_workspace() -> Iterator[Path]:
 
 
 def _fixture_root(root: Path) -> Path:
+    daily_marker = root / "daily-rule-workspace.json"
+    if daily_marker.exists():
+        if root.is_symlink() or root != root.resolve() or daily_marker.is_symlink():
+            raise DataError("daily rule workspace path is unsafe")
+        try:
+            binding = json.loads(daily_marker.read_text())
+        except (OSError, ValueError) as error:
+            raise DataError("daily rule workspace binding is unavailable") from error
+        if (
+            not isinstance(binding, dict)
+            or binding.get("root") != str(root)
+            or not (
+                (
+                    set(binding) == {"schema", "root"}
+                    and binding.get("schema") == "DailyRuleWorkspaceV2"
+                )
+                or (
+                    set(binding) == {"schema", "root", "project_id"}
+                    and binding.get("schema") == "DailyRuleWorkspaceV1"
+                    and isinstance(binding.get("project_id"), str)
+                    and bool(binding["project_id"])
+                )
+            )
+        ):
+            raise DataError("daily rule workspace binding differs")
+        return root
     if (
         root.is_symlink()
         or root != root.resolve()
@@ -126,6 +163,30 @@ def _fixture_root(root: Path) -> Path:
     if marker.is_symlink() or not marker.is_file() or marker.read_text() != _MARKER:
         raise DataError("native fixture requires its synthetic-only marker")
     return root
+
+
+def prepare_daily_workspace(authority: object) -> Path:
+    """Bind an existing approved daily store, never label it as a synthetic fixture."""
+    from alpha_cli._native_daily_rule_protocol import contract_is_daily
+    from alpha_cli._native_rule_authority import RuleAuthority
+
+    if type(authority) is not RuleAuthority or not contract_is_daily(authority.verify()):
+        raise DataError("daily workspace requires exact approved daily authority")
+    authority.reopen_daily_inputs()
+    root = authority.root
+    if root.is_symlink() or root != root.resolve() or (root / "synthetic-only").exists():
+        raise DataError("daily workspace requires a canonical persistent store")
+    # The shared data root may host multiple independently approved projects. Exact
+    # project/contract/job authority belongs to admission and the retained claim,
+    # not to this root-identity marker. Keep valid legacy marker bytes unchanged.
+    binding = {"schema": "DailyRuleWorkspaceV2", "root": str(root)}
+    path = root / "daily-rule-workspace.json"
+    if path.exists():
+        _fixture_root(root)
+    else:
+        with path.open("x") as handle:
+            json.dump(binding, handle, sort_keys=True)
+    return _fixture_root(root)
 
 
 def _lock_path(root: Path, job_id: str) -> Path:
@@ -144,15 +205,23 @@ def _open_lock(root: Path, job_id: str) -> BinaryIO:
     return os.fdopen(descriptor, "rb+")
 
 
+def _control_endpoint(root: Path, job_id: str) -> str:
+    if (root / "daily-rule-workspace.json").exists():
+        # Linux abstract sockets avoid the 108-byte pathname ceiling for persistent roots.
+        binding = hashlib.sha256((str(root) + "/" + job_id).encode()).hexdigest()
+        return "\x00alpha-daily-native-" + binding
+    return str(_lock_path(root, job_id).with_suffix(".stop"))
+
+
 def _request_live_stop(root: Path, job_id: str) -> bool:
     """Best-effort stop transport only; delivery is never a cleanup or authority receipt."""
     _fixture_root(root)
     host_identity()
-    path = _lock_path(root, job_id).with_suffix(".stop")
+    endpoint = _control_endpoint(root, job_id)
     with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as control:
         control.settimeout(0.1)
         try:
-            control.sendto(b"cancel\n", str(path))
+            control.sendto(b"cancel\n", endpoint)
         except OSError:
             return False  # Durable intent still goes through the existing store.
     return True
@@ -161,7 +230,9 @@ def _request_live_stop(root: Path, job_id: str) -> bool:
 @dataclass(frozen=True)
 class _Observation:
     owner: _Owner
-    kind: Literal["native_started", "native_outcome", "native_uncertain"]
+    kind: Literal[
+        "native_container_created", "native_started", "native_outcome", "native_uncertain"
+    ]
     fields: Mapping[str, object]
     seal: object
 
@@ -190,7 +261,14 @@ class _Owner:
         ):
             raise DataError("native loop fixture requires its fixed launch identity")
         self.native = native
+        if (root / "daily-rule-workspace.json").exists():
+            if native is None or not _is_daily_study(native.study) or native.authority is None:
+                raise DataError("daily workspace permits only its typed approved native study")
+            if native.authority.root != self.root:
+                raise DataError("daily workspace root differs from approved authority")
         self.native_admission: dict[str, object] | None = None
+        self.container: DailyRuleContainer | None = None
+        self._on_container_created: Callable[[_Observation], None] | None = None
         self.seconds = seconds
         self.lock = lock
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -221,22 +299,25 @@ class _Owner:
     def open_control(self) -> None:
         """Bind before dispatch; never replace an existing owner endpoint."""
         path = _lock_path(self.root, self.job_id).with_suffix(".stop")
+        endpoint = _control_endpoint(self.root, self.job_id)
         control = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         try:
-            control.bind(str(path))
+            control.bind(endpoint)
             control.setblocking(False)
-            metadata = path.stat(follow_symlinks=False)
+            metadata = None if endpoint.startswith("\x00") else path.stat(follow_symlinks=False)
         except BaseException:
             control.close()
             raise
         self._control = control
-        self._control_identity = (metadata.st_dev, metadata.st_ino)
+        self._control_identity = None if metadata is None else (metadata.st_dev, metadata.st_ino)
 
     def close_control(self) -> None:
         control, self._control = self._control, None
         if control is None:
             return
         control.close()
+        if self._control_identity is None:
+            return
         path = _lock_path(self.root, self.job_id).with_suffix(".stop")
         try:
             metadata = path.stat(follow_symlinks=False)
@@ -332,6 +413,29 @@ class _Owner:
         )
         work = self.root / f"payload-{self.job_id}"
         work.mkdir()
+        if self.container is not None:
+            self.container.create(command)
+            assert self.container.cid is not None and self.native_admission is not None
+            observation = self._issue(
+                "native_container_created",
+                {
+                    **self.container.binding(),
+                    "container_id": self.container.cid,
+                },
+            )
+            if self._on_container_created is None:
+                raise DataError("daily container requires durable creation binding before start")
+            self._on_container_created(observation)
+            self.native_admission = {**self.native_admission, "container_id": self.container.cid}
+            command = self.container.command()
+        if self.native is not None and _is_daily_study(self.native.study):
+            encoded_admission = json.dumps(
+                self.native_admission, sort_keys=True, separators=(",", ":"), allow_nan=False
+            ).encode()
+            if len(encoded_admission) > 4 * 1024 * 1024:
+                raise DataError("daily admission exceeds its versioned four MiB transport cap")
+            with (work / "daily-admission.json").open("xb") as handle:
+                handle.write(encoded_admission)
         if self.poll_stop():
             if self.stop_reason == "cancelled":
                 raise _FixtureCancelledBeforeSpawn("native fixture cancelled before payload spawn")
@@ -339,6 +443,13 @@ class _Owner:
                 "native fixture deadline expired during launch preparation"
             )
         self.spawn_attempted = True
+        daily_environment: dict[str, str] = {}
+        if self.native is not None and _is_daily_study(self.native.study):
+            from alpha_cli._native_daily_rule_protocol import DAILY_CHILD_ENV
+
+            daily_environment = dict(DAILY_CHILD_ENV)
+            if "DOCKER_CONFIG" in os.environ:
+                daily_environment["DOCKER_CONFIG"] = os.environ["DOCKER_CONFIG"]
         process = subprocess.Popen(
             command,
             stdin=subprocess.DEVNULL,
@@ -349,10 +460,18 @@ class _Owner:
             start_new_session=True,
             cwd=work,
             # Only the owner's validated temp root: the admitted worker re-checks its workspace.
-            env={"PATH": os.defpath, "LANG": "C.UTF-8", "TMPDIR": str(self.root.parent)},
+            env={
+                "PATH": os.defpath,
+                "LANG": "C.UTF-8",
+                "TMPDIR": str(self.root.parent),
+                **daily_environment,
+            },
         )
         self.process = process  # Retain before every post-spawn validation.
-        observed = self._issue("native_started", {"leader_pid": process.pid})
+        started_fields: dict[str, object] = {"leader_pid": process.pid}
+        if self.container is not None:
+            started_fields["container_id"] = self.container.cid
+        observed = self._issue("native_started", started_fields)
         if self._on_spawn is not None:
             self._on_spawn()
         self.verify()
@@ -362,7 +481,9 @@ class _Owner:
 
     def _issue(
         self,
-        kind: Literal["native_started", "native_outcome", "native_uncertain"],
+        kind: Literal[
+            "native_container_created", "native_started", "native_outcome", "native_uncertain"
+        ],
         fields: dict[str, object],
     ) -> _Observation:
         detached = fields.copy()
@@ -416,8 +537,8 @@ class _Owner:
     def _cleanup_once(self) -> None:
         """Share retained-child cleanup with the lease; never repeat numeric group control."""
         process = self.process
-        if process is None:
-            raise DataError("native owner has no retained child to clean")
+        if process is None and self.container is None:
+            raise DataError("native owner has no retained child or container to clean")
         with self._cleanup_lock:
             if self.cleanup_attempted:
                 if not self._cleanup_complete:
@@ -427,6 +548,11 @@ class _Owner:
                 return
             self.cleanup_attempted = True
             try:
+                if self.container is not None:
+                    self.container.cleanup()
+                if process is None:
+                    self._cleanup_complete = True
+                    return
                 if process.returncode is not None:
                     from alpha_cli.durable_lease import _process_group_exists
 
@@ -461,8 +587,15 @@ class _Owner:
                 "native_uncertain",
                 {"reason": "known synthetic escape exceeds process-group cleanup scope"},
             )
+        actual_returncode = (
+            self.container.exit_code if self.container is not None else process.returncode
+        )
+        if self.container is not None and actual_returncode is None:
+            return self._issue(
+                "native_uncertain", {"reason": "container payload start/exit was not verified"}
+            )
         rule_result: dict[str, object] = {}
-        if self.native is not None and reason == "exit" and process.returncode == 0:
+        if self.native is not None and reason == "exit" and actual_returncode == 0:
             try:
                 receipt_bytes = self.native.verify_result(
                     self.root / f"payload-{self.job_id}", self.native_admission
@@ -470,7 +603,9 @@ class _Owner:
                 if self.native.study is not None:
                     rule_result = {
                         "rule_result": {
-                            "schema": "SyntheticNativeRuleObservationV1",
+                            "schema": "DailyNativeRuleObservationV1"
+                            if _is_daily_study(self.native.study)
+                            else "SyntheticNativeRuleObservationV1",
                             "receipt_sha256": hashlib.sha256(receipt_bytes).hexdigest(),
                         }
                     }
@@ -483,9 +618,11 @@ class _Owner:
             {
                 **rule_result,
                 "reason": reason,
-                "returncode": process.returncode,
+                "returncode": actual_returncode,
                 "elapsed_seconds": time.monotonic() - self.started,
-                "cleanup_scope": "posix_process_group",
+                "cleanup_scope": "docker_container_and_posix_process_group"
+                if self.container is not None
+                else "posix_process_group",
                 "scientific_acceptance": "not_admitted",
             },
         )
@@ -512,6 +649,7 @@ def _run_owner(
     # The claim validates the reserved contract with lazily imported heavy validators (boundary:
     # numpy/scipy; rule plan: backtest/patterns). Load them before the deadline starts and
     # before the claim takes the store write lock.
+    from alpha_cli._native_daily_rule_identity import contract_is_daily  # noqa: F401
     from alpha_cli._native_rule_protocol import validate_rule_plan  # noqa: F401
     from alpha_cli.research_analysis_plan import validate_analysis_plan  # noqa: F401
     from alpha_research import research_d2_boundary_from_dict  # noqa: F401
@@ -541,6 +679,11 @@ def _run_owner(
         )
 
     owner._on_spawn = arm_safety
+
+    def container_created(observed: _Observation) -> None:
+        store.record_native_fixture_observation(job_id, observed)
+
+    owner._on_container_created = container_created
     try:
         store.claim_native_fixture(job_id, owner)
         # The durable claim precedes payload effects. Safety is armed at the retained
@@ -601,7 +744,18 @@ def _run_owner(
                 reason = owner.stop_reason or reason
                 observation = owner.finish(reason)
             else:
-                observation = owner.without_child(reason)
+                if owner.container is not None:
+                    try:
+                        owner._cleanup_once()
+                    except Exception as error:
+                        observation = owner._issue(
+                            "native_uncertain",
+                            {"reason": f"container cleanup unverified: {error}"[:1024]},
+                        )
+                    else:
+                        observation = owner.without_child(reason)
+                else:
+                    observation = owner.without_child(reason)
             pending_start = owner._issued.get("native_started")
             if pending_start is not None and not started_published:
                 # Retry only the immutable journal observation, never payload dispatch.
@@ -691,6 +845,24 @@ def start_synthetic_owner(
         lock.close()
 
 
+def start_daily_owner(
+    root: Path, job_id: str, *, native: NativeLaunch, seconds: float
+) -> subprocess.Popen[bytes]:
+    """Launch the registered daily route through the same retained native process owner."""
+    if (
+        type(native) is not _native_launch_type()
+        or not _is_daily_study(native.study)
+        or native.authority is None
+        or native.authority.root != root
+        or not 0 < seconds <= native.study.resources.max_wall_seconds
+    ):
+        raise DataError("daily owner requires its typed approved study and bounded deadline")
+    prepare_daily_workspace(native.authority)
+    return start_synthetic_owner(
+        root, job_id, fixture="native_loop", seconds=seconds, native=native
+    )
+
+
 def _entry() -> None:
     if sys.platform != "linux" or os.name != "posix":
         raise DataError("synthetic native supervisor supports linux-posix-v1 only")
@@ -712,13 +884,19 @@ def _entry() -> None:
     with os.fdopen(args.lock_fd, "rb+") as lock:
         study = authority = None
         if args.rule_project is not None or args.rule_contract is not None:
+            from alpha_cli._native_daily_rule_protocol import contract_is_daily, study_from_contract
             from alpha_cli._native_rule_authority import RuleAuthority
             from alpha_cli._native_rule_protocol import contract_is_costed, selected_study
 
             if not args.rule_project or not args.rule_contract:
                 raise DataError("rule owner requires complete authority identity")
             authority = RuleAuthority(args.root, args.rule_project, args.rule_contract)
-            study = selected_study(contract_is_costed(authority.verify()))
+            contract = authority.verify()
+            study = (
+                study_from_contract(contract)
+                if contract_is_daily(contract)
+                else selected_study(contract_is_costed(contract))
+            )
         native = (
             None
             if args.native_source is None

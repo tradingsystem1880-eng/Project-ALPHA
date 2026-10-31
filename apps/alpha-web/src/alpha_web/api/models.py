@@ -214,6 +214,43 @@ class RunList(StrictModel):
     items: list[RunListItem]
 
 
+class DailyRuleAccountingPage(StrictModel):
+    role: Literal["baseline", "control"]
+    rows: list[dict[str, JsonValue]]
+    total: int
+    has_more: bool
+    next_offset: int | None
+
+
+class DailyRuleRoleSummary(StrictModel):
+    run_id: str
+    starting_equity: float
+    final_equity: float
+    orders: int
+    fills: int
+    rejected: int
+    n_trades: int
+    fees_total: float
+    net_pnl: float
+    gross_pnl: float
+
+
+class DailyRuleEvidenceResponse(StrictModel):
+    schema_name: Literal["DailyRuleEvidenceV1"] = Field(alias="schema")
+    run_id: str
+    parent_run_id: str | None = None
+    available: bool
+    outcome: Literal["exploratory_complete", "accounting_rejection_inconclusive"] | None
+    watermark: str | None
+    claim_scope: str | None
+    data_origin: Literal["artificial_fixture", "captured_provider_history"] | None
+    provenance: dict[str, JsonValue]
+    roles: dict[str, DailyRuleRoleSummary]
+    accounting: DailyRuleAccountingPage
+    selectors: dict[str, JsonValue]
+    artifact_sha256: dict[str, str]
+
+
 class RunDetail(StrictModel):
     run_id: str
     kind: str
@@ -1203,6 +1240,7 @@ class CryptoYieldPoolCatalogResponse(StrictModel):
 
 class CryptoStorageResponse(StrictModel):
     verification: Literal["not_checked", "metadata_only", "artifact_verified"] = "not_checked"
+    identity_backend: Literal["macos_volume_uuid", "cloud_root_identity"] | None = None
     state: Literal["ready", "blocked"]
     blocker: str | None
     bulk_root_label: str

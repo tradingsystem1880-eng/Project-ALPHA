@@ -2936,3 +2936,74 @@ Each source's dated evidence and failures remain intact. Final Atlas output, a n
 session decision, one coherent full gate and independent review must accept the assembled tree;
 individual source passes are not aggregate acceptance. Original heads remain preserved as
 ancestors through normal guarded merges. See the [integration execution record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#coordinated-foundation-integration--2026-10-31).
+# 2026-10-31 — Packet 3 daily rule prerequisites (unpublished, in progress)
+
+Branch `codex/packet3-real-rule-v1`, base `ab0f6b75c2ff84c1563925721c33c50b1be36965`.
+The existing [Packet 3 implementation](superpowers/plans/2026-10-31-packet3-daily-rule.md)
+adds exact causal source lag, an explicit UTC-day execution clock, a bounded verified Binance
+spot daily price query and an inert typed study identity. Existing synthetic plan/launch checks
+continue to reject a real study. Full native admission, execution, completion and V1 report are
+unfinished; no market research has executed. The canonical W01–W19 scope is preserved.
+
+Independent artificial references cover one-bar chronology, four hand-specified fills/cash,
+full1096-day two-page source-to-normalized-to-query lineage and copied-store reopening.
+Focused results and final qualification are recorded in the active plan. Cloud intake has no
+configured bulk root/UUID and the current identity check is macOS-specific; no guard was bypassed.
+Exact costs/sizing/resources await owner confirmation. Private test coverage is UNVERIFIED, with
+no new product-task exception assumed. This entry is implementation progress, not delivery.
+
+
+# 2026-10-31 — Packet 3 native vertical implementation (unpublished; market acceptance open)
+
+The [active Packet3 record](superpowers/plans/2026-10-31-packet3-daily-rule.md) now describes the
+registered all-D1 daily route, exact owner/query/package/image/guard binding, existing native
+reservation/ownership/cancellation, fixed-unit fractional spot execution and observed accounting,
+immutable completion, missing-only evidence restore and existing CLI/API/UI report integration.
+The full W01–W19 scope remains in its canonical checklist. No new scientific coordinator or
+attempt/exposure ledger was added; old synthetic protocol bytes remain separately validated.
+
+Artificial engineering evidence includes independent chronological/cash fixtures, actual pinned
+LoopBase/LoopMeta five-stage execution under hard1 GiB physical container memory and oneCPU,
+publication interruption/idempotent completion, missing-only reference restore preserving a later
+authoritative reservation, cancellation and lost-owner quarantine. A killed host owner left its
+container bounded by the original monotonic deadline; no clean outcome or refund was fabricated.
+A prior1 GiB address-space probe failed from mapped library footprint and was preserved as a
+failed engineering trial; the physical-memory container boundary kept the approved cap unchanged.
+
+Independent review drove fixes for UI lag loss, provider substitution, authority relabeling,
+pre-dispatch lost responses, critical approved code/image closure and exact aggregate final-marker
+accounting. Portable Docker policy tests retain the unchanged93% coverage floor; focused module
+coverage reached100%. Final whole-tree gate/review evidence belongs to the task handoff, not an
+earlier prerequisite stamp. Earlier interrupted gates remain interruption history.
+
+Hunter approved the fixed simulation terms and bounded Packet3 absence-only private-suite exception
+through delivery (parent-forwarded2026-10-31 06:05UTC). Private coverage remains UNVERIFIED; no
+private contents were read or edited. This exception excuses no public failure or authority bypass.
+
+Real-study status: NOT STARTED. No actual dataset was acquired or numerical market study run; no
+real-study allowance was consumed. `/workspace` is an observed overlay with unverified hosting retention; the conservative
+mounted-root adapter refuses it, but the filesystem type alone does not prove disposability. The
+portable contract requires operator-approved durable bulk and control/manifests/run roots on the
+same pinned mount/device/owner, plus a hosting/retention decision. None is configured here. Provider
+acquisition was not attempted without storage; no provider denial or uncertain download is claimed.
+These are native implementation and artificial acceptance proofs, not a market conclusion or
+completion of Packet3’s real-data demonstration.
+
+**2026-10-31 — PR105 hosted contract-coverage repair.** The committed native slice passed the local
+six-component gate at93.0732% public coverage. Its hosted backend passed7,108 tests with74 runtime
+skips but failed the unchanged93% floor at92.38%; the other six hosted jobs passed, and automatic
+advisory review reported no findings. Additional public portable tests now target real approval,
+reservation, receipt, accounting, dispatch and restoration contracts through explicit artificial
+external-runtime ports. They supplement qualified native-process tests; skips and acceptance
+limits remain explicit. Production logic, coverage policy and the real-study storage blocker are
+unchanged. Final repaired-tree qualification and hosted results are recorded in delivery evidence.
+
+**2026-10-31 — PR105 shared daily root correction.** The portable coverage repair passed all six
+local components at93.0664% with CI runtime selection and was published as`ee1635c4`. Automatic
+review then identified that a root marker incorrectly pinned the entire data store to its first
+daily project. New markers bind only root identity; strict legacy markers remain readable without
+rewriting their bytes. Exact project/contract/job admission and same-study exposure guards remain
+mandatory. New-launch workspace checks run before queue/job/reservation effects and again before
+dispatch. Independent-project and invalid-binding regressions cover this correction. Its final
+qualification is separate from the earlier passing repair tree. Real-study allowance remains zero;
+Mac availability now permits separate storage inspection, not assumed Linux execution admission.

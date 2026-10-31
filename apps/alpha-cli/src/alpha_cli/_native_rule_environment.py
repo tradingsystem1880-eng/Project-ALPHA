@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from alpha_cli._native_daily_rule_study import DailyRuleStudyV1
 from alpha_cli._native_loop_admission import WORKER, WORKER_FILES
 from alpha_core import DataError
 
@@ -16,6 +17,33 @@ COSTED_FILES = (
     "costed_probe.py",
     "install_rule_profile.py",
     "economics-requirements.lock",
+)
+DAILY_GUARD_FILES = (
+    "_native_daily_rule_identity.py",
+    "_native_daily_rule_study.py",
+    "_native_daily_rule_protocol.py",
+    "_native_daily_rule_container.py",
+    "_native_daily_rule_restore.py",
+    "_native_daily_rule_artifacts.py",
+    "_native_daily_rule_projection.py",
+    "_native_loop_admission.py",
+    "_native_rule_authority.py",
+    "_native_rule_protocol.py",
+    "_native_rule_artifacts.py",
+    "_native_rule_environment.py",
+    "_native_rule_completion.py",
+    "_native_fixture_store.py",
+    "native_supervisor.py",
+    "control_store.py",
+    "_control_json.py",
+    "owner_auth.py",
+    "_artifacts.py",
+    "artifact_contract.py",
+    "durable_lease.py",
+    "research_analysis_plan.py",
+    "crypto_price_snapshot_query.py",
+    "crypto_bulk_store.py",
+    "daily_native_cmds.py",
 )
 
 
@@ -91,7 +119,9 @@ def measure_rule_environment(costed: bool = False) -> str:
     ).hexdigest()
 
 
-def rule_implementation_fingerprints(costed: bool = False) -> dict[str, str | None]:
+def rule_implementation_fingerprints(
+    costed: bool = False, *, daily_study: DailyRuleStudyV1 | None = None
+) -> dict[str, str | None]:
     from alpha_cli._native_rule_protocol import study_data_hash
 
     files = {
@@ -99,6 +129,16 @@ def rule_implementation_fingerprints(costed: bool = False) -> dict[str, str | No
         for name in (*WORKER_FILES, *(COSTED_FILES if costed else RULE_FILES))
         if name.endswith(".py")
     }
+    if daily_study is not None:
+        for name in DAILY_GUARD_FILES:
+            path = Path(__file__).with_name(name)
+            if path.is_symlink():
+                raise DataError("daily approval guard source symlink is unsupported")
+            files["cli/" + name] = hashlib.sha256(path.read_bytes()).hexdigest()
+        watchdog = WORKER / "daily_container_entry.py"
+        if watchdog.is_symlink():
+            raise DataError("daily approval watchdog source symlink is unsupported")
+        files["worker/daily_container_entry.py"] = hashlib.sha256(watchdog.read_bytes()).hexdigest()
     return {
         "code": hashlib.sha256(
             json.dumps(files, sort_keys=True, separators=(",", ":")).encode()
@@ -112,5 +152,5 @@ def rule_implementation_fingerprints(costed: bool = False) -> dict[str, str | No
         "evaluator": hashlib.sha256(
             (WORKER / ("costed_probe.py" if costed else "rule_probe.py")).read_bytes()
         ).hexdigest(),
-        "data": study_data_hash(costed),
+        "data": study_data_hash(costed) if daily_study is None else daily_study.query_sha256,
     }

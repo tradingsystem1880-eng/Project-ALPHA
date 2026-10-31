@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 from alpha_core import ChartAnnotationTrace, DecisionTrace, ExecutionRejectionTrace, IndicatorTrace
 
@@ -64,6 +65,27 @@ class PortfolioStateTrace:
     gross_exposure: float
     net_exposure: float
     turnover: float
+
+
+@dataclass(frozen=True)
+class AccountingTrace:
+    """Observed quote-currency CASH balances, cached positions and actual fill commissions.
+
+    Opening-quote observations precede same-quote fills. Fill observations follow the
+    portfolio's account update and reference the canonical fill sequence. This is optional
+    observation output, never a reconstructed cash ledger or an execution authority.
+    """
+
+    ts: datetime
+    instrument_id: str
+    currency: str
+    cash: float
+    cash_free: float
+    position_units: float
+    commission: float
+    fees_total: float
+    event: Literal["opening_quote_before_fills", "fill"]
+    fill_sequence_id: int | None
 
 
 @dataclass(frozen=True)

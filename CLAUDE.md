@@ -73,5 +73,6 @@ Behavior changes: update manual/build. Local checks confer no acceptance.
 UI: [terminal guide](apps/alpha-web/frontend/README.md): UTC charts, exact exports, no-project browsing. RunDetail binds selected-run outputs and loading/error/empty states.
 ML: v1/LightGBM; v2/rank ensemble; v3/tabular (workers/qlib/README.md). Missing worker blocks; refit grants no admission.
 
-Native rule/control (Linux only): local confirmation, pinned LoopBase/LoopMeta, canonical engine, immutable artifacts,
-full-charge accounting; strict integer IDs/counts and finite curves; no public/scientific authority. [Plan/handoff](docs/superpowers/plans/2026-10-26-native-rule-authority.md).
+Native fixtures: confirmed owner, pinned LoopBase/LoopMeta, immutable artifacts, full charges; no market authority.
+[Authority](docs/superpowers/plans/2026-10-26-native-rule-authority.md).
+[Packet3](docs/superpowers/plans/2026-10-31-packet3-daily-rule.md): daily route; market data blocked.

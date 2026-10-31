@@ -14,9 +14,11 @@ from fastapi.responses import FileResponse
 from alpha_cli import run_projection
 from alpha_core import DataError
 from alpha_web import _runs
+from alpha_web._catalog import _run_json
 from alpha_web.api._common import data_dir
 from alpha_web.api.models import (
     ChartBundle,
+    DailyRuleEvidenceResponse,
     EquitySeries,
     ForecastOrigins,
     ForecastPaths,
@@ -61,6 +63,36 @@ def run_detail(run_id: str) -> dict[str, Any]:
         return _runs.run_detail(run_id, data_dir=data_dir())
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/runs/{run_id}/daily-rule-evidence", response_model=DailyRuleEvidenceResponse)
+def run_daily_rule_evidence(
+    run_id: str,
+    role: str = "baseline",
+    limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+    offset: Annotated[int, Query(ge=0, le=100_000)] = 0,
+) -> dict[str, Any]:
+    """Bounded recorded daily-study evidence; never executes or approves research."""
+    try:
+        result = _run_json(
+            [
+                "report",
+                run_id,
+                "--json",
+                "--role",
+                role,
+                "--limit",
+                str(limit),
+                "--offset",
+                str(offset),
+            ],
+            data_dir=data_dir(),
+        )
+        if not isinstance(result, dict):
+            raise DataError("daily report returned an invalid object")
+        return result
+    except (DataError, RuntimeError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 def _ensure_run(run_id: str) -> None:
