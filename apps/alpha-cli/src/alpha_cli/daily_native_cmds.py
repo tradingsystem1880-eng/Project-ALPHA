@@ -16,7 +16,7 @@ from alpha_cli._native_loop_admission import NativeLaunch
 from alpha_cli._native_rule_authority import RuleAuthority
 from alpha_cli._native_rule_completion import complete_rule_trial
 from alpha_cli.control_store import ControlStore, ResearchPhase
-from alpha_cli.native_supervisor import start_daily_owner
+from alpha_cli.native_supervisor import prepare_daily_workspace, start_daily_owner
 from alpha_core import DataError
 
 
@@ -194,6 +194,9 @@ def run_daily_deep(project_id: str, *, data_dir: Path) -> dict[str, Any]:
         }
     if case.get("phase") != "deep_research" or case.get("execution_state") != "idle":
         raise DataError("daily native launch requires completed D0 and idle approved D1")
+    # Reject known root/marker/input failures before committing a job or charge.
+    # The retained owner rechecks before dispatch; later uncertainty keeps charges.
+    prepare_daily_workspace(authority)
     job_id = str(uuid4())
     spec = store.build_d1_native_invocation_spec(
         project_id, contract_id, job_id, attempt_number=1, native_manifest_sha256=launch.fingerprint

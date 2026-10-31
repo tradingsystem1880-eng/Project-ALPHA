@@ -57,11 +57,13 @@ The [first daily rule/control route](docs/superpowers/plans/2026-10-31-packet3-d
 connects a frozen momentum rule and control to native execution, accounting, cancellation,
 recovery and the existing reports. Artificial fixtures exercise the actual RD-Agent loop under a
 hard 1 GiB container limit; they establish no market result. The approved real-data demonstration
-still needs a durable cloud location for both its data and authoritative research records.
+still needs qualified retained storage for both its data and authoritative research records.
 Its data are discovery only, and modeled next-open prices are not verified live fills.
 Portable contract tests separately exercise approval binding, accounting, tamper rejection and
 missing-only recovery. Native-process acceptance still requires the installed pinned runtime;
 runtime-only skips remain visible in environments that do not provide it.
+Independent approved projects can share a data store; this does not grant another launch of the
+same study or replenish its allowance.
 
 ## Research workflow
 

@@ -291,3 +291,17 @@ Final qualification uses the CI runtime selection with the qualified-source envi
 alongside separate focused native-runtime evidence. Measured coverage and hosted delivery results
 belong in the handoff/PR evidence after the coherent tree is checked. Real acquisition and study
 execution remain blocked on admitted retained storage, with no real-study allowance consumed.
+
+## Shared daily root review correction
+
+Review of the published portable-coverage repair found that `DailyRuleWorkspaceV1` wrongly made
+the shared root exclusive to its first project. New `DailyRuleWorkspaceV2` records only canonical
+root identity. Strict legacyV1 markers remain accepted as historical root metadata without byte
+rewrites. Each launch still requires its independently consumed exact owner authority; the
+retained claim binds root/project/contract/job/reservation, and the same-study exposure-reset
+guard remains unchanged. Eligible new launches validate the workspace before queue/job/reservation
+effects, then the retained owner rechecks before dispatch. This prevents known invalid markers
+from consuming a native allowance; uncertainty after committed dispatch preparation stays charged.
+Portable regressions exercise two approved projects sharing inputs and root, a single authorized
+native reservation, rejection of a second same-study launch, legacy-marker preservation and invalid
+root/authority rejection. These tests establish contracts, not native-process or market acceptance.

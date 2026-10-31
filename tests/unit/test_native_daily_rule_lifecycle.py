@@ -14,7 +14,11 @@ import pytest
 
 from alpha_cli import owner_auth
 from alpha_cli._native_daily_rule_protocol import draft_daily_contract
-from alpha_cli._native_daily_rule_study import bind_daily_study, daily_rule_terms_proposal
+from alpha_cli._native_daily_rule_study import (
+    DailyRuleStudyV1,
+    bind_daily_study,
+    daily_rule_terms_proposal,
+)
 from alpha_cli._native_loop_admission import NativeLaunch
 from alpha_cli._native_rule_artifacts import d0_fingerprint, publish_rule_run
 from alpha_cli._native_rule_authority import RuleAuthority
@@ -53,51 +57,58 @@ def _reservations(store: ControlStore) -> list[dict[str, object]]:
 
 
 def _case(
-    root: Path, monkeypatch: pytest.MonkeyPatch, source: Path
+    root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    source: Path,
+    *,
+    project_id: str = PROJECT_ID,
+    study: DailyRuleStudyV1 | None = None,
+    prepare_workspace: bool = True,
 ) -> tuple[ControlStore, str, NativeLaunch]:
     """Genuine disposable storage/query + test owner ceremony, no invented authority rows."""
     import alpha_cli.crypto_bulk_store as backend
     from alpha_cli._native_daily_rule_container import daily_container_profile
 
-    bulk, snapshot, manifest_id = _full_discovery_fixture(root)
-    config = root / "crypto" / "storage-config.json"
-    config.parent.mkdir(parents=True, exist_ok=True)
-    config.write_text('{"artificial_fixture":"callback-backed test volume"}')
-    snapshots = root / "crypto" / "snapshots"
-    snapshots.mkdir()
-    (snapshots / (snapshot.snapshot_id + ".json")).write_text(json.dumps(snapshot.to_dict()))
-    end = datetime(2023, 1, 1, tzinfo=UTC)
-    query = query_binance_daily_price_snapshot(
-        snapshot,
-        bulk,
-        normalized_manifest_id=manifest_id,
-        start=datetime(2020, 1, 1, tzinfo=UTC),
-        end=end,
-        available_by=end,
-    )
-    economics, resources = daily_rule_terms_proposal()
-    study = bind_daily_study(
-        query,
-        snapshot_sha256=snapshot.snapshot_id,
-        runtime_profile_sha256=measure_rule_environment(True),
-        container_image_id=daily_container_profile()["image_id"],
-        storage_config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
-        economics=economics,
-        resources=resources,
-        data_origin="artificial_fixture",
-    )
-    monkeypatch.setattr(backend, "configured_crypto_bulk_store", lambda selected: bulk)
+    if study is None:
+        bulk, snapshot, manifest_id = _full_discovery_fixture(root)
+        config = root / "crypto" / "storage-config.json"
+        config.parent.mkdir(parents=True, exist_ok=True)
+        config.write_text('{"artificial_fixture":"callback-backed test volume"}')
+        snapshots = root / "crypto" / "snapshots"
+        snapshots.mkdir()
+        (snapshots / (snapshot.snapshot_id + ".json")).write_text(json.dumps(snapshot.to_dict()))
+        end = datetime(2023, 1, 1, tzinfo=UTC)
+        query = query_binance_daily_price_snapshot(
+            snapshot,
+            bulk,
+            normalized_manifest_id=manifest_id,
+            start=datetime(2020, 1, 1, tzinfo=UTC),
+            end=end,
+            available_by=end,
+        )
+        economics, resources = daily_rule_terms_proposal()
+        study = bind_daily_study(
+            query,
+            snapshot_sha256=snapshot.snapshot_id,
+            runtime_profile_sha256=measure_rule_environment(True),
+            container_image_id=daily_container_profile()["image_id"],
+            storage_config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+            economics=economics,
+            resources=resources,
+            data_origin="artificial_fixture",
+        )
+        monkeypatch.setattr(backend, "configured_crypto_bulk_store", lambda selected: bulk)
     fingerprints = rule_implementation_fingerprints(True, daily_study=study)
     store = ControlStore(root)
     store.create_project(
         name="Artificial daily native lifecycle",
         hypothesis="Mechanics only",
         falsification_criterion="Reject changed bindings",
-        project_id=PROJECT_ID,
+        project_id=project_id,
         at=START,
     )
     reference = store.create_research_source(
-        PROJECT_ID,
+        project_id,
         title="Artificial fixture",
         locator="artificial:native-daily",
         provider="synthetic",
@@ -106,7 +117,7 @@ def _case(
         at=START,
     )
     pack = store.create_research_source_pack(
-        PROJECT_ID,
+        project_id,
         source_ids=[str(reference["source_id"])],
         definition={"data_origin": "artificial_fixture"},
         at=START,
@@ -128,7 +139,7 @@ def _case(
         study,
     )
     created = store.create_research_contract(
-        PROJECT_ID,
+        project_id,
         scope="exploration",
         payload=payload,
         created_by="test-agent",
@@ -138,7 +149,7 @@ def _case(
     cid = str(created["contract_id"])
     for phase in ("triage", "exploration_review"):
         store.transition_research_phase(
-            PROJECT_ID,
+            project_id,
             to_phase=cast(Any, phase),
             contract_id=cid,
             actor="test-agent",
@@ -151,9 +162,9 @@ def _case(
     binding = owner_auth.action_binding(
         data_dir=root,
         action_type="approve_exploration",
-        project_id=PROJECT_ID,
+        project_id=project_id,
         artifact_hash=cid.removeprefix("rc_"),
-        expected_case_revision=research_case_revision(store.research_case_summary(PROJECT_ID)),
+        expected_case_revision=research_case_revision(store.research_case_summary(project_id)),
         consequence_summary="Artificial native mechanics only",
         reason="Test ceremony",
         payload=request,
@@ -167,7 +178,7 @@ def _case(
         now=START,
     )
     store.review_research_contract(
-        PROJECT_ID,
+        project_id,
         cid,
         scope="exploration",
         decision="approve",
@@ -177,7 +188,7 @@ def _case(
         at=START,
     )
     store.transition_research_phase(
-        PROJECT_ID,
+        project_id,
         to_phase="pilot",
         contract_id=cid,
         actor="test-agent",
@@ -187,7 +198,7 @@ def _case(
         at=START,
     )
     store.transition_research_execution(
-        PROJECT_ID,
+        project_id,
         to_state="queued",
         contract_id=cid,
         actor="test-agent",
@@ -198,17 +209,17 @@ def _case(
     )
     fingerprint = d0_fingerprint(payload)
     reservation = store.reserve_d0_research_launch(
-        PROJECT_ID, cid, config_fingerprint=fingerprint, at=START
+        project_id, cid, config_fingerprint=fingerprint, at=START
     )
     manifest = publish_rule_run(
         root,
-        project_id=PROJECT_ID,
+        project_id=project_id,
         contract_id=cid,
         contract=payload,
         execution_fingerprint=fingerprint,
     )
     store.record_research_attempt(
-        PROJECT_ID,
+        project_id,
         cid,
         kind="d0-synthetic-pilot",
         status="completed",
@@ -224,7 +235,7 @@ def _case(
         at=START,
     )
     store.transition_research_execution(
-        PROJECT_ID,
+        project_id,
         to_state="idle",
         contract_id=cid,
         actor="test-agent",
@@ -234,7 +245,7 @@ def _case(
         at=START,
     )
     store.transition_research_phase(
-        PROJECT_ID,
+        project_id,
         to_phase="deep_research",
         contract_id=cid,
         actor="test-agent",
@@ -243,8 +254,9 @@ def _case(
         responsibility="codex",
         at=START,
     )
-    authority = RuleAuthority(root, PROJECT_ID, cid)
-    prepare_daily_workspace(authority)
+    authority = RuleAuthority(root, project_id, cid)
+    if prepare_workspace:
+        prepare_daily_workspace(authority)
     launch = NativeLaunch(source, "INCONCLUSIVE", study=study, authority=authority)
     return store, cid, launch
 

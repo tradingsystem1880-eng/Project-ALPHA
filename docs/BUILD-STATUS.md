@@ -2997,3 +2997,13 @@ reservation, receipt, accounting, dispatch and restoration contracts through exp
 external-runtime ports. They supplement qualified native-process tests; skips and acceptance
 limits remain explicit. Production logic, coverage policy and the real-study storage blocker are
 unchanged. Final repaired-tree qualification and hosted results are recorded in delivery evidence.
+
+**2026-10-31 — PR105 shared daily root correction.** The portable coverage repair passed all six
+local components at93.0664% with CI runtime selection and was published as`ee1635c4`. Automatic
+review then identified that a root marker incorrectly pinned the entire data store to its first
+daily project. New markers bind only root identity; strict legacy markers remain readable without
+rewriting their bytes. Exact project/contract/job admission and same-study exposure guards remain
+mandatory. New-launch workspace checks run before queue/job/reservation effects and again before
+dispatch. Independent-project and invalid-binding regressions cover this correction. Its final
+qualification is separate from the earlier passing repair tree. Real-study allowance remains zero;
+Mac availability now permits separate storage inspection, not assumed Linux execution admission.

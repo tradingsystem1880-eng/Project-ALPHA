@@ -136,11 +136,19 @@ def _fixture_root(root: Path) -> Path:
             raise DataError("daily rule workspace binding is unavailable") from error
         if (
             not isinstance(binding, dict)
-            or set(binding) != {"schema", "root", "project_id"}
-            or binding.get("schema") != "DailyRuleWorkspaceV1"
             or binding.get("root") != str(root)
-            or not isinstance(binding.get("project_id"), str)
-            or not binding["project_id"]
+            or not (
+                (
+                    set(binding) == {"schema", "root"}
+                    and binding.get("schema") == "DailyRuleWorkspaceV2"
+                )
+                or (
+                    set(binding) == {"schema", "root", "project_id"}
+                    and binding.get("schema") == "DailyRuleWorkspaceV1"
+                    and isinstance(binding.get("project_id"), str)
+                    and bool(binding["project_id"])
+                )
+            )
         ):
             raise DataError("daily rule workspace binding differs")
         return root
@@ -168,16 +176,13 @@ def prepare_daily_workspace(authority: object) -> Path:
     root = authority.root
     if root.is_symlink() or root != root.resolve() or (root / "synthetic-only").exists():
         raise DataError("daily workspace requires a canonical persistent store")
-    binding = {
-        "schema": "DailyRuleWorkspaceV1",
-        "root": str(root),
-        "project_id": authority.project_id,
-    }
+    # The shared data root may host multiple independently approved projects. Exact
+    # project/contract/job authority belongs to admission and the retained claim,
+    # not to this root-identity marker. Keep valid legacy marker bytes unchanged.
+    binding = {"schema": "DailyRuleWorkspaceV2", "root": str(root)}
     path = root / "daily-rule-workspace.json"
     if path.exists():
         _fixture_root(root)
-        if json.loads(path.read_text()) != binding:
-            raise DataError("daily workspace belongs to another project")
     else:
         with path.open("x") as handle:
             json.dump(binding, handle, sort_keys=True)
@@ -259,9 +264,8 @@ class _Owner:
         if (root / "daily-rule-workspace.json").exists():
             if native is None or not _is_daily_study(native.study) or native.authority is None:
                 raise DataError("daily workspace permits only its typed approved native study")
-            binding = json.loads((root / "daily-rule-workspace.json").read_text())
-            if binding["project_id"] != native.authority.project_id:
-                raise DataError("daily workspace project differs from approved authority")
+            if native.authority.root != self.root:
+                raise DataError("daily workspace root differs from approved authority")
         self.native_admission: dict[str, object] | None = None
         self.container: DailyRuleContainer | None = None
         self._on_container_created: Callable[[_Observation], None] | None = None
