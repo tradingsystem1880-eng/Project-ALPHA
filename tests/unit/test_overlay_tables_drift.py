@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 
 from alpha_cli.chart_cmds import INDICATORS, PATTERNS, parse_indicator
-from alpha_strategies.rules import INDICATOR_ARITY, INDICATOR_FIELDS, parse_operand
+from alpha_strategies.rules import INDICATOR_ARITY, INDICATOR_FIELDS, SOURCES, parse_operand
 
 _FRONTEND = Path(__file__).resolve().parents[2] / "apps" / "alpha-web" / "frontend" / "src"
 _MODEL = (_FRONTEND / "panels" / "chartOverlaysModel.ts").read_text(encoding="utf-8")
@@ -87,9 +87,17 @@ def test_every_rule_builder_example_is_an_operand_the_parser_accepts() -> None:
     examples = _ts_operand_examples()
     assert examples, "no OPERAND_EXAMPLES parsed from ruleBuilderModel.ts"
     heads: set[str] = set()
+    source_lags: set[tuple[str, int]] = set()
     for text in examples:
-        if text in {"high", "low", "close"}:
+        if text in SOURCES:
             payload: dict[str, object] = {"source": text}
+        elif text.split(":")[0] in SOURCES:
+            source, *rest = text.split(":")
+            assert len(rest) == 2 and rest[0] == "lag", f"invalid source-lag example: {text}"
+            assert re.fullmatch(r"\d+", rest[1]), f"source lag must be an integer: {text}"
+            lag = int(rest[1])
+            payload = {"source": source, "lag": lag}
+            source_lags.add((source, lag))
         elif re.fullmatch(r"-?\d+(\.\d+)?", text):
             payload = {"value": float(text)}
         else:
@@ -101,6 +109,7 @@ def test_every_rule_builder_example_is_an_operand_the_parser_accepts() -> None:
             heads.add(head)
         assert parse_operand(payload, "example").label == text
     assert heads == set(INDICATOR_ARITY)
+    assert ("close", 20) in source_lags
 
 
 def test_e2e_overlay_stand_in_bars_needed_matches_cli() -> None:

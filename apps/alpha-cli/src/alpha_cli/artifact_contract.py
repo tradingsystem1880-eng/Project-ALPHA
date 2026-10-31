@@ -7,6 +7,7 @@ it to reject tampered artifacts without importing the CLI composer, engine, or v
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Final
@@ -156,7 +157,96 @@ def verify_manifest_artifacts(rdir: Path, manifest: Mapping[str, Any]) -> None:
         "rolling_metrics.parquet",
         "trade_statistics.parquet",
     }
+    rule_sets["research_daily_rule_pilot_v1"] = {
+        "baseline.json",
+        "control.json",
+        "d0_acceptance.json",
+    }
+    rule_sets["research_daily_rule_native_v1"] = {
+        "baseline.json",
+        "control.json",
+        "rule_positions.json",
+        "study.json",
+        "query.json",
+        "native_receipt.json",
+        "economics.json",
+        "projections.json",
+    }
+    rule_sets["research_daily_rule_projection_v1"] = rule_sets["research_rule_projection_v1"] | {
+        "lineage.json"
+    }
     command = manifest.get("command")
+    if isinstance(command, str) and command.startswith("research_daily_rule_"):
+        origin = manifest.get("data_origin")
+        captured = origin == "captured_provider_history"
+        watermark = (
+            "EXPLORATORY / RECONSTRUCTED DISCOVERY; NOT PROMOTED"
+            if captured
+            else "ARTIFICIAL FIXTURE / NO MARKET EVIDENCE"
+        )
+        gate = manifest.get("research_gate")
+        context = manifest.get("run_context")
+        daily = manifest.get("daily_rule")
+        if (
+            command
+            not in {
+                "research_daily_rule_pilot_v1",
+                "research_daily_rule_native_v1",
+                "research_daily_rule_projection_v1",
+            }
+            or origin not in {"artificial_fixture", "captured_provider_history"}
+            or (command == "research_daily_rule_pilot_v1" and captured)
+            or manifest.get("synthetic") is not (not captured)
+            or manifest.get("real_market_evidence") is not captured
+            or manifest.get("eligible_for_holdout_or_execution") is not False
+            or manifest.get("places_orders") is not False
+            or manifest.get("scientific_acceptance") != "not_admitted"
+            or not isinstance(gate, dict)
+            or gate
+            != {
+                "watermark": watermark,
+                "state": "exploratory",
+                "claim_scope": "exploratory_reconstructed_discovery_history",
+            }
+            or not isinstance(context, dict)
+            or context.get("kind") != "governed_project"
+            or not isinstance(context.get("project_id"), str)
+            or context.get("research_gate_state") != "not_completed"
+            or (
+                command != "research_daily_rule_projection_v1"
+                and context.get("project_id") != manifest.get("project_id")
+            )
+            or not isinstance(daily, dict)
+            or daily.get("data_origin") != origin
+            or any(
+                key in manifest
+                for key in (
+                    "passed",
+                    "verdict",
+                    "promotion_id",
+                    "candidate_id",
+                    "paper_ready",
+                    "live_ready",
+                )
+            )
+            or ("watermark" in manifest and manifest["watermark"] != watermark)
+        ):
+            raise DataError("daily manifest cannot change exploratory authority or origin")
+        origin_path = rdir / ("lineage.json" if command.endswith("projection_v1") else "study.json")
+        if command != "research_daily_rule_pilot_v1":
+            try:
+                with origin_path.open("rb") as handle:
+                    origin_bytes = handle.read(8 * 1024 * 1024 + 1)
+                if len(origin_bytes) > 8 * 1024 * 1024:
+                    raise DataError("daily origin artifact exceeds its byte bound")
+                origin_document = json.loads(origin_bytes)
+            except (OSError, ValueError) as error:
+                raise DataError("daily origin artifact is invalid") from error
+            if (
+                not isinstance(origin_document, dict)
+                or origin_document.get("data_origin") != origin
+            ):
+                raise DataError("daily manifest origin differs from its frozen artifact")
     if isinstance(command, str) and command in rule_sets:
         if (
             set(declared) != rule_sets[command]

@@ -35,6 +35,7 @@ def test_crypto_storage_projection_covers_ready_and_exact_blocker_states(
             "bulk_data_dir": tmp_path / "Expansion" / "crypto-data",
             "data_dir": tmp_path / "control",
             "bulk_volume_uuid": "TEST-UUID",
+            "bulk_storage_backend": "macos_volume_uuid",
         },
     )()
     monkeypatch.setattr("alpha_cli.crypto_data_cmds.AlphaSettings", lambda: settings)
@@ -42,6 +43,8 @@ def test_crypto_storage_projection_covers_ready_and_exact_blocker_states(
     class ReadyStore:
         reserve_fraction = 0.15
         minimum_free_bytes = 100
+        cloud_root_identity = None
+        bulk_root = tmp_path / "Expansion" / "crypto-data"
 
         def __init__(self, **_kwargs: object) -> None:
             pass
@@ -56,7 +59,7 @@ def test_crypto_storage_projection_covers_ready_and_exact_blocker_states(
         def cache_size(self) -> int:
             return 7
 
-    monkeypatch.setattr("alpha_cli.crypto_data_cmds.CryptoBulkStore", ReadyStore)
+    monkeypatch.setattr("alpha_cli.crypto_data_cmds._bulk_store", lambda: ReadyStore())
     ready = runner.invoke(app, ["crypto-data", "storage", "--json"])
     assert ready.exit_code == 0, ready.output
     assert json.loads(ready.stdout)["state"] == "ready"
@@ -65,7 +68,7 @@ def test_crypto_storage_projection_covers_ready_and_exact_blocker_states(
         def verify_ready(self, *, required_bytes: int) -> Capacity:
             raise DataError("crypto bulk volume UUID does not match")
 
-    monkeypatch.setattr("alpha_cli.crypto_data_cmds.CryptoBulkStore", BlockedStore)
+    monkeypatch.setattr("alpha_cli.crypto_data_cmds._bulk_store", lambda: BlockedStore())
     blocked = runner.invoke(app, ["crypto-data", "storage", "--json"])
     assert blocked.exit_code == 0, blocked.output
     assert json.loads(blocked.stdout)["blocker"] == "bulk_volume_uuid_mismatch"

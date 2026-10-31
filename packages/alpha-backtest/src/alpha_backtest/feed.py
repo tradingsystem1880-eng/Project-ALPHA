@@ -8,7 +8,10 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
+from datetime import timedelta
+from typing import Literal
 
 from nautilus_trader.core.data import Data
 from nautilus_trader.model.data import Bar as NautilusBar
@@ -41,6 +44,7 @@ def to_execution_feed(
     size_precision: int = 0,
     quote_size: float = 1_000_000_000.0,
     slippage_bps: float = 0.0,
+    timing: Literal["session_close_23h", "utc_day_end_next_open"] = "session_close_23h",
 ) -> list[Data]:
     """Build a look-ahead-safe nautilus feed honoring decide-on-close-t / fill-at-open-t+1.
 
@@ -59,11 +63,26 @@ def to_execution_feed(
 
     Run this feed with a venue configured ``bar_execution=False`` (see ``engine.run_backtest``) so
     that only the quotes drive fills. The returned list is chronologically ordered.
+
+    ``utc_day_end_next_open`` requires UTC-midnight daily inputs. It stamps each complete
+    decision bar at the following midnight, then the next opening quote one microsecond later.
+    This explicit logical ordering prevents using a full UTC day's OHLC before the day ends;
+    the microsecond survives canonical datetime trace serialization. The quote still uses the
+    historical next-open price: this is a modeled execution approximation, not evidence that
+    the price was executable after publication or that publication latency was one microsecond.
+    The default retains the original 23-hour session convention.
     """
-    if slippage_bps < 0.0:
-        raise DataError(
-            f"slippage_bps must be >= 0 (a negative value pays you), got {slippage_bps}"
-        )
+    if type(timing) is not str or timing not in {"session_close_23h", "utc_day_end_next_open"}:
+        raise DataError("unsupported daily execution feed timing")
+    if not math.isfinite(slippage_bps) or slippage_bps < 0.0:
+        raise DataError(f"slippage_bps must be finite and >= 0, got {slippage_bps}")
+    utc_day = timing == "utc_day_end_next_open"
+    if utc_day and any(
+        b.ts.utcoffset() != timedelta(0)
+        or (b.ts.hour, b.ts.minute, b.ts.second, b.ts.microsecond) != (0, 0, 0, 0)
+        for b in bars
+    ):
+        raise DataError("UTC-day execution feed requires UTC midnight bar timestamps")
     # The +23h close stamp encodes DAILY (calendar-spaced) sessions; anything tighter would emit a
     # non-chronological feed the engine silently runs with zero fills. Fail loud instead.
     for prev, cur in zip(bars, bars[1:], strict=False):
@@ -79,10 +98,11 @@ def to_execution_feed(
     out: list[Data] = []
     for b in bars:
         open_ns = int(b.ts.timestamp() * _NS_PER_SECOND)
-        close_ns = open_ns + _SESSION_CLOSE_OFFSET_NS
+        close_ns = open_ns + (24 * 3600 * _NS_PER_SECOND if utc_day else _SESSION_CLOSE_OFFSET_NS)
+        quote_ns = open_ns + (1000 if utc_day else 0)
         bid = Price(b.open * (1.0 - half_spread), price_precision)
         ask = Price(b.open * (1.0 + half_spread), price_precision)
-        out.append(QuoteTick(iid, bid, ask, size, size, open_ns, open_ns))
+        out.append(QuoteTick(iid, bid, ask, size, size, quote_ns, quote_ns))
         out.append(
             NautilusBar(
                 bar_type,

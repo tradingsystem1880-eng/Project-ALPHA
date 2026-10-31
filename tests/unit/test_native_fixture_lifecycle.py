@@ -272,9 +272,15 @@ def test_cancellation_reaps_qualified_group_and_closes_once(case: Case, fixture:
     before = store.research_case_summary(PROJECT_ID)["elapsed_budget"]
     process = start_synthetic_owner(root, JOB, fixture=fixture, seconds=5)
     try:
-        _until_started(root, store, process, require_remaining=_POST_READY_DEADLINE_SECONDS)
+        # The actual cancelled terminal outcome below proves cancellation won before timeout.
+        # Process birth also includes prewarming before the owner's clock, so its conservative
+        # remaining-time lower bound is not a readiness precondition for this case.
+        _until_started(root, store, process)
         store.cancel_native_fixture(JOB, reason="synthetic owner cancellation")
-        _until(store, "closed")
+        closed = _until(store, "closed")
+        outcome = closed["outcome"]
+        assert isinstance(outcome, dict)
+        assert outcome["reason"] == "cancelled"
         assert process.wait(timeout=3) == 0
         assert store.get_job(JOB)["status"] == "cancelled"
         assert store.cancel_native_fixture(JOB, reason="idempotent repeat")["state"] == "closed"

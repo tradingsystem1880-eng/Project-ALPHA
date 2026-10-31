@@ -838,8 +838,24 @@ def research_case_revision(summary: Mapping[str, object]) -> str:
     return hashlib.sha256(_canonical_json(payload, "research case revision").encode()).hexdigest()
 
 
-def _content_id(prefix: str, payload: Mapping[str, object]) -> str:
-    canonical = _canonical_json(_json_object(payload, f"{prefix} identity"), f"{prefix} identity")
+def _daily_control_limit(payload: Mapping[str, object]) -> int:
+    """Expand storage only for a fully validated registered daily study; all others stay 64 KiB."""
+    from alpha_cli._native_daily_rule_identity import contract_is_daily
+
+    if contract_is_daily(payload):
+        from alpha_cli._native_daily_rule_protocol import validate_daily_contract
+
+        validate_daily_contract(payload)
+        return 16 * 1024 * 1024
+    return 65_536
+
+
+def _content_id(prefix: str, payload: Mapping[str, object], *, max_bytes: int = 65_536) -> str:
+    canonical = _canonical_json(
+        _json_object(payload, f"{prefix} identity", max_bytes=max_bytes),
+        f"{prefix} identity",
+        max_bytes=max_bytes,
+    )
     return f"{prefix}_{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}"
 
 
@@ -1862,10 +1878,14 @@ def _d1_native_spec(
         "job_id": _canonical_uuid(job_id, "job_id"),
         "attempt_number": attempt_number,
         "contract_payload_sha256": hashlib.sha256(
-            _canonical_json(payload, "approved native D1 contract").encode("utf-8")
+            _canonical_json(
+                payload, "approved native D1 contract", max_bytes=_daily_control_limit(payload)
+            ).encode("utf-8")
         ).hexdigest(),
         "analysis_plan_sha256": hashlib.sha256(
-            _canonical_json(plan, "approved native D1 analysis plan").encode("utf-8")
+            _canonical_json(
+                plan, "approved native D1 analysis plan", max_bytes=_daily_control_limit(payload)
+            ).encode("utf-8")
         ).hexdigest(),
         "approved_budget": dict(sorted(budget.items())),
         "implementation_fingerprints": fingerprints,
@@ -1908,6 +1928,19 @@ def _confirmation_classification(evidence: Mapping[str, object]) -> str:
 
 
 def _research_d2_topology(payload: Mapping[str, object]) -> tuple[dict[str, object], str]:
+    from alpha_cli._native_daily_rule_identity import contract_is_daily
+
+    if contract_is_daily(payload):
+        from alpha_cli._native_daily_rule_protocol import daily_topology, study_from_contract
+
+        daily_protocol = payload.get("protocol")
+        assert isinstance(daily_protocol, Mapping)
+        expected = daily_topology(study_from_contract(payload))
+        if daily_protocol.get("evidence_topology") != expected:
+            raise DataError("daily discovery topology cannot allocate protected samples")
+        daily_d2 = expected["D2"]
+        assert isinstance(daily_d2, dict)
+        return daily_d2, str(daily_d2["boundary_hash"])
     protocol = payload.get("protocol")
     if not isinstance(protocol, dict):
         raise DataError("research contract approval requires a protocol object")
@@ -2448,7 +2481,12 @@ class ControlStore:
         }:
             raise DataError("research contract requires an exact boundary_authority declaration")
         boundary_kind = boundary_authority.get("kind")
-        if boundary_kind not in {"synthetic_acceptance_fixture", "empirical_dataset"}:
+        from alpha_cli._native_daily_rule_identity import contract_is_daily
+
+        daily = contract_is_daily(payload)
+        if boundary_kind not in {"synthetic_acceptance_fixture", "empirical_dataset"} and not (
+            daily and boundary_kind == "exploratory_reconstructed_discovery_history"
+        ):
             raise DataError("research contract has an unsupported boundary authority kind")
         real_market_evidence = boundary_authority.get("real_market_evidence")
         empirical_confirmation = boundary_authority.get("empirical_confirmation_authorized")
@@ -2459,6 +2497,13 @@ class ControlStore:
         expected_authority = (
             (False, False) if boundary_kind == "synthetic_acceptance_fixture" else (True, True)
         )
+        if daily:
+            from alpha_cli._native_daily_rule_protocol import study_from_contract
+
+            expected_authority = (
+                study_from_contract(payload).data_origin == "captured_provider_history",
+                False,
+            )
         if (real_market_evidence, empirical_confirmation) != expected_authority:
             raise DataError("research contract boundary authority flags conflict with its kind")
         if row["scope"] == "confirmation" and not empirical_confirmation:
@@ -2468,7 +2513,7 @@ class ControlStore:
         if d2.get("state") != "sealed" or not isinstance(d3, dict) or d3.get("state") != "sealed":
             raise DataError("research contract approval requires sealed D2 and D3 topology")
         d3_share = d3.get("share")
-        if (
+        if not daily and (
             isinstance(d3_share, bool)
             or not isinstance(d3_share, int | float)
             or not math.isfinite(float(d3_share))
@@ -2516,6 +2561,7 @@ class ControlStore:
         elif isinstance(analysis_plan, Mapping) and analysis_plan.get("schema") in {
             "FrozenRulePositionsPlanV1",
             "FrozenRuleCostedPlanV1",
+            "FrozenDailyRulePlanV1",
         }:
             raise DataError("fixed rule plan requires its registered operator")
         parent_id = row["parent_contract_id"]
@@ -2916,7 +2962,11 @@ class ControlStore:
                 "and run identity"
             )
         contract_hash = hashlib.sha256(
-            _canonical_json(contract_payload, "research run contract").encode("utf-8")
+            _canonical_json(
+                contract_payload,
+                "research run contract",
+                max_bytes=_daily_control_limit(contract_payload),
+            ).encode("utf-8")
         ).hexdigest()
         hashes = contract_payload.get("hashes")
         if not isinstance(hashes, dict):  # Approval validation normally catches this first.
@@ -2945,6 +2995,12 @@ class ControlStore:
 
             if phase == "deep_research" and contract_is_costed(contract_payload):
                 expected_command = "research_rule_costed_native_v1"
+            from alpha_cli._native_daily_rule_protocol import contract_is_daily
+
+            if phase == "deep_research" and contract_is_daily(contract_payload):
+                expected_command = "research_daily_rule_native_v1"
+            if phase == "pilot" and contract_is_daily(contract_payload):
+                expected_command = "research_daily_rule_pilot_v1"
         expected: dict[str, object] = {
             "command": expected_command,
             "kind": "research",
@@ -2963,13 +3019,22 @@ class ControlStore:
             "execution_fingerprint": config_fingerprint,
         }
         if is_rule_contract(contract_payload):
+            from alpha_cli._native_daily_rule_protocol import contract_is_daily, study_from_contract
+
+            daily = contract_is_daily(contract_payload)
+            captured = (
+                daily
+                and study_from_contract(contract_payload).data_origin == "captured_provider_history"
+            )
             expected.update(
                 {
-                    "synthetic": True,
-                    "real_market_evidence": False,
+                    "synthetic": not captured,
+                    "real_market_evidence": captured if phase == "deep_research" else False,
                     "scientific_acceptance": "not_admitted",
                 }
             )
+            if daily and phase == "pilot":
+                expected["synthetic"] = True
         if phase == "pilot":
             protocol = contract_payload.get("protocol")
             operator = None if not isinstance(protocol, Mapping) else protocol.get("d0_operator")
@@ -3144,7 +3209,11 @@ class ControlStore:
         )
         run_dir, manifest = self._verified_run(run_id)
         contract_hash = hashlib.sha256(
-            _canonical_json(contract_payload, "research D0 acceptance contract").encode("utf-8")
+            _canonical_json(
+                contract_payload,
+                "research D0 acceptance contract",
+                max_bytes=_daily_control_limit(contract_payload),
+            ).encode("utf-8")
         ).hexdigest()
         fixture = operator.get("fixture")
         dataset_hash = (
@@ -3585,7 +3654,11 @@ class ControlStore:
         clean_name = _required_text(name, "project name", max_length=200)
         clean_hypothesis = _required_text(hypothesis, "hypothesis")
         clean_falsifier = _required_text(falsification_criterion, "falsification criterion")
-        clean_payload = _json_object(draft_payload, "research contract payload")
+        clean_payload = _json_object(
+            draft_payload,
+            "research contract payload",
+            max_bytes=_daily_control_limit(draft_payload),
+        )
         clean_actor = _required_text(created_by, "research contract creator", max_length=200)
         clean_action = _required_text(next_action, "research next_action")
         clean_responsibility = _enum_value(
@@ -3618,7 +3691,9 @@ class ControlStore:
             "parent_contract_id": None,
             "payload": clean_payload,
         }
-        contract_id = _content_id("rc", contract_identity)
+        contract_id = _content_id(
+            "rc", contract_identity, max_bytes=_daily_control_limit(clean_payload)
+        )
         try:
             _, draft_d2_boundary = _research_d2_topology(clean_payload)
         except DataError:
@@ -3704,7 +3779,11 @@ class ControlStore:
                     (
                         contract_id,
                         pid,
-                        _canonical_json(clean_payload, "research contract payload"),
+                        _canonical_json(
+                            clean_payload,
+                            "research contract payload",
+                            max_bytes=_daily_control_limit(clean_payload),
+                        ),
                         clean_actor,
                         timestamp,
                     ),
@@ -5267,7 +5346,9 @@ class ControlStore:
         clean_scope = _enum_value(scope, "research contract scope", RESEARCH_CONTRACT_SCOPES)
         clean_author = _required_text(created_by, "research contract creator", max_length=200)
         clean_kind = _enum_value(author_kind, "research contract author_kind", AUTHOR_KINDS)
-        clean_payload = _json_object(payload, "research contract payload")
+        clean_payload = _json_object(
+            payload, "research contract payload", max_bytes=_daily_control_limit(payload)
+        )
         parent_id = (
             None
             if parent_contract_id is None
@@ -5282,7 +5363,7 @@ class ControlStore:
             "parent_contract_id": parent_id,
             "payload": clean_payload,
         }
-        contract_id = _content_id("rc", identity)
+        contract_id = _content_id("rc", identity, max_bytes=_daily_control_limit(clean_payload))
         try:
             _, draft_d2_boundary = _research_d2_topology(clean_payload)
         except DataError:
@@ -5319,7 +5400,11 @@ class ControlStore:
                         project_id,
                         clean_scope,
                         parent_id,
-                        _canonical_json(clean_payload, "research contract payload"),
+                        _canonical_json(
+                            clean_payload,
+                            "research contract payload",
+                            max_bytes=_daily_control_limit(clean_payload),
+                        ),
                         clean_author,
                         clean_kind,
                         timestamp,
@@ -6313,6 +6398,8 @@ class ControlStore:
             from alpha_cli._native_rule_protocol import is_rule_contract
 
             if is_rule_contract(payload):
+                from alpha_cli._native_daily_rule_protocol import contract_is_daily
+
                 if attempt_number != 1:
                     raise DataError("fixed rule study permits exactly one trial")
                 prior_studies = connection.execute(
@@ -6320,7 +6407,12 @@ class ControlStore:
                     JOIN research_contracts c ON c.contract_id=r.contract_id
                     WHERE r.phase='deep_research'"""
                 ).fetchall()
-                if any(is_rule_contract(json.loads(row["payload_json"])) for row in prior_studies):
+                if any(
+                    is_rule_contract(json.loads(row["payload_json"]))
+                    and contract_is_daily(json.loads(row["payload_json"]))
+                    == contract_is_daily(payload)
+                    for row in prior_studies
+                ):
                     raise DataError("fixed rule study already consumed its one trial exposure")
             count_row = connection.execute(
                 """SELECT COUNT(*) AS count FROM research_launch_reservations
@@ -7380,7 +7472,11 @@ class ControlStore:
             project_id=pid,
             contract_id=str(exploration["contract_id"]),
             contract_hash=hashlib.sha256(
-                _canonical_json(contract_payload, "research D0 acceptance contract").encode("utf-8")
+                _canonical_json(
+                    contract_payload,
+                    "research D0 acceptance contract",
+                    max_bytes=_daily_control_limit(contract_payload),
+                ).encode("utf-8")
             ).hexdigest(),
             dataset_hash=dataset_hash,
             execution_fingerprint=config_fingerprint,

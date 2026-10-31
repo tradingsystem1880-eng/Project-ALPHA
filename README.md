@@ -53,6 +53,13 @@ unfinished or deferred. Paper paths require separate opt-ins and readiness evide
 live-capital route ships**. The [scope and limits](#implemented-scope-and-limits) and
 [authority matrix](docs/governance/capability-authority-matrix.md) explain these boundaries.
 
+The [first daily rule/control route](docs/superpowers/plans/2026-10-31-packet3-daily-rule.md)
+connects a frozen momentum rule and control to native execution, accounting, cancellation,
+recovery and the existing reports. Artificial fixtures exercise the actual RD-Agent loop under a
+hard 1 GiB container limit; they establish no market result. The approved real-data demonstration
+still needs a durable cloud location for both its data and authoritative research records.
+Its data are discovery only, and modeled next-open prices are not verified live fills.
+
 ## Research workflow
 
 1. **Define the question.** Capture an idea as a Research Case; resolve the instrument, event
@@ -179,6 +186,10 @@ prints the source export for later shells. Existing source must remain pinned an
 failed partial acquisitions are preserved. Foundation-only setup stays non-fetching.
 See the [clean-bootstrap record](docs/superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md)
 for fresh-workspace/container evidence and its limits. Provisioning does not grant execution authority.
+
+The daily research route additionally uses an explicitly qualified, immutable local Docker image
+for its hard physical-memory boundary. Follow the [daily runtime and storage instructions](docs/superpowers/plans/2026-10-31-packet3-daily-rule.md#runtime-and-storage-setup).
+The older synthetic probes retain their existing process boundary.
 
 Inspect retained gate evidence with `uv run python scripts/gate.py checkpoints` (dry-run).
 Adding `--archive --keep 10` creates verified archive copies while retaining every original;

@@ -21,9 +21,16 @@ type FixtureExperiment = Experiment[Task, Any, Any]
 
 
 class FixtureScenario(Scenario):
+    def __init__(self, daily: bool = False) -> None:
+        self._daily = daily
+
     @property
     def background(self) -> str:
-        return "Fixed synthetic native conformance; authority none."
+        return (
+            "Frozen daily rule/control; exploratory discovery, no promotion authority."
+            if self._daily
+            else "Fixed synthetic native conformance; authority none."
+        )
 
     @property
     def rich_style_description(self) -> str:
@@ -38,7 +45,11 @@ class FixtureScenario(Scenario):
         return self.background
 
     def get_runtime_environment(self) -> str:
-        return "isolated development worker; deterministic noop operators"
+        return (
+            "qualified installed rule profile and canonical engine; no generated code"
+            if self._daily
+            else "isolated development worker; deterministic noop operators"
+        )
 
 
 @dataclass
@@ -83,8 +94,26 @@ class NativeFixtureLoop(LoopBase, metaclass=LoopMeta):
 
     async def direct_exp_gen(self, prev_out: dict[str, Any]) -> dict[str, Any]:
         self._admit("direct_exp_gen", prev_out)
-        hypothesis = Hypothesis(*(["fixed synthetic hypothesis"] * 6))
-        exp: FixtureExperiment = Experiment([Task("fixed-noop")], hypothesis=hypothesis)
+        daily = (
+            self.rule_request is not None
+            and self.rule_request["study"].get("schema") == "FrozenDailyRuleStudyV1"
+        )
+        if daily:
+            self.scenario = FixtureScenario(daily=True)
+            self.trace = Trace(self.scenario)
+        hypothesis = Hypothesis(
+            *(
+                [
+                    "frozen daily discovery question; no promotion claim"
+                    if daily
+                    else "fixed synthetic hypothesis"
+                ]
+                * 6
+            )
+        )
+        exp: FixtureExperiment = Experiment(
+            [Task("frozen-daily-rule-control" if daily else "fixed-noop")], hypothesis=hypothesis
+        )
         exp.local_selection = ()
         self.events.append("direct_exp_gen")
         return {"propose": hypothesis, "exp_gen": exp}
@@ -124,7 +153,13 @@ class NativeFixtureLoop(LoopBase, metaclass=LoopMeta):
             FixtureFeedback(self.label, prev_out["running"].result)
             if self.rule_request is None
             else HypothesisFeedback(
-                reason="synthetic position mechanics only", decision=False, acceptable=False
+                reason=(
+                    "exploratory daily rule/control; no promotion authority"
+                    if self.rule_request["study"].get("schema") == "FrozenDailyRuleStudyV1"
+                    else "synthetic position mechanics only"
+                ),
+                decision=False,
+                acceptable=False,
             )
         )
         self.events.append("feedback")

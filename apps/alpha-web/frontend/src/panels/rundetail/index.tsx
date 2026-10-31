@@ -28,6 +28,7 @@ import { Gates } from './Gates'
 import { rerunCommand } from './rerun'
 import { Risk } from './Risk'
 import { RunInvestigation } from '../RunInvestigation'
+import { DailyRuleReport } from '../DailyRuleReport'
 import { TradesTab } from './TradesTab'
 
 type TradesState =
@@ -135,6 +136,7 @@ export function RunDetail(props: PanelHandleProps) {
   // ADR-0026: an override-launched run keeps its exploratory marker on every report surface.
   const gateWatermark = researchGateWatermark(detail)
   const command = asStr(manifest.command)
+  const dailyStudy = command === 'research_daily_rule_native_v1' || command === 'research_daily_rule_projection_v1'
   const isValidate = detail.kind === 'runs' && manifest.verdict !== undefined
   const kindLabel =
     command ?? (detail.kind === 'runs' ? (isValidate ? 'validate' : 'backtest') : detail.kind)
@@ -147,6 +149,11 @@ export function RunDetail(props: PanelHandleProps) {
     items: catalogue?.items ?? [],
   })
   const leaves = tree.flatMap((group) => group.leaves)
+  if (dailyStudy) {
+    const dailyLeaf = { id: 'daily-study', label: 'Daily rule and control', figureIds: [], empty: false, reason: null }
+    tree[0].leaves.splice(1, 0, dailyLeaf)
+    leaves.push(dailyLeaf)
+  }
   const leaf = leaves.find((item) => item.id === view) ?? leaves[0]
   const chip = watermarkChip(gateWatermark, detail.run_context_watermark)
   const rerun = rerunCommand(command, detail.kind, isValidate)
@@ -159,6 +166,8 @@ export function RunDetail(props: PanelHandleProps) {
 
   const body = (() => {
     switch (leaf.id) {
+      case 'daily-study':
+        return <DailyRuleReport key={runId} runId={runId} panelApi={props.api}/>
       case 'summary':
         return (
           <div className="report-summary-composition"><table className="blotter summary-table">

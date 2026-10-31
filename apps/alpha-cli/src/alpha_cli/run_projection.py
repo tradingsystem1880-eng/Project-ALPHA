@@ -117,9 +117,12 @@ def _candle_rows(
     data_dir: Path,
     start: str | None,
     end: str | None,
+    expected_snapshot_hash: str | None = None,
 ) -> list[dict[str, float]]:
     """Load PIT candles through the canonical CLI without importing the data/engine stack."""
     args = ["data", "candles", symbol, "--snapshot", snapshot, "--json"]
+    if expected_snapshot_hash is not None:
+        args.extend(["--expected-snapshot-hash", expected_snapshot_hash])
     if start is not None:
         args.extend(["--start", start])
     if end is not None:
@@ -181,12 +184,19 @@ def _bars(
     if not isinstance(snapshot, str):
         return "snapshot_unavailable", [], False
     try:
+        kwargs: dict[str, Any] = {}
+        if manifest.get("command") == "research_daily_rule_projection_v1":
+            expected_hash = manifest.get("snapshot_hash")
+            if not isinstance(expected_hash, str):
+                raise DataError("daily chart requires its frozen snapshot hash")
+            kwargs["expected_snapshot_hash"] = expected_hash
         rows = _candle_rows(
             symbol,
             snapshot,
             data_dir=data_dir,
             start=start,
             end=end,
+            **kwargs,
         )
     except DataError:
         return "snapshot_unavailable", [], False

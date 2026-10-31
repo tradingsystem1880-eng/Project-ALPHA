@@ -31,14 +31,32 @@ def equity_instrument(symbol: str, venue: str = "SIM") -> Instrument:
     return TestInstrumentProvider.equity(symbol=symbol, venue=venue)
 
 
-def crypto_instrument(symbol: str, venue: str = "SIM") -> Instrument:
-    """A crypto pair (``BASE/QUOTE``) with 5-decimal prices and integer lots on ``venue``.
+def crypto_instrument(
+    symbol: str,
+    venue: str = "SIM",
+    *,
+    price_precision: int = _CRYPTO_PRICE_PRECISION,
+    size_precision: int = 0,
+    size_increment: float = 1.0,
+) -> Instrument:
+    """A crypto pair (``BASE/QUOTE``), defaulting to 5-decimal prices and integer lots.
 
     Both legs must be currencies nautilus knows (majors and the common alt/stable coins are
     registered); an unknown code fails loud rather than silently mispricing. Integer lots keep
-    the sizing convention shared with equities — sub-dollar tokens trade thousands of units, so
-    integer rounding is immaterial where it matters.
+    the legacy sizing convention. Explicit precisions and an exactly representable size
+    increment support fractional research quantities; they do not establish venue qualification.
     """
+    if (
+        type(price_precision) is not int
+        or not 0 <= price_precision <= 8
+        or type(size_precision) is not int
+        or not 0 <= size_precision <= 8
+        or type(size_increment) not in (int, float)
+        or not Decimal(str(size_increment)).is_finite()
+        or size_increment <= 0
+        or Decimal(str(size_increment)) % Decimal(10) ** -size_precision != 0
+    ):
+        raise DataError("crypto instrument requires representable positive precision/increment")
     base_code, _, quote_code = symbol.partition("/")
     if not base_code or not quote_code:
         raise DataError(f"crypto symbol must be BASE/QUOTE, got {symbol!r}")
@@ -54,10 +72,10 @@ def crypto_instrument(symbol: str, venue: str = "SIM") -> Instrument:
         raw_symbol=Symbol(symbol),
         base_currency=base,
         quote_currency=quote if quote_code != "USD" else USD,
-        price_precision=_CRYPTO_PRICE_PRECISION,
-        size_precision=0,
-        price_increment=Price(10**-_CRYPTO_PRICE_PRECISION, _CRYPTO_PRICE_PRECISION),
-        size_increment=Quantity(1, 0),
+        price_precision=price_precision,
+        size_precision=size_precision,
+        price_increment=Price(10**-price_precision, price_precision),
+        size_increment=Quantity(size_increment, size_precision),
         lot_size=None,
         max_quantity=None,
         min_quantity=None,

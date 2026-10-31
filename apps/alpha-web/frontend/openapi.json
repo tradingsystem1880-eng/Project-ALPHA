@@ -5674,6 +5674,21 @@
             ],
             "title": "Free Bytes"
           },
+          "identity_backend": {
+            "anyOf": [
+              {
+                "enum": [
+                  "macos_volume_uuid",
+                  "cloud_root_identity"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Backend"
+          },
           "manifest_count": {
             "minimum": 0.0,
             "title": "Manifest Count",
@@ -5906,6 +5921,244 @@
           "apy"
         ],
         "title": "CryptoYieldPoolItem",
+        "type": "object"
+      },
+      "DailyRuleAccountingPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Offset"
+          },
+          "role": {
+            "enum": [
+              "baseline",
+              "control"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "role",
+          "rows",
+          "total",
+          "has_more",
+          "next_offset"
+        ],
+        "title": "DailyRuleAccountingPage",
+        "type": "object"
+      },
+      "DailyRuleEvidenceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accounting": {
+            "$ref": "#/components/schemas/DailyRuleAccountingPage"
+          },
+          "artifact_sha256": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Artifact Sha256",
+            "type": "object"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "claim_scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Scope"
+          },
+          "data_origin": {
+            "anyOf": [
+              {
+                "enum": [
+                  "artificial_fixture",
+                  "captured_provider_history"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Origin"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "exploratory_complete",
+                  "accounting_rejection_inconclusive"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "parent_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Run Id"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "roles": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DailyRuleRoleSummary"
+            },
+            "title": "Roles",
+            "type": "object"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema": {
+            "const": "DailyRuleEvidenceV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "selectors": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Selectors",
+            "type": "object"
+          },
+          "watermark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watermark"
+          }
+        },
+        "required": [
+          "schema",
+          "run_id",
+          "available",
+          "outcome",
+          "watermark",
+          "claim_scope",
+          "data_origin",
+          "provenance",
+          "roles",
+          "accounting",
+          "selectors",
+          "artifact_sha256"
+        ],
+        "title": "DailyRuleEvidenceResponse",
+        "type": "object"
+      },
+      "DailyRuleRoleSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "fees_total": {
+            "title": "Fees Total",
+            "type": "number"
+          },
+          "fills": {
+            "title": "Fills",
+            "type": "integer"
+          },
+          "final_equity": {
+            "title": "Final Equity",
+            "type": "number"
+          },
+          "gross_pnl": {
+            "title": "Gross Pnl",
+            "type": "number"
+          },
+          "n_trades": {
+            "title": "N Trades",
+            "type": "integer"
+          },
+          "net_pnl": {
+            "title": "Net Pnl",
+            "type": "number"
+          },
+          "orders": {
+            "title": "Orders",
+            "type": "integer"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "starting_equity": {
+            "title": "Starting Equity",
+            "type": "number"
+          }
+        },
+        "required": [
+          "run_id",
+          "starting_equity",
+          "final_equity",
+          "orders",
+          "fills",
+          "rejected",
+          "n_trades",
+          "fees_total",
+          "net_pnl",
+          "gross_pnl"
+        ],
+        "title": "DailyRuleRoleSummary",
         "type": "object"
       },
       "DataSnapshotRow": {
@@ -30373,6 +30626,83 @@
           }
         },
         "summary": "Run Chart Bundle",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/daily-rule-evidence": {
+      "get": {
+        "description": "Bounded recorded daily-study evidence; never executes or approves research.",
+        "operationId": "run_daily_rule_evidence_api_runs__run_id__daily_rule_evidence_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "schema": {
+              "default": "baseline",
+              "title": "Role",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyRuleEvidenceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Run Daily Rule Evidence",
         "tags": [
           "runs"
         ]

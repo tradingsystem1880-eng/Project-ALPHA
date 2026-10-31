@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,6 +18,13 @@ class AlphaSettings(BaseSettings):
     # remains the authority for manifests, control state, and sensitive metadata.
     bulk_data_dir: Path = Field(default=Path("data/bulk"))
     bulk_volume_uuid: str | None = None
+    bulk_storage_backend: Literal["macos_volume_uuid", "cloud_root_identity"] = "macos_volume_uuid"
+    bulk_cloud_mount_point: Path | None = None
+    bulk_cloud_device_id: int | None = None
+    bulk_cloud_owner_uid: int | None = None
+    bulk_cloud_filesystem_type: str | None = None
+    bulk_cloud_mount_source: str | None = None
+    bulk_cloud_durability_reference: str | None = None
     random_seed: int = 7
     # Operational paper sessions are network-bound and nondeterministic. They require an explicit
     # owner opt-in and never enter deterministic research run ids or manifests.

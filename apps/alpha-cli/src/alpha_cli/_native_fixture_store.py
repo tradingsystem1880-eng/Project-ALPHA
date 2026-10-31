@@ -25,6 +25,7 @@ from alpha_cli.control_store import (
 )
 from alpha_cli.native_supervisor import (
     _fixture_root,
+    _is_daily_study,
     _lock_path,
     _open_lock,
     _Owner,
@@ -37,7 +38,13 @@ from alpha_core import DataError
 if sys.platform != "win32":
     import fcntl
 
-_EVENTS = ("native_claim", "native_started", "native_outcome", "native_uncertain")
+_EVENTS = (
+    "native_claim",
+    "native_container_created",
+    "native_started",
+    "native_outcome",
+    "native_uncertain",
+)
 
 
 def _events(connection: sqlite3.Connection, job_id: str) -> dict[str, dict[str, object]]:
@@ -67,6 +74,13 @@ def _events(connection: sqlite3.Connection, job_id: str) -> dict[str, dict[str, 
                 "seconds",
                 "cleanup_scope",
             },
+            "native_container_created": {
+                "container_id",
+                "container_name",
+                "image_id",
+                "resource_fingerprint",
+                "deadline_monotonic_ns",
+            },
             "native_started": {"leader_pid"},
             "native_outcome": {
                 "reason",
@@ -79,14 +93,24 @@ def _events(connection: sqlite3.Connection, job_id: str) -> dict[str, dict[str, 
         }
         has_rule_result = kind == "native_outcome" and "rule_result" in payload
         rule_fields = {"rule_result"} if has_rule_result else set()
-        if set(payload) != common | extra[kind] | rule_fields:
+        container_fields = (
+            {"container_name", "image_id", "resource_fingerprint", "deadline_monotonic_ns"}
+            if kind == "native_claim" and "container_name" in payload
+            else set()
+        )
+        started_fields = (
+            {"container_id"} if kind == "native_started" and "container_id" in payload else set()
+        )
+        if set(payload) != common | extra[kind] | rule_fields | container_fields | started_fields:
             raise DataError("native lifecycle event fields do not match its closed contract")
         claim = result.get("native_claim")
         if kind == "native_claim":
             if result or payload.get("job_id") != job_id:
                 raise DataError("native lifecycle claim identity/order is invalid")
             binding = connection.execute(
-                """SELECT r.config_fingerprint, e.active_job_id FROM research_launch_reservations r
+                """SELECT r.config_fingerprint, e.active_job_id, c.payload_json
+                FROM research_launch_reservations r
+                JOIN research_contracts c ON c.contract_id=r.contract_id
                 JOIN research_execution_events e ON e.project_id=r.project_id
                     AND e.sequence=r.execution_sequence WHERE r.reservation_id=?""",
                 (payload["reservation_id"],),
@@ -97,11 +121,41 @@ def _events(connection: sqlite3.Connection, job_id: str) -> dict[str, dict[str, 
                 or binding["config_fingerprint"] != payload["spec_sha256"]
             ):
                 raise DataError("native claim has no matching reserved invocation")
+            from alpha_cli._native_daily_rule_identity import contract_is_daily
+
+            if bool(container_fields) != contract_is_daily(json.loads(binding["payload_json"])):
+                raise DataError("daily claim requires its predetermined container binding")
         elif claim is None or any(
             payload.get(key) != claim.get(key)
             for key in ("job_id", "reservation_id", "spec_sha256", "owner_id")
         ):
             raise DataError("native lifecycle event changed its claim binding")
+        if kind == "native_container_created":
+            if (
+                claim is None
+                or "container_name" not in claim
+                or any(
+                    payload.get(key) != claim.get(key)
+                    for key in (
+                        "container_name",
+                        "image_id",
+                        "resource_fingerprint",
+                        "deadline_monotonic_ns",
+                    )
+                )
+            ):
+                raise DataError("created daily container differs from predetermined owner binding")
+            cid = payload.get("container_id")
+            if (
+                type(cid) is not str
+                or len(cid) != 64
+                or any(ch not in "0123456789abcdef" for ch in cid)
+            ):
+                raise DataError("created daily container requires exact immutable ID")
+        if kind == "native_started" and claim is not None and "container_name" in claim:
+            created = result.get("native_container_created")
+            if created is None or payload.get("container_id") != created.get("container_id"):
+                raise DataError("daily container cannot start without durable exact created ID")
         if (
             kind == "native_outcome"
             and "native_started" not in result
@@ -117,7 +171,11 @@ def _events(connection: sqlite3.Connection, job_id: str) -> dict[str, dict[str, 
                 or elapsed < 0
                 or payload["scientific_acceptance"] != "not_admitted"
                 or payload["cleanup_scope"]
-                not in {"posix_process_group", "no_payload_spawn_attempted"}
+                not in {
+                    "posix_process_group",
+                    "docker_container_and_posix_process_group",
+                    "no_payload_spawn_attempted",
+                }
                 or payload["reason"] not in {"exit", "timeout", "cancelled", "owner_error"}
                 or (payload["returncode"] is not None and type(payload["returncode"]) is not int)
                 or (
@@ -127,6 +185,7 @@ def _events(connection: sqlite3.Connection, job_id: str) -> dict[str, dict[str, 
             ):
                 raise DataError("native lifecycle outcome contains invalid process evidence")
         if has_rule_result:
+            from alpha_cli._native_daily_rule_identity import contract_is_daily
             from alpha_cli._native_rule_protocol import is_rule_contract
 
             observed = payload["rule_result"]
@@ -140,13 +199,25 @@ def _events(connection: sqlite3.Connection, job_id: str) -> dict[str, dict[str, 
             if (
                 not isinstance(observed, dict)
                 or set(observed) != {"schema", "receipt_sha256"}
-                or observed.get("schema") != "SyntheticNativeRuleObservationV1"
+                or observed.get("schema")
+                != (
+                    "DailyNativeRuleObservationV1"
+                    if reserved_contract is not None
+                    and contract_is_daily(json.loads(reserved_contract["payload_json"]))
+                    else "SyntheticNativeRuleObservationV1"
+                )
                 or type(digest) is not str
                 or len(digest) != 64
                 or any(char not in "0123456789abcdef" for char in digest)
                 or payload["reason"] != "exit"
                 or payload["returncode"] != 0
-                or payload["cleanup_scope"] != "posix_process_group"
+                or payload["cleanup_scope"]
+                != (
+                    "docker_container_and_posix_process_group"
+                    if reserved_contract is not None
+                    and contract_is_daily(json.loads(reserved_contract["payload_json"]))
+                    else "posix_process_group"
+                )
                 or claim is None
                 or claim["fixture"] != "native_loop"
                 or reserved_contract is None
@@ -248,6 +319,9 @@ def claim(store: ControlStore, job_id: str, owner: object) -> dict[str, object]:
     _fixture_root(store._data_dir)
     if owner.root != store._data_dir:
         raise DataError("native owner belongs to another synthetic store")
+    if owner.native is not None and _is_daily_study(owner.native.study):
+        assert owner.native.authority is not None
+        owner.native.authority.reopen_daily_inputs()
     fields = owner.claim_fields()
     with store._transaction(write=True) as connection:
         if _events(connection, job_id):
@@ -277,6 +351,7 @@ def claim(store: ControlStore, job_id: str, owner: object) -> dict[str, object]:
                 raise DataError("native worker differs from approved implementation fingerprints")
             rule_extra: dict[str, object] = {}
             if owner.native.study is not None:
+                from alpha_cli._native_daily_rule_protocol import daily_worker_request
                 from alpha_cli._native_rule_economics import CostedRuleStudy
                 from alpha_cli._native_rule_protocol import (
                     require_rule_confirmation,
@@ -313,16 +388,43 @@ def claim(store: ControlStore, job_id: str, owner: object) -> dict[str, object]:
                 ):
                     raise DataError("rule baseline/control require two exposures and five stages")
                 rule_extra = {
-                    "rule_request": worker_request(isinstance(owner.native.study, CostedRuleStudy)),
+                    "rule_request": (
+                        daily_worker_request(owner.native.study)
+                        if _is_daily_study(owner.native.study)
+                        else worker_request(isinstance(owner.native.study, CostedRuleStudy))
+                    ),
                     # Bind the environment just verified against the approved bytes.
                     "rule_profile": fingerprints["environment"],
                     "study_id": owner.native.study.content_sha256,
                     "trial_id": reservation["reservation_id"],
                     "owner_receipt_id": receipt_id,
                 }
+            daily = _is_daily_study(owner.native.study)
+            if daily:
+                assert _is_daily_study(owner.native.study)
+                if owner.seconds > owner.native.study.resources.max_wall_seconds:
+                    raise DataError("daily owner deadline exceeds frozen resources")
+                rule_extra["query_sha256"] = owner.native.study.query_sha256
+                rule_extra["cpu_milliseconds"] = budget["rdagent_native_v1_cpu_milliseconds"]
+                from alpha_cli._native_daily_rule_container import DailyRuleContainer
+
+                owner.container = DailyRuleContainer(
+                    work=owner.root / f"payload-{job_id}",
+                    source=owner.native.source,
+                    study=owner.native.study,
+                    job_id=job_id,
+                    owner_id=owner.owner_id,
+                    reservation_id=str(reservation["reservation_id"]),
+                    spec_sha256=str(reservation["config_fingerprint"]),
+                    cpu_milliseconds=int(budget["rdagent_native_v1_cpu_milliseconds"]),
+                    deadline_monotonic_ns=int(owner.deadline * 1_000_000_000),
+                )
+                fields.update(owner.container.binding())
+                fields["cleanup_scope"] = "docker_container_and_posix_process_group"
+                rule_extra.update(owner.container.binding())
             admission = {
                 **rule_extra,
-                "schema": "SyntheticNativeAdmissionV1",
+                "schema": "DailyNativeAdmissionV1" if daily else "SyntheticNativeAdmissionV1",
                 "job_id": job_id,
                 "reservation_id": reservation["reservation_id"],
                 "spec_sha256": reservation["config_fingerprint"],
@@ -418,6 +520,11 @@ def record(store: ControlStore, job_id: str, value: object) -> dict[str, object]
     owner = observation.owner
     if owner.job_id != job_id or owner.root != store._data_dir:
         raise DataError("native observation belongs to another job/store")
+    if observation.kind == "native_container_created" and (
+        owner.container is None
+        or observation.fields != {**owner.container.binding(), "container_id": owner.container.cid}
+    ):
+        raise DataError("created container observation requires the exact daily owner resource")
     with store._transaction(write=True) as connection:
         events = _events(connection, job_id)
         prior = events.get("native_claim")

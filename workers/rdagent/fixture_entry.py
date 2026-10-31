@@ -132,7 +132,31 @@ def main() -> None:
         raise ValueError("unknown closed fixture probe")
     root = Path.cwd()
     if admitted:
-        if (
+        if sys.argv[3] == "@daily-admission.json":
+            admission_path = root / "daily-admission.json"
+            if admission_path.is_symlink() or not admission_path.is_file():
+                raise ValueError("daily admission file is missing or unsafe")
+            with admission_path.open("rb") as stream:
+                admission_bytes = stream.read(4 * 1024 * 1024 + 1)
+            if len(admission_bytes) > 4 * 1024 * 1024:
+                raise ValueError("daily admission exceeds bounded input size")
+            admission = json.loads(admission_bytes)
+            if (
+                not isinstance(admission, dict)
+                or admission.get("schema") != "DailyNativeAdmissionV1"
+            ):
+                raise ValueError("daily admission file has the wrong schema")
+        else:
+            admission = json.loads(sys.argv[3])
+        daily = isinstance(admission, dict) and admission.get("schema") == "DailyNativeAdmissionV1"
+        if daily:
+            if (
+                root.is_symlink()
+                or root != root.resolve()
+                or root.name != f"payload-{admission.get('job_id')}"
+            ):
+                raise ValueError("daily probe requires its exact admitted payload workspace")
+        elif (
             root.parent.parent != Path(tempfile.gettempdir())
             or not root.parent.name.startswith("alpha-native-fixture-")
             or not root.name.startswith("payload-")
@@ -144,7 +168,12 @@ def main() -> None:
         "alpha-rdagent-conformance-"
     ):
         raise ValueError("probe requires a new disposable fixture directory")
-    if list(root.iterdir()):
+    allowed_input = (
+        {root / "daily-admission.json"}
+        if admitted and sys.argv[3] == "@daily-admission.json"
+        else set()
+    )
+    if set(root.iterdir()) != allowed_input:
         raise ValueError("probe fixture directory must start empty")
     source = Path(sys.argv[1]).resolve()
     # No inherited settings, credentials, user home, dotenv, caches or signing key.
@@ -158,6 +187,18 @@ def main() -> None:
             "LOG_TRACE_PATH": str(root / "logs"),
         }
     )
+    if admitted and daily:
+        os.environ.update(
+            {
+                "OPENBLAS_NUM_THREADS": "1",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "POLARS_MAX_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "MALLOC_ARENA_MAX": "1",
+                "_RJEM_MALLOC_CONF": "narenas:1,background_thread:false,retain:false",
+            }
+        )
     # This must precede source_pin and every other local helper import too.
     sys.pycache_prefix = str(root / "bytecode")
     sys.meta_path.insert(0, _ImportBoundary(source))
@@ -171,7 +212,7 @@ def main() -> None:
     if admitted:
         from admitted_probe import probe as admitted_probe
 
-        result = admitted_probe(json.loads(sys.argv[3]))
+        result = admitted_probe(admission)
     else:
         result = probe(sys.argv[2])
     imported = {}
@@ -212,7 +253,11 @@ def main() -> None:
                 dist.metadata["Name"]: dist.version for dist in importlib.metadata.distributions()
             },
             "authority": "none",
-            "synthetic": True,
+            "synthetic": (
+                result["admission"]["rule_request"]["study"]["data_origin"] == "artificial_fixture"
+                if result.get("admission", {}).get("schema") == "DailyNativeAdmissionV1"
+                else True
+            ),
         }
     )
     if verify_source(source) != source_sha:

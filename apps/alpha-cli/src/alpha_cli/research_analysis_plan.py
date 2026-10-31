@@ -188,6 +188,10 @@ def _validate_analysis_plan_v1(
 
 def validate_analysis_plan(plan: Mapping[str, object], *, max_grid_cells: int) -> dict[str, Any]:
     """Resolve V2 parameters; preserve V1's exact historical validation semantics."""
+    if plan.get("schema") == "FrozenDailyRulePlanV1":
+        from alpha_cli._native_daily_rule_protocol import validate_daily_plan
+
+        return validate_daily_plan(plan, max_grid_cells=max_grid_cells)
     if isinstance(plan, Mapping) and plan.get("schema") in {
         "FrozenRulePositionsPlanV1",
         "FrozenRuleCostedPlanV1",
@@ -267,7 +271,11 @@ def analysis_family_catalog() -> list[dict[str, object]]:
 
 def validate_new_exploration_plan(plan: Mapping[str, object], *, max_grid_cells: int) -> None:
     """New-approval policy only; never use for historical execution or verification."""
-    if plan.get("schema") in {"FrozenRulePositionsPlanV1", "FrozenRuleCostedPlanV1"}:
+    if plan.get("schema") in {
+        "FrozenRulePositionsPlanV1",
+        "FrozenRuleCostedPlanV1",
+        "FrozenDailyRulePlanV1",
+    }:
         validate_analysis_plan(plan, max_grid_cells=max_grid_cells)
         return
     if plan.get("schema") == ANALYSIS_PLAN_SCHEMA:

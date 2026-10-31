@@ -1,6 +1,6 @@
 // Strategy Builder (spec 2026-09-01 §4.2 Phase 5 S4): the no-code editor for the owner's rule
 // strategies. A rule row is `left  op  right` where each side is typed the way the chart names
-// things — `close`, `sma:20`, `bbands:20:2:lower`, `macd:12:26:9:histogram`, or a number — and
+// things — `close`, `close:lag:20`, `sma:20`, `bbands:20:2:lower`, or a number — and
 // the rows become the strict JSON `alpha rules save` validates. This module only maps rows <->
 // spec JSON and builds the sandbox test command; every judgement (grammar defects, warm-up,
 // evaluation) stays in Python.
@@ -35,6 +35,7 @@ export const FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze
 
 export const OPERAND_EXAMPLES: readonly string[] = Object.freeze([
   'close',
+  'close:lag:20',
   'sma:20',
   'ema:50',
   'rsi:14',
@@ -78,17 +79,31 @@ export const EMPTY_FORM: BuilderForm = Object.freeze({
 })
 
 export type OperandJson =
-  | { source: string }
+  | { source: string; lag?: number }
   | { value: number }
   | { indicator: string; params: number[]; field?: string }
 
-/** `close` | `30` | `sma:20` | `bbands:20:2:lower` → the CLI's operand object, or a message. */
+function sourceLag(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 1999) {
+    throw new Error('source lag must be an integer between 0 and 1999')
+  }
+  return value
+}
+
+/** `close` | `close:lag:20` | `30` | `sma:20` → the CLI's operand object, or a message. */
 export function parseOperandText(text: string): OperandJson {
   const trimmed = text.trim().toLowerCase()
   if (!trimmed) throw new Error('empty — type a source, an indicator or a number')
   if ((SOURCES as readonly string[]).includes(trimmed)) return { source: trimmed }
   if (/^-?\d+(\.\d+)?$/.test(trimmed)) return { value: Number(trimmed) }
   const [head, ...rest] = trimmed.split(':')
+  if ((SOURCES as readonly string[]).includes(head)) {
+    if (rest.length !== 2 || rest[0] !== 'lag' || !/^\d+$/.test(rest[1])) {
+      throw new Error('source lag syntax is close:lag:20 (integer 0–1999)')
+    }
+    const lag = sourceLag(Number(rest[1]))
+    return lag ? { source: head, lag } : { source: head }
+  }
   const arity = ARITY[head]
   if (arity === undefined) {
     throw new Error(`"${head}" is not a source (${SOURCES.join(', ')}), an indicator (${Object.keys(ARITY).join(', ')}) or a number`)
@@ -104,7 +119,15 @@ export function parseOperandText(text: string): OperandJson {
 }
 
 export function operandText(operand: OperandJson): string {
-  if ('source' in operand) return operand.source
+  if ('source' in operand) {
+    if (!(SOURCES as readonly string[]).includes(operand.source)
+      || Object.keys(operand).some((key) => key !== 'source' && key !== 'lag')) {
+      throw new Error('invalid saved source operand')
+    }
+    const lag = 'lag' in operand ? sourceLag(operand.lag) : 0
+    return lag ? `${operand.source}:lag:${lag}` : operand.source
+  }
+  if ('lag' in operand) throw new Error('lag is supported only on source operands')
   if ('value' in operand) return String(operand.value)
   const head = [operand.indicator, ...operand.params.map(String)].join(':')
   return operand.field ? `${head}:${operand.field}` : head

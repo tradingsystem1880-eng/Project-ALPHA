@@ -8,8 +8,9 @@ the backtest engine.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 import typer
 
@@ -31,9 +32,28 @@ def _find_manifest(data_dir: Path, run_id: str) -> dict[str, Any] | None:
     return result
 
 
-def report(run_id: str) -> None:
+def report(
+    run_id: str,
+    json_out: Annotated[bool, typer.Option("--json")] = False,
+    role: str = "baseline",
+    limit: int = 100,
+    offset: int = 0,
+) -> None:
     """Print the stored result for RUN_ID (any run type: gauntlet, backtest, portfolio, etc.)."""
     settings = AlphaSettings()
+    if json_out:
+        from alpha_cli.daily_rule_report import daily_rule_evidence
+
+        typer.echo(
+            json.dumps(
+                daily_rule_evidence(
+                    run_id, data_dir=settings.data_dir, role=role, limit=limit, offset=offset
+                ),
+                sort_keys=True,
+                allow_nan=False,
+            )
+        )
+        return
     manifest = _find_manifest(settings.data_dir, run_id)
     if manifest is None:
         raise typer.BadParameter(
@@ -54,6 +74,22 @@ def report(run_id: str) -> None:
         # spec §15 / ADR-0026: a run launched under an owner research-gate override is
         # permanently watermarked EXPLORATORY / RESEARCH GATE NOT COMPLETED.
         typer.secho(str(research_gate["watermark"]), fg=typer.colors.YELLOW, bold=True)
+
+    if manifest.get("command") in {
+        "research_daily_rule_native_v1",
+        "research_daily_rule_projection_v1",
+    }:
+        from alpha_cli.daily_rule_report import daily_rule_evidence
+
+        evidence = daily_rule_evidence(run_id, data_dir=settings.data_dir)
+        typer.echo(f"claim: {evidence['claim_scope']} / {evidence['data_origin']}")
+        typer.echo(f"outcome: {evidence['outcome']}")
+        for role, result in evidence["roles"].items():
+            typer.echo(
+                f"{role}: run={result['run_id']} net_pnl={_fmt(result['net_pnl'])} "
+                f"observed_fees={_fmt(result['fees_total'])} fills={result['fills']} "
+                f"closed_trades={result['n_trades']}"
+            )
 
     if manifest.get("command") in ("forecast_run", "forecast_eval"):  # Kronos forecasting
         model = manifest.get("model") or {}

@@ -2,7 +2,7 @@
 
 # System map
 
-15 components (packages, apps, workers), 388 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+15 components (packages, apps, workers), 400 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
 <!-- nodes: component:alpha-backtest|component:alpha-cli|component:alpha-core|component:alpha-data|component:alpha-forecast|component:alpha-mcp|component:alpha-patterns|component:alpha-research|component:alpha-strategies|component:alpha-study|component:alpha-validation|component:alpha-web|component:literature|component:qlib|component:rdagent -->
 ```mermaid
@@ -101,9 +101,9 @@ component:alpha-web -> component:alpha-core
 
 ## Unknowns review queue
 
-60 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
+61 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
 
-<details><summary>60 unknown-level node(s)</summary>
+<details><summary>61 unknown-level node(s)</summary>
 
 - `component:alpha-study`
 - `component:literature`
@@ -111,14 +111,15 @@ component:alpha-web -> component:alpha-core
 - `component:rdagent`
 - `module:alpha_backtest`
 - `module:alpha_cli._atomic`
-- `module:alpha_cli._control_json`
 - `module:alpha_cli._control_schema`
 - `module:alpha_cli._crypto_acquisition`
 - `module:alpha_cli._crypto_panel`
 - `module:alpha_cli._crypto_persistence`
 - `module:alpha_cli._hypothesis_scan`
-- `module:alpha_cli._native_fixture_store`
+- `module:alpha_cli._native_daily_rule_identity`
+- `module:alpha_cli._native_daily_rule_projection`
 - `module:alpha_cli.assistant_worker`
+- `module:alpha_cli.daily_native_cmds`
 - `module:alpha_cli.figures._sources`
 - `module:alpha_cli.investigation_workspace_data`
 - `module:alpha_cli.local_pdf_cmds`

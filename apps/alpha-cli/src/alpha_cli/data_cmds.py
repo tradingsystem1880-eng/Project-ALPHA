@@ -24,7 +24,12 @@ from alpha_data.pipeline import (
     rollback_interrupted_promotion,
     stage_and_promote,
 )
-from alpha_data.snapshot import create_snapshot, verify_snapshot
+from alpha_data.snapshot import (
+    create_snapshot,
+    resolve_snapshot_dir,
+    snapshot_manifest_hash,
+    verify_snapshot,
+)
 from alpha_data.store import ParquetStore
 
 data_app = typer.Typer(help="Data ingestion, snapshots, and integrity.")
@@ -436,6 +441,7 @@ def candles(
     snapshot: str = typer.Option(None, help="snapshot id for provenance"),
     manifest_id: str = typer.Option(None, help="exact qualified bulk chart manifest"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+    expected_snapshot_hash: str | None = None,
 ) -> None:
     """Point-in-time OHLCV candles for SYMBOL (split-adjusted; ``--end`` is an as-of cutoff).
 
@@ -451,6 +457,17 @@ def candles(
         raise typer.BadParameter(f"--start/--end must be YYYY-MM-DD: {exc}") from exc
     try:
         provenance = None
+        if expected_snapshot_hash is not None:
+            if (
+                not snapshot
+                or manifest_id
+                or len(expected_snapshot_hash) != 64
+                or any(character not in "0123456789abcdef" for character in expected_snapshot_hash)
+            ):
+                raise DataError("expected snapshot hash requires an exact canonical snapshot")
+            snapshot_path = resolve_snapshot_dir(AlphaSettings().data_dir / "snapshots", snapshot)
+            if snapshot_manifest_hash(snapshot_path) != expected_snapshot_hash:
+                raise DataError("chart snapshot differs from the frozen report identity")
         if manifest_id:
             from alpha_cli._chart_data import load_chart_dataset
             from alpha_cli.crypto_data_cmds import _bulk_store
@@ -465,6 +482,11 @@ def candles(
             bars, snap = load_bars(
                 symbol, data_dir=AlphaSettings().data_dir, snapshot_id=snapshot, as_of=when
             )
+            if (
+                expected_snapshot_hash is not None
+                and snapshot_manifest_hash(snapshot_path) != expected_snapshot_hash
+            ):
+                raise DataError("chart snapshot changed while reading frozen report candles")
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     rows = [

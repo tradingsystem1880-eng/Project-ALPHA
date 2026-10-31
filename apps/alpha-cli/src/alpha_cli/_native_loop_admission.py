@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from alpha_cli._native_rule_authority import RuleAuthority
     from alpha_cli._native_rule_study import SyntheticRuleStudy
 
+from alpha_cli._native_daily_rule_study import DailyRuleStudyV1
 from alpha_cli._native_rule_economics import CostedRuleStudy
 from alpha_core import DataError
 
@@ -50,7 +51,7 @@ def _digest(value: object) -> str:
 class NativeLaunch:
     source: Path
     mode: str
-    study: SyntheticRuleStudy | CostedRuleStudy | None = None
+    study: SyntheticRuleStudy | CostedRuleStudy | DailyRuleStudyV1 | None = None
     authority: RuleAuthority | None = None
     fingerprint: str = field(init=False)
 
@@ -66,11 +67,22 @@ class NativeLaunch:
 
             if (
                 type(self.authority) is not RuleAuthority
-                or self.study != selected_study(isinstance(self.study, CostedRuleStudy))
+                or (
+                    not isinstance(self.study, DailyRuleStudyV1)
+                    and self.study != selected_study(isinstance(self.study, CostedRuleStudy))
+                )
                 or self.mode != "INCONCLUSIVE"
             ):
                 raise DataError("rule launch requires its exact typed study and authority")
             approved = self.authority.verify()
+            if isinstance(self.study, DailyRuleStudyV1):
+                from alpha_cli._native_daily_rule_protocol import study_from_contract
+
+                if study_from_contract(approved) != self.study:
+                    raise DataError("daily launch differs from exact approved request")
+                if self.implementation_fingerprints() != approved.get("hashes"):
+                    raise DataError("daily launch code/runtime differs from exact owner approval")
+                self.authority.reopen_daily_inputs()
             plan = approved["analysis_plan"]
             if not isinstance(plan, dict) or plan["study"] != self.study.to_dict():
                 raise DataError("native study differs from exact owner-approved request")
@@ -90,7 +102,10 @@ class NativeLaunch:
         if self.study is not None:
             from alpha_cli._native_rule_environment import rule_implementation_fingerprints
 
-            return rule_implementation_fingerprints(isinstance(self.study, CostedRuleStudy))
+            return rule_implementation_fingerprints(
+                isinstance(self.study, CostedRuleStudy | DailyRuleStudyV1),
+                daily_study=self.study if isinstance(self.study, DailyRuleStudyV1) else None,
+            )
         return {
             "code": _digest(
                 {
@@ -116,6 +131,17 @@ class NativeLaunch:
 
     def verify_result(self, work: Path, admission: dict[str, object] | None) -> bytes:
         """Validate and return the SAME bounded receipt bytes observed after child cleanup."""
+        if isinstance(self.study, DailyRuleStudyV1):
+            from alpha_cli._native_daily_rule_artifacts import validate_daily_native_result
+
+            helpers = {
+                name.removesuffix(".py"): hashlib.sha256((WORKER / name).read_bytes()).hexdigest()
+                for name in (*WORKER_FILES, "rule_probe.py", "costed_probe.py")
+                if name.endswith(".py") and name != "fixture_entry.py"
+            }
+            if self.measure() != self.fingerprint:
+                raise DataError("daily worker changed after reservation")
+            return validate_daily_native_result(work, admission, self.study, helpers)
         path = work / "receipt.json"
         if path.is_symlink() or not path.is_file():
             raise DataError("native synthetic result publication missing or invalid")
@@ -127,7 +153,7 @@ class NativeLaunch:
         if self.study is not None:
             from alpha_cli._native_rule_protocol import position_payload
 
-            expected = position_payload(isinstance(self.study, CostedRuleStudy))
+            expected = position_payload(isinstance(self.study, CostedRuleStudy | DailyRuleStudyV1))
             helpers = {
                 name.removesuffix(".py"): hashlib.sha256((WORKER / name).read_bytes()).hexdigest()
                 for name in WORKER_FILES
@@ -136,7 +162,7 @@ class NativeLaunch:
             helpers["rule_probe"] = hashlib.sha256(
                 (WORKER / "rule_probe.py").read_bytes()
             ).hexdigest()
-            if isinstance(self.study, CostedRuleStudy):
+            if isinstance(self.study, CostedRuleStudy | DailyRuleStudyV1):
                 helpers["costed_probe"] = hashlib.sha256(
                     (WORKER / "costed_probe.py").read_bytes()
                 ).hexdigest()
@@ -157,7 +183,7 @@ class NativeLaunch:
                 or self.measure() != self.fingerprint
             ):
                 raise DataError("native rule result changed its committed identity or positions")
-            if isinstance(self.study, CostedRuleStudy):
+            if isinstance(self.study, CostedRuleStudy | DailyRuleStudyV1):
                 from alpha_cli._native_rule_economics import validate_costed_result
 
                 validate_costed_result(result.get("economics"))
@@ -210,6 +236,9 @@ class NativeLaunch:
             raise DataError("native child requires its committed reservation")
         if self.measure() != self.fingerprint:
             raise DataError("native launch bytes changed after admission")
+        if isinstance(self.study, DailyRuleStudyV1):
+            assert self.authority is not None
+            self.authority.reopen_daily_inputs()
         return [
             str(
                 WORKER
@@ -217,7 +246,7 @@ class NativeLaunch:
                     ".venv"
                     if self.study is None
                     else ".venv-economics-qualified"
-                    if isinstance(self.study, CostedRuleStudy)
+                    if isinstance(self.study, CostedRuleStudy | DailyRuleStudyV1)
                     else ".venv-rule-qualified"
                 )
                 / "bin/python"
@@ -227,12 +256,16 @@ class NativeLaunch:
             str(WORKER / "fixture_entry.py"),
             str(self.source),
             "admitted",
-            json.dumps(admission, sort_keys=True),
+            "@daily-admission.json"
+            if isinstance(self.study, DailyRuleStudyV1)
+            else json.dumps(admission, sort_keys=True),
         ]
 
 
 def measure_native_proposal(
-    source: Path, mode: str, study: SyntheticRuleStudy | CostedRuleStudy | None = None
+    source: Path,
+    mode: str,
+    study: SyntheticRuleStudy | CostedRuleStudy | DailyRuleStudyV1 | None = None,
 ) -> str:
     if not (source / "rdagent").is_dir():
         raise DataError("fixed native fixture requires pinned source")
@@ -254,10 +287,30 @@ def measure_native_proposal(
         ".venv"
         if study is None
         else ".venv-economics-qualified"
-        if isinstance(study, CostedRuleStudy)
+        if isinstance(study, CostedRuleStudy | DailyRuleStudyV1)
         else ".venv-rule-qualified"
     )
     extra: dict[str, object] = {}
+    if isinstance(study, DailyRuleStudyV1):
+        from alpha_cli._native_daily_rule_container import daily_container_profile
+        from alpha_cli._native_daily_rule_protocol import DAILY_CHILD_ENV
+        from alpha_cli._native_rule_environment import rule_implementation_fingerprints
+
+        if daily_container_profile()["image_id"] != study.container_image_id:
+            raise DataError("daily runtime image differs from exact owner-approved study")
+        extra["daily_enforcement"] = {
+            "approved_guard_code_sha256": rule_implementation_fingerprints(True, daily_study=study)[
+                "code"
+            ],
+            "environment": DAILY_CHILD_ENV,
+            "container_profile": daily_container_profile(),
+            "container_watchdog_sha256": hashlib.sha256(
+                (WORKER / "daily_container_entry.py").read_bytes()
+            ).hexdigest(),
+            "container_owner_sha256": hashlib.sha256(
+                Path(__file__).with_name("_native_daily_rule_container.py").read_bytes()
+            ).hexdigest(),
+        }
     if study is not None:
         from alpha_cli._native_rule_environment import (
             COSTED_FILES,
@@ -266,16 +319,25 @@ def measure_native_proposal(
         )
 
         extra = {
-            "rule_profile": measure_rule_environment(isinstance(study, CostedRuleStudy)),
+            **extra,
+            "rule_profile": measure_rule_environment(
+                isinstance(study, CostedRuleStudy | DailyRuleStudyV1)
+            ),
             "study": study.content_sha256,
         }
-        for name in COSTED_FILES if isinstance(study, CostedRuleStudy) else RULE_FILES:
+        for name in (
+            COSTED_FILES if isinstance(study, CostedRuleStudy | DailyRuleStudyV1) else RULE_FILES
+        ):
             if (WORKER / name).is_symlink():
                 raise DataError("rule worker source symlink is unsupported")
         worker_files.update(
             {
                 name: hashlib.sha256((WORKER / name).read_bytes()).hexdigest()
-                for name in (COSTED_FILES if isinstance(study, CostedRuleStudy) else RULE_FILES)
+                for name in (
+                    COSTED_FILES
+                    if isinstance(study, CostedRuleStudy | DailyRuleStudyV1)
+                    else RULE_FILES
+                )
             }
         )
     python = WORKER / runtime / "bin/python"
