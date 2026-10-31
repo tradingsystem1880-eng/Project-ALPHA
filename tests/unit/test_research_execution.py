@@ -330,12 +330,14 @@ def test_sigterm_reaps_child_and_returns_interrupted(tmp_path: Path) -> None:
     descendant_marker = tmp_path / "descendant.pid"
     descendant_script = (
         "import os,time,pathlib,signal; signal.signal(signal.SIGTERM, signal.SIG_IGN); "
-        f"pathlib.Path({str(descendant_marker)!r}).write_text(str(os.getpid())); time.sleep(30)"
+        f"marker=pathlib.Path({str(descendant_marker)!r}); pending=marker.with_suffix('.ready'); "
+        "pending.write_text(str(os.getpid())); pending.replace(marker); time.sleep(30)"
     )
     script = (
         "import os,time,pathlib,subprocess; "
         f"subprocess.Popen({[sys.executable, '-c', descendant_script]!r}); "
-        f"pathlib.Path({str(marker)!r}).write_text(str(os.getpid())); time.sleep(30)"
+        f"marker=pathlib.Path({str(marker)!r}); pending=marker.with_suffix('.ready'); "
+        "pending.write_text(str(os.getpid())); pending.replace(marker); time.sleep(30)"
     )
     parent_script = (
         "import json; from pathlib import Path; "
@@ -349,7 +351,9 @@ def test_sigterm_reaps_child_and_returns_interrupted(tmp_path: Path) -> None:
     child = None
     try:
         deadline = time.monotonic() + 5
-        while not descendant_marker.exists() and time.monotonic() < deadline:
+        while (
+            not marker.exists() or not descendant_marker.exists()
+        ) and time.monotonic() < deadline:
             time.sleep(0.02)
         assert marker.exists() and descendant_marker.exists()
         child = int(marker.read_text())
@@ -368,6 +372,8 @@ def test_sigterm_reaps_child_and_returns_interrupted(tmp_path: Path) -> None:
         if child is not None:
             with suppress(ProcessLookupError):
                 os.killpg(child, signal.SIGKILL)
+        if parent.stdout is not None:
+            parent.stdout.close()
 
 
 def test_success_replay_and_receipt_tamper(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

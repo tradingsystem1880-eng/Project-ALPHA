@@ -6144,6 +6144,16 @@
           "starting_equity": {
             "title": "Starting Equity",
             "type": "number"
+          },
+          "terminal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DailyRuleTerminalEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -6159,6 +6169,48 @@
           "gross_pnl"
         ],
         "title": "DailyRuleRoleSummary",
+        "type": "object"
+      },
+      "DailyRuleTerminalEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "final_decision_at": {
+            "title": "Final Decision At",
+            "type": "string"
+          },
+          "opening_quote_at": {
+            "title": "Opening Quote At",
+            "type": "string"
+          },
+          "terminal_decision": {
+            "const": "unfilled_without_next_admitted_quote",
+            "title": "Terminal Decision",
+            "type": "string"
+          },
+          "terminal_liquidation": {
+            "const": false,
+            "title": "Terminal Liquidation",
+            "type": "boolean"
+          },
+          "valuation_at": {
+            "title": "Valuation At",
+            "type": "string"
+          },
+          "valuation_basis": {
+            "const": "last_admitted_open_quote",
+            "title": "Valuation Basis",
+            "type": "string"
+          }
+        },
+        "required": [
+          "valuation_basis",
+          "valuation_at",
+          "opening_quote_at",
+          "terminal_liquidation",
+          "terminal_decision",
+          "final_decision_at"
+        ],
+        "title": "DailyRuleTerminalEvidence",
         "type": "object"
       },
       "DataSnapshotRow": {

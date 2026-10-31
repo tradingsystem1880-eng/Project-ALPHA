@@ -305,3 +305,30 @@ from consuming a native allowance; uncertainty after committed dispatch preparat
 Portable regressions exercise two approved projects sharing inputs and root, a single authorized
 native reservation, rejection of a second same-study launch, legacy-marker preservation and invalid
 root/authority rejection. These tests establish contracts, not native-process or market acceptance.
+
+## Terminal valuation disclosure follow-up
+
+1. Project existing validated terminal policy and each role's recorded opening-quote, equity-event
+   and final-decision timestamps into typed report evidence; preserve numerical artifacts and authority.
+2. Show that evidence beside final equity in the default UI and plain-text CLI. Missing older evidence
+   says not recorded. Focused integration, UI and browser cases use recorded clocks, including dates
+   outside the proposed study, to prevent hardcoded dates or an implied final-close valuation.
+
+The final decision has no next admitted quote; the report does not invent an unfilled order or a
+rejection. No forced terminal liquidation is performed. This is a read-only disclosure change; no
+new market inputs, study execution or allowance consumption occurs. Final qualification and guarded
+delivery are recorded separately; private coverage remains UNVERIFIED under the bounded exception.
+
+The first follow-up aggregate reached93.10% coverage but failed four existing process tests under
+parallel load: an empty readiness PID file, a5-second cancellation CLI startup timeout, a readiness
+deadline and the resulting unclosed-pipe warning in a later bias test. Focused diagnosis passed all
+five selected cases. PID fixture publication is now atomic and the process fixture always closes
+its pipe; cancellation/cleanup assertions and all deadlines remain unchanged. The final aggregate
+uses two workers with the same full test selection and thresholds. Failed evidence is retained.
+
+That consolidated backend passed at93.0923%. Its browser phase exposed an existing workflow test
+whose global status locator matched both project loading and the successful scanner alert. The
+locator now targets the existing Scan results region, preserving the alert assertion and timeout.
+The owned obsolete browser run was interrupted gracefully after131passes/onefailure, retaining
+its artifacts. The final tree includes this scoped selector correction and requires fresh full
+qualification; no partial run is credited as a full pass.

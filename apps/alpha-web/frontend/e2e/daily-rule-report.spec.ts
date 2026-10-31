@@ -8,7 +8,12 @@ const BASELINE = 'b'.repeat(16)
 const CONTROL = 'c'.repeat(16)
 const times = [946684800, 946771200, 946857600]
 const runSummary = { starting_equity: 1000, final_equity: 990, orders: 2, fills: 2,
-  rejected: 0, n_trades: 0, gross_pnl: -8, net_pnl: -10, fees_total: 2 }
+  rejected: 0, n_trades: 0, gross_pnl: -8, net_pnl: -10, fees_total: 2,
+  terminal: { valuation_basis: 'last_admitted_open_quote' as const,
+    opening_quote_at: '2000-01-03T00:00:00+00:00',
+    valuation_at: '2000-01-03T00:00:00.000001+00:00', terminal_liquidation: false as const,
+    terminal_decision: 'unfilled_without_next_admitted_quote' as const,
+    final_decision_at: '2000-01-04T00:00:00+00:00' } }
 
 function evidence(role: DailyRuleRole, offset: number): DailyRuleEvidence {
   return { schema: 'DailyRuleEvidenceV1', run_id: STUDY, available: true,
@@ -73,6 +78,12 @@ test('daily rule report shows artificial comparison, linked charts and paged evi
   await openDaily(page)
   await expect(page.getByRole('region', { name: 'Daily rule comparison' })).toContainText('Artificial daily study fixture only')
   await expect(page.getByRole('table', { name: /Recorded baseline and control/ })).toContainText('-10')
+  const terminal = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'Final equity', exact: true }) })
+  await expect(terminal).toContainText('Last admitted opening quote: 2000-01-03T00:00:00+00:00')
+  await expect(terminal).toContainText('Valuation event: 2000-01-03T00:00:00.000001+00:00')
+  await expect(terminal).toContainText('No forced liquidation')
+  await expect(terminal).toContainText('Final decision 2000-01-04T00:00:00+00:00: no next admitted quote recorded; no fill inferred')
+  await expect(terminal).not.toContainText('2022')
   await expect(page.locator('.daily-rule-report .scientific-series-host')).toHaveCount(4)
   await expect(page.locator('.daily-rule-report .price-panel')).toContainText('3 bars')
   await page.getByText('Query, snapshot, clocks and units', { exact: true }).click()

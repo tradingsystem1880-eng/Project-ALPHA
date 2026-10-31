@@ -359,7 +359,10 @@ def test_live_heavyweight_cancel_reaps_a_sigterm_ignoring_nested_child(
         "import os, signal, sys, time\n"
         "from pathlib import Path\n"
         "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
-        "Path(sys.argv[1]).write_text(str(os.getpid()), encoding='utf-8')\n"
+        "marker = Path(sys.argv[1])\n"
+        "pending = marker.with_suffix('.ready')\n"
+        "pending.write_text(str(os.getpid()), encoding='utf-8')\n"
+        "pending.replace(marker)\n"
         "time.sleep(30)\n"
     )
     leader_code = (

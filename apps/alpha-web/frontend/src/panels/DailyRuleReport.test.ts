@@ -26,6 +26,37 @@ const evidence: DailyRuleEvidence = {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('daily study recorded report', () => {
+  it('dates final equity from each role opening quote and discloses its later decision without inferring a fill', () => {
+    const terminal = { valuation_basis: 'last_admitted_open_quote' as const,
+      opening_quote_at: '2000-02-03T00:00:00+00:00',
+      valuation_at: '2000-02-03T00:00:00.000001+00:00', terminal_liquidation: false as const,
+      terminal_decision: 'unfilled_without_next_admitted_quote' as const,
+      final_decision_at: '2000-02-04T00:00:00+00:00' }
+    const recorded = { ...evidence, roles: {
+      baseline: { ...summary, terminal },
+      control: { ...evidence.roles.control, terminal: { ...terminal,
+        valuation_at: '2001-05-06T00:00:00.000001+00:00',
+        opening_quote_at: '2001-05-06T00:00:00+00:00',
+        final_decision_at: '2001-05-07T00:00:00+00:00' } },
+    } }
+    const html = renderToStaticMarkup(createElement(DailyRuleSummary, { evidence: recorded }))
+    const row = html.match(/<tr[^>]*><th scope="row">Final equity<\/th>[\s\S]*?<\/tr>/)?.[0]
+    expect(row).toBeDefined()
+    for (const text of ['990', '1000', 'Last admitted opening quote', 'No forced liquidation',
+      terminal.valuation_at, terminal.opening_quote_at, terminal.final_decision_at,
+      '2001-05-06T00:00:00.000001+00:00', '2001-05-07T00:00:00+00:00',
+      ': no next admitted quote recorded; no fill inferred']) expect(row).toContain(text)
+    expect(row).not.toContain('2022')
+    expect(row).not.toContain('closing quote')
+  })
+
+  it('does not invent a terminal timestamp, liquidation policy or decision for older evidence', () => {
+    const html = renderToStaticMarkup(createElement(DailyRuleSummary, { evidence }))
+    expect(html).toContain('Terminal valuation not recorded')
+    expect(html).not.toContain('No forced liquidation')
+    expect(html).not.toContain(': no next admitted quote recorded; no fill inferred')
+  })
+
   it('shows baseline/control identities and recorded loss and zero without a success badge', () => {
     const html = renderToStaticMarkup(createElement(DailyRuleSummary, { evidence }))
     expect(html).toContain('Artificial engineering fixture only')

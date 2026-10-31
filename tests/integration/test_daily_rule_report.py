@@ -101,6 +101,18 @@ def test_parent_and_role_selector_reports_agree_with_actual_recorded_results(
         actual = receipt["economics"][role]
         summary = report["roles"][role]
         assert summary["final_equity"] == pytest.approx(actual["equity_curve"][-1][1])
+        terminal = summary["terminal"]
+        assert terminal["valuation_at"] == actual["equity_curve"][-1][0]
+        assert (
+            terminal["opening_quote_at"]
+            == json.loads((root / "runs" / parent_id / "query.json").read_text())["rows"][-1][
+                "open_time"
+            ]
+        )
+        assert terminal["final_decision_at"] == actual["decision_trace"][-1]["ts"]
+        assert terminal["valuation_basis"] == "last_admitted_open_quote"
+        assert terminal["terminal_liquidation"] is False
+        assert terminal["terminal_decision"] == "unfilled_without_next_admitted_quote"
         assert summary["fills"] == actual["fills"]
         assert summary["fees_total"] == pytest.approx(
             receipt["economics"]["accounting"][role][-1]["fees_total"]
@@ -109,6 +121,21 @@ def test_parent_and_role_selector_reports_agree_with_actual_recorded_results(
         str(path.relative_to(root)): path.read_bytes() for path in root.rglob("*") if path.is_file()
     }
     DailyRuleEvidenceResponse.model_validate(report)
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(root))
+    plain = CliRunner().invoke(app, ["report", parent_id])
+    assert plain.exit_code == 0, plain.output
+    for role in ("baseline", "control"):
+        terminal = report["roles"][role]["terminal"]
+        assert f"final_equity={report['roles'][role]['final_equity']:.4f}" in plain.output
+        assert f"last admitted opening quote {terminal['opening_quote_at']}" in plain.output
+        assert f"valuation event {terminal['valuation_at']}" in plain.output
+        assert (
+            f"Final decision {terminal['final_decision_at']}: no next admitted quote recorded"
+            in plain.output
+        )
+    assert "No forced liquidation" in plain.output
+    assert "no next admitted quote" in plain.output
+    assert "final-close performance" not in plain.output
 
 
 def test_accounting_page_is_bounded_and_never_changes_selected_role(
@@ -126,6 +153,69 @@ def test_accounting_page_is_bounded_and_never_changes_selected_role(
     exhausted = daily_rule_evidence(manifest["run_id"], data_dir=root, offset=100000)
     assert exhausted["accounting"]["rows"] == []
     assert exhausted["accounting"]["has_more"] is False
+    assert exhausted["roles"] == first["roles"]  # Terminal clocks never use the selected page.
+
+
+@pytest.mark.parametrize(
+    "terminal",
+    [
+        None,
+        {},
+        {"valuation_basis": "unknown"},
+        {
+            "valuation_basis": "last_admitted_open_quote",
+            "valuation_at": "2007-04-05T00:00:00.000001+00:00",
+            "opening_quote_at": "2007-04-05T00:00:00+00:00",
+            "terminal_liquidation": False,
+            "terminal_decision": "unfilled_without_next_admitted_quote",
+            "final_decision_at": "2007-04-06T00:00:00+00:00",
+        },
+    ],
+)
+def test_plain_report_reflects_terminal_provenance_without_inventing_missing_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, terminal: object
+) -> None:
+    import alpha_cli.report_cmds as commands
+
+    monkeypatch.setattr(
+        commands,
+        "_find_manifest",
+        lambda *_: {"command": "research_daily_rule_native_v1", "__dir": str(tmp_path)},
+    )
+    monkeypatch.setattr(
+        "alpha_cli.daily_rule_report.daily_rule_evidence",
+        lambda *_args, **_kwargs: {
+            "claim_scope": "artificial presentation fixture",
+            "data_origin": "artificial_fixture",
+            "outcome": None,
+            "roles": {
+                "baseline": {
+                    "run_id": "fixture",
+                    "net_pnl": 0,
+                    "final_equity": 1000,
+                    "fees_total": 0,
+                    "fills": 0,
+                    "n_trades": 0,
+                    "terminal": terminal,
+                }
+            },
+        },
+    )
+    result = CliRunner().invoke(app, ["report", "fixture"])
+    assert result.exit_code == 0, result.output
+    assert "final_equity=1000.0000" in result.output
+    assert "2022" not in result.output
+    if isinstance(terminal, dict) and terminal.get("valuation_at"):
+        assert terminal["valuation_at"] in result.output
+        assert terminal["opening_quote_at"] in result.output
+        assert terminal["final_decision_at"] in result.output
+        assert "No forced liquidation" in result.output
+        assert ": no next admitted quote recorded; no fill inferred" in result.output
+    else:
+        assert "not recorded" in result.output
+        assert "No forced liquidation" not in result.output
+        assert "no fill inferred" not in result.output
+        assert "last admitted opening quote" not in result.output
 
 
 @pytest.mark.parametrize(

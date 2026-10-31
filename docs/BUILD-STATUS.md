@@ -3007,3 +3007,11 @@ mandatory. New-launch workspace checks run before queue/job/reservation effects 
 dispatch. Independent-project and invalid-binding regressions cover this correction. Its final
 qualification is separate from the earlier passing repair tree. Real-study allowance remains zero;
 Mac availability now permits separate storage inspection, not assumed Linux execution admission.
+
+**2026-10-31 — Daily terminal valuation disclosure.** Default daily-rule comparison cells and plain
+CLI summaries now place the last admitted opening quote, actual valuation event and final-decision
+timestamps beside final equity. The read-only report projects existing validated policy and raw
+clocks; it discloses no forced liquidation and the final decision without a next admitted quote,
+without inventing an order. Missing older evidence remains explicitly not recorded. Numerical
+artifacts, economics and authority are unchanged. Focused/final qualification and guarded delivery
+are recorded in this follow-up's evidence; no real study or Mac access is involved.
