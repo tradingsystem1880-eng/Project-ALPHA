@@ -196,6 +196,14 @@ The daily research route additionally uses an explicitly qualified, immutable lo
 for its hard physical-memory boundary. Follow the [daily runtime and storage instructions](docs/superpowers/plans/2026-10-31-packet3-daily-rule.md#runtime-and-storage-setup).
 The older synthetic probes retain their existing process boundary.
 
+Before selecting a different research storage root, inspect the existing authoritative history:
+`uv run python scripts/inspect_daily_rule_history.py --data-dir /absolute/existing/data`.
+This bounded metadata reader does not initialize or migrate a store; it reports prior daily
+deep reservations across all projects, independently of its contract-list page. Unknown or empty
+metadata grants no new-root or execution authority. The existing Linux storage backend can use
+one explicitly retained mount for control and bulk; it does not make temporary filesystems durable
+or replace an existing Mac volume-UUID guarantee. See the [storage/history preflight](workers/rdagent/README.md#storage-and-history-preflight).
+
 Inspect retained gate evidence with `uv run python scripts/gate.py checkpoints` (dry-run).
 Adding `--archive --keep 10` creates verified archive copies while retaining every original;
 see the [retention and restoration guide](docs/operations/claude-code-harness.md#checkpoint-retention-without-evidence-loss).

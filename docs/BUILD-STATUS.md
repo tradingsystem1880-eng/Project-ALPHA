@@ -3033,3 +3033,42 @@ regression failed before the fix. Final aggregate verification and independent r
 separate delivery evidence; this entry does not assert either. Private coverage is UNVERIFIED
 under the recorded task-scoped four-workstream absence-only exception. No real study ran.
 See [plan](superpowers/plans/2026-10-31-durable-cancellation-publication.md).
+
+
+### 2026-10-31 — Daily history inspection before Linux storage selection (candidate)
+
+The runtime/storage candidate uses the existing Linux-native `cloud_root_identity` option
+instead of adding a Mac/Linux UUID bridge. It adds `ControlStore.daily_rule_history()` and
+an explicit-root operator script over one schema-checked read-only snapshot. Metadata
+reports whole-store prior daily deep reservations beyond pagination and conservatively
+retains unknown routing/unlinked job coverage; it grants no root-change or execution
+authority. No schema, allowance, storage backend or actual history was changed.
+
+Focused verification: 37 native fixture tests passed, ruff and mypy passed. Duplicate JSON
+routing keys and embedded-NUL/byte-length cases found by independent advisory review were
+fixed and covered. Full release verification and final independent approval remain pending;
+two unchanged Linux-specific storage cases were unverified on the Mac host. Runtime storage
+is not admitted: the source-only Linux probe failed the internal-disk reserve and Docker
+denied the separate Expansion read-only bind. No security setting, real study, private
+payload, protected test source or permanent cleanup was involved.
+
+Plan: [Linux storage/history preparation](superpowers/plans/2026-10-31-linux-storage-history.md).
+
+Candidate correction: fresh independent review reproduced offsets beyond SQLite's signed
+integer range escaping as OverflowError. The reader now validates that bound before opening
+history; API/script regressions reproduce the former failure and pass with the fix. Corrected
+focused verification passed 41 tests; ruff/mypy passed. Earlier 37-test results remain the
+previous candidate checkpoint. Full release qualification remains pending.
+
+
+### 2026-11-01 — Read-only daily-history Linux integration
+
+Integrated the retained reader onto fetched main `fcec79b9` without changing its authored
+production semantics. The historical candidate entry above was appended after newer records;
+the size-limited manual links existing README cloud/history guidance. Added public missing-DB,
+corrupt-DB and live-writer nonmutation regressions; 54 focused history/read-only tests and all
+28 Linux cloud-root fixtures passed. The earlier Mac storage limits remain historical evidence.
+Final aggregate qualification, independent verdict and hosted results are retained by the
+normal gate/review/PR workflow; focused tests alone confer no release or runtime authority.
+Private coverage remains UNVERIFIED under the existing bounded absence-only exception. No real
+history, Mac access, storage activation, study, allowance, credentials or security changes.
