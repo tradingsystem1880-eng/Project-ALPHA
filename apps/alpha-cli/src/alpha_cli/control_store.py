@@ -6510,6 +6510,12 @@ class ControlStore:
             ).fetchone()
         return int(cast(sqlite3.Row, row)["count"])
 
+    def daily_rule_history(self, *, limit: int = 50, offset: int = 0) -> dict[str, object]:
+        """Inspect existing daily history without creating, migrating or releasing a store."""
+        from alpha_cli._native_daily_rule_history import read_history
+
+        return read_history(self, limit=limit, offset=offset)
+
     def verified_research_attempt(
         self,
         project_id: str,

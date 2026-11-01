@@ -182,3 +182,35 @@ added. Unbound historical rule outcomes/artifacts cannot be upgraded into comple
 charge/capacity and investigation are required. Older writers/readers do not understand the new
 rule binding; deployment cutover remains unqualified. Generic standalone UI/report readers keep
 their existing integrity/unknown-state behavior and are not newly qualified by this boundary.
+
+### Storage and history preflight
+
+Linux execution may use the existing `cloud_root_identity` backend with control, manifests,
+runs and bulk on one explicitly retained mount/device/owner. A study with a temporary duration
+still needs retained storage: `/tmp`, tmpfs and overlay roots remain rejected, and the reserve
+is still the larger of 15% and 100 GB. Verify underlying capacity and retention too; free space
+reported by a thin virtual disk is not proof of available backing-disk space or a backup.
+
+This option does not change the native `macos_volume_uuid` backend. Keep existing Mac profiles,
+archives and authoritative history intact. A separate Linux root must not evade the existing
+database-wide one-trial reservation guard. No new Mac/Linux UUID bridge is implemented.
+
+Before designating an execution root, run the explicit-root metadata reader against existing
+authority, using the installed project environment:
+
+```sh
+uv run python scripts/inspect_daily_rule_history.py --data-dir /absolute/existing/data
+```
+
+It opens one read-only schema-7 snapshot, selects closed routing metadata rather than project
+prose or full contracts, and counts daily deep reservations across all projects. Counts cover
+the entire selected store even when the contract list is paged. Event-study job counts also
+cover unlinked jobs and other research routes; they do not prove process liveness. Malformed,
+oversized, missing or older-schema history is unknown, never an empty installation. SQLite may
+use WAL/SHM sidecars; this path does not write database records or change journal settings.
+
+The report always grants no authority to initialize, migrate or switch roots. Reconcile prior
+and unknown records first; do not import artificial ledgers, copy stale authority over later
+state, or reset consumption. Actual activation still requires qualified Linux process/container
+boundaries, retained storage, real input bindings and exact local owner confirmation. See the
+[implementation record](../../docs/superpowers/plans/2026-10-31-linux-storage-history.md).
