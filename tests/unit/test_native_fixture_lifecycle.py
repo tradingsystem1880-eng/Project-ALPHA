@@ -93,8 +93,7 @@ def _until(store: ControlStore, state: str, seconds: float = 8) -> dict[str, obj
             return result
         time.sleep(0.02)
     failure = AssertionError(f"expected {state}; last state {result}")
-    if result.get("outcome") is not None or result.get("state") == "quarantined":
-        _retain(failure, functools.partial(_note_no_start, failure, store._data_dir, store, result))
+    _retain(failure, functools.partial(_note_no_start, failure, store._data_dir, store, result))
     raise failure
 
 

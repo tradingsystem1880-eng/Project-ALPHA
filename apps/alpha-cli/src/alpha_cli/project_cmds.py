@@ -17,7 +17,6 @@ from alpha_cli.control_store import (
     StageState,
     parse_timestamp,
 )
-from alpha_cli.research_intake import draft_exploration_contract
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 
@@ -86,6 +85,8 @@ def create(
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Create a governed strategy project and immediately capture its research case."""
+    from alpha_cli.research_intake import draft_exploration_contract
+
     try:
         settings = AlphaSettings()
         store = ControlStore(settings.data_dir)

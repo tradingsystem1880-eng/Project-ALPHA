@@ -173,7 +173,8 @@ Chromium, then runs CLI and browser-runtime smokes. It does not replace app E2E 
 gate. With `ALPHA_CLOUD_FOUNDATION=1` it also installs the Git guards, appends the two worker-venv
 excludes, uses the verified fontconfig below when the image rule is present, and
 reports (never fetches) `origin/main`. Adding `ALPHA_RDAGENT_PRISTINE` and `ALPHA_RDAGENT_SOURCE`
-verifies the pinned checkout, builds the derived root and qualified worker venvs only when absent,
+rejects a missing derived-path setting or an unpinned/dirty supplied checkout before installs or
+Git-guard changes, then builds the derived root and qualified worker venvs only when absent,
 and validates existing ones against their recorded rule profile. Each step fails loud; none claims readiness.
 A venv build writes `.alpha/state/runtime/rdagent-venv-<profile>.incomplete` first and renames it to
 `.built-<UTC>` only after the new environment validates. If that marker remains, a re-run keeps a venv
@@ -188,7 +189,8 @@ For a clean RD-Agent worker setup, explicitly run
 This mode fetches the fixed public Git commit when no pristine checkout is supplied, creates
 the isolated launcher and closed rule/economics environments, validates their identities, and
 prints the source export for later shells. Existing source must remain pinned and clean;
-failed partial acquisitions are preserved. Foundation-only setup stays non-fetching.
+failed partial acquisitions are preserved and acquired source is validated before use.
+Foundation-only setup stays non-fetching.
 See the [clean-bootstrap record](docs/superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md)
 for fresh-workspace/container evidence and its limits. Provisioning does not grant execution authority.
 

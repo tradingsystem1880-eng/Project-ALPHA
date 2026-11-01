@@ -214,6 +214,25 @@ def test_setup_preserves_configured_paths(tmp_path: Path) -> None:
     assert Path(configured["SEMGREP_VERSION_CACHE_PATH"]).parent.is_dir()
 
 
+def test_setup_preserves_relative_cache_and_source_paths(tmp_path: Path) -> None:
+    root = _checkout(tmp_path)
+    _pristine(tmp_path)
+    result, _, _, _ = run_setup(
+        tmp_path,
+        overrides=_rdagent(
+            tmp_path,
+            ALPHA_RDAGENT_PRISTINE="../pristine",
+            ALPHA_RDAGENT_SOURCE="../derived",
+            FAKE_PIN_REPO="../pristine",
+            UV_CACHE_DIR="relative-cache",
+        ),
+    )
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "relative-cache").is_dir()
+    assert not (root / "relative-cache").exists()
+    assert (tmp_path / "derived/rdagent").is_dir()
+
+
 @pytest.mark.parametrize("cache", ["UV_CACHE_DIR", "SEMGREP_VERSION_CACHE_PATH"])
 def test_unusable_cache_path_fails_before_install(tmp_path: Path, cache: str) -> None:
     blocked = tmp_path / "file"
@@ -417,18 +436,67 @@ def test_full_rdagent_acquires_exact_pin_or_preserves_failed_partial(
         assert len(fetch_log.read_text().splitlines()) == 1, "re-entry must not fetch again"
 
 
-@pytest.mark.parametrize("problem", ["wrong_commit", "modified", "no_derived_root"])
-def test_rdagent_requires_the_unmodified_pinned_checkout(tmp_path: Path, problem: str) -> None:
-    _checkout(tmp_path)
+@pytest.mark.parametrize("problem", ["wrong_commit", "modified"])
+def test_acquired_rdagent_is_validated_before_derived_source(tmp_path: Path, problem: str) -> None:
+    root = _checkout(tmp_path)
+    source = _pristine(tmp_path)
+    pristine = root / ".alpha/state/runtime/rdagent-pristine"
+    overrides = {
+        "ALPHA_CLOUD_FOUNDATION": "1",
+        "ALPHA_CLOUD_RDAGENT": "1",
+        "FAKE_FETCH_SOURCE": str(source),
+        "FETCH_LOG": str(tmp_path / "fetch.jsonl"),
+    }
+    if problem == "modified":
+        overrides["FAKE_PIN_REPO"] = str(pristine)
+        (source / "rdagent/__init__.py").write_text("changed")
+    result, calls, _, _ = run_setup(tmp_path, overrides=overrides)
+    assert result.returncode != 0
+    assert "is not the unmodified pinned commit" in result.stderr
+    assert [call["command"] for call in calls] == [*STEPS, GUARD]
+    assert pristine.is_dir(), "acquired evidence must remain available"
+    assert not (pristine.parent / "rdagent-source").exists()
+    assert "cloud-setup: ready" not in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("problem", "full", "relative"),
+    [
+        (problem, full, relative)
+        for problem in ("wrong_commit", "modified", "untracked")
+        for full in (False, True)
+        for relative in (False, True)
+    ]
+    + [("no_derived_root", False, False)],
+)
+def test_rdagent_requires_the_unmodified_pinned_checkout(
+    tmp_path: Path, problem: str, full: bool, relative: bool
+) -> None:
+    root = _checkout(tmp_path)
     _pristine(tmp_path)
-    overrides = _rdagent(tmp_path)
+    fetch_log = tmp_path / "fetch.jsonl"
+    overrides = _rdagent(
+        tmp_path,
+        ALPHA_CLOUD_RDAGENT="1" if full else "",
+        FAKE_FETCH_SOURCE=str(tmp_path / "pristine"),
+        FETCH_LOG=str(fetch_log),
+    )
+    if relative:
+        overrides.update(
+            ALPHA_RDAGENT_PRISTINE="../pristine",
+            ALPHA_RDAGENT_SOURCE="../derived",
+            FAKE_PIN_REPO="../pristine",
+        )
     if problem == "wrong_commit":
         del overrides["FAKE_PIN_REPO"]
     elif problem == "modified":  # HEAD reports the pin, so only the dirty-tree check can refuse
         (tmp_path / "pristine/rdagent/__init__.py").write_text("changed")
+    elif problem == "untracked":
+        (tmp_path / "pristine/untracked").write_text("kept")
     else:
-        del overrides["ALPHA_RDAGENT_SOURCE"]
-    result, calls, _, _ = run_setup(tmp_path, overrides=overrides)
+        overrides["ALPHA_RDAGENT_SOURCE"] = ""
+    exclude = (root / ".git/info/exclude").read_bytes()
+    result, calls, _, timeouts = run_setup(tmp_path, overrides=overrides)
     assert result.returncode != 0
     expected = (
         "ALPHA_RDAGENT_SOURCE must name the derived RD-Agent root"
@@ -436,7 +504,11 @@ def test_rdagent_requires_the_unmodified_pinned_checkout(tmp_path: Path, problem
         else "is not the unmodified pinned commit"
     )
     assert expected in result.stderr
-    assert [call["command"] for call in calls] == [*STEPS, GUARD]
+    assert calls == [] and timeouts == []
+    assert (root / ".git/info/exclude").read_bytes() == exclude
+    assert not (root / ".alpha").exists()
+    assert not (tmp_path / "isolated-defaults").exists()
+    assert not fetch_log.exists()
     assert not (tmp_path / "derived").exists() and "cloud-setup: ready" not in result.stdout
 
 

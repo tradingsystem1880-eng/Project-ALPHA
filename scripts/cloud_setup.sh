@@ -8,6 +8,33 @@ if [ "${ALPHA_CLOUD_RDAGENT:-}" = 1 ] && [ "${ALPHA_CLOUD_FOUNDATION:-}" != 1 ];
     exit 1
 fi
 
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ "${ALPHA_CLOUD_FOUNDATION:-}" = 1 ]; then
+    if [ "${ALPHA_CLOUD_RDAGENT:-}" = 1 ]; then
+        runtime="$root/.alpha/state/runtime"
+        export ALPHA_RDAGENT_PRISTINE="${ALPHA_RDAGENT_PRISTINE:-$runtime/rdagent-pristine}"
+        export ALPHA_RDAGENT_SOURCE="${ALPHA_RDAGENT_SOURCE:-$runtime/rdagent-source}"
+    fi
+    validate_rdagent_input() {
+        pin=484776c211e4fbbeef03e0ec00d6bbee7362a4f4
+        derived="${ALPHA_RDAGENT_SOURCE:?ALPHA_RDAGENT_SOURCE must name the derived RD-Agent root}"
+        head="$(git -C "$ALPHA_RDAGENT_PRISTINE" rev-parse HEAD)"
+        if [ "$head" != "$pin" ] || [ -n "$(git -C "$ALPHA_RDAGENT_PRISTINE" status --porcelain)" ]; then
+            echo "cloud-setup: $ALPHA_RDAGENT_PRISTINE is not the unmodified pinned commit ($head)" >&2
+            exit 1
+        fi
+    }
+    # Explicit full bootstrap may acquire absent source; supplied inputs fail before provisioning.
+    if [ -n "${ALPHA_RDAGENT_PRISTINE:-}" ]; then
+        (
+            cd "$root"
+            if [ "${ALPHA_CLOUD_RDAGENT:-}" != 1 ] || [ -e "$ALPHA_RDAGENT_PRISTINE" ]; then
+                validate_rdagent_input
+            fi
+        )
+    fi
+fi
+
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/project-alpha-uv-cache}"
 export UV_TOOL_DIR="${UV_TOOL_DIR:-/tmp/project-alpha-uv-tools}"
 export UV_LINK_MODE="${UV_LINK_MODE:-copy}"
@@ -22,7 +49,6 @@ mkdir -p "$(dirname -- "$SEMGREP_VERSION_CACHE_PATH")"
 for tool in uv npm npx node timeout; do
     command -v "$tool" >/dev/null
 done
-root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 echo 'cloud-setup: locked Python workspace'
 uv sync --locked
@@ -68,8 +94,6 @@ if [ "${ALPHA_CLOUD_FOUNDATION:-}" = 1 ]; then
     if [ "${ALPHA_CLOUD_RDAGENT:-}" = 1 ]; then
         runtime="$root/.alpha/state/runtime"
         mkdir -p "$runtime"
-        export ALPHA_RDAGENT_PRISTINE="${ALPHA_RDAGENT_PRISTINE:-$runtime/rdagent-pristine}"
-        export ALPHA_RDAGENT_SOURCE="${ALPHA_RDAGENT_SOURCE:-$runtime/rdagent-source}"
         if [ ! -e "$ALPHA_RDAGENT_PRISTINE" ]; then
             pin=484776c211e4fbbeef03e0ec00d6bbee7362a4f4
             partial="$(mktemp -d "$ALPHA_RDAGENT_PRISTINE.partial.XXXXXX")"
@@ -85,12 +109,7 @@ if [ "${ALPHA_CLOUD_FOUNDATION:-}" = 1 ]; then
     if [ -n "${ALPHA_RDAGENT_PRISTINE:-}" ]; then
         pin=484776c211e4fbbeef03e0ec00d6bbee7362a4f4
         echo "cloud-setup: RD-Agent pristine checkout at $pin"
-        derived="${ALPHA_RDAGENT_SOURCE:?ALPHA_RDAGENT_SOURCE must name the derived RD-Agent root}"
-        head="$(git -C "$ALPHA_RDAGENT_PRISTINE" rev-parse HEAD)"
-        if [ "$head" != "$pin" ] || [ -n "$(git -C "$ALPHA_RDAGENT_PRISTINE" status --porcelain)" ]; then
-            echo "cloud-setup: $ALPHA_RDAGENT_PRISTINE is not the unmodified pinned commit ($head)" >&2
-            exit 1
-        fi
+        validate_rdagent_input
         if [ ! -e "$derived" ]; then
             partial="$(mktemp -d "$derived.partial.XXXXXX")"
             cp -a "$ALPHA_RDAGENT_PRISTINE/rdagent" "$ALPHA_RDAGENT_PRISTINE/LICENSE" \

@@ -3072,3 +3072,67 @@ Final aggregate qualification, independent verdict and hosted results are retain
 normal gate/review/PR workflow; focused tests alone confer no release or runtime authority.
 Private coverage remains UNVERIFIED under the existing bounded absence-only exception. No real
 history, Mac access, storage activation, study, allowance, credentials or security changes.
+
+
+## 2026-11-01 — Fail early on invalid supplied cloud-bootstrap inputs
+
+The existing cloud setup rejects a missing required derived-source setting, wrong supplied
+RD-Agent pristine pin or dirty supplied checkout before cache setup, locked installs or Git-guard
+changes. Full-bootstrap defaults and exact-pin acquisition remain explicit; acquired bytes are
+validated before derived copying. Existing locked valid-source provisioning, foundation/default
+non-fetching behavior and interrupted-environment evidence retention remain unchanged.
+
+The seven invalid-input fixture expectations failed before the change; covering offline fixtures
+also exercise fetched-source refusal and existing acquisition/re-entry/partial-preservation paths.
+README and the operating manual explain early refusal. Final-tree full qualification, independent
+review and hosted delivery evidence are separate requirements; this record claims no aggregate pass.
+Private coverage remains UNVERIFIED. No live study, allowance consumption, Mac access or trading.
+See the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#supplied-input-validation-follow-up--2026-11-01).
+
+
+## 2026-11-01 — Cloud setup public-fixture correction checkpoint
+
+The first corrected-tree full gate failed in backend despite reaching 93.10% public coverage
+(7,246 passed, five failed, 74 skipped, one error). Later components did not run. Bounded diagnosis
+found a public closure-kill fixture's late safe-barrier cleanup race; a seven-line test-only repair
+preserves its original injected failure while reaping the retained child without contaminating a
+later test with an unraisable warning. Existing native no-start capture now includes unclaimed
+failures, and web cancellation assertions retain bounded failure context. No production lifecycle,
+deadline, assertion, coverage or runtime-profile change is included.
+
+Consolidated focused checks: 44 passed, one host-specific skip, one web heartbeat-CLI-timeout
+failure; targeted lint/format/types pass. Original aggregate and TMPDIR causes remain bounded
+uncertainties, and no focused pass is aggregate acceptance. Reader-first reconciliation, pending
+private-suite absence authorization and final-tree full verification remain required. Evidence and
+limits are in the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#bounded-public-fixture-repair-checkpoint--2026-11-01).
+
+
+## 2026-11-01 — Narrow heartbeat CLI startup optimization
+
+Measured heartbeat time was dominated by unused research-intake imports before journal entry.
+The existing `project create` command now imports its intake function locally; heartbeat/status
+paths keep their public behavior without eagerly loading intake/runtime dependencies. The three
+new clean-process module-presence regressions failed before this move. Create execution, invalid
+idea errors and existing workspace/projection-error behavior remain covered. No lifecycle,
+authority, deadline, assertion or coverage policy changed.
+
+The consolidated focused selection passed 62 cases with one host-specific skip using five workers.
+Retained baseline/overlay timings are bounded diagnostic evidence, not performance guarantees or
+aggregate acceptance. The original full-gate/TMPDIR/supervisor uncertainties remain recorded.
+Reader-first base reconciliation, pending private-suite approval, fresh independent review and the
+required final-tree full gate remain open. See the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#lazy-intake-startup-correction-checkpoint--2026-11-01).
+
+
+## 2026-11-01 — Cloud workflow correction reconciled after PR108
+
+The bootstrap/lazy-intake/public-fixture candidate is reconciled onto reader main `4e3ca30d`.
+Both source histories are retained, the shared manual keeps cloud/history guidance within its
+size limit, and generated Atlas reflects the combined tree. Reader production bytes are untouched.
+The owner approved the bounded absence-only private-suite exception through necessary corrections
+and delivery; private coverage stays UNVERIFIED and all public gates, the unchanged 93% floor,
+independent review and normal guarded/hosted delivery requirements remain mandatory.
+
+The environment restart lost prior `/tmp` raw logs. Exact source preservation, surviving workspace
+receipts/coverage and transcript-only historical results are explicitly distinguished. Fresh final
+qualification evidence is retained under ignored workspace state. This entry records reconciliation
+and scope, not a final pass. See the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#reader-main-reconciliation-and-bounded-approval--2026-11-01).
