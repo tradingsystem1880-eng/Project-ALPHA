@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import hashlib
 import os
@@ -9,19 +10,243 @@ import subprocess
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import IO
+from typing import IO, Any
 
 import pytest
 
 from alpha_cli.ml_contract import MLContractError
 from alpha_cli.ml_native_plan import (
     W09ProtocolV1,
+    bind_worker_observations,
     build_manifest,
     fingerprint_worker,
     readiness,
     validate_manifest,
 )
 from alpha_cli.ml_refit import _file_snapshot
+
+
+def _observations(protocol: W09ProtocolV1, worker: Path) -> dict[str, Any]:
+    from alpha_cli.ml_native_plan import _hash
+
+    snapshot: dict[str, Any] = {
+        "authority": "invocation_local_observation_only",
+        "status": "completed",
+        "error_type": None,
+        "context": {
+            "request_schema_version": protocol.request_schema_version,
+            "recipe": protocol.recipe,
+            "request_sha256": protocol.request_sha256,
+            "panel_sha256": protocol.panel_sha256,
+            "snapshot_sha256": protocol.snapshot_sha256,
+            "worker_lock_sha256": dict(fingerprint_worker(worker).files)["uv.lock"],
+        },
+        "folds": {},
+    }
+    for fold in protocol.folds:
+        events: list[dict[str, Any]] = []
+        for node in (n for n in build_manifest(protocol).components if n.fold == fold):
+            for operation in [node.operation] + (
+                ["predict"] if node.name in {"lightgbm", "ridge"} else []
+            ):
+                context = _hash({"request_sha256": protocol.request_sha256, "fold": fold})
+                output = (
+                    {"state": "e" * 64}
+                    if operation in {"fit", "transform"}
+                    else {"scores": "e" * 64}
+                )
+                output.update(
+                    {
+                        "train_features": "e" * 64,
+                        "other_0_features": "e" * 64,
+                        "other_1_features": "e" * 64,
+                    }
+                    if node.name == "normalizer"
+                    else {}
+                )
+                if node.name.startswith("label."):
+                    output["normalized_labels"] = "e" * 64
+                inputs = {
+                    "context": context,
+                    "model_state": "e" * 64,
+                    "train_features": "e" * 64,
+                    "train_labels": "e" * 64,
+                    "test_features": "e" * 64,
+                }
+                if node.name == "rank_ensemble":
+                    output = {"predictions": "e" * 64, "diagnostics": "e" * 64}
+                    inputs.update(
+                        lightgbm_state="e" * 64,
+                        ridge_state="e" * 64,
+                        lightgbm_scores="e" * 64,
+                        ridge_scores="e" * 64,
+                    )
+                row_ids: dict[str, str] = {}
+                if node.name == "normalizer":
+                    inputs["train"] = "e" * 64
+                    row_ids = {"train": "a" * 64}
+                elif node.name.startswith("label."):
+                    inputs.update(labels="e" * 64, target_sessions="e" * 64)
+                    row_ids = {"labels": ("a" if node.name == "label.train" else "b") * 64}
+                elif operation == "fit":
+                    row_ids = {"train_features": "a" * 64, "train_labels": "a" * 64}
+                    if node.name == "lightgbm":
+                        row_ids.update(validation_features="b" * 64, validation_labels="b" * 64)
+                if node.name == "lightgbm" and operation == "fit":
+                    inputs.update(validation_features="e" * 64, validation_labels="e" * 64)
+                events.append(
+                    {
+                        "sequence": len(events),
+                        "component": node.name,
+                        "operation": operation,
+                        "status": "completed",
+                        "error_type": None,
+                        "input_hashes": inputs,
+                        "input_row_counts": {key: 2 for key in row_ids},
+                        "input_row_ids_sha256": row_ids,
+                        "output_hashes": output,
+                        "state_sha256": output.get("state", _hash(output)),
+                    }
+                )
+        snapshot["folds"][str(fold)] = {"events": events, "trace_sha256": _hash(events)}
+    return snapshot
+
+
+@pytest.mark.parametrize("schema", [1, 2])
+def test_observation_binding_is_structural_and_grants_no_authority(
+    tmp_path: Path, schema: int
+) -> None:
+    worker = _worker(tmp_path)
+    protocol = _protocol(worker, schema)
+    report = bind_worker_observations(
+        build_manifest(protocol), _observations(protocol, worker), worker_project=worker
+    )
+    assert report["status"] == "STRUCTURALLY_BOUND"
+    assert report["fitted_state_verified"] is False
+    assert report["durable_accounting_verified"] is False
+    assert report["execution_allowed"] is False
+    assert report["reuse_allowed"] is False
+    assert report["runtime_dependency_identity"] == "UNVERIFIED"
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "swapped",
+        "duplicated",
+        "missing",
+        "crossfold",
+        "failed",
+        "state",
+        "context",
+        "request",
+        "dependency",
+    ],
+)
+def test_observation_binding_rejects_incomplete_stale_or_unsupported_metadata(
+    tmp_path: Path, mutation: str
+) -> None:
+    from alpha_cli.ml_native_plan import _hash
+
+    worker = _worker(tmp_path)
+    protocol = _protocol(worker)
+    observed = _observations(protocol, worker)
+    events = observed["folds"]["0"]["events"]
+    if mutation == "swapped":
+        events[1], events[2] = events[2], events[1]
+    elif mutation == "duplicated":
+        events.append(copy.deepcopy(events[-1]))
+    elif mutation == "missing":
+        events.pop()
+    elif mutation == "crossfold":
+        observed["folds"]["0"] = copy.deepcopy(observed["folds"]["1"])
+        events = observed["folds"]["0"]["events"]
+    elif mutation == "failed":
+        observed["status"] = "failed"
+    elif mutation == "state":
+        events[3]["state_sha256"] = "f" * 64
+    elif mutation == "context":
+        events[3]["input_hashes"]["context"] = "f" * 64
+    elif mutation == "request":
+        observed["context"]["request_sha256"] = "f" * 64
+    elif mutation == "dependency":
+        (worker / "src/alpha_qlib_worker/rank_ensemble.py").write_text("changed dependency")
+    observed["folds"]["0"]["trace_sha256"] = _hash(events)
+    with pytest.raises(MLContractError):
+        bind_worker_observations(build_manifest(protocol), observed, worker_project=worker)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "planned",
+        "boolean_schema",
+        "malformed_outputs",
+        "missing_fit_state",
+        "member_state",
+        "training_rows",
+        "ridge_validation",
+    ],
+)
+def test_observation_binding_cannot_promote_plans_or_inconsistent_call_metadata(
+    tmp_path: Path, mutation: str
+) -> None:
+    from alpha_cli.ml_native_plan import _hash
+
+    worker = _worker(tmp_path)
+    protocol = _protocol(worker, 1 if mutation == "boolean_schema" else 2)
+    manifest = build_manifest(protocol)
+    observed = _observations(protocol, worker)
+    events = observed["folds"]["0"]["events"]
+    if mutation == "planned":
+        observed = dataclasses.asdict(manifest)
+    elif mutation == "boolean_schema":
+        observed["context"]["request_schema_version"] = True
+    elif mutation == "malformed_outputs":
+        events[3]["output_hashes"] = []
+    elif mutation == "missing_fit_state":
+        events[3]["output_hashes"] = {"opaque": "e" * 64}
+        events[3]["state_sha256"] = _hash(events[3]["output_hashes"])
+    elif mutation == "member_state":
+        events[-1]["input_hashes"]["ridge_state"] = "f" * 64
+    elif mutation == "training_rows":
+        events[5]["input_row_ids_sha256"]["train_labels"] = "f" * 64
+    elif mutation == "ridge_validation":
+        events[5]["input_hashes"]["validation_features"] = "f" * 64
+    if mutation != "planned":
+        observed["folds"]["0"]["trace_sha256"] = _hash(events)
+    with pytest.raises(MLContractError):
+        bind_worker_observations(manifest, observed, worker_project=worker)
+
+
+@pytest.mark.parametrize(
+    "schema,component,field",
+    [
+        (1, "lightgbm", "scores"),
+        (2, "ridge", "scores"),
+        (2, "rank_ensemble", "predictions"),
+        (2, "rank_ensemble", "diagnostics"),
+    ],
+)
+def test_observation_binding_requires_actual_prediction_and_assembly_outputs(
+    tmp_path: Path, schema: int, component: str, field: str
+) -> None:
+    from alpha_cli.ml_native_plan import _hash
+
+    worker = _worker(tmp_path)
+    protocol = _protocol(worker, schema)
+    observed = _observations(protocol, worker)
+    events = observed["folds"]["0"]["events"]
+    operation = "predict" if field == "scores" else "assemble"
+    event = next(e for e in events if (e["component"], e["operation"]) == (component, operation))
+    event["output_hashes"].pop(field)
+    event["output_hashes"]["opaque"] = "f" * 64
+    event["state_sha256"] = _hash(event["output_hashes"])
+    if schema == 2 and field == "scores":
+        events[-1]["input_hashes"].pop(f"{component}_scores")
+    observed["folds"]["0"]["trace_sha256"] = _hash(events)
+    with pytest.raises(MLContractError):
+        bind_worker_observations(build_manifest(protocol), observed, worker_project=worker)
 
 
 def _worker(root: Path) -> Path:

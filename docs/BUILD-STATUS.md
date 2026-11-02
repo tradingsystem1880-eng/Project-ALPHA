@@ -3158,3 +3158,46 @@ Ordinary synthetic engineering qualification is separate from native research ex
 No real-data fit, research allowance consumption, native Qlib admission or Mac operation.
 
 Plan: [W09 planning contracts](superpowers/plans/2026-11-01-w09-planning-contracts.md).
+
+### 2026-11-02 — W09 private invocation observations, delivery pending
+
+Prepared opt-in observation hooks for existing v1 LightGBM/v2 fixed-rank worker calls,
+using the retained FitTrace/FitInvocation seam. Actual fit state closes before prediction;
+failed later calls preserve genuine earlier observations. Fixed assembly is not learning.
+V1/v2 serialized outputs/artifact sets and v3/W11 computations remain unchanged.
+CLI-owned structural binding joins diagnostic sequences to planned W09 IDs, rejects
+request/fold/state/link/dependency drift, and keeps runtime identity unverified and all
+admission, fitted-state, durable accounting, reuse and resource authority disabled.
+
+Focused checks passed 64 root tests and 40 covering worker tests (38 mocked/unit plus two
+unchanged real synthetic parity cases), including byte-identical
+off/on artifacts from ordinary synthetic real-worker fixtures and existing W11 boundary
+regressions. Targeted lint/types/import contracts pass; prior red/fixture correction logs
+are retained. Atlas is regenerated. These are focused results, not aggregate qualification
+or a new coverage claim. No full gate/publication is authorized by the earlier planning-only
+private-suite exception; private coverage remains UNVERIFIED pending a new scoped decision.
+Independent source review found an output-shape gap; four red-to-green regressions cover
+the correction, and independent re-review found no remaining required source changes.
+That focused assessment is not formal delivery approval. No native research run, data acquisition, policy,
+ControlStore/ledger change, real-data fitting or Mac operation occurred.
+
+Plan: [W09 invocation observations](superpowers/plans/2026-11-02-w09-component-observations.md).
+
+### 2026-11-02 — W09 observation delivery approval and qualification boundary
+
+After the prepared observation candidate and its independent source correction were
+preserved, the owner explicitly approved this bounded slice's absence-only private-suite
+exception and necessary corrections, plus normal guarded commit/push, draft PR, ready
+transition and merge of `feat/w09-component-observations` into Project-ALPHA main after
+all public checks, the unchanged 93% coverage floor and final independent review pass.
+The earlier planning-only exception is not reused. The new reviewer scope record keeps
+private coverage UNVERIFIED and every actual public failure, other unrunnable check,
+exact-tree review/README/attestation requirement and Git guard blocking as before.
+
+The preserved 13-path candidate patch was independently rechecked against base
+`2a6aa175`; its SHA-256 was
+`373d3a13c44d0c3f8488d290f73dba993c65ba789f5225e1de2337ca0574f30d`.
+This entry records scope and final-tree preparation, not an aggregate pass. Normal gate
+and review receipts provide final results. Native research execution, real-data fitting,
+resource/retry/refund/reuse policy, durable accounting replacement and Mac activity
+remain unauthorized; ordinary synthetic engineering qualification remains permitted.
