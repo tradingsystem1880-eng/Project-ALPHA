@@ -536,3 +536,27 @@ independent review of the final tree, including this section, remain mandatory, 
 attestation and Git guards. No GitHub APPROVE review, bypass, override, force push, protection
 change, deployment, trading, private source access, threshold or CI weakening, unrelated or
 standing exception is granted. PRs #92 and #93 are not altered.
+
+
+## W09 inert planning through-delivery absence exception — 2026-11-02
+
+The owner explicitly approved an absence-only private-suite exception through delivery
+for the bounded W09 planning slice and necessary corrections, plus normal guarded
+publication of `feat/w09-planning-contracts` into `main` in
+`tradingsystem1880-eng/Project-ALPHA`. Authorization provenance is retained privately.
+Scope is typed v1/v2 planning identities, finite fixed-recipe graphs, first-party worker
+fingerprints and bounded source reads, blocked readiness, covering public tests, and
+necessary documentation/generated-output integration after the bootstrap delivery.
+Ordinary existing synthetic engineering test fixtures are allowed.
+
+Only documented ABSENCE of `tests/holdout/` is informational and nonblocking. Private
+coverage remains UNVERIFIED, never PASS. Present-suite failures, collection errors, other
+unrunnable required checks and software findings still BLOCK. All public checks, the
+unchanged 93% coverage floor and exclusions, fresh exact-final-tree qualification and
+independent review, README evidence, normal attestation and Git guards remain mandatory.
+This task-scoped permission includes necessary corrections through this delivery; it is
+not a universal per-tree waiver or an exception for unrelated future features.
+
+It grants no private-source reads/edits, GitHub APPROVE action, force/bypass, new ledger
+or scheduler, native Qlib registration/admission, real-data fitting, reuse authorization,
+scientific resource-unit policy, promotion, data acquisition or Mac operations.

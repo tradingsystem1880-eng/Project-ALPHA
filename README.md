@@ -293,5 +293,9 @@ records a meaningful `no_change` decision without making a dummy README edit. In
 guards require fresh tree-bound review evidence. See [README upkeep](docs/operations/readme-maintenance.md)
 for the workflow, evidence command and enforcement limits. This adds no separate AI job or API key.
 
+The existing Qlib recipes now have an [inert W09 planning API](workers/qlib/README.md#inert-w09-planning-contracts)
+for metadata identities, source fingerprints and prospective component graphs. It does not
+admit or dispatch fits, verify fitted state, or authorize reuse. Native Qlib parity remains open.
+
 The [context index](docs/context/README.md) links the deeper maps; the
 [build record](docs/BUILD-STATUS.md) preserves dated delivery evidence.

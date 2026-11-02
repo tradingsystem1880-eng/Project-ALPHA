@@ -71,7 +71,7 @@ Provider acceptance requires passing receipts. Binance opt-in caps: HTTP attempt
 Behavior changes: update manual/build. Cancel needs journal publication.
 
 UI: [terminal guide](apps/alpha-web/frontend/README.md): UTC charts, exact exports, no-project browsing. RunDetail binds selected-run outputs and loading/error/empty states.
-ML: v1/LightGBM; v2/rank ensemble; v3/tabular (workers/qlib/README.md). Missing worker blocks; refit grants no admission.
+ML: v1/LightGBM; v2/rank; v3/tabular (workers/qlib/README.md). Absent worker blocks; W09 plans/refits grant no admission.
 
 Native fixtures: confirmed owner, pinned LoopBase/LoopMeta, immutable artifacts, full charges; no market authority.
 [Authority](docs/superpowers/plans/2026-10-26-native-rule-authority.md).

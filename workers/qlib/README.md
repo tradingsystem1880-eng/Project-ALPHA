@@ -107,6 +107,24 @@ This is still labeled `OOS replay validated — model not recomputed under count
 not yet retrain every fold on randomized/counterfactual paths, so the replay is not a full ML
 gauntlet and is not promotion-eligible. Single-asset ML equivalence is also not claimed.
 
+## Inert W09 planning contracts
+
+The CLI-owned [planning API](../../apps/alpha-cli/src/alpha_cli/ml_native_plan.py)
+binds declared project/experiment/contract and request/panel/snapshot references to
+`W09ProtocolV1` and an exact `W09ManifestV1` operation graph. V1 describes existing
+LightGBM computation; v2 additionally describes the train-only ridge member and fixed
+rank assembly. Assembly is not a learned fit, and operation counts are not approved
+resource units or independent trials. These are declared references, not record lookups
+or verified panels. No CLI command, native registry entry or execution hook is added.
+
+The fingerprint covers the supported first-party worker package, schemas, project and
+lock, including rank-ensemble code. Source reads are bounded and mutation-checked; this
+does not qualify installed binaries or the native runtime. Readiness remains `BLOCKED`,
+with execution/reuse/fitted-state verification false and observed work unknown. The
+[bounded plan](../../docs/superpowers/plans/2026-11-01-w09-planning-contracts.md)
+records limits and qualification requirements. This does not extend the separate W11
+ridge/DoubleEnsemble reference protocol or change existing v1/v2 outputs/computations.
+
 ## Gate
 
 The [W11 engineering packet](../../docs/superpowers/plans/2026-10-26-qlib-w11-refit.md)
