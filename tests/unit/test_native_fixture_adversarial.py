@@ -239,7 +239,14 @@ with _open_lock(root,job) as lock:
                 # This fault barrier is published only after retained payload cleanup.
                 process.kill()
             else:
-                _stop_test_owner(root, process)
+                try:
+                    _stop_test_owner(root, process)
+                finally:
+                    # The safe barrier can appear after the first check. Reap only
+                    # this retained child, preserving any original cleanup failure.
+                    if marker.exists() and process.poll() is None:
+                        process.kill()
+                        process.wait(timeout=3)
         process.wait(timeout=3)
 
 

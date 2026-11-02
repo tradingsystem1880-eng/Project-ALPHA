@@ -92,3 +92,129 @@ only when the exact source tree, comparisons, README scope and all component def
 unchanged and normal guards pass. The combined candidate requires its own full gate and
 independent review; no individual source receipt accepts this assembly. Private coverage remains
 UNVERIFIED and broader product/Mac scope is unchanged.
+
+
+## Supplied-input validation follow-up — 2026-11-01
+
+Base: main `fcec79b91c18467ff818c1f7d03684a9908ac9de`. This bounded correction moves the
+existing dependency-free required-derived-path, pristine HEAD-pin and cleanliness checks before
+cache setup, dependency installs and Git guards. Explicit full bootstrap still supplies its existing
+default paths and acquires an absent pristine checkout at the exact pin. The same validation runs
+after acquisition before derived copying. Locked installs, source digest verification, rule/economics
+profiles, failed-partial retention and interrupted-venv preservation keep their existing semantics.
+
+Implementation sequence: first require zero provisioning/timeouts, guard/exclude changes, runtime
+creation or acquisition for invalid supplied inputs; then move the checks and exercise the existing
+valid-source/default/foundation/acquisition/re-entry cases plus invalid fetched bytes. The seven new
+invalid-input expectations failed against the original script before implementation. Focused shell
+fixtures use local Git repositories and stub external tools; they perform no live downloads. This
+slice changes no import DAG, look-ahead, determinism, admission or execution-authority behavior.
+README and the operating manual describe early refusal. Relative source paths still resolve from
+the checkout; relative cache paths retain their original invocation-directory semantics. No separate command or documentation tree
+is introduced. Final independent review, whole-tree gate and hosted delivery evidence remain required;
+focused results alone do not establish aggregate acceptance. Private coverage remains UNVERIFIED.
+
+Focused verification: `uv run pytest -q tests/unit/test_cloud_setup.py` passed 39 tests with one
+host-specific fontconfig skip; Ruff check/format and `bash -n scripts/cloud_setup.sh` passed.
+The initial seven failures remain retained as red-phase evidence. These offline fixtures do not
+repeat clean-container qualification or establish private coverage.
+
+Independent review of the first frozen candidate blocked a checkout-relative existence predicate
+that was still evaluated from the invocation directory in full mode. Three added relative-path
+invalid-input cases reproduced the bypass before correction. Both the predicate and validation
+now run from the checkout without changing cache-path resolution. That candidate's full gate was
+stopped during typing (exit130); its patch, partial receipts and logs are retained separately and
+are not a pass. Fresh corrected-tree qualification/review are required. The reviewer also could
+not establish that any recorded bounded absence-only approval covers this follow-up; no existing
+exception is expanded here, and guarded delivery remains blocked unless applicability is proven.
+
+
+## Bounded public-fixture repair checkpoint — 2026-11-01
+
+The corrected setup tree's canonical full gate ended in backend at 93.10% public coverage:
+7,246 passed, five failed, 74 skipped and one setup error. Remaining components did not run;
+no aggregate acceptance stamp exists. Exact logs, receipts and coverage bytes are retained.
+The six-case smaller selection passed with five workers; a controlled CPU-load comparison
+reproduced startup-margin and CLI-timeout failures. This is resource-sensitivity evidence,
+not proof of full-load concurrency correctness or a waiver of any failing check.
+
+The public closure-kill test's cleanup had a demonstrated late-barrier race. Its existing
+safe barrier can appear after the first check while the retained owner is paused. The minimal
+seven-line repair rechecks that same barrier in `finally` and reaps only its retained `Popen`.
+The original assertion, owner deadline, wait allowances and cleanup expectations remain intact.
+The applied repair's focused negative control still fails its injected assertion but emits no
+leaked-child/unraisable warning. This is a fixture repair, not a production lifecycle refactor.
+All three diagnostic test paths were checked against `gate.protected_reason` and are editable
+public tests. Protected test contents were neither read nor edited.
+
+The existing native no-start diagnostic now also records `unclaimed` wait failures; the web
+capacity test appends bounded terminal-error/line-tail context to its unchanged cancellation
+assertions. The consolidated focused selection reported 44 passed, one skipped and one failure.
+That remaining web failure now names an unchanged five-second heartbeat CLI timeout. Its relation
+to the original aggregate failure and the original TMPDIR startup phase are not established.
+The controller-death margin remains at least 1.0 s; no assertion, deadline, coverage floor,
+exclusion, production source or runtime profile was weakened. Targeted Ruff and typing pass.
+
+This is an uncommitted consolidation checkpoint on `fcec79b9`, awaiting reader-first delivery,
+actual-main reconciliation, pending bounded private-suite authorization and fresh independent
+review/whole-tree qualification. No aggregate rerun is started on this obsolete base. Private
+coverage stays UNVERIFIED; no real study, allowance use, Mac access or trading occurred.
+
+
+## Lazy intake startup correction checkpoint — 2026-11-01
+
+A bounded heartbeat profile isolated ordinary subprocess startup from journal work on independent
+public synthetic stores. An idle profiled heartbeat used 2.253 s total, including 1.562 s importing
+research intake/runtime before the journal; append and cancellation read used 4.85 ms and 2.11 ms.
+Under five concurrent calls plus four bounded CPU workers on a four-core quota, three of five
+baseline calls timed out at the unchanged five-second limit before entering the journal. A scratch
+lazy-import overlay completed all five in 1.71–1.90 s; idle time was 0.478 s. These are retained
+experimental measurements, not universal latency or whole-suite concurrency guarantees.
+
+The implementation moves only `draft_exploration_contract`'s import to its sole `project create`
+caller. Public arguments/results, create validation/projection errors and all journal/lease/accounting
+logic remain unchanged. Clean-process import-presence regressions for heartbeat, job status and
+job show failed before the move. They now pass without any wall-clock assertion. Additional
+clean-process create cases prove the dependency is loaded on execution and invalid ideas retain
+exit2; existing project-create workspace and post-commit projection-error cases remain covered.
+
+Focused five-worker verification covering bootstrap, entry/create/validation and the six reported
+lifecycle cases passed 62 tests with one host-specific fontconfig skip in 30.43 s. The earlier
+44-pass/one-failure checkpoint remains failure history. Its heartbeat timeout now has a measured
+startup inefficiency and narrow repair; this does not prove the original full-gate web cause or
+TMPDIR startup phase, nor resolve the supervisor startup and controller-margin acceptance under
+full load. Deadlines, the 1.0 s margin, assertions, coverage floor/exclusions and runtime profiles
+are unchanged. Fresh independent review covers the complete consolidated bootstrap, fixture and
+lazy-import candidate. Reader-first reconciliation, pending private-suite approval and an actual
+final-tree aggregate remain required; no new aggregate or publication is attempted here.
+
+
+## Reader-main reconciliation and bounded approval — 2026-11-01
+
+Fetched main `4e3ca30d49b6c403bc70c59bbad14f33b5bad720` contains reader commit
+`ab70633fbddb4f355ea64e7c7c496536ce71653e` from PR108. The prior consolidated Git tree
+`f4e3ecf54b9ccbe6ccf293de3ad62ad483a19c2c` and its byte-identical patch remain preserved;
+Git stash `b00845201a794f17988889ba5bf7f960d1e6450b` retains the preintegration candidate.
+The shared manual keeps both cloud/history guidance, both appended build histories remain intact,
+and Atlas is regenerated from the actual combined tree. Reader production bytes are unchanged.
+
+The owner explicitly approved the bounded cloud-setup correction proceeding without the absent
+private engineering suite, including necessary corrections through delivery. Consent provenance
+is retained privately. This is an absence-only task exception: private coverage remains
+UNVERIFIED, never PASS. It excuses no public failure, missing component, failed startup-margin
+receipt or other finding. The unchanged 93% floor, exclusions, deadlines, assertions, independent
+review, README evidence and normal Git/hosted checks remain mandatory. It grants no protected-test
+content access, self-approval, bypass, force publication or unrelated standing exception.
+
+An environment restart removed the earlier `/tmp` raw logs and timing traces. Those losses are
+explicitly recorded; historical summaries come from the retained tool transcript and are not
+reconstructed as raw execution logs. Workspace-resident failed backend/README receipts, coverage
+bytes, Git checkpoints and the exact consolidated source patch survived and were copied into the
+ignored task evidence directory. Fresh final-tree evidence is saved there rather than `/tmp`.
+Earlier failed and focused results retain their original scope and do not qualify this assembly.
+
+Hosted backend selection supplies no external RD-Agent source/profile and runs the same shared
+component command. Final qualification uses the matching default unconfigured-native selection;
+optional native skips confer no native qualification. Actual platform/runtime observations and
+all final commands/results are retained in the ignored task evidence. No gate policy, coverage
+standard, admission rule or runtime profile is changed to conduct this delivery.

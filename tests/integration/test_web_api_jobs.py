@@ -363,7 +363,10 @@ def test_direct_kronos_launches_share_durable_atomic_capacity(
     assert "heavyweight job capacity is occupied" in blocked.json()["message"]
 
     assert client.delete(f"/api/jobs/{job_id}").status_code == 200
-    assert _wait_status(client, job_id, "cancelled", timeout=30) == "cancelled"
+    assert _wait_status(client, job_id, "cancelled", timeout=30) == "cancelled", {
+        "terminal_error": (_invoke.JOBS[job_id].terminal_error or "")[-4096:],
+        "lines_tail": [line[-2048:] for line in _invoke.JOBS[job_id].tail(-5)],
+    }
     assert ControlStore(tmp_path).get_job(job_id)["status"] == "cancelled"
 
     released = client.post(
@@ -377,7 +380,10 @@ def test_direct_kronos_launches_share_durable_atomic_capacity(
     released_job_id = released.json()["job_id"]
     request.addfinalizer(_invoke.JOBS[released_job_id].cancel)
     assert client.delete(f"/api/jobs/{released_job_id}").status_code == 200
-    assert _wait_status(client, released_job_id, "cancelled", timeout=30) == "cancelled"
+    assert _wait_status(client, released_job_id, "cancelled", timeout=30) == "cancelled", {
+        "terminal_error": (_invoke.JOBS[released_job_id].terminal_error or "")[-4096:],
+        "lines_tail": [line[-2048:] for line in _invoke.JOBS[released_job_id].tail(-5)],
+    }
 
 
 _CLICK_ERROR_MESSAGE = (

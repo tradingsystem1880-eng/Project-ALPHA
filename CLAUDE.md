@@ -50,7 +50,7 @@ Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`
   `literature`, `qlib`, `atlas`, `eval`); empty steps fail; full needs all.
 - Discover: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;
   `alpha info procedures --json`. [Map](docs/context/README.md).
-- Install: `uv sync --locked`; [cloud/history](README.md).
+- Setup: `uv sync --locked`; [cloud/history checks](README.md).
 - Tests: `uv run pytest -q -m "not network"`; bias: `uv run pytest -q -m bias_guard`.
   Gate owns Linux pytest; build before browsers.
 - Semgrep uses fail-closed `scripts/semgrep_runner.py`, pinned and checked at 1.181.0.
