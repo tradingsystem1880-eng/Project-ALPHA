@@ -3136,3 +3136,25 @@ The environment restart lost prior `/tmp` raw logs. Exact source preservation, s
 receipts/coverage and transcript-only historical results are explicitly distinguished. Fresh final
 qualification evidence is retained under ignored workspace state. This entry records reconciliation
 and scope, not a final pass. See the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#reader-main-reconciliation-and-bounded-approval--2026-11-01).
+
+
+### 2026-11-02 — Inert W09 planning identities and blocked readiness
+
+Added CLI-owned typed metadata identities and finite component graphs for existing
+v1 LightGBM and v2 fixed-rank recipes, with declared existing-record/input references.
+The complete supported first-party worker/schema/project/lock fingerprint detects
+stale dependencies; bounded unbuffered source reads reject oversize and mutation.
+The existing snapshot helper retains its default behavior for prior callers.
+Planning identifiers are not completed operations or fitted-state evidence. Readiness
+remains blocked; no native registration, dispatch, ledger or worker computation changes.
+
+Focused preparation passed 42 mocked tests, Ruff, mypy, import contracts and independent
+source review; earlier failed preparation evidence is retained. The held patch reapplied
+byte-identically after bootstrap merge `babd340e`; shared documentation and Atlas are
+reconciled on that base. Exact-tree aggregate and delivery-review receipts are separate
+required evidence, not inferred from focused tests. The owner-approved W09 absence-only
+exception preserves private coverage UNVERIFIED and all public checks/floors/guards.
+Ordinary synthetic engineering qualification is separate from native research execution.
+No real-data fit, research allowance consumption, native Qlib admission or Mac operation.
+
+Plan: [W09 planning contracts](superpowers/plans/2026-11-01-w09-planning-contracts.md).

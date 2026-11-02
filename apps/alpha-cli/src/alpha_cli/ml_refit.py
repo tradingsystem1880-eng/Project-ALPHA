@@ -274,18 +274,37 @@ def _worker_root() -> Path:
     return Path(__file__).resolve().parents[4] / "workers" / "qlib"
 
 
-def _file_snapshot(path: Path) -> tuple[str, tuple[int, ...]]:
-    """Hash a regular file and retain mutation-sensitive metadata for this read."""
+def _file_snapshot(path: Path, *, max_bytes: int | None = None) -> tuple[str, tuple[int, ...]]:
+    """Hash a stable regular file, optionally bounding actual reads without read-ahead."""
+    if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 0):
+        raise MLContractError("refit input byte bound must be a non-negative integer")
     try:
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-        with os.fdopen(descriptor, "rb") as handle:
+        opened = (
+            os.fdopen(descriptor, "rb", buffering=0)
+            if max_bytes is not None
+            else os.fdopen(descriptor, "rb")
+        )
+        with opened as handle:
             before = os.fstat(handle.fileno())
             if not stat.S_ISREG(before.st_mode):
                 raise MLContractError(f"refit input must be a stable regular file: {path}")
+            if max_bytes is not None and before.st_size > max_bytes:
+                raise MLContractError(f"refit input exceeds byte bound: {path}")
             digest = hashlib.sha256()
-            while block := handle.read(1024 * 1024):
+            bytes_read = 0
+            while max_bytes is None or bytes_read < max_bytes:
+                size = (
+                    1024 * 1024 if max_bytes is None else min(1024 * 1024, max_bytes - bytes_read)
+                )
+                block = handle.read(size)
+                if not block:
+                    break
+                bytes_read += len(block)
                 digest.update(block)
             after = os.fstat(handle.fileno())
+            if max_bytes is not None and after.st_size > max_bytes:
+                raise MLContractError(f"refit input exceeds byte bound: {path}")
             current = path.stat(follow_symlinks=False)
     except OSError as exc:
         raise MLContractError(f"refit input unavailable or not a regular file: {path}") from exc
