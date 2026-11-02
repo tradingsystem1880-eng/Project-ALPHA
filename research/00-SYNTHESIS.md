@@ -101,3 +101,13 @@ Built **interface-first** and **phase-gated** (each phase: define interfaces →
 - `05-paper-trading-feeds.md` — paper parity + free real-time feeds
 - `06-strategy-encoding-ml.md` — the two templates as state machines, sizing, ML
 - `07-architecture-ai-workflow.md` — repo layout, tooling, AI-build phasing, bias tests
+
+
+## Retail research source scope — 2 November 2026
+
+The [canonical checklist refinements](../docs/context/feature-readiness-checklist-2026-10-27.md#retail-research-refinements-2-november-2026)
+and [source record](../docs/context/feature-readiness-checklist-2026-10-27.md#retail-research-source-record-2-november-2026)
+own this bounded intake. They retain source-specific limits and proposed NOT RUN acceptance
+criteria within existing W01–W19 owners. Original Instagram material was unavailable;
+research synthesis is not implementation or ALPHA performance evidence. The historical
+architecture recommendations above are not the current scope or acceptance authority.
