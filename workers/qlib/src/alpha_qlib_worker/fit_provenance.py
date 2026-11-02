@@ -81,7 +81,14 @@ class FitTrace:
         self._events: list[dict[str, Any]] = []
 
     def begin(self, component: str, operation: str, inputs: Mapping[str, object]) -> int:
-        if not component or operation not in {"fit", "transform", "select", "reweight"}:
+        if not component or operation not in {
+            "fit",
+            "transform",
+            "select",
+            "reweight",
+            "predict",
+            "assemble",
+        }:
             raise ValueError("invalid fitted-component observation")
         frames = {
             name: value
@@ -143,6 +150,7 @@ class FitInvocation:
         self.status = "pending"
         self.error_type: str | None = None
         self.folds: dict[int, FitTrace] = {}
+        self._context: dict[str, Any] | None = None
 
     def start(self) -> None:
         if self.status != "pending" or self.folds:
@@ -155,6 +163,23 @@ class FitInvocation:
 
     def complete(self) -> None:
         self.status = "completed"
+
+    def bind(self, context: Mapping[str, Any]) -> None:
+        if self.status != "entered" or self._context is not None:
+            raise RuntimeError("fitted-component invocation cannot be rebound")
+        self._context = copy.deepcopy(dict(context))
+
+    def snapshot(self) -> dict[str, Any]:
+        """Detached diagnostic snapshot, including incomplete/failed actual calls."""
+        return {
+            "authority": "invocation_local_observation_only",
+            "status": self.status,
+            "error_type": self.error_type,
+            "context": copy.deepcopy(self._context),
+            "folds": {
+                str(fold): trace.seal(require_complete=False) for fold, trace in self.folds.items()
+            },
+        }
 
 
 def observe_call(

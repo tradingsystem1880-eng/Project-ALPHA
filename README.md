@@ -295,7 +295,10 @@ for the workflow, evidence command and enforcement limits. This adds no separate
 
 The existing Qlib recipes now have an [inert W09 planning API](workers/qlib/README.md#inert-w09-planning-contracts)
 for metadata identities, source fingerprints and prospective component graphs. It does not
-admit or dispatch fits, verify fitted state, or authorize reuse. Native Qlib parity remains open.
+admit or dispatch fits, verify fitted state, or authorize reuse. Private, opt-in
+[worker observations](workers/qlib/README.md#w09-invocation-observations) describe calls within
+one invocation and can be structurally compared with those identities. They do not establish
+durable accounting or completed research evidence. Native Qlib parity remains open.
 
 The [context index](docs/context/README.md) links the deeper maps; the
 [build record](docs/BUILD-STATUS.md) preserves dated delivery evidence.

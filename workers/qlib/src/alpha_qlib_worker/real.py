@@ -31,6 +31,7 @@ from alpha_qlib_worker.features import alpha158_feature_names, alpha158_features
 from alpha_qlib_worker.fit_provenance import (
     FitInvocation,
     FitTrace,
+    observe_call,
     row_digest,
     validate_reference_graph,
     value_digest,
@@ -554,9 +555,15 @@ def _fold_model(
 ]:
     del lightgbm_module
     schema3 = request.payload["schema_version"] == 3
-    if not schema3 and fit_trace is not None:
-        raise RuntimeError("fitted-component traces require schema 3")
     trace = fit_trace if fit_trace is not None else (FitTrace() if schema3 else None)
+    context = (
+        {
+            "request_sha256": value_digest(request.payload),
+            "fold": int(fold["fold"]),
+        }
+        if trace is not None and not schema3
+        else {}
+    )
     train_x, train_y, train_meta = _select_split(
         samples,
         start=fold["train_start"],
@@ -663,8 +670,44 @@ def _fold_model(
                 recorder_name=f"fold-{fold['fold']}",
             ),
         ):
-            model.fit(dataset, verbose_eval=0, evals_result=evaluations)
-            scores = model.predict(dataset, segment="test")
+
+            def fitted_state(_: Any) -> Mapping[str, object]:
+                if model.model is None:
+                    raise RuntimeError(
+                        f"Qlib fold {fold['fold']} did not produce a LightGBM booster"
+                    )
+                return {
+                    "state": model.model.model_to_string(
+                        num_iteration=model.model.best_iteration
+                    ).encode("utf-8")
+                }
+
+            observe_call(
+                trace,
+                "lightgbm",
+                "fit",
+                {
+                    "context": context,
+                    "train_features": train_x,
+                    "train_labels": train_y,
+                    "validation_features": valid_x,
+                    "validation_labels": valid_y,
+                },
+                lambda: model.fit(dataset, verbose_eval=0, evals_result=evaluations),
+                fitted_state,
+            )
+            scores = observe_call(
+                trace,
+                "lightgbm",
+                "predict",
+                {
+                    "context": context,
+                    "test_features": test_x,
+                    **({"model_state": fitted_state(None)["state"]} if trace is not None else {}),
+                },
+                lambda: model.predict(dataset, segment="test"),
+                lambda result: {"scores": result},
+            )
         booster = model.model
         if booster is None:
             raise RuntimeError(f"Qlib fold {fold['fold']} did not produce a LightGBM booster")
@@ -736,8 +779,34 @@ def _fold_model(
                 message="(divide by zero|overflow) encountered in matmul",
                 category=RuntimeWarning,
             )
-            ridge.fit(dataset)
-            ridge_scores = ridge.predict(dataset, segment="test")
+            observe_call(
+                trace,
+                "ridge",
+                "fit",
+                {
+                    "context": context,
+                    "train_features": train_x,
+                    "train_labels": train_y,
+                },
+                lambda: ridge.fit(dataset),
+                lambda _: {"state": np.asarray(ridge.coef_, dtype="float64")},
+            )
+            ridge_scores = observe_call(
+                trace,
+                "ridge",
+                "predict",
+                {
+                    "context": context,
+                    "test_features": test_x,
+                    **(
+                        {"model_state": np.asarray(ridge.coef_, dtype="float64")}
+                        if trace is not None
+                        else {}
+                    ),
+                },
+                lambda: ridge.predict(dataset, segment="test"),
+                lambda result: {"scores": result},
+            )
         coefficients = np.asarray(ridge.coef_, dtype="float64")
         if not np.isfinite(coefficients).all():
             raise RuntimeError("Qlib ridge produced non-finite coefficients")
@@ -762,7 +831,31 @@ def _fold_model(
             ),
             pl.lit(ridge_hash).alias("model_hash"),
         )
-        predictions, ensemble_diagnostics = rank_ensemble_v1(predictions, ridge_predictions)
+        predictions, ensemble_diagnostics = observe_call(
+            trace,
+            "rank_ensemble",
+            "assemble",
+            {
+                "context": context,
+                **(
+                    {
+                        "lightgbm_predictions": predictions.write_json(),
+                        "ridge_predictions": ridge_predictions.write_json(),
+                        "lightgbm_scores": scores,
+                        "ridge_scores": ridge_scores,
+                        "lightgbm_state": fitted_state(None)["state"],
+                        "ridge_state": coefficients,
+                    }
+                    if trace is not None
+                    else {}
+                ),
+            },
+            lambda: rank_ensemble_v1(predictions, ridge_predictions),
+            lambda result: {
+                "predictions": result[0].write_json(),
+                "diagnostics": result[1].write_json(),
+            },
+        )
         ridge_diagnostic = {
             "recipe": "qlib_ridge_v1",
             "alpha": 1.0,
@@ -1215,7 +1308,12 @@ def run_real(
     observation = _observation if _observation is not None else FitInvocation()
     observation.start()
     try:
-        result = _run_real(exchange_dir, worker_lock_path=worker_lock_path, observation=observation)
+        result = _run_real(
+            exchange_dir,
+            worker_lock_path=worker_lock_path,
+            observation=observation,
+            observe_legacy=_observation is not None,
+        )
     except BaseException as exc:
         observation.failed(exc)
         raise
@@ -1224,7 +1322,11 @@ def run_real(
 
 
 def _run_real(
-    exchange_dir: Path, *, worker_lock_path: Path, observation: FitInvocation
+    exchange_dir: Path,
+    *,
+    worker_lock_path: Path,
+    observation: FitInvocation,
+    observe_legacy: bool = False,
 ) -> dict[str, Any]:
     """Train one deterministic CPU LightGBM per declared fold and publish portable OOS scores."""
     exchange_dir = Path(exchange_dir)
@@ -1238,7 +1340,7 @@ def _run_real(
     def verify_source() -> None:
         if adapter_hash is not None and source_fingerprint() != adapter_hash:
             raise RuntimeError("worker adapter source changed during execution")
-        if adapter_hash is not None and (
+        if (adapter_hash is not None or observe_legacy) and (
             sha256_file(exchange_dir / "request.json") != request_hash
             or sha256_file(exchange_dir / "panel.parquet") != request.payload["panel"]["sha256"]
             or sha256_file(worker_lock_path) != request.payload["worker_lock_hash"]
@@ -1255,6 +1357,17 @@ def _run_real(
             f"expected {actual_lock_hash}"
         )
     verify_source()
+    if observe_legacy and adapter_hash is None:
+        observation.bind(
+            {
+                "request_schema_version": request.payload["schema_version"],
+                "recipe": request.payload["model"]["name"],
+                "request_sha256": request_hash,
+                "panel_sha256": request.payload["panel"]["sha256"],
+                "snapshot_sha256": request.payload["snapshot_hash"],
+                "worker_lock_sha256": actual_lock_hash,
+            }
+        )
     qlib_module, lightgbm_module = require_real_dependencies()
     _official_feature_names()
     features = alpha158_features(request.panel)
@@ -1265,7 +1378,7 @@ def _run_real(
     provenance_folds: list[dict[str, Any]] = []
     importances: list[list[tuple[str, float, int]]] = []
     for fold in request.folds:
-        trace = FitTrace() if adapter_hash is not None else None
+        trace = FitTrace() if adapter_hash is not None or observe_legacy else None
         if trace is not None:
             observation.folds[int(fold["fold"])] = trace
         predictions, diagnostic, importance, ensemble_diagnostics = _fold_model(

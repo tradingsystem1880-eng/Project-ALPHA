@@ -12,7 +12,7 @@ import stat
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict
 
 from alpha_cli.ml_contract import MLContractError, canonical_json_bytes
 from alpha_cli.ml_refit import _file_snapshot
@@ -266,6 +266,217 @@ def fingerprint_worker(project: Path) -> WorkerFingerprintV1:
     except OSError as exc:
         raise MLContractError("W09 dependencies are unavailable") from exc
     return WorkerFingerprintV1(tuple((name, snapshot[0]) for name, snapshot in before.items()))
+
+
+def bind_worker_observations(
+    manifest: W09ManifestV1, snapshot: dict[str, Any], *, worker_project: Path
+) -> dict[str, object]:
+    """Join untrusted local diagnostics to planned IDs, never to completed accounting.
+
+    Current first-party files can be compared with the declared dependency identity.
+    This does not attest the source/binaries used by a past invocation, authenticate
+    records, verify fitted state, or turn a copied/forged trace into execution proof.
+    """
+    validate_manifest(manifest)
+    protocol = manifest.protocol
+    fingerprint = fingerprint_worker(worker_project)
+    if fingerprint.sha256 != protocol.dependency_sha256:
+        raise MLContractError("W09 current dependencies differ from the declared identity")
+    context = {
+        "request_schema_version": protocol.request_schema_version,
+        "recipe": protocol.recipe,
+        "request_sha256": protocol.request_sha256,
+        "panel_sha256": protocol.panel_sha256,
+        "snapshot_sha256": protocol.snapshot_sha256,
+        "worker_lock_sha256": dict(fingerprint.files)["uv.lock"],
+    }
+    bindings = []
+    try:
+        if (
+            set(snapshot) != {"authority", "status", "error_type", "context", "folds"}
+            or type(snapshot["context"]["request_schema_version"]) is not int
+            or type(snapshot["folds"]) is not dict
+            or snapshot["authority"] != "invocation_local_observation_only"
+            or snapshot["status"] != "completed"
+            or snapshot["error_type"] is not None
+            or snapshot["context"] != context
+            or set(snapshot["folds"]) != {str(fold) for fold in protocol.folds}
+        ):
+            raise MLContractError("W09 invocation context or completion differs")
+        for fold in protocol.folds:
+            nodes = [node for node in manifest.components if node.fold == fold]
+            expected = [
+                (node.name, operation)
+                for node in nodes
+                for operation in (node.operation, "predict")
+                if operation != "predict" or node.name in {"lightgbm", "ridge"}
+            ]
+            sealed = snapshot["folds"][str(fold)]
+            events = sealed["events"]
+            if (
+                set(sealed) != {"events", "trace_sha256"}
+                or not isinstance(events, list)
+                or len(events) != len(expected)
+                or sealed["trace_sha256"] != _hash(events)
+            ):
+                raise MLContractError("W09 observation graph or trace identity differs")
+            by_call = {}
+            for index, (event, call) in enumerate(zip(events, expected, strict=True)):
+                if set(event) != {
+                    "sequence",
+                    "component",
+                    "operation",
+                    "status",
+                    "error_type",
+                    "input_hashes",
+                    "input_row_counts",
+                    "input_row_ids_sha256",
+                    "output_hashes",
+                    "state_sha256",
+                } or any(
+                    type(event[key]) is not dict
+                    for key in (
+                        "input_hashes",
+                        "input_row_counts",
+                        "input_row_ids_sha256",
+                        "output_hashes",
+                    )
+                ):
+                    raise MLContractError("Unsupported W09 observation fields")
+                outputs = event["output_hashes"]
+                if call[0] == "normalizer":
+                    output_fields = {
+                        "state",
+                        "train_features",
+                        "other_0_features",
+                        "other_1_features",
+                    }
+                elif call[0].startswith("label."):
+                    output_fields = {"state", "normalized_labels"}
+                elif call[1] == "fit":
+                    output_fields = {"state"}
+                elif call[1] == "predict":
+                    output_fields = {"scores"}
+                else:
+                    output_fields = {"predictions", "diagnostics"}
+                if (
+                    type(event["sequence"]) is not int
+                    or event["sequence"] != index
+                    or (event["component"], event["operation"]) != call
+                    or event["status"] != "completed"
+                    or event["error_type"] is not None
+                    or set(outputs) != output_fields
+                    or event["state_sha256"] != outputs.get("state", _hash(outputs))
+                ):
+                    raise MLContractError("W09 observation sequence or state differs")
+                for digest in [*event["input_hashes"].values(), *outputs.values()]:
+                    _require_hash(digest)
+                rows = event["input_row_ids_sha256"]
+                counts = event["input_row_counts"]
+                if set(rows) != set(counts) or not set(rows) <= set(event["input_hashes"]):
+                    raise MLContractError("W09 observation row metadata differs")
+                for key, digest in rows.items():
+                    _require_hash(digest)
+                    if type(counts[key]) is not int or counts[key] <= 0:
+                        raise MLContractError(
+                            "W09 observation row counts must be positive integers"
+                        )
+                if event["component"] in {"lightgbm", "ridge", "rank_ensemble"} and (
+                    event["input_hashes"].get("context")
+                    != _hash({"request_sha256": protocol.request_sha256, "fold": fold})
+                ):
+                    raise MLContractError("W09 observation is bound to another request/fold")
+                by_call[call] = event
+            for model in ["lightgbm", *(["ridge"] if protocol.request_schema_version == 2 else [])]:
+                fitted = by_call[model, "fit"]
+                predicted = by_call[model, "predict"]
+                links = [
+                    (by_call["normalizer", "fit"], "train_features", fitted, "train_features"),
+                    (
+                        by_call["label.train", "transform"],
+                        "normalized_labels",
+                        fitted,
+                        "train_labels",
+                    ),
+                    (by_call["normalizer", "fit"], "other_1_features", predicted, "test_features"),
+                ]
+                if model == "lightgbm":
+                    links += [
+                        (
+                            by_call["normalizer", "fit"],
+                            "other_0_features",
+                            fitted,
+                            "validation_features",
+                        ),
+                        (
+                            by_call["label.validation", "transform"],
+                            "normalized_labels",
+                            fitted,
+                            "validation_labels",
+                        ),
+                    ]
+                elif any(key.startswith("validation_") for key in fitted["input_hashes"]):
+                    raise MLContractError("W09 ridge observation consumed validation inputs")
+                train = by_call["normalizer", "fit"]
+                aligned = [
+                    (by_call["label.train", "transform"], "labels"),
+                    (fitted, "train_features"),
+                    (fitted, "train_labels"),
+                ]
+                for consumer, input_name in aligned:
+                    for field in ("input_row_counts", "input_row_ids_sha256"):
+                        if train[field].get("train") is None or train[field].get(
+                            "train"
+                        ) != consumer[field].get(input_name):
+                            raise MLContractError("W09 fitted training rows are unlinked")
+                if model == "lightgbm":
+                    valid = by_call["label.validation", "transform"]
+                    for field in ("input_row_counts", "input_row_ids_sha256"):
+                        for input_name in ("validation_features", "validation_labels"):
+                            if valid[field].get("labels") is None or valid[field].get(
+                                "labels"
+                            ) != fitted[field].get(input_name):
+                                raise MLContractError("W09 fitted validation rows are unlinked")
+                if predicted["input_hashes"].get("model_state") != fitted["state_sha256"]:
+                    raise MLContractError("W09 prediction state is unlinked from its fit")
+                for producer, output, consumer, input_name in links:
+                    produced = producer["output_hashes"].get(output)
+                    if produced is None or produced != consumer["input_hashes"].get(input_name):
+                        raise MLContractError("W09 preprocessing/model observations are unlinked")
+                if protocol.request_schema_version == 2:
+                    assembled = by_call["rank_ensemble", "assemble"]
+                    if (
+                        assembled["input_hashes"].get(f"{model}_state") != fitted["state_sha256"]
+                        or assembled["input_hashes"].get(f"{model}_scores")
+                        != predicted["output_hashes"]["scores"]
+                    ):
+                        raise MLContractError("W09 fixed assembly is unlinked from its members")
+            for node in nodes:
+                bindings.append(
+                    {
+                        "component_id": node.component_id,
+                        "fold": fold,
+                        "event_sequence": by_call[node.name, node.operation]["sequence"],
+                    }
+                )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise MLContractError(f"Unsupported W09 observation snapshot: {exc}") from exc
+    return {
+        "status": "STRUCTURALLY_BOUND",
+        "authority": "engineering_observation_only",
+        "protocol_id": protocol.protocol_id,
+        "manifest_id": manifest.manifest_id,
+        "component_bindings": bindings,
+        "current_dependency_sha256": fingerprint.sha256,
+        "runtime_dependency_identity": "UNVERIFIED",
+        "fitted_state_verified": False,
+        "durable_accounting_verified": False,
+        "execution_allowed": False,
+        "reuse_allowed": False,
+        "approved_resource_units": None,
+        "independent_trials": None,
+        "promotion_allowed": False,
+    }
 
 
 class W09Readiness(TypedDict):

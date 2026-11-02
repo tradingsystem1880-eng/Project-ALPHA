@@ -560,3 +560,31 @@ not a universal per-tree waiver or an exception for unrelated future features.
 It grants no private-source reads/edits, GitHub APPROVE action, force/bypass, new ledger
 or scheduler, native Qlib registration/admission, real-data fitting, reuse authorization,
 scientific resource-unit policy, promotion, data acquisition or Mac operations.
+
+## W09 invocation-observation through-delivery absence exception — 2026-11-02
+
+The owner separately approved an absence-only private-suite exception for the bounded
+W09 component-observation slice and its necessary corrections, through normal guarded
+commit/push, draft PR creation, ready-for-review transition and merge of
+`feat/w09-component-observations` into `main` in
+`tradingsystem1880-eng/Project-ALPHA`, after all required public qualification and final
+independent review pass. Authorization provenance is retained privately. This is a new
+scope, not an extension inferred from the earlier planning-only exception.
+
+Scope is the retained v1/v2 worker's private invocation-local FitTrace/FitInvocation
+hooks and snapshots, structural bindings to existing W09 planning identities, strict
+diagnostic shape/link validation, covering synthetic engineering tests, and necessary
+documentation/generated-output integration. It preserves v1/v2 numerical computation
+and serialization, v3/W11 behavior, and the worker/CLI/ControlStore separation.
+
+Only documented ABSENCE of `tests/holdout/` is informational and nonblocking. Private
+coverage remains UNVERIFIED, never PASS. Present-suite failures, collection errors,
+other unrunnable checks and software findings still BLOCK. All public checks, the
+unchanged 93% coverage floor and exclusions, fresh exact-tree qualification and final
+independent review, README evidence, normal attestations and Git guards remain mandatory.
+Ordinary existing synthetic engineering fixtures are allowed. This exception covers
+necessary corrections through this delivery, not unrelated or future features.
+
+No private-source reads/edits, GitHub APPROVE action, force/bypass, native research
+registration/admission/execution, real-data fits, data acquisition, resource/retry/refund/
+reuse policy, durable accounting replacement, promotion or Mac operations are granted.

@@ -115,7 +115,7 @@ binds declared project/experiment/contract and request/panel/snapshot references
 LightGBM computation; v2 additionally describes the train-only ridge member and fixed
 rank assembly. Assembly is not a learned fit, and operation counts are not approved
 resource units or independent trials. These are declared references, not record lookups
-or verified panels. No CLI command, native registry entry or execution hook is added.
+or verified panels. The planning API adds no CLI command, native registry entry or dispatch.
 
 The fingerprint covers the supported first-party worker package, schemas, project and
 lock, including rank-ensemble code. Source reads are bounded and mutation-checked; this
@@ -124,6 +124,41 @@ with execution/reuse/fitted-state verification false and observed work unknown. 
 [bounded plan](../../docs/superpowers/plans/2026-11-01-w09-planning-contracts.md)
 records limits and qualification requirements. This does not extend the separate W11
 ridge/DoubleEnsemble reference protocol or change existing v1/v2 outputs/computations.
+
+## W09 invocation observations
+
+The existing private `run_real(..., _observation=FitInvocation())` diagnostic seam also
+observes retained v1/v2 calls. Normalization, label transforms, LightGBM and train-only
+ridge fitting retain their computations; prediction and fixed rank assembly are distinct
+operations. Fits close only after returned state is observed, before prediction begins,
+so later prediction/assembly failures retain genuine earlier observations. An absent
+booster has no completed state observation. Original exceptions propagate. Later-fold or
+publication errors still fail the invocation; existing per-artifact publication is not
+an atomic transaction.
+
+Explicit legacy observation requires canonical request bytes and rechecks request/panel/
+lock identity before publication. V1/v2 serialized results and artifact sets are unchanged;
+the detached `FitInvocation.snapshot()` stays in memory unless a caller separately saves
+its diagnostics. It is not a new worker exchange artifact or durable accounting record.
+The existing declarative diagnostic `fit_count` is not observed spend or a fit allowance.
+
+`ml_native_plan.bind_worker_observations` joins complete diagnostic call sequences to
+declared W09 component IDs. It checks request/fold/lock bindings, preprocessing and model
+state links, train-only ridge inputs and current first-party dependency identity. Polars
+member/prediction/diagnostic frames are hashed through their JSON representation, including
+columns, row order, keys, lineage and scores. Assembly remains deterministic computation,
+not another learned fit. Failure/partial snapshots remain inspectable but cannot pass the
+complete structural binding check. Planned identities alone cannot pass it either.
+
+Structural matching is not authentication or proof that calls occurred. Current-file
+fingerprinting is distinct from the source/binaries actually used by a past invocation;
+runtime identity remains `UNVERIFIED`. The older W11 source fingerprint has a different
+domain and is not treated as the W09 dependency identity. Binding reports keep fitted-state
+verification, durable accounting, execution, reuse and promotion false, with no approved
+resource units or independent-trial count. ControlStore remains the durable authority;
+there is no native registration, resource-policy change, retry/refund/reuse authorization
+or research dispatch here. V3/W11 computation and reference graph classification stay
+unchanged. See the [bounded observation plan](../../docs/superpowers/plans/2026-11-02-w09-component-observations.md).
 
 ## Gate
 
