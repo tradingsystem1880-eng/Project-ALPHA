@@ -84,7 +84,12 @@ class W09ProtocolV1:
 
     def __post_init__(self) -> None:
         _require_uuid(self.project_id)
-        _require_uuid(self.experiment_id)
+        # Keep already-issued inert UUID plans stable; durable associations require
+        # the actual ControlStore content identity and project membership.
+        if isinstance(self.experiment_id, str) and self.experiment_id.startswith("ex_"):
+            _require_hash(self.experiment_id[3:])
+        else:
+            _require_uuid(self.experiment_id)
         if not isinstance(self.contract_id, str) or not self.contract_id.startswith("rc_"):
             raise MLContractError("W09 contract reference requires an rc_ identity")
         _require_hash(self.contract_id[3:])
@@ -282,13 +287,38 @@ def bind_worker_observations(
     fingerprint = fingerprint_worker(worker_project)
     if fingerprint.sha256 != protocol.dependency_sha256:
         raise MLContractError("W09 current dependencies differ from the declared identity")
+    bindings = _completed_bindings(manifest, snapshot, dict(fingerprint.files)["uv.lock"])
+    return {
+        "status": "STRUCTURALLY_BOUND",
+        "authority": "engineering_observation_only",
+        "protocol_id": protocol.protocol_id,
+        "manifest_id": manifest.manifest_id,
+        "component_bindings": bindings,
+        "current_dependency_sha256": fingerprint.sha256,
+        "runtime_dependency_identity": "UNVERIFIED",
+        "fitted_state_verified": False,
+        "durable_accounting_verified": False,
+        "execution_allowed": False,
+        "reuse_allowed": False,
+        "approved_resource_units": None,
+        "independent_trials": None,
+        "promotion_allowed": False,
+    }
+
+
+def _completed_bindings(
+    manifest: W09ManifestV1, snapshot: dict[str, Any], worker_lock_sha256: str
+) -> list[dict[str, Any]]:
+    """Pure completed-graph checks for current writes and historical diagnostic reads."""
+    validate_manifest(manifest)
+    protocol = manifest.protocol
     context = {
         "request_schema_version": protocol.request_schema_version,
         "recipe": protocol.recipe,
         "request_sha256": protocol.request_sha256,
         "panel_sha256": protocol.panel_sha256,
         "snapshot_sha256": protocol.snapshot_sha256,
-        "worker_lock_sha256": dict(fingerprint.files)["uv.lock"],
+        "worker_lock_sha256": worker_lock_sha256,
     }
     bindings = []
     try:
@@ -461,22 +491,7 @@ def bind_worker_observations(
                 )
     except (KeyError, TypeError, ValueError) as exc:
         raise MLContractError(f"Unsupported W09 observation snapshot: {exc}") from exc
-    return {
-        "status": "STRUCTURALLY_BOUND",
-        "authority": "engineering_observation_only",
-        "protocol_id": protocol.protocol_id,
-        "manifest_id": manifest.manifest_id,
-        "component_bindings": bindings,
-        "current_dependency_sha256": fingerprint.sha256,
-        "runtime_dependency_identity": "UNVERIFIED",
-        "fitted_state_verified": False,
-        "durable_accounting_verified": False,
-        "execution_allowed": False,
-        "reuse_allowed": False,
-        "approved_resource_units": None,
-        "independent_trials": None,
-        "promotion_allowed": False,
-    }
+    return bindings
 
 
 class W09Readiness(TypedDict):

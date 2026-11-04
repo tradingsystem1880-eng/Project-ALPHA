@@ -3252,3 +3252,25 @@ activation, worker setup and frontend behavior are untouched. The reviewer scope
 keeps private coverage UNVERIFIED and every real failure blocking. The unchanged full gate,
 93% floor, README evidence and exact-final-tree independent review remain mandatory;
 their receipts establish acceptance separately from the historical focused checks above.
+
+
+### 2026-11-04 — W09 durable diagnostic integration and authorization
+
+The bounded worker checkpoint and ControlStore association candidate preserves observed
+prefixes in existing job events, with atomic cursor updates, exact scope validation,
+idempotent delivery and failed/unknown recovery. It creates no attempt or second ledger
+and changes no accounting, native admission, numerical recipe or v3 behavior. Existing
+attempt/run references remain unverified. Historical source review independently passed
+108 root and 62 worker cases, including crash, lost-acknowledgement and concurrent delivery;
+original failed checks remain retained separately. These are not final-tree acceptance.
+
+The owner separately approved this slice, necessary corrections, an absence-only private
+exception and normal guarded delivery. Private coverage remains UNVERIFIED. After PR112
+and PR113, the original ten-path candidate patch was verified against its retained SHA-256
+`5d6ca04e78c39954af0e3efded186bf3239d99fa5b3a7bb3d2c4c18f437b32be`
+and integrated without source conflicts onto main `df827032`. Shared README/manual/build
+and generated Atlas reconciliation are included. Final exact-tree full public checks,
+the unchanged 93% floor, independent review and normal guards remain mandatory; their
+receipts establish acceptance separately from this preparation record.
+
+Plan: [W09 durable diagnostic associations](superpowers/plans/2026-11-02-w09-durable-observations.md).

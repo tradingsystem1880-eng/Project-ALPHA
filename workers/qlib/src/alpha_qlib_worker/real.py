@@ -460,7 +460,7 @@ def _normalize_label(
         return result
     except BaseException as exc:
         if recorder is not None and token is not None:
-            recorder.failed(token, exc)
+            recorder.failed_if_entered(token, exc)
         raise
 
 
@@ -505,7 +505,7 @@ def _normalize_features(
         return normalized_train, normalized_others, normalization_hash, all_missing
     except BaseException as exc:
         if recorder is not None and token is not None:
-            recorder.failed(token, exc)
+            recorder.failed_if_entered(token, exc)
         raise
 
 
@@ -1368,6 +1368,7 @@ def _run_real(
                 "worker_lock_sha256": actual_lock_hash,
             }
         )
+    observation.require_checkpoint_context()
     qlib_module, lightgbm_module = require_real_dependencies()
     _official_feature_names()
     features = alpha158_features(request.panel)
@@ -1378,9 +1379,11 @@ def _run_real(
     provenance_folds: list[dict[str, Any]] = []
     importances: list[list[tuple[str, float, int]]] = []
     for fold in request.folds:
-        trace = FitTrace() if adapter_hash is not None or observe_legacy else None
-        if trace is not None:
-            observation.folds[int(fold["fold"])] = trace
+        trace = (
+            observation.new_trace(int(fold["fold"]))
+            if adapter_hash is not None or observe_legacy
+            else None
+        )
         predictions, diagnostic, importance, ensemble_diagnostics = _fold_model(
             request=request,
             samples=samples,

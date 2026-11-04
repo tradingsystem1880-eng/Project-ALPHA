@@ -622,3 +622,28 @@ component, the unchanged 93% floor and exclusions, exact-final-tree qualificatio
 independent review, README evidence, attestations and Git guards remain mandatory.
 This grants no private-source access, GitHub APPROVE action, force/bypass, threshold
 weakening, research activation, data acquisition, hosting or Mac operations.
+
+
+## W09 durable-diagnostic through-delivery absence exception — 2026-11-04
+
+The owner explicitly approved “Persist W09 diagnostic associations without changing
+accounting” on `feat/w09-durable-observations`, including necessary fixes, its own
+absence-only private-suite exception, full public qualification, guarded commit/push,
+draft PR, ready transition and normal merge into `tradingsystem1880-eng/Project-ALPHA:main`.
+Authorization provenance is retained privately. This scope covers private v1/v2 worker
+checkpoints, bounded associations with existing inert reservation/job identities in the
+existing job journal, recovery and duplicate/concurrent-delivery tests, and necessary
+documentation/generated-output integration. Earlier planning/observation exceptions
+are not extended by inference.
+
+Only documented ABSENCE of `tests/holdout/` is informational and nonblocking. Private
+coverage remains UNVERIFIED, never PASS. Present-suite failures, collection errors,
+other unrunnable checks and software findings still BLOCK. All public components, the
+unchanged 93% floor and exclusions, exact-final-tree qualification and independent
+review, README evidence, attestations and Git guards remain mandatory. Ordinary
+isolated synthetic engineering fixtures are allowed; live records are not altered.
+
+This grants no protected-source reads/edits, GitHub APPROVE action, force/bypass,
+native research admission, real-data execution, charging/refund/retry/reuse policy,
+new ledger, data acquisition or Mac activity. Diagnostic associations and planned IDs
+are not durable accounting, authenticated execution or verified fitted-state evidence.

@@ -12052,6 +12052,39 @@ class ControlStore:
 
         return record(self, job_id, observation)
 
+    def record_w09_diagnostic(
+        self,
+        job_id: str,
+        reservation_id: str,
+        manifest: object,
+        checkpoint: bytes,
+        *,
+        worker_project: Path,
+    ) -> dict[str, object]:
+        """Internal diagnostic association; never admission, accounting or dispatch."""
+        from alpha_cli._ml_observation_store import record
+        from alpha_cli.ml_native_plan import W09ManifestV1
+
+        if type(manifest) is not W09ManifestV1:
+            raise DataError("W09 diagnostic requires its typed manifest")
+        return record(
+            self, job_id, reservation_id, manifest, checkpoint, worker_project=worker_project
+        )
+
+    def read_w09_diagnostic(
+        self,
+        job_id: str,
+        reservation_id: str,
+        manifest: object,
+        invocation_id: str,
+    ) -> dict[str, object]:
+        from alpha_cli._ml_observation_store import read
+        from alpha_cli.ml_native_plan import W09ManifestV1
+
+        if manifest is not None and type(manifest) is not W09ManifestV1:
+            raise DataError("W09 diagnostic requires its typed manifest")
+        return read(self, job_id, reservation_id, manifest, invocation_id)
+
     def heartbeat_native_fixture(self, job_id: str, owner: object) -> None:
         from alpha_cli._native_fixture_store import heartbeat
 
