@@ -72,6 +72,14 @@ The frontend component runs `npm run build` once, including TypeScript, before
 `test:e2e:built`. The standalone `test:e2e` still builds first; use the built-only
 command only after a fresh build. API and SPA freshness remain required.
 
+The hosted backend job starts the stdlib-only runner with
+`uv run --no-project --python 3.12 python scripts/gate.py component backend`.
+Its unchanged first steps, `uv lock --check` and `uv sync --locked`, own root
+dependency setup, including cold starts and repair of missing packages. The job
+does not first run a separate root sync or an implicit project sync. Other jobs
+retain their setup: workers use isolated projects, and frontend browser provisioning
+requires installed, locked Playwright dependencies. No gate step is skipped.
+
 For a focused browser invocation, `scripts/playwright_evidence.py prepare` allocates
 fresh absolute output paths and checks a listing through the existing process owner:
 

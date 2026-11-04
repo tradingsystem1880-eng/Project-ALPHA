@@ -681,6 +681,7 @@
     "tests/unit/test_ccxt_parser.py": "1744a9585814508ac76f86321004d53b63eb52c802e974ad9da50ebbf18e9270",
     "tests/unit/test_chart_overlays.py": "d5ca357c62e9ba8deae88fcf80d826a7e23c591c2626d4b5f6f8bca3d10c1865",
     "tests/unit/test_chart_overlays_bias_guard.py": "3b8e4c79595a0f0bf27bb23b2195afde3d2ae0731558cb534c5b936500ffa4bd",
+    "tests/unit/test_ci_backend_bootstrap.py": "f4d3155bea045187bc2d7f1bdb91605b56c31fc445921c0cefbb51c06be05b03",
     "tests/unit/test_claude_harness_codex_bridge.py": "786a770a4ffc28894d20b176ec5f586bad872547967ee960307e1b343d6cf197",
     "tests/unit/test_claude_harness_gate.py": "4a56dca0d9bd38763ea0c5b56d413eb64d7a03cd8f80928d7468e96186b23703",
     "tests/unit/test_claude_harness_hooks.py": "b967ba8fe3bd95ef2c1b87e2987a0634a0c37d350b62c4d9038f2b63f0e5976f",
