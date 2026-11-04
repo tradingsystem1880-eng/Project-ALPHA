@@ -160,6 +160,32 @@ there is no native registration, resource-policy change, retry/refund/reuse auth
 or research dispatch here. V3/W11 computation and reference graph classification stay
 unchanged. See the [bounded observation plan](../../docs/superpowers/plans/2026-11-02-w09-component-observations.md).
 
+## Durable diagnostic associations
+
+The private `FitInvocation(checkpoint=..., checkpoint_scope=...)` option emits
+canonical JSON checkpoints synchronously before and after observed v1/v2 calls.
+The scope names one job, reservation, manifest and invocation. A caller must persist
+the checkpoint before acknowledging it; missing entry acknowledgement prevents the
+call. A lost completion acknowledgement preserves the completed observation and
+stops continuation. Checkpoint delivery for unsupported/unbound invocations,
+including v3, fails before fitted calls; ordinary v3 behavior remains unchanged.
+
+`ControlStore.record_w09_diagnostic` associates these diagnostics with an existing
+inert D1 reservation in the existing job journal. It rejects rule/native-owner jobs,
+cross-scope records and conflicting or regressive deliveries. Exact duplicates are
+idempotent. Delta writes and the job cursor commit together. `read_w09_diagnostic`
+can recover the declared manifest from the initial journal entry without worker
+files; incomplete calls stay unknown, and earlier completions survive later failure.
+Planned IDs alone have no observed state. Existing attempt/run references remain
+explicitly unverified; no run artifact verification follows from the association.
+
+This is a local trusted-writer diagnostic mechanism, not execution authentication,
+Qlib admission or proof that the reservation covers these fits. It creates no attempt,
+changes no charge/refund/retry/reuse policy, and enables no native dispatch. The
+current slice has isolated synthetic engineering tests. Its bounded delivery has an
+absence-only private-suite exception: private coverage stays UNVERIFIED, while all
+public checks, the 93% floor and independent final-tree review remain mandatory. See the [durable diagnostic plan](../../docs/superpowers/plans/2026-11-02-w09-durable-observations.md).
+
 ## Gate
 
 The [W11 engineering packet](../../docs/superpowers/plans/2026-10-26-qlib-w11-refit.md)

@@ -297,8 +297,12 @@ The existing Qlib recipes now have an [inert W09 planning API](workers/qlib/READ
 for metadata identities, source fingerprints and prospective component graphs. It does not
 admit or dispatch fits, verify fitted state, or authorize reuse. Private, opt-in
 [worker observations](workers/qlib/README.md#w09-invocation-observations) describe calls within
-one invocation and can be structurally compared with those identities. They do not establish
-durable accounting or completed research evidence. Native Qlib parity remains open.
+one invocation and can be structurally compared with those identities. Opt-in
+[durable diagnostic associations](workers/qlib/README.md#durable-diagnostic-associations)
+retain acknowledged checkpoints in the existing job journal, bound to an existing reservation.
+Interrupted calls stay unknown; duplicate delivery does not repeat activity. These diagnostics
+do not establish durable accounting, verified fitted state or completed research evidence.
+Native Qlib parity remains open.
 
 The [context index](docs/context/README.md) links the deeper maps; the
 [build record](docs/BUILD-STATUS.md) preserves dated delivery evidence.

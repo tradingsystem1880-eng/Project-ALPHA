@@ -77,8 +77,13 @@ def value_digest(value: object) -> str:
 class FitTrace:
     """Record entry and the observed return or failure of one actual call."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, checkpoint: Callable[[], None] | None = None) -> None:
         self._events: list[dict[str, Any]] = []
+        self._checkpoint = checkpoint
+
+    def _notify(self) -> None:
+        if self._checkpoint is not None:
+            self._checkpoint()
 
     def begin(self, component: str, operation: str, inputs: Mapping[str, object]) -> int:
         if not component or operation not in {
@@ -110,6 +115,7 @@ class FitTrace:
                 "error_type": None,
             }
         )
+        self._notify()
         return sequence
 
     def _active(self, sequence: int) -> dict[str, Any]:
@@ -130,9 +136,20 @@ class FitTrace:
             output_hashes=hashes,
             state_sha256=hashes.get("state", _json_digest(hashes)),
         )
+        self._notify()
 
     def failed(self, sequence: int, error: BaseException) -> None:
         self._active(sequence).update(status="failed", error_type=type(error).__name__)
+        self._notify()
+
+    def failed_if_entered(self, sequence: int, error: BaseException) -> None:
+        """Preserve completed calls and the original exception if delivery fails."""
+        if self._events[sequence]["status"] == "entered":
+            try:
+                self.failed(sequence, error)
+            except Exception as checkpoint_error:
+                error.add_note(f"Observation checkpoint failed: {checkpoint_error!r}")
+                raise error from checkpoint_error
 
     def seal(self, *, require_complete: bool = True) -> dict[str, Any]:
         events = copy.deepcopy(self._events)
@@ -146,11 +163,44 @@ class FitTrace:
 class FitInvocation:
     """Private, single-invocation observation; never a durable accounting record."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        checkpoint: Callable[[bytes], None] | None = None,
+        checkpoint_scope: Mapping[str, str] | None = None,
+    ) -> None:
         self.status = "pending"
         self.error_type: str | None = None
         self.folds: dict[int, FitTrace] = {}
         self._context: dict[str, Any] | None = None
+        self._sink = checkpoint
+        self._checkpoint_scope = dict(checkpoint_scope or {})
+
+    def _checkpoint(self) -> None:
+        self.require_checkpoint_context()
+        if self._sink is not None:
+            snapshot = self.snapshot()
+            # A fold object can exist before any call (for example, validation
+            # fails immediately). Transport only observed calls, never empty
+            # planned folds; keep the ordinary in-memory snapshot unchanged.
+            snapshot["folds"] = {
+                fold: trace for fold, trace in snapshot["folds"].items() if trace["events"]
+            }
+            self._sink(
+                canonical_json_bytes({"scope": self._checkpoint_scope, "snapshot": snapshot})
+            )
+
+    def require_checkpoint_context(self) -> None:
+        if self._sink is not None and self._context is None:
+            raise RuntimeError("checkpoint delivery requires a supported bound v1/v2 invocation")
+
+    def new_trace(self, fold: int) -> FitTrace:
+        self.require_checkpoint_context()
+        if fold in self.folds:
+            raise RuntimeError("fitted-component fold cannot be reused")
+        trace = FitTrace(checkpoint=self._checkpoint)
+        self.folds[fold] = trace
+        return trace
 
     def start(self) -> None:
         if self.status != "pending" or self.folds:
@@ -160,14 +210,21 @@ class FitInvocation:
     def failed(self, error: BaseException) -> None:
         self.status = "failed"
         self.error_type = type(error).__name__
+        try:
+            self._checkpoint()
+        except Exception as checkpoint_error:
+            error.add_note(f"Observation checkpoint failed: {checkpoint_error!r}")
+            raise error from checkpoint_error
 
     def complete(self) -> None:
         self.status = "completed"
+        self._checkpoint()
 
     def bind(self, context: Mapping[str, Any]) -> None:
         if self.status != "entered" or self._context is not None:
             raise RuntimeError("fitted-component invocation cannot be rebound")
         self._context = copy.deepcopy(dict(context))
+        self._checkpoint()
 
     def snapshot(self) -> dict[str, Any]:
         """Detached diagnostic snapshot, including incomplete/failed actual calls."""
@@ -199,7 +256,9 @@ def observe_call(
         recorder.complete(sequence, outputs(result))
         return result
     except BaseException as exc:
-        recorder.failed(sequence, exc)
+        # Delivery can fail after the completed observation was committed. Never
+        # relabel that actual completion as a failed model call.
+        recorder.failed_if_entered(sequence, exc)
         raise
 
 
