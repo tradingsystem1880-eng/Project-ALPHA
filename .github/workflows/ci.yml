@@ -21,12 +21,11 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
-      - name: Install (locked)
-        run: uv sync --locked
       - name: Shared backend gate
         env:
           ALPHA_GATE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: uv run python scripts/gate.py component backend
+        # The stdlib-only runner owns uv lock --check and uv sync --locked.
+        run: uv run --no-project --python 3.12 python scripts/gate.py component backend
 
   harness:
     # Real Git guards and thin optional agent adapters verify themselves.

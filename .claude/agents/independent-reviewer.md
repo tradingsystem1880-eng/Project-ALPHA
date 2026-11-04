@@ -605,3 +605,20 @@ exclusions, exact-final-tree full public qualification, independent review, READ
 evidence, normal attestations and Git guards remain mandatory. No GitHub APPROVE
 review, force/bypass, protected-source read/edit, strategy activation, research run,
 data acquisition, hosting or Mac operation is authorized by this exception.
+
+## Backend CI setup through-delivery absence exception — 2026-11-02
+
+The owner explicitly approved “Avoid repeated backend CI dependency setup” on
+`codex/backend-setup-dedup`, including necessary fixes, full public qualification,
+guarded commit/push, draft PR, ready transition and normal merge into
+`tradingsystem1880-eng/Project-ALPHA:main`. Authorization provenance is retained
+privately. This applies only to backend CI bootstrap deduplication, its editable
+setup regressions and necessary documentation/generated-output integration.
+
+Only documented ABSENCE of `tests/holdout/` is informational and nonblocking.
+Private coverage remains UNVERIFIED, never PASS. Actual failures, collection errors,
+other unrunnable checks and software findings still BLOCK. Every canonical public
+component, the unchanged 93% floor and exclusions, exact-final-tree qualification,
+independent review, README evidence, attestations and Git guards remain mandatory.
+This grants no private-source access, GitHub APPROVE action, force/bypass, threshold
+weakening, research activation, data acquisition, hosting or Mac operations.

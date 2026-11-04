@@ -3227,3 +3227,28 @@ not a final-tree aggregate pass or merged status; final receipts provide those r
 
 See the [canonical checklist amendment](context/feature-readiness-checklist-2026-10-27.md#retail-research-refinements-2-november-2026)
 and [context index](context/README.md). No strategy or research workflow was activated.
+
+### 2026-11-02 — Backend CI setup deduplication prepared
+
+On main `5da0a965`, the hosted backend job repeated root setup before the canonical
+component's lock check and locked sync. Its launcher now uses the stdlib-only,
+non-project uv path so the unchanged component owns setup. Other jobs and all quality
+commands, failure behavior and the 93% floor remain intact. The focused setup/runner/manual
+checks passed 98 cases; this is not a final coverage or hosted speedup claim.
+Cold/warm setup, missing-package repair, config/lock drift and real sync failure have
+isolated offline fixtures. Final integrated Atlas generation, README attestation, full
+qualification and independent review remain pending. Private coverage is UNVERIFIED;
+no prior absence exception or publication permission is adopted.
+
+Plan: [Backend CI setup ownership](superpowers/plans/2026-11-02-backend-setup-dedup.md).
+
+### 2026-11-04 — Backend setup delivery authorization and reconciliation
+
+The owner approved the bounded backend setup slice, necessary fixes, its own absence-only
+private-suite exception and normal guarded delivery. The second integration owner verified
+the original six-file patch/hashes before reconciling onto PR112 main `30246d08`; both
+appended build entries survive the sole conflict. Application source, accounting, research
+activation, worker setup and frontend behavior are untouched. The reviewer scope record
+keeps private coverage UNVERIFIED and every real failure blocking. The unchanged full gate,
+93% floor, README evidence and exact-final-tree independent review remain mandatory;
+their receipts establish acceptance separately from the historical focused checks above.
