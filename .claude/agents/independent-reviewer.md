@@ -588,3 +588,20 @@ necessary corrections through this delivery, not unrelated or future features.
 No private-source reads/edits, GitHub APPROVE action, force/bypass, native research
 registration/admission/execution, real-data fits, data acquisition, resource/retry/refund/
 reuse policy, durable accounting replacement, promotion or Mac operations are granted.
+
+## Retail research documentation through-delivery absence exception — 2026-11-02
+
+The owner explicitly approved the bounded “Integrate retail research refinements into
+the canonical plan” change on `docs/retail-research-refinements-20261102`, including
+necessary fixes, full public qualification, guarded commit/push, draft PR, ready
+transition and normal merge into `tradingsystem1880-eng/Project-ALPHA:main`.
+Authorization provenance is retained privately. This exception applies only to this
+canonical-v3 documentation reconciliation and its necessary delivery corrections.
+
+Only documented ABSENCE of `tests/holdout/` is informational and nonblocking. Private
+coverage stays UNVERIFIED, never PASS. Present-suite failures, collection errors, other
+unrunnable checks and software findings still BLOCK. The unchanged 93% coverage floor,
+exclusions, exact-final-tree full public qualification, independent review, README
+evidence, normal attestations and Git guards remain mandatory. No GitHub APPROVE
+review, force/bypass, protected-source read/edit, strategy activation, research run,
+data acquisition, hosting or Mac operation is authorized by this exception.

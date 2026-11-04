@@ -1,13 +1,15 @@
 <!-- docx-mirror:provenance:begin -->
 <!-- Mirror metadata, not source content. -->
-**Repository-readable mirror of the canonical full-scope checklist.** Canonical bytes: `Project_ALPHA_Comprehensive_Feature_Readiness_Checklist_2026-10-27_reconciled.docx` (not in Git). Where this mirror and the DOCX differ, the DOCX controls. Plans link here for full scope rather than copying it; this mirror marks no feature done and grants no authority.
+**Repository-readable mirror of the canonical full-scope checklist.** Canonical bytes: `Project_ALPHA_Comprehensive_Feature_Readiness_Checklist_2026-10-27_reconciled.docx` (not in Git). Current canonical version 3 was updated and byte-verified by the parent editor on 2 November 2026. This executor verified the supplied authored amendment text hash and applied it to the historical mirror; it could not materialize the DOCX locally. Whole-document byte/extraction parity is not claimed here. Where this mirror and the DOCX differ, the DOCX controls. Plans link here for full scope rather than copying it; this mirror marks no feature done and grants no authority.
 
 | Provenance | Value |
 |---|---|
-| Source SHA-256 | `ca06656cf4c873188373e9fa819c06d156c7e1224dcf61befeb8c5b636421cb2` |
-| Source bytes | 116,688 |
-| Page count | 55 at original delivery; not re-rendered or re-validated on this Mac |
-| Library reference | libfile_181ac6079dcc8191b222b76c1f10bf17, expected v1, as stated by the companion Build Readiness Handoff (SHA-256 f9a200f21a00463b2543f03fc1bdee1a0896b7d2687a16eaba7ce60e2d3c2130); the Library version was not verified by this conversion |
+| Current source SHA-256 (parent verified) | `f9c20abb705daac3b1189bea1d925176034288c6e214cff2a5138a1e9a6d6f33` |
+| Historical v1 SHA-256 | `ca06656cf4c873188373e9fa819c06d156c7e1224dcf61befeb8c5b636421cb2` |
+| Current source bytes (parent verified) | 120,666; historical v1: 116,688 |
+| Page count | 58 in version 3; parent reports all-page visual QA and independent preservation review passed. Historical v1: 55. Not rendered locally. |
+| Library reference | libfile_181ac6079dcc8191b222b76c1f10bf17, current version 3 verified by parent; local search previously resolved v1 before the update. Local materialization failed. |
+| Amendment verification | Authored text SHA-256 `b8642ba3474a498c16ab378c85102deae85f26bc4ea6b60a4613f2f11b8120bb` verified locally; parent reports complete extraction SHA-256 `e99daa806fbda7fe40fb8ffec3b8ae37b80fbb97c0cdc3077ddcd15010b7cca4`. Original conversion rows below describe historical v1. |
 | Core properties | title “Project ALPHA Feature Completion and Readiness”; subject “Comprehensive checklist reconciled 27 October 2026”; keywords “Project ALPHA, completion, readiness, feature checklist” |
 | Footer (every page) | “Project ALPHA  \|  ” followed by field PAGE |
 | Comments and tracked revisions | none present in the source package |
@@ -33,7 +35,7 @@ The present product is private, single-owner and noncommercial. Live trading is 
 | Is the full system production ready | Not established. Missing or unknown launch gates cannot be averaged away by partial progress or passing CI. |
 | What is implemented now | Bounded data/PIT/snapshot, research, backtest, portfolio, risk and visual foundations; reported native Linux gate, five-backend/eight-recipe tabular candidate and scoped synthetic W11 evidence. These do not accept the successor or real-data science. |
 | What most limits completion | Exact successor review/full gate; real-data native investigation and W19 restore/query path; governed native Qlib admission; full model/framework breadth; claim-specific scientific and operational acceptance. |
-| When could the full research system be ready | Treat the full scope as a multi-month program. No defensible finite completion range or delivery date is established; remaining work and delivery capacity must be measured first. |
+| When could the full research system be ready | Under one month is the owner-requested TARGET, not a forecast or gate waiver. No defensible finite completion range or delivery date is established; remaining work and delivery capacity must be measured first. |
 | When could later live trading be ready | A definite later phase, currently unsized. Venue, instruments, execution/risk requirements and paper or shadow observation must be specified before estimating it. |
 
 The 25 October dependency overlay revision 6 withdraws earlier forecasts and marks every work package unestimated. No finite end-to-end delivery range is currently defensible. Optional specialist catalogs, historical idea lists and later live execution are not extra units in the 19-package completion denominator.
@@ -804,6 +806,50 @@ Retain four synthetic failure cases, all NOT RUN: inaccessible original entry ti
 
 BK01-BK10 are small production-bound fixture candidates in existing key/null/query/clock, fitted-state and report contracts, including I02/I05 and RR05/RR09. Expected values are specifications, not observed passes. The final report corrects the historical left join to two total rows, one matched; its seven-row many-to-many case is separate. Chapter 12 does teach training-derived transformation state reuse. Version-dependent API/warning/alias/Arrow claims require the actual locked environment; installed ALPHA versions were not established here. No fixture proves provenance, PIT adequacy, economic transfer, causality, profitability or complete coverage.
 
+<!-- canonical-r02:refinements:begin -->
+### Retail research refinements 2 November 2026
+
+The completed research review adds six bounded refinements to existing owners and records, not a new architecture or work package. All acceptance proposals below are NOT RUN. Research completion is not implementation, scientific acceptance, profitability, paper readiness or live authority. Preserve W01-W19, all 25 declared model entries and their variants, the full historical scope, and non-HFT intraday and swing research. A daily first slice remains a bounded route, not a reduction of the broader remit.
+
+#### ALPHA R02 RR01 Source to strategy evidence
+
+Owners W04, W05, W07 and W18. Extend the existing source/specification and evidence projection with accessible source spans, population, instruments, sample period, signal and holding horizons, unit conventions, mechanism or explicitly predictive association, original versus adapted rules, contrary evidence and claim limits. Keep observation or event time, publication or release time, system availability or ingestion time, and decision or execution time distinct; a timestamp label alone does not establish eligibility. Record units for returns, volatility, turnover, costs and risk, including normalization and annualization.
+
+Acceptance proposal NOT RUN: an independent chronological fixture rejects a strategy using an observation before its actual availability; a declared-unit/schema conflict is rejected, known reference fixtures expose producer scaling errors, and a schema-valid false unit label remains undetectable without independent semantic evidence; unavailable originals cannot receive a faithful-replication label. Reuse PW01, I01-I06 and existing PIT records before adding fields. The Instagram original was unavailable; the completed ChatGPT review is a research synthesis, not proof of the video or ALPHA performance. McLean and Pontiff report aggregate attenuation across 97 predictors, including 26% out of sample and 58% after publication; these are not a blanket haircut for a candidate strategy.
+
+#### ALPHA R02 RR02 Preregistered signal ablations
+
+Owners W06, W07, W10 and W11. Preregister eligible, horizon-matched comparisons of value alone, F-score alone where accounting data qualify, cross-sectional momentum, time-series momentum, and justified combinations. Separate ranking across assets from each asset’s own trend. Freeze universe, vintage eligibility, definitions, controls, normalization, rebalance/holding rules, costs, selection budget and uncertainty protocol before protected outcomes. Value and momentum complementarity is a hypothesis to test in the destination, not a guarantee; slow accounting signals need not be intraday entry signals.
+
+Acceptance proposal NOT RUN: preserve every attempted variant and null result, detect look-ahead in accounting vintages, and reproduce the preregistered ablation under matched exposures and an independently checked cost ledger. Unsupported data or timing yields a scoped limitation, not an assumed pass. Neither a limit of four stocks per sector nor a top-40 holding/ranking buffer is an adopted default. Optional intraday seeds require matching the actual source horizon; previous-close returns include overnight movement and are not automatically pure intraday evidence.
+
+#### ALPHA R02 RR03 Capital matched turnover and sleeves
+
+Owners W10 and W11, with W05 data and W18 reporting. Compare a frozen baseline with entry/exit buffers, staggered rebalance or holding sleeves, and a no-change control only where justified. Match total committed capital, gross and net exposure and applicable risk constraints; account for idle cash and overlapping positions. Charge actual route-specific commissions, spread, slippage, impact, funding and borrow when applicable, with capacity and sensitivity bounds. A gross improvement or lower turnover alone is not a net economic improvement.
+
+Acceptance proposal NOT RUN: a capital-matched fixture exposes any apparent gain caused by extra capital or leverage; ledger reconciliation includes overlapping sleeves, cash and all applicable costs; frozen buffer/sleeve variants retain study ancestry and report net results with uncertainty. Three sleeves is not a default. No free execution, universal transaction-cost assumption or retrospective best-setting selection is accepted.
+
+#### ALPHA R02 RR04 Distinct risk quantities and stress
+
+Owners W11 and W14. Keep trade-level planned loss, stop distance, position notional, leverage, portfolio volatility, tail loss and realized drawdown distinct, with units and aggregation rules. Position sizing must include the operative capital and exposure basis. A stop is an order rule, not a guaranteed maximum loss; stress gaps, failed or delayed fills, liquidity, common-factor crowding and correlation shifts. Compare strategies at matched capital and appropriately declared risk rather than inferring equivalence from a shared percentage.
+
+Acceptance proposal NOT RUN: gap-through-stop and correlation-stress fixtures show losses can exceed nominal trade risk; portfolio aggregation detects overlapping exposure and leverage. Report scenario assumptions and uncertainty rather than a promised drawdown cap. No fixed risk percentage is adopted. Momentum crash evidence motivates destination-specific stress testing; an 80.5% drawdown was not verified and must not become a universal constant or acceptance threshold.
+
+#### ALPHA R02 RR05 Diagnostic sequential health alerts
+
+Owners W14 and W17. Separate diagnostics for data quality or availability, execution and costs, exposure or market-state change, and strategy-performance degradation. Reuse existing typed telemetry and response policy. Predeclare the monitored quantity, reference window, sequential or repeated-look calibration, false-alert and detection trade-off, reset rules and applicable response authority. An alert is evidence for investigation, not proof that an edge died or permission to retune.
+
+Acceptance proposal NOT RUN: seeded data failure, cost deterioration, exposure shift and performance-change cases produce distinguishable diagnostics; repeated-look null cases measure false alarms under the declared monitoring policy. Freeze any retuning as a separately metered study with protected-data ancestry. Pause/restart, paper operations and live actions retain their existing explicit authority; no unrelated monitor becomes a prerequisite for an otherwise eligible bounded frozen-rule study.
+
+#### ALPHA R02 RR06 Readable auditable explanations
+
+Owners W07 and W18. Extend existing Explain this run views and reports with a readable account of mechanism or predictive association, exact evidence and source access, original versus adapted assumptions, failure conditions and contrary evidence, actual costs, uncertainty and the next test or reason to stop. Distinguish mechanical replay, semantic validity, historical association, independent confirmation, economic transfer and operating permission. Show evidence links and consistent chart, table and ledger values rather than persuasive narrative alone.
+
+Acceptance proposal NOT RUN: a reviewer can trace each material claim to the exact source and run evidence, identify a missing or contradictory source, reproduce cost/return figures and distinguish an exploratory or null result from an accepted claim. Explanations must surface unavailable evidence and unsupported transport; clear prose does not upgrade evidence or authorize trading.
+
+These refinements use existing contracts, fixtures, owners and admission decisions wherever possible. They neither close packages nor add a second acceptance ledger. The under-one-month delivery objective is an owner-requested TARGET only, not a feasible forecast, new completion percentage, reduction in scope or waiver of data, scientific, exact-tree, operational or authorization gates.
+<!-- canonical-r02:refinements:end -->
+
 ## <a id="section_8"></a>7 Historical requirement crosswalk and inherited scope
 
 This crosswalk retains all 79 overlapping historical rows without copying every source conversation. Related packages identify topic ownership, not evidence that the historical feature is finished. Current package evidence governs status; distinct inherited overlays below stay visible where no full acceptance audit exists.
@@ -1326,7 +1372,7 @@ The latest delivery overlay is 25 October 2026 revision 6, despite its filename 
 | R3 full adopted research breadth | Deliver required model/recipe, framework, investigation, methodology, data, visual and explanation waves; close scientific, private operational and separately approved paper readiness. |
 | Later live integration | Define venue/instruments/risk/observation; qualify adapter, order lifecycle, reconciliation, fault recovery and limited-capital approval separately. |
 
-Full scope is a multi-month program, not days or a few coding tasks. No validated finite completion range or finish date exists yet. The 19 packages contain at least 31 named structural subdivisions, but they are unequal, partly implemented and potentially further divisible. That count is neither remaining workload nor a time forecast.
+The owner requests delivery in under one month as a TARGET, not a feasible forecast or gate waiver. No validated finite completion range or finish date exists yet. The 19 packages contain at least 31 named structural subdivisions, but they are unequal, partly implemented and potentially further divisible. That count is neither remaining workload nor a time forecast. Preserve full scope and all applicable evidence gates; estimate from measured residual work and delivery capacity.
 
 ### Four residual audits needed to estimate
 
@@ -1500,9 +1546,37 @@ The H01-H79 requirements above preserve requested scope, not implementation proo
 
 Additional primary-room scope was reviewed through 26 October 2026, including your current single-owner and later-live clarification. Historical renderer, model-provider and architecture preferences were reconciled with later precise addenda; unresolved preferences do not become new implementation authority.
 
+<!-- canonical-r02:sources:begin -->
+### Retail research source record 2 November 2026
+
+Completed research synthesis: [private research synthesis][CHK-R02-PS01]. Original Instagram material was unavailable. The primary sources below support scoped research questions, not implementation or performance claims for ALPHA. All six acceptance proposals remain NOT RUN.
+
+RR01 McLean and Pontiff, Does Academic Research Destroy Stock Return Predictability? https://www.onlinelibrary.wiley.com/doi/full/10.1111/jofi.12365
+
+RR02 Jegadeesh and Titman, Returns to Buying Winners and Selling Losers. https://doi.org/10.1111/j.1540-6261.1993.tb04702.x
+
+RR02 Moskowitz, Ooi and Pedersen, Time Series Momentum. https://www.aqr.com/insights/research/journal-article/time-series-momentum
+
+RR02 Asness, Moskowitz and Pedersen, Value and Momentum Everywhere. https://www.aqr.com/insights/research/journal-article/value-and-momentum-everywhere
+
+RR02 Piotroski, Value Investing The Use of Historical Financial Statement Information to Separate Winners from Losers. https://www.ivey.uwo.ca/media/3775523/value_investing_the_use_of_historical_financial_statement_information.pdf
+
+RR03 Novy-Marx and Velikov, A Taxonomy of Anomalies and Their Trading Costs. https://mysimon.rochester.edu/novy-marx/research/ToAatTC.pdf
+
+RR04 Daniel and Moskowitz, Momentum Crashes. https://www.kentdaniel.net/papers/published/jfe_16.pdf
+
+RR04 Risk-control research source retained with source-specific assumptions rather than a universal sizing rule. https://www.lehigh.edu/~xuy219/research/COWY.pdf
+
+RR02 Optional horizon-matched intraday research seed. https://www.sciencedirect.com/science/article/pii/S0304405X18301351. Previous-close measurement includes overnight movement; original signal, sample and timing must be reconstructed before use.
+
+[CHK-R02-PS01]: #private-source-references
+
+Private research synthesis identity is retained in the Git-ignored amendment receipt; the public mirror follows the existing private-source redaction convention.
+<!-- canonical-r02:sources:end -->
+
 <!-- docx-mirror:private-references:begin -->
 <a id="private-source-references"></a>
-**Private source references (mirror metadata, not source content).** Each ID replaces one private ChatGPT conversation target (PS) or one private value in body text (PV) of the source DOCX. It resolves only in `.alpha/state/portable-evidence/repair-20261027/docx-private-provenance.json` (Git-ignored local evidence) and is not publicly resolvable.
+**Private source references (mirror metadata, not source content).** Each historical CHK27 ID replaces one private ChatGPT conversation target (PS) or one private value in body text (PV) of the source DOCX. It resolves only in `.alpha/state/portable-evidence/repair-20261027/docx-private-provenance.json` (Git-ignored local evidence) and is not publicly resolvable.
 
 [CHK27-PS01]: #private-source-references
 [CHK27-PS02]: #private-source-references

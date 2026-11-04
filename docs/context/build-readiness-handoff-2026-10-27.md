@@ -17,6 +17,16 @@
 | Conversion | Python stdlib ElementTree. Title `#`, Heading1 `##`, Heading2 `###`, Heading3 `####`, Subtitle `*…*`, ListBullet `- `, Source-style paragraphs `> `; DOCX header rows become table headers; in-cell paragraph breaks `<br><br>`, line breaks `<br>`; bookmarks become `<a id>`. 5 empty layout paragraphs, page breaks and visual formatting (fonts, sizes, shading, borders) are not reproduced. |
 <!-- docx-mirror:provenance:end -->
 
+<!-- repository-amendment:retail-research-20261102:begin -->
+**2 November repository handoff note (outside the historical DOCX):** Canonical checklist version 3 is parent-verified; its authored amendment is reconciled in the mirror, with local DOCX materialization still unavailable. The
+[retail research refinement](feature-readiness-checklist-2026-10-27.md#retail-research-refinements-2-november-2026)
+is mapped into existing W01–W19 owners. Its proposed acceptance evidence is NOT RUN;
+implementation gaps remain unknown until caller/test/receipt mapping. Preserve existing
+completion markers, Qlib breadth, non-HFT intraday/swing scope and the first-study boundary.
+This note does not refresh the historical availability, gate or acceptance claims below.
+<!-- repository-amendment:retail-research-20261102:end -->
+
+
 # Project ALPHA Build Readiness Handoff
 
 *27 October 2026  \|  Supporting evidence version 1*

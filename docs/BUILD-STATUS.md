@@ -3201,3 +3201,29 @@ This entry records scope and final-tree preparation, not an aggregate pass. Norm
 and review receipts provide final results. Native research execution, real-data fitting,
 resource/retry/refund/reuse policy, durable accounting replacement and Mac activity
 remain unauthorized; ordinary synthetic engineering qualification remains permitted.
+
+### 2026-11-02 — Retail research canonical-v3 documentation reconciliation
+
+The canonical checklist owner updated Library version 3 in place (120,666 bytes,
+SHA-256 `f9c20abb705daac3b1189bea1d925176034288c6e214cff2a5138a1e9a6d6f33`).
+This executor independently resolved its current Library metadata and verified the
+supplied authored amendment SHA-256
+`b8642ba3474a498c16ab378c85102deae85f26bc4ea6b60a4613f2f11b8120bb`.
+DOCX byte/extraction and 58-page visual verification remain parent-supplied; local
+materialization was unavailable. The existing mirror now reconciles RR01–RR06 and
+source records, with private chat provenance redacted, plus the two under-one-month
+TARGET-only schedule corrections. Every other historical body statement and existing
+completion status is preserved. All proposed research acceptance fixtures remain NOT RUN.
+Software Team qualification stays separate from Product research authority.
+
+Focused text-preservation, source-record, navigation, preflight and diff checks passed;
+independent review found no remaining semantic issue. The earlier full gate passed all
+six components on the superseded prepared patch and is historical evidence only. The
+owner now explicitly approved this docs slice's absence-only private-suite exception
+and normal guarded delivery sequence, including necessary corrections. Private coverage
+remains UNVERIFIED; full public qualification, the unchanged 93% floor, final independent
+review and Git guards still apply. This entry records preparation and authorization,
+not a final-tree aggregate pass or merged status; final receipts provide those results.
+
+See the [canonical checklist amendment](context/feature-readiness-checklist-2026-10-27.md#retail-research-refinements-2-november-2026)
+and [context index](context/README.md). No strategy or research workflow was activated.
