@@ -315,11 +315,11 @@ providers (family-scoped authority; explicit non-substituting comparison)
 
 Two firewalls govern correctness end-to-end: the **PIT `as_of` seam** (no strategy ever sees a future bar — **[ADR-0005](adr/0005-point-in-time-firewall.md)**) and the **t+1 fill encoding** (a decision on the close of `t` can only fill at the open of `t+1` — **[ADR-0003](adr/0003-t+1-fill-encoding.md)**). The gauntlet's headline gate is a **two-tier null** that the observed result must beat in *both* tiers — **[ADR-0006](adr/0006-two-tier-null-model.md)**.
 
-QuantPad currently sits outside this canonical flow: Codex uses its OAuth MCP server only for
-symbol/schema/coverage discovery and bounded previews, while bulk historical bars/ticks/L1/L2 use
-the official REST/Python API. Those downloads remain research scratch input until they enter the
-same receipt → candidate → quality/quarantine path through a tested adapter. They cannot directly
-feed strategies, snapshots, charts, or paper intents. See **[ADR-0018](adr/0018-quantpad-external-research-data-boundary.md)**.
+The owner excluded QuantPad from active and future source plans on 2026-11-04.
+Its historical discovery/archive adapters and records remain, but their presence is not a
+recommendation to resume acquisition or qualification. Tiingo authority, crypto family/venue
+boundaries and IBKR Paper remain unchanged. See the dated supersession in
+**[ADR-0018](adr/0018-quantpad-external-research-data-boundary.md#owner-supersession--2026-11-04)**.
 
 The two surfaces wrap this same loop without re-implementing it:
 
@@ -435,7 +435,7 @@ These hold across every layer; the [golden rules in `CLAUDE.md`](../CLAUDE.md) a
 - **External integrations are evidence-gated.** A repository recommendation is not an adoption decision; every new integration must prove a missing capability, boundary fit, maintenance and license posture, deterministic behavior, and a replacement path. → [ADR-0011](adr/0011-evidence-gated-external-integrations.md)
 - **Operational sessions are not research runs.** Paper sessions use UUIDs, clocks, heartbeats, and an operational event journal outside deterministic `RUN_DIRS`; they never become validation evidence or alter a research `run_id`. → [ADR-0012](adr/0012-operational-paper-sessions.md)
 - **Vendor bytes qualify before strategy visibility.** Tiingo daily responses become immutable receipts and candidates; only the configured authority can auto-promote after every critical check, and no comparison feed can silently replace it. → [ADR-0017](adr/0017-authoritative-daily-data-and-broker-paper-boundary.md)
-- **QuantPad discovery and bulk payloads are separate.** MCP is for bounded discovery/previews; the official API/SDK is for bulk historical research. Neither becomes canonical or paper-authoritative without receipt-backed qualification. → [ADR-0018](adr/0018-quantpad-external-research-data-boundary.md)
+- **QuantPad is excluded from active and future source plans (2026-11-04).** The earlier discovery/bulk distinction remains historical evidence, not a current adoption or qualification recommendation. → [ADR-0018 supersession](adr/0018-quantpad-external-research-data-boundary.md#owner-supersession--2026-11-04)
 - **Development state is external lineage.** Mutable projects, stages, attempts, sealed holdouts, jobs, and decisions are atomic CLI-owned SQLite records; immutable manifests are never edited to attach workflow state. Append-only project-scope selection events support point-in-time AgentBrief projections. Direct and suite Qlib/Kronos launches share one transactional capacity class. → [ADR-0014](adr/0014-cli-owned-development-control-plane.md)
 - **Project workspaces are disposable projections.** Each project gets deterministic hash-only research/source/data/study/promotion/version/experiment/run/validation/figure/report/sandbox indexes. Immutable revisions and an atomic current pointer preserve the last valid view; tamper requires explicit quarantine-and-rebuild recovery. SQLite and immutable artifacts remain authority, and the workspace confers no execution capability. → [ADR-0014](adr/0014-cli-owned-development-control-plane.md)
 - **Null evidence and path risk answer different questions.** The required `monte_carlo` stage follows randomized-price robustness and independently reports IID empirical, causal regime Markov, Student-t, and Kronos full-engine paths. No majority vote exists; warnings require an exact-hash CLI-only owner disposition. → [ADR-0029](adr/0029-four-family-monte-carlo-validation.md)
