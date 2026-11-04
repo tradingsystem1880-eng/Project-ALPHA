@@ -11,6 +11,14 @@ git-ignored `.env` (mode `0600`), and are exported into the single process that 
 Verified against this machine on 2026-08-19; the "verify" column is the command that re-checks
 the row.
 
+## QuantPad non-use — 2026-11-04
+
+The owner excludes QuantPad from active and future source plans. No QuantPad setup,
+sign-in, provider check, acquisition or qualification is a current owner action. The
+historical row and dated 2026-08-19 observations below remain as records, not current
+readiness claims. Existing code, data, keychain entries and subscriptions were not changed.
+See [ADR-0018 supersession](../adr/0018-quantpad-external-research-data-boundary.md#owner-supersession--2026-11-04).
+
 ## Credentials — the keychain launcher is the canonical path
 
 `scripts/alpha-with-keychain-provider <provider> <action>` reads one named keychain item, exports
@@ -25,12 +33,13 @@ scripts/alpha-with-keychain-provider tiingo check
 | Provider | Keychain service | Variable | What it unlocks | Verify |
 |---|---|---|---|---|
 | Tiingo | `project-alpha-tiingo` | `ALPHA_TIINGO_API_KEY` | authoritative stock/ETF EOD — the receipt→candidate→quality→canonical promotion path, and the daily scheduler | `scripts/alpha-with-keychain-provider tiingo check` |
-| QuantPad | `project-alpha-quantpad` | `QUANTPAD_API_KEY` | research-only bulk daily bars (`rd_` dataset registration) and the archive lane | `scripts/alpha-with-keychain-provider quantpad check` |
+| QuantPad — historical only | `project-alpha-quantpad` | `QUANTPAD_API_KEY` | Former research-only daily-bar registration and archive lane; excluded 2026-11-04 | No current action; historical check was `scripts/alpha-with-keychain-provider quantpad check` |
 | CoinGecko | `project-alpha-coingecko` | `ALPHA_COINGECKO_API_KEY` | crypto reference/catalog acquisition | `scripts/alpha-with-keychain-provider coingecko check` |
 | IBKR | `project-alpha-ibkr-paper-account` | `ALPHA_IBKR_PAPER_ACCOUNT`, `ALPHA_IBKR_GATEWAY_IMAGE`, `TWS_USERNAME`, `TWS_PASSWORD` | native IBKR Paper boundary | `uv run alpha provider check ibkr` |
 
 `alpha provider check` is registered for `tiingo`, `quantpad`, `coingecko`, and `ibkr`, and writes
-a redacted `ProviderCheckReceiptV1` under `data_dir`. Finnhub was retired on 2026-09-10 together
+a redacted `ProviderCheckReceiptV1` under `data_dir`. This describes retained code; QuantPad
+is excluded from current use by the decision above. Finnhub was retired on 2026-09-10 together
 with `alpha_screener` (edge-first audit F6); the launcher no longer accepts it.
 
 `yfinance`, `ccxt`, `stooq`, `binance`, `bybit`, `geckoterminal`, and `coinmetrics` need no
@@ -109,8 +118,10 @@ items are also still open in the same receipt and no agent can clear them:
 
 ### Bulk crypto storage — configured and verified
 
-The QuantPad archive and crypto acquisition lanes write to an external volume and fail closed if
-it is absent, full, or a different disk. Verified 2026-08-19 from the main checkout:
+The following is the historical 2026-08-19 storage observation for the then-active QuantPad
+archive and crypto acquisition lanes. QuantPad is now excluded; this records neither current
+mount availability nor authority to restart acquisition. The retained paths fail closed if
+the volume is absent, full, or a different disk:
 
 - `/Volumes/Expansion/Project-ALPHA/crypto-data` is mounted, 1.8 TiB free (3% used).
 - `ALPHA_BULK_VOLUME_UUID` is set and **matches the mounted volume's UUID**, which is the check

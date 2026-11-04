@@ -4,6 +4,17 @@
 **Date:** 2026-08-04
 **Deciders:** Project ALPHA owner and AI build agents
 
+## Owner supersession — 2026-11-04
+
+The owner no longer uses QuantPad and excludes it from active and future source plans.
+This supersedes QuantPad adoption and future qualification in the historical decision below. Retain the
+original decision, implementation history and dated attestations as historical evidence;
+they are not a current recommendation to discover, acquire or qualify QuantPad data.
+General research dataset registration, provenance and qualification boundaries remain
+applicable. Tiingo authority and the IBKR Paper boundary are unchanged. This documentation
+change does not remove runtime code or retained data, change credentials, cancel a
+subscription, or authorize acquisition or execution.
+
 ## Context
 
 The owner has an active QuantPad subscription whose external-data interfaces expose broad

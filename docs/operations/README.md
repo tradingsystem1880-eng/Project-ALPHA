@@ -11,7 +11,7 @@ For purposes, assumptions and interpretation of all four required path-risk fami
 This runbook is for the single-operator local deployment. Do not commit `.env`, Tiingo/IBKR
 credentials, account identifiers, Docker secrets, generated journals, or copied market data.
 
-The supplied Tiingo token, QuantPad token, CoinGecko Demo key, and IBKR Paper account identifier are
+The historical credential inventory records Tiingo, QuantPad, CoinGecko Demo and IBKR Paper identifiers as
 stored in the macOS keychain services `project-alpha-tiingo`, `project-alpha-quantpad`,
 `project-alpha-coingecko`, and `project-alpha-ibkr-paper-account`. Repository files contain only
 those service names. The local `.env` is git-ignored and mode `0600`; it must not receive vendor or
@@ -46,7 +46,14 @@ absent from request receipts, manifests, logs, and command arguments. The refere
 supplemental research context and cannot satisfy venue-price, validation-price, or execution-price
 requirements.
 
-## 1. Use QuantPad for external historical research
+## 1. Historical QuantPad procedure — superseded 2026-11-04
+
+The owner no longer uses QuantPad; it is excluded from active and future source plans.
+The instructions and commands in this section are retained only as historical procedure,
+not current actions or recommendations. No sign-in, check, download, acquisition or
+qualification is requested. Code, data, credentials and subscriptions are unchanged.
+See [ADR-0018](../adr/0018-quantpad-external-research-data-boundary.md#owner-supersession--2026-11-04).
+
 
 The project-scoped `.codex/config.toml` registers QuantPad's OAuth MCP endpoint. Start a new Codex
 session, run `/mcp`, and complete the QuantPad sign-in. Use MCP only for:
