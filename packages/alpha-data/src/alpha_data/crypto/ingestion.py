@@ -180,6 +180,48 @@ def ingest_provider_pages(
     )
 
 
+def retain_provider_payload(
+    store: CryptoBulkStore,
+    *,
+    dataset: CryptoDatasetIdentityV1,
+    payload: bytes,
+    request: tuple[tuple[str, str], ...],
+    fetched_at: datetime,
+    provider_schema: str,
+    parser_version: str,
+    logical_name: str,
+    max_payload_bytes: int,
+    pagination: tuple[str, ...] = (),
+) -> tuple[CryptoRawReceiptV1, dict[str, object]]:
+    """Retain bounded raw evidence only, including empty/malformed response bodies.
+
+    No parser or qualification runs here. Existing ordinary ingestion continues to
+    reject empty bodies. Receipt/staging formats already support zero bytes.
+    """
+    if type(max_payload_bytes) is not int or not 1 <= max_payload_bytes <= 8 * 1024 * 1024:
+        raise DataError("raw retention byte limit must be between 1 and 8 MiB")
+    if type(payload) is not bytes or len(payload) > max_payload_bytes:
+        raise DataError("raw retention payload exceeds its byte allowance")
+    receipt, manifest = _stage_one_page(
+        store,
+        dataset=dataset,
+        payload=payload,
+        request=request,
+        pagination=pagination,
+        fetched_at=fetched_at,
+        provider_schema=provider_schema,
+        parser_version=parser_version,
+        logical_name=logical_name,
+        upstream_checksum=None,
+        empty_payload_error="raw retention requires bytes",
+        allow_empty=True,
+    )
+    store.verify_readable()
+    if store.verify_manifest(manifest["manifest_id"]) != manifest:
+        raise DataError("raw retention manifest changed after publication")
+    return receipt, manifest
+
+
 def _stage_one_page(
     store: CryptoBulkStore,
     *,
@@ -193,9 +235,10 @@ def _stage_one_page(
     logical_name: str,
     upstream_checksum: str | None,
     empty_payload_error: str,
+    allow_empty: bool = False,
 ) -> tuple[CryptoRawReceiptV1, dict[str, object]]:
     """Freeze one payload's exact bytes under its receipt before anything parses them."""
-    if not isinstance(payload, bytes) or not payload:
+    if not isinstance(payload, bytes) or (not payload and not allow_empty):
         raise DataError(empty_payload_error)
     response_hash = hashlib.sha256(payload).hexdigest()
     receipt = CryptoRawReceiptV1.create(
@@ -265,6 +308,7 @@ def _publish_qualified(
 
 
 __all__ = [
+    "retain_provider_payload",
     "CryptoIngestionResultV1",
     "CryptoPagedIngestionResultV1",
     "ingest_provider_pages",

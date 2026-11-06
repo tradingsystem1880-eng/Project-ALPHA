@@ -306,6 +306,48 @@ def parse_funding_history(payload: bytes) -> pl.DataFrame:
     return _unique_sorted(rows, "timestamp", "Bybit funding history")
 
 
+def parse_funding_page(
+    payload: bytes,
+    *,
+    symbol: str,
+    category: Literal["linear", "inverse"],
+    fetched_at: datetime,
+    start_ms: int | None = None,
+    end_ms: int | None = None,
+) -> pl.DataFrame:
+    """Bind one historical settlement page to its request; never prove full coverage.
+
+    Settlement timestamps do not prove historical publication availability. Native rates,
+    irregular intervals and the legacy frame schema are retained without annualisation.
+    The caller still refuses full bounded pages before ingestion/publication.
+    """
+    if not isinstance(symbol, str) or not symbol or category not in {"linear", "inverse"}:
+        raise DataError("Bybit funding request identity is invalid")
+    if fetched_at.tzinfo is None or fetched_at.utcoffset() is None:
+        raise DataError("Bybit funding knowledge time must be timezone-aware")
+    if (start_ms is None) != (end_ms is None):
+        raise DataError("Bybit funding bounds must be supplied together")
+    if start_ms is not None and end_ms is not None:
+        if type(start_ms) is not int or type(end_ms) is not int or end_ms <= start_ms:
+            raise DataError("Bybit funding bounds must be increasing integer milliseconds")
+        if end_ms > int(fetched_at.timestamp() * 1_000):
+            raise DataError("Bybit funding end exceeds the acquisition knowledge time")
+    if len(payload) > _MAX_RESPONSE_BYTES:
+        raise DataError("Bybit funding response exceeds the byte limit")
+    frame = parse_funding_history(payload)
+    if frame.height > 200:
+        raise DataError("Bybit funding response exceeds the 200-record page limit")
+    if frame.filter((pl.col("symbol") != symbol) | (pl.col("category") != category)).height:
+        raise DataError("Bybit funding response identity differs from the request")
+    for timestamp in frame["timestamp"].to_list():
+        if timestamp > fetched_at:
+            raise DataError("Bybit funding settlement exceeds the acquisition knowledge time")
+        instant_ms = int(timestamp.timestamp() * 1_000)
+        if start_ms is not None and end_ms is not None and not start_ms <= instant_ms <= end_ms:
+            raise DataError("Bybit funding settlement is outside the inclusive requested range")
+    return frame
+
+
 def parse_open_interest(payload: bytes) -> tuple[pl.DataFrame, str | None]:
     """Parse OI while retaining Bybit's linear-base/inverse-quote unit rule."""
     result, _ = _result_object(payload)

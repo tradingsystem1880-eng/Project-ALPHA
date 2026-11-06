@@ -2,7 +2,7 @@
 
 # System map
 
-15 components (packages, apps, workers), 403 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+15 components (packages, apps, workers), 406 Python modules, 13 import-linter contracts. Arrows aggregate module-level imports to component level; the contracts table is the enforced DAG. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
 <!-- nodes: component:alpha-backtest|component:alpha-cli|component:alpha-core|component:alpha-data|component:alpha-forecast|component:alpha-mcp|component:alpha-patterns|component:alpha-research|component:alpha-strategies|component:alpha-study|component:alpha-validation|component:alpha-web|component:literature|component:qlib|component:rdagent -->
 ```mermaid
@@ -101,9 +101,9 @@ component:alpha-web -> component:alpha-core
 
 ## Unknowns review queue
 
-62 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
+60 node(s) with no documentation anchor, validating test, or cross-layer link — candidates for documentation or removal, never silently promoted:
 
-<details><summary>62 unknown-level node(s)</summary>
+<details><summary>60 unknown-level node(s)</summary>
 
 - `component:alpha-study`
 - `component:literature`
@@ -112,7 +112,6 @@ component:alpha-web -> component:alpha-core
 - `module:alpha_backtest`
 - `module:alpha_cli._atomic`
 - `module:alpha_cli._control_schema`
-- `module:alpha_cli._crypto_acquisition`
 - `module:alpha_cli._crypto_panel`
 - `module:alpha_cli._crypto_persistence`
 - `module:alpha_cli._hypothesis_scan`
@@ -127,7 +126,6 @@ component:alpha-web -> component:alpha-core
 - `module:alpha_core.costs`
 - `module:alpha_core.universe`
 - `module:alpha_data._atomic`
-- `module:alpha_data.crypto.providers`
 - `module:alpha_forecast._vendor.kronos.kronos`
 - `module:alpha_forecast._vendor.kronos.module`
 - `module:alpha_qlib_worker`
