@@ -1,0 +1,1193 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "admission": "not_admitted",
+  "source": "upstream_nautilus",
+  "balance_kind": "account_balance_events_not_equity",
+  "version": "1.228.0",
+  "upstream_commit": "3aa1ddffdc4947d05f3cf1c011290e44fc99b9a5",
+  "strategy": "nautilus_trader.examples.strategies.ema_cross:EMACross",
+  "strategy_sha256": "edd4bb8838bd5b19f1da92d9c0abd417755c4aeddd32d3e8302c4c628177ea0d",
+  "run_id": "f049d832-7956-4c18-870c-b02cf6500e96",
+  "config_id": "3915a25a6fb6076216bf02a01816c3fcddc031db28a88f2544159925e95f8c10",
+  "selected_run": "smoke-attempt1/run-a",
+  "instrument": "EUR/USD.SIM",
+  "currency": "USD",
+  "input_ticks": 2401,
+  "simulation_seconds": 600,
+  "producer_runs": 4,
+  "producer_processes": 2,
+  "normalized_reports_agree": true,
+  "normalized_reports_sha256": "3cc4ec165819701fec268bf6f602fdcb48559243aeb288af6dc839373b17771e",
+  "reproduction_template": "timeout 60s /absolute/path/to/existing/python -I -B native_smoke.py --output /absolute/new-output",
+  "native_config": {
+    "venues": [
+      {
+        "name": "SIM",
+        "oms_type": "HEDGING",
+        "account_type": "MARGIN",
+        "starting_balances": [
+          "1000000 USD"
+        ],
+        "base_currency": "USD",
+        "default_leverage": 1.0,
+        "leverages": null,
+        "margin_model": null,
+        "modules": null,
+        "fill_model": null,
+        "latency_model": null,
+        "fee_model": null,
+        "book_type": "L1_MBP",
+        "routing": false,
+        "reject_stop_orders": true,
+        "support_gtd_orders": true,
+        "support_contingent_orders": true,
+        "oto_trigger_mode": "PARTIAL",
+        "use_position_ids": true,
+        "use_random_ids": false,
+        "use_reduce_only": true,
+        "use_market_order_acks": false,
+        "bar_execution": true,
+        "bar_adaptive_high_low_ordering": false,
+        "trade_execution": true,
+        "liquidity_consumption": false,
+        "queue_position": false,
+        "allow_cash_borrowing": false,
+        "frozen_account": false,
+        "price_protection_points": 0,
+        "settlement_prices": null,
+        "liquidation_enabled": false,
+        "liquidation_trigger_ratio": 1.0,
+        "liquidation_cancel_open_orders": true
+      }
+    ],
+    "data": [
+      {
+        "catalog_path": "/workspace/Project-ALPHA/.alpha/state/runtime/native-nautilus-20261106-yLcDuA/smoke-attempt1/catalog",
+        "data_cls": "nautilus_trader.model.data:QuoteTick",
+        "catalog_fs_protocol": null,
+        "catalog_fs_storage_options": null,
+        "catalog_fs_rust_storage_options": null,
+        "instrument_id": "EUR/USD.SIM",
+        "start_time": null,
+        "end_time": null,
+        "filter_expr": null,
+        "client_id": null,
+        "metadata": null,
+        "bar_spec": null,
+        "instrument_ids": null,
+        "bar_types": null,
+        "optimize_file_loading": false
+      }
+    ],
+    "engine": {
+      "environment": "backtest",
+      "trader_id": "SYNTH-001",
+      "instance_id": null,
+      "cache": {
+        "database": null,
+        "encoding": "msgpack",
+        "timestamps_as_iso8601": false,
+        "persist_account_events": true,
+        "buffer_interval_ms": null,
+        "bulk_read_batch_size": null,
+        "use_trader_prefix": true,
+        "use_instance_id": false,
+        "flush_on_start": false,
+        "drop_instruments_on_reset": false,
+        "tick_capacity": 10000,
+        "bar_capacity": 10000
+      },
+      "message_bus": null,
+      "data_engine": {
+        "time_bars_interval_type": "left-open",
+        "time_bars_timestamp_on_close": true,
+        "time_bars_skip_first_non_full_bar": false,
+        "time_bars_build_with_no_updates": true,
+        "time_bars_origin_offset": null,
+        "time_bars_build_delay": 0,
+        "validate_data_sequence": false,
+        "buffer_deltas": false,
+        "emit_quotes_from_book": false,
+        "emit_quotes_from_book_depths": false,
+        "external_clients": null,
+        "debug": false
+      },
+      "risk_engine": {
+        "bypass": false,
+        "max_order_submit_rate": "100/00:00:01",
+        "max_order_modify_rate": "100/00:00:01",
+        "max_notional_per_order": {},
+        "debug": false
+      },
+      "exec_engine": {
+        "load_cache": true,
+        "manage_own_order_books": false,
+        "snapshot_orders": false,
+        "snapshot_positions": false,
+        "snapshot_positions_interval_secs": null,
+        "external_clients": null,
+        "allow_overfills": false,
+        "purge_closed_orders_interval_mins": null,
+        "purge_closed_orders_buffer_mins": null,
+        "purge_closed_positions_interval_mins": null,
+        "purge_closed_positions_buffer_mins": null,
+        "purge_account_events_interval_mins": null,
+        "purge_account_events_lookback_mins": null,
+        "purge_from_database": false,
+        "debug": false
+      },
+      "portfolio": null,
+      "emulator": null,
+      "streaming": null,
+      "catalogs": [],
+      "actors": [],
+      "strategies": [
+        {
+          "strategy_path": "nautilus_trader.examples.strategies.ema_cross:EMACross",
+          "config_path": "nautilus_trader.examples.strategies.ema_cross:EMACrossConfig",
+          "config": {
+            "instrument_id": "EUR/USD.SIM",
+            "bar_type": "EUR/USD.SIM-1-SECOND-MID-INTERNAL",
+            "fast_ema_period": 3,
+            "slow_ema_period": 8,
+            "trade_size": "10000",
+            "request_bars": false,
+            "subscribe_trade_ticks": false,
+            "close_positions_on_stop": true
+          }
+        }
+      ],
+      "exec_algorithms": [],
+      "controller": null,
+      "load_state": false,
+      "save_state": false,
+      "loop_debug": false,
+      "logging": {
+        "log_level": "INFO",
+        "log_level_file": null,
+        "log_directory": null,
+        "log_file_name": null,
+        "log_file_format": null,
+        "log_file_max_size": null,
+        "log_file_max_backup_count": 5,
+        "log_colors": true,
+        "log_component_levels": null,
+        "log_components_only": false,
+        "bypass_logging": true,
+        "print_config": false,
+        "use_tracing": false,
+        "use_pyo3": false,
+        "clear_log_file": false,
+        "fileout_sync_on_flush": true,
+        "buffered_stdout": false
+      },
+      "timeout_connection": 60.0,
+      "timeout_reconciliation": 30.0,
+      "timeout_portfolio": 10.0,
+      "timeout_disconnection": 10.0,
+      "timeout_post_stop": 10.0,
+      "timeout_shutdown": 5.0,
+      "run_analysis": true
+    },
+    "chunk_size": null,
+    "raise_exception": true,
+    "dispose_on_completion": false,
+    "start": null,
+    "end": null,
+    "data_clients": null
+  },
+  "balances": [
+    {
+      "sequence": 0,
+      "timestamp": "2020-01-01T00:00:00.000000000Z",
+      "account_balance": 1000000.0,
+      "locked_balance": 0.0,
+      "free_balance": 1000000.0,
+      "currency": "USD"
+    },
+    {
+      "sequence": 1,
+      "timestamp": "2020-01-01T00:00:07.000000000Z",
+      "account_balance": 999999.89,
+      "locked_balance": 55.02,
+      "free_balance": 999944.87,
+      "currency": "USD"
+    },
+    {
+      "sequence": 2,
+      "timestamp": "2020-01-01T00:00:44.000000000Z",
+      "account_balance": 1000014.08,
+      "locked_balance": 0.0,
+      "free_balance": 1000014.08,
+      "currency": "USD"
+    },
+    {
+      "sequence": 3,
+      "timestamp": "2020-01-01T00:00:44.000000000Z",
+      "account_balance": 1000013.97,
+      "locked_balance": 55.09,
+      "free_balance": 999958.88,
+      "currency": "USD"
+    },
+    {
+      "sequence": 4,
+      "timestamp": "2020-01-01T00:01:24.000000000Z",
+      "account_balance": 1000029.66,
+      "locked_balance": 0.0,
+      "free_balance": 1000029.66,
+      "currency": "USD"
+    },
+    {
+      "sequence": 5,
+      "timestamp": "2020-01-01T00:01:24.000000000Z",
+      "account_balance": 1000029.55,
+      "locked_balance": 55.01,
+      "free_balance": 999974.54,
+      "currency": "USD"
+    },
+    {
+      "sequence": 6,
+      "timestamp": "2020-01-01T00:02:04.000000000Z",
+      "account_balance": 1000045.24,
+      "locked_balance": 0.0,
+      "free_balance": 1000045.24,
+      "currency": "USD"
+    },
+    {
+      "sequence": 7,
+      "timestamp": "2020-01-01T00:02:04.000000000Z",
+      "account_balance": 1000045.13,
+      "locked_balance": 55.09,
+      "free_balance": 999990.04,
+      "currency": "USD"
+    },
+    {
+      "sequence": 8,
+      "timestamp": "2020-01-01T00:02:44.000000000Z",
+      "account_balance": 1000060.82,
+      "locked_balance": 0.0,
+      "free_balance": 1000060.82,
+      "currency": "USD"
+    },
+    {
+      "sequence": 9,
+      "timestamp": "2020-01-01T00:02:44.000000000Z",
+      "account_balance": 1000060.71,
+      "locked_balance": 55.01,
+      "free_balance": 1000005.7,
+      "currency": "USD"
+    },
+    {
+      "sequence": 10,
+      "timestamp": "2020-01-01T00:03:24.000000000Z",
+      "account_balance": 1000076.4,
+      "locked_balance": 0.0,
+      "free_balance": 1000076.4,
+      "currency": "USD"
+    },
+    {
+      "sequence": 11,
+      "timestamp": "2020-01-01T00:03:24.000000000Z",
+      "account_balance": 1000076.29,
+      "locked_balance": 55.09,
+      "free_balance": 1000021.2,
+      "currency": "USD"
+    },
+    {
+      "sequence": 12,
+      "timestamp": "2020-01-01T00:04:04.000000000Z",
+      "account_balance": 1000091.98,
+      "locked_balance": 0.0,
+      "free_balance": 1000091.98,
+      "currency": "USD"
+    },
+    {
+      "sequence": 13,
+      "timestamp": "2020-01-01T00:04:04.000000000Z",
+      "account_balance": 1000091.87,
+      "locked_balance": 55.01,
+      "free_balance": 1000036.86,
+      "currency": "USD"
+    },
+    {
+      "sequence": 14,
+      "timestamp": "2020-01-01T00:04:44.000000000Z",
+      "account_balance": 1000107.56,
+      "locked_balance": 0.0,
+      "free_balance": 1000107.56,
+      "currency": "USD"
+    },
+    {
+      "sequence": 15,
+      "timestamp": "2020-01-01T00:04:44.000000000Z",
+      "account_balance": 1000107.45,
+      "locked_balance": 55.09,
+      "free_balance": 1000052.36,
+      "currency": "USD"
+    },
+    {
+      "sequence": 16,
+      "timestamp": "2020-01-01T00:05:24.000000000Z",
+      "account_balance": 1000123.14,
+      "locked_balance": 0.0,
+      "free_balance": 1000123.14,
+      "currency": "USD"
+    },
+    {
+      "sequence": 17,
+      "timestamp": "2020-01-01T00:05:24.000000000Z",
+      "account_balance": 1000123.03,
+      "locked_balance": 55.01,
+      "free_balance": 1000068.02,
+      "currency": "USD"
+    },
+    {
+      "sequence": 18,
+      "timestamp": "2020-01-01T00:06:04.000000000Z",
+      "account_balance": 1000138.72,
+      "locked_balance": 0.0,
+      "free_balance": 1000138.72,
+      "currency": "USD"
+    },
+    {
+      "sequence": 19,
+      "timestamp": "2020-01-01T00:06:04.000000000Z",
+      "account_balance": 1000138.61,
+      "locked_balance": 55.09,
+      "free_balance": 1000083.52,
+      "currency": "USD"
+    },
+    {
+      "sequence": 20,
+      "timestamp": "2020-01-01T00:06:44.000000000Z",
+      "account_balance": 1000154.3,
+      "locked_balance": 0.0,
+      "free_balance": 1000154.3,
+      "currency": "USD"
+    },
+    {
+      "sequence": 21,
+      "timestamp": "2020-01-01T00:06:44.000000000Z",
+      "account_balance": 1000154.19,
+      "locked_balance": 55.01,
+      "free_balance": 1000099.18,
+      "currency": "USD"
+    },
+    {
+      "sequence": 22,
+      "timestamp": "2020-01-01T00:07:24.000000000Z",
+      "account_balance": 1000169.88,
+      "locked_balance": 0.0,
+      "free_balance": 1000169.88,
+      "currency": "USD"
+    },
+    {
+      "sequence": 23,
+      "timestamp": "2020-01-01T00:07:24.000000000Z",
+      "account_balance": 1000169.77,
+      "locked_balance": 55.09,
+      "free_balance": 1000114.68,
+      "currency": "USD"
+    },
+    {
+      "sequence": 24,
+      "timestamp": "2020-01-01T00:08:04.000000000Z",
+      "account_balance": 1000185.46,
+      "locked_balance": 0.0,
+      "free_balance": 1000185.46,
+      "currency": "USD"
+    },
+    {
+      "sequence": 25,
+      "timestamp": "2020-01-01T00:08:04.000000000Z",
+      "account_balance": 1000185.35,
+      "locked_balance": 55.01,
+      "free_balance": 1000130.34,
+      "currency": "USD"
+    },
+    {
+      "sequence": 26,
+      "timestamp": "2020-01-01T00:08:44.000000000Z",
+      "account_balance": 1000201.04,
+      "locked_balance": 0.0,
+      "free_balance": 1000201.04,
+      "currency": "USD"
+    },
+    {
+      "sequence": 27,
+      "timestamp": "2020-01-01T00:08:44.000000000Z",
+      "account_balance": 1000200.93,
+      "locked_balance": 55.09,
+      "free_balance": 1000145.84,
+      "currency": "USD"
+    },
+    {
+      "sequence": 28,
+      "timestamp": "2020-01-01T00:09:24.000000000Z",
+      "account_balance": 1000216.62,
+      "locked_balance": 0.0,
+      "free_balance": 1000216.62,
+      "currency": "USD"
+    },
+    {
+      "sequence": 29,
+      "timestamp": "2020-01-01T00:09:24.000000000Z",
+      "account_balance": 1000216.51,
+      "locked_balance": 55.01,
+      "free_balance": 1000161.5,
+      "currency": "USD"
+    },
+    {
+      "sequence": 30,
+      "timestamp": "2020-01-01T00:10:00.000000000Z",
+      "account_balance": 1000234.2,
+      "locked_balance": 0.0,
+      "free_balance": 1000234.2,
+      "currency": "USD"
+    }
+  ],
+  "orders": [
+    {
+      "id": "O-20200101-000007-001-000-1",
+      "timestamp": "2020-01-01T00:00:07.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10036
+    },
+    {
+      "id": "O-20200101-000044-001-000-2",
+      "timestamp": "2020-01-01T00:00:44.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000044-001-000-3",
+      "timestamp": "2020-01-01T00:00:44.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000124-001-000-4",
+      "timestamp": "2020-01-01T00:01:24.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000124-001-000-5",
+      "timestamp": "2020-01-01T00:01:24.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000204-001-000-6",
+      "timestamp": "2020-01-01T00:02:04.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000204-001-000-7",
+      "timestamp": "2020-01-01T00:02:04.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000244-001-000-8",
+      "timestamp": "2020-01-01T00:02:44.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000244-001-000-9",
+      "timestamp": "2020-01-01T00:02:44.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000324-001-000-10",
+      "timestamp": "2020-01-01T00:03:24.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000324-001-000-11",
+      "timestamp": "2020-01-01T00:03:24.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000404-001-000-12",
+      "timestamp": "2020-01-01T00:04:04.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000404-001-000-13",
+      "timestamp": "2020-01-01T00:04:04.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000444-001-000-14",
+      "timestamp": "2020-01-01T00:04:44.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000444-001-000-15",
+      "timestamp": "2020-01-01T00:04:44.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000524-001-000-16",
+      "timestamp": "2020-01-01T00:05:24.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000524-001-000-17",
+      "timestamp": "2020-01-01T00:05:24.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000604-001-000-18",
+      "timestamp": "2020-01-01T00:06:04.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000604-001-000-19",
+      "timestamp": "2020-01-01T00:06:04.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000644-001-000-20",
+      "timestamp": "2020-01-01T00:06:44.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000644-001-000-21",
+      "timestamp": "2020-01-01T00:06:44.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000724-001-000-22",
+      "timestamp": "2020-01-01T00:07:24.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000724-001-000-23",
+      "timestamp": "2020-01-01T00:07:24.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000804-001-000-24",
+      "timestamp": "2020-01-01T00:08:04.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000804-001-000-25",
+      "timestamp": "2020-01-01T00:08:04.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000844-001-000-26",
+      "timestamp": "2020-01-01T00:08:44.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000844-001-000-27",
+      "timestamp": "2020-01-01T00:08:44.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10179
+    },
+    {
+      "id": "O-20200101-000924-001-000-28",
+      "timestamp": "2020-01-01T00:09:24.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-000924-001-000-29",
+      "timestamp": "2020-01-01T00:09:24.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "BUY",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10021
+    },
+    {
+      "id": "O-20200101-001000-001-000-30",
+      "timestamp": "2020-01-01T00:10:00.000000000Z",
+      "instrument": "EUR/USD.SIM",
+      "side": "SELL",
+      "quantity": "10000",
+      "status": "FILLED",
+      "price": 1.10199
+    }
+  ],
+  "fills": [
+    {
+      "id": "a482f7cd-f5bd-4c1c-b6e0-3aeeafa65b5b",
+      "order_id": "O-20200101-000007-001-000-1",
+      "timestamp": "2020-01-01T00:00:07.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10036",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "802f8392-9723-44a2-a1d9-ad7597a5e524",
+      "order_id": "O-20200101-000044-001-000-2",
+      "timestamp": "2020-01-01T00:00:44.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "8981b446-8d32-478d-b473-82ee25998d0f",
+      "order_id": "O-20200101-000044-001-000-3",
+      "timestamp": "2020-01-01T00:00:44.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "a0b5cd47-fcfd-482d-b230-f3d7582693d5",
+      "order_id": "O-20200101-000124-001-000-4",
+      "timestamp": "2020-01-01T00:01:24.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "afc953de-77cc-4f41-8b79-56b49d87a090",
+      "order_id": "O-20200101-000124-001-000-5",
+      "timestamp": "2020-01-01T00:01:24.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "a6194d9a-fc03-41f7-9382-bd3c7f08bf7e",
+      "order_id": "O-20200101-000204-001-000-6",
+      "timestamp": "2020-01-01T00:02:04.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "9dd4c388-e4aa-49ae-b552-c207cf3f7517",
+      "order_id": "O-20200101-000204-001-000-7",
+      "timestamp": "2020-01-01T00:02:04.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "0a92f81a-4e8e-409f-96c8-677e79f7e466",
+      "order_id": "O-20200101-000244-001-000-8",
+      "timestamp": "2020-01-01T00:02:44.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "4ba79b92-401a-4ae5-ab46-35f902759b9f",
+      "order_id": "O-20200101-000244-001-000-9",
+      "timestamp": "2020-01-01T00:02:44.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "05b5539e-c769-4c1f-87ce-71c1e987d1bb",
+      "order_id": "O-20200101-000324-001-000-10",
+      "timestamp": "2020-01-01T00:03:24.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "3f8399d9-2948-4cfb-969c-5397d587ed10",
+      "order_id": "O-20200101-000324-001-000-11",
+      "timestamp": "2020-01-01T00:03:24.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "521158cb-2569-42c8-997c-2458263c4701",
+      "order_id": "O-20200101-000404-001-000-12",
+      "timestamp": "2020-01-01T00:04:04.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "523fa826-83bc-454f-bdcd-5a166ce3befa",
+      "order_id": "O-20200101-000404-001-000-13",
+      "timestamp": "2020-01-01T00:04:04.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "f47d6caa-f532-4193-91f2-429949898738",
+      "order_id": "O-20200101-000444-001-000-14",
+      "timestamp": "2020-01-01T00:04:44.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "843744a4-f66b-4fd8-9192-6c8540c33a76",
+      "order_id": "O-20200101-000444-001-000-15",
+      "timestamp": "2020-01-01T00:04:44.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "d8de0eb6-6438-4772-87cc-a15724db0609",
+      "order_id": "O-20200101-000524-001-000-16",
+      "timestamp": "2020-01-01T00:05:24.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "674ce6fb-3670-4fec-9640-7869fa1ab5f6",
+      "order_id": "O-20200101-000524-001-000-17",
+      "timestamp": "2020-01-01T00:05:24.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "06c31dd9-9554-4b43-9fdd-863fac4409bb",
+      "order_id": "O-20200101-000604-001-000-18",
+      "timestamp": "2020-01-01T00:06:04.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "8930b73e-34f2-42f2-adc9-c7d67619562c",
+      "order_id": "O-20200101-000604-001-000-19",
+      "timestamp": "2020-01-01T00:06:04.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "ac28ba7e-278b-479d-9186-38a9c8fb05a9",
+      "order_id": "O-20200101-000644-001-000-20",
+      "timestamp": "2020-01-01T00:06:44.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "c5c9aaf5-1cd3-45d2-99c9-1550361f9e4f",
+      "order_id": "O-20200101-000644-001-000-21",
+      "timestamp": "2020-01-01T00:06:44.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "b780c914-d3cb-4a36-bae4-92dc8ceb088f",
+      "order_id": "O-20200101-000724-001-000-22",
+      "timestamp": "2020-01-01T00:07:24.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "9b50c59f-b1b8-48f6-b06e-35ec27c7d3e5",
+      "order_id": "O-20200101-000724-001-000-23",
+      "timestamp": "2020-01-01T00:07:24.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "df24bb42-55c2-4abd-80c9-122501d1044c",
+      "order_id": "O-20200101-000804-001-000-24",
+      "timestamp": "2020-01-01T00:08:04.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "98bff1c2-039e-4a3a-80ba-dd17e3a3c97c",
+      "order_id": "O-20200101-000804-001-000-25",
+      "timestamp": "2020-01-01T00:08:04.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "21e2d0f4-1205-4040-9bc9-6b7adc5d9b4b",
+      "order_id": "O-20200101-000844-001-000-26",
+      "timestamp": "2020-01-01T00:08:44.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "71b53b63-db9a-4337-b3c8-86b301ed04f4",
+      "order_id": "O-20200101-000844-001-000-27",
+      "timestamp": "2020-01-01T00:08:44.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10179",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "4bdfa257-403b-4877-acaa-4e5841fc045c",
+      "order_id": "O-20200101-000924-001-000-28",
+      "timestamp": "2020-01-01T00:09:24.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "ee896c38-9e60-42e9-84e5-807c4b444920",
+      "order_id": "O-20200101-000924-001-000-29",
+      "timestamp": "2020-01-01T00:09:24.000000000Z",
+      "side": "BUY",
+      "quantity": "10000",
+      "price": "1.10021",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    },
+    {
+      "id": "f87cb3f9-aef4-4275-9baa-50b2a53a559e",
+      "order_id": "O-20200101-001000-001-000-30",
+      "timestamp": "2020-01-01T00:10:00.000000000Z",
+      "side": "SELL",
+      "quantity": "10000",
+      "price": "1.10199",
+      "commission": "0.11 USD",
+      "currency": "USD"
+    }
+  ],
+  "positions": [
+    {
+      "id": "SIM-1-001",
+      "opened_at": "2020-01-01T00:00:07.000000000Z",
+      "closed_at": "2020-01-01T00:00:44.000000000Z",
+      "entry": "BUY",
+      "peak_quantity": "10000",
+      "open_price": 1.10036,
+      "close_price": 1.10179,
+      "realized_pnl": "14.08 USD"
+    },
+    {
+      "id": "SIM-1-002",
+      "opened_at": "2020-01-01T00:00:44.000000000Z",
+      "closed_at": "2020-01-01T00:01:24.000000000Z",
+      "entry": "SELL",
+      "peak_quantity": "10000",
+      "open_price": 1.10179,
+      "close_price": 1.10021,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-003",
+      "opened_at": "2020-01-01T00:01:24.000000000Z",
+      "closed_at": "2020-01-01T00:02:04.000000000Z",
+      "entry": "BUY",
+      "peak_quantity": "10000",
+      "open_price": 1.10021,
+      "close_price": 1.10179,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-004",
+      "opened_at": "2020-01-01T00:02:04.000000000Z",
+      "closed_at": "2020-01-01T00:02:44.000000000Z",
+      "entry": "SELL",
+      "peak_quantity": "10000",
+      "open_price": 1.10179,
+      "close_price": 1.10021,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-005",
+      "opened_at": "2020-01-01T00:02:44.000000000Z",
+      "closed_at": "2020-01-01T00:03:24.000000000Z",
+      "entry": "BUY",
+      "peak_quantity": "10000",
+      "open_price": 1.10021,
+      "close_price": 1.10179,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-006",
+      "opened_at": "2020-01-01T00:03:24.000000000Z",
+      "closed_at": "2020-01-01T00:04:04.000000000Z",
+      "entry": "SELL",
+      "peak_quantity": "10000",
+      "open_price": 1.10179,
+      "close_price": 1.10021,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-007",
+      "opened_at": "2020-01-01T00:04:04.000000000Z",
+      "closed_at": "2020-01-01T00:04:44.000000000Z",
+      "entry": "BUY",
+      "peak_quantity": "10000",
+      "open_price": 1.10021,
+      "close_price": 1.10179,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-008",
+      "opened_at": "2020-01-01T00:04:44.000000000Z",
+      "closed_at": "2020-01-01T00:05:24.000000000Z",
+      "entry": "SELL",
+      "peak_quantity": "10000",
+      "open_price": 1.10179,
+      "close_price": 1.10021,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-009",
+      "opened_at": "2020-01-01T00:05:24.000000000Z",
+      "closed_at": "2020-01-01T00:06:04.000000000Z",
+      "entry": "BUY",
+      "peak_quantity": "10000",
+      "open_price": 1.10021,
+      "close_price": 1.10179,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-010",
+      "opened_at": "2020-01-01T00:06:04.000000000Z",
+      "closed_at": "2020-01-01T00:06:44.000000000Z",
+      "entry": "SELL",
+      "peak_quantity": "10000",
+      "open_price": 1.10179,
+      "close_price": 1.10021,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-011",
+      "opened_at": "2020-01-01T00:06:44.000000000Z",
+      "closed_at": "2020-01-01T00:07:24.000000000Z",
+      "entry": "BUY",
+      "peak_quantity": "10000",
+      "open_price": 1.10021,
+      "close_price": 1.10179,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-012",
+      "opened_at": "2020-01-01T00:07:24.000000000Z",
+      "closed_at": "2020-01-01T00:08:04.000000000Z",
+      "entry": "SELL",
+      "peak_quantity": "10000",
+      "open_price": 1.10179,
+      "close_price": 1.10021,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-013",
+      "opened_at": "2020-01-01T00:08:04.000000000Z",
+      "closed_at": "2020-01-01T00:08:44.000000000Z",
+      "entry": "BUY",
+      "peak_quantity": "10000",
+      "open_price": 1.10021,
+      "close_price": 1.10179,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-014",
+      "opened_at": "2020-01-01T00:08:44.000000000Z",
+      "closed_at": "2020-01-01T00:09:24.000000000Z",
+      "entry": "SELL",
+      "peak_quantity": "10000",
+      "open_price": 1.10179,
+      "close_price": 1.10021,
+      "realized_pnl": "15.58 USD"
+    },
+    {
+      "id": "SIM-1-015",
+      "opened_at": "2020-01-01T00:09:24.000000000Z",
+      "closed_at": "2020-01-01T00:10:00.000000000Z",
+      "entry": "BUY",
+      "peak_quantity": "10000",
+      "open_price": 1.10021,
+      "close_price": 1.10199,
+      "realized_pnl": "17.58 USD"
+    }
+  ],
+  "transfer": {
+    "library_file_id": "libfile_dc0c1566ce848191935119002d68a3bb",
+    "bytes": 144410,
+    "sha256": "85f6217c5fe9a0a01ba77db2632a82bfcebdf58925e6e238d497ce51601c8645",
+    "inventory_files_verified": 67
+  },
+  "artifact_sha256": {
+    "orders.csv": "4f8de23b842747ed6293ac9b04558886e3df168a4b5b000bc5fa367a4fd005ee",
+    "fills.csv": "05d003ce57e737915397ffd001981d8b3d96f536497edd6cf42ae6b8ef070322",
+    "positions.csv": "fe3ec0f9178c0044273ba0f3f636a3e4135279bb38f9f508d2aee657e4841286",
+    "account-events.csv": "c8772db2d387a3cf4d22661ea524a7acda6ea2367257a16a642851878db01504",
+    "native-config.json": "3915a25a6fb6076216bf02a01816c3fcddc031db28a88f2544159925e95f8c10",
+    "native-result.json": "26c1d776813f54bcf3695ffcc9190a59fec9baf56d8d7a52c5f5dde859dfd5b5",
+    "producer-result.json": "ca5b8944772e8e01a4b12539fe104a6aafb48eed258ced5915ad3e0aaec2df6a",
+    "provenance.json": "2e60d23d8c800e96828a306bf7532170da55677455d940896b4bee948a0c1d25"
+  },
+  "account_events_csv": "sequence,timestamp,account_balance,locked_balance,free_balance,currency\r\n0,2020-01-01T00:00:00.000000000Z,1000000.0,0.0,1000000.0,USD\r\n1,2020-01-01T00:00:07.000000000Z,999999.89,55.02,999944.87,USD\r\n2,2020-01-01T00:00:44.000000000Z,1000014.08,0.0,1000014.08,USD\r\n3,2020-01-01T00:00:44.000000000Z,1000013.97,55.09,999958.88,USD\r\n4,2020-01-01T00:01:24.000000000Z,1000029.66,0.0,1000029.66,USD\r\n5,2020-01-01T00:01:24.000000000Z,1000029.55,55.01,999974.54,USD\r\n6,2020-01-01T00:02:04.000000000Z,1000045.24,0.0,1000045.24,USD\r\n7,2020-01-01T00:02:04.000000000Z,1000045.13,55.09,999990.04,USD\r\n8,2020-01-01T00:02:44.000000000Z,1000060.82,0.0,1000060.82,USD\r\n9,2020-01-01T00:02:44.000000000Z,1000060.71,55.01,1000005.7,USD\r\n10,2020-01-01T00:03:24.000000000Z,1000076.4,0.0,1000076.4,USD\r\n11,2020-01-01T00:03:24.000000000Z,1000076.29,55.09,1000021.2,USD\r\n12,2020-01-01T00:04:04.000000000Z,1000091.98,0.0,1000091.98,USD\r\n13,2020-01-01T00:04:04.000000000Z,1000091.87,55.01,1000036.86,USD\r\n14,2020-01-01T00:04:44.000000000Z,1000107.56,0.0,1000107.56,USD\r\n15,2020-01-01T00:04:44.000000000Z,1000107.45,55.09,1000052.36,USD\r\n16,2020-01-01T00:05:24.000000000Z,1000123.14,0.0,1000123.14,USD\r\n17,2020-01-01T00:05:24.000000000Z,1000123.03,55.01,1000068.02,USD\r\n18,2020-01-01T00:06:04.000000000Z,1000138.72,0.0,1000138.72,USD\r\n19,2020-01-01T00:06:04.000000000Z,1000138.61,55.09,1000083.52,USD\r\n20,2020-01-01T00:06:44.000000000Z,1000154.3,0.0,1000154.3,USD\r\n21,2020-01-01T00:06:44.000000000Z,1000154.19,55.01,1000099.18,USD\r\n22,2020-01-01T00:07:24.000000000Z,1000169.88,0.0,1000169.88,USD\r\n23,2020-01-01T00:07:24.000000000Z,1000169.77,55.09,1000114.68,USD\r\n24,2020-01-01T00:08:04.000000000Z,1000185.46,0.0,1000185.46,USD\r\n25,2020-01-01T00:08:04.000000000Z,1000185.35,55.01,1000130.34,USD\r\n26,2020-01-01T00:08:44.000000000Z,1000201.04,0.0,1000201.04,USD\r\n27,2020-01-01T00:08:44.000000000Z,1000200.93,55.09,1000145.84,USD\r\n28,2020-01-01T00:09:24.000000000Z,1000216.62,0.0,1000216.62,USD\r\n29,2020-01-01T00:09:24.000000000Z,1000216.51,55.01,1000161.5,USD\r\n30,2020-01-01T00:10:00.000000000Z,1000234.2,0.0,1000234.2,USD\r\n"
+}

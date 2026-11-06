@@ -3286,3 +3286,49 @@ OS reaper is unavailable. No model calls, credentials, trading authority or stat
 behavior change. The original failed aggregate and isolated passing diagnostic remain
 historical evidence. This is an uncommitted candidate, not delivery or acceptance; the
 [plan](superpowers/plans/2026-11-06-assistant-cleanup-barrier.md) records verification scope.
+
+
+## 2026-11-06 — Native Qlib and Nautilus Results previews (delivery pending)
+
+The existing Results area has read-only views of separately executed synthetic upstream
+Qlib 0.9.7 and NautilusTrader 1.228.0 artifacts. The Qlib view displays saved predictions,
+constructed targets and diagnostics. The Nautilus view displays native orders/fills/closed
+positions and all 31 account-balance events, preserving equal UTC timestamps. These balances
+are not mark-to-market equity. Both views expose exact downloads and runtime/configuration
+provenance without rerunning an engine, admitting research or mutating owner history.
+Root README now includes genuine browser screenshots of both final views.
+
+Scoped UI tests, application types/lint/build, real-backend browser checks and independent
+advisory review are recorded in the candidate handoff; these are separate from full-gate
+qualification. Delivery remains pending: the required full gate includes protected-source
+static scans prohibited in this task and installation stages not authorized here. A GitHub PR
+lookup returned Forbidden; it was not retried through another route. No full-gate stamp,
+commit, push, PR, empirical performance or live-trading qualification is claimed.
+
+
+### Follow-up qualification — public prerequisite restored
+
+The earlier setup/protected-source assessment above was too broad. Necessary locked setup
+was subsequently authorized and completed in isolated candidate-local environments. The
+manual preflight is explicitly listed in `scripts/gate_preflight.py` as a public prerequisite;
+its control-plane protection governs edits. The unchanged tracked test was restored from the
+base and its required `test_core_is_small` check passed (1 test). Private holdouts remain
+absent and UNVERIFIED. No protected fixture, private test or holdout was materialized.
+
+Canonical frontend install, lint, build/types, coverage and API freshness passed; browser
+qualification and final gate receipts remain separate. The canonical build refreshed the
+committed SPA, and both native views passed fresh isolated real-backend browser checks against
+that build. README screenshots were refreshed from those actual captures. Original failures,
+scoped successes and predecessor trees remain preserved; no gate requirement was changed.
+
+
+### Integration onto main after PR #116
+
+The native Results candidate was reconciled in an isolated worktree onto main
+`7824bebf2e9d10077e8ffdb92b9b6871ea482287`, preserving main's README changes and chronological
+build entries. Authored UI and saved native data applied cleanly. The old-base run is historical:
+6,785 tests passed, 1 public manual-rule test failed because its `tests/oracles/**` directory was
+absent in that sparse checkout, and 73 tests skipped; coverage was 93.11% against the unchanged
+93% floor. No stamp resulted. Ordinary tracked public prerequisites are populated in the
+successor; hidden holdouts remain absent and UNVERIFIED. Generated SPA, screenshots, review
+and qualification evidence bind the successor independently; old-tree results are not acceptance.

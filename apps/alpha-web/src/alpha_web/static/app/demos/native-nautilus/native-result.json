@@ -1,0 +1,62 @@
+{
+  "backtest_end": 1577837400000000000,
+  "backtest_start": 1577836800000000000,
+  "elapsed_time": 600.0,
+  "instance_id": "10cad27a-13b5-4106-8bdc-fe22e623a7be",
+  "iterations": 2401,
+  "machine_id": "7c160f64dcaf",
+  "run_config_id": "3915a25a6fb6076216bf02a01816c3fcddc031db28a88f2544159925e95f8c10",
+  "run_finished": 1793940863574168000,
+  "run_id": "f049d832-7956-4c18-870c-b02cf6500e96",
+  "run_started": 1793940863538235000,
+  "stats_pnls": {
+    "USD": {
+      "Avg Loser": null,
+      "Avg Winner": 15.613333333333337,
+      "Expectancy": 15.613333333333337,
+      "Max Loser": null,
+      "Max Winner": 17.58,
+      "Min Loser": null,
+      "Min Winner": 14.08,
+      "PnL (total)": 234.2,
+      "PnL% (total)": 0.023420000000006984,
+      "Win Rate": 1.0
+    }
+  },
+  "stats_returns": {
+    "Average (Return)": 0.0014381463351622532,
+    "Average Loss (Return)": null,
+    "Average Win (Return)": 0.0014381463351622532,
+    "Profit Factor": null,
+    "Returns Volatility (252 days)": null,
+    "Risk Return Ratio": null,
+    "Sharpe Ratio (252 days)": null,
+    "Sortino Ratio (252 days)": null
+  },
+  "summary": {
+    "account.SIM.balance.USD.free": "1000234.20 USD",
+    "account.SIM.balance.USD.locked": "0.00 USD",
+    "account.SIM.balance.USD.total": "1000234.20 USD",
+    "account.SIM.base_currency": "USD",
+    "account.SIM.event_count": "31",
+    "account.SIM.id": "SIM-001",
+    "account.SIM.type": "MARGIN",
+    "iterations": "2401",
+    "orders.closed": "30",
+    "orders.emulated": "0",
+    "orders.inflight": "0",
+    "orders.open": "0",
+    "orders.total": "30",
+    "positions.closed": "15",
+    "positions.open": "0",
+    "positions.snapshots": "0",
+    "positions.total": "15",
+    "positions.total_with_snapshots": "15",
+    "total_events": "60",
+    "venues.total": "1"
+  },
+  "total_events": 60,
+  "total_orders": 30,
+  "total_positions": 15,
+  "trader_id": "SYNTH-001"
+}

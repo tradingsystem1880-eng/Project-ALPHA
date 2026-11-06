@@ -118,6 +118,25 @@ cost totals or metrics are labelled. A matching screen or model explanation is n
 
 ## Development and checks
 
+The Results page includes **Native Qlib demo** (`#page=results&pane=NativeQlibDemo`).
+It reads fixed synthetic artifacts from `public/demos/native-qlib/` through the existing
+static file route and uses the recorded-series/table components. The files come from a real
+Qlib 0.9.7 `qrun` LightGBM fit (recorder `7169fb461ef2421690db00d910841f17`), not an
+admitted ALPHA experiment. No model pickle is shipped; the view cannot train, admit research,
+write history or approve promotion. Its high correlations reflect a deliberately constructed
+synthetic target, not market performance. The native command, YAML, hashes and exact CSVs
+are available in the view. Existing canonical ML preflight/admission requirements still apply.
+
+The sibling **Native Nautilus demo** (`#page=results&pane=NativeNautilusDemo`) reads the
+separately executed NautilusTrader 1.228.0 EMACross recording. It preserves 30 orders,
+30 fills, 15 closed positions and all 31 native account-balance events. Balance plots
+use native event sequence so equal UTC timestamps remain distinct; the exact UTC times
+and balances are in the table and CSV. These are account balances, not mark-to-market
+equity or validated returns. Configuration, source/runtime provenance and raw report
+downloads are retained. Neither native demonstration creates admitted research or invokes
+an engine, live routing, history writes or promotion actions from the UI.
+
+
 From this directory:
 
 ```bash
@@ -151,3 +170,7 @@ and unverified owner actions explicitly.
 Chart exploration: each scientific series has All data / 30D / 90D / 1Y and inclusive UTC-date windows anchored to returned coverage. These are display ranges; sources, native intervals and returned tables do not change. Linked UTC ranges apply through the existing imperative registry. Coverage expands to full-returned-series counts, null gaps, observed extrema and final timestamp value. Cursor data expands to native OHLCV for prices; numerical updates use refs, without workspace renders. Recorded tables expose row/page counts and exact full-returned-series CSV with empty cells for unavailable values. Sampling bounds have a readable table plus raw provenance. Empty charts offer direct source/archive actions; panel/layout captions retain stable stored enum identities. Small scientific panels scroll/contain plot content, preserving adjacent table controls.
 
 Scientific resizing uses Bokeh’s native interaction/level-of-detail signal and returns to full-detail idle after settling. Observations and exact table/export values remain unchanged.
+
+Genuine browser captures of both native Results previews are in the root
+[README](../../../README.md#native-qlib-and-nautilus-results-previews). These are separately
+executed synthetic demonstrations; the view does not couple or rerun the engines.
