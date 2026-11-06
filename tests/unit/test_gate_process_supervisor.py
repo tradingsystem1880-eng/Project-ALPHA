@@ -13,6 +13,7 @@ import pytest
 
 RUNNER = Path(__file__).resolve().parents[2] / "scripts/run_owned_test.py"
 ORPHAN_NODES = (
+    "tests/unit/test_assistant_cleanup.py::test_assistant_cleanup_reaps_model_group_before_unlock[owner_cancel]",
     "tests/unit/test_durable_job_lease.py::test_exited_leader_keeps_descendant_group_leased_until_audited_cancellation",
     "tests/unit/test_durable_job_lease.py::test_terminate_and_reap_kills_sigterm_ignoring_nested_child",
     "tests/unit/test_research_execution.py::test_sigterm_reaps_child_and_returns_interrupted",

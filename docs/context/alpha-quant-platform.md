@@ -123,3 +123,127 @@ The missing query/restore, report and navigation handoffs remain separate depend
 The [combined Mac qualification](../superpowers/plans/2026-10-26-mac-portability-qualification.md)
 consumes the verified native portability repair after preserved W05. Gate and review state must
 come from its exact local receipts; producer Linux success is not consumer acceptance.
+
+## Native upstream first — 2026-11-06
+
+Planning direction: prefer pinned upstream Qlib workflows, RD-Agent native loops and
+NautilusTrader primitives before writing equivalent internals. Integrate their supported
+interfaces into ALPHA; an upstream example is not an ALPHA acceptance receipt. This crosswalk
+refines existing W01–W19 work, preserves every acceptance ID and all model/framework breadth,
+and creates no replacement roadmap or completion denominator. Prioritize retail-feasible durable
+economic mechanisms, crypto/altcoin research and discretionary decision support. Non-HFT
+intraday and swing remain in scope; pure HFT is excluded. Neither complexity nor presumed
+market inefficiency establishes an edge or profitability. Agentic research and self-healing must
+retain attempts and distinguish a same-spec mechanical repair from a changed hypothesis:
+the latter is new metered research with its own selection/exposure consequences, not a clean
+retry. Neither category confers autonomous trading authority. The canonical Space checklist
+is maintained separately; neither it nor the repository checklist mirror is amended here.
+
+Source inspection for this section: main `5a0d64ae6e04dad1d7fb31cb02ee798a314c9bff`.
+PR #115 is a separate, unmerged QuantPad documentation correction and is not included here.
+The following additional receipts were supplied by the coordinating owner, not rerun here:
+Qlib and Nautilus each ran synthetic native demonstrations; combined UI candidate
+`9b3f279d43b89199a4e84d8f98fb00ff234fd71d` is unmerged, with 16 public tests, scoped lint,
+types/build and both browser views reported passing. RD-Agent CLI is installed in that supplied
+environment, but no model backend, spend cap or research loop is configured. None establishes
+main integration, real-data evidence, full qualification, paper readiness or trading authority.
+
+Isolated native demonstrations may progress before broad platform acceptance when their own
+source, environment and effect boundaries are satisfied. No optional library is a prerequisite
+for the working native route, and full Qlib/model coverage is not a prerequisite for a bounded
+frozen-rule investigation. Governed admission and scientific acceptance remain separate.
+W03/W09/W12/W13 follow-on implementation should use native runtimes with thin ALPHA bindings;
+this preserves their requirements rather than renaming them or declaring them complete.
+
+### Duplication inventory and retained integration
+
+| Existing source and observed fact | Upstream-first disposition | ALPHA responsibilities retained | Existing owners |
+|---|---|---|---|
+| [Alpha158 formulas](../../workers/qlib/src/alpha_qlib_worker/features.py) implement Qlib-style definitions locally. [Official-name check](../../workers/qlib/src/alpha_qlib_worker/real.py) compares feature names, not numerical values. This is demonstrated duplicated feature computation, with semantic equivalence still unproved. | First replacement candidate: pinned native Qlib feature/provider/handler workflow. Compare values, missing data, windows, adjustment conventions and availability before deprecating local formulas. No removal yet. | Immutable ALPHA panels, point-in-time eligibility, universe and label clocks, fold-local transforms, schema/version compatibility and future-poison controls. | W03–W05, W09, W11, W12 |
+| [Qlib worker](../../workers/qlib/src/alpha_qlib_worker/real.py) already invokes native Qlib models and recorder; its in-memory dataset and fold orchestration adapt ALPHA contracts. | Prefer the pinned native workflow/recorder and official recipes for future breadth. Treat remaining dataset/orchestration overlap as a comparison candidate, not demonstrated removable duplication. Do not rewrite native estimators. | Isolation, bounded jobs, input/output validation, fit provenance, deterministic identities, prediction timing and canonical replay. Qlib diagnostics do not replace ALPHA validation. | W04, W06, W09–W12, W17 |
+| [RD-Agent worker](../../workers/rdagent/README.md) uses real LoopBase/LoopMeta and a pinned import closure; the fixed fixture is not a copied production research loop. | Prefer upstream loop/experiment/runner/feedback/checkpoint interfaces for admitted expansion. Do not build a second scheduler or trial ledger. Installed CLI and synthetic loop coverage do not qualify autonomous operation. | One continuation owner, pre-effect admission, explicit model/spend configuration, irreversible exposure and trial accounting, cancellation, containment, recovery and review authority. | W02–W04, W06–W10, W13, W17 |
+| [Engine harness](../../packages/alpha-backtest/src/alpha_backtest/engine.py) uses Nautilus BacktestEngine; [feed](../../packages/alpha-backtest/src/alpha_backtest/feed.py) and [frictions](../../packages/alpha-backtest/src/alpha_backtest/frictions.py) express ALPHA semantics. No separate replacement engine was demonstrated in this inspection. | Reuse pinned Nautilus engine, data/execution adapters and lifecycle primitives. Compare any bespoke wrapper against native capability before adding or retiring it. | Close-t decision/open-t+1 fills, calendars and action clocks, costs, instrument/venue units, accounting, deterministic artifacts, risk controls and paper boundary. A default upstream fill model is not parity. | W03–W05, W10, W11, W14, W17 |
+| [CCXT adapter](../../packages/alpha-data/src/alpha_data/adapters/ccxt_adapter.py) already delegates exchange access to CCXT. [Tear sheet](../../packages/alpha-validation/src/alpha_validation/tearsheet.py) already uses QuantStats-Lumi at the pandas rendering boundary. | Inspect these installed integrations before adding competing exchange/report libraries. Extend supported native capability only for an evidenced gap. | Provider authority, pagination/gaps, request budgets, source/availability clocks and rights; report units, deterministic output and agreement with the canonical ledger. Neither library grants scientific acceptance. | W05, W14, W18, W19 |
+
+### Migration and acceptance sequence
+
+All new acceptance proposals in this section are **NOT RUN**. Existing acceptance IDs and
+statuses remain unchanged; these are implementation choices and evidence proposals for their
+existing owners, not a second acceptance ledger.
+
+1. W01–W04: bind the official repository, immutable commit/release, source/lock hashes,
+   environment, license/notices and a supported entry point. Inventory exact old symbols and
+   proposed native counterparts. Label each as demonstrated duplication, suspected overlap or
+   required integration. Absence of a source comparison is not permission to delete.
+2. W05/W09/W11/W12: run both paths on the same immutable synthetic fixture with declared units,
+   clocks, folds, costs and seeds. Freeze numeric tolerances before comparison; explain any
+   intentional difference. Cover boundary/missing-data cases, future poisoning, normalization,
+   fit/reload/prediction and t+1 fills as applicable. Reuse the existing T05/T07/T08/T10,
+   T12–T16/T24 obligations referenced by the W11 packet, without redefining or marking them met.
+3. W06/W08/W09/W13: route native calls through the existing admitted case and accounting owner.
+   Test pre-effect budget rejection, every attempted variant, retries/reuse, crash and lost-ack
+   recovery, cancellation and checkpoint ownership. Native checkpoints or recorder runs cannot
+   silently become ALPHA trial/exposure authority. Keep model backends and spend disabled until
+   explicitly configured and admitted; this docs change executes no model calls.
+4. W10/W14/W17/W18/W19: preserve controls, claim-specific validation, retained snapshots and
+   artifact readers. Reproduce chart/table/ledger values and reopen old artifacts. Test migration
+   and backout on disposable state, including interrupted migration and original-reader replay.
+   Rollback restores the old supported route without erasing attempted trials or exposure.
+5. Only after semantic parity, dependency/license review, migration/backout proof and exact-tree
+   qualification plus independent review may the owning slice deprecate a named duplicate.
+   Keep the old route until the explicit retirement decision and compatibility obligations are
+   satisfied; preserve source history and evidence. No code removal or dependency change occurs
+   in this amendment. An upstream capability gap can justify a minimal ALPHA extension.
+
+W07 semantics and methodology routing, W15 catalyst research and W16 options expression remain
+full-scope requirements, as do every other W01–W19 package and the declared model variants.
+Optional trials are **arch** for a specifically missing statistical primitive, **Docling** for
+source-faithful extraction, and **skfolio** for a declared portfolio experiment. They are not
+adopted replacements for the gauntlet, evidence store or engine; choose one bounded missing
+capability, compare the existing path, measure incremental value and stop on failed or
+inconclusive evidence. Review the [dependency/license matrix](../governance/2026-07-19-dependency-license-matrix.md#native-upstream-planning-review--2026-11-06)
+for personal noncommercial use and separate code, weights, data and service terms.
+
+### Further optional research candidates
+
+These are proposed capability trials, not installed/adopted packages or proven replacement-safe
+paths. Official repositories below identify candidate sources; pin selection, exact license and
+dependency review, acceptance evidence and migration remain pending. A source list is not a
+claim of complete library/model coverage. Reuse existing installed capabilities first.
+
+| Proposed comparison | Existing boundary and decision before trial |
+|---|---|
+| [statsmodels](https://github.com/statsmodels/statsmodels) HAC/regression covariance; [arch](https://github.com/bashtage/arch) statistical primitives | W10/W11/W14: inspect current dependencies and statistics, define the estimator, lag/bandwidth and uncertainty convention, and test an independent numerical reference. No blanket gauntlet replacement. |
+| [ruptures](https://github.com/deepcharles/ruptures) offline break diagnostics; [STUMPY](https://github.com/stumpy-dev/stumpy) analogue windows | W07/W10/W14: retrospective segmentation is diagnostic; full-series break detection cannot silently become a causal signal. Restrict analogue candidates to information available at the decision, including exclusion windows and normalization. No automated regime/edge-decay verdict. |
+| [fredapi](https://github.com/mortada/fredapi) ALFRED vintage access; [sdmx1](https://github.com/khaeru/sdmx) international macro | W05/W15/W19: retain the planned direct FRED/ALFRED source authority. Check vintages, revisions, units, release and ingestion clocks; a vintage date alone is not intraday availability. An SDK is a transport choice, not a new authority or acquisition approval. |
+| [NeuralForecast](https://github.com/Nixtla/neuralforecast) / [MLForecast](https://github.com/Nixtla/mlforecast) | W09/W11/W12: optional isolated model-worker comparisons with frozen horizons, folds, budget and fit provenance. Existing PyTorch/Kronos and Qlib paths are present; do not replace them or require these candidates to run the native route. |
+| [PaperQA2](https://github.com/Future-House/paper-qa), [GROBID](https://github.com/grobidOrg/grobid), Docling and selective [PyAlex](https://github.com/J535D165/pyalex) patterns | W07/W13/W19: compare exact-source extraction, citation spans and metadata against the current literature path. OpenAlex, Crossref, arXiv metadata and SSRN DOI handling already exist; they are not missing-provider claims. Model-backed synthesis requires separate backend/spend and data-disclosure authority; no external model call occurs here. |
+
+Existing-source comparison starts with the [Kronos facade](../../packages/alpha-forecast/src/alpha_forecast/kronos.py),
+[literature metadata](../../workers/literature/src/literature_worker/metadata.py) and
+[current literature extraction boundary](../../workers/literature/README.md), including pypdf.
+SSRN DOI handling is metadata/version evidence, not verified SSRN full-text acquisition.
+
+OpenBB remains an optional isolated comparison, with provider-specific rights, clocks,
+coverage and capability qualification; it cannot silently replace direct-source authority.
+QuantPad remains excluded from active/future source plans by the owner decision; the separate
+PR #115 documents that correction. Neither candidate discovery nor this amendment acquires
+market data, reactivates QuantPad or resolves the blocked canonical checklist transfer.
+
+A supplied external review also suggested Dagster, LangGraph, Langfuse, Perspective, Dockview
+and MLflow. These are unverified alternatives, not adopted dependencies. First compare their
+claimed gap against ALPHA's existing continuation owner, control/trial records, tracing,
+Qlib recorder/storage and UI. Do not introduce a second orchestrator or evaluator by default;
+source/license review and a bounded duplication assessment remain pending. This note adds no
+prerequisite to the working native route.
+
+Follow the amended [native authority plan](../superpowers/plans/2026-10-26-native-rule-authority.md#native-upstream-first-follow-on--2026-11-06),
+[Qlib refit packet](../superpowers/plans/2026-10-26-qlib-w11-refit.md#native-workflow-preference--2026-11-06)
+and [Nautilus harness plan](../superpowers/plans/2026-06-16-phase-2b-nautilus-run-harness.md#native-engine-reuse--2026-11-06).
+Historical plans and delivered receipts remain intact. The supplied demonstrations and this
+planning review create no profitability claim, new delivery date or waiver of remaining gates.
+
+The [DeltaTrend workflow proposal](../superpowers/plans/2026-10-26-native-rule-authority.md#deltatrend-workflow-proposal--2026-11-06)
+maps description/chapter-level source observations and separately labeled ALPHA research-card,
+contract, control and educational-UI proposals to W07/W08/W10/W17/W18. Full spoken transcripts
+were not verified; Instagram supports no claim. New acceptance proposals remain NOT RUN.

@@ -3274,3 +3274,15 @@ the unchanged 93% floor, independent review and normal guards remain mandatory; 
 receipts establish acceptance separately from this preparation record.
 
 Plan: [W09 durable diagnostic associations](superpowers/plans/2026-11-02-w09-durable-observations.md).
+
+# Assistant cleanup candidate — 6 November 2026
+
+The native-upstream documentation aggregate exposed a public watchdog failure: the model
+child was still reported as `R` after its inherited lock became available. The repair keeps
+the lock holder alive outside the model group and routes caller cancellation through that
+watchdog. Group signalling precedes direct-child reap; no destructive signal follows release
+of the leader identity. Cleanup waits for group disappearance and can remain blocked if an
+OS reaper is unavailable. No model calls, credentials, trading authority or statistical
+behavior change. The original failed aggregate and isolated passing diagnostic remain
+historical evidence. This is an uncommitted candidate, not delivery or acceptance; the
+[plan](superpowers/plans/2026-11-06-assistant-cleanup-barrier.md) records verification scope.

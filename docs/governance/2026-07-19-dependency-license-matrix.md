@@ -249,3 +249,42 @@ access is limited to the ADR-0024 approved metadata services (OpenAlex, Crossref
 arXiv) and open-access/owner-provided documents; every stored object carries an
 `UNTRUSTED_SOURCE` receipt and grants no license or redistribution right beyond the source's
 own terms.
+
+## Native upstream planning review — 2026-11-06
+
+Evaluate the requested personal noncommercial research use, rather than rejecting a candidate
+solely because it lacks commercial rights. This is a source/license screen, not adoption or
+permission to redistribute, host, trade, acquire data or call a paid model. Check the exact
+chosen code revision, transitive dependencies, optional extras, model weights and provider/data
+terms separately; personal use does not automatically satisfy all of them. Preserve notices.
+
+The following primary-source license texts were inspected on 2026-11-06. Links to moving
+branches are discovery references, not pins or verification of a future installed artifact.
+Implementation must retain the exact revision/license hash and any required entitlement before
+use. Existing manifest pins stay unchanged.
+
+| Candidate | Inspected code-license signal | Planning disposition and remaining review |
+|---|---|---|
+| [Qlib](https://github.com/microsoft/qlib/blob/main/LICENSE) | MIT | Prefer native workflows in the isolated worker; current manifest pins pyqlib 0.9.7. Recheck the selected release and full dependency closure before migration. |
+| [RD-Agent](https://github.com/microsoft/RD-Agent/blob/main/LICENSE) | MIT | Prefer native loops; existing fixture source pin is `484776c211e4fbbeef03e0ec00d6bbee7362a4f4`. A separately installed CLI is not that fixture or a configured backend. Model/service/data terms and explicit spend limits remain separate. |
+| [NautilusTrader](https://github.com/nautechsystems/nautilus_trader/blob/develop/LICENSE) | LGPL-3.0 | Already adopted at 1.228.0. Reuse native engine primitives; retain notices and review exact optional adapter/broker terms. Noncommercial broker entitlements are assessed for the actual personal use, not rejected solely for lacking commercial rights. |
+| [CCXT](https://github.com/ccxt/ccxt/blob/master/LICENSE.txt) | MIT | Existing adapter first; exchange terms, rate limits, rights and family authority remain separate. |
+| [QuantStats-Lumi](https://github.com/Lumiwealth/quantstats_lumi/blob/main/LICENSE.txt) | Apache-2.0 | Existing rendering edge first; preserve required notices and validate units/ledger/deterministic reporting before expansion. |
+| [arch](https://github.com/bashtage/arch/blob/main/LICENSE.md) | Permissive source/binary redistribution text with notice and no-endorsement conditions | Optional bounded statistical trial only; select a pin and primitive, review dependencies, and test semantic equivalence before replacing any ALPHA statistic. |
+| [Docling](https://github.com/docling-project/docling/blob/main/LICENSE) | MIT for the inspected code | Optional extraction trial only; independently review selected weights/assets and document rights, provenance, page spans and extraction accuracy. |
+| [skfolio](https://github.com/skfolio/skfolio/blob/main/LICENSE) | BSD-3-Clause | Optional portfolio trial only; review solver/dependency terms, chronology, constraints, costs and incremental value on a declared experiment. |
+
+No dependency is installed, upgraded or removed by this review. See the
+[native reuse crosswalk](../context/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+for retained ALPHA controls and NOT RUN parity/migration requirements. Historical inventory rows
+retain their original as-of status; this appendix does not refresh unrelated service approvals.
+
+Additional proposed lanes are statsmodels HAC/regression covariance, ruptures, STUMPY, fredapi,
+NeuralForecast/MLForecast, PaperQA2/GROBID, sdmx1 and selective PyAlex reuse. Their official
+source links and bounded purposes are in the
+[optional-candidate crosswalk](../context/alpha-quant-platform.md#further-optional-research-candidates).
+No exact revision or complete license/dependency/weights/service review is claimed for those
+lanes here; those checks are required at selection before execution or replacement. Existing
+installation or transitive presence must be inventoried rather than assumed absent. The earlier
+initial-slice RD-Agent non-adoption paragraph is historical: current native fixtures and the
+prospective native-first direction do not amount to production application acceptance.

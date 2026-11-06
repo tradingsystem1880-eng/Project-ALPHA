@@ -469,3 +469,13 @@ no portfolio; the MlDiagnostics provenance still renders a LightGBM version row 
 omits `backend_versions`; the capability notice reads "MODEL BLOCKED" while the probe is still loading;
 schema-3 quantile diagnostics drop every cross-section with a tied score; `threadpoolctl` is imported
 but only transitively declared; line 431 above cites receipts outside the repository.
+
+## Native upstream continuation — 2026-11-06
+
+Retain this wave's historical recipes, qualification states and declared wider model scope.
+For successor work, prefer pinned native Qlib workflows and official model recipes, keeping
+ALPHA isolation, data eligibility, provenance and validation contracts. The
+[W11 native-workflow amendment](2026-10-26-qlib-w11-refit.md#native-workflow-preference--2026-11-06)
+identifies demonstrated feature duplication and pending parity/migration evidence; name equality
+or a synthetic demonstration does not accept a replacement. No recipe is removed or marked
+complete by this planning change. New acceptance proposals are NOT RUN.

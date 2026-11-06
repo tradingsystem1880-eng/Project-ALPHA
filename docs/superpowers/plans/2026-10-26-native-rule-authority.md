@@ -867,3 +867,51 @@ The [cleanup/refactor successor](2026-10-30-project-lineage-projection-refactor.
 item-4 `changed_paths` wrapper and records cloud-visible ref/worktree dispositions through the
 [existing hygiene plan](2026-10-08-repository-hygiene.md#cloud-visible-ledger-reconciliation-2026-10-30).
 Physical Mac reconciliation and the wider acceptance obligations above remain separately open.
+
+## Native upstream first follow-on — 2026-11-06
+
+For subsequent W03/W04/W06/W08/W09/W13 work, prefer the pinned upstream native loop,
+Experiment/Runner/Feedback and checkpoint interfaces over a parallel ALPHA loop. The dated
+frozen-rule implementation and its acceptance boundaries above remain unchanged; a synthetic
+LoopBase fixture is not full RD-Agent application deployment. The supplied newly installed
+RD-Agent CLI has no configured model backend, spend cap or research loop, and this amendment
+starts none.
+
+Use the [crosswalk and migration sequence](../../context/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+to map each proposed replacement to the existing owner and acceptance ID. Keep one continuation
+owner, pre-effect admission, trial/exposure accounting, cancellation, containment, immutable
+receipts and recovery in ALPHA. Compare native checkpoint semantics rather than assuming they
+replace the existing ledger or authorization. Replacement criteria, migration/backout and
+admitted-loop tests are NOT RUN; no completed slice or older receipt is reclassified.
+
+Isolated native demos can progress within their own source/effect bounds before broad platform
+acceptance. Optional research libraries and complete model-zoo coverage are not prerequisites
+for that route. The precise existing LoopBase/LoopMeta extension destination, existing admission
+and scientific acceptance remain distinct; this direction does not authorize a stock RDLoop,
+model calls, a new ledger or unbounded continuation.
+
+## DeltaTrend workflow proposal — 2026-11-06
+
+Source scope is deliberately limited: a supplied primary-source review of YouTube descriptions
+and chapter labels reports that [QhGoLgWyUrw](https://www.youtube.com/watch?v=QhGoLgWyUrw)
+distinguishes logic specification, preprocessing, signals, execution/risk and backtest/risk/
+benchmark analysis; [M3-0LfZMsz4](https://www.youtube.com/watch?v=M3-0LfZMsz4) frames statistical
+testing alongside executable rules and risk; and [TEVRiSNxs50](https://www.youtube.com/watch?v=TEVRiSNxs50)
+describes raw data becoming features and qualitative patterns becoming measures. No full spoken
+transcript was verified. Instagram was inaccessible and supports no claim here. These narrow
+source observations establish neither strategy performance nor an implementation specification.
+
+The following are **ALPHA design proposals**, not attributed creator details or adopted features:
+
+| Existing owner | Proposed use of existing records and surfaces | Proposed acceptance evidence — NOT RUN |
+|---|---|---|
+| W07/W08 | Versioned source-linked research cards and frozen experiment contracts in the current research/evidence path. Keep event, context, outcome and rule/execution definitions distinct; record original versus adapted assumptions and source-access limits. | A reviewer traces each material claim to the exact available source span and frozen specification; missing evidence stays unavailable. A changed hypothesis is a new metered variant, not a repair of the old card. |
+| W08/W10/W17 | Reuse the native investigation, controls and validation paths to test the declared idea, baseline and costs. | An availability-time fixture rejects information unavailable at the decision; a fair baseline/control uses declared comparable universe, capital, timing and costs; attempted variants and repairs retain trial lineage without reset. Gross/net results reconcile with the existing cost ledger. |
+| W18 with W07/W08 | A chronological educational view in the existing evidence-backed UI: source/idea, definitions, available inputs, frozen test, native run, controls/costs, uncertainty and next-test/stop reasoning. | The view exposes source and availability limits, reproduces chart/table/ledger values and distinguishes exploratory, null, invalid and accepted outcomes. Readable presentation does not upgrade evidence or grant execution authority. |
+
+These proposals refine existing W07/W08/W10/W17/W18 acceptance work without new acceptance IDs,
+completion claims or a second evaluator/orchestrator. Reuse pinned Qlib/RD-Agent and the existing
+NautilusTrader backtest/execution engine; do not adopt Freqtrade. No profit, alpha or market
+inefficiency is assumed. Same-spec repairs retain attempts and evidence; changed hypotheses
+retain their new selection/exposure consequences. Data acquisition, model spending and trading
+remain outside this documentation task, and all broader W01–W19 requirements remain intact.

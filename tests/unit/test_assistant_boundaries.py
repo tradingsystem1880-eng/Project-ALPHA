@@ -137,10 +137,8 @@ def test_runtime_output_and_cancellation_boundary(
     monkeypatch.setattr(assistant_runtime, "preflight", lambda _: None)
     killed: list[int] = []
     waited: list[bool] = []
-    monkeypatch.setattr(
-        "alpha_cli.assistant_runtime.os.killpg", lambda pid, sig: killed.append(pid)
-    )
     old_signal = signal.getsignal(signal.SIGTERM)
+    old_interrupt = signal.getsignal(signal.SIGINT)
 
     class Process:
         pid = 12345
@@ -149,7 +147,13 @@ def test_runtime_output_and_cancellation_boundary(
         def __init__(self, work: Path) -> None:
             self.work = work
 
-        def communicate(self, prompt: str, **kwargs: object) -> tuple[str, str]:
+        def communicate(self, prompt: str | None = None, **kwargs: object) -> tuple[str, str]:
+            if prompt is None:
+                assert signal.getsignal(signal.SIGTERM) == signal.SIG_IGN
+                assert signal.getsignal(signal.SIGINT) == signal.SIG_IGN
+                signal.raise_signal(signal.SIGINT)
+                signal.raise_signal(signal.SIGTERM)
+                return "", ""
             assert "no tools or execution authority" in prompt
             if outcome == "cancel":
                 callback = signal.getsignal(signal.SIGTERM)
@@ -171,6 +175,9 @@ def test_runtime_output_and_cancellation_boundary(
         def poll(self) -> int | None:
             return None if outcome == "cancel" else self.returncode
 
+        def terminate(self) -> None:
+            killed.append(self.pid)
+
         def wait(self) -> int:
             waited.append(True)
             return self.returncode
@@ -190,13 +197,14 @@ def test_runtime_output_and_cancellation_boundary(
     elif outcome == "cancel":
         with pytest.raises(KeyboardInterrupt):
             assistant_runtime.infer(request, [], [], lock_fd=77)
-        assert killed == [12345, 12345]
+        assert killed == [12345]
     else:
         with pytest.raises((RuntimeError, ValueError)) as error:
             assistant_runtime.infer(request, [], [], lock_fd=77)
         assert "do not expose this stderr" not in str(error.value)
     assert waited == [True]
     assert signal.getsignal(signal.SIGTERM) == old_signal
+    assert signal.getsignal(signal.SIGINT) == old_interrupt
 
 
 @pytest.mark.parametrize("outcome", ["normal", "parent_missing", "parent_died", "deadline"])
@@ -207,30 +215,41 @@ def test_watchdog_trusted_process_lifecycle(
         "alpha_cli.assistant_worker.sys.argv", ["worker", "123", "5", "trusted-codex"]
     )
     monkeypatch.setattr("alpha_cli.assistant_worker.sys.stdin", io.StringIO("bounded prompt"))
-    pids = iter(
-        [0] if outcome == "parent_missing" else [123, 0 if outcome == "parent_died" else 123]
-    )
-    monkeypatch.setattr("alpha_cli.assistant_worker.os.getppid", lambda: next(pids))
-    clocks = iter([0.0, 6.0])
+    calls = 0
+
+    def parent() -> int:
+        nonlocal calls
+        calls += 1
+        return 0 if outcome == "parent_missing" or (outcome == "parent_died" and calls > 1) else 123
+
+    monkeypatch.setattr("alpha_cli.assistant_worker.os.getppid", parent)
+    clocks = iter([0.0, 6.0] if outcome == "deadline" else [0.0, 0.0])
     monkeypatch.setattr("alpha_cli.assistant_worker.time.monotonic", lambda: next(clocks))
-    monkeypatch.setattr("alpha_cli.assistant_worker.os.getpgrp", lambda: 999)
     killed: list[int] = []
+    waited: list[bool] = []
 
     def kill(group: int, sig: int) -> None:
-        killed.append(group)
+        assert group == 456
+        if sig == 0:
+            raise ProcessLookupError
         assert sig == signal.SIGKILL
-        raise SystemExit(137)
+        killed.append(group)
 
     monkeypatch.setattr("alpha_cli.assistant_worker.os.killpg", kill)
 
     class Process:
-        returncode = 0
+        pid = 456
+        returncode: int | None = None
 
         def communicate(self, prompt: str, timeout: float) -> tuple[str, str]:
             assert prompt == "bounded prompt"
-            if outcome == "normal":
-                return "answer", "diagnostic"
-            raise subprocess.TimeoutExpired("codex", timeout)
+            self.returncode = 0
+            return "answer", "diagnostic"
+
+        def wait(self) -> int:
+            waited.append(True)
+            self.returncode = -9
+            return -9
 
     monkeypatch.setattr(
         "alpha_cli.assistant_worker.subprocess.Popen", lambda *args, **kwargs: Process()
@@ -243,7 +262,7 @@ def test_watchdog_trusted_process_lifecycle(
     if outcome == "normal":
         captured = capsys.readouterr()
         assert captured.out == "answer" and captured.err == "diagnostic"
-    assert bool(killed) == (outcome in {"parent_died", "deadline"})
+    assert bool(killed) == bool(waited) == (outcome in {"parent_died", "deadline"})
 
 
 @pytest.mark.parametrize(

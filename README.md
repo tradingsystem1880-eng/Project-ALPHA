@@ -8,6 +8,12 @@ terminal, backed by the same Python CLI used by agents and automation.
 The goal is to assess whether an apparent edge survives costs, out-of-sample testing, and competing
 explanations. A chart, a model answer, or a profitable backtest alone does not establish an edge.
 
+The development direction is to reuse pinned Qlib workflows, RD-Agent native loops and
+NautilusTrader rather than rebuild their internals. ALPHA retains data provenance, trial
+accounting, validation, risk controls and the research UI. The [native reuse crosswalk](docs/context/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+separates existing integration, supplied synthetic demonstrations and replacements that still
+need parity, migration and rollback evidence.
+
 ![ALPHA Workstation price chart with backend-computed studies, market navigation, and research tools, using synthetic BTC/USDT bars](docs/assets/workstation/chart.png)
 
 *Chart exploration in the implemented Workstation. All screenshots below were captured from a

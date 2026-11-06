@@ -20,6 +20,16 @@ same-origin web adapter calls the closed CLI vocabulary. Model tools are disable
 inference is bounded by cancellation and a five-minute supervisor. Context hashes are checked
 again before draft use. No evidence admission, generated-code execution or owner authority.
 
+Assistant cleanup retains the inherited global lock in a watchdog outside the model process
+group. Parent loss, inference deadline and owner cancellation signal that owned model group,
+reap its direct child, and wait for group disappearance before releasing the lock. Caller
+cancellation requests watchdog shutdown and waits; it must not kill the lock holder first.
+No destructive group signal follows leader reaping. Cleanup can remain blocked if the OS
+cannot terminate/reap a group; this is fail-closed, not a promise that shutdown finishes in
+five minutes. A successful command already reaped by communicate is not used to authorize
+another numeric-group signal. Detached processes and arbitrary external watchdog killing
+are not a containment guarantee. See the [cleanup plan](../../docs/superpowers/plans/2026-11-06-assistant-cleanup-barrier.md).
+
 `alpha rules explain NAME SYMBOL [--as-of DATE] --json` reports shared rule-comparator results:
 values, pass/fail/unavailable conditions, signal, cutoff and exact rule hash. Only canonical
 stored daily bars are supported. Short-circuit and conflicting-side behavior match `rule_signal`.

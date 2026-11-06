@@ -43,3 +43,14 @@ development worker and tests; no production route imports or invokes it. No comm
 are authorized. ALPHA retains admission, budgets, exposure, execution, economics, evidence and
 approval authority. Native checkpoint state is never an authority record. Cross-owner recovery,
 owner-death containment and hostile-code isolation remain unqualified.
+
+## Follow-on native preference — 2026-11-06
+
+The historical fixture scope above remains fixed. Future admitted loop work should reuse pinned
+upstream RD-Agent interfaces and its native continuation machinery rather than clone scheduler
+internals. The existing precise destination remains a real LoopBase/LoopMeta extension, not
+stock factor/model RDLoop. Native-first preference does not override that restriction. Follow the
+[native authority amendment](2026-10-26-native-rule-authority.md#native-upstream-first-follow-on--2026-11-06)
+for the pre-effect authority, trial accounting, recovery and migration obligations; all new
+acceptance proposals remain NOT RUN. CLI installation alone does not configure a model, spending
+or a research loop.

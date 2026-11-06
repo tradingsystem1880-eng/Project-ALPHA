@@ -37,3 +37,16 @@ tests/integration/test_nautilus_engine.py                  # CREATE: do-nothing 
 - A run harness feeds PIT-safe bars through nautilus and a market order decided on the close of `t` provably fills at the **open of `t+1`** — the spec's execution convention, enforced and bias-guarded.
 
 **Next:** Phase 2c — the TS-momentum strategy (decide-on-close / execute-on-open base) + vol-target sizing; then the fee/slippage `FillModel` and the standard result schema (equity curve + trade log).
+
+## Native engine reuse — 2026-11-06
+
+This dated plan and its original task states remain historical. Current main already delegates
+the engine to pinned NautilusTrader 1.228.0; prefer its supported lifecycle, data and execution
+primitives for future work rather than build another engine. Retain ALPHA's PIT feed, close-t /
+open-t+1 semantics, costs, units, accounting, validation and paper boundary. The historical spike
+above demonstrates why an upstream default is not automatically semantic parity.
+
+The [current crosswalk](../../context/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+requires matched fixtures, dependency/license review, compatible artifacts, migration and
+rollback proof before retiring any named wrapper. Those new proposals are NOT RUN. A supplied
+synthetic native Nautilus demo and an unmerged UI view do not qualify real-data or paper use.
