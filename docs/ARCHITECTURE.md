@@ -489,3 +489,19 @@ Owner correction: [scientific research renderer and project-free browsing](opera
 ## Bounded CLI persistence seams
 
 `alpha_cli._crypto_persistence` shares exact-byte immutable JSON writes; command wrappers retain paths and document identities. `alpha_cli._control_json` owns pure serialization and validation; `control_store` retains facade names, migrations, transactions and authority. See [development loop](operations/development-loop.md).
+
+## Native upstream planning direction — 2026-11-06
+
+Prefer pinned Qlib native workflows, RD-Agent native loops and NautilusTrader primitives over
+reimplementing their internals. Current main already uses native models/recorders, actual
+LoopBase/LoopMeta fixtures and Nautilus BacktestEngine. The
+[source-bound crosswalk](context/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+separates the demonstrated Alpha158 feature duplication from suspected orchestration overlap
+and required ALPHA integration. It records supplied unmerged synthetic/UI evidence separately
+from inspected main and defines parity, license, migration and rollback prerequisites for any
+future retirement. No runtime architecture, authority seam or import DAG changes here.
+
+Retain ALPHA provenance, point-in-time data, admission/trial accounting, validation, risk,
+recovery and evidence-backed UI. Reuse existing CCXT and QuantStats-Lumi before adding
+competitors. Optional arch, Docling and skfolio trials require an evidenced gap and their own
+bounded acceptance; they are not new defaults. All W01–W19 scope and acceptance IDs remain.

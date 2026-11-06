@@ -5,6 +5,7 @@ These maps introduce no product scope, permissions, or new source of authority.
 
 - [Software Team](software-team.md): engineering boundaries, discovery and verification.
 - [ALPHA Quant Platform](alpha-quant-platform.md): data, research, validation and surfaces.
+- [Native upstream first](alpha-quant-platform.md#native-upstream-first--2026-11-06): source-bound reuse/duplication crosswalk and amendments to existing Qlib, RD-Agent and Nautilus plans; full W01–W19 scope retained, new acceptance proposals NOT RUN.
 - [Validation dependencies and open acceptance](alpha-quant-platform.md#validation-dependencies-and-open-acceptance): lean Master v1 §12 W06/W09–W12/W14/W17 tasks; full Qlib/native RD-Agent and wider W01–W19 scope retained.
 - [Canonical feature readiness checklist (2026-10-27 reconciled)](feature-readiness-checklist-2026-10-27.md): sole full-scope owner; repository mirror of the source DOCX with SHA/version provenance. Plans link here rather than copy it; it marks no feature done.
 - [Retail research refinement (2026-11-02)](feature-readiness-checklist-2026-10-27.md#retail-research-refinements-2-november-2026): requirements and proposed NOT RUN acceptance evidence within existing owners; canonical v3 authored amendment reconciled; full local DOCX parity remains unverified and completion statuses are preserved.

@@ -218,7 +218,7 @@ def infer(
         work.mkdir()
         preflight(work)
         (work / "schema.json").write_text(json.dumps(_SCHEMA))
-        # Start a private process group so timeout and owner cancellation terminate descendants.
+        # The watchdog owns model-group cleanup and retains the shared lock until it finishes.
         proc = subprocess.Popen(
             [
                 sys.executable,
@@ -244,7 +244,6 @@ def infer(
 
         def stop(signum: int, frame: FrameType | None) -> None:
             del signum, frame
-            os.killpg(proc.pid, signal.SIGKILL)
             raise KeyboardInterrupt
 
         previous = signal.signal(signal.SIGTERM, stop)
@@ -252,7 +251,7 @@ def infer(
             try:
                 proc.communicate(prompt, timeout=TIMEOUT_SECONDS)
             except subprocess.TimeoutExpired as exc:
-                os.killpg(proc.pid, signal.SIGKILL)
+                proc.terminate()
                 proc.communicate()
                 raise RuntimeError("Assistant exceeded its five-minute timeout.") from exc
             output = work / "answer.json"
@@ -268,7 +267,14 @@ def infer(
                 result["rule_draft"] = json.loads(result["rule_draft"])
             return result
         finally:
-            signal.signal(signal.SIGTERM, previous)
-            if proc.poll() is None:
-                os.killpg(proc.pid, signal.SIGKILL)
-            proc.wait()
+            # Repeated owner cancellation must not interrupt the cleanup receipt.
+            previous_int = signal.signal(signal.SIGINT, signal.SIG_IGN)
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
+            try:
+                if proc.poll() is None:
+                    proc.terminate()
+                    proc.communicate()
+                proc.wait()
+            finally:
+                signal.signal(signal.SIGTERM, previous)
+                signal.signal(signal.SIGINT, previous_int)

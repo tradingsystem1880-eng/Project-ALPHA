@@ -206,9 +206,6 @@ def test_runtime_timeout_kills_descendants(tmp_path: Path, monkeypatch: pytest.M
 
     monkeypatch.setattr("alpha_cli.assistant_runtime.preflight", lambda _: None)
     killed: list[tuple[int, int]] = []
-    monkeypatch.setattr(
-        "alpha_cli.assistant_runtime.os.killpg", lambda pid, sig: killed.append((pid, sig))
-    )
 
     class TimedOut:
         pid = 123
@@ -220,6 +217,9 @@ def test_runtime_timeout_kills_descendants(tmp_path: Path, monkeypatch: pytest.M
             if self.calls == 1:
                 raise subprocess.TimeoutExpired("codex", 300)
             return "", ""
+
+        def terminate(self) -> None:
+            killed.append((self.pid, 15))
 
         def poll(self) -> int:
             return -9
