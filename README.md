@@ -271,8 +271,12 @@ rule, use the system configuration unchanged.
   have a separately gated IBKR Paper path. Both are opt-in. Provider/network acceptance, current
   data qualification, and paper readiness require their own receipts. No live-capital route ships.
 - **Data:** Tiingo is the canonical stock/ETF EOD path after qualification. Crypto authority is
-  family- and venue-specific; comparison feeds never silently substitute. QuantPad downloads
-  remain scratch research input until the canonical adapter/qualification boundary is satisfied.
+  family- and venue-specific; comparison feeds never silently substitute. The internal
+  [offline funding API](docs/operations/2026-11-05-offline-funding-delivery.md) composes bounded
+  injected responses, exact-byte raw retention and validated backward Bybit funding collection.
+  Synthetic checks do not establish complete history or live provider access. Production
+  acquisition retains its command surface and full-page refusal. QuantPad is excluded from active
+  and future data-source plans; historical code, attribution and retained records are preserved.
 - **Use and licensing:** Private, local, single-owner use is the approved scope. The repository has
   no declared root project license; dependency licenses do not license ALPHA's original code.
   See the [dependency and license matrix](docs/governance/2026-07-19-dependency-license-matrix.md).

@@ -1,5 +1,5 @@
 {
-  "inputs_hash": "2205640d2bad3f84a2b6b807cb972ea8289988d26955dfd7906708081a319eab",
+  "inputs_hash": "6845b8ac36603077087590beb64e158d2dec748ee25c4e15f49bae1ddc37506e",
   "purpose": "review queue: nodes with no doc anchor, test, or cross-layer link",
   "schema_version": 1,
   "unknown_node_ids": [
@@ -10,7 +10,6 @@
     "module:alpha_backtest",
     "module:alpha_cli._atomic",
     "module:alpha_cli._control_schema",
-    "module:alpha_cli._crypto_acquisition",
     "module:alpha_cli._crypto_panel",
     "module:alpha_cli._crypto_persistence",
     "module:alpha_cli._hypothesis_scan",
@@ -25,7 +24,6 @@
     "module:alpha_core.costs",
     "module:alpha_core.universe",
     "module:alpha_data._atomic",
-    "module:alpha_data.crypto.providers",
     "module:alpha_forecast._vendor.kronos.kronos",
     "module:alpha_forecast._vendor.kronos.module",
     "module:alpha_qlib_worker",

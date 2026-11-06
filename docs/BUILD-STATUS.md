@@ -3286,3 +3286,173 @@ OS reaper is unavailable. No model calls, credentials, trading authority or stat
 behavior change. The original failed aggregate and isolated passing diagnostic remain
 historical evidence. This is an uncommitted candidate, not delivery or acceptance; the
 [plan](superpowers/plans/2026-11-06-assistant-cleanup-barrier.md) records verification scope.
+
+## 2026-11-05 offline Bybit funding-page contract (unpublished)
+
+Isolated candidate on main `5a0d64ae6e04dad1d7fb31cb02ee798a314c9bff`, tree
+`b795de4e9611035aa9c725a2604bf3bcf038f414`: an additive pure funding-page wrapper
+binds exact instrument/category, inclusive requested bounds and aware acquisition
+cutoff through the existing plan. The legacy parser/frame, raw receipt schemas and
+full bounded-page refusal remain. No publication clock, fixed eight-hour cadence,
+annualisation, complete-history or provider-qualification claim is added.
+
+Focused synthetic evidence: 143 covering Bybit/backfill/native-acquisition/ingestion/
+snapshot-query tests passed; three subsequent compatibility additions brought the
+final funding-file selection to 24 passing cases. Ruff check/format, strict mypy
+for the three Python files, 13 import contracts and plan validation passed.
+Independent source review found no blocking defect. Initial missing-function test
+collection and 14 test-helper typing errors were corrected and are recorded in the
+scoped plan. No dependencies were installed. The original checkout is unchanged.
+
+Full gate, aggregate coverage and protected-suite qualification are unverified;
+no earlier task's private-suite absence exception is reused. No providers, credentials,
+real datasets, studies, commits, pushes or external publication were used. Durable
+budgets, pagination, raw-page-first retention and restore remain separate work.
+Providers remain unqualified and QuantPad remains excluded.
+
+Plan: [Offline Bybit funding page](superpowers/plans/2026-11-05-offline-bybit-funding-page.md).
+
+## 2026-11-05 offline funding backward progression (unpublished successor)
+
+The separately preserved single-page candidate has content SHA256
+`59abb43c5f8bfed2f66ceecd1d8b10f7fe59fca0adeeb0a1b366aa9acc826aa2`.
+This successor remains based on main `5a0d64ae6e04dad1d7fb31cb02ee798a314c9bff`.
+An offline callback collector reuses its parser, fixes original inclusive bounds,
+decreases the page upper bound by one millisecond after the oldest settlement,
+and rejects repeated/conflicting/out-of-bound observations. Empty, lower-bound,
+call-limit and byte-limit stops all retain `coverage_complete=False`; short pages
+continue without assuming a historical funding cadence or publication clock.
+
+Fresh final focused evidence: 145 public synthetic/regression tests passed (38 new
+pagination cases, 24 predecessor funding cases and 83 existing Bybit/backfill/native
+acquisition cases). Ruff check/format, strict mypy for the two new Python files,
+all 13 import contracts, plan and diff checks passed. Independent read-only source
+review found no blocking findings. Its two optional tests were added and passed.
+Historical predecessor results remain separately labelled in its unchanged workspace.
+
+The collector has no installed transport or CLI route. Callback work/allocation is
+outside accepted-byte checks; production transport must enforce byte/deadline limits
+and raw retention plus acquisition safeguards before integration. Existing production
+full-page refusal, persisted receipts/frames and scientific defaults are unchanged.
+No durable quotas/resume/storage, provider qualification or complete-history claim
+is added. Full/Atlas/preflight gates, protected contents, provider calls, credentials,
+dependencies/installations, commits and publication were not used. QuantPad remains
+excluded. Original checkout and predecessor workspace remain unchanged.
+
+Plan: [Offline Bybit funding pagination](superpowers/plans/2026-11-05-offline-bybit-funding-pagination.md).
+
+## 2026-11-05 offline raw-first funding retention (unpublished successor)
+
+Preserved predecessors: single-page content
+`59abb43c5f8bfed2f66ceecd1d8b10f7fe59fca0adeeb0a1b366aa9acc826aa2` and pagination
+content `3437646696187fd43242acf967ed18e2da3f07e258985f64d8792f571fa4e99e`.
+The separate raw successor remains based on main `5a0d64ae6e04dad1d7fb31cb02ee798a314c9bff`.
+An additive raw-only ingestion entry reuses existing staging/receipts/publication and
+verification, including already-supported zero-byte evidence. Default ordinary
+ingestion still refuses empty bodies. Offline funding composition freezes request
+metadata, preflights existing root/reserve, retains exact bounded bodies, and verifies
+raw evidence before collector decoding. Malformed/rejected/empty response bodies
+remain raw-only evidence; no normalized data, quality acceptance or snapshot follows.
+
+Fresh final focused evidence: 115 tests passed (19 raw-retention, 34 existing ingestion/
+storage, 38 pagination, 24 single-page cases). Ruff check/format, strict mypy on three
+Python files, all 13 import contracts, plan/diff checks passed. Independent source
+review found no blocking findings; its two optional failure tests were added before
+the final run. Initial absent-module collection and six test-helper typing errors
+were corrected. Historical predecessor results are not fresh receipts for this tree.
+
+Actual temporary filesystem writes, payload fsync, links/replacements, manifest/hash
+checks and reopen were exercised; interruption points and UUID/capacity observations
+were injected. Production reserves were not lowered. No real retained-root, power-loss
+or concurrency qualification is established. Before manifest commit, exact original
+inputs are needed to reconstruct receipt/request metadata; existing staged bytes do
+not constitute a durable acquisition journal. No live route or production full-page
+refusal changed. No quota/resume, snapshot restore, credentials, owner data, provider
+calls, dependencies/installations, protected contents, full/Atlas/preflight gates,
+commits/push/external publication were used. Coverage and providers remain unqualified;
+settlement/publication clocks remain distinct, and QuantPad remains excluded.
+
+Plan: [Offline raw-first funding retention](superpowers/plans/2026-11-05-offline-funding-raw-retention.md).
+
+## 2026-11-05 injected bounded funding response reader (unpublished successor)
+
+Preserves raw-retention content
+`30a916523d4a6154ce57c452918399e5595cfc58798d3ebd04850ceaa71e8a87` on main
+`5a0d64ae6e04dad1d7fb31cb02ee798a314c9bff`. An internal supplier requires an
+injected urllib-style opener and monotonic clock. Closed funding requests, bounded
+chunk/EOF reads, response validation, shared deadline checks and sanitized cleanup
+compose with existing raw-first retention. No live opener, command, retry or provider
+activation is added; production full-page refusal and persisted contracts remain.
+
+Fresh focused evidence: 188 tests passed (39 transport, 19 raw, 38 pagination, 24 page,
+68 existing wire/request-budget/Tiingo cases). Final transport-only rerun passed all
+39 after fixture-header typing corrections. Ruff/format, strict mypy on two files,
+13 import contracts and plan/diff checks passed. Independent review required fixes
+for cancellation leaks and cleanup cancellation handling; both were corrected and
+rereviewed without remaining required findings. Historical counts are not disjoint.
+
+Accepted bodies are capped; conforming reads may consume one overflow/EOF probe byte
+beyond the allowance. Timeout arguments and between-operation deadline checks do not
+preempt blocking arbitrary code or prove actual socket behavior. No hard end-to-end
+acquisition deadline, header/socket/RSS cap or power-loss guarantee is claimed. Complete
+eligible bodies are raw-retained before decode; partial/invalid transport bodies are
+not retained under a fabricated complete receipt. Live no-redirect/timeout qualification,
+storage/rights admission and durable acquisition controls remain prerequisites. No
+providers, credentials, real data, protected contents, prohibited gates, installs,
+commits/push or external publication were used. QuantPad remains excluded.
+
+Plan: [Offline bounded funding reader](superpowers/plans/2026-11-05-offline-funding-bounded-reader.md).
+
+## 2026-11-05 integrated offline funding delivery candidate (unpublished)
+
+Converges the existing page validation, backward collection, real raw-first storage
+and mandatory-injected bounded response supplier into one reviewable candidate on
+`5a0d64ae6e04dad1d7fb31cb02ee798a314c9bff`. Exact transport predecessor content
+`11bd06fc3bb51ac1e0024e84c7ade68df1b6be31ff3e57bb2359f6938aff8ca6` is preserved
+as an allowlisted source snapshot with its historical receipts; prior workspaces and
+the original checkout remain unchanged. No additional capability slice was started.
+
+New composed tests cover multi-page full/short/singleton progression with raw-before-
+each-decode/reopen, second-page transport/cancellation failure, storage failure after
+response cleanup and finite stops preventing another open. Existing tests continue
+to cover malformed eligible bodies, incomplete/oversized ineligible bodies and
+failure cleanup. Cross-layer review found a mutable-Request URL-binding defect;
+the expected URL is now frozen before opener execution and a composed regression
+requires rejection/cleanup/no raw publication after mutation.
+
+The integrated patch, explicit allowlist/content inventory, candidate/base identities,
+fresh combined focused verification and exact final independent review are separate
+local delivery artifacts. Historical helper counts are not added to fresh results.
+README now explains the working offline API and its production boundary, including
+the owner's QuantPad exclusion; native README/review attestations remain pending.
+
+This is not aggregate/release qualification or live-provider admission. No full,
+Atlas/preflight or protected-content checks were executed; no absence exception was
+invented. Candidate-local runtime packages and private-suite coverage are unavailable,
+installations and publication are outside authorization, and the earlier external
+Claude submission remains held. No live opener/command, reserve reduction, new
+schema/ledger/quota/resume/restore, credentials, provider/network calls, owner data,
+commits, pushes or external publication are added. Production full-page refusal remains.
+
+Handoff: [Integrated offline funding delivery](operations/2026-11-05-offline-funding-delivery.md).
+
+## Funding delivery successor after public component execution
+
+The original funding tree `6ddac25c6578bb4d3d59ae66c584cec260cdea35`, original
+receipts and separate inactive F5 successor remain preserved. Standard locked setup
+succeeded. Original-tree frontend (including browser/SPA), literature, Qlib and eval
+components passed; backend stopped at the 6,000-byte combined-manual guard (6,226),
+and Atlas passed tests but found four stale generated outputs. These are historical
+original-tree results, not final successor verification.
+
+This delivery successor condenses manual wording without changing functional rules
+or funding code, and regenerates Atlas through its supported workflow. The targeted
+manual-size check passes at 5,995 combined bytes. Final public/full verification,
+independent review and native README evidence must bind the final successor. Private
+engineering-suite coverage remains UNVERIFIED. The owner later approved a funding-only
+absence decision for the unchanged funding software, conditioned on full public gates
+and genuine independent review. Prior BLOCK evidence remains preserved. Integration
+onto merged PR #116 retains its assistant-cleanup changes and funding code/test hashes;
+only documentation and generated-Atlas overlap is resolved. Final evidence binds that
+actual integrated tree. Separate standing direction permits a qualified merge through
+normal protections; no live-provider admission, trading or deployment is authorized.

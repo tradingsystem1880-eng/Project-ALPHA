@@ -20,7 +20,7 @@ from alpha_data.crypto.contracts import (
 from alpha_data.crypto.providers.bybit import (
     BybitCategory,
     PriceFamily,
-    parse_funding_history,
+    parse_funding_page,
     parse_historical_volatility,
     parse_instruments,
     parse_long_short_ratio,
@@ -434,7 +434,14 @@ def bybit_plan(
     elif family == "funding":
         endpoint = "funding"
         params = {"category": category, "symbol": symbol, "limit": 200}
-        parser = parse_funding_history
+        parser = partial(
+            parse_funding_page,
+            symbol=symbol,
+            category=category_value,
+            fetched_at=fetched_at,
+            start_ms=None if bounded_range is None else bounded_range[0],
+            end_ms=None if bounded_range is None else bounded_range[1],
+        )
         units = "dimensionless_rate"
         dataset_frequency = "funding_interval"
         page_limit = 200

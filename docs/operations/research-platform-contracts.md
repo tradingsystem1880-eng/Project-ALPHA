@@ -50,6 +50,96 @@ acceptance claim. The [ADR index](../adr/README.md), path rules and cited design
 
 ## Research and control-store boundaries
 
+Bybit funding acquisition binds each page to the exact requested instrument/category,
+inclusive requested millisecond bounds and aware acquisition cutoff. The additive
+`parse_funding_page` wrapper preserves the legacy parser frame and native signed rates;
+it does not annualize, assume an eight-hour interval or infer publication availability.
+Empty, duplicate/conflicting, foreign-identity and future-settlement pages fail closed.
+Full bounded pages still require narrowing through the existing fetch path. Short pages
+do not prove full historical coverage. Receipt schemas and retained readers are unchanged.
+
+`crypto.providers.bybit_funding.collect_funding_pages` is an offline callback collector,
+not a CLI/provider-call route. It supplies paired inclusive `startTime`/`endTime`,
+advances the end to the oldest observed settlement minus one millisecond, and refuses
+cross-page repeats/conflicts or settlements above that page's boundary. A short page
+continues; an empty page, observed lower boundary, callback limit or byte limit stops
+with `coverage_complete=False`. Even touching both requested endpoints does not prove
+absence of gaps. Empty pages validate the envelope/category but supply no instrument
+observation. The final singleton request is checked against the original global bounds
+and current page boundary without changing the legacy parser's increasing-bounds rule.
+
+The collector permits 1–100 callback invocations and 1 byte–32 MiB accepted payloads,
+with at most 8 MiB per page and 200 observations per nonempty page (at most 20,000
+candidate rows). The callback receives its remaining byte allowance and must bound
+its own reads/allocation and elapsed work. Oversized/invalid payloads fail without a
+partial result. `accepted_payload_bytes` and `calls_used` are not HTTP/quota/cost
+accounting. The diagnostic next boundary is not a persisted resume token. No transport,
+raw retention, publication clock, cadence assumption or rights approval is added;
+production full bounded-page refusal remains in force pending acquisition safeguards.
+
+`crypto.funding_ingestion.collect_retained_funding_pages` composes the offline
+collector with actual `CryptoBulkStore` operations. It freezes the closed requested
+parameters before supplier execution, checks existing storage identity/reserve before
+calling the supplier, retains each in-allowance body using `retain_provider_payload`,
+and verifies its manifest/artifact before returning bytes to any funding decoder.
+No supplier is registered. It never publishes normalized data, quality acceptance
+or snapshots. Short/empty pages and retained malformed evidence confer no coverage.
+
+The raw-only retention entry supports zero-byte bodies through existing receipt and
+staging formats; ordinary ingestion still rejects empty bodies. Malformed/rejected
+responses remain raw evidence discoverable by existing inventory/receipt identities.
+Exact replay uses the same request/time/body identity. Storage acknowledgement failure
+stops collection before decode; partial staging or external-first publication can be
+replayed with the same caller-supplied bytes through existing prefix/hash checks.
+This is not durable acquisition resume, refetch authority, or snapshot restore.
+Before a manifest commits, staging/external bytes alone do not retain the full
+receipt/request metadata; recovery requires exact original caller replay inputs.
+
+Tests perform actual temporary-file writes, payload fsync, hashes, links, atomic
+replacements, manifest reads and store reopen. Faults at write/publication boundaries
+and volume/capacity observations are injected; they do not qualify a real retained
+root, power-loss durability or filesystem concurrency. Existing directory/manifest
+sync behavior is unchanged. Oversized/non-bytes supplier output is refused before
+retention or decode; the callback must enforce its own read/allocation limits.
+Only declared request parameters are recorded, not authenticated outbound execution.
+
+`crypto.providers.funding_transport.FundingResponseSupplier` is an internal supplier
+for the existing raw-retaining composition. Both urllib-style response opener and
+monotonic clock are mandatory injections; there is no default live opener, retry,
+sleep, new CLI command or production acquisition binding. Closed Bybit funding URL
+construction and identity encoding are reused. Only identity-encoded JSON responses
+with status 200, exact final URL and consistent bounded declared length are accepted.
+Redirect status, changed final URL, duplicate headers and unsupported encodings fail.
+The injected opener must refuse redirects before following them; final URL validation
+cannot undo a redirect already performed by arbitrary opener code.
+
+Returned bodies are capped at the collector's allowance (1 byte–8 MiB). Each requested
+read is at most 64 KiB, with one additional byte permitted solely as an overflow/EOF
+probe; a conforming response returns at most allowance+1 bytes before rejection.
+Exact-cap bodies require a final one-byte EOF probe. Responses returning more than
+requested are refused, but their prior allocation cannot be prevented by this code.
+Library/socket buffering, HTTP headers and arbitrary injected work have no OS memory
+cap here. No decompression is performed. Partial/overflow/metadata-invalid bodies do
+not become raw evidence; retaining failed streams requires a separate contract.
+
+The supplier passes `min(I/O timeout, remaining deadline)` to the opener and checks
+one shared monotonic deadline before/after open, between/after reads including EOF,
+and after cleanup. Timeout configuration is finite (I/O up to 60 seconds, shared
+window up to 300). These are requested transport timeouts and cooperative deadline
+checks, not forced preemption. The opener must configure the library's blocking I/O
+timeouts. Inactivity/socket timeouts do not bound the total wall time of a dribbling
+`read(size)`; deadline expiry can only be detected after it returns. The window is
+for supplier operations, not a hard end-to-end acquisition/storage deadline.
+
+Responses are closed on success, validation errors, read failures, expiry and
+cancellation, including response-owning HTTPError. Errors are raised outside original
+handlers without original exception chains or URL/header/body text. Cancellation
+uses fresh sanitized KeyboardInterrupt/GeneratorExit/asyncio.CancelledError objects;
+SystemExit retains only integer 0–255 or None→0, otherwise code 1. Cleanup cancellation
+takes precedence over ordinary failures. Complete eligible bodies are closed before
+existing raw retention/verification and JSON decoding. Provider qualification,
+durable budget/resume, storage admission and production full-page refusal are unchanged.
+
 - Raw observations use the Research Scientist workflow before strategies or hypothesis sweeps.
   Each new project captures a research-required case; only pre-launch projects present during
   the v2 migration are grandfathered. Screening artifacts confer no research-gate authority.
