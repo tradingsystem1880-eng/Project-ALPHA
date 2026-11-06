@@ -16,7 +16,7 @@ need parity, migration and rollback evidence.
 
 ![ALPHA Workstation price chart with backend-computed studies, market navigation, and research tools, using synthetic BTC/USDT bars](docs/assets/workstation/chart.png)
 
-*Chart exploration in the implemented Workstation. All screenshots below were captured from a
+*Chart exploration in the implemented Workstation. These Workstation screenshots were captured from a
 fresh build at [fbdcbcf](https://github.com/tradingsystem1880-eng/Project-ALPHA/commit/fbdcbcfdf29aebe3fd43e38bf5ae4051cbf23b98), using the isolated real backend and synthetic test data. They show the
 product UI, not live market performance or an owner's account.*
 
@@ -105,6 +105,28 @@ verified artifacts, not generated prose. Codex inference uses the configured rem
 
 *Recorded results from an actual synthetic-data backtest. The standalone-unqualified label is
 retained; these numbers are a UI demonstration and carry no market-performance claim.*
+
+### Native Qlib and Nautilus Results previews
+
+The Results area now includes two read-only views of **separately executed synthetic native-engine
+demonstrations**. Open the Results area at `/#page=results&pane=NativeQlibDemo` and `/#page=results&pane=NativeNautilusDemo`.
+These screenshots show the delivery candidate on branch `codex/native-results-delivery`; they do not
+claim the change is merged or deployed. The views read saved artifacts without rerunning either engine.
+
+![Native Qlib Results view showing recorded predictions and synthetic target diagnostics](docs/assets/workstation/native-qlib-results.png)
+
+*Native Qlib 0.9.7: the executed upstream workflow's predictions, constructed targets, configuration
+and exact downloads. Correlation on a synthetic fixture demonstrates the plumbing, not market edge.*
+
+![Native Nautilus Results view showing recorded synthetic account balance events](docs/assets/workstation/native-nautilus-results.png)
+
+*Native NautilusTrader 1.228.0: an unmodified EMACross/BacktestNode run produced 30 orders,
+30 fills and 15 closed positions. The chart preserves all 31 account-balance events, including
+identical timestamps. These are account balances, not mark-to-market equity or validated returns.
+Chronological reports, configuration, provenance and exact downloads remain available in the view.*
+
+*Both images are genuine browser captures from the built ALPHA UI and an isolated empty backend
+store. Neither demonstration creates admitted research, promotion approval or live-trading authority.*
 
 See the [Quant Platform map](docs/context/alpha-quant-platform.md),
 [bounded research workflow](docs/operations/bounded-research-workflow.md),
