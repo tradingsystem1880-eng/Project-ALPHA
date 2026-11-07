@@ -3513,3 +3513,125 @@ starts from funding main and incorporates published UI commit `896b6779d8fa6de57
 as its second parent, preserving a normal fast-forward publication path. Funding source and
 chronological notes are retained unchanged; shared Atlas outputs are regenerated from the
 combined public source. Exact successor review and qualification receipts govern delivery.
+
+
+# Opt-in backtest result card candidate — 6 November 2026
+
+The isolated frontend candidate adds a default-off Backtest result card in Settings. It replaces
+the report's summary table only when enabled, showing final server-computed drawdown as a
+fraction of running peak equity, UTC Unix seconds and curve observation count. The source
+is the existing typed equity endpoint over a v3 backtest's declared equity artifact; run/hash
+ownership and invalid/missing evidence produce loading/unavailable states. Nonpositive initial
+equity cannot turn the server's sentinel into a meaningful drawdown. No returns, currencies,
+uncertainty, STE compliance, factual verification badge or trading authority are synthesized.
+
+Focused verification passed: 25 model/settings tests; 478 frontend tests across 72 files;
+coverage 93.23% statements, 83.87% branches, 96.41% functions and 95.13% lines; lint; production
+build; five minimum-viewport browser cases. The initial browser fixture/settings-path failure
+and initial TypeScript fixture failure are retained separately. Independent source review
+approved after its required delayed-response test correction. Full qualification, other browser
+projects, Atlas freshness and guarded commit/publication remain pending native UI integration.
+No private test content was read; private-suite coverage is UNVERIFIED.
+
+Plan: [backtest result card](superpowers/plans/2026-11-06-backtest-result-card.md).
+
+
+## Backtest card parent-review corrections — 6 November 2026
+
+Parent inspection identified a scope regression in the initial candidate: enabling the card
+replaced unrelated run summaries. The revision restricts integration to the backtest family,
+keeps unrelated summary and loading-error behavior, and restores the manual's UTC chart,
+exact export and no-project browsing requirements. The final observation now shows readable
+UTC for years 0000–9999 with explicitly disclosed whole-second display precision; Source keeps
+the exact raw Unix seconds. Out-of-range timestamps fail safely. Unavailable states keep the
+selected run identity and the artifact hash when known. No statistical formula changed.
+
+Revised focused checks pass: 28 model/settings tests; all 481 frontend tests across 72 files;
+unchanged measured coverage percentages; lint and production build; ten minimum-viewport
+browser cases, including forecast/validation summaries, load errors, fractional UTC precision,
+range rejection and late-response ownership. The earlier bundle/receipts remain historical.
+Final-tree independent source review is recorded in the replacement delivery bundle. Integration,
+Atlas freshness, the unchanged full gate and guarded publication still follow native UI delivery.
+
+
+## Backtest card and original native Results integration preparation — 6 November 2026
+
+The card source was overlaid in its own worktree on published PR118 commit
+`896b6779d8fa6de574e5a9a08853409ac196258f`. Its tree
+`acb3cbe48a8995be34e5149524e2338b3260af0d` exactly matches the supplied original UI candidate
+tree; the publication commit metadata differs. The Library archive download failed before local
+bytes were produced, so archive SHA verification remains unavailable. No transfer was retried.
+The independently fetched repository tree supplied the source baseline. Only the append-only
+build history conflicted; both histories were preserved. Native UI source, demo bytes and images
+were retained, and SPA/Atlas outputs were regenerated for this isolated combination.
+
+Focused overlay checks passed: 57 card/native-model/settings/shell tests; all 487 frontend tests
+across 74 files; lint; production build; API generation/freshness; 12 minimum-viewport card cases
+including two native-results coexistence cases; seven existing RunDetail race cases. The browser
+shell API is mocked and the native views use packaged saved fixtures: these checks do not rerun
+Qlib/Nautilus or establish empirical performance. Native Qlib retains 16 table rows and Nautilus
+retains 31 account events while navigating card to native report and back. Independent integration
+source review approved without required findings; final candidate identity and receipts are in
+the integration handoff. Original failed/stale-tree receipts remain historical.
+
+This is preparation against the original UI tree, not qualification of its funding-reconciled
+successor or actual merged head. The UI owner's executor, branch and live gate were untouched.
+Full gate, full browser matrix, merged-head README/review bindings and guarded publication remain
+pending. Hidden holdout coverage is UNVERIFIED; no private content was inspected.
+
+
+## Card preparation on qualified PR118 funding/UI head — 6 November 2026
+
+A separate isolated worktree overlays the unchanged card implementation and coexistence tests
+on exact PR118 head `d5af71a226419eabb0a9bbb30a8016b585e7ab8e`, verified base tree
+`eaf3b458bc753d7970aaa4eb18adbae9650877b7`. The funding implementation, native UI/data and
+backend equity-verification seam are unchanged. Existing funding instructions and all delivery
+histories are retained. This head is not represented as merged main; the denied UI merge was
+not retried. The earlier card preparations and their receipts remain historical.
+
+Successor checks pass: 57 focused card/native/settings/shell cases; all 487 frontend cases
+across 74 files; unchanged measured frontend coverage; lint; production build; API freshness;
+12 minimum-viewport card/coexistence browser cases and seven existing RunDetail race cases.
+Independent source review found no required findings. The browser shell API remains mocked,
+using packaged saved native fixtures: no engine rerun, new empirical claim or authority follows.
+Final staged-tree review binding and generated-output receipts accompany the replacement bundle.
+Full-gate qualification of the actual delivery head and guarded publication remain pending;
+qualification of the unmodified base is not acceptance of the overlay. Private coverage is
+UNVERIFIED. No merge or external repository write was performed by this preparation.
+
+**2026-11-06 card qualification follow-up — demonstrated runner startup cause:** The two
+unchanged-tree full attempts remain failed (7 then 2 backend tests); the separate frontend
+component failed one wide chart canvas-readiness assertion. On detached qualified UI baseline
+`d5af71a2`, five covered parallel fresh imports of `run_child` loaded unused NumPy, SciPy,
+Polars and validation and took 8.98–9.66 seconds before returning, beyond the original five-second
+child-readiness window. Localized research-only imports preserve process cleanup, time budgets,
+receipt verification and fingerprint algorithms. The new structural boundary test failed on
+original source and passed after the change. Five covered parallel revised imports took
+0.59–0.77 seconds without those packages. Existing source hashes legitimately change. This
+is evidence for the import-before-spawn failure only; the separate half-second child marker
+and aggregate browser failure remain under investigation. Final focused results, independent
+review and aggregate qualification are pending for this revised tree. No budgets/assertions,
+coverage floors, protected test contents or denied merge actions were changed.
+
+The revised runner then passed 71 owned research execution/import-boundary/process-supervisor
+cases, Ruff check/format and all 13 import contracts. The original assertions and budgets
+remain intact; only the existing rule-specification fixture patch targets its actual validation
+module after import localization. These focused passes do not replace the full gate. README
+retains the accurate card opt-in and evidence limits; the internal startup fix adds no product
+claim. Independent review of the code found no required defect; exact final-tree review and
+aggregate qualification remain pending.
+
+**2026-11-07 merged-main card/startup delivery preparation:** UI PR118 is merged on verified
+main `8db344908f0530a03ed238c69bd9c1a40bf00afc`, tree
+`eaf3b458bc753d7970aaa4eb18adbae9650877b7`, identical to the previous qualified base.
+The card and startup fix transferred without a code conflict. Historical candidate tree
+`6379c8fbc5a12971d5024fd196b75ea231b130ee` passed all six canonical components on one
+stable tree (backend coverage 93.15%, configured 459-case browser matrix); independent review
+APPROVE was bound to it. The paired wide comparisons passed 132 baseline and 144 candidate
+cases. Unused research analysis imports were localized after a structural red/green regression
+and covered startup probes; original process assertions, budgets and hash algorithms remain
+unchanged. The original Bokeh delay and separate half-second marker failure causes remain
+unresolved and did not reproduce in that successful full gate. No chart code changed.
+Current merged-main delivery requires fresh native bindings and applicable qualification;
+post-merge CI is not assumed complete. Private-suite status remains UNVERIFIED. The feature
+remains default off, reversible in Settings, and carries no empirical or live-trading authority.

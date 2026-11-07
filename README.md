@@ -100,6 +100,11 @@ comparison, provider and job monitoring, Kronos forecast diagnostics, and an iso
 Its bounded Codex assistant and recorded-run investigations can explain attached evidence and
 suggest tests; their output is advisory. Numerical research results come from executed code and
 verified artifacts, not generated prose. Codex inference uses the configured remote service.
+Settings offers an optional **Backtest result card** (off by default): final drawdown as a
+fraction, readable UTC observation time, observation count and artifact provenance for supported v3
+backtests. UTC display uses whole seconds; Source retains exact raw Unix seconds. Other run
+summaries are unchanged. Missing or invalid backtest evidence shows “Summary unavailable”. Turn it off to restore the
+existing summary. It adds no forecast, statistical validation or trading approval.
 
 ![Strategy Performance Report showing recorded equity and drawdown for an executed standalone synthetic-data backtest](docs/assets/workstation/run-report.png)
 

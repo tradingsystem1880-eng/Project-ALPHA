@@ -70,7 +70,7 @@ Bybit funding: native identity/clocks; offline bounded reads, raw retention and 
 [Development loop](docs/operations/development-loop.md): focused checks, owned tests, UV cache.
 Behavior: update manual/build. Cancel needs journal publication.
 
-UI: [terminal guide](apps/alpha-web/frontend/README.md): UTC charts, exact exports, no-project browsing. RunDetail binds selected-run outputs/loading/error/empty states.
+UI: [guide](apps/alpha-web/frontend/README.md): UTC charts, exact exports, no-project browsing. RunDetail binds selected-run outputs/loading/error/empty states. Card opt-in.
 ML: v1/LightGBM; v2/rank; v3/tabular (workers/qlib/README.md). W09 journal grants no admission/accounting; absent worker blocks.
 
 Native fixtures: confirmed owner, pinned LoopBase/LoopMeta, immutable artifacts, full charges; no market authority.
