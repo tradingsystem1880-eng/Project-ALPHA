@@ -1,0 +1,887 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "admission": "not_admitted",
+  "source": "upstream_qrun",
+  "run_id": "7169fb461ef2421690db00d910841f17",
+  "status": "FINISHED",
+  "qlib_version": "0.9.7",
+  "model": "LGBModel / LightGBM 4.6.0",
+  "seed": 20261106,
+  "train_rows": 384,
+  "valid_rows": 128,
+  "test_rows": 128,
+  "sessions": 80,
+  "symbols": 8,
+  "features": 6,
+  "threads": 1,
+  "rounds": 32,
+  "wall_seconds": 6.636926965000384,
+  "command": "/workspace/Project-ALPHA-w12-s1-delivery/workers/qlib/.venv/bin/qrun /workspace/scratch/native-qlib-qrun-20261106/workflow.yaml",
+  "config": "qlib_init:\n  provider_uri: /workspace/scratch/native-qlib-qrun-20261106/empty_provider\n  region: us\n  kernels: 1\n  expression_cache:\n  dataset_cache:\n  exp_manager:\n    class: MLflowExpManager\n    module_path: qlib.workflow.expm\n    kwargs:\n      uri: sqlite:////workspace/scratch/native-qlib-qrun-20261106/mlflow.db\n      default_exp_name: native-synthetic-demo\nexperiment_name: native-synthetic-demo\ntask:\n  model:\n    class: LGBModel\n    module_path: qlib.contrib.model.gbdt\n    kwargs:\n      loss: mse\n      num_boost_round: 32\n      early_stopping_rounds: 5\n      learning_rate: 0.1\n      num_leaves: 7\n      min_data_in_leaf: 10\n      num_threads: 1\n      deterministic: true\n      force_col_wise: true\n      seed: 20261106\n      bagging_seed: 20261106\n      feature_fraction_seed: 20261106\n      data_random_seed: 20261106\n  dataset:\n    class: DatasetH\n    module_path: qlib.data.dataset\n    kwargs:\n      handler:\n        class: DataHandlerLP\n        module_path: qlib.data.dataset.handler\n        kwargs:\n          data_loader:\n            class: StaticDataLoader\n            module_path: qlib.data.dataset.loader\n            kwargs:\n              config: \n                /workspace/scratch/native-qlib-qrun-20261106/synthetic_input.parquet\n          infer_processors: []\n          learn_processors: []\n      segments:\n        train:\n        - '2024-01-02'\n        - '2024-03-07'\n        valid:\n        - '2024-03-08'\n        - '2024-03-29'\n        test:\n        - '2024-04-01'\n        - '2024-04-22'\n  record:\n  - class: SignalRecord\n    module_path: qlib.workflow.record_temp\n  - class: SigAnaRecord\n    module_path: qlib.workflow.record_temp\n    kwargs:\n      ana_long_short: false\n",
+  "target_description": "0.6*f0 -0.4*f1 +0.2*f2*f3 +0.05*Gaussian noise; NOT market returns",
+  "input_sha256": "b418e27d4cd4b78abbe2f0fa5ca1bebcad82900a094dd570c395b3defd5e4690",
+  "config_sha256": "6397dd8d516592f23a250f74849822d25725895dd741e2243412baeff34eb115",
+  "qrun_source_sha256": "37c44a32aab0b01198a12e93b5d2f91d9022320192a9d0916568f90bac6404cb",
+  "metrics": {
+    "ic": 0.926309231749389,
+    "rank_ic": 0.9002976190476192
+  },
+  "predictions": [
+    {
+      "session_ts": "2024-04-01T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": 0.02044160203819095,
+      "synthetic_target": 0.009682606188351695
+    },
+    {
+      "session_ts": "2024-04-01T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": 1.02220349436302,
+      "synthetic_target": 1.6056160758204356
+    },
+    {
+      "session_ts": "2024-04-01T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": 0.14187076976347676,
+      "synthetic_target": 0.2269910771749992
+    },
+    {
+      "session_ts": "2024-04-01T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": -0.8713054643576801,
+      "synthetic_target": -1.3696352009291084
+    },
+    {
+      "session_ts": "2024-04-01T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": -0.2300610183739213,
+      "synthetic_target": 0.03432523175298007
+    },
+    {
+      "session_ts": "2024-04-01T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": -0.25986265153034993,
+      "synthetic_target": -0.13387772164165723
+    },
+    {
+      "session_ts": "2024-04-01T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": -0.32487977810459934,
+      "synthetic_target": -0.19871161992828448
+    },
+    {
+      "session_ts": "2024-04-01T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": -0.2510436207509866,
+      "synthetic_target": -0.0548611598855334
+    },
+    {
+      "session_ts": "2024-04-02T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": -1.382506359621734,
+      "synthetic_target": -2.045461532986658
+    },
+    {
+      "session_ts": "2024-04-02T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -0.14383782779763943,
+      "synthetic_target": 0.3820696029006313
+    },
+    {
+      "session_ts": "2024-04-02T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": -0.11053152009656264,
+      "synthetic_target": -0.19334904738909373
+    },
+    {
+      "session_ts": "2024-04-02T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": -0.4069823951595044,
+      "synthetic_target": -0.558805494182631
+    },
+    {
+      "session_ts": "2024-04-02T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": 0.10681712428336698,
+      "synthetic_target": 0.06982958704692659
+    },
+    {
+      "session_ts": "2024-04-02T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": -0.5173480966035424,
+      "synthetic_target": -0.3807090274777442
+    },
+    {
+      "session_ts": "2024-04-02T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": 0.34933413624507625,
+      "synthetic_target": 0.2821980023637938
+    },
+    {
+      "session_ts": "2024-04-02T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": 1.328167298138286,
+      "synthetic_target": 1.6247988511125686
+    },
+    {
+      "session_ts": "2024-04-03T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": 0.20194157542133842,
+      "synthetic_target": 0.31320300925853584
+    },
+    {
+      "session_ts": "2024-04-03T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -0.059203248100692225,
+      "synthetic_target": -0.04715025013476826
+    },
+    {
+      "session_ts": "2024-04-03T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": 0.181737164079999,
+      "synthetic_target": 0.43813821833984345
+    },
+    {
+      "session_ts": "2024-04-03T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": -0.12176452958762807,
+      "synthetic_target": -0.02210490199965015
+    },
+    {
+      "session_ts": "2024-04-03T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": -0.23169036492077136,
+      "synthetic_target": -0.2934826710064074
+    },
+    {
+      "session_ts": "2024-04-03T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": -0.6019696688056527,
+      "synthetic_target": -0.8390005019866811
+    },
+    {
+      "session_ts": "2024-04-03T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": 1.0564733595316396,
+      "synthetic_target": 1.1698123724150136
+    },
+    {
+      "session_ts": "2024-04-03T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": 0.842801529632022,
+      "synthetic_target": 1.032573671255969
+    },
+    {
+      "session_ts": "2024-04-04T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": -0.41906579011371276,
+      "synthetic_target": -0.4778064423152042
+    },
+    {
+      "session_ts": "2024-04-04T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -1.5129776918032747,
+      "synthetic_target": -1.6262573712045114
+    },
+    {
+      "session_ts": "2024-04-04T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": -0.5635457228934507,
+      "synthetic_target": -0.433601933801913
+    },
+    {
+      "session_ts": "2024-04-04T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": -0.21773936618874248,
+      "synthetic_target": -0.3282513780818489
+    },
+    {
+      "session_ts": "2024-04-04T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": 0.2746000626559259,
+      "synthetic_target": 0.3348577961088528
+    },
+    {
+      "session_ts": "2024-04-04T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": -0.5462315737730408,
+      "synthetic_target": -0.45231509604304476
+    },
+    {
+      "session_ts": "2024-04-04T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": -0.059203248100692225,
+      "synthetic_target": -0.33537114083651653
+    },
+    {
+      "session_ts": "2024-04-04T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": 0.4784338303776807,
+      "synthetic_target": 0.6846907194624862
+    },
+    {
+      "session_ts": "2024-04-05T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": -0.06526072837204228,
+      "synthetic_target": 0.019815869864947915
+    },
+    {
+      "session_ts": "2024-04-05T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": 0.5270593242371444,
+      "synthetic_target": 0.7966642033667944
+    },
+    {
+      "session_ts": "2024-04-05T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": 0.05508640707108545,
+      "synthetic_target": 0.4683925107421769
+    },
+    {
+      "session_ts": "2024-04-05T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": 0.4517189148666747,
+      "synthetic_target": 0.36346373270395116
+    },
+    {
+      "session_ts": "2024-04-05T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": -0.6019057824655136,
+      "synthetic_target": -0.7978607929614063
+    },
+    {
+      "session_ts": "2024-04-05T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": -0.9774155743494708,
+      "synthetic_target": -0.7957677137010966
+    },
+    {
+      "session_ts": "2024-04-05T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": -1.2598703868508183,
+      "synthetic_target": -1.2217328627999469
+    },
+    {
+      "session_ts": "2024-04-05T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": -0.9250150548917475,
+      "synthetic_target": -0.9016553051481466
+    },
+    {
+      "session_ts": "2024-04-08T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": -0.8193044272794925,
+      "synthetic_target": -0.7693174758267799
+    },
+    {
+      "session_ts": "2024-04-08T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -0.5036092797943285,
+      "synthetic_target": 0.3216294172637872
+    },
+    {
+      "session_ts": "2024-04-08T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": -1.1475182672647173,
+      "synthetic_target": -1.6530540307303383
+    },
+    {
+      "session_ts": "2024-04-08T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": 0.599898412251229,
+      "synthetic_target": 0.8566818325029758
+    },
+    {
+      "session_ts": "2024-04-08T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": 0.770576197286054,
+      "synthetic_target": 1.2714503251927414
+    },
+    {
+      "session_ts": "2024-04-08T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": 0.3793491435829969,
+      "synthetic_target": 0.35816992803384884
+    },
+    {
+      "session_ts": "2024-04-08T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": -0.9694687481335624,
+      "synthetic_target": -1.2905664323768422
+    },
+    {
+      "session_ts": "2024-04-08T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": 0.45533247181345166,
+      "synthetic_target": 0.5814251990808694
+    },
+    {
+      "session_ts": "2024-04-09T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": 0.8502585381424673,
+      "synthetic_target": 0.9445569964172061
+    },
+    {
+      "session_ts": "2024-04-09T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -0.7212010818692388,
+      "synthetic_target": -0.9595500516280129
+    },
+    {
+      "session_ts": "2024-04-09T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": -0.04754463185271719,
+      "synthetic_target": 0.013517014715739573
+    },
+    {
+      "session_ts": "2024-04-09T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": -0.43067086388371284,
+      "synthetic_target": 0.15238283578243272
+    },
+    {
+      "session_ts": "2024-04-09T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": -1.1204649278510315,
+      "synthetic_target": -1.1441049016720923
+    },
+    {
+      "session_ts": "2024-04-09T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": 0.44438617359554883,
+      "synthetic_target": 0.11257247201891842
+    },
+    {
+      "session_ts": "2024-04-09T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": 0.5751572644274451,
+      "synthetic_target": 0.3846773080328064
+    },
+    {
+      "session_ts": "2024-04-09T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": -0.36567051713969234,
+      "synthetic_target": -0.3513401062344332
+    },
+    {
+      "session_ts": "2024-04-10T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": 0.5697323751201574,
+      "synthetic_target": 0.6887687106916404
+    },
+    {
+      "session_ts": "2024-04-10T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -0.6011912708505368,
+      "synthetic_target": -0.6067803021427252
+    },
+    {
+      "session_ts": "2024-04-10T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": -0.06703808042141257,
+      "synthetic_target": -0.2239050494643874
+    },
+    {
+      "session_ts": "2024-04-10T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": 0.3439053207843213,
+      "synthetic_target": 0.08194995653552686
+    },
+    {
+      "session_ts": "2024-04-10T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": 0.05220257756780506,
+      "synthetic_target": 0.20258203974372296
+    },
+    {
+      "session_ts": "2024-04-10T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": 0.05508640707108545,
+      "synthetic_target": 0.448977353137474
+    },
+    {
+      "session_ts": "2024-04-10T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": 0.8010624733060254,
+      "synthetic_target": 0.6798147163711724
+    },
+    {
+      "session_ts": "2024-04-10T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": -0.9857415627355681,
+      "synthetic_target": -0.8398074209382819
+    },
+    {
+      "session_ts": "2024-04-11T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": 0.6075227419835563,
+      "synthetic_target": 0.8052757092019245
+    },
+    {
+      "session_ts": "2024-04-11T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -0.10352680726820554,
+      "synthetic_target": 0.14047761417113686
+    },
+    {
+      "session_ts": "2024-04-11T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": 0.842801529632022,
+      "synthetic_target": 1.0794993056371853
+    },
+    {
+      "session_ts": "2024-04-11T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": 1.4114327632974424,
+      "synthetic_target": 1.5019821203052535
+    },
+    {
+      "session_ts": "2024-04-11T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": 0.6369758864299495,
+      "synthetic_target": 0.8658863649329227
+    },
+    {
+      "session_ts": "2024-04-11T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": -0.5994695631743597,
+      "synthetic_target": -0.6924337675792129
+    },
+    {
+      "session_ts": "2024-04-11T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": 0.17314561476687207,
+      "synthetic_target": 0.3307380414128394
+    },
+    {
+      "session_ts": "2024-04-11T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": -0.053593981908066704,
+      "synthetic_target": -0.11335608441950396
+    },
+    {
+      "session_ts": "2024-04-12T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": -0.36567051713969234,
+      "synthetic_target": -0.43490493847099565
+    },
+    {
+      "session_ts": "2024-04-12T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -0.23161156664891508,
+      "synthetic_target": -0.23237663257373756
+    },
+    {
+      "session_ts": "2024-04-12T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": -0.3675256523343308,
+      "synthetic_target": -0.17884911940701442
+    },
+    {
+      "session_ts": "2024-04-12T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": -0.9148628087720965,
+      "synthetic_target": -1.0416605622696185
+    },
+    {
+      "session_ts": "2024-04-12T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": -0.3001112406198044,
+      "synthetic_target": -0.35181088846999087
+    },
+    {
+      "session_ts": "2024-04-12T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": -0.827702762595605,
+      "synthetic_target": -0.8754037124321105
+    },
+    {
+      "session_ts": "2024-04-12T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": -1.0224150811555295,
+      "synthetic_target": -1.0377685439777085
+    },
+    {
+      "session_ts": "2024-04-12T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": 0.8834792209171624,
+      "synthetic_target": 0.9548128519708359
+    },
+    {
+      "session_ts": "2024-04-15T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": 0.12157555104167661,
+      "synthetic_target": -0.03001908607992601
+    },
+    {
+      "session_ts": "2024-04-15T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -0.10051512612050434,
+      "synthetic_target": -0.4404855120830237
+    },
+    {
+      "session_ts": "2024-04-15T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": -0.3001112406198044,
+      "synthetic_target": -0.15417854939040282
+    },
+    {
+      "session_ts": "2024-04-15T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": 0.17598658809070403,
+      "synthetic_target": 0.2759801566560678
+    },
+    {
+      "session_ts": "2024-04-15T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": -0.5909485036998448,
+      "synthetic_target": -0.31585295926754753
+    },
+    {
+      "session_ts": "2024-04-15T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": -1.6478020381933332,
+      "synthetic_target": -1.6341687628508434
+    },
+    {
+      "session_ts": "2024-04-15T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": 0.7104100475020737,
+      "synthetic_target": 0.4291145303798989
+    },
+    {
+      "session_ts": "2024-04-15T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": 0.9536575891516691,
+      "synthetic_target": 0.8528692293785669
+    },
+    {
+      "session_ts": "2024-04-16T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": -0.5408640205452186,
+      "synthetic_target": -0.3046834362285259
+    },
+    {
+      "session_ts": "2024-04-16T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -0.5095891755418235,
+      "synthetic_target": 0.03380355081345829
+    },
+    {
+      "session_ts": "2024-04-16T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": 0.07846191500682412,
+      "synthetic_target": 0.27127885843523686
+    },
+    {
+      "session_ts": "2024-04-16T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": 0.11851663821295882,
+      "synthetic_target": 0.3051079341084305
+    },
+    {
+      "session_ts": "2024-04-16T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": -0.027205143477360298,
+      "synthetic_target": 0.007000666544089177
+    },
+    {
+      "session_ts": "2024-04-16T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": -0.24439420548909735,
+      "synthetic_target": -0.4300936916806596
+    },
+    {
+      "session_ts": "2024-04-16T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": -0.6329966549453594,
+      "synthetic_target": -0.3913137432745511
+    },
+    {
+      "session_ts": "2024-04-16T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": 0.05508640707108545,
+      "synthetic_target": 0.2922447772900611
+    },
+    {
+      "session_ts": "2024-04-17T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": 0.42438773444818484,
+      "synthetic_target": 0.38237616754970694
+    },
+    {
+      "session_ts": "2024-04-17T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": 0.8210295515339568,
+      "synthetic_target": 0.874025939195806
+    },
+    {
+      "session_ts": "2024-04-17T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": -0.5408640205452186,
+      "synthetic_target": -0.582366273966785
+    },
+    {
+      "session_ts": "2024-04-17T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": 0.39778896333518643,
+      "synthetic_target": 0.2674980064784625
+    },
+    {
+      "session_ts": "2024-04-17T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": 0.38021483071013973,
+      "synthetic_target": 0.7798558906102914
+    },
+    {
+      "session_ts": "2024-04-17T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": 0.1952266954327507,
+      "synthetic_target": -0.761045970618534
+    },
+    {
+      "session_ts": "2024-04-17T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": 0.21315568922960518,
+      "synthetic_target": 0.1529506975001575
+    },
+    {
+      "session_ts": "2024-04-17T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": 0.6481292738916363,
+      "synthetic_target": 0.9465815730150839
+    },
+    {
+      "session_ts": "2024-04-18T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": 0.2746000626559259,
+      "synthetic_target": 0.31373164391638153
+    },
+    {
+      "session_ts": "2024-04-18T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": 0.055224435529642346,
+      "synthetic_target": -0.6303885059232507
+    },
+    {
+      "session_ts": "2024-04-18T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": -0.558767243581228,
+      "synthetic_target": -0.556361361456059
+    },
+    {
+      "session_ts": "2024-04-18T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": 0.08579178121982309,
+      "synthetic_target": -0.14952839561635722
+    },
+    {
+      "session_ts": "2024-04-18T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": 0.20323627247145376,
+      "synthetic_target": 0.3074479658163424
+    },
+    {
+      "session_ts": "2024-04-18T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": 0.04115978495596221,
+      "synthetic_target": 0.1154412136699034
+    },
+    {
+      "session_ts": "2024-04-18T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": 0.17953252321185284,
+      "synthetic_target": 0.17496217669318373
+    },
+    {
+      "session_ts": "2024-04-18T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": 0.2657863718896813,
+      "synthetic_target": 0.4269512756992837
+    },
+    {
+      "session_ts": "2024-04-19T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": -1.7409582588496866,
+      "synthetic_target": -2.337976716557506
+    },
+    {
+      "session_ts": "2024-04-19T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -0.40734861359791635,
+      "synthetic_target": 0.26247494274237576
+    },
+    {
+      "session_ts": "2024-04-19T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": 0.14728019801646636,
+      "synthetic_target": 0.089522737032205
+    },
+    {
+      "session_ts": "2024-04-19T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": 0.39892879372828843,
+      "synthetic_target": 0.4055655627309437
+    },
+    {
+      "session_ts": "2024-04-19T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": -1.1766757773554049,
+      "synthetic_target": -1.680767072466168
+    },
+    {
+      "session_ts": "2024-04-19T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": -0.23554794605709983,
+      "synthetic_target": -0.340128667999405
+    },
+    {
+      "session_ts": "2024-04-19T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": -0.11053152009656264,
+      "synthetic_target": -0.17546242984196903
+    },
+    {
+      "session_ts": "2024-04-19T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": 0.49151690830460176,
+      "synthetic_target": 0.549223726862768
+    },
+    {
+      "session_ts": "2024-04-22T00:00:00+00:00",
+      "symbol": "SYN00",
+      "score": -0.25493513529285894,
+      "synthetic_target": -0.35882648866975947
+    },
+    {
+      "session_ts": "2024-04-22T00:00:00+00:00",
+      "symbol": "SYN01",
+      "score": -0.827702762595605,
+      "synthetic_target": -0.8325353707027069
+    },
+    {
+      "session_ts": "2024-04-22T00:00:00+00:00",
+      "symbol": "SYN02",
+      "score": -1.0598134380527748,
+      "synthetic_target": -0.9208478116654696
+    },
+    {
+      "session_ts": "2024-04-22T00:00:00+00:00",
+      "symbol": "SYN03",
+      "score": 0.5751572644274451,
+      "synthetic_target": 0.6443044257084328
+    },
+    {
+      "session_ts": "2024-04-22T00:00:00+00:00",
+      "symbol": "SYN04",
+      "score": 0.48750268468852825,
+      "synthetic_target": 0.5712075347516694
+    },
+    {
+      "session_ts": "2024-04-22T00:00:00+00:00",
+      "symbol": "SYN05",
+      "score": -0.9413588789135294,
+      "synthetic_target": -1.4706194228360518
+    },
+    {
+      "session_ts": "2024-04-22T00:00:00+00:00",
+      "symbol": "SYN06",
+      "score": 0.33901923781083737,
+      "synthetic_target": 0.19164683853447756
+    },
+    {
+      "session_ts": "2024-04-22T00:00:00+00:00",
+      "symbol": "SYN07",
+      "score": 0.2829402492671837,
+      "synthetic_target": 0.015323053330233649
+    }
+  ],
+  "diagnostics": [
+    {
+      "session_ts": "2024-04-01T00:00:00+00:00",
+      "ic": 0.9769533874444818,
+      "rank_ic": 0.9761904761904763
+    },
+    {
+      "session_ts": "2024-04-02T00:00:00+00:00",
+      "ic": 0.9650034027246871,
+      "rank_ic": 0.8333333333333335
+    },
+    {
+      "session_ts": "2024-04-03T00:00:00+00:00",
+      "ic": 0.9860827911795109,
+      "rank_ic": 0.9523809523809524
+    },
+    {
+      "session_ts": "2024-04-04T00:00:00+00:00",
+      "ic": 0.9746841927961637,
+      "rank_ic": 0.880952380952381
+    },
+    {
+      "session_ts": "2024-04-05T00:00:00+00:00",
+      "ic": 0.9687634212458731,
+      "rank_ic": 0.9047619047619048
+    },
+    {
+      "session_ts": "2024-04-08T00:00:00+00:00",
+      "ic": 0.9375402189123384,
+      "rank_ic": 1.0
+    },
+    {
+      "session_ts": "2024-04-09T00:00:00+00:00",
+      "ic": 0.9158148529026158,
+      "rank_ic": 0.8571428571428572
+    },
+    {
+      "session_ts": "2024-04-10T00:00:00+00:00",
+      "ic": 0.9340611473337412,
+      "rank_ic": 0.9047619047619048
+    },
+    {
+      "session_ts": "2024-04-11T00:00:00+00:00",
+      "ic": 0.9861293030684551,
+      "rank_ic": 0.9761904761904763
+    },
+    {
+      "session_ts": "2024-04-12T00:00:00+00:00",
+      "ic": 0.9910498883526235,
+      "rank_ic": 0.8333333333333335
+    },
+    {
+      "session_ts": "2024-04-15T00:00:00+00:00",
+      "ic": 0.9654321815232938,
+      "rank_ic": 0.9285714285714287
+    },
+    {
+      "session_ts": "2024-04-16T00:00:00+00:00",
+      "ic": 0.7802425536231149,
+      "rank_ic": 0.7857142857142858
+    },
+    {
+      "session_ts": "2024-04-17T00:00:00+00:00",
+      "ic": 0.7906767434040792,
+      "rank_ic": 0.880952380952381
+    },
+    {
+      "session_ts": "2024-04-18T00:00:00+00:00",
+      "ic": 0.7359731321807464,
+      "rank_ic": 0.8571428571428572
+    },
+    {
+      "session_ts": "2024-04-19T00:00:00+00:00",
+      "ic": 0.9544298747089517,
+      "rank_ic": 0.8571428571428572
+    },
+    {
+      "session_ts": "2024-04-22T00:00:00+00:00",
+      "ic": 0.9581106165895469,
+      "rank_ic": 0.9761904761904763
+    }
+  ],
+  "artifact_sha256": {
+    "native_predictions.csv": "8f84958e27ff09cfcf5e928e0dc981304734cab029e14ce5921cbf711a1da33f",
+    "daily_signal_diagnostics.csv": "742eb4a9b036ad73c89b337a39be45004f6759a96c8edf97e81e1404eda2ca05",
+    "workflow.yaml": "6397dd8d516592f23a250f74849822d25725895dd741e2243412baeff34eb115"
+  }
+}

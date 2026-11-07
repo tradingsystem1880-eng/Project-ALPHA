@@ -22,6 +22,8 @@ import { GovernanceDocument } from '../panels/Governance'
 import { JobMonitor } from '../panels/JobMonitor'
 import { KronosStudio } from '../panels/KronosStudio'
 import { MlDiagnostics } from '../panels/MlDiagnostics'
+import { NativeQlibDemo } from '../panels/NativeQlibDemo'
+import { NativeNautilusDemo } from '../panels/NativeNautilusDemo'
 import { PaperMonitor } from '../panels/PaperMonitor'
 import { Pipeline } from '../panels/Pipeline'
 import { PriceChart } from '../panels/PriceChart'
@@ -167,6 +169,8 @@ export const DOCUMENTS: readonly DocumentDefinition[] = [
     panes: [
       { name: 'MlResearch', title: 'ML lab', component: MlResearch },
       { name: 'MlDiagnostics', title: 'ML diagnostics', component: MlDiagnostics },
+      { name: 'NativeQlibDemo', title: 'Native Qlib demo', component: NativeQlibDemo },
+      { name: 'NativeNautilusDemo', title: 'Native Nautilus demo', component: NativeNautilusDemo },
       { name: 'RiskMonitor', title: 'Risk', component: RiskMonitor },
       { name: 'AssetMemory', title: 'Findings', component: AssetMemory, area: 'side' },
     ],

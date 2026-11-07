@@ -2,7 +2,7 @@
 
 # Frontend flow
 
-18 Workstation screens, 25 panel components, joined to their API routes via the fail-loud client.ts scan. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+18 Workstation screens, 27 panel components, joined to their API routes via the fail-loud client.ts scan. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
 <!-- nodes: screen:build|screen:builder|screen:chart|screen:compare|screen:corporate-actions|screen:crowding|screen:dex|screen:forecast|screen:funding|screen:governance|screen:jobs|screen:ml-lab|screen:onchain|screen:open-interest|screen:paper|screen:report|screen:research|screen:scanner -->
 ```mermaid
@@ -18,7 +18,7 @@ flowchart LR
     n8["Funding (1)"]
     n9["Governance (1)"]
     n10["Jobs & providers (3)"]
-    n11["Machine learning (4)"]
+    n11["Machine learning (6)"]
     n12["On-chain metrics (1)"]
     n13["Open interest (1)"]
     n14["Paper sessions (1)"]
@@ -143,6 +143,8 @@ screen:scanner
 | AssetMemory | `DELETE /api/development/jobs/{job_id}`, `GET /api/development/jobs/{job_id}`, `GET /api/evidence`, `GET /api/ml/capabilities`, `GET /api/ml/experiments`, `GET /api/ml/experiments/preflight`, `GET /api/ml/status`, `GET /api/projects`, `GET /api/projects/{project_id}`, `GET /api/projects/{project_id}/agent-brief`, `GET /api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/plan`, `GET /api/projects/{project_id}/workspace`, `POST /api/ml/experiments`, `POST /api/projects`, `POST /api/projects/{project_id}/attempts`, `POST /api/projects/{project_id}/experiments`, `POST /api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/run`, `POST /api/projects/{project_id}/stage-links`, `POST /api/projects/{project_id}/versions`, `POST /api/projects/{project_id}/workspace/refresh` |
 | MlDiagnostics | `GET /api/ml/exchanges/{exchange_id}/tear-sheet`, `GET /api/ml/experiments` |
 | MlResearch | `DELETE /api/development/jobs/{job_id}`, `GET /api/development/jobs/{job_id}`, `GET /api/evidence`, `GET /api/ml/capabilities`, `GET /api/ml/experiments`, `GET /api/ml/experiments/preflight`, `GET /api/ml/status`, `GET /api/projects`, `GET /api/projects/{project_id}`, `GET /api/projects/{project_id}/agent-brief`, `GET /api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/plan`, `GET /api/projects/{project_id}/workspace`, `POST /api/ml/experiments`, `POST /api/projects`, `POST /api/projects/{project_id}/attempts`, `POST /api/projects/{project_id}/experiments`, `POST /api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/run`, `POST /api/projects/{project_id}/stage-links`, `POST /api/projects/{project_id}/versions`, `POST /api/projects/{project_id}/workspace/refresh` |
+| NativeNautilusDemo | — |
+| NativeQlibDemo | — |
 | RiskMonitor | `GET /api/risk/scenario`, `GET /api/runs/{run_id}` |
 
 </details>

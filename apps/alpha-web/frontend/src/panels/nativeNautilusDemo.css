@@ -1,0 +1,27 @@
+.native-nautilus-demo .miniline {
+  max-width: 1000px;
+  margin: 12px 0;
+}
+.native-nautilus-demo .miniline-svg {
+  display: block;
+  width: 100%;
+}
+.native-nautilus-demo .miniline-series {
+  fill: none;
+  stroke-width: 1.5;
+}
+.native-nautilus-demo .miniline-grid {
+  stroke: currentColor;
+  opacity: .12;
+}
+.native-nautilus-demo .miniline-tick,
+.native-nautilus-demo .miniline-axis {
+  fill: currentColor;
+  font-size: 9px;
+}
+.native-nautilus-balance .miniline-axis[transform] {
+  display: none;
+}
+.native-nautilus-demo .miniline-legend {
+  font-size: 11px;
+}
