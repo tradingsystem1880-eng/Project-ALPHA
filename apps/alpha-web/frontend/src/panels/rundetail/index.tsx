@@ -30,6 +30,8 @@ import { Risk } from './Risk'
 import { RunInvestigation } from '../RunInvestigation'
 import { DailyRuleReport } from '../DailyRuleReport'
 import { TradesTab } from './TradesTab'
+import { BacktestResultCard } from './BacktestResultCard'
+import { isBacktestRun } from './backtestResultModel'
 
 type TradesState =
   | { runId: string; status: 'loading' }
@@ -50,7 +52,7 @@ function downloadCsv(name: string, text: string): void {
 
 export function RunDetail(props: PanelHandleProps) {
   const panelLink = usePanelLinked(props)
-  const { explain } = useSettings()
+  const { explain, backtestResultCard } = useSettings()
   const runId = panelLink.linked.runId ?? ''
   const detailRequestId = useRef(0)
   const [detailState, setDetailState] = useState<RunOwned<RunDetailData> | null>(null)
@@ -170,7 +172,7 @@ export function RunDetail(props: PanelHandleProps) {
         return <DailyRuleReport key={runId} runId={runId} panelApi={props.api}/>
       case 'summary':
         return (
-          <div className="report-summary-composition"><table className="blotter summary-table">
+          <div className="report-summary-composition">{backtestResultCard && isBacktestRun(detail) ? <BacktestResultCard key={runId} detail={detail} runId={runId}/> : <table className="blotter summary-table">
             <caption>Summary — what this run recorded</caption>
             <tbody>
               {summaryRows(manifest as Record<string, unknown>).map((row) => (
@@ -180,7 +182,7 @@ export function RunDetail(props: PanelHandleProps) {
                 </tr>
               ))}
             </tbody>
-          </table><div><RecordedPanel runId={runId} kind="equity" panelId="report-equity"/><RecordedPanel runId={runId} kind="drawdown" panelId="report-drawdown"/></div><div className="report-summary-figures">{(catalogue?.items ?? []).filter(item => item.available && !item.figure_id.includes('equity') && !item.figure_id.includes('price')).slice(0, 2).map(item => <FigureCard key={`${runId}:${item.figure_id}`} runId={runId} runName={detail.display_name} item={item}/>)}</div></div>
+          </table>}<div><RecordedPanel runId={runId} kind="equity" panelId="report-equity"/><RecordedPanel runId={runId} kind="drawdown" panelId="report-drawdown"/></div><div className="report-summary-figures">{(catalogue?.items ?? []).filter(item => item.available && !item.figure_id.includes('equity') && !item.figure_id.includes('price')).slice(0, 2).map(item => <FigureCard key={`${runId}:${item.figure_id}`} runId={runId} runName={detail.display_name} item={item}/>)}</div></div>
         )
       case 'gates':
         return <Gates manifest={manifest as ValidateManifest} />

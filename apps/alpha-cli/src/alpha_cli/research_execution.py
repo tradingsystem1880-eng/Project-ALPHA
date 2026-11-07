@@ -18,12 +18,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from alpha_cli import _artifacts, _identity, _runner
-from alpha_cli.artifact_contract import sha256_file
+from alpha_cli import _identity
 from alpha_cli.durable_lease import DurableLeaseError, terminate_and_reap
-from alpha_cli.research_execution_digest import execution_digest
 from alpha_core import DataError
-from alpha_validation import walk_forward_splits
 
 
 class BaselineExecutionPlan(BaseModel):
@@ -180,6 +177,8 @@ def run_child(
 
 
 def _publish(path: Path, value: dict[str, Any]) -> None:
+    from alpha_cli import _artifacts
+
     text = json.dumps(value, sort_keys=True, indent=2, allow_nan=False)
     _artifacts.publish_artifact(path, lambda p: p.write_text(text, encoding="utf-8"))
 
@@ -192,6 +191,10 @@ def _collect(
     snapshot_hash: str,
     sessions: int,
 ) -> dict[str, Any]:
+    from alpha_cli import _artifacts, _runner
+    from alpha_cli.research_execution_digest import execution_digest
+    from alpha_validation import walk_forward_splits
+
     matches = re.findall(r"^.* -> run ([0-9a-f]{16}):", log.read_text(), re.MULTILINE)
     if len(matches) != 1:
         raise DataError("child did not return exactly one terminal run receipt")
@@ -265,6 +268,8 @@ def _collect(
 
 
 def _completion(directory: Path, receipt: dict[str, Any]) -> dict[str, Any]:
+    from alpha_cli.artifact_contract import sha256_file
+
     _publish(directory / "receipt.json", receipt)
     hashes = {
         p.name: sha256_file(p)
@@ -282,6 +287,11 @@ def execute_plan(plan: BaselineExecutionPlan, *, data_dir: Path) -> dict[str, An
     dispatch budget, not a hard wall-time guarantee for storage or OS cleanup. Other callers'
     experiments and information access are outside this per-plan controller boundary.
     """
+    # Analysis dependencies are not needed by the process-only run_child entry point.
+    from alpha_cli import _artifacts, _runner
+    from alpha_cli.artifact_contract import sha256_file
+    from alpha_cli.research_execution_digest import execution_digest
+
     started = time.monotonic()
     cutoff = plan.as_of.isoformat()
     bars, _ = _runner.load_bars(

@@ -686,7 +686,7 @@ def test_collect_binds_rule_specification(
         ),
     )
     monkeypatch.setattr(
-        controller, "walk_forward_splits", lambda *a, **kw: [SimpleNamespace(test=range(1))]
+        "alpha_validation.walk_forward_splits", lambda *a, **kw: [SimpleNamespace(test=range(1))]
     )
     if returned == "matching":
         assert (

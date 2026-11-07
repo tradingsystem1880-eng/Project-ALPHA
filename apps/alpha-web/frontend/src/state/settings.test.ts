@@ -9,6 +9,7 @@ const settings: Settings = {
   explain: 'narrative',
   profile: 'crypto',
   projectModes: { advanced_project: 'advanced' },
+  backtestResultCard: false,
   liveTicker: false,
   chartStyle: 'classic',
   chartTemplate: CHART_TEMPLATE_VERSION,
@@ -79,5 +80,15 @@ describe('chart overlays setting', () => {
     expect(parseSettings(null).chartStyle).toBe('classic')
     expect(parseSettings(JSON.stringify({ chartStyle: 'default' })).chartStyle).toBe('default')
     expect(parseSettings(JSON.stringify({ chartStyle: 'neon' })).chartStyle).toBe('classic')
+  })
+})
+
+
+describe('backtest result card opt-in', () => {
+  it('requires literal true and defaults off for old or malformed settings', () => {
+    for (const raw of [null, '{}', 'null', 'broken', '{"backtestResultCard":"true"}', '{"backtestResultCard":1}']) {
+      expect(parseSettings(raw).backtestResultCard).toBe(false)
+    }
+    expect(parseSettings('{"backtestResultCard":true}').backtestResultCard).toBe(true)
   })
 })

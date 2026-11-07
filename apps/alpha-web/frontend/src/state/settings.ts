@@ -20,6 +20,8 @@ export interface Settings {
   explain: ExplainMode
   profile: Profile
   projectModes: Record<string, WorkspaceMode>
+  /** Strict recorded backtest card; opt-in, off by default. */
+  backtestResultCard: boolean
   /** Market Watch polls public venue tickers (display only) while true; off by default. */
   liveTicker: boolean
   /** Chart overlays (indicator specs + pattern names) the price chart requests, per profile. */
@@ -39,6 +41,7 @@ const DEFAULTS: Settings = {
   explain: 'narrative',
   profile: 'crypto',
   projectModes: {},
+  backtestResultCard: false,
   liveTicker: false,
   overlays: { crypto: CLASSIC_TEMPLATE, equities: CLASSIC_TEMPLATE },
   chartStyle: 'classic',
@@ -63,6 +66,7 @@ export function parseSettings(raw: string | null): Settings {
       density: parsed.density === 'compact' ? 'compact' : 'comfortable',
       explain: parsed.explain === 'terse' ? 'terse' : 'narrative',
       profile: parsed.profile === 'equities' ? 'equities' : 'crypto',
+      backtestResultCard: parsed.backtestResultCard === true,
       liveTicker: parsed.liveTicker === true,
       overlays: {
         crypto: withTemplate(parseOverlayConfig(parsed.overlays?.crypto), offered),
