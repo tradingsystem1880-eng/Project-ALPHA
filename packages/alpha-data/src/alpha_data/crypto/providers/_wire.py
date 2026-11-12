@@ -98,7 +98,7 @@ class _NoBudgetRedirect(HTTPRedirectHandler):
 
 
 def _read_budgeted(response: Any, budget: RequestBudget, max_bytes: int) -> bytes:
-    import http.client  # noqa: PLC0415
+    import http.client
 
     chunks: list[bytes] = []
     size = 0
@@ -148,7 +148,7 @@ def _read_complete_identity(
     response: Any, budget: RequestBudget | None, max_bytes: int, *, expected_status: int = 200
 ) -> bytes:
     """Strict supported framing subset; missing/chunked/encoded framing is refused."""
-    import http.client  # noqa: PLC0415
+    import http.client
 
     # urllib already bounds HTTP headers; independently bound the accepted fixture metadata.
     headers: dict[str, str] = {}
@@ -245,8 +245,8 @@ def fetch_bounded(
     error_response_evidence: Callable[[CompleteHttpResponse], None] | None = None,
 ) -> bytes:
     """Read one bounded response, revalidating the redirect host, the MIME and the byte cap."""
-    import urllib.error  # noqa: PLC0415
-    import urllib.request  # noqa: PLC0415
+    import urllib.error
+    import urllib.request
 
     request = (
         Request(request_or_url, headers=dict(_JSON_HEADERS))
@@ -294,7 +294,7 @@ def fetch_bounded(
                 ):
                     raise DataError("complete response identity changed before open")
                 context = (
-                    urllib.request.urlopen(request, timeout=timeout_seconds)  # noqa: S310
+                    urllib.request.urlopen(request, timeout=timeout_seconds)
                     if opener is None
                     else opener.open(request, timeout=timeout_seconds)
                 )

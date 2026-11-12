@@ -207,10 +207,10 @@ class TiingoAdapter:
             raise DataError("Tiingo requires a non-empty ALPHA_TIINGO_API_KEY")
         if end < start:
             raise DataError(f"Tiingo end {end} precedes start {start}")
-        import http.client  # noqa: PLC0415
-        import urllib.error  # noqa: PLC0415
-        import urllib.parse  # noqa: PLC0415
-        import urllib.request  # noqa: PLC0415
+        import http.client
+        import urllib.error
+        import urllib.parse
+        import urllib.request
 
         provider_symbol = symbol.strip().upper()
         if not provider_symbol or "/" in provider_symbol or ".." in provider_symbol:
@@ -232,7 +232,7 @@ class TiingoAdapter:
         )
         try:
             if max_response_bytes is None:
-                with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+                with urllib.request.urlopen(request, timeout=30) as response:
                     raw = response.read()
             else:
 

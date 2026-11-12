@@ -75,9 +75,9 @@ def _stable_snapshot_source(store: ParquetStore, symbol: str) -> Iterator[None]:
     with ExitStack() as opened:
         originals: dict[Path, os.stat_result | None] = {}
         for path in (
-            store._bars_path(symbol),  # noqa: SLF001 -- snapshot/store peers
-            store._actions_path(symbol),  # noqa: SLF001
-            store._provenance_path(symbol),  # noqa: SLF001
+            store._bars_path(symbol),
+            store._actions_path(symbol),
+            store._provenance_path(symbol),
         ):
             try:
                 stream = opened.enter_context(path.open("rb"))
@@ -122,7 +122,7 @@ def _copy_snapshot_files(
     for sym in symbols:
         with _stable_snapshot_source(store, sym):
             provenance = store.read_provenance(sym)
-            bars_src = store._bars_path(sym)  # noqa: SLF001 — snapshot is a peer of the store
+            bars_src = store._bars_path(sym)
             if not bars_src.exists():
                 raise DataError(f"cannot snapshot {sym!r}: no bars in store")
             bars_rel = bars_src.relative_to(store.root / "bars")  # preserve slash-symbol subdirs
@@ -133,7 +133,7 @@ def _copy_snapshot_files(
                 "bars_sha256": _sha256(bars_dst),
                 "bars_file": f"bars/{bars_rel.as_posix()}",
             }
-            actions_src = store._actions_path(sym)  # noqa: SLF001
+            actions_src = store._actions_path(sym)
             if actions_src.exists():
                 actions_rel = actions_src.relative_to(store.root / "actions")
                 actions_dst = staging / "actions" / actions_rel
@@ -157,7 +157,7 @@ def _copy_snapshot_files(
                         f"cannot snapshot {sym!r} as {source!r}: stored pull provenance is "
                         f"{provenance['source']!r}"
                     )
-                provenance_src = store._provenance_path(sym)  # noqa: SLF001 — snapshot/store peers
+                provenance_src = store._provenance_path(sym)
                 provenance_rel = provenance_src.relative_to(store.root / "provenance")
                 provenance_dst = staging / "provenance" / provenance_rel
                 provenance_dst.parent.mkdir(parents=True, exist_ok=True)

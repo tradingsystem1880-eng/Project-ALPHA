@@ -254,7 +254,7 @@ def _quality_report(
     current_bars: pl.DataFrame | None = None
     current_actions: list[CorporateAction] = []
     current_source: str | None = None
-    if store._bars_path(result.symbol).exists():  # noqa: SLF001 -- pipeline/store peer contract
+    if store._bars_path(result.symbol).exists():
         current_bars = store.read_bars(result.symbol)
         current_actions = store.read_actions(result.symbol)
         provenance = store.read_provenance(result.symbol)
@@ -265,8 +265,8 @@ def _quality_report(
     incoming_rows = _rows_by_ts(result.bars)
     if identity.asset_class in {"stock", "etf"}:
         try:
-            import exchange_calendars as xcals  # type: ignore[import-untyped]  # noqa: PLC0415
-            from exchange_calendars.errors import (  # type: ignore[import-untyped]  # noqa: PLC0415
+            import exchange_calendars as xcals  # type: ignore[import-untyped]
+            from exchange_calendars.errors import (  # type: ignore[import-untyped]
                 CalendarError,
             )
 
@@ -482,9 +482,9 @@ def _create_promotion_backup(
         tempfile.mkdtemp(prefix=f".{receipt_id}.", suffix=".tmp", dir=destination.parent)
     )
     paths = {
-        "bars": (store._bars_path(symbol), "bars.parquet"),  # noqa: SLF001
-        "actions": (store._actions_path(symbol), "actions.json"),  # noqa: SLF001
-        "provenance": (store._provenance_path(symbol), "provenance.json"),  # noqa: SLF001
+        "bars": (store._bars_path(symbol), "bars.parquet"),
+        "actions": (store._actions_path(symbol), "actions.json"),
+        "provenance": (store._provenance_path(symbol), "provenance.json"),
     }
     files: dict[str, dict[str, object]] = {}
     try:
@@ -528,9 +528,9 @@ def _restore_promotion_backup(
         raise DataError(f"promotion backup does not match {symbol!r}")
     files = manifest["files"]
     destinations = {
-        "bars": store._bars_path(symbol),  # noqa: SLF001 -- pipeline/store peer contract
-        "actions": store._actions_path(symbol),  # noqa: SLF001 -- pipeline/store peer contract
-        "provenance": store._provenance_path(symbol),  # noqa: SLF001 -- peer contract
+        "bars": store._bars_path(symbol),
+        "actions": store._actions_path(symbol),
+        "provenance": store._provenance_path(symbol),
     }
     for name, destination in destinations.items():
         entry = files.get(name)
@@ -560,7 +560,7 @@ def rollback_interrupted_promotion(
     """Restore exact pre-promotion bytes after an interrupted process, then clear the marker."""
     if not acknowledge:
         raise DataError("promotion rollback requires acknowledge=true")
-    marker_path = store._promotion_path(symbol)  # noqa: SLF001 -- explicit repair seam
+    marker_path = store._promotion_path(symbol)
     try:
         marker = json.loads(marker_path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:

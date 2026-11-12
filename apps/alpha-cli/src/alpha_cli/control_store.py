@@ -1148,9 +1148,7 @@ def _verified_receipt_backup(
 def _owner_receipt_rows_digest(connection: sqlite3.Connection, table: str) -> str:
     if table not in {"owner_action_receipts", "owner_action_receipts_v4_old"}:
         raise DataError("invalid owner receipt digest table")
-    rows = connection.execute(
-        f"SELECT * FROM {table} ORDER BY receipt_id"  # noqa: S608 - closed static table names
-    ).fetchall()
+    rows = connection.execute(f"SELECT * FROM {table} ORDER BY receipt_id").fetchall()
     arrays = [list(row) for row in rows]
     return hashlib.sha256(_canonical_json(arrays, "owner action receipt rows").encode()).hexdigest()
 
@@ -3242,14 +3240,14 @@ class ControlStore:
             and bound_operator.get("name") == "bybit_btcusdt_crowding_reversal"
         )
         if crypto_crowding:
-            from alpha_cli.research_crypto_runtime import (  # noqa: PLC0415
+            from alpha_cli.research_crypto_runtime import (
                 validate_crypto_d0_acceptance_artifact,
                 validate_crypto_d0_contract,
             )
 
             operator = validate_crypto_d0_contract(contract_payload)
         else:
-            from alpha_cli.research_runtime import (  # noqa: PLC0415
+            from alpha_cli.research_runtime import (
                 validate_d0_acceptance_artifact,
                 validate_d0_pilot_contract,
             )
@@ -5521,7 +5519,7 @@ class ControlStore:
             rows = connection.execute(
                 f"""SELECT * FROM research_source_records
                 WHERE {clause}
-                ORDER BY created_at, source_id LIMIT ? OFFSET ?""",  # noqa: S608
+                ORDER BY created_at, source_id LIMIT ? OFFSET ?""",
                 [*params, limit, offset],
             ).fetchall()
         return [self._research_source_view(row) for row in rows]
@@ -5591,7 +5589,7 @@ class ControlStore:
             placeholders = ",".join("?" for _ in clean_ids)
             rows = connection.execute(
                 f"""SELECT source_id FROM research_source_records
-                WHERE project_id = ? AND source_id IN ({placeholders})""",  # noqa: S608
+                WHERE project_id = ? AND source_id IN ({placeholders})""",
                 [project_id, *clean_ids],
             ).fetchall()
             if {str(row["source_id"]) for row in rows} != set(clean_ids):
@@ -6467,14 +6465,14 @@ class ControlStore:
         placeholders = ",".join("?" for _ in contract_ids)
         reservation_rows = connection.execute(
             f"""SELECT budget_reserved_json FROM research_launch_reservations
-            WHERE project_id = ? AND contract_id IN ({placeholders})""",  # noqa: S608
+            WHERE project_id = ? AND contract_id IN ({placeholders})""",
             [project_id, *contract_ids],
         ).fetchall()
         unlinked_attempt_rows = connection.execute(
             f"""SELECT a.budget_used_json FROM research_attempt_records AS a
             LEFT JOIN research_launch_attempt_links AS l ON l.attempt_id = a.attempt_id
             WHERE a.project_id = ? AND a.contract_id IN ({placeholders})
-                AND l.attempt_id IS NULL""",  # noqa: S608
+                AND l.attempt_id IS NULL""",
             [project_id, *contract_ids],
         ).fetchall()
         elapsed: dict[str, int | float] = {}
@@ -7776,12 +7774,12 @@ class ControlStore:
         )
         if not isinstance(contract_payload, dict):
             raise DataError("blind semantic exploration contract payload is corrupt")
-        from alpha_cli.research_runtime import (  # noqa: PLC0415
+        from alpha_cli.research_runtime import (
             validate_d0_acceptance_bytes,
             validate_d0_pilot_contract,
         )
-        from alpha_cli.study_semantic import VerifiedBlindSemanticReadV1  # noqa: PLC0415
-        from alpha_study import project_blind_semantic_read  # noqa: PLC0415
+        from alpha_cli.study_semantic import VerifiedBlindSemanticReadV1
+        from alpha_study import project_blind_semantic_read
 
         operator = validate_d0_pilot_contract(contract_payload)
         operator_identity = operator.get("operator")
@@ -8561,7 +8559,7 @@ class ControlStore:
                 FROM research_attempt_records AS a
                 LEFT JOIN research_launch_attempt_links AS l ON l.attempt_id = a.attempt_id
                 WHERE a.project_id = ? AND a.contract_id IN ({placeholders})
-                ORDER BY a.recorded_at, a.attempt_id""",  # noqa: S608
+                ORDER BY a.recorded_at, a.attempt_id""",
                 [project_id, *lineage_ids],
             ).fetchall()
             reservation_rows = connection.execute(
@@ -8570,7 +8568,7 @@ class ControlStore:
                 LEFT JOIN research_launch_attempt_links AS l
                     ON l.reservation_id = r.reservation_id
                 WHERE r.project_id = ? AND r.contract_id IN ({placeholders})
-                ORDER BY r.reserved_at, r.reservation_id""",  # noqa: S608
+                ORDER BY r.reserved_at, r.reservation_id""",
                 [project_id, *lineage_ids],
             ).fetchall()
             elapsed, logical_attempt_count = self._research_lineage_accounting(
@@ -8669,7 +8667,7 @@ class ControlStore:
             decision = connection.execute(
                 f"""SELECT * FROM research_decision_events
                 WHERE project_id = ? AND contract_id IN ({placeholders})
-                ORDER BY sequence DESC LIMIT 1""",  # noqa: S608
+                ORDER BY sequence DESC LIMIT 1""",
                 [project_id, *lineage_ids],
             ).fetchone()
             use_execution = str(execution["occurred_at"]) > str(phase["occurred_at"])
@@ -8791,7 +8789,7 @@ class ControlStore:
         *,
         limit: int = _RESEARCH_PACKET_COLLECTION_LIMIT,
     ) -> tuple[list[dict[str, object]], bool]:
-        rows = connection.execute(f"{query} LIMIT ?", [*params, limit + 1]).fetchall()  # noqa: S608
+        rows = connection.execute(f"{query} LIMIT ?", [*params, limit + 1]).fetchall()
         truncated = len(rows) > limit
         return [dict(row) for row in rows[:limit]], truncated
 
@@ -9556,7 +9554,7 @@ class ControlStore:
 
         def bounded_rows(query: str, parameters: Sequence[object], label: str) -> list[sqlite3.Row]:
             rows = connection.execute(
-                f"{query} LIMIT ?",  # noqa: S608 - static queries plus a bound limit.
+                f"{query} LIMIT ?",
                 [*parameters, ledger_limit + 1],
             ).fetchall()
             if len(rows) > ledger_limit:
@@ -9568,14 +9566,14 @@ class ControlStore:
             FROM research_attempt_records AS a
             LEFT JOIN research_launch_attempt_links AS l ON l.attempt_id = a.attempt_id
             WHERE a.project_id = ? AND a.contract_id IN ({placeholders})
-            ORDER BY a.recorded_at, a.attempt_id""",  # noqa: S608
+            ORDER BY a.recorded_at, a.attempt_id""",
             [project_id, *lineage_ids],
             "attempt ledger",
         )
         launch_reservations = bounded_rows(
             f"""SELECT * FROM research_launch_reservations
             WHERE project_id = ? AND contract_id IN ({placeholders})
-            ORDER BY reserved_at, reservation_id""",  # noqa: S608
+            ORDER BY reserved_at, reservation_id""",
             [project_id, *lineage_ids],
             "launch reservation ledger",
         )
@@ -9584,7 +9582,7 @@ class ControlStore:
             JOIN research_launch_reservations AS r
                 ON r.reservation_id = l.reservation_id
             WHERE r.project_id = ? AND r.contract_id IN ({placeholders})
-            ORDER BY l.linked_at, l.reservation_id""",  # noqa: S608
+            ORDER BY l.linked_at, l.reservation_id""",
             [project_id, *lineage_ids],
             "launch terminal-link ledger",
         )
@@ -10088,7 +10086,7 @@ class ControlStore:
                             PARTITION BY evidence_id ORDER BY revision DESC
                         ) AS rank FROM evidence_revisions {evidence_where}
                     ) SELECT * FROM ranked WHERE rank = 1
-                    ORDER BY created_at DESC, evidence_id LIMIT ?""",  # noqa: S608
+                    ORDER BY created_at DESC, evidence_id LIMIT ?""",
                     evidence_params,
                 ).fetchall()
                 evidence = []
@@ -11598,7 +11596,7 @@ class ControlStore:
                 f"""SELECT 1 FROM attempt_records
                 WHERE project_id = ? AND experiment_id = ?
                     AND stage IN ({",".join("?" for _ in _PRE_REVEAL_RESEARCH_STAGES)})
-                LIMIT 1""",  # noqa: S608 - placeholders come from a closed constant.
+                LIMIT 1""",
                 (project_id, experiment_id, *sorted(_PRE_REVEAL_RESEARCH_STAGES)),
             ).fetchone()
             linked = connection.execute(
@@ -11609,7 +11607,7 @@ class ControlStore:
             launched = connection.execute(
                 f"""SELECT 1 FROM jobs WHERE project_id = ? AND experiment_id = ?
                     AND kind IN ({",".join("?" for _ in _PRE_REVEAL_RESEARCH_JOB_KINDS)})
-                    LIMIT 1""",  # noqa: S608 - placeholders come from a closed constant.
+                    LIMIT 1""",
                 (project_id, experiment_id, *sorted(_PRE_REVEAL_RESEARCH_JOB_KINDS)),
             ).fetchone()
             progressed = connection.execute(
@@ -11617,7 +11615,7 @@ class ControlStore:
                 WHERE project_id = ? AND experiment_id = ?
                     AND stage IN ({",".join("?" for _ in _PRE_REVEAL_RESEARCH_STAGES)})
                     AND state IN ('queued', 'running', 'pass', 'warning', 'fail')
-                LIMIT 1""",  # noqa: S608 - placeholders come from a closed constant.
+                LIMIT 1""",
                 (project_id, experiment_id, *sorted(_PRE_REVEAL_RESEARCH_STAGES)),
             ).fetchone()
             if any(value is not None for value in (attempted, linked, launched, progressed)):
@@ -12302,7 +12300,7 @@ class ControlStore:
                 active_rows = connection.execute(
                     f"""SELECT job_id, kind FROM jobs
                     WHERE status IN ('queued', 'running') AND kind IN ({placeholders})
-                    ORDER BY created_at LIMIT ?""",  # noqa: S608 - placeholders are generated only.
+                    ORDER BY created_at LIMIT ?""",
                     [*heavyweight_kinds, HEAVYWEIGHT_JOB_CAPACITY],
                 ).fetchall()
                 if len(active_rows) >= HEAVYWEIGHT_JOB_CAPACITY:
@@ -12341,7 +12339,7 @@ class ControlStore:
             rows = connection.execute(
                 f"""SELECT job_id, kind, status, created_at FROM jobs
                 WHERE status IN ('queued', 'running') AND kind IN ({placeholders})
-                ORDER BY created_at, job_id""",  # noqa: S608 - placeholders are generated only.
+                ORDER BY created_at, job_id""",
                 heavyweight_kinds,
             ).fetchall()
         active = [dict(row) for row in rows]

@@ -244,11 +244,11 @@ class IBAPITransport:
                 if self.next_order_id is not None and self.accounts:
                     self.ready.set()
 
-            def nextValidId(self, orderId: int) -> None:  # noqa: N802
+            def nextValidId(self, orderId: int) -> None:
                 self.next_order_id = orderId
                 self._ready_if_complete()
 
-            def managedAccounts(self, accountsList: str) -> None:  # noqa: N802
+            def managedAccounts(self, accountsList: str) -> None:
                 self.accounts = [item for item in accountsList.split(",") if item]
                 self._ready_if_complete()
 
@@ -259,12 +259,12 @@ class IBAPITransport:
                 if account == account_id and getattr(contract, "symbol", "") == "SPY":
                     self.position_value = float(str(position))
 
-            def positionEnd(self) -> None:  # noqa: N802
+            def positionEnd(self) -> None:
                 self.positions_done.set()
 
             def openOrder(
                 self, orderId: int, contract: object, order: object, orderState: object
-            ) -> None:  # noqa: N802
+            ) -> None:
                 if orderId != self.next_order_id:
                     return
                 safe = (
@@ -278,11 +278,11 @@ class IBAPITransport:
                 self.preview_state = orderState
                 self.preview_done.set()
 
-            def orderStatus(self, orderId: int, *args: object) -> None:  # noqa: N802
+            def orderStatus(self, orderId: int, *args: object) -> None:
                 if orderId == self.next_order_id:
                     self.order_status_callbacks += 1
 
-            def execDetails(self, reqId: int, contract: object, execution: object) -> None:  # noqa: N802
+            def execDetails(self, reqId: int, contract: object, execution: object) -> None:
                 del reqId, contract
                 if getattr(execution, "orderId", None) == self.next_order_id:
                     self.execution_callbacks += 1

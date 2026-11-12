@@ -51,7 +51,7 @@ def load_crypto_empirical_dataset(
         raise DataError("crypto crowding registered snapshot binding is malformed")
     assert isinstance(snapshot_id, str) and isinstance(snapshot_hash, str)
 
-    from alpha_cli.crypto_data_cmds import (  # noqa: PLC0415
+    from alpha_cli.crypto_data_cmds import (
         crypto_crowding_observations,
         crypto_crowding_snapshot_compatibility,
     )

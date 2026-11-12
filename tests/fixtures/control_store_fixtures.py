@@ -16,7 +16,7 @@ _RESEARCH_PROGRAM_LAUNCH = "2026-08-06T00:00:00.000000Z"
 
 def mark_project_as_migrated_legacy(store: ControlStore, project_id: str) -> None:
     """Model a verified v1->v2 legacy row without adding a production bypass."""
-    database = store._data_dir / "control" / DATABASE_NAME  # noqa: SLF001
+    database = store._data_dir / "control" / DATABASE_NAME
     connection = sqlite3.connect(database)
     try:
         project = connection.execute(

@@ -163,7 +163,7 @@ class CCXTAdapter:
         self, symbol: str, start: datetime, end: datetime, *, timeframe: str
     ) -> FetchResult:
         """Fetch one bounded completed-interval OHLCV series through the unified CCXT seam."""
-        import ccxt  # type: ignore[import-untyped]  # ccxt has no stubs  # noqa: PLC0415
+        import ccxt  # type: ignore[import-untyped]  # ccxt has no stubs
 
         step_ms = _TIMEFRAME_MS.get(timeframe)
         if step_ms is None:
@@ -210,7 +210,7 @@ class CCXTAdapter:
         a data authority. Fails loud on an unknown pair, a missing price, or a missing
         timestamp rather than inventing either.
         """
-        import ccxt  # noqa: PLC0415
+        import ccxt
 
         ex = getattr(ccxt, self._exchange)({"enableRateLimit": True})
         if symbol not in ex.load_markets():
@@ -234,7 +234,7 @@ class CCXTAdapter:
         Fails loud on an unknown pair, a bar earlier than requested, or no history; daily only
         so the scan stays bounded (~22 requests).
         """
-        import ccxt  # noqa: PLC0415
+        import ccxt
 
         if timeframe != "1d":
             raise DataError("first_bar supports only the 1d timeframe")

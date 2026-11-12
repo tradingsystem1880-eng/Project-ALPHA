@@ -249,7 +249,7 @@ def test_ibapi_transport_drives_exact_preview_callback_lifecycle(
             self.wrapper = wrapper
             self.connected = False
 
-        def connect(self, host: str, port: int, clientId: int) -> None:  # noqa: N803
+        def connect(self, host: str, port: int, clientId: int) -> None:
             assert (host, port, clientId) == ("127.0.0.1", 4002, 29)
             self.connected = True
 
@@ -257,14 +257,14 @@ def test_ibapi_transport_drives_exact_preview_callback_lifecycle(
             self.wrapper.nextValidId(101)
             self.wrapper.managedAccounts(account)
 
-        def reqPositions(self) -> None:  # noqa: N802
+        def reqPositions(self) -> None:
             self.wrapper.position(account, SimpleNamespace(symbol="SPY"), Decimal("2"), 640.0)
             self.wrapper.positionEnd()
 
-        def cancelPositions(self) -> None:  # noqa: N802
+        def cancelPositions(self) -> None:
             return None
 
-        def placeOrder(self, order_id: int, contract: object, order: object) -> None:  # noqa: N802
+        def placeOrder(self, order_id: int, contract: object, order: object) -> None:
             assert order_id == 101
             FakeClient.captured_contract = contract
             FakeClient.captured_order = order
@@ -279,7 +279,7 @@ def test_ibapi_transport_drives_exact_preview_callback_lifecycle(
             )
             self.wrapper.openOrder(order_id, contract, order, state)
 
-        def isConnected(self) -> bool:  # noqa: N802
+        def isConnected(self) -> bool:
             return self.connected
 
         def disconnect(self) -> None:
@@ -479,7 +479,7 @@ def test_ibapi_transport_failures_are_typed_and_redacted(
             self.wrapper = wrapper
             self.connected = False
 
-        def connect(self, host: str, port: int, clientId: int) -> None:  # noqa: N803
+        def connect(self, host: str, port: int, clientId: int) -> None:
             del host, port, clientId
             if scenario == "unexpected":
                 raise ValueError("private vendor detail")
@@ -491,16 +491,16 @@ def test_ibapi_transport_failures_are_typed_and_redacted(
             self.wrapper.nextValidId(101)
             self.wrapper.managedAccounts("DU9999999" if scenario == "wrong_account" else account)
 
-        def reqPositions(self) -> None:  # noqa: N802
+        def reqPositions(self) -> None:
             if scenario == "position_timeout":
                 return
             self.wrapper.position(account, SimpleNamespace(symbol="SPY"), Decimal("0"), 0.0)
             self.wrapper.positionEnd()
 
-        def cancelPositions(self) -> None:  # noqa: N802
+        def cancelPositions(self) -> None:
             return None
 
-        def placeOrder(self, order_id: int, contract: object, order: object) -> None:  # noqa: N802
+        def placeOrder(self, order_id: int, contract: object, order: object) -> None:
             if scenario == "preview_timeout":
                 return
             if scenario == "broker_error":
@@ -525,7 +525,7 @@ def test_ibapi_transport_failures_are_typed_and_redacted(
             )
             self.wrapper.openOrder(order_id, contract, order, state)
 
-        def isConnected(self) -> bool:  # noqa: N802
+        def isConnected(self) -> bool:
             return self.connected
 
         def disconnect(self) -> None:

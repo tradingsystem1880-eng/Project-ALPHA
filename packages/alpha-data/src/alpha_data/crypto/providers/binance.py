@@ -458,7 +458,7 @@ def archive_url(
         raise DataError("invalid Binance archive symbol")
     if family not in {"klines", "trades", "aggTrades"}:
         raise DataError("unsupported Binance archive family")
-    from urllib.parse import quote  # noqa: PLC0415
+    from urllib.parse import quote
 
     root = "spot" if market == "spot" else f"futures/{market}"
     encoded_symbol = quote(symbol, safe="")
@@ -512,7 +512,7 @@ def binance_public_api_url(
                 raise DataError("Binance public API time range is invalid")
         if isinstance(start, int) and isinstance(end, int) and end < start:
             raise DataError("Binance public API time range is inverted")
-    from urllib.parse import urlencode  # noqa: PLC0415
+    from urllib.parse import urlencode
 
     query = urlencode(sorted(params.items()))
     return f"{_PUBLIC_API_ROOTS[category]}/{resource}?{query}"
@@ -528,7 +528,7 @@ def fetch_binance_public_api(
     if not url.startswith(allowed_prefixes):
         raise DataError("Binance public API host is invalid")
     max_bytes = 32 * 1024 * 1024 if url.endswith("/exchangeInfo") else 16 * 1024 * 1024
-    from urllib.request import Request  # noqa: PLC0415
+    from urllib.request import Request
 
     return fetch_bounded(
         Request(url, headers={"User-Agent": "Project-ALPHA/1.0"}),
@@ -553,7 +553,7 @@ def _fetch_archive_resource(
         raise DataError("Binance archive timeout must be between 1 and 120 seconds")
     if not url.startswith("https://data.binance.vision/data/"):
         raise DataError("Binance archive host is invalid")
-    from urllib.request import Request  # noqa: PLC0415
+    from urllib.request import Request
 
     return fetch_bounded(
         Request(url, headers={"User-Agent": "Project-ALPHA/1.0"}),
@@ -612,9 +612,9 @@ def _resume_binance_archive(
     *,
     timeout_seconds: int,
 ) -> bytes:
-    import http.client  # noqa: PLC0415
-    import urllib.error  # noqa: PLC0415
-    import urllib.request  # noqa: PLC0415
+    import http.client
+    import urllib.error
+    import urllib.request
 
     max_bytes = 512 * 1024 * 1024
     if re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None:
@@ -676,7 +676,7 @@ def _resume_binance_archive(
     request = urllib.request.Request(url, headers=headers)
     total_bytes: int | None = None
     try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             if not str(response.geturl()).startswith("https://data.binance.vision/data/"):
                 raise DataError("Binance archive redirect host is invalid")
             content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]

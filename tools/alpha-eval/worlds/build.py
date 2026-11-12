@@ -47,7 +47,7 @@ from alpha_data.snapshot import create_snapshot
 from alpha_data.store import ParquetStore
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # sibling module, any invocation path
-from artifacts import build_artifact  # noqa: E402
+from artifacts import build_artifact
 
 TRADING_DAYS = 252
 

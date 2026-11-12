@@ -71,7 +71,12 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "SIM"]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF100"]
+
+[tool.ruff.lint.per-file-ignores]
+# protected control-plane script (scripts/gate.py _PROTECTED_EXACT): its two stale
+# suppressions are left for an acknowledged edit rather than removed here.
+"scripts/codex_bridge.py" = ["RUF100"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["alpha_core", "alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_research", "alpha_study", "alpha_cli", "alpha_mcp", "alpha_web"]
