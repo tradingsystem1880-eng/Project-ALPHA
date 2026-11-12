@@ -58,6 +58,7 @@ execution feed.
 ## Implementation anchors
 
 - Project Codex MCP registration: `.codex/config.toml`
+  (Note 2026-11-13: the QuantPad MCP entry was removed from that file in the repository cleanup; this anchor is historical.)
 - Operator routing and keychain procedure: `docs/operations/README.md`
 - Canonical ingestion boundary: `packages/alpha-data/src/alpha_data/pipeline.py`
 - Existing provider authority: `apps/alpha-cli/src/alpha_cli/providers.py`
