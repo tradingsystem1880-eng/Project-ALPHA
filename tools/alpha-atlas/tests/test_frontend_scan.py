@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+
 from alpha_atlas.core.model import AtlasError
 from alpha_atlas.generators.frontend_scan import extract, join_client_methods
 

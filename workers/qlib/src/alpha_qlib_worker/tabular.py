@@ -151,8 +151,12 @@ def backend_capabilities() -> dict[str, Any]:
     qlib_version = next(
         (row["versions"].get("pyqlib") for row in rows if "pyqlib" in row["versions"]), None
     )
-    return {"schema_version": 1, "qlib_version": qlib_version, "backends": rows,
-            "feature_recipes": feature_capabilities()}
+    return {
+        "schema_version": 1,
+        "qlib_version": qlib_version,
+        "backends": rows,
+        "feature_recipes": feature_capabilities(),
+    }
 
 
 def require_backend(name: str) -> dict[str, str]:
