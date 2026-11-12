@@ -92,7 +92,7 @@ def _solve_pow(challenge: str, difficulty: int) -> str:
     zeros — exactly what Stooq's ``<noscript>This site requires JavaScript to verify your
     browser</noscript>`` page asks any JS-capable client to do. Difficulty 4 ≈ 65k hashes.
     """
-    import hashlib  # noqa: PLC0415
+    import hashlib
 
     target = "0" * difficulty
     for n in range(_POW_MAX_ITERS):
@@ -111,12 +111,12 @@ def _fetch_stooq_text(url: str) -> str:
     reload carrying the auth cookie. Returns the raw response body; the caller decides whether the
     body is CSV, "No data", or a still-blocked response and fails loud accordingly.
     """
-    import http.client  # noqa: PLC0415
-    import http.cookiejar  # noqa: PLC0415
-    import re  # noqa: PLC0415
-    import urllib.error  # noqa: PLC0415
-    import urllib.parse  # noqa: PLC0415
-    import urllib.request  # noqa: PLC0415
+    import http.client
+    import http.cookiejar
+    import re
+    import urllib.error
+    import urllib.parse
+    import urllib.request
 
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
@@ -129,7 +129,7 @@ def _fetch_stooq_text(url: str) -> str:
             headers["Referer"] = url
         req = urllib.request.Request(target, data=data, headers=headers)
         try:
-            with opener.open(req, timeout=30) as resp:  # noqa: S310 — fixed https host
+            with opener.open(req, timeout=30) as resp:
                 body: str = resp.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as exc:
             raise DataError(
@@ -187,7 +187,7 @@ class StooqAdapter:
     parser_version = PARSER_VERSION
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
-        import urllib.parse  # noqa: PLC0415
+        import urllib.parse
 
         quoted = urllib.parse.quote(symbol, safe="^.")  # ^spx etc. stay literal; &/? cannot inject
         url = f"https://stooq.com/q/d/l/?s={quoted}&d1={start:%Y%m%d}&d2={end:%Y%m%d}&i=d"

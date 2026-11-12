@@ -636,7 +636,7 @@ def _retain(failure: BaseException, record: Callable[[], None]) -> None:
     """Run a diagnostic capture; its own failure is noted and never replaces ``failure``."""
     try:
         record()
-    except Exception as exc:  # noqa: BLE001 - diagnostics must not mask the original failure
+    except Exception as exc:
         failure.add_note(f"diagnostic capture failed: {exc!r}")
 
 

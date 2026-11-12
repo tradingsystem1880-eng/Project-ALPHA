@@ -304,14 +304,21 @@ def test_asset_master_rejects_requested_detail_as_a_catalog_source(tmp_path: Pat
 
     class DetailStore:
         bulk_root = tmp_path
+        active_checks: list[str] = []
 
-        def verify_manifest(self, _manifest_id: str) -> dict[str, object]:
-            return {
+        def require_active(self, manifest_id: str) -> None:
+            self.active_checks.append(manifest_id)
+
+        def read_verified_normalized(
+            self, _manifest_id: str, *, max_bytes: int
+        ) -> tuple[dict[str, object], bytes]:
+            manifest: dict[str, object] = {
                 "artifact_kind": "normalized",
                 "dataset": dataset.to_dict(),
                 "quality": quality.to_dict(),
                 "artifact_key": "not-read.parquet",
             }
+            return manifest, b"not parquet: rejected before the payload is parsed"
 
     with pytest.raises(DataError, match="authoritative asset_metadata"):
         crypto_data_cmds._qualified_normalized_frame(
@@ -320,6 +327,7 @@ def test_asset_master_rejects_requested_detail_as_a_catalog_source(tmp_path: Pat
             family="asset_metadata",
             instrument="all",
         )
+    assert DetailStore.active_checks == ["b" * 64]
 
 
 def test_latest_profile_and_hourly_sources_are_selected_from_immutable_artifacts(
@@ -477,6 +485,14 @@ def test_crypto_cli_translates_immutable_control_artifact_failures(
     monkeypatch.setattr(crypto_data_cmds, "_read_asset_master", blocked)
     monkeypatch.setattr(crypto_data_cmds, "_read_snapshot", blocked)
     monkeypatch.setattr(crypto_data_cmds, "_read_coverage_profile", blocked)
+
+    class UnusedStore:
+        # Asset-master commands now open the bulk store to verify sources; the control
+        # artifact read fails first, so the store must never be touched.
+        def __getattr__(self, name: str) -> object:
+            raise AssertionError(f"bulk store used before control artifact read: {name}")
+
+    monkeypatch.setattr(crypto_data_cmds, "_bulk_store", UnusedStore)
     commands = (
         [
             "crypto-data",

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+
 from alpha_atlas.core.mermaid import DOC_PATHS, GENERATED_HEADER, MAX_DIAGRAM_NODES, _diagram
 from alpha_atlas.core.model import AtlasError
 from alpha_atlas.generate import GRAPH_PATH, build_outputs

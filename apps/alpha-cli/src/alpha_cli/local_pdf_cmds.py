@@ -337,8 +337,8 @@ def import_owner_pdf_file(
 def import_pdf_command(
     project_id: str,
     file_path: Path = typer.Option(..., "--file", help="one owner-selected local PDF"),  # noqa: B008
-    title: str = typer.Option(..., "--title"),  # noqa: B008
-    json_out: bool = typer.Option(False, "--json", help="emit JSON"),  # noqa: B008
+    title: str = typer.Option(..., "--title"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Import text from one owner-selected local PDF; no links are followed."""
     try:

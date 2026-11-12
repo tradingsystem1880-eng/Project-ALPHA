@@ -264,7 +264,7 @@ def test_paper_cancel_expiry_and_rejection_events_halt_or_journal() -> None:
         "OrderEvent",
         (),
         {
-            "instrument_id": strategy._iid,  # noqa: SLF001
+            "instrument_id": strategy._iid,
             "client_order_id": "a" * 64,
             "venue_order_id": "paper-1",
             "ts_event": 1,

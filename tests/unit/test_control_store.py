@@ -428,7 +428,7 @@ def _prepare_evidence_admission(
 
 
 def _complete_pre_holdout(store: ControlStore, experiment_id: str, *, at: datetime = START) -> None:
-    snapshot_dir = store._data_dir / "snapshots" / "snap-aapl-2026q2"  # noqa: SLF001
+    snapshot_dir = store._data_dir / "snapshots" / "snap-aapl-2026q2"
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     snapshot_manifest = snapshot_dir / "manifest.json"
     snapshot_manifest.write_text(
@@ -482,7 +482,7 @@ def _complete_pre_holdout(store: ControlStore, experiment_id: str, *, at: dateti
             PROJECT_ID, experiment_id, stage, "running", reason="test suite running", at=at
         )
         for run_id, command, state, passed, null_model in runs:
-            run_dir = store._data_dir / "runs" / run_id  # noqa: SLF001
+            run_dir = store._data_dir / "runs" / run_id
             run_dir.mkdir(parents=True)
             manifest: dict[str, object] = {
                 "schema_version": 3,

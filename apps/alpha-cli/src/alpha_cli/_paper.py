@@ -141,11 +141,7 @@ def load_paper_warmup(
     snapshot_store = ParquetStore(snapshot_dir)
     symbol_entry = symbols[canonical]
     canonical_provenance_file = (
-        snapshot_store._provenance_path(canonical)
-        .relative_to(  # noqa: SLF001 -- paper binds the snapshot/store peer contract
-            snapshot_dir
-        )
-        .as_posix()
+        snapshot_store._provenance_path(canonical).relative_to(snapshot_dir).as_posix()
     )
     if (
         not isinstance(symbol_entry, dict)

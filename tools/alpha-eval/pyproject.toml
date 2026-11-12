@@ -38,7 +38,7 @@ target-version = "py312"
 extend-exclude = ["results"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "SIM"]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF100"]
 
 [tool.ruff.lint.per-file-ignores]
 # rubric prose, probe evidence strings, markdown table rows and golden trajectory text

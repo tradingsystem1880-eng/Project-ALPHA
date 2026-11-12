@@ -3219,7 +3219,7 @@ def test_research_capture_is_atomic_and_retry_idempotent(
             "research_execution_events",
             "research_d2_events",
         ):
-            count = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()  # noqa: S608
+            count = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
             assert count == (0,), f"partial {table} row survived the {fault_label} fault"
     finally:
         connection.close()

@@ -174,7 +174,7 @@ def detect_wedges(bars: OHLCV, cfg: WedgeConfig | None = None) -> list[Wedge]:
     return out
 
 
-def _build(  # noqa: PLR0911 — each early return is a distinct, named rejection reason
+def _build(
     bars: OHLCV,
     cfg: WedgeConfig,
     h1: Swing,

@@ -1376,7 +1376,8 @@ def _run_real(
     feature_version = request.payload["feature_recipe"]["version"]
     feature_binding = feature_recipe_diagnostics(2) if feature_version == 2 else None
     features = (
-        alpha158_features(request.panel) if feature_version == 1
+        alpha158_features(request.panel)
+        if feature_version == 1
         else build_features(request.panel, version=feature_version)
     )
     samples = _sample_table(request, features)

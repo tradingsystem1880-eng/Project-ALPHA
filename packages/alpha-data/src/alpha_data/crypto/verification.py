@@ -129,8 +129,8 @@ class MetadataVerificationBudget:
 
     def read_json(self, path: Path) -> object:
         """Reserve before open; read exactly one stable regular file, then decode."""
-        import json  # noqa: PLC0415
-        from typing import cast  # noqa: PLC0415
+        import json
+        from typing import cast
 
         try:
             named_before = path.stat(follow_symlinks=False)

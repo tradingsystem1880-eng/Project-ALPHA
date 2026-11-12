@@ -129,7 +129,7 @@ def test_snapshot_cannot_freeze_mixed_promoted_generations(
         receipt=replace(second.receipt, action_count=1),
     )
     stage_and_promote(store, first, authoritative_source="tiingo")
-    paths = [store._bars_path("AAPL"), store._actions_path("AAPL"), store._provenance_path("AAPL")]  # noqa: SLF001
+    paths = [store._bars_path("AAPL"), store._actions_path("AAPL"), store._provenance_path("AAPL")]
     generation_a = [path.read_bytes() for path in paths]
     trigger = paths[["bars", "actions", "provenance"].index(copy_kind)]
     original_copy = shutil.copy2
@@ -218,7 +218,7 @@ def test_snapshot_rejects_rollback_during_copy(
         receipt=replace(second.receipt, action_count=1),
     )
     stage_and_promote(store, first, authoritative_source="tiingo")
-    paths = [store._bars_path("AAPL"), store._actions_path("AAPL"), store._provenance_path("AAPL")]  # noqa: SLF001
+    paths = [store._bars_path("AAPL"), store._actions_path("AAPL"), store._provenance_path("AAPL")]
     before = [path.read_bytes() for path in paths]
     staged, rollback = Event(), Event()
     copy = shutil.copy2
@@ -511,9 +511,9 @@ def test_failed_promotion_restores_exact_previous_canonical(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     store = _legacy_store(tmp_path)
-    before_bars = store._bars_path("AAPL").read_bytes()  # noqa: SLF001
-    before_actions = store._actions_path("AAPL").read_bytes()  # noqa: SLF001
-    before_provenance = store._provenance_path("AAPL").read_bytes()  # noqa: SLF001
+    before_bars = store._bars_path("AAPL").read_bytes()
+    before_actions = store._actions_path("AAPL").read_bytes()
+    before_provenance = store._provenance_path("AAPL").read_bytes()
     result = _result(
         [("2026-08-03", 101.5), ("2026-08-04", 102.0)],
         start=date(2026, 8, 3),
@@ -529,9 +529,9 @@ def test_failed_promotion_restores_exact_previous_canonical(
     with pytest.raises(OSError, match="injected promotion failure"):
         stage_and_promote(store, result, authoritative_source="tiingo")
 
-    assert store._bars_path("AAPL").read_bytes() == before_bars  # noqa: SLF001
-    assert store._actions_path("AAPL").read_bytes() == before_actions  # noqa: SLF001
-    assert store._provenance_path("AAPL").read_bytes() == before_provenance  # noqa: SLF001
+    assert store._bars_path("AAPL").read_bytes() == before_bars
+    assert store._actions_path("AAPL").read_bytes() == before_actions
+    assert store._provenance_path("AAPL").read_bytes() == before_provenance
     assert not store.promotion_pending("AAPL")
     evidence = _immutable_bytes(store)
     monkeypatch.setattr(store, "write_actions", write_actions)
@@ -546,13 +546,13 @@ def test_explicit_rollback_recovers_after_interrupted_promotion(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     store = _legacy_store(tmp_path)
-    before = store._bars_path("AAPL").read_bytes()  # noqa: SLF001
+    before = store._bars_path("AAPL").read_bytes()
     result = _result(
         [("2026-08-03", 101.5), ("2026-08-04", 102.0)],
         start=date(2026, 8, 3),
         end=date(2026, 8, 4),
     )
-    restore = pipeline._restore_promotion_backup  # noqa: SLF001
+    restore = pipeline._restore_promotion_backup
 
     def interrupted(*args: object, **kwargs: object) -> None:
         del args, kwargs
@@ -571,7 +571,7 @@ def test_explicit_rollback_recovers_after_interrupted_promotion(
 
     monkeypatch.setattr(pipeline, "_restore_promotion_backup", restore)
     rollback_interrupted_promotion(store, symbol="AAPL", acknowledge=True)
-    assert store._bars_path("AAPL").read_bytes() == before  # noqa: SLF001
+    assert store._bars_path("AAPL").read_bytes() == before
     assert not store.promotion_pending("AAPL")
     evidence = _immutable_bytes(store)
     monkeypatch.setattr(store, "write_actions", write_actions)
@@ -607,11 +607,11 @@ def test_retry_rejects_changed_immutable_evidence_or_canonical(
         path = tmp_path / relative / "tiingo" / receipt_id / filename
         path.write_bytes(path.read_bytes() + b" ")
     evidence = _immutable_bytes(store)
-    canonical = store._provenance_path("AAPL").read_bytes()  # noqa: SLF001
+    canonical = store._provenance_path("AAPL").read_bytes()
     with pytest.raises(DataError, match="immutable ingest artifact conflict"):
         stage_and_promote(store, result, authoritative_source="tiingo")
     assert all(path.read_bytes() == content for path, content in evidence.items())
-    assert store._provenance_path("AAPL").read_bytes() == canonical  # noqa: SLF001
+    assert store._provenance_path("AAPL").read_bytes() == canonical
     assert not store.promotion_pending("AAPL")
 
 
@@ -706,7 +706,7 @@ def test_candidate_promotion_rejects_malformed_quality_documents(
     candidate.mkdir()
     (candidate / "quality.json").write_text(quality, encoding="utf-8")
     with pytest.raises(DataError, match=match):
-        pipeline._promote_candidate(  # noqa: SLF001
+        pipeline._promote_candidate(
             ParquetStore(tmp_path / "store"), candidate, approved_repair=False
         )
 
@@ -717,7 +717,7 @@ def test_rollback_requires_acknowledgement_valid_marker_and_safe_reference(tmp_p
         rollback_interrupted_promotion(store, symbol="AAPL", acknowledge=False)
     with pytest.raises(DataError, match="no interrupted"):
         rollback_interrupted_promotion(store, symbol="AAPL", acknowledge=True)
-    marker = store._promotion_path("AAPL")  # noqa: SLF001
+    marker = store._promotion_path("AAPL")
     marker.parent.mkdir(parents=True)
     marker.write_text("not-json", encoding="utf-8")
     with pytest.raises(DataError, match="corrupt promotion marker"):
@@ -772,6 +772,6 @@ def test_promotion_backup_validation_fails_closed(
     if filename is not None and contents is not None:
         (backup / filename).write_text(contents, encoding="utf-8")
     with pytest.raises(DataError, match=match):
-        pipeline._restore_promotion_backup(  # noqa: SLF001
+        pipeline._restore_promotion_backup(
             ParquetStore(tmp_path / "store"), symbol="AAPL", backup_root=backup
         )

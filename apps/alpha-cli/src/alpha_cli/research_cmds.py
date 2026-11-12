@@ -191,7 +191,7 @@ def _run_literature_worker(argv: list[str], *, timeout_seconds: int = 180) -> di
                 raise DataError("configured UV_CACHE_DIR must be an existing writable directory")
             cache_dir = configured_cache
         child_env["UV_CACHE_DIR"] = str(cache_dir)
-        completed = subprocess.run(  # noqa: S603 - fixed executable and closed argument vector
+        completed = subprocess.run(
             [
                 uv_executable,
                 "run",
@@ -289,7 +289,7 @@ def _proposal_options(store: ControlStore, project_id: str) -> dict[str, object]
             and isinstance(snapshot_id, str)
         ):
             try:
-                from alpha_cli.crypto_data_cmds import (  # noqa: PLC0415
+                from alpha_cli.crypto_data_cmds import (
                     crypto_crowding_snapshot_compatibility,
                 )
 
@@ -800,7 +800,7 @@ def _approval_payload(
         and event_value.get("name") == "bybit_btcusdt_crowding_reversal"
         and event_value.get("availability") == "bybit_funding_event_point_in_time"
     ):
-        from alpha_cli.research_crypto_runtime import registered_crypto_d0_operator  # noqa: PLC0415
+        from alpha_cli.research_crypto_runtime import registered_crypto_d0_operator
 
         protocol["d0_operator"] = registered_crypto_d0_operator()
     return result
@@ -3585,7 +3585,7 @@ def _dataset_origin(
 
         store = ParquetStore(data_dir / "store")
         provenance = store.read_provenance(symbol)
-        path = store._provenance_path(symbol)  # noqa: SLF001 - CLI/store projection seam
+        path = store._provenance_path(symbol)
         if provenance is None or not path.is_file():
             raise DataError(
                 f"stored bars for {symbol!r} have no pull provenance; fail-closed — "
@@ -3678,7 +3678,7 @@ def data_register_crypto(
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Register an eligible CryptoSnapshotV1 after re-verifying every external member."""
-    from alpha_cli.crypto_data_cmds import crypto_snapshot_registration  # noqa: PLC0415
+    from alpha_cli.crypto_data_cmds import crypto_snapshot_registration
 
     try:
         binding = crypto_snapshot_registration(snapshot_id, symbol=symbol)

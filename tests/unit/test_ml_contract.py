@@ -500,7 +500,7 @@ def test_prepare_rejects_recipe_drift_and_unbounded_model_parameters(
         (
             "feature",
             lambda draft: draft["feature_recipe"].update({"parameters": {"windows": [5]}}),
-            "fixed recipe",
+            "fixed versioned recipe",
         ),
         (
             "model",

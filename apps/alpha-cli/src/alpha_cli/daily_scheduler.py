@@ -156,7 +156,7 @@ def due_session(item: DailyInstrument, now: datetime) -> date:
     """Latest session whose close plus correction window is known by ``now``."""
     if now.tzinfo is None or now.utcoffset() is None:
         raise DataError("daily scheduler clock must be timezone-aware")
-    import exchange_calendars as xcals  # type: ignore[import-untyped]  # noqa: PLC0415
+    import exchange_calendars as xcals  # type: ignore[import-untyped]
 
     calendar = xcals.get_calendar(item.calendar)
     utc_now = now.astimezone(UTC)
@@ -196,7 +196,7 @@ def _run_spec(item: DailyInstrument) -> _runner.RunSpec:
 
 
 def _next_session_times(item: DailyInstrument, session: date) -> tuple[date, datetime]:
-    import exchange_calendars as xcals  # noqa: PLC0415
+    import exchange_calendars as xcals
 
     calendar = xcals.get_calendar(item.calendar)
     next_session = calendar.next_session(session.isoformat())

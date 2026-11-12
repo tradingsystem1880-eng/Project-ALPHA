@@ -180,7 +180,7 @@ def test_composer_isolates_qrun_stage_and_exports_real_native_replay(
             assert command[1] == "-c"  # runtime pin preflight, no fit in this unit test
         return subprocess.CompletedProcess(command, 0)
 
-    monkeypatch.setattr(pipeline.subprocess, "run", qlib_stage)
+    monkeypatch.setattr("alpha_cli.native_qlib_pipeline.subprocess.run", qlib_stage)
     if fee > 1e9:
         with pytest.raises(DataError, match="did not fully execute"):
             pipeline.build_pipeline(output, Path(sys.executable), fee_bps=fee, slippage_bps=2)

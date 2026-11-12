@@ -984,7 +984,8 @@ def list_experiments(
                     "universe_size": universe_size,
                     "aligned_sessions": aligned_sessions,
                     "feature_recipe": (
-                        "alpha158 v2 (40-column correction)" if feature.get("version") == 2
+                        "alpha158 v2 (40-column correction)"
+                        if feature.get("version") == 2
                         else feature.get("name")
                     ),
                     "model": model.get("name"),
