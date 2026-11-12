@@ -198,7 +198,7 @@ def _require_fonts(theme: Theme) -> None:
     for family in (theme.font_family, theme.font_mono):
         try:
             font_manager.findfont(family, fallback_to_default=False)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - re-raised as a typed platform error
             raise DataError(
                 f"figure font {family!r} is unavailable; figures would silently reflow. "
                 "It ships inside the pinned matplotlib wheel -- check the environment."

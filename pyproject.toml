@@ -77,6 +77,14 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF100"]
 # protected control-plane script (scripts/gate.py _PROTECTED_EXACT): its two stale
 # suppressions are left for an acknowledged edit rather than removed here.
 "scripts/codex_bridge.py" = ["RUF100"]
+# Source bytes bound into runtime identities: the alpha_research tree feeds the research
+# implementation "code" hash that owner-approved contracts are checked against, and these
+# alpha_data modules feed comparison_acquisition._policy_hash. Their stale suppressions are
+# kept so a lint-only cleanup does not change those identities.
+"packages/alpha-research/src/alpha_research/**" = ["RUF100"]
+"packages/alpha-data/src/alpha_data/pipeline.py" = ["RUF100"]
+"packages/alpha-data/src/alpha_data/snapshot.py" = ["RUF100"]
+"packages/alpha-data/src/alpha_data/adapters/tiingo_adapter.py" = ["RUF100"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["alpha_core", "alpha_patterns", "alpha_data", "alpha_strategies", "alpha_backtest", "alpha_validation", "alpha_forecast", "alpha_research", "alpha_study", "alpha_cli", "alpha_mcp", "alpha_web"]
