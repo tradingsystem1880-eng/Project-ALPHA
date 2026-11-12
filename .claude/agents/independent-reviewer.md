@@ -56,7 +56,7 @@ Never negotiate a BLOCK away.
 One-time owner exception (2026-09-17): for the integrated agent-neutral refactor
 and cancellation follow-up only, the owner explicitly authorized proceeding without
 the absent `tests/holdout` suite after restoration checks found no available copy.
-See `docs/superpowers/plans/archive/2026-09/2026-09-17-cancellation-and-research-walkthrough.md`.
+See `docs/superpowers/plans/2026-09-17-cancellation-and-research-walkthrough.md`.
 Record the attempted command and absent suite as UNVERIFIED, with an informational
 finding; its absence alone does not block this review. This is not a test pass,
 does not excuse any existing failing test or other finding, and does not apply to

@@ -29,7 +29,7 @@
 
 Execution results belong in the final handoff and ignored `.alpha/state/` receipts so
 post-verification reporting does not invalidate the tested source tree. The prior
-[refactor record](../../2026-09-16-agent-neutral-reproducible-research.md) remains the source
+[refactor record](2026-09-16-agent-neutral-reproducible-research.md) remains the source
 of the accepted refactor scope and its historical verification evidence.
 
 ## Commit review findings and patch queue
@@ -100,7 +100,7 @@ provenance verification, not a current-market signal or validated research thesi
 
 The full-inventory attempt was safely interrupted before resolution; a scoped view
 of ten original manifests completed. Its performance and generic-intake findings
-are tracked in the [closure plan](2026-09-19-research-walkthrough-closure.md).
+are tracked in the [closure plan](archive/2026-09/2026-09-19-research-walkthrough-closure.md).
 Local immutable receipts and the detailed report remain under
 `.alpha/state/walkthrough-2026-09-17-scoped/`; this record preserves the outcome
 without requiring that ignored report to be committed.

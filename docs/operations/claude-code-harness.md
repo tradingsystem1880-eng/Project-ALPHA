@@ -157,7 +157,7 @@ tracks acceptance checks and limitations.
 
 The owner explicitly authorized this refactor/cancellation commit to proceed without
 the unavailable private holdout suite, after unsuccessful restoration checks. The
-[exception record](../superpowers/plans/archive/2026-09/2026-09-17-cancellation-and-research-walkthrough.md)
+[exception record](../superpowers/plans/2026-09-17-cancellation-and-research-walkthrough.md)
 and independent-reviewer instructions define its one-time scope. Hidden tests remain
 UNVERIFIED. Other tests, independent review, quant attestation and Git guards remain
 mandatory; this is neither a hook bypass nor a waiver for future changes.

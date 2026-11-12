@@ -35,7 +35,9 @@ LEGACY_SCHEMA_EXCEPTIONS: dict[str, str] = {}
 # Finished plans that stay in the flat folder because a file this repository must not rewrite
 # names their path. Mirrored in docs/superpowers/plans/archive/README.md.
 PINNED_FLAT: dict[str, str] = {
+    "2026-09-11-edge-first-phase-c-screening-lane.md": "named in alpha_research/panel.py (hashed)",
     "2026-09-16-agent-neutral-reproducible-research.md": "linked from AGENTS.md (byte cap)",
+    "2026-09-17-cancellation-and-research-walkthrough.md": "named in alpha_research/panel.py",
     "2026-09-30-edge-workspace.md": "linked from CLAUDE.md (byte cap)",
     "2026-09-30-research-workflow-completion.md": "path in captured alpha-eval evidence",
     "2026-10-26-native-rule-authority.md": "linked from CLAUDE.md (byte cap)",

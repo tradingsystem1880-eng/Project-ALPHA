@@ -2,7 +2,7 @@
 
 # Edge-first Phase C — a fast, honest screening lane: panel statistics in `alpha_research` and `alpha scan hypotheses`
 
-**Delivery state:** Superseded by [2026-09-16-agent-neutral-reproducible-research.md](../../2026-09-16-agent-neutral-reproducible-research.md) — C1/C2 panel code shipped there (b1b7510e, PR #53); C3 closure never run
+**Delivery state:** Superseded by [2026-09-16-agent-neutral-reproducible-research.md](2026-09-16-agent-neutral-reproducible-research.md) — C1/C2 panel code shipped there (b1b7510e, PR #53); C3 closure never run
 
 ```json
 {
