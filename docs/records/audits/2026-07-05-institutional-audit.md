@@ -64,7 +64,7 @@ Severity · finding · root cause → impact · **status**.
 
 2. **Tier-1 surrogate crediting bias produced false headline-gate FAILs**
    (`_surrogate.py`, `_gauntlet.py`; pre-documented in
-   `docs/investigations/2026-06-23-tier1-surrogate-crediting-bias.md`, never implemented).
+   `docs/records/investigations/2026-06-23-tier1-surrogate-crediting-bias.md`, never implemented).
    The close-fill surrogate diverges from the engine's t+1-open fills by Σ(gap×Δweight) —
    structural for high-turnover strategies (sign-flipping on near-zero-edge books).
    **FIXED** (investigation §7.1 + §7.3) — the gauntlet scores the *same* surrogate weights

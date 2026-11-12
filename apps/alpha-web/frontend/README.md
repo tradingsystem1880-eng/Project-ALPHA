@@ -182,9 +182,9 @@ Screenshots and accessibility checks cover 1280×720, 1440×900 and 1920×1080. 
 `uv run python scripts/gate.py full` from the repository root. Record blocked external dependencies
 and unverified owner actions explicitly.
 
-[Reference workstation delivery report](../../../docs/operations/2026-10-03-reference-quant-workstation.md).
+[Reference workstation delivery report](../../../docs/records/2026-10-03-reference-quant-workstation.md).
 
-[Scientific renderer correction](../../../docs/operations/2026-10-03-scientific-research-workstation.md).
+[Scientific renderer correction](../../../docs/records/2026-10-03-scientific-research-workstation.md).
 
 Chart exploration: each scientific series has All data / 30D / 90D / 1Y and inclusive UTC-date windows anchored to returned coverage. These are display ranges; sources, native intervals and returned tables do not change. Linked UTC ranges apply through the existing imperative registry. Coverage expands to full-returned-series counts, null gaps, observed extrema and final timestamp value. Cursor data expands to native OHLCV for prices; numerical updates use refs, without workspace renders. Recorded tables expose row/page counts and exact full-returned-series CSV with empty cells for unavailable values. Sampling bounds have a readable table plus raw provenance. Empty charts offer direct source/archive actions; panel/layout captions retain stable stored enum identities. Small scientific panels scroll/contain plot content, preserving adjacent table controls.
 

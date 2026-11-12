@@ -59,7 +59,7 @@ class NullSummary:
     # Tier-1 only: |Sharpe(close-fill) - Sharpe(t+1-open-fill)| of the SAME surrogate weights on
     # the observed OOS window. Large values mark the close-fill convention as structurally
     # low-fidelity for this strategy (high signal-correlated turnover) - see
-    # docs/investigations/2026-06-23-tier1-surrogate-crediting-bias.md.
+    # docs/records/investigations/2026-06-23-tier1-surrogate-crediting-bias.md.
     convention_divergence: float | None = None
     # True when this tier FAILED but was demoted to advisory: the divergence exceeded tolerance
     # while the faithful full-engine tier passed, so the fail is a surrogate-fidelity artifact.

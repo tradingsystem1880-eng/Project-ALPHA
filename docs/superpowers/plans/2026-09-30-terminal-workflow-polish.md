@@ -56,7 +56,7 @@
   "docs_to_update": [
     "apps/alpha-web/frontend/README.md",
     "docs/BUILD-STATUS.md",
-    "docs/audit/2026-09-30-terminal-workflow-polish.md"
+    "docs/records/audits/2026-09-30-terminal-workflow-polish.md"
   ],
   "out_of_scope": [
     "New numerical formulas",

@@ -65,4 +65,4 @@ weights/workers and broker paper operation must be distinguished from offline fi
 research records are mutated by these tests. Provider-discoverable security-master search is not
 exposed by the existing bounded API; manual download symbols are explicitly unverified.
 
-Plan: [workflow UI repair](../superpowers/plans/2026-09-29-workflow-ui-repair.md).
+Plan: [workflow UI repair](../../superpowers/plans/2026-09-29-workflow-ui-repair.md).

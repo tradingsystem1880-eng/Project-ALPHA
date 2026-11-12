@@ -72,6 +72,22 @@ def test_rotated_build_status_archives_are_history(context_repo: Path) -> None:
     assert [row.path for row in found] == ["docs/build-status/2026-Q3.md"]
 
 
+def test_dated_records_are_history(context_repo: Path) -> None:
+    files = {
+        "docs/records/2026-10-21-decision.md": "# Owner decision\nRecorded exception.\n",
+        "docs/records/audits/2026-07-05-audit.md": "# Audit\nRecorded exception.\n",
+        "docs/records/investigations/2026-06-23-bias.md": "# Bias\nRecorded exception.\n",
+        "docs/records/other/2026-01-01-x.md": "# Not a family\nRecorded exception.\n",
+    }
+    for rel, text in files.items():
+        (context_repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (context_repo / rel).write_text(text)
+    subprocess.run(["git", "-C", str(context_repo), "add", "."], check=True)
+    sources = read_sources(context_repo)
+    found = search_sections(sources, "recorded exception", kind="history")
+    assert [row.path for row in found] == sorted(list(files)[:3])
+
+
 def test_untracked_and_symlink_sources_are_never_opened(context_repo: Path) -> None:
     (context_repo / "docs/context/untracked.md").write_text("SECRET context")
     assert "docs/context/untracked.md" not in read_sources(context_repo)

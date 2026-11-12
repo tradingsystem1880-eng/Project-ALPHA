@@ -23,7 +23,7 @@ Live-provider and physical-owner acceptance limits are recorded in the UI audit.
     {"title": "Independent review, documentation and final gate", "verify": "uv run python scripts/gate.py full", "expected": "Exact-tree verification with unavailable checks explicitly recorded", "rollback": "Revert UI change only", "status": "done"}
   ],
   "tier_impact": ["none"],
-  "docs_to_update": ["CLAUDE.md", "docs/BUILD-STATUS.md", "apps/alpha-web/frontend/README.md", "docs/audit/2026-09-29-workflow-ui.md"],
+  "docs_to_update": ["CLAUDE.md", "docs/BUILD-STATUS.md", "apps/alpha-web/frontend/README.md", "docs/records/audits/2026-09-29-workflow-ui.md"],
   "out_of_scope": ["New trading authority", "Numerical algorithm changes", "Owner record mutation during testing", "Benchmark changes"],
   "files": ["apps/alpha-web/", "tests/integration/", "tests/unit/test_web_ml.py", "scripts/run_playwright_backend.py", "docs/", "CLAUDE.md", ".claude/rules/alpha-web.md"]
 }

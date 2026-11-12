@@ -18,7 +18,7 @@
     {"title":"Integrated verification and review","verify":"Full gate, real browser journeys, independent review","expected":"Honest current-tree evidence and documented limitations","rollback":"Retain prior stable UI","status":"done"}
   ],
   "tier_impact": ["none"],
-  "docs_to_update": ["CLAUDE.md", ".claude/rules/alpha-web.md", "apps/alpha-web/frontend/README.md", "docs/BUILD-STATUS.md", "docs/audit/2026-09-30-edge-workspace.md"],
+  "docs_to_update": ["CLAUDE.md", ".claude/rules/alpha-web.md", "apps/alpha-web/frontend/README.md", "docs/BUILD-STATUS.md", "docs/records/audits/2026-09-30-edge-workspace.md"],
   "out_of_scope": ["Live capital routing", "Autonomous promotion", "Arbitrary generated code", "Paid provider subscriptions", "New interval calculations", "Scheduled live alerts", "Automatic integration of the separate research branch"],
   "files": ["apps/alpha-cli/", "apps/alpha-web/", "packages/alpha-strategies/", "tests/", "docs/"]
 }

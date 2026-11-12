@@ -20,7 +20,7 @@ External archive charts discover 2,178 compatible exact datasets, then verify se
 
 UI verification: 4,740 Python tests, 314 frontend unit tests, 196 browser scenarios passed. A concurrent heavy-load ML cancellation test failed once; isolated and final broad tests passed without deadline changes. Full root gate is blocked by 198 lint errors in the earlier PDF scratch script `tmp/pdfs/alpha-benchmark-2026-09-30/build_report.py`. Please move or clean that scratch work as its owner when appropriate; this session has not edited it.
 
-Read `docs/audit/2026-09-30-terminal-usability.md` and `docs/audit/2026-09-30-open-source-component-review.md` in the UI checkout. Existing chart/CCXT/Qlib/Nautilus boundaries are retained. Dockview/Perspective/TA-Lib/OpenBB adapters are candidates, not installed capabilities. Your PydanticAI migration should likewise be compared against completed evidence per budget and verified isolation, not adopted just for more roles.
+Read `docs/records/audits/2026-09-30-terminal-usability.md` and `docs/records/audits/2026-09-30-open-source-component-review.md` in the UI checkout. Existing chart/CCXT/Qlib/Nautilus boundaries are retained. Dockview/Perspective/TA-Lib/OpenBB adapters are candidates, not installed capabilities. Your PydanticAI migration should likewise be compared against completed evidence per budget and verified isolation, not adopted just for more roles.
 
 ## Proposed split and next integration
 

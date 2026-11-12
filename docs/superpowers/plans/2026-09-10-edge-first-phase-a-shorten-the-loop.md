@@ -6,7 +6,7 @@
 {
   "schema_version": 1,
   "title": "Edge-first Phase A: parallel full gate (xdist), platform-marked fast tier that runs the alpha tests, surface freeze in CLAUDE.md, removal of the empty alpha_options and alpha_screener packages",
-  "context": "docs/audit/2026-09-10-edge-first-system-audit.md found the pre-commit gate costs 616 s of which 609 s is a sequential pytest run (188 stamps = ~31 h in six weeks), that the fast tier runs no tests at all (scripts/gate.py:936-946), and that alpha_options (130 lines) and alpha_screener (140 lines) are empty shells carrying wheels, import-linter contracts, CLI sub-apps, REST routes, and SPA panels. An empirical trial on this machine (10 cores) ran the whole suite under pytest-xdist -n 10: 4556 passed, 2 skipped, 0 failed, 174.9 s versus 608.7 s. The slow tail is integration tests that subprocess the CLI (web/MCP round trips, 25-37 s each). No conftest applies markers today (tests/conftest.py is 14 lines; no pytest_collection_modifyitems anywhere). The owner approved the audit's A-E program on 2026-09-10 and asked for autonomous execution. QuantPad removal and the stale .claude/worktrees venv are explicitly deferred from this phase: QuantPad is bound into a control_store SQLite CHECK constraint, a research data-register kind, provider readiness receipts, two ADRs the drift tests require, and SPA models (a schema migration for a cleanliness gain), and the worktree removal is an owner filesystem action the harness forbids the agent from performing.",
+  "context": "docs/records/audits/2026-09-10-edge-first-system-audit.md found the pre-commit gate costs 616 s of which 609 s is a sequential pytest run (188 stamps = ~31 h in six weeks), that the fast tier runs no tests at all (scripts/gate.py:936-946), and that alpha_options (130 lines) and alpha_screener (140 lines) are empty shells carrying wheels, import-linter contracts, CLI sub-apps, REST routes, and SPA panels. An empirical trial on this machine (10 cores) ran the whole suite under pytest-xdist -n 10: 4556 passed, 2 skipped, 0 failed, 174.9 s versus 608.7 s. The slow tail is integration tests that subprocess the CLI (web/MCP round trips, 25-37 s each). No conftest applies markers today (tests/conftest.py is 14 lines; no pytest_collection_modifyitems anywhere). The owner approved the audit's A-E program on 2026-09-10 and asked for autonomous execution. QuantPad removal and the stale .claude/worktrees venv are explicitly deferred from this phase: QuantPad is bound into a control_store SQLite CHECK constraint, a research data-register kind, provider readiness receipts, two ADRs the drift tests require, and SPA models (a schema migration for a cleanliness gain), and the worktree removal is an owner filesystem action the harness forbids the agent from performing.",
   "assumptions": [
     {
       "statement": "The suite is xdist-safe: every test isolates via tmp_path/monkeypatch and no test depends on collection order or shared mutable module state.",
@@ -89,7 +89,7 @@
     }
   ],
   "tier_impact": ["protected", "dag"],
-  "docs_to_update": ["CLAUDE.md", "docs/operations/claude-code-harness.md", "docs/BUILD-STATUS.md", ".claude/rules/alpha-cli.md", ".claude/rules/alpha-web.md", ".claude/rules/alpha-mcp.md", ".claude/rules/alpha-study.md", "docs/audit/2026-09-10-edge-first-system-audit.md"],
+  "docs_to_update": ["CLAUDE.md", "docs/operations/claude-code-harness.md", "docs/BUILD-STATUS.md", ".claude/rules/alpha-cli.md", ".claude/rules/alpha-web.md", ".claude/rules/alpha-mcp.md", ".claude/rules/alpha-study.md", "docs/records/audits/2026-09-10-edge-first-system-audit.md"],
   "out_of_scope": ["QuantPad adapter/archive/CLI/receipt removal (deferred: control_store CHECK constraint + ADR-0018/0023 + SPA models)", ".claude/worktrees/agent-* removal (owner action: git worktree remove .claude/worktrees/agent-af82ecdbdecd4dbbd)", "Any change to the 62-tool MCP pin", "Any change to bias guards, holdout, oracles, or quant modules", "Phases B-E of the audit program"],
   "files": []
 }
@@ -97,7 +97,7 @@
 
 ## Context
 
-See the audit (`docs/audit/2026-09-10-edge-first-system-audit.md`, finding F5 and F6). The loop
+See the audit (`docs/records/audits/2026-09-10-edge-first-system-audit.md`, finding F5 and F6). The loop
 is the bottleneck for every later phase, so it goes first. The measured facts:
 
 | Step | Sequential | 10-way xdist (trial) |

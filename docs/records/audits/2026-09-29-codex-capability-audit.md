@@ -167,8 +167,8 @@ trials**. Failures are R06-v1 (unmeasured baselines/economic and chronological e
 These are task/scorer outcomes, not proof of profitability or an unconditional attribution of blame
 to the model. Operator/interface and fixture limits remain visible in the trace review above.
 
-Reports: [score summary](../../tools/alpha-eval/results/2026-09-29-continuation/codex-gap/report.md)
-and [objective analysis](../../tools/alpha-eval/results/2026-09-29-continuation/codex-gap-analysis/analysis.md).
+Reports: [score summary](../../../tools/alpha-eval/results/2026-09-29-continuation/codex-gap/report.md)
+and [objective analysis](../../../tools/alpha-eval/results/2026-09-29-continuation/codex-gap-analysis/analysis.md).
 Base-only capability aggregates deliberately exclude this diagnostic variant cohort.
 
 ### Later critical-review corrections
@@ -218,9 +218,9 @@ failure is a task-target/calibration disagreement, not inability to recognize th
 its unsupported long-horizon volume/benchmark extrapolations remain reporting limitations. All
 eight retained positive/null control judgments were reviewed.
 
-See [automated report](../../tools/alpha-eval/results/2026-09-29-continuation/realistic-regraded/report.md),
-[capability/objective analysis](../../tools/alpha-eval/results/2026-09-29-continuation/realistic-analysis/analysis.md),
-and the [hash-bound critical review ledger](../../tools/alpha-eval/results/2026-09-29-continuation/critical-review.json).
+See [automated report](../../../tools/alpha-eval/results/2026-09-29-continuation/realistic-regraded/report.md),
+[capability/objective analysis](../../../tools/alpha-eval/results/2026-09-29-continuation/realistic-analysis/analysis.md),
+and the [hash-bound critical review ledger](../../../tools/alpha-eval/results/2026-09-29-continuation/critical-review.json).
 The ledger qualifies findings without silently rewriting judge outputs or inventing an adjusted pass rate.
 Capability groups overlap; detector-hit counts must not be summed as distinct failing trials.
 
@@ -229,7 +229,7 @@ Capability groups overlap; detector-hit counts must not be summed as distinct fa
 Only the retained Sonnet cohort has same-acquisition base/hint coverage. Its core-objective recall
 changes are R04 **+0.056**, R08 **+0.166**, R12 **+0.034**, R17 **+0.167**, R20 **+0.083** (three trials
 per condition). These small, unblinded diagnostic cells and the shared legacy export do not support
-causal or general model comparisons. [Matched-hint details](../../tools/alpha-eval/results/2026-09-29-continuation/legacy-matched-hints/analysis.md)
+causal or general model comparisons. [Matched-hint details](../../../tools/alpha-eval/results/2026-09-29-continuation/legacy-matched-hints/analysis.md)
 retain both gains and objective-level reversals. Codex's historical bases and fresh isolated hints
 are deliberately not presented as a comparable hint experiment.
 
@@ -265,8 +265,8 @@ Kronos cancellation timeout; this is not silently classified as a harmless flake
 
 The full gate remains **blocked**, with later aggregate components not reached. No full stamp,
 hidden-suite success or live-provider acceptance is claimed. Concurrent UI changes are preserved;
-no commit was made for this continuation. [Machine-readable verification](../../tools/alpha-eval/results/2026-09-29-continuation/verification.json)
-and [final preservation check](../../tools/alpha-eval/results/2026-09-29-continuation/final-preservation.json)
+no commit was made for this continuation. [Machine-readable verification](../../../tools/alpha-eval/results/2026-09-29-continuation/verification.json)
+and [final preservation check](../../../tools/alpha-eval/results/2026-09-29-continuation/final-preservation.json)
 retain the evidence and limitations.
 
 ## 2026-09-30 aggregate verification closure
@@ -275,7 +275,7 @@ The canonical full gate subsequently passed all six components on one stable tre
 backend, frontend, literature, Qlib, Atlas and evaluator. The stamp was compared with the live
 checkout and matched `83a66fad19bb890b05404b016cb3a792ea5a25c673bc89121a43d946276a03a2`.
 The previous UI deletion and generated-asset blockers are cleared. The earlier failed receipts
-remain historical evidence; [the new receipt](../../tools/alpha-eval/results/2026-09-29-continuation/verification-2026-09-30.json)
+remain historical evidence; [the new receipt](../../../tools/alpha-eval/results/2026-09-29-continuation/verification-2026-09-30.json)
 records this successful run separately. A duplicate gate was interrupted when another run started
 in the shared checkout, avoiding competing receipt writes and browser servers.
 

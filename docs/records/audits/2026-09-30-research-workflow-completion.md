@@ -79,7 +79,7 @@ RW-06 (high, scoring): independent review found the R21 allowed-verdict set stil
 
 ## Paired panel results
 
-[Evidence ledger and adjudication](../../tools/alpha-eval/results/workflow-v2-20260930/README.md) retain all five pairs and their scope limits. Calibrated rubric: 2/5 baseline passes, 3/5 candidate passes. Completed evidence reports: 1/5 to 4/5; R08 baseline only.
+[Evidence ledger and adjudication](../../../tools/alpha-eval/results/workflow-v2-20260930/README.md) retain all five pairs and their scope limits. Calibrated rubric: 2/5 baseline passes, 3/5 candidate passes. Completed evidence reports: 1/5 to 4/5; R08 baseline only.
 
 ## Paired panel interpretation
 

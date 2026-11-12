@@ -28,7 +28,7 @@
     {"title": "4 Runs, scoring, trace audit, comparison report", "verify": "alpha-eval report; Codex trace review", "expected": "Per-scenario results, discrimination, telegraph gap", "rollback": "n/a", "status": "in_progress"}
   ],
   "tier_impact": ["protected"],
-  "docs_to_update": ["docs/BUILD-STATUS.md", "tools/alpha-eval/README.md", "docs/audit/2026-09-29-realistic-scenarios.md"],
+  "docs_to_update": ["docs/BUILD-STATUS.md", "tools/alpha-eval/README.md", "docs/records/audits/2026-09-29-realistic-scenarios.md"],
   "out_of_scope": ["Platform runtime changes", "New MCP/REST/UI surfaces", "Network data acquisition inside trials", "Editing tests/holdout"],
   "files": ["tools/alpha-eval/", "scripts/schemas/codex_judge.json", "docs/"]
 }

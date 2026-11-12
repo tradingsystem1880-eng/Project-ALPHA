@@ -1,6 +1,6 @@
 <!-- docx-mirror:provenance:begin -->
 <!-- Mirror metadata, not source content. -->
-**Repository-readable mirror of supporting historical-as-of evidence (version 1, 27 October 2026).** Canonical bytes: `Project_ALPHA_Build_Readiness_Handoff_2026-10-27.docx` (not in Git). Where this mirror and the DOCX differ, the DOCX controls. It is intake evidence as of its date, not a roadmap, work package or acceptance denominator; the sole canonical full-scope owner is the [feature readiness checklist](feature-readiness-checklist-2026-10-27.md). Current operational status belongs in existing context and plan documents; this source text is not rewritten.
+**Repository-readable mirror of supporting historical-as-of evidence (version 1, 27 October 2026).** Canonical bytes: `Project_ALPHA_Build_Readiness_Handoff_2026-10-27.docx` (not in Git). Where this mirror and the DOCX differ, the DOCX controls. It is intake evidence as of its date, not a roadmap, work package or acceptance denominator; the sole canonical full-scope owner is the [feature readiness checklist](../context/feature-readiness-checklist-2026-10-27.md). Current operational status belongs in existing context and plan documents; this source text is not rewritten.
 
 | Provenance | Value |
 |---|---|
@@ -19,7 +19,7 @@
 
 <!-- repository-amendment:retail-research-20261102:begin -->
 **2 November repository handoff note (outside the historical DOCX):** Canonical checklist version 3 is parent-verified; its authored amendment is reconciled in the mirror, with local DOCX materialization still unavailable. The
-[retail research refinement](feature-readiness-checklist-2026-10-27.md#retail-research-refinements-2-november-2026)
+[retail research refinement](../context/feature-readiness-checklist-2026-10-27.md#retail-research-refinements-2-november-2026)
 is mapped into existing W01–W19 owners. Its proposed acceptance evidence is NOT RUN;
 implementation gaps remain unknown until caller/test/receipt mapping. Preserve existing
 completion markers, Qlib breadth, non-HFT intraday/swing scope and the first-study boundary.

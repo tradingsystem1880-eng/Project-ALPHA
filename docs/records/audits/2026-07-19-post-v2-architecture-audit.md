@@ -254,8 +254,8 @@ remote hosting, or any Ambitious-track dependency. Those are new decisions, not 
 
 Companion documents:
 
-- [implementation specification](../superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md)
-- [dependency/license matrix](../governance/2026-07-19-dependency-license-matrix.md)
-- [risk register](../governance/2026-07-19-post-v2-risk-register.md)
-- [ADR-0011](../adr/0011-evidence-gated-external-integrations.md)
-- [ADR-0012](../adr/0012-operational-paper-sessions.md)
+- [implementation specification](../../superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md)
+- [dependency/license matrix](../../governance/2026-07-19-dependency-license-matrix.md)
+- [risk register](../../governance/2026-07-19-post-v2-risk-register.md)
+- [ADR-0011](../../adr/0011-evidence-gated-external-integrations.md)
+- [ADR-0012](../../adr/0012-operational-paper-sessions.md)

@@ -4,7 +4,7 @@
 
 The paired panel showed that adding measurements improved empirical completion but increased tool/time consumption and still allowed missing conclusions and omitted denials. This iteration moves the execution/result-accounting part into deterministic CLI code. It is deliberately one baseline plus one validation, no agent roles, candidate search or new authority. Existing Pydantic validates the frozen plan; adding PydanticAI transport would not fix the measured execution and evidence-accounting problems.
 
-The [smoke evidence](../../tools/alpha-eval/results/controller-v1-20260930/README.md) demonstrates actual engine completion, independent snapshot-session reconciliation, explicit denied-order disclosure and byte-identical receipt replay. It does not demonstrate an agent-level completion uplift. The first controller only supports the existing momentum operator; R19's rules recipe remains outside its coverage. Expanding a controller is useful only when operator coverage and temporal information boundaries match the research question.
+The [smoke evidence](../../../tools/alpha-eval/results/controller-v1-20260930/README.md) demonstrates actual engine completion, independent snapshot-session reconciliation, explicit denied-order disclosure and byte-identical receipt replay. It does not demonstrate an agent-level completion uplift. The first controller only supports the existing momentum operator; R19's rules recipe remains outside its coverage. Expanding a controller is useful only when operator coverage and temporal information boundaries match the research question.
 
 ## Normalized independent review
 

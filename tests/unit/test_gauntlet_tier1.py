@@ -1,6 +1,6 @@
 """Tier-1 fidelity plumbing: OOS-window statistic + convention-divergence guard (spec §8 gate 3).
 
-Root-cause context: docs/investigations/2026-06-23-tier1-surrogate-crediting-bias.md — the
+Root-cause context: docs/records/investigations/2026-06-23-tier1-surrogate-crediting-bias.md — the
 close-fill Tier-1 surrogate structurally diverges from the engine's t+1-open fills for
 high-turnover strategies; a Tier-1 FAIL in that regime is an artifact, not evidence.
 """

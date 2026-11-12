@@ -138,7 +138,7 @@ Fresh focused checks:69 backend regressions and eight chart browser tests pass o
 
 The recovered chart/CASH/PIT/hygiene candidate passed all six canonical components on
 unchanged tree f54af6df, including browser exports and preserved Darwin/Linux baselines.
-The owner then approved the [one-time scoped private-suite exception](../../operations/2026-10-11-recovered-work-private-suite-exception.md)
+The owner then approved the [one-time scoped private-suite exception](../../records/2026-10-11-recovered-work-private-suite-exception.md)
 and separate PRs/merges after all available checks. Private coverage remains UNVERIFIED.
 This documentation update requires refreshed Atlas, full verification and fresh independent
 review before guarded commit; hosted exact-target CI and dependency integration precede merge.

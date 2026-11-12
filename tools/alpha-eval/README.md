@@ -13,7 +13,7 @@ and are not removed from the platform.
 
 The continuation plan is
 [2026-09-29-codex-benchmark-continuation](../../docs/superpowers/plans/2026-09-29-codex-benchmark-continuation.md).
-The [capability audit](../../docs/audit/2026-09-29-codex-capability-audit.md) distinguishes confirmed
+The [capability audit](../../docs/records/audits/2026-09-29-codex-capability-audit.md) distinguishes confirmed
 findings from disputed judgments and missing evidence.
 
 ## Evidence and reproducibility

@@ -107,7 +107,7 @@
       "rollback": "Do not delete or rewrite immutable data; failed acquisitions remain honest non-evidence and resumable batches retain their checkpoints.",
       "files": [
         "data/crypto/**",
-        "docs/audit/**"
+        "docs/records/audits/**"
       ],
       "status": "pending"
     },
@@ -118,7 +118,7 @@
       "rollback": "Remove only isolated acceptance data; never alter the two owner projects or manufacture decision/promotion evidence.",
       "files": [
         "tests/integration/**",
-        "docs/audit/**"
+        "docs/records/audits/**"
       ],
       "status": "pending"
     },
@@ -218,7 +218,7 @@ workspace. It preserves the observed robustness/path-risk statuses and claims ne
 double-bottom parity nor profitability. The standalone hedged-basis preflight remains blocked by
 design with no credential, broker, order, fill, or position side effect. The provider-backed BTC
 case, connected-browser six-area walkthrough, and fresh owner Touch ID ceremonies are still open.
-See `docs/audit/2026-08-30-crypto-operational-readiness-checkpoint.md`.
+See `docs/records/audits/2026-08-30-crypto-operational-readiness-checkpoint.md`.
 
 **C4 recovery update — 2026-08-31:** iTerm removable-volumes access now reaches the exact
 UUID-matched Expansion root. The bounded create/write/hash/delete probe passes, `storage` reports

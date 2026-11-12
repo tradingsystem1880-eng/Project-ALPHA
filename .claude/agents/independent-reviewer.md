@@ -119,7 +119,7 @@ or permission for any later change.
 The owner authorized a one-time absence-only exception for the exact ten-file
 Atomic candidate at Git tree `77638a7f657490d5605c92a33e8aa0ff62391f80`,
 plus only this appended instruction and
-`docs/operations/2026-10-21-atomic-snapshot-retry-private-suite-exception.md`.
+`docs/records/2026-10-21-atomic-snapshot-retry-private-suite-exception.md`.
 Verify the record's base, frozen patch and all ten file hashes; independently
 review both software and exception metadata against the recorded authorization.
 No later substantive changes inherit this exception. Documented absence of
@@ -134,7 +134,7 @@ push, PR, publication and merge remain on HOLD.
 ## Stooq candidate: one-time absent-private-suite decision (2026-10-21)
 
 The owner explicitly approved the candidate-specific decision in
-`docs/operations/2026-10-21-stooq-private-suite-absence-decision.md`, which records
+`docs/records/2026-10-21-stooq-private-suite-absence-decision.md`, which records
 exact consent, base, original tree and all nine file hashes. This exception covers
 only those unchanged Stooq/navigation candidate bytes plus that decision record
 and this appended instruction; it covers no later substantive change or separate

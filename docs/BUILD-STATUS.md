@@ -187,10 +187,10 @@ passed; 54 final focused viewport/accessibility regressions passed after the min
 scroll region gained keyboard focus. Live read-only XRP run 5ca68199f7241db4 showed zero frozen
 price bars with snapshot_unavailable, 2,808 equity points and backend rolling window 126; its other
 three recorded panels remained usable. Aggregate acceptance is represented only by the current
-exact-tree full-gate receipt. See the [delivery report](operations/2026-10-03-reference-quant-workstation.md)
+exact-tree full-gate receipt. See the [delivery report](records/2026-10-03-reference-quant-workstation.md)
 for architecture, review findings, checks and limitations.
 
-**2026-10-03 scientific workstation correction:** Owner retained the classic top bar but corrected the renderer direction: Qbot's actual Bokeh report and Matplotlib integration are scientific references, beyond panel composition. BokehJS now defaults for market observations, recorded series, histograms and QQ plots; optional Lightweight preserves existing market features. The research report preset combines equity, drawdown, diagnostics and genuine backend figures. Visible project selection supports no-project browsing and clears dependent evidence identity while retaining market/archive views. Native-hourly discovery opens an exact venue/market chooser. No backend endpoint, statistical calculation, artifact or domain authority change. Verification is determined by the current exact-tree aggregate receipt; see the [correction report](operations/2026-10-03-scientific-research-workstation.md).
+**2026-10-03 scientific workstation correction:** Owner retained the classic top bar but corrected the renderer direction: Qbot's actual Bokeh report and Matplotlib integration are scientific references, beyond panel composition. BokehJS now defaults for market observations, recorded series, histograms and QQ plots; optional Lightweight preserves existing market features. The research report preset combines equity, drawdown, diagnostics and genuine backend figures. Visible project selection supports no-project browsing and clears dependent evidence identity while retaining market/archive views. Native-hourly discovery opens an exact venue/market chooser. No backend endpoint, statistical calculation, artifact or domain authority change. Verification is determined by the current exact-tree aggregate receipt; see the [correction report](records/2026-10-03-scientific-research-workstation.md).
 
 ## 2026-10-03 — Codex-first recorded-run runtime, first increment
 
@@ -243,7 +243,7 @@ The following canonical run passed backend and 302 browser tests but failed the 
 
 ### 2026-10-04 — Chart exploration and readability
 
-Scientific charts now expose direct UTC windows, full-returned coverage/null/extrema summaries and expandable native OHLCV cursor data. Recorded tables have shared exact CSV/page counts; sampling is readable while raw provenance remains. Friendly panel/layout labels preserve enums and empty charts guide source selection without a project. No statistical/backend/data/authority changes. Review caught and tests reproduced zero-width date/singleton ranges; fixed with positive-span guards. Focused 359-unit coverage passed; browser/snapshot verification and exact-tree review are recorded in [delivery report](operations/2026-10-04-chart-exploration-usability.md). Intermediate scientific/market performance failures remain explicit there. Current frozen-tree canonical full receipt governs aggregate acceptance; historical passes never authorize changed source.
+Scientific charts now expose direct UTC windows, full-returned coverage/null/extrema summaries and expandable native OHLCV cursor data. Recorded tables have shared exact CSV/page counts; sampling is readable while raw provenance remains. Friendly panel/layout labels preserve enums and empty charts guide source selection without a project. No statistical/backend/data/authority changes. Review caught and tests reproduced zero-width date/singleton ranges; fixed with positive-span guards. Focused 359-unit coverage passed; browser/snapshot verification and exact-tree review are recorded in [delivery report](records/2026-10-04-chart-exploration-usability.md). Intermediate scientific/market performance failures remain explicit there. Current frozen-tree canonical full receipt governs aggregate acceptance; historical passes never authorize changed source.
 
 The first chart-exploration canonical tree (`2be915e…`) passed backend and 311 browser tests but failed the scientific slow-frame allowance by one frame; no aggregate receipt. Cursor updates now reuse the existing text node and avoid redundant tooltip/closed-disclosure DOM work. Both unchanged focused performance tests pass, including actual resize settlement. Full acceptance still requires the subsequent frozen-tree canonical receipt; boundary timing headroom remains limited.
 
@@ -436,7 +436,7 @@ completion, final canonical full and fresh bound review remain acceptance requir
 
 **2026-10-11 — Recovered-work scoped delivery authorized.** The owner approved separate
 chart/CASH/PIT/hygiene and existing research-runtime PRs/merges after all available checks,
-with the [one-time private-suite exception](operations/2026-10-11-recovered-work-private-suite-exception.md).
+with the [one-time private-suite exception](records/2026-10-11-recovered-work-private-suite-exception.md).
 Private coverage remains UNVERIFIED; the standing policy is excluded. Recovered feature source
 previously passed all six components on f54af6df. Refresh exact-tree validation and independent
 review for this delivery record; exact-target hosted CI and legitimate dependency order remain

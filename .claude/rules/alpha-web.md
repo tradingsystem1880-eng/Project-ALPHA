@@ -36,7 +36,7 @@ stay mounted with captured context. Keep chart creation separate from options, e
 updates; fit/reset is explicit. Native timeframe selection requires compatible recorded sources.
 `RecordedPanel` defaults to local BokehJS for backend series; price charts retain an optional Lightweight renderer. No metric estimation or price substitution. Bokeh histogram/QQ and SVG calendar/correlation plots retain units and tables; static figures retain exports, metadata and noninteractive
 labels. The reference plan supersedes workflow bars and the historical window manager; retain routes
-and domain actions. See [delivery report](../../docs/operations/2026-10-03-reference-quant-workstation.md).
+and domain actions. See [delivery report](../../docs/records/2026-10-03-reference-quant-workstation.md).
 Preserve panel/API/CLI domain boundaries. `AssetSelect` defaults to canonical inventory; the
 context and Market Watch pickers opt into archive metadata, group alias pair labels and retain
 exact source/native interval choices. `App` owns the main chart archive identity; headers show
@@ -113,7 +113,7 @@ axis tags, no toolbar, x-only pan/zoom with visible-window autoscale. Study valu
 estimated. Classic is the default `chartStyle`; recorded series and histogram/QQ plots share the chrome.
 See the [plan](../../docs/superpowers/plans/2026-10-07-technical-chart-language.md).
 
-Owner correction 2026-10-03: scientific rendering is default; keep the approved classic top bar. Bokeh views own standalone documents and must release both views and document/model registries on cancellation, failure and disposal. Price annotations must retain unit isolation. The visible project selector permits no-project market/archive browsing; project inventory errors stay explicit. Native interval discovery offers exact sources without automatic venue/market substitution. See [correction report](../../docs/operations/2026-10-03-scientific-research-workstation.md).
+Owner correction 2026-10-03: scientific rendering is default; keep the approved classic top bar. Bokeh views own standalone documents and must release both views and document/model registries on cancellation, failure and disposal. Price annotations must retain unit isolation. The visible project selector permits no-project market/archive browsing; project inventory errors stay explicit. Native interval discovery offers exact sources without automatic venue/market substitution. See [correction report](../../docs/records/2026-10-03-scientific-research-workstation.md).
 
 ## Authorized investigation extension (2026-10-04)
 

@@ -129,12 +129,12 @@
       "verify": "uv run python scripts/gate.py full && uv run pytest -q tests/unit/test_documentation_truth.py tests/unit/test_claude_md_relocation.py -m \"not network\" && uv run python scripts/gate.py plan-check docs/superpowers/plans/2026-09-03-trader-terminal-phase3-terminal.md",
       "expected": "The six-fixed-screens row of .claude/rules/alpha-web.md is moved verbatim into the dated docs/BUILD-STATUS.md record and replaced by the document/dock registry row (Edit tool after gate.py ack); CLAUDE.md 'New Workstation panel' pointer names documents.ts; docs/BUILD-STATUS.md gains the Phase 3 record; the spec marks Phase 3 implemented; finding #12 carries its fixing commits; every slice is done; the full gate is green including the 14-wheel smoke.",
       "rollback": "Docs-only; revert the doc commit.",
-      "files": [".claude/rules/alpha-web.md", "CLAUDE.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md", "docs/superpowers/plans/2026-09-03-trader-terminal-phase3-terminal.md"],
+      "files": [".claude/rules/alpha-web.md", "CLAUDE.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/records/audits/2026-09-01-owner-crypto-walkthrough-findings.md", "docs/superpowers/plans/2026-09-03-trader-terminal-phase3-terminal.md"],
       "status": "done"
     }
   ],
   "tier_impact": ["quant", "risk", "protected", "dag", "determinism"],
-  "docs_to_update": [".claude/rules/alpha-web.md", "CLAUDE.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md"],
+  "docs_to_update": [".claude/rules/alpha-web.md", "CLAUDE.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/records/audits/2026-09-01-owner-crypto-walkthrough-findings.md"],
   "out_of_scope": [
     "Live trading, broker readiness, new statistics, new providers, new MCP tools (pinned at 62).",
     "Extending `alpha project list --json` with a source/universe field so projects can carry a real market (projects stay `unknown`; a follow-up CLI plan).",

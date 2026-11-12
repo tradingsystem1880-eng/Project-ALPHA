@@ -4,7 +4,7 @@
 {
   "schema_version": 1,
   "title": "Trader Terminal Phase 1 (Work): make crypto data pulling work end-to-end from the Workstation",
-  "context": "Owner walkthrough on 2026-09-01 (docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md #1-#7) showed a trader cannot pull XRP data from the UI: the job card hid the real CLI error behind a Rich box border, free-text dates accepted 2026-06-31, symbol forms like xrp-usdt were passed verbatim to ccxt, a start date before the pair's listing aborted the whole pull with no hint, two unrelated data panels competed for the same task, and XRP is not a reviewed crypto-house asset. Phase 1 of docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md (section 4.3, section 7) fixes exactly that path: plain-text CLI errors surfaced by the web job runner, symbol normalisation and calendar/date-order validation in the CLI, a read-only `alpha data first-bar` projection used both by a pre-listing guard in `data pull` and by an Estimate button, a display-only `profile` setting whose only consumer is data defaults, one Data Manager panel replacing the Market Data and Research Data tabs, and XRP/SOL as reviewed native assets under ADR-0032. No authority, DAG edge, MCP tool, statistic, or point-in-time reader changes.",
+  "context": "Owner walkthrough on 2026-09-01 (docs/records/audits/2026-09-01-owner-crypto-walkthrough-findings.md #1-#7) showed a trader cannot pull XRP data from the UI: the job card hid the real CLI error behind a Rich box border, free-text dates accepted 2026-06-31, symbol forms like xrp-usdt were passed verbatim to ccxt, a start date before the pair's listing aborted the whole pull with no hint, two unrelated data panels competed for the same task, and XRP is not a reviewed crypto-house asset. Phase 1 of docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md (section 4.3, section 7) fixes exactly that path: plain-text CLI errors surfaced by the web job runner, symbol normalisation and calendar/date-order validation in the CLI, a read-only `alpha data first-bar` projection used both by a pre-listing guard in `data pull` and by an Estimate button, a display-only `profile` setting whose only consumer is data defaults, one Data Manager panel replacing the Market Data and Research Data tabs, and XRP/SOL as reviewed native assets under ADR-0032. No authority, DAG edge, MCP tool, statistic, or point-in-time reader changes.",
   "assumptions": [
     {
       "statement": "Typer 0.26.x renders BadParameter through Rich only when TYPER_USE_RICH is truthy; setting TYPER_USE_RICH=0 in the allowlisted subprocess environment yields plain `Error: ...` lines.",
@@ -110,7 +110,7 @@
       "verify": "uv run python scripts/gate.py full && uv run pytest -q tests/unit/test_documentation_truth.py tests/unit/test_claude_md_relocation.py -m \"not network\" && uv run python scripts/gate.py plan-check docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md",
       "expected": ".claude/rules/alpha-cli.md (pull normalisation, first-bar), alpha-data.md (ccxt first_bar), alpha-web.md (DataManager, JobMonitor failure text) updated under gate.py ack; docs/BUILD-STATUS.md gains a dated Phase 1 record; the spec marks Phase 1 done; findings #1-#7 statuses updated with the fixing commit; this plan's slices marked done; full gate green including the 14-wheel smoke.",
       "rollback": "Docs-only; revert the doc commit.",
-      "files": [".claude/rules/alpha-cli.md", ".claude/rules/alpha-data.md", ".claude/rules/alpha-web.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md", "docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md"],
+      "files": [".claude/rules/alpha-cli.md", ".claude/rules/alpha-data.md", ".claude/rules/alpha-web.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/records/audits/2026-09-01-owner-crypto-walkthrough-findings.md", "docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md"],
       "status": "done"
     }
   ],
@@ -118,7 +118,7 @@
   "docs_to_update": [
     "docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md",
     "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md",
-    "docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md",
+    "docs/records/audits/2026-09-01-owner-crypto-walkthrough-findings.md",
     ".claude/rules/alpha-cli.md",
     ".claude/rules/alpha-data.md",
     ".claude/rules/alpha-web.md",
@@ -152,7 +152,7 @@
 ## Context
 
 Spec: `docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md` §4.3 (Data Manager) and §7
-Phase 1. Evidence: `docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md` #1–#7 and the
+Phase 1. Evidence: `docs/records/audits/2026-09-01-owner-crypto-walkthrough-findings.md` #1–#7 and the
 2026-09-01 reproduction (`data pull xrp-usd … --end 2026-06-31` → hidden error; valid dates →
 `ccxt returned no data for XRP/USD 2015-01-01…`; `--start 2023-08-01` → 1,065 bars).
 

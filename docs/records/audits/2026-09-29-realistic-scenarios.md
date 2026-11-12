@@ -2,7 +2,7 @@
 
 **Status:** DRAFT, numbers pending (batches still running). Companion to the
 [baseline audit](2026-09-28-agentic-benchmark-baseline.md) and the
-[design plan](../superpowers/plans/2026-09-29-realistic-research-scenarios.md).
+[design plan](../../superpowers/plans/2026-09-29-realistic-research-scenarios.md).
 
 Run name `realistic-2026-09-29` under `$ALPHA_EVAL_HOME`; committed summary under
 `tools/alpha-eval/results/2026-09-29/`. Platform commit under test: `4cd97ec` (answer-key-free

@@ -464,7 +464,7 @@ Options and screener functionality are CLI modules, not separate workspace packa
 - [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) — the original v1 design spec (pre-build).
 - [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) — consolidated research synthesis + decision table.
 - [`research/07-architecture-ai-workflow.md`](../research/07-architecture-ai-workflow.md) — repo layout, tooling, and AI build-workflow rationale.
-- [`audit/2026-07-19-post-v2-architecture-audit.md`](audit/2026-07-19-post-v2-architecture-audit.md) — post-v2 capability/gap audit and track decision.
+- [`audit/2026-07-19-post-v2-architecture-audit.md`](records/audits/2026-07-19-post-v2-architecture-audit.md) — post-v2 capability/gap audit and track decision.
 - [`superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md`](superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md) — approved Recommended-track implementation contract.
 - [`superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md`](superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md) — implemented Tiingo qualification, scheduler, and IBKR Paper safety boundary.
 - [`superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md`](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) — professional workstation, causal chart, and native analytics contract.
@@ -482,9 +482,9 @@ ChartWorkspace separates presentation state from research context and immutable 
 A workspace-local imperative registry links UTC ranges/cursors without cursor-driven workspace
 renders. PriceChartCanvas maintains its chart instance across composition/options/selection updates.
 RecordedSeries defaults to local BokehJS for backend points and gaps, with optional Lightweight mode. ScientificPlots uses Bokeh for backend histogram/QQ and SVG for calendar/correlation matrices, with exact tables. Bokeh documents are released on renderer disposal. FigureSurface preserves backend figure metadata/export contracts.
-No endpoint, statistical estimator or authority was added. See the [delivery report](operations/2026-10-03-reference-quant-workstation.md).
+No endpoint, statistical estimator or authority was added. See the [delivery report](records/2026-10-03-reference-quant-workstation.md).
 
-Owner correction: [scientific research renderer and project-free browsing](operations/2026-10-03-scientific-research-workstation.md). No backend or statistical changes.
+Owner correction: [scientific research renderer and project-free browsing](records/2026-10-03-scientific-research-workstation.md). No backend or statistical changes.
 
 ## Bounded CLI persistence seams
 

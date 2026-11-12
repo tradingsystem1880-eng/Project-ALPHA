@@ -80,7 +80,7 @@ Expected: `mcp_tools` = `62`, `deny` = `57`, `allow` = `100`, `stamp_tier` = `fu
 - Modify: `packages/alpha-data/src/alpha_data/quantpad_archive.py` (apply + simplify the uncommitted fix from checkout A)
 - Modify: `tests/unit/test_quantpad_archive.py` (append 4 tests)
 - Modify: `.gitignore` (add `.quantpad/` next to the `data/` rule at line 34)
-- Create: `docs/audit/2026-08-18-quantpad-data-paper-continuation.md` (copied from A, two claims corrected)
+- Create: `docs/records/audits/2026-08-18-quantpad-data-paper-continuation.md` (copied from A, two claims corrected)
 - Checkout A cleanup: revert the tracked change, move the 5 untracked scripts + `.quantpad/` to `$SCRATCH/codex-leftovers/`
 
 **Interfaces:**
@@ -91,7 +91,7 @@ Facts (from the audit): A's diff is +~70/−4 in `fetch_quantpad_archive`: (1) `
 - [ ] **Step 1: Capture A's working-tree state into the scratchpad (nothing is lost)**
 
 ```bash
-S=/private/tmp/claude-501/-Users-hunternovotny-Desktop-Project-ALPHA--claude-worktrees-infallible-kalam-2f15ea/fd3db76f-9c4e-4272-80eb-f3ae8f62c419/scratchpad && mkdir -p "$S/codex-leftovers" && cd /Users/hunternovotny/Desktop/Project-ALPHA && git diff -- packages/alpha-data/src/alpha_data/quantpad_archive.py > "$S/codex-leftovers/quantpad_archive.patch" && cp docs/audit/2026-08-18-quantpad-data-paper-continuation.md "$S/codex-leftovers/" && tar czf "$S/codex-leftovers/untracked-scripts-and-quantpad-dir.tgz" scripts/quantpad_complete_data.py scripts/quantpad_completion_summary.py scripts/quantpad_prune_corrupt_manifests.py scripts/run_quantpad_full_completion.sh scripts/run_quantpad_full_completion_until_verified.sh .quantpad && ls -la "$S/codex-leftovers/"
+S=/private/tmp/claude-501/-Users-hunternovotny-Desktop-Project-ALPHA--claude-worktrees-infallible-kalam-2f15ea/fd3db76f-9c4e-4272-80eb-f3ae8f62c419/scratchpad && mkdir -p "$S/codex-leftovers" && cd /Users/hunternovotny/Desktop/Project-ALPHA && git diff -- packages/alpha-data/src/alpha_data/quantpad_archive.py > "$S/codex-leftovers/quantpad_archive.patch" && cp docs/records/audits/2026-08-18-quantpad-data-paper-continuation.md "$S/codex-leftovers/" && tar czf "$S/codex-leftovers/untracked-scripts-and-quantpad-dir.tgz" scripts/quantpad_complete_data.py scripts/quantpad_completion_summary.py scripts/quantpad_prune_corrupt_manifests.py scripts/run_quantpad_full_completion.sh scripts/run_quantpad_full_completion_until_verified.sh .quantpad && ls -la "$S/codex-leftovers/"
 ```
 
 - [ ] **Step 2: Write the failing tests** (append to `tests/unit/test_quantpad_archive.py`; they reuse the module's existing `Response(io.BytesIO)`/`opener` pattern at lines 200-253)
@@ -273,7 +273,7 @@ Expected: all tests pass (previous count + 4), ruff clean, mypy clean. If an exi
 - [ ] **Step 6: Bring the audit doc over with its two stale claims corrected, and ignore `.quantpad/`**
 
 ```bash
-cd /Users/hunternovotny/Desktop/Project-ALPHA/.claude/worktrees/claude-quantitative-finance-improvements-fa7386 && cp /Users/hunternovotny/Desktop/Project-ALPHA/docs/audit/2026-08-18-quantpad-data-paper-continuation.md docs/audit/ && python3 - <<'PY'
+cd /Users/hunternovotny/Desktop/Project-ALPHA/.claude/worktrees/claude-quantitative-finance-improvements-fa7386 && cp /Users/hunternovotny/Desktop/Project-ALPHA/docs/records/audits/2026-08-18-quantpad-data-paper-continuation.md docs/records/audits/ && python3 - <<'PY'
 import re, pathlib
 p = pathlib.Path(".gitignore"); s = p.read_text()
 if ".quantpad/" not in s:
@@ -282,7 +282,7 @@ if ".quantpad/" not in s:
 PY
 grep -n "quantpad" .gitignore
 ```
-Then edit `docs/audit/2026-08-18-quantpad-data-paper-continuation.md`: (a) at the "Tests run: 84 passed" line append `— re-run after the Content-Length truncation guard landed on 2026-08-19: <N> passed in tests/unit/test_quantpad_archive.py` with the number from Step 5; (b) at the "a Python sweep" continuity sentence add `(ad-hoc completion scripts, retired 2026-08-19; the truncation guard in alpha_data.quantpad_archive supersedes them)`.
+Then edit `docs/records/audits/2026-08-18-quantpad-data-paper-continuation.md`: (a) at the "Tests run: 84 passed" line append `— re-run after the Content-Length truncation guard landed on 2026-08-19: <N> passed in tests/unit/test_quantpad_archive.py` with the number from Step 5; (b) at the "a Python sweep" continuity sentence add `(ad-hoc completion scripts, retired 2026-08-19; the truncation guard in alpha_data.quantpad_archive supersedes them)`.
 
 - [ ] **Step 7: Full gate, then commit**
 
@@ -291,7 +291,7 @@ cd /Users/hunternovotny/Desktop/Project-ALPHA/.claude/worktrees/claude-quantitat
 ```
 (run in background; wait for the notification; expected `[gate:full] PASS — stamp written for current tree.`) then
 ```bash
-cd /Users/hunternovotny/Desktop/Project-ALPHA/.claude/worktrees/claude-quantitative-finance-improvements-fa7386 && uv run python scripts/gate.py check --tier full && git add packages/alpha-data/src/alpha_data/quantpad_archive.py tests/unit/test_quantpad_archive.py .gitignore docs/audit/2026-08-18-quantpad-data-paper-continuation.md && git commit -m "fix(data): fail loud on truncated QuantPad archive streams
+cd /Users/hunternovotny/Desktop/Project-ALPHA/.claude/worktrees/claude-quantitative-finance-improvements-fa7386 && uv run python scripts/gate.py check --tier full && git add packages/alpha-data/src/alpha_data/quantpad_archive.py tests/unit/test_quantpad_archive.py .gitignore docs/records/audits/2026-08-18-quantpad-data-paper-continuation.md && git commit -m "fix(data): fail loud on truncated QuantPad archive streams
 
 Enforce Content-Length on the streamed body so a short or over-long read can
 never be published as a complete hash-sealed artifact; retry a truncated
@@ -303,7 +303,7 @@ continuation audit record and ignores the .quantpad/ run-log directory."
 - [ ] **Step 8: Clean checkout A (owner policy: keep code fixes, drop one-off scripts)** — everything was captured in Step 1, so this is reversible from `$SCRATCH`.
 
 ```bash
-S=/private/tmp/claude-501/-Users-hunternovotny-Desktop-Project-ALPHA--claude-worktrees-infallible-kalam-2f15ea/fd3db76f-9c4e-4272-80eb-f3ae8f62c419/scratchpad && cd /Users/hunternovotny/Desktop/Project-ALPHA && git checkout -- packages/alpha-data/src/alpha_data/quantpad_archive.py && mkdir -p "$S/codex-leftovers/moved" && mv scripts/quantpad_complete_data.py scripts/quantpad_completion_summary.py scripts/quantpad_prune_corrupt_manifests.py scripts/run_quantpad_full_completion.sh scripts/run_quantpad_full_completion_until_verified.sh docs/audit/2026-08-18-quantpad-data-paper-continuation.md .quantpad "$S/codex-leftovers/moved/" && git status --short
+S=/private/tmp/claude-501/-Users-hunternovotny-Desktop-Project-ALPHA--claude-worktrees-infallible-kalam-2f15ea/fd3db76f-9c4e-4272-80eb-f3ae8f62c419/scratchpad && cd /Users/hunternovotny/Desktop/Project-ALPHA && git checkout -- packages/alpha-data/src/alpha_data/quantpad_archive.py && mkdir -p "$S/codex-leftovers/moved" && mv scripts/quantpad_complete_data.py scripts/quantpad_completion_summary.py scripts/quantpad_prune_corrupt_manifests.py scripts/run_quantpad_full_completion.sh scripts/run_quantpad_full_completion_until_verified.sh docs/records/audits/2026-08-18-quantpad-data-paper-continuation.md .quantpad "$S/codex-leftovers/moved/" && git status --short
 ```
 Expected: `git status --short` prints nothing. **Before running:** check `$S/codex-leftovers/moved/.quantpad/quantpad_run_active.pid` — if the PID it names is alive (`ps -p <pid>`), a Codex completion loop is still running; stop and tell the owner instead of moving its log directory.
 
@@ -725,7 +725,7 @@ Agents (each gets the diff path and CLAUDE.md's invariants; if the `engineering:
 ### Task 12: Prove the harness measures work — 21 claimed guardrails + a live permission matrix
 
 **Files:**
-- Create: `docs/audit/2026-08-19-harness-and-cli-verification.md` (three sections: A harness measures, B permission matrix, C CLI availability [Task 13], D gates [Task 14])
+- Create: `docs/records/audits/2026-08-19-harness-and-cli-verification.md` (three sections: A harness measures, B permission matrix, C CLI availability [Task 13], D gates [Task 14])
 
 - [ ] **Step 1: Determine which `settings.json` governs this session** — `ls -la /Users/hunternovotny/Desktop/Project-ALPHA/.claude/settings.json 2>&1; diff -q /Users/hunternovotny/Desktop/Project-ALPHA/.claude/settings.json "$WT/.claude/settings.json"; echo "CLAUDE_PROJECT_DIR=$CLAUDE_PROJECT_DIR"`. Record the answer verbatim. If checkout A has a stale untracked copy that Claude Code loads for `.claude/worktrees/*` sessions, say so in the report — the live matrix then reflects the tracked file only after Task 16 puts checkout A on `main`.
 - [ ] **Step 2: Run the mechanical checks and paste verbatim** (all read-only):
@@ -777,7 +777,7 @@ Expected: `172` and zero `FAIL` lines. Compare `command_ids`/`subapps` to `$SCRA
 Facts: remote `origin` = `https://github.com/tradingsystem1880-eng/Project-ALPHA.git`; `gh` is authenticated as `tradingsystem1880-eng`; default branch `main`; **no branch protection**; history uses GitHub merge commits (`Merge pull request #N from tradingsystem1880-eng/<branch>`); no PR template/CODEOWNERS; neither `claude/blissful-edison-00b74b` nor `codex/full-repair-program` exists on the remote.
 
 - [ ] **Step 1 — confirm, then push:** Ask the owner: "Push `claude/blissful-edison-00b74b` (N commits, never pushed) to origin? (y/n)". On yes: `cd "$WT" && uv run python scripts/gate.py check --tier full && git push -u origin claude/blissful-edison-00b74b` (the pre-bash guard requires the full stamp for push — it is fresh from Task 15).
-- [ ] **Step 2 — confirm, then open the PR:** Show the owner the title and body first. Title: `feat: harness v2, provider/crypto program, and branch cleanup (ADR-0030..0034)`. Body sections: *What* (one paragraph: Codex provider/crypto/paper-acceptance/owner-auth program + Claude Code harness v2 + this cleanup); *Cleanup summary* (numbers from `$SCRATCH/final.json` vs `baseline.json`: lines removed per harness file, allow 100→87, agents 11→9, commands 12→10, hook events 12→11, deny 57 pinned, MCP 62 unchanged); *Verification* (link `docs/audit/2026-08-19-harness-and-cli-verification.md`; every gate green); *Review* (Task 9 + Task 15 counts and skipped-with-reason list); *Follow-ups* (`crypto_data_cmds.py` split; `_crypto_analysis.py`/`_crypto_coverage.py` lack dedicated unit files; paper readiness stays `paper_passed: false` by design; IB Gateway binds `*:4002` — restrict in IB settings); *ADRs* 0030–0034; footer `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. On yes: `gh pr create --base main --head claude/blissful-edison-00b74b --title "…" --body-file "$SCRATCH/pr-body.md"`.
+- [ ] **Step 2 — confirm, then open the PR:** Show the owner the title and body first. Title: `feat: harness v2, provider/crypto program, and branch cleanup (ADR-0030..0034)`. Body sections: *What* (one paragraph: Codex provider/crypto/paper-acceptance/owner-auth program + Claude Code harness v2 + this cleanup); *Cleanup summary* (numbers from `$SCRATCH/final.json` vs `baseline.json`: lines removed per harness file, allow 100→87, agents 11→9, commands 12→10, hook events 12→11, deny 57 pinned, MCP 62 unchanged); *Verification* (link `docs/records/audits/2026-08-19-harness-and-cli-verification.md`; every gate green); *Review* (Task 9 + Task 15 counts and skipped-with-reason list); *Follow-ups* (`crypto_data_cmds.py` split; `_crypto_analysis.py`/`_crypto_coverage.py` lack dedicated unit files; paper readiness stays `paper_passed: false` by design; IB Gateway binds `*:4002` — restrict in IB settings); *ADRs* 0030–0034; footer `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. On yes: `gh pr create --base main --head claude/blissful-edison-00b74b --title "…" --body-file "$SCRATCH/pr-body.md"`.
 - [ ] **Step 3 — watch CI:** `gh pr checks <num> --watch` (5 jobs: check, harness, frontend, qlib-worker, literature-worker). If any job fails: fix on the branch (normal TDD + gate + commit + push, no amend), never `--admin`/skip.
 - [ ] **Step 4 — confirm, then merge:** "CI is green on PR #<num>. Merge into main with a merge commit? (y/n)". On yes: `gh pr merge <num> --merge --subject "Merge pull request #<num> from tradingsystem1880-eng/claude/blissful-edison-00b74b"` (matches the repo's merge style; **no** `--squash`, **no** `--rebase`, **no** `--delete-branch` until Step 5 confirms).
 - [ ] **Step 5 — post-merge (confirm each):** `cd /Users/hunternovotny/Desktop/Project-ALPHA && git fetch origin && git checkout main && git pull --ff-only` (checkout A leaves `codex/full-repair-program`; `.claude/settings.json` etc. are now tracked there — `ls .claude/settings.json scripts/claude_hooks.py`); ask before `git branch -d codex/full-repair-program` (fully contained in main after merge — `git branch --merged main | grep codex/full-repair-program`) and before `gh pr view <num> --json state` + `git push origin --delete claude/blissful-edison-00b74b` (optional; the worktree `fa7386` can then be removed with `git worktree remove` — ask). Run `uv run python scripts/gate.py doctor` from checkout A on `main` → ok (harness now on main). 
@@ -787,7 +787,7 @@ Facts: remote `origin` = `https://github.com/tradingsystem1880-eng/Project-ALPHA
 
 ## Verification (end-to-end acceptance for the whole plan)
 
-1. `docs/audit/2026-08-19-harness-and-cli-verification.md` exists with sections A–D, every row PASS or explicitly recorded as MISSING/DENIED/SKIPPED with reason — never a silent gap.
+1. `docs/records/audits/2026-08-19-harness-and-cli-verification.md` exists with sections A–D, every row PASS or explicitly recorded as MISSING/DENIED/SKIPPED with reason — never a silent gap.
 2. `$SCRATCH/final.json` vs `baseline.json`: same 22 sub-apps + `validate`/`report`; MCP 62; deny 57; hook events 11 (`InstructionsLoaded` gone, by decision); `gate.py` ≤ ~1,300 lines; `claude_hooks.py` and `settings.json` smaller; harness test count not lower except for deleted-dead-code tests (listed).
 3. Every guardrail probe in Task 12 Step 3 still blocks; every allow probe in Step 4 is recorded honestly.
 4. `gh pr checks` all green; PR merged with a merge commit; checkout A on `main` with the harness present and `gate.py doctor` ok.

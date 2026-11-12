@@ -1,4 +1,4 @@
-**Delivery state:** Completed (2026-09-29; baseline complete; see docs/audit/2026-09-28-agentic-benchmark-baseline.md). Second scenario set: docs/superpowers/plans/2026-09-29-realistic-research-scenarios.md.
+**Delivery state:** Completed (2026-09-29; baseline complete; see docs/records/audits/2026-09-28-agentic-benchmark-baseline.md). Second scenario set: docs/superpowers/plans/2026-09-29-realistic-research-scenarios.md.
 
 # Agentic research benchmark (`tools/alpha-eval`)
 
@@ -31,7 +31,7 @@
     {"title": "5 Scenario catalog, baseline run, analysis, regression cases, gate component", "verify": "uv run python scripts/gate.py full", "expected": "Baseline summary committed; eval component green", "rollback": "Remove component registration", "status": "done"}
   ],
   "tier_impact": ["protected"],
-  "docs_to_update": ["docs/BUILD-STATUS.md", "docs/audit/2026-09-28-agentic-benchmark-baseline.md", "tools/alpha-eval/README.md"],
+  "docs_to_update": ["docs/BUILD-STATUS.md", "docs/records/audits/2026-09-28-agentic-benchmark-baseline.md", "tools/alpha-eval/README.md"],
   "out_of_scope": ["Changing platform runtime behaviour to improve scores", "New MCP/REST/UI surfaces", "Owner approvals, D2, promotion or paper actions", "Editing tests/holdout"],
   "files": ["tools/alpha-eval/", "scripts/gate.py", "scripts/gate_components.py", "tests/unit/test_gate_components.py", "tests/unit/test_claude_harness_codex_bridge.py", "tests/holdout_seed/test_holdout_benchmark_defects.py", "scripts/codex_bridge.py", "scripts/schemas/", ".github/workflows/ci.yml", "docs/"]
 }

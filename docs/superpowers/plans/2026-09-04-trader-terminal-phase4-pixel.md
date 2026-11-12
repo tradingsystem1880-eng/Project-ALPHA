@@ -86,12 +86,12 @@
       "verify": "uv run python scripts/gate.py full && cd apps/alpha-web/frontend && npm run lint -- --deny-warnings && npm run test:coverage && npm run generate:api && npm run build && npm run test:e2e && cd ../../.. && uv run pytest -q tests/unit/test_documentation_truth.py tests/unit/test_claude_md_relocation.py -m \"not network\" && uv run python scripts/gate.py plan-check docs/superpowers/plans/2026-09-04-trader-terminal-phase4-pixel.md && gh pr checks 47",
       "expected": "Every gate green; the scripted real-backend walkthrough (both profiles, every document and dock tab, Market Watch venue/age/live, an XRP/USDT Binance pull landing in the Toolbox, a validate run opening its report) exits 0 with its screenshots beside the artboards; rule rows, BUILD-STATUS, spec addendum and findings #14–#16 updated; PR #47 CI green and merged with a merge commit; the terminal launched for the owner.",
       "rollback": "Docs-only revert; the merge is the owner's decision.",
-      "files": [".claude/rules/alpha-web.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md", "docs/superpowers/plans/2026-09-04-trader-terminal-phase4-pixel.md"],
+      "files": [".claude/rules/alpha-web.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/records/audits/2026-09-01-owner-crypto-walkthrough-findings.md", "docs/superpowers/plans/2026-09-04-trader-terminal-phase4-pixel.md"],
       "status": "done"
     }
   ],
   "tier_impact": ["protected", "dag"],
-  "docs_to_update": [".claude/rules/alpha-web.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md"],
+  "docs_to_update": [".claude/rules/alpha-web.md", "docs/BUILD-STATUS.md", "docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md", "docs/records/audits/2026-09-01-owner-crypto-walkthrough-findings.md"],
   "out_of_scope": [
     "Live trading, broker readiness, order routing; the ticker is a displayed quote, never an execution price or a stored series.",
     "New statistics, new providers beyond the public ccxt ticker, new MCP tools (pinned at 62), new ADRs.",

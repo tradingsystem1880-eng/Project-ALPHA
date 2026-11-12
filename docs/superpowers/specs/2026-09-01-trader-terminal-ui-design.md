@@ -1,7 +1,7 @@
 # Trader Terminal UI — design spec
 
 Status: APPROVED by owner 2026-09-01 (design + palette + open items) · Phase 1 "Work" IMPLEMENTED 2026-09-02 (plan `docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md`; owner acceptance walkthrough and asset-master regeneration pending) · Phase 2 "Clean" IMPLEMENTED 2026-09-02 (plan `docs/superpowers/plans/2026-09-02-trader-terminal-phase2-clean.md`; owner walkthrough pending) · Phase 3 "Terminal" IMPLEMENTED 2026-09-03 (plan `docs/superpowers/plans/2026-09-03-trader-terminal-phase3-terminal.md`; owner walkthrough in both profiles pending) · supersedes nothing (extends the Workstation program)
-Owner decisions and evidence: `docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md` (findings #1–#13, decisions D1–D7)
+Owner decisions and evidence: `docs/records/audits/2026-09-01-owner-crypto-walkthrough-findings.md` (findings #1–#13, decisions D1–D7)
 Approved mockups: Claude Design canvas "ALPHA Crypto Terminal" (four artboards: Terminal, Strategy
 Performance Report, Maximised chart, Governance window)
 

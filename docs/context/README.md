@@ -9,7 +9,7 @@ These maps introduce no product scope, permissions, or new source of authority.
 - [Validation dependencies and open acceptance](alpha-quant-platform.md#validation-dependencies-and-open-acceptance): lean Master v1 §12 W06/W09–W12/W14/W17 tasks; full Qlib/native RD-Agent and wider W01–W19 scope retained.
 - [Canonical feature readiness checklist (2026-10-27 reconciled)](feature-readiness-checklist-2026-10-27.md): sole full-scope owner; repository mirror of the source DOCX with SHA/version provenance. Plans link here rather than copy it; it marks no feature done.
 - [Retail research refinement (2026-11-02)](feature-readiness-checklist-2026-10-27.md#retail-research-refinements-2-november-2026): requirements and proposed NOT RUN acceptance evidence within existing owners; canonical v3 authored amendment reconciled; full local DOCX parity remains unverified and completion statuses are preserved.
-- [Build readiness handoff (2026-10-27, v1)](build-readiness-handoff-2026-10-27.md): supporting historical-as-of intake evidence, not a roadmap or acceptance denominator.
+- [Build readiness handoff (2026-10-27, v1)](../records/build-readiness-handoff-2026-10-27.md): supporting historical-as-of intake evidence, not a roadmap or acceptance denominator.
 - [Current synthetic native workflow](../superpowers/plans/2026-10-26-native-rule-authority.md): code, scoped test/failure receipts, blocked real input, rollback and resume.
 
 - [Qlib tabular first wave](../superpowers/plans/2026-10-26-qlib-tabular-wave1.md): isolated candidate, recipe states, source provenance, checks and remaining qualification; integration/acceptance remain separate.
@@ -17,7 +17,7 @@ These maps introduce no product scope, permissions, or new source of authority.
 - [W05 research integration successor](../superpowers/plans/2026-10-26-w05-research-integration.md): reviewed PR92/UTC/request-budget source, synthetic checks and recovery; final combined gate deferred.
 - [Foundation status baseline (2026-10-18)](../BUILD-STATUS.md#2026-10-18-foundation-status): verified deliveries, pending evidence and deferred scope; see later dated updates for new checks.
 - [Mac handover update (2026-10-19)](../BUILD-STATUS.md#2026-10-19-mac-handover-update): current bounded workstation evidence and remaining physical handover blockers.
-- [Mac workstation handover refresh](../operations/mac-workstation-handover-2026-10-19.md): bounded startup/UI evidence and the remaining physical handover blockers.
+- [Mac workstation handover refresh](../records/mac-workstation-handover-2026-10-19.md): bounded startup/UI evidence and the remaining physical handover blockers.
 - [Evidence and recovery](../operations/development-loop.md#evidence-and-recovery): preflight, preservation, retries and authorization.
 - [Cleanup execution retrospective](../operations/retrospectives/2026-10-17-cleanup-execution.md): dated incidents and evidence limits.
 - [Context ownership and test-layout pilot](../superpowers/plans/2026-10-16-context-ownership-and-test-layout-pilot.md): context stewardship/retrieval ([PR68](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/68)), unavailable-reference annotation ([PR69](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/69)) and bounded semantic-payload test isolation ([PR71](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/71)) are delivered; broader cleanup remains pending.
