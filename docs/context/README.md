@@ -12,15 +12,15 @@ These maps introduce no product scope, permissions, or new source of authority.
 - [Build readiness handoff (2026-10-27, v1)](../records/build-readiness-handoff-2026-10-27.md): supporting historical-as-of intake evidence, not a roadmap or acceptance denominator.
 - [Current synthetic native workflow](../superpowers/plans/2026-10-26-native-rule-authority.md): code, scoped test/failure receipts, blocked real input, rollback and resume.
 
-- [Qlib tabular first wave](../superpowers/plans/2026-10-26-qlib-tabular-wave1.md): isolated candidate, recipe states, source provenance, checks and remaining qualification; integration/acceptance remain separate.
+- [Qlib tabular first wave](../superpowers/plans/archive/2026-10/2026-10-26-qlib-tabular-wave1.md): isolated candidate, recipe states, source provenance, checks and remaining qualification; integration/acceptance remain separate.
 - [Qlib W11 refit packet](../superpowers/plans/2026-10-26-qlib-w11-refit.md): successor engineering scope and frozen controls; W06 admission/accounting and statistical qualification remain blocked.
-- [W05 research integration successor](../superpowers/plans/2026-10-26-w05-research-integration.md): reviewed PR92/UTC/request-budget source, synthetic checks and recovery; final combined gate deferred.
+- [W05 research integration successor](../superpowers/plans/archive/2026-10/2026-10-26-w05-research-integration.md): reviewed PR92/UTC/request-budget source, synthetic checks and recovery; final combined gate deferred.
 - [Foundation status baseline (2026-10-18)](../BUILD-STATUS.md#2026-10-18-foundation-status): verified deliveries, pending evidence and deferred scope; see later dated updates for new checks.
 - [Mac handover update (2026-10-19)](../BUILD-STATUS.md#2026-10-19-mac-handover-update): current bounded workstation evidence and remaining physical handover blockers.
 - [Mac workstation handover refresh](../records/mac-workstation-handover-2026-10-19.md): bounded startup/UI evidence and the remaining physical handover blockers.
 - [Evidence and recovery](../operations/development-loop.md#evidence-and-recovery): preflight, preservation, retries and authorization.
 - [Cleanup execution retrospective](../operations/retrospectives/2026-10-17-cleanup-execution.md): dated incidents and evidence limits.
-- [Context ownership and test-layout pilot](../superpowers/plans/2026-10-16-context-ownership-and-test-layout-pilot.md): context stewardship/retrieval ([PR68](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/68)), unavailable-reference annotation ([PR69](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/69)) and bounded semantic-payload test isolation ([PR71](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/71)) are delivered; broader cleanup remains pending.
+- [Context ownership and test-layout pilot](../superpowers/plans/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md): context stewardship/retrieval ([PR68](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/68)), unavailable-reference annotation ([PR69](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/69)) and bounded semantic-payload test isolation ([PR71](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/71)) are delivered; broader cleanup remains pending.
 
 ## Read authority before capability
 
@@ -36,7 +36,7 @@ Neither a research recommendation nor a dated completed plan proves current beha
 
 ## Stewardship and retrieval
 
-Use the existing [artifact ownership roles](../superpowers/plans/2026-10-16-context-ownership-and-test-layout-pilot.md#scope-and-ownership).
+Use the existing [artifact ownership roles](../superpowers/plans/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md#scope-and-ownership).
 The operating manual/rules and authority matrix retain permissions; ADRs retain decisions;
 dated specs/plans and build history retain intent and delivery. Atlas retains generated discovery.
 When changing a capability, its source/document steward checks the corresponding map row and
@@ -123,7 +123,7 @@ This computes a view of existing tracked sources with cited excerpts and explici
 It does not add these maps to the generated graph or replace source-anchor semantic review.
 JSON handoffs expire and must pass `alpha_atlas.context check RECEIPT.json` before reuse;
 changed corpus bytes or retrieval policy invalidate them. See the
-[implementation and research mapping](../superpowers/plans/2026-10-30-queryable-context-filesystem.md).
+[implementation and research mapping](../superpowers/plans/archive/2026-10/2026-10-30-queryable-context-filesystem.md).
 Context retrieval is separate from bulk document storage and backups; the unavailable Mac's
 local backup remains a separate owner task.
 

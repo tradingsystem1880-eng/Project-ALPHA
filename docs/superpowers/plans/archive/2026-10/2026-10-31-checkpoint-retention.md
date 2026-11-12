@@ -100,6 +100,6 @@ Fresh final qualification applies only to the repaired tree.
 
 The source owner completed the repaired candidate at `c260c5136ef956139eaca649e228fd859d17ab70`:
 all 49 public checks passed at 03:10:10 UTC, coverage was 93.02%, and independent review approved.
-The [combined integration](2026-10-31-clean-rdagent-bootstrap.md#coordinated-foundation-integration--2026-10-31)
+The [combined integration](../../2026-10-31-clean-rdagent-bootstrap.md#coordinated-foundation-integration--2026-10-31)
 retains this source and its failures; its final tree requires its own gate and review. Private
 coverage remains UNVERIFIED, and no original checkpoint or remote branch is deleted.

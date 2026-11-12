@@ -114,7 +114,7 @@ fefe81cb, including real weekly diagnostic mutation, complete browser tests, Atl
 and eval. Fresh independent review passed 56 public tests and found no source defects;
 its sole BLOCK was private coverage, still UNVERIFIED. Those receipts remain historical.
 
-The owner explicitly approved the [one-time scoped exception](../../records/2026-10-11-recovered-work-private-suite-exception.md)
+The owner explicitly approved the [one-time scoped exception](../../../../records/2026-10-11-recovered-work-private-suite-exception.md)
 and separate PRs/merges after all available checks. No denied private command is retried.
 The research candidate now incorporates the separately verified recovered feature source,
 while retaining immutable rules, execution digests, recorded investigations and all current

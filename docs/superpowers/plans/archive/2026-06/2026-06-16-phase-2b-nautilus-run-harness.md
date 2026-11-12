@@ -48,7 +48,7 @@ primitives for future work rather than build another engine. Retain ALPHA's PIT 
 open-t+1 semantics, costs, units, accounting, validation and paper boundary. The historical spike
 above demonstrates why an upstream default is not automatically semantic parity.
 
-The [current crosswalk](../../context/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+The [current crosswalk](../../../../context/alpha-quant-platform.md#native-upstream-first--2026-11-06)
 requires matched fixtures, dependency/license review, compatible artifacts, migration and
 rollback proof before retiring any named wrapper. Those new proposals are NOT RUN. A supplied
 synthetic native Nautilus demo and an unmerged UI view do not qualify real-data or paper use.

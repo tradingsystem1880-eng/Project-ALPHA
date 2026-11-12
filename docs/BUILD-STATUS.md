@@ -40,7 +40,7 @@ generic CLI transport can relay them. No new REST schema, MCP tool or approval a
 
 This addresses fixed-rule operator coverage, not agent pressure-turn behavior or whole-agent
 information isolation. Historical Claude evidence is unchanged; no new model trial is claimed.
-See the [plan](superpowers/plans/2026-10-01-immutable-research-rules.md) and
+See the [plan](superpowers/plans/archive/2026-10/2026-10-01-immutable-research-rules.md) and
 [usage guide](operations/bounded-research-workflow.md). Acceptance is recorded separately in
 exact-tree gate and independent-review receipts; combined main/UI integration remains pending.
 
@@ -213,7 +213,7 @@ reports failed admission. The corrected configuration preauthorizes only the thr
 Raw cases and reports remain private under `/private/tmp/alpha-codex-acceptance-20261003`, outside
 Git; they contain conversation history and should not be published. The source run and historical
 Claude benchmarks were not edited. [Operation and limits](operations/codex-investigations.md),
-[execution plan and remaining roadmap](superpowers/plans/2026-10-03-codex-research-runtime.md).
+[execution plan and remaining roadmap](superpowers/plans/archive/2026-10/2026-10-03-codex-research-runtime.md).
 Engineering acceptance requires the canonical full gate and independent review of the final tree;
 this runtime grants no research, confirmation, paper or trading authority.
 
@@ -235,7 +235,7 @@ Continued `feat/codex-research-runtime` from `e111377`. New investigations optio
 
 Forty-eight new tests passed, including actual MCP-to-CLI comparison execution, future-poison controls, sparse/malformed inputs and bounded reads. The fast gate passed after test-typing corrections. Independent review identified an all-member hashing limit gap; pre-hash manifest/member/payload bounds and pre-materialization row/schema limits resolved it. A real Codex session on a labeled synthetic fixture reported the known 40% versus 20% declines with limitations; both its resume and the earlier real MSFT v2 checkpoint preserved findings without another model turn. This confirms operational wiring, not trading reliability or economic benefit.
 
-[Runbook](operations/codex-investigations.md), [scope and acceptance record](superpowers/plans/2026-10-03-codex-comparison-evidence.md). Final-tree full gate and independent review are required before commit. Snapshot provenance is not quality certification or historical-vintage proof; schedule completeness, causality and benchmark suitability remain unverified. Bounded acquisition and existing-contract data qualification remain next. Historical Claude results and concurrent primary UI work were untouched.
+[Runbook](operations/codex-investigations.md), [scope and acceptance record](superpowers/plans/archive/2026-10/2026-10-03-codex-comparison-evidence.md). Final-tree full gate and independent review are required before commit. Snapshot provenance is not quality certification or historical-vintage proof; schedule completeness, causality and benchmark suitability remain unverified. Bounded acquisition and existing-contract data qualification remain next. Historical Claude results and concurrent primary UI work were untouched.
 
 **2026-10-04 workstation performance continuation:** Scientific cursor overlays and a frame-budgeted resize queue preserve real series and chart lifetime; market resizing coalesces while retaining the latest logical range. Revised large-series checks require an actual changed-size settled redraw within the original timing limits. All frontend steps passed; a documentation edit invalidated that component receipt. Current aggregate acceptance still requires the exact-tree canonical full receipt. See the correction report for the methodology and evidence.
 
@@ -270,7 +270,7 @@ Declared instrument metadata, proxy suitability, historical vintage and independ
 agreement remain unverified. Final-tree full gate and independent review are required before commit.
 
 [Runbook](operations/codex-investigations.md),
-[scope and acceptance plan](superpowers/plans/2026-10-04-bounded-comparison-acquisition.md).
+[scope and acceptance plan](superpowers/plans/archive/2026-10/2026-10-04-bounded-comparison-acquisition.md).
 Next: live-provider acceptance when configured and workstation integration after reconciling its
 separate active changes; macro attribution, regime learning and strategy engineering remain later
 increments, not implied capabilities of this download path.
@@ -293,7 +293,7 @@ acceptance remains UNVERIFIED without a configured credential. These are operati
 not evidence of trading reliability. The final staged tree requires independent review and the
 canonical full gate before commit; its receipt records aggregate acceptance.
 
-[Plan and acceptance scope](superpowers/plans/2026-10-04-workstation-investigations.md),
+[Plan and acceptance scope](superpowers/plans/archive/2026-10/2026-10-04-workstation-investigations.md),
 [operator workflow](operations/codex-investigations.md). Primary checkout's concurrent UI is
 untouched; this branch's acceptance does not certify a future combined tree. Codex stays the only
 reasoning model; Claude artifacts, research admission and trading authority are unchanged.
@@ -361,7 +361,7 @@ Playwright 1.61.1 noble container, for Linux (Linux falls back to DejaVu Sans; g
 Recorded series, cartesian plots and the price footnote read the same `--tc-*` tokens, so Default
 applies everywhere. The opt-in perf budget spec was
 measured against `main` on the same machine: both exceed the 34 ms p99 intermittently there (main
-27–35 ms, branch 28–47 ms; medians ~10 ms each). [Plan](superpowers/plans/2026-10-07-technical-chart-language.md).
+27–35 ms, branch 28–47 ms; medians ~10 ms each). [Plan](superpowers/plans/archive/2026-10/2026-10-07-technical-chart-language.md).
 
 **2026-10-08 — Technical-chart cleanup review correction (unmerged).** PNG exports now composite the DOM calendar, legends, tags and gaps plus the title/OHLC header over the native Bokeh canvases. Original downloads omitted these layers. Download regression and fresh full verification govern acceptance of this correction; the earlier full stamp is invalid after source edits. Opt-in performance limitations remain recorded in the chart plan.
 
@@ -471,7 +471,7 @@ six-component canonical full gate. This focused branch requires its own fresh fu
 independent review and hosted evidence. Private engineering coverage remains UNVERIFIED; main's
 review policy must be satisfied before any protected commit. After an explicit question,
 the owner answered "yes" to a one-time absent-private-suite exception for the mutation fix
-under `docs/superpowers/plans/2026-10-10-mutation-checkpoints.md` only. Its absence remains
+under `docs/superpowers/plans/archive/2026-10/2026-10-10-mutation-checkpoints.md` only. Its absence remains
 UNVERIFIED; the denied private execution will not be retried. No actual failure, public
 check, independent review, hosted mutation completeness or Git protection is waived, and
 no private-source access or future exception is granted. The isolated pre-exception tree
@@ -807,7 +807,7 @@ Historical entries above remain dated evidence, not current acceptance assertion
   bounded sprintf fixture tests; [PR71](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/71)
   delivered semantic-payload test isolation; [PR72](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/72)
   delivered README workstation guidance. The
-  [accepted pilot plan](superpowers/plans/2026-10-16-context-ownership-and-test-layout-pilot.md)
+  [accepted pilot plan](superpowers/plans/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md)
   retains historical collection parity for 135 module and 5,839 public cases,
   AST/fixture/lifecycle and outcome parity; these are retained receipts, not a new
   rerun here. [PR73](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/73)
@@ -819,7 +819,7 @@ Historical entries above remain dated evidence, not current acceptance assertion
   against the [broader hygiene plan](superpowers/plans/2026-10-08-repository-hygiene.md).
   The item-level handover is unavailable to this inspection; this count is
   not a verified repository inventory. The
-  [maintainability plan](superpowers/plans/2026-10-10-maintainability-cleanup.md)
+  [maintainability plan](superpowers/plans/archive/2026-10/2026-10-10-maintainability-cleanup.md)
   describes the completed bounded [PR58](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/58),
   rather than that outstanding handover.
   Preserve the original `454c940f` checkout, 126 status rows and 11 dirty Mac
@@ -832,8 +832,8 @@ Historical entries above remain dated evidence, not current acceptance assertion
   advisory remains open. No failing foundation check is reproduced in the current
   cited receipts; that is not a repository-wide defect census.
 - **Verified cloud operation within dated scope; hardening pending:** the
-  [setup plan](superpowers/plans/2026-10-15-cloud-setup.md) and
-  [owned-process readiness plan](superpowers/plans/2026-10-15-cloud-readiness-owned-processes.md)
+  [setup plan](superpowers/plans/archive/2026-10/2026-10-15-cloud-setup.md) and
+  [owned-process readiness plan](superpowers/plans/archive/2026-10/2026-10-15-cloud-readiness-owned-processes.md)
   retain setup/fresh-startup, writable cache, dependency, pinned-browser, CLI,
   static Chromium and backend receipts. No new fresh launch was performed here.
   A current configuration/version record does not establish unavailable per-launch
@@ -941,7 +941,7 @@ The original 69 focused tests passed before changes. Added controls cover copy b
 rollback during copying, exact-evidence preservation, conflicting candidate/backup/canonical state,
 CLI exit 2 without traceback and future poison with a discriminating leaky read. Independent review
 found and reproduced the rollback counterexample before the final descriptor-based correction.
-The [audit plan](superpowers/plans/2026-10-21-atomic-snapshot-retry.md) records scope and limits.
+The [audit plan](superpowers/plans/archive/2026-10/2026-10-21-atomic-snapshot-retry.md) records scope and limits.
 Final full-gate and exact-tree independent-review outcomes are recorded in separate task receipts;
 this entry does not assert those outcomes, private-suite coverage, provider qualification or release
 acceptance. No prior missing-suite exemption applies. No commit or publication is part of this work.
@@ -1252,7 +1252,7 @@ No new schema/table, migration, dependencies, production dispatcher or native/pr
 Local public-only focused qualification is separate from full-gate and real-native acceptance.
 Activation still requires executable qualification, physical worker isolation, stronger containment
 where claimed, external effect limits, scientific output admission and compatible-writer cutover.
-See `docs/superpowers/plans/2026-10-26-synthetic-native-lifecycle.md` for the bounded implementation.
+See `docs/superpowers/plans/archive/2026-10/2026-10-26-synthetic-native-lifecycle.md` for the bounded implementation.
 
 ### 2026-10-26 — Adversarial synthetic lifecycle continuation (local)
 
@@ -1472,7 +1472,7 @@ engineering checks. No Library-transfer workaround or Qlib adapter change is inc
 Implemented in isolated `Project-ALPHA-handover/qlib-tabular-wave1-20261026`, branch
 `codex/qlib-tabular-wave1-20261026`, from delivery baseline
 `bc5b58351cc334d36112167c9463a80184411cc6`. The dirty primary checkout was not edited.
-[Plan, recipe ledger and evidence route](superpowers/plans/2026-10-26-qlib-tabular-wave1.md)
+[Plan, recipe ledger and evidence route](superpowers/plans/archive/2026-10/2026-10-26-qlib-tabular-wave1.md)
 are linked from the existing context index and Quant Platform model row; Atlas is regenerated.
 The initially missing expanded scope authority was subsequently supplied as parent-verified
 Library v1 section9/page9 planning text; the complete document was not materialized locally.
@@ -1576,7 +1576,7 @@ Preserved W11/native/tabular tree `a284def9502c20884ecf9740867db0810dc9ec83` rem
 This successor reconciles actual PR92 source (`fc6da893` → reviewed `f0ba4c34` → merge `98190e3b`
 with `e635e6cb`) and the single reviewed W05 combined patch (`220b9b02`). PR92 production/test
 bytes match the reviewed transport source; its generated maps are regenerated for the successor.
-The W05 timezone fix is included once. See the [integration plan](superpowers/plans/2026-10-26-w05-research-integration.md)
+The W05 timezone fix is included once. See the [integration plan](superpowers/plans/archive/2026-10/2026-10-26-w05-research-integration.md)
 for code, current checks, source identities, recovery and deferred final gate.
 
 Imported producer behavior notes below describe the reviewed source; their historical tests do not
@@ -1679,12 +1679,12 @@ Gate run 2 on the intermediate tree passed every backend step except coverage (6
 `rdagent/` source; archive bytes were not verified. Five unchanged Linux visual baselines fail in the
 cloud container; protected tests were absent and not executed. Details and open findings are in the
 [native rule plan](superpowers/plans/2026-10-26-native-rule-authority.md#cloud-qualification-stabilization-2026-10-27)
-and the [tabular plan](superpowers/plans/2026-10-26-qlib-tabular-wave1.md#cloud-qualification-stabilization-2026-10-27).
+and the [tabular plan](superpowers/plans/archive/2026-10/2026-10-26-qlib-tabular-wave1.md#cloud-qualification-stabilization-2026-10-27).
 
 Review-scope alignment (same stabilization): review attestation now requires `files_reviewed` to
 cover the Git guard's full review scope (risk-tier, protected control plane, hooks and guarded
 config), and `/review-gate` uses that scope; see the
-[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27).
+[gate preflight plan](superpowers/plans/archive/2026-10/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27).
 Gate run 4 passed every component on tree `844612d4`; this change creates a new candidate.
 
 ## 2026-10-27 Linux cloud qualification checkpoint published (not accepted)
@@ -1705,7 +1705,7 @@ the checkpoint's gate and review results do not qualify these or any other modif
 
 Current active work is that unpublished Linux cloud foundation successor: navigation/handoff
 routing and gate/review freshness repair (see the
-[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)).
+[gate preflight plan](superpowers/plans/archive/2026-10/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)).
 The published commit above is the preserved qualification checkpoint, not the active stage. The Mac
 portability successor stays open with its requirements intact but is deferred: not the current stage
 or active owner, and not abandoned scope.
@@ -1727,9 +1727,9 @@ change; stale Darwin ML-lab baselines; unconfirmed root cause of the native leas
 the about 21-byte `TMPDIR` limit from the AF_UNIX socket path; unverified RD-Agent archive SHA;
 the gate stamp and review consumption gap (commit-time checks bound only the tree hash and the
 risk-tier diff; a repair is implemented in the unpublished successor, see the
-[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#commit-time-gate-and-review-provenance-2026-10-27),
+[gate preflight plan](superpowers/plans/archive/2026-10/2026-10-26-gate-preflight-selection.md#commit-time-gate-and-review-provenance-2026-10-27),
 but not yet full-gated or independently reviewed); the
-[gate preflight plan](superpowers/plans/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)
+[gate preflight plan](superpowers/plans/archive/2026-10/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)
 statements that no owner exception or reviewer policy changed are no longer current (an appended
 note there corrects them; the original lines are kept); the missing `alpha ml refit-plan`/`refit-status` entries in `.claude/rules/alpha-cli.md`; the open but deferred
 [Mac portability successor](superpowers/plans/2026-10-26-mac-portability-qualification.md#handoff-and-next-action).
@@ -1839,7 +1839,7 @@ unbound cancellation uses an expected-state guard. PR92 redaction is already ret
 Two pre-implementation controls failed on the published baseline; the integrated focused research
 suite passed 26 cases, generic job-store checks passed 6, and native/adjacent compatibility checks
 passed 57. Changed Python lint/format, strict typing and all 13 import contracts passed. The
-[reconciliation packet](superpowers/plans/2026-10-29-pr93-recovery-reconciliation.md) tracks the
+[reconciliation packet](superpowers/plans/archive/2026-10/2026-10-29-pr93-recovery-reconciliation.md) tracks the
 remaining exact-tree producer, Atlas and review evidence. No historical gate or missing-suite
 exception attests this candidate. Full qualification and reconciliation with Claude's final
 published test corrections remain pending; no commit, push, PR mutation or merge is claimed.
@@ -1898,7 +1898,7 @@ Scoped Ruff, mypy and harness lint passed. These are focused results only. At wr
 six-component gate and independent review are pending; their exact-tree receipts belong in the
 candidate evidence. Private coverage remains UNVERIFIED and requires a new scoped owner decision
 before formal delivery; publication also awaits parent authorization. See the
-[completion plan](superpowers/plans/2026-10-30-software-team-completion.md).
+[completion plan](superpowers/plans/archive/2026-10/2026-10-30-software-team-completion.md).
 
 ### Orphan-precondition scope completion, 2026-10-30
 
@@ -1987,7 +1987,7 @@ each completed with seven successful listed jobs. The plans now distinguish thos
 engineering packages from their historical unpublished/BLOCK checkpoints; earlier failure and
 UNKNOWN-cause records remain unchanged. Private coverage remains UNVERIFIED.
 
-The [bounded cleanup/refactor successor](superpowers/plans/2026-10-30-project-lineage-projection-refactor.md)
+The [bounded cleanup/refactor successor](superpowers/plans/archive/2026-10/2026-10-30-project-lineage-projection-refactor.md)
 consolidates project-history policy and removes the test-only `changed_paths` wrapper in favor of
 `comparison_context`; existing selection and gate semantics are retained. ADR/governance routes
 and local receipt references are cleaned up. The prior 12-path checkpoint passed all six public
@@ -2004,7 +2004,7 @@ cloud reconciliation does not declare the broader cleanup/refactor programme com
 
 The expanded `f1550eca` gate stopped at backend pytest: three failures, 6,711 passes, 61 skips,
 two passed subtests; coverage met the unchanged floor at 93.01%. Complete failed evidence is
-preserved privately by the [cleanup plan](superpowers/plans/2026-10-30-project-lineage-projection-refactor.md#aggregate-re-entry-findings-and-bounded-repairs).
+preserved privately by the [cleanup plan](superpowers/plans/archive/2026-10/2026-10-30-project-lineage-projection-refactor.md#aggregate-re-entry-findings-and-bounded-repairs).
 One synthetic cancellation test read an empty PID marker between creation and content write.
 Its deterministic regression was red, then green after the test reader waited for contents
 within the same five-second bound. Production supervisor, budgets and exact-once assertions stay.
@@ -2032,7 +2032,7 @@ validation replays them and rejects changed/added/missing sources, stale policy,
 and altered payloads. Markdown and plain-text views support direct inspection. No new knowledge
 graph, database, folder hierarchy, scientific authority or autonomous execution is introduced.
 
-The [delivery record](superpowers/plans/2026-10-30-queryable-context-filesystem.md) maps H26
+The [delivery record](superpowers/plans/archive/2026-10/2026-10-30-queryable-context-filesystem.md) maps H26
 from the sole canonical feature checklist to the implementation and the actual primary ICM
 paper (arXiv2603.16021v2, 21 pages) plus pinned companion source. Mechanical invalidation and
 expiry are ALPHA adaptations, not demonstrated performance gains from the paper. Existing
@@ -2054,7 +2054,7 @@ The owner approved the bounded missing-private-suite exception through delivery 
 cleanup/refactor, file-system, Software Team and two-bug follow-up workstreams at 05:41 UTC,
 including necessary integration fixes. The exact request, response, scope and unchanged
 requirements are recorded in the existing
-[file-system plan](superpowers/plans/2026-10-30-queryable-context-filesystem.md#owner-absence-only-decision--2026-10-30).
+[file-system plan](superpowers/plans/archive/2026-10/2026-10-30-queryable-context-filesystem.md#owner-absence-only-decision--2026-10-30).
 Documented absence alone is now informational for this delivery; private coverage remains
 UNVERIFIED. No actual failure or other required check is waived, and no GitHub APPROVE review
 or protection bypass is authorized. Earlier absence-only BLOCKs remain correct history.
@@ -2080,7 +2080,7 @@ A two-line command-scoped transport repair now preserves the configured cache fo
 only. Its failing-first public regression and the existing credential/auth-home isolation and
 two real capability-route checks passed (5 cases); changed lint/format passed. No ML response
 schema or PDF source was changed. The
-[existing delivery plan](superpowers/plans/2026-10-30-queryable-context-filesystem.md#required-integration-repair-configured-ml-worker-cache)
+[existing delivery plan](superpowers/plans/archive/2026-10/2026-10-30-queryable-context-filesystem.md#required-integration-repair-configured-ml-worker-cache)
 records this necessary integration fix. Final source/producer reconciliation, exact-tree full
 qualification and independent review remain required; private coverage stays UNVERIFIED under
 the approved absence-only scope. No failed check, threshold or authority boundary is waived.
@@ -2129,7 +2129,7 @@ Inherited checks passed 39 cases; four discriminating regressions failed before 
 Corrected focused checks passed 45 cases including the availability poison/control. Independent
 early review identified repeated unchanged captures with distinct raw receipts; exact retained
 `--manifest-id` reopening resolves ambiguity without rewriting the snapshot contract.
-[Scope and owner decision](superpowers/plans/2026-10-25-crypto-snapshot-query.md#cleanup-recovery--2026-10-30).
+[Scope and owner decision](superpowers/plans/archive/2026-10/2026-10-25-crypto-snapshot-query.md#cleanup-recovery--2026-10-30).
 Private coverage stays UNVERIFIED under the scoped absence-only exception. Final full/review/CI
 acceptance belongs to external exact-tree evidence; no historical receipt is reused.
 
@@ -2148,7 +2148,7 @@ reviewer and delivery histories retain all scopes and failures. Derived Atlas ou
 from the complete tree. The combined candidate requires its own exact-tree full gate and
 independent review; no prior individual pass accepts this assembly. Private coverage stays
 UNVERIFIED under the existing task-scoped absence-only decisions. Main and existing PRs are not
-mutated during preparation. See the [follow-on execution record](superpowers/plans/2026-10-25-crypto-snapshot-query.md#coordinated-follow-on-assembly--2026-10-30).
+mutated during preparation. See the [follow-on execution record](superpowers/plans/archive/2026-10/2026-10-25-crypto-snapshot-query.md#coordinated-follow-on-assembly--2026-10-30).
 
 ## 2026-10-30 — Verified combined delivery on main
 
@@ -2210,7 +2210,7 @@ state remains unverified. Focused tests cover archive round trips, corruption, s
 symlink/path rejection and dry-run exclusions. Final exact-tree qualification and independent
 review are required before the guarded commit; private tests remain UNVERIFIED under the
 existing task-scoped absence-only approval. See the
-[retention plan](superpowers/plans/2026-10-31-checkpoint-retention.md).
+[retention plan](superpowers/plans/archive/2026-10/2026-10-31-checkpoint-retention.md).
 
 The first independent review blocked substituted FIFO manifests/archives that could hang the
 new inventory. Bounded probes reproduced both failures. The repair rejects nonregular opened
@@ -2227,7 +2227,7 @@ normal docs PR review. Existing CI gains explicit manual dispatch and stale READ
 no application authority or trading behavior changes. Technical setup content remains intact.
 
 Focused fixture tests and qualification results are recorded in the
-[feature plan](superpowers/plans/2026-10-31-readme-maintenance.md); activation and recovery are in the
+[feature plan](superpowers/plans/archive/2026-10/2026-10-31-readme-maintenance.md); activation and recovery are in the
 [runbook](operations/readme-maintenance.md). The workflow is not active, and no live inference,
 hosted trigger or README PR has been demonstrated. No Actions inference credential is available
 in this task environment; repository secret availability is unverified. The private review suite is
@@ -2249,7 +2249,7 @@ Old PR/head/run receipts remain superseded historical evidence. PR102 stays draf
 same-purpose implementation; the existing publication approval and scoped private absence-only
 exception cover necessary corrections. Private coverage is UNVERIFIED. Revised focused tests,
 exact-tree full qualification and independent review are required before its next guarded commit.
-See the [existing plan](superpowers/plans/2026-10-31-readme-maintenance.md) and
+See the [existing plan](superpowers/plans/archive/2026-10/2026-10-31-readme-maintenance.md) and
 [worked delivery workflow](operations/readme-maintenance.md).
 
 ## 2026-10-31 — Combined foundation follow-on preparation
@@ -2361,7 +2361,7 @@ after commit, readback failure/conflict and bounded actual CLI timeout. The orig
 regression failed before the fix. Final aggregate verification and independent review remain
 separate delivery evidence; this entry does not assert either. Private coverage is UNVERIFIED
 under the recorded task-scoped four-workstream absence-only exception. No real study ran.
-See [plan](superpowers/plans/2026-10-31-durable-cancellation-publication.md).
+See [plan](superpowers/plans/archive/2026-10/2026-10-31-durable-cancellation-publication.md).
 
 ### 2026-10-31 — Daily history inspection before Linux storage selection (candidate)
 
@@ -2380,7 +2380,7 @@ is not admitted: the source-only Linux probe failed the internal-disk reserve an
 denied the separate Expansion read-only bind. No security setting, real study, private
 payload, protected test source or permanent cleanup was involved.
 
-Plan: [Linux storage/history preparation](superpowers/plans/2026-10-31-linux-storage-history.md).
+Plan: [Linux storage/history preparation](superpowers/plans/archive/2026-10/2026-10-31-linux-storage-history.md).
 
 Candidate correction: fresh independent review reproduced offsets beyond SQLite's signed
 integer range escaping as OverflowError. The reader now validates that bound before opening
@@ -2479,7 +2479,7 @@ exception preserves private coverage UNVERIFIED and all public checks/floors/gua
 Ordinary synthetic engineering qualification is separate from native research execution.
 No real-data fit, research allowance consumption, native Qlib admission or Mac operation.
 
-Plan: [W09 planning contracts](superpowers/plans/2026-11-01-w09-planning-contracts.md).
+Plan: [W09 planning contracts](superpowers/plans/archive/2026-11/2026-11-01-w09-planning-contracts.md).
 
 ### 2026-11-02 — W09 private invocation observations, delivery pending
 
@@ -2503,7 +2503,7 @@ the correction, and independent re-review found no remaining required source cha
 That focused assessment is not formal delivery approval. No native research run, data acquisition, policy,
 ControlStore/ledger change, real-data fitting or Mac operation occurred.
 
-Plan: [W09 invocation observations](superpowers/plans/2026-11-02-w09-component-observations.md).
+Plan: [W09 invocation observations](superpowers/plans/archive/2026-11/2026-11-02-w09-component-observations.md).
 
 ### 2026-11-02 — W09 observation delivery approval and qualification boundary
 
@@ -2562,7 +2562,7 @@ isolated offline fixtures. Final integrated Atlas generation, README attestation
 qualification and independent review remain pending. Private coverage is UNVERIFIED;
 no prior absence exception or publication permission is adopted.
 
-Plan: [Backend CI setup ownership](superpowers/plans/2026-11-02-backend-setup-dedup.md).
+Plan: [Backend CI setup ownership](superpowers/plans/archive/2026-11/2026-11-02-backend-setup-dedup.md).
 
 ### 2026-11-04 — Backend setup delivery authorization and reconciliation
 
@@ -2594,7 +2594,7 @@ and generated Atlas reconciliation are included. Final exact-tree full public ch
 the unchanged 93% floor, independent review and normal guards remain mandatory; their
 receipts establish acceptance separately from this preparation record.
 
-Plan: [W09 durable diagnostic associations](superpowers/plans/2026-11-02-w09-durable-observations.md).
+Plan: [W09 durable diagnostic associations](superpowers/plans/archive/2026-11/2026-11-02-w09-durable-observations.md).
 
 # Assistant cleanup candidate — 6 November 2026
 
@@ -2606,7 +2606,7 @@ of the leader identity. Cleanup waits for group disappearance and can remain blo
 OS reaper is unavailable. No model calls, credentials, trading authority or statistical
 behavior change. The original failed aggregate and isolated passing diagnostic remain
 historical evidence. This is an uncommitted candidate, not delivery or acceptance; the
-[plan](superpowers/plans/2026-11-06-assistant-cleanup-barrier.md) records verification scope.
+[plan](superpowers/plans/archive/2026-11/2026-11-06-assistant-cleanup-barrier.md) records verification scope.
 
 ## 2026-11-05 offline Bybit funding-page contract (unpublished)
 
@@ -2631,7 +2631,7 @@ real datasets, studies, commits, pushes or external publication were used. Durab
 budgets, pagination, raw-page-first retention and restore remain separate work.
 Providers remain unqualified and QuantPad remains excluded.
 
-Plan: [Offline Bybit funding page](superpowers/plans/2026-11-05-offline-bybit-funding-page.md).
+Plan: [Offline Bybit funding page](superpowers/plans/archive/2026-11/2026-11-05-offline-bybit-funding-page.md).
 
 ## 2026-11-05 offline funding backward progression (unpublished successor)
 
@@ -2660,7 +2660,7 @@ is added. Full/Atlas/preflight gates, protected contents, provider calls, creden
 dependencies/installations, commits and publication were not used. QuantPad remains
 excluded. Original checkout and predecessor workspace remain unchanged.
 
-Plan: [Offline Bybit funding pagination](superpowers/plans/2026-11-05-offline-bybit-funding-pagination.md).
+Plan: [Offline Bybit funding pagination](superpowers/plans/archive/2026-11/2026-11-05-offline-bybit-funding-pagination.md).
 
 ## 2026-11-05 offline raw-first funding retention (unpublished successor)
 
@@ -2693,7 +2693,7 @@ calls, dependencies/installations, protected contents, full/Atlas/preflight gate
 commits/push/external publication were used. Coverage and providers remain unqualified;
 settlement/publication clocks remain distinct, and QuantPad remains excluded.
 
-Plan: [Offline raw-first funding retention](superpowers/plans/2026-11-05-offline-funding-raw-retention.md).
+Plan: [Offline raw-first funding retention](superpowers/plans/archive/2026-11/2026-11-05-offline-funding-raw-retention.md).
 
 ## 2026-11-05 injected bounded funding response reader (unpublished successor)
 
@@ -2722,7 +2722,7 @@ storage/rights admission and durable acquisition controls remain prerequisites. 
 providers, credentials, real data, protected contents, prohibited gates, installs,
 commits/push or external publication were used. QuantPad remains excluded.
 
-Plan: [Offline bounded funding reader](superpowers/plans/2026-11-05-offline-funding-bounded-reader.md).
+Plan: [Offline bounded funding reader](superpowers/plans/archive/2026-11/2026-11-05-offline-funding-bounded-reader.md).
 
 ## 2026-11-05 integrated offline funding delivery candidate (unpublished)
 
@@ -2853,7 +2853,7 @@ approved after its required delayed-response test correction. Full qualification
 projects, Atlas freshness and guarded commit/publication remain pending native UI integration.
 No private test content was read; private-suite coverage is UNVERIFIED.
 
-Plan: [backtest result card](superpowers/plans/2026-11-06-backtest-result-card.md).
+Plan: [backtest result card](superpowers/plans/archive/2026-11/2026-11-06-backtest-result-card.md).
 
 ## Backtest card parent-review corrections — 6 November 2026
 

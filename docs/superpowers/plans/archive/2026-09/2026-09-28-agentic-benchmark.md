@@ -1,4 +1,4 @@
-**Delivery state:** Completed (2026-09-29; baseline complete; see docs/records/audits/2026-09-28-agentic-benchmark-baseline.md). Second scenario set: docs/superpowers/plans/2026-09-29-realistic-research-scenarios.md.
+**Delivery state:** Completed (2026-09-29; baseline complete; see docs/records/audits/2026-09-28-agentic-benchmark-baseline.md). Second scenario set: docs/superpowers/plans/archive/2026-09/2026-09-29-realistic-research-scenarios.md.
 
 # Agentic research benchmark (`tools/alpha-eval`)
 

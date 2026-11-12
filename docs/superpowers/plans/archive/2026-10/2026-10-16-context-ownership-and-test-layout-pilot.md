@@ -97,12 +97,12 @@ Stewardship below identifies the responsible artifact role, not a named maintain
 
 | Artifact | Canonical owner/source | Freshness and retrieval |
 |---|---|---|
-| Operating instructions | [AGENTS](../../../AGENTS.md), [manual](../../../CLAUDE.md), applicable [rules](../../../.claude/rules/) | Existing manual size/link/relocation and awareness checks; context maps link back. |
-| Current architecture and permissions | [Architecture](../../ARCHITECTURE.md), generated [authority matrix](../../governance/capability-authority-matrix.md) | Source boundaries and `check_openapi_operations.py`; no copied counts. |
-| Decisions, intent, history | [ADR index](../../adr/README.md), dated specs/plans, append-only [build history](../../BUILD-STATUS.md) | Preserve status and supersession; no historical claim becomes current evidence. |
-| Discovery | [Atlas](../../../tools/alpha-atlas/README.md), curated definitions, schemas, explicit CLI cache | Existing input hashes, resolved symbols, computed evidence and `generate --check`; never hand-edit outputs. |
-| Navigation | [Context index](../../context/README.md), [Software Team](../../context/software-team.md), [ALPHA Quant Platform](../../context/alpha-quant-platform.md) | Preserve the current draft; any subsequent revision gets link/anchor checks and independent review. |
-| Tests and fixtures | Owning public test layer and [test rules](../../../.claude/rules/tests.md) | Collection/tier/fixture/outcome parity; tests remain behavior evidence, not product authority. |
+| Operating instructions | [AGENTS](../../../../../AGENTS.md), [manual](../../../../../CLAUDE.md), applicable [rules](../../../../../.claude/rules/) | Existing manual size/link/relocation and awareness checks; context maps link back. |
+| Current architecture and permissions | [Architecture](../../../../ARCHITECTURE.md), generated [authority matrix](../../../../governance/capability-authority-matrix.md) | Source boundaries and `check_openapi_operations.py`; no copied counts. |
+| Decisions, intent, history | [ADR index](../../../../adr/README.md), dated specs/plans, append-only [build history](../../../../BUILD-STATUS.md) | Preserve status and supersession; no historical claim becomes current evidence. |
+| Discovery | [Atlas](../../../../../tools/alpha-atlas/README.md), curated definitions, schemas, explicit CLI cache | Existing input hashes, resolved symbols, computed evidence and `generate --check`; never hand-edit outputs. |
+| Navigation | [Context index](../../../../context/README.md), [Software Team](../../../../context/software-team.md), [ALPHA Quant Platform](../../../../context/alpha-quant-platform.md) | Preserve the current draft; any subsequent revision gets link/anchor checks and independent review. |
+| Tests and fixtures | Owning public test layer and [test rules](../../../../../.claude/rules/tests.md) | Collection/tier/fixture/outcome parity; tests remain behavior evidence, not product authority. |
 
 No deeper topical folders are proposed now. Add one only after repeated retrieval failures show
 several active documents share a topic and a responsible steward; map all inbound links first.
@@ -144,7 +144,7 @@ remain unchanged. Existing authority roles above are reused rather than copied i
 ## One historical reference: bounded resolution
 
 Only the referring paragraph in
-[2026-10-08 repository hygiene](2026-10-08-repository-hygiene.md) is in scope.
+[2026-10-08 repository hygiene](../../2026-10-08-repository-hygiene.md) is in scope.
 It links to the unavailable filename `2026-10-09-engineering-holdout-policy.md`.
 Do not read hidden suites, private archives, deleted protected-policy contents or owner stores.
 Do not reconstruct the missing document or adopt its historical policy claim.
@@ -159,7 +159,7 @@ If public evidence contradicts the proposed annotation, stop and revise the plan
 
 ## One-module pilot: exact boundary
 
-Source: [test_research_control_store.py](../../../tests/unit/test_research_control_store.py).
+Source: [test_research_control_store.py](../../../../../tests/unit/test_research_control_store.py).
 Move only these existing functions into proposed `tests/unit/test_research_semantic_payload.py`:
 
 - `test_semantic_payload_accepts_the_frozen_study_second_precision_cutoff`
@@ -168,7 +168,7 @@ Move only these existing functions into proposed `tests/unit/test_research_seman
 This is four collected cases at the inspected base; baseline collection must confirm that count.
 All other tests remain in the original module. Do not use this pilot to reorganize other modules.
 Both paths stay directly under `tests/unit/` with `test_research_` names, preserving the current
-platform-prefix match; prove this through [the classifier](../../../tests/_tiers.py), not inference.
+platform-prefix match; prove this through [the classifier](../../../../../tests/_tiers.py), not inference.
 
 If sharing is needed, move only `_semantic_source`, `_semantic_definition_payload` and
 `_semantic_review_payload` unchanged into proposed

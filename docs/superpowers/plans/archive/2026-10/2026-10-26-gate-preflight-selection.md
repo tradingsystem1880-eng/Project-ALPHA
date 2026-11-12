@@ -120,7 +120,7 @@ the reviewer file now also carries that candidate-scoped exception.
 The remaining gate/review freshness repair (commit-time binding of component definitions,
 comparison base and review scope) is current active work of the unpublished Linux cloud foundation
 successor; status and blockers are in the
-[build record](../../BUILD-STATUS.md#2026-10-27-linux-cloud-qualification-checkpoint-published-not-accepted).
+[build record](../../../../BUILD-STATUS.md#2026-10-27-linux-cloud-qualification-checkpoint-published-not-accepted).
 
 ## Commit-time gate and review provenance, 2026-10-27
 

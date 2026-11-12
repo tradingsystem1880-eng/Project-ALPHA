@@ -111,8 +111,8 @@ The audit qualifies all 11 automated critical cards and all eight retained posit
   Frontend asset regeneration also changed the verification tree. No aggregate pass is claimed.
 - Final aggregate slice remains open for the unrelated UI repair and a fresh full gate. Concurrent
   UI work is preserved; this continuation does not modify that workflow.
-- See [audit](../../records/audits/2026-09-29-codex-capability-audit.md) and
-  [verification evidence](../../../tools/alpha-eval/results/2026-09-29-continuation/verification.json).
+- See [audit](../../../../records/audits/2026-09-29-codex-capability-audit.md) and
+  [verification evidence](../../../../../tools/alpha-eval/results/2026-09-29-continuation/verification.json).
 
 ## 2026-09-30 closure
 
@@ -121,4 +121,4 @@ checkout before this documentation update. The prior UI deletion and generated-o
 are cleared. Independent final audit found no remaining benchmark delivery gap. This completion
 record follows the tested tree; it does not claim a fresh exact-tree stamp after documentation
 edits. No commit or push was made; hidden-suite and live-provider acceptance remain unclaimed.
-See [current verification receipt](../../../tools/alpha-eval/results/2026-09-29-continuation/verification-2026-09-30.json).
+See [current verification receipt](../../../../../tools/alpha-eval/results/2026-09-29-continuation/verification-2026-09-30.json).

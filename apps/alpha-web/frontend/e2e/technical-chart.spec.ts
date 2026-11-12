@@ -5,7 +5,7 @@ import { preparePage } from './support/workstationHarness'
 import { studySeries, walkBars } from './support/technicalFixture'
 import { waitForTechnicalChartWidth } from './support/technicalLayout'
 
-// The StockCharts-grade technical chart (docs/superpowers/plans/2026-10-07-technical-chart-language.md):
+// The StockCharts-grade technical chart (docs/superpowers/plans/archive/2026-10/2026-10-07-technical-chart-language.md):
 // one panel stack with RSI above price + volume and MACD below, all studies served by the
 // `alpha chart overlays` stand-in, on an observation-spaced axis.
 const BARS = walkBars(260, '2025-10-06', false)

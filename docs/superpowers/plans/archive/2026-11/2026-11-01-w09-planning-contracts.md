@@ -4,7 +4,7 @@
 
 The bounded inert implementation is complete. Final engineering delivery requires the
 normal exact-tree qualification/review records; this does not close native Packet4 parity.
-This is the first engineering slice of [existing Packet4/W09](../../context/feature-readiness-checklist-2026-10-27.md#packet-4-govern-qlib-fits-and-prove-native-parity).
+This is the first engineering slice of [existing Packet4/W09](../../../../context/feature-readiness-checklist-2026-10-27.md#packet-4-govern-qlib-fits-and-prove-native-parity).
 No charging, variant, ancestry, reuse or protected-release policy is assigned. The retained
 v1/v2 worker computations and native rule route remain unchanged.
 
@@ -136,7 +136,7 @@ checks/review. It grants no native research or real-data model execution.
 On 2026-11-02 the owner explicitly approved an absence-only exception through delivery
 for this bounded W09 planning slice and necessary corrections, with publication from
 `feat/w09-planning-contracts` into `main` in `tradingsystem1880-eng/Project-ALPHA`.
-The matching [reviewer scope record](../../../.claude/agents/independent-reviewer.md#w09-inert-planning-through-delivery-absence-exception--2026-11-02)
+The matching [reviewer scope record](../../../../../.claude/agents/independent-reviewer.md#w09-inert-planning-through-delivery-absence-exception--2026-11-02)
 retains its narrow limits. Authorization provenance is retained privately.
 
 Only documented absence of the authentic private suite is informational/nonblocking.

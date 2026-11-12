@@ -48,7 +48,7 @@ staged tree after generated Atlas context is refreshed. No old API-architecture 
 
 The source owner qualified and normally published native successor
 `3db13037ed2445206b3c386556a38d1721c4653c`: all 49 public checks passed at 93.02% coverage,
-with fresh independent approval. The [combined integration](2026-10-31-clean-rdagent-bootstrap.md#coordinated-foundation-integration--2026-10-31)
+with fresh independent approval. The [combined integration](../../2026-10-31-clean-rdagent-bootstrap.md#coordinated-foundation-integration--2026-10-31)
 preserves its full branch delta and history, adds the other foundation entry points to README,
 and requires a new final-tree native README decision, aggregate gate and independent review.
 Private coverage remains UNVERIFIED; no API job, credential or paid activation is introduced.

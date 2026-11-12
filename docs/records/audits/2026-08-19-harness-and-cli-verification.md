@@ -1,7 +1,7 @@
 # Harness, permission, CLI-availability and gate verification — 2026-08-19/20
 
 Evidence record for the branch-cleanup PR (plan
-`docs/superpowers/plans/2026-08-19-branch-cleanup-simplify-merge.md`, Tasks 12–14). Every row is an
+`docs/superpowers/plans/archive/2026-08/2026-08-19-branch-cleanup-simplify-merge.md`, Tasks 12–14). Every row is an
 observed result; nothing below is inferred. Commands were run from the branch worktree at HEAD
 `252c4c2` unless a row says otherwise.
 

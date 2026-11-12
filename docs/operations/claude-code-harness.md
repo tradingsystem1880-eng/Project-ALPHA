@@ -150,20 +150,20 @@ approval, promotion, sealed-data or trading authority.
 
 For interactive inspection, project the large JSON response with `jq` while preserving
 the CLI exit status (`set -o pipefail`); full per-date data remains in the immutable
-attempt artifacts. The [closure record](../superpowers/plans/2026-09-19-research-walkthrough-closure.md)
+attempt artifacts. The [closure record](../superpowers/plans/archive/2026-09/2026-09-19-research-walkthrough-closure.md)
 tracks acceptance checks and limitations.
 
 ### Scoped missing-suite exception (2026-09-17)
 
 The owner explicitly authorized this refactor/cancellation commit to proceed without
 the unavailable private holdout suite, after unsuccessful restoration checks. The
-[exception record](../superpowers/plans/2026-09-17-cancellation-and-research-walkthrough.md)
+[exception record](../superpowers/plans/archive/2026-09/2026-09-17-cancellation-and-research-walkthrough.md)
 and independent-reviewer instructions define its one-time scope. Hidden tests remain
 UNVERIFIED. Other tests, independent review, quant attestation and Git guards remain
 mandatory; this is neither a hook bypass nor a waiver for future changes.
 
 A separate explicit owner resolution on 2026-09-19 covers only the
-[walkthrough closure change](../superpowers/plans/2026-09-19-research-walkthrough-closure.md)
+[walkthrough closure change](../superpowers/plans/archive/2026-09/2026-09-19-research-walkthrough-closure.md)
 based on `b1b7510`. It has the same UNVERIFIED disclosure and preserves all other
 checks; it does not automatically extend the earlier exception to future work.
 

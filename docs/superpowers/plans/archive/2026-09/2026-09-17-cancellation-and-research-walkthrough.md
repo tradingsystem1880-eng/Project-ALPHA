@@ -29,7 +29,7 @@
 
 Execution results belong in the final handoff and ignored `.alpha/state/` receipts so
 post-verification reporting does not invalidate the tested source tree. The prior
-[refactor record](2026-09-16-agent-neutral-reproducible-research.md) remains the source
+[refactor record](../../2026-09-16-agent-neutral-reproducible-research.md) remains the source
 of the accepted refactor scope and its historical verification evidence.
 
 ## Commit review findings and patch queue

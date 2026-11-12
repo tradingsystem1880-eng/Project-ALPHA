@@ -9,7 +9,7 @@
 
 **Historical delivery state (as first recorded):** Completed local integration packet; aggregate qualification blocked pending native portability repair and final full gate.
 
-**Successor (open):** [Combined Mac portability qualification](2026-10-26-mac-portability-qualification.md#handoff-and-next-action), pending slice "Independent review and final successor qualification".
+**Successor (open):** [Combined Mac portability qualification](../../2026-10-26-mac-portability-qualification.md#handoff-and-next-action), pending slice "Independent review and final successor qualification".
 
 ```json
 {
@@ -88,15 +88,15 @@ bytes match producer source except Ruff-only formatting in the CLI scope predica
 The public source lineage, patch hashes and immutable predecessor identity are in
 source-lineage.json (`.alpha/state/w05-integration/source-lineage.json`).
 
-- [Tiingo redaction](../../../packages/alpha-data/src/alpha_data/adapters/tiingo_adapter.py) and
-  [public regression](../../../tests/unit/test_tiingo_bounded_fetch.py) preserve PR92.
-- [Aware bar cutoff](../../../packages/alpha-data/src/alpha_data/pit.py),
-  [request budget](../../../packages/alpha-data/src/alpha_data/crypto/providers/_wire.py),
-  [Binance transport](../../../packages/alpha-data/src/alpha_data/crypto/providers/binance.py),
-  [CLI propagation](../../../apps/alpha-cli/src/alpha_cli/crypto_data_cmds.py).
-- [Budget tests](../../../tests/unit/test_crypto_request_budget.py),
-  [UTC/DST tests](../../../tests/unit/test_pit_tz.py) and
-  [cross-boundary integration tests](../../../tests/integration/test_w05_research_integration.py).
+- [Tiingo redaction](../../../../../packages/alpha-data/src/alpha_data/adapters/tiingo_adapter.py) and
+  [public regression](../../../../../tests/unit/test_tiingo_bounded_fetch.py) preserve PR92.
+- [Aware bar cutoff](../../../../../packages/alpha-data/src/alpha_data/pit.py),
+  [request budget](../../../../../packages/alpha-data/src/alpha_data/crypto/providers/_wire.py),
+  [Binance transport](../../../../../packages/alpha-data/src/alpha_data/crypto/providers/binance.py),
+  [CLI propagation](../../../../../apps/alpha-cli/src/alpha_cli/crypto_data_cmds.py).
+- [Budget tests](../../../../../tests/unit/test_crypto_request_budget.py),
+  [UTC/DST tests](../../../../../tests/unit/test_pit_tz.py) and
+  [cross-boundary integration tests](../../../../../tests/integration/test_w05_research_integration.py).
 
 ## Evidence and limits
 

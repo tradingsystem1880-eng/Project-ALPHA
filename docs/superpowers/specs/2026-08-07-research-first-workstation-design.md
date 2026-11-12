@@ -9,7 +9,7 @@ Extends the Research Scientist program
 mechanics, the D0 fixture, and the schema-v2 research control plane.
 **Authority:** `CLAUDE.md`, ADR-0011, ADR-0014, ADR-0015, ADR-0018, ADR-0019, ADR-0020, and the
 accepted ADR-0021 through ADR-0028.
-**Phase plans:** `docs/superpowers/plans/2026-08-07-research-first-R1-command-center.md` … `R6`.
+**Phase plans:** `docs/superpowers/plans/archive/2026-08/2026-08-07-research-first-R1-command-center.md` … `R6`.
 
 ## 0. Purpose and non-negotiable separation
 

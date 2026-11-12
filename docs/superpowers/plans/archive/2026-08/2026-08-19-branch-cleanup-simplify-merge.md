@@ -32,7 +32,7 @@
 ### Task 1: Save the plan and record the baseline oracle
 
 **Files:**
-- Create: `docs/superpowers/plans/2026-08-19-branch-cleanup-simplify-merge.md` (copy of this file)
+- Create: `docs/superpowers/plans/archive/2026-08/2026-08-19-branch-cleanup-simplify-merge.md` (copy of this file)
 - Create (scratch, not committed): `$SCRATCH/baseline.json`, `$SCRATCH/baseline-doctor.json`, `$SCRATCH/baseline-commands.json`
 
 **Interfaces:**
@@ -41,7 +41,7 @@
 - [ ] **Step 1: Copy the plan into the repo**
 
 ```bash
-cd /Users/hunternovotny/Desktop/Project-ALPHA/.claude/worktrees/claude-quantitative-finance-improvements-fa7386 && cp /Users/hunternovotny/.claude/plans/i-have-found-that-shimmying-lynx.md docs/superpowers/plans/2026-08-19-branch-cleanup-simplify-merge.md && git add docs/superpowers/plans/2026-08-19-branch-cleanup-simplify-merge.md && git commit -m "docs(plans): branch cleanup, simplification, verification and merge plan"
+cd /Users/hunternovotny/Desktop/Project-ALPHA/.claude/worktrees/claude-quantitative-finance-improvements-fa7386 && cp /Users/hunternovotny/.claude/plans/i-have-found-that-shimmying-lynx.md docs/superpowers/plans/archive/2026-08/2026-08-19-branch-cleanup-simplify-merge.md && git add docs/superpowers/plans/archive/2026-08/2026-08-19-branch-cleanup-simplify-merge.md && git commit -m "docs(plans): branch cleanup, simplification, verification and merge plan"
 ```
 Expected: commit succeeds without a gate stamp (docs-only waiver in `claude_hooks.docs_only`).
 
@@ -708,7 +708,7 @@ Agents (each gets the diff path and CLAUDE.md's invariants; if the `engineering:
 - `README.md:434` "…or any production empirical D1/D2 runner" → delete (built: `research_d1.py`, `research_d2.py`, ADR-0025/0026)
 - `docs/BUILD-STATUS.md:3-6` "Relocated VERBATIM … Zero content changes; the governing current-status paragraph is duplicated in CLAUDE.md" → `Relocated from CLAUDE.md on 2026-08-07; CLAUDE.md keeps only the governing current-status paragraph, which is maintained there and may be newer than the copy below.`
 - `CLAUDE.md:134` "The dated implementation narratives below are retained…" → "…are retained in `docs/BUILD-STATUS.md` as historical delivery records"
-- `CLAUDE.md:119` "(2026-08-13)" → "(2026-08-19)" and append one sentence: `The harness (ADR-0034) and the Codex provider/crypto program (ADR-0030..0033) merged on 2026-08-19; the branch cleanup plan is docs/superpowers/plans/2026-08-19-branch-cleanup-simplify-merge.md.`
+- `CLAUDE.md:119` "(2026-08-13)" → "(2026-08-19)" and append one sentence: `The harness (ADR-0034) and the Codex provider/crypto program (ADR-0030..0033) merged on 2026-08-19; the branch cleanup plan is docs/superpowers/plans/archive/2026-08/2026-08-19-branch-cleanup-simplify-merge.md.`
 - `CLAUDE.md:159` protected-control-plane list → the full list from `gate._PROTECTED_EXACT`/`_PROTECTED_PREFIXES` (Global Constraints above, plus `scripts/harness_quant.py`, `scripts/harness_awareness.py`)
 - `docs/operations/claude-code-harness.md:36` "`--cov=scripts`" → delete that clause (no such step exists); `:132-133` "bound to the exact current tree hash AND the risk-scope diff hash" → "bound to the risk-scope diff hash (`reviewed_diff_hash`)"; `:279-282` doctor claims → remove "orphan tokens" and "executable"; add `scripts/harness_quant.py`/`harness_awareness.py` to the component table (if not done in Task 6)
 - `docs/operations/codex-second-model-runbook.md:22` "`scripts/gate.py:902`" → "`scripts/gate.py` (`codex_probe`)"

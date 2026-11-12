@@ -402,7 +402,7 @@ Implementation is isolated in `feat/research-teammate` on the delivered `73fb2a9
 
 ## Synthetic demo implementation — 2026-10-02
 
-[Closed investigation demo](2026-10-02-closed-investigation-demo.md) implements a restricted
+[Closed investigation demo](archive/2026-10/2026-10-02-closed-investigation-demo.md) implements a restricted
 four-action development path after the advisory slice. It uses designed synthetic panels, not
 real-data exports or engine backtests. The negative control is specifically a frozen-indicator
 null. Worker enforcement and tools-disabled Codex transport have distinct evidence; no broad
@@ -412,7 +412,7 @@ agent isolation, predictive confirmation, model-team uplift or program completio
 ## Efficiency comparison — 2026-10-02
 
 The closed demo passed review and the full gate in `d5f3cd4`. The next isolated slice is
-[the frozen efficiency comparison](2026-10-02-investigation-efficiency.md): legacy adaptive,
+[the frozen efficiency comparison](archive/2026-10/2026-10-02-investigation-efficiency.md): legacy adaptive,
 prechecked adaptive, and fixed-evidence advisory synthesis on the same three designed cases.
 It measures orchestration cost without changing models, actions or isolation. Automatic checks
 are controller behavior, not independent model initiative. Real-data reconciliation, richer
@@ -422,7 +422,7 @@ migration follows merely from completing this comparison.
 
 ## Judgment evidence and next handoff — 2026-10-02
 
-After the efficiency comparison (`77d6e94`), the [judgment slice](2026-10-02-research-judgment-cases.md)
+After the efficiency comparison (`77d6e94`), the [judgment slice](archive/2026-10/2026-10-02-research-judgment-cases.md)
 adds six designed cases covering misleading context, benchmark divergence, hindsight labels,
 missing evidence and source failure. Original and recovery cohorts remain separate; the
 [report](../../../tools/alpha-eval/results/research-judgment-20261002/report.md) records limitations.

@@ -1,5 +1,5 @@
 // The ALPHA technical chart language: StockCharts Classic / Default colours measured from
-// reference pixels (docs/superpowers/plans/2026-10-07-technical-chart-language.md). One source for
+// reference pixels (docs/superpowers/plans/archive/2026-10/2026-10-07-technical-chart-language.md). One source for
 // the Bokeh canvas and, through cssVars(), for the DOM header and legends drawn over it.
 
 export type ChartStyleName = 'classic' | 'default'

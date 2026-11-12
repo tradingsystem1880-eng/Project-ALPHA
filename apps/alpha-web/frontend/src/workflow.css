@@ -161,7 +161,7 @@
 .scientific-cursor-data .cursor-values { display: block; padding: 5px; font-family: 'JetBrains Mono Variable', monospace; overflow-wrap: anywhere; }
 .scientific-cursor-data p { padding: 0 5px 5px; margin: 0; }
 
-/* Technical chart (StockCharts Classic/Default grammar, docs/superpowers/plans/2026-10-07-technical-chart-language.md).
+/* Technical chart (StockCharts Classic/Default grammar, docs/superpowers/plans/archive/2026-10/2026-10-07-technical-chart-language.md).
    Colours come from technicalTokens via --tc-* on the root; the plot stack is BokehJS. */
 .technical-chart { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--tc-canvas); color: var(--tc-text); font: var(--tc-font); }
 .technical-header { position: relative; flex: none; background: var(--tc-header); display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; padding: 3px 6px 2px; border-bottom: 1px solid var(--tc-border); font: var(--tc-font); line-height: 14px; font-variant-numeric: tabular-nums; }

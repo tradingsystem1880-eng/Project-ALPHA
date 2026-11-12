@@ -120,7 +120,7 @@ def forward_outcomes(closes: object, *, horizon: int) -> np.ndarray:
     """``closes[t+h]/closes[t] − 1`` where both closes exist and are finite; NaN otherwise.
 
     Arithmetic outcome construction, not an inferential estimator. Primary local
-    DESIGN: docs/superpowers/plans/2026-09-11-edge-first-phase-c-screening-lane.md,
+    DESIGN: docs/superpowers/plans/archive/2026-09/2026-09-11-edge-first-phase-c-screening-lane.md,
     C1 forward_outcomes (including endpoint admission).
 
     Row ``t`` is defined only when ``t + h <= T − 1``: a horizon that runs off the panel is NaN,
@@ -158,7 +158,7 @@ def ic_decay(
 
     Each horizon uses Spearman (1904), DOI 10.2307/1412159, as in cross_sectional_ic.
     Horizon and endpoint policies are the local Phase-C C1 DESIGN contract in
-    docs/superpowers/plans/2026-09-11-edge-first-phase-c-screening-lane.md.
+    docs/superpowers/plans/archive/2026-09/2026-09-11-edge-first-phase-c-screening-lane.md.
     No fitted decay model is assumed.
     """
     signals, close_panel = _panels(signal, closes)
@@ -181,7 +181,7 @@ def ic_half_life(decay: Mapping[int, float | None]) -> float | None:
     the IC never halves inside the measured horizons.
 
     Local DESIGN summary of Spearman (1904) rank IC (DOI 10.2307/1412159), specified
-    in docs/superpowers/plans/2026-09-11-edge-first-phase-c-screening-lane.md, C1.
+    in docs/superpowers/plans/archive/2026-09/2026-09-11-edge-first-phase-c-screening-lane.md, C1.
     Linear first-crossing interpolation is our policy, not that paper's estimator
     or an exponential-decay fit.
     """
@@ -239,7 +239,7 @@ def quantile_returns(
     Monotonicity uses Spearman (1904), DOI 10.2307/1412159, not an MR test.
     Equal date weighting and canonical tie order are local DESIGN: each extreme
     holds n//q names; inner buckets share the remainder (unbucketed only for q=2).
-    See docs/superpowers/plans/2026-09-17-cancellation-and-research-walkthrough.md.
+    See docs/superpowers/plans/archive/2026-09/2026-09-17-cancellation-and-research-walkthrough.md.
     """
     signals, outcomes = _panels(signal, outcome)
     min_names = _min_names(min_names)
@@ -272,7 +272,8 @@ def bucket_turnover(signal: object, *, quantiles: int = 5, min_names: int = 5) -
     Only names present on both dates count; the denominator is the number of top plus bottom
     slots on the earlier date.
 
-    Primary local DESIGN: docs/superpowers/plans/2026-09-11-edge-first-phase-c-screening-lane.md,
+    Primary local DESIGN:
+    docs/superpowers/plans/archive/2026-09/2026-09-11-edge-first-phase-c-screening-lane.md,
     C1 bucket_turnover. Both dates are ranked on their common-name subset. This
     replacement-count proxy excludes listing/delisting and weight drift; it is
     not total portfolio turnover.
@@ -312,7 +313,7 @@ def cost_adjusted_spread(spread: float, turnover: float, *, cost_bps: float) -> 
     ``4·turnover·cost``.
 
     Primary local accounting DESIGN: Phase-C C1 cost convention in
-    docs/superpowers/plans/2026-09-11-edge-first-phase-c-screening-lane.md.
+    docs/superpowers/plans/archive/2026-09/2026-09-11-edge-first-phase-c-screening-lane.md.
     Equal long/short notional follows the zero-investment discussion in Sharpe
     (1994), https://web.stanford.edu/~wfsharpe/art/sr/SR.htm. The factor four is
     two legs times exit+entry, not an empirical cost model. Price drift and

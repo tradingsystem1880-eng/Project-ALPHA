@@ -78,7 +78,7 @@ DAG: evaluator only orchestrates isolated worker subprocesses; no new platform i
 
 ## Results and acceptance handoff
 
-[Retained report](../../../tools/alpha-eval/results/investigation-efficiency-20261002/report.md)
+[Retained report](../../../../../tools/alpha-eval/results/investigation-efficiency-20261002/report.md)
 records all nine trials with exact sources and evidence. Prechecked used 7 calls / 74126 input
 tokens against legacy 12 / 127832; fixed used 3 / 32425. Independent evidence review found no
 critical regression in the observed outputs. The prechecked 15% resource target was met, but

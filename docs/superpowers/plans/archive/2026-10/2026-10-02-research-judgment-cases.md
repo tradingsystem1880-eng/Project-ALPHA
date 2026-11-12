@@ -98,4 +98,4 @@ that path before the same eight bounded trials. At most 20 additional model call
 by this recovery protocol; B spent none. These are separate cohorts, not replacements or an
 improved original success rate. No model-quality result is selected out or retuned.
 
-Recovery C completed eight finals with 16 calls. Independent evidence review found no critical factual or causal failure in the twelve available finals across A and C. See the [retained report](../../../tools/alpha-eval/results/research-judgment-20261002/report.md). Original failures remain unchanged; engineering acceptance requires the separate exact-tree receipts.
+Recovery C completed eight finals with 16 calls. Independent evidence review found no critical factual or causal failure in the twelve available finals across A and C. See the [retained report](../../../../../tools/alpha-eval/results/research-judgment-20261002/report.md). Original failures remain unchanged; engineering acceptance requires the separate exact-tree receipts.

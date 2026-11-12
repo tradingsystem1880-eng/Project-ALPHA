@@ -52,7 +52,7 @@ The historical fixture scope above remains fixed. Future admitted loop work shou
 upstream RD-Agent interfaces and its native continuation machinery rather than clone scheduler
 internals. The existing precise destination remains a real LoopBase/LoopMeta extension, not
 stock factor/model RDLoop. Native-first preference does not override that restriction. Follow the
-[native authority amendment](2026-10-26-native-rule-authority.md#native-upstream-first-follow-on--2026-11-06)
+[native authority amendment](../../2026-10-26-native-rule-authority.md#native-upstream-first-follow-on--2026-11-06)
 for the pre-effect authority, trial accounting, recovery and migration obligations; all new
 acceptance proposals remain NOT RUN. CLI installation alone does not configure a model, spending
 or a research loop.

@@ -50,7 +50,7 @@ No publication or merge is claimed by that historical checkpoint.
 
 The owner approved this bounded change, necessary fixes and its own absence-only
 private-suite exception through normal guarded delivery. The durable scope is in the
-[reviewer instructions](../../../.claude/agents/independent-reviewer.md#backend-ci-setup-through-delivery-absence-exception--2026-11-02).
+[reviewer instructions](../../../../../.claude/agents/independent-reviewer.md#backend-ci-setup-through-delivery-absence-exception--2026-11-02).
 Private coverage remains UNVERIFIED. No earlier exception is reused. The parent
 released the sequencing hold after PR112 merged at `30246d08`; the original patch,
 six-file hashes and content identity were verified before reconciliation. The only

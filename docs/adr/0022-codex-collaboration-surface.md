@@ -49,7 +49,7 @@ but must never be the in-product research or strategy AI.
 ## Implementation anchors
 
 - Spec: `docs/superpowers/specs/2026-08-07-research-first-workstation-design.md` §3, §14
-- Phase plan: `docs/superpowers/plans/2026-08-07-research-first-R2-codex-desk.md`
+- Phase plan: `docs/superpowers/plans/archive/2026-08/2026-08-07-research-first-R2-codex-desk.md`
 - Existing brief pattern: `apps/alpha-cli/src/alpha_cli/project_cmds.py` (`agent-brief`),
   `apps/alpha-cli/src/alpha_cli/control_store.py` (`get_agent_brief_context`)
 - Codex registration: `.codex/config.toml`; skills: `.agents/skills/`

@@ -1,7 +1,7 @@
 # Source-bound queryable context filesystem
 
 **Delivery state:** Completed — bounded scope delivered through [PR99](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/99).
-The [verified main receipt](../../BUILD-STATUS.md#2026-10-30--verified-combined-delivery-on-main) records qualification and seven passing post-merge jobs. Private coverage remains UNVERIFIED; broader product and Mac scope remain open.
+The [verified main receipt](../../../../BUILD-STATUS.md#2026-10-30--verified-combined-delivery-on-main) records qualification and seven passing post-merge jobs. Private coverage remains UNVERIFIED; broader product and Mac scope remain open.
 
 ```json
 {
@@ -34,7 +34,7 @@ Primary source: Jake Van Clief and David McDermott,
 21 pages. Companion [pinned source](https://github.com/RinDig/Interpretable-Context-Methodology/tree/02ba5d85c7871b75c7c702a2d8da6524723d53d4).
 Read the PDF through its discussion, validity limits and future directions, plus the pinned
 README and conventions. Existing ALPHA research map is in the
-[foundation stage contract](2026-10-26-native-rule-authority.md#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation).
+[foundation stage contract](../../2026-10-26-native-rule-authority.md#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation).
 
 | ICM role | Existing ALPHA home | This increment |
 | --- | --- | --- |
@@ -73,7 +73,7 @@ private coverage and any required owner resolution remain separate acceptance ob
 
 The owner approved the bounded absence-only exception at 05:41 UTC for the four named
 workstreams through delivery, including necessary integration corrections. The single supported
-[policy record](../../../.claude/agents/independent-reviewer.md#four-workstream-through-delivery-absence-exception--2026-10-30)
+[policy record](../../../../../.claude/agents/independent-reviewer.md#four-workstream-through-delivery-absence-exception--2026-10-30)
 preserves its scope and unchanged requirements; authorization provenance stays in private task
 evidence. Private coverage remains UNVERIFIED. Earlier absence-only BLOCKs remain correct
 history. Actual public failures still block, and final exact-tree checks and independent review

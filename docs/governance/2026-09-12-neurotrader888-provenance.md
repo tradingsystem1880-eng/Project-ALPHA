@@ -3,7 +3,7 @@
 - **Reviewed:** 2026-09-12
 - **Scope:** every public repository of GitHub user `neurotrader888` and how each technique is
   carried into Project ALPHA under the port plan
-  `docs/superpowers/plans/2026-09-12-neurotrader888-port.md`
+  `docs/superpowers/plans/archive/2026-09/2026-09-12-neurotrader888-port.md`
 - **Status:** engineering inventory; not legal advice
 
 ## Licence and permission

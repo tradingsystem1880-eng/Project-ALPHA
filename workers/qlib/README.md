@@ -121,7 +121,7 @@ The fingerprint covers the supported first-party worker package, schemas, projec
 lock, including rank-ensemble code. Source reads are bounded and mutation-checked; this
 does not qualify installed binaries or the native runtime. Readiness remains `BLOCKED`,
 with execution/reuse/fitted-state verification false and observed work unknown. The
-[bounded plan](../../docs/superpowers/plans/2026-11-01-w09-planning-contracts.md)
+[bounded plan](../../docs/superpowers/plans/archive/2026-11/2026-11-01-w09-planning-contracts.md)
 records limits and qualification requirements. This does not extend the separate W11
 ridge/DoubleEnsemble reference protocol or change existing v1/v2 outputs/computations.
 
@@ -158,7 +158,7 @@ verification, durable accounting, execution, reuse and promotion false, with no 
 resource units or independent-trial count. ControlStore remains the durable authority;
 there is no native registration, resource-policy change, retry/refund/reuse authorization
 or research dispatch here. V3/W11 computation and reference graph classification stay
-unchanged. See the [bounded observation plan](../../docs/superpowers/plans/2026-11-02-w09-component-observations.md).
+unchanged. See the [bounded observation plan](../../docs/superpowers/plans/archive/2026-11/2026-11-02-w09-component-observations.md).
 
 ## Durable diagnostic associations
 
@@ -184,7 +184,7 @@ Qlib admission or proof that the reservation covers these fits. It creates no at
 changes no charge/refund/retry/reuse policy, and enables no native dispatch. The
 current slice has isolated synthetic engineering tests. Its bounded delivery has an
 absence-only private-suite exception: private coverage stays UNVERIFIED, while all
-public checks, the 93% floor and independent final-tree review remain mandatory. See the [durable diagnostic plan](../../docs/superpowers/plans/2026-11-02-w09-durable-observations.md).
+public checks, the 93% floor and independent final-tree review remain mandatory. See the [durable diagnostic plan](../../docs/superpowers/plans/archive/2026-11/2026-11-02-w09-durable-observations.md).
 
 ## Gate
 

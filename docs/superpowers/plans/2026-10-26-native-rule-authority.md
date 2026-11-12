@@ -2,11 +2,11 @@
 
 **Delivery state:** Completed — engineering delivered by PRs #95 and #96 (2026-10-30)
 
-**Current engineering delivery (2026-10-30):** The cloud foundation repairs were delivered by [PR95](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/95), and the recovery/cancellation reconciliation by [PR96](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/96). See the [delivery reconciliation](#delivery-reconciliation-2026-10-30) for exact heads, merges and CI. The dated unpublished/BLOCK entries below retain their original checkpoint status. The separate [cleanup/refactor successor](2026-10-30-project-lineage-projection-refactor.md) has its own qualification; neither delivery establishes empirical or Mac acceptance.
+**Current engineering delivery (2026-10-30):** The cloud foundation repairs were delivered by [PR95](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/95), and the recovery/cancellation reconciliation by [PR96](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/96). See the [delivery reconciliation](#delivery-reconciliation-2026-10-30) for exact heads, merges and CI. The dated unpublished/BLOCK entries below retain their original checkpoint status. The separate [cleanup/refactor successor](archive/2026-10/2026-10-30-project-lineage-projection-refactor.md) has its own qualification; neither delivery establishes empirical or Mac acceptance.
 
 Historical assembly baseline (2026-10-26): available synthetic workflow assembled onto bc5; scoped public regressions and cheap checks passed. Exact source identity, independent final-review disposition and remaining acceptance blockers are in the assembly packet below. Engineering only, no empirical approval.
 
-**Historical active work (2026-10-27):** the unpublished Linux cloud foundation successor to the published checkpoint below: navigation/handoff routing and gate/review freshness repair. Stage contract, evidence identities and ordered backlog: [Foundation stage contract and handoff](#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation). Status and blockers: [build record](../../BUILD-STATUS.md#2026-10-27-linux-cloud-qualification-checkpoint-published-not-accepted); review-scope repair: [gate preflight plan](2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27). The Mac successor below is preserved and deferred: its open status and requirements stand, but it is not the current stage or active owner, and its scope is not abandoned.
+**Historical active work (2026-10-27):** the unpublished Linux cloud foundation successor to the published checkpoint below: navigation/handoff routing and gate/review freshness repair. Stage contract, evidence identities and ordered backlog: [Foundation stage contract and handoff](#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation). Status and blockers: [build record](../../BUILD-STATUS.md#2026-10-27-linux-cloud-qualification-checkpoint-published-not-accepted); review-scope repair: [gate preflight plan](archive/2026-10/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27). The Mac successor below is preserved and deferred: its open status and requirements stand, but it is not the current stage or active owner, and its scope is not abandoned.
 
 **Historical Packet 1 relation (2026-10-27, operational clarification):** the unchanged [Packet 1](../../context/feature-readiness-checklist-2026-10-27.md#packet-1-close-the-successor-exact-tree-gate) describes an interrupted de074 successor and its 48-of-49 result. That description is preserved historical prerequisite evidence: it is not the current c95 result and marks no feature complete. The published c95 checkpoint has public Linux gate and review evidence with private holdout coverage UNVERIFIED; the current foundation successor remains unpublished and unqualified. CHK27-PV01 resolves only through the private map and is not independently repository-accessible evidence. No equivalence between Packet 1 and this successor is asserted.
 
@@ -544,7 +544,7 @@ Each fact has one home:
   - this plan: front "Current active work", "Cloud foundation successor: native and lease runtime
     findings, 2026-10-28", and this section;
   - [build record](../../BUILD-STATUS.md) "2026-10-28 Native costed claim and lease fixture repairs";
-  - [gate preflight plan](2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27);
+  - [gate preflight plan](archive/2026-10/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27);
   - [harness](../../operations/claude-code-harness.md);
   - README "Linux cloud development setup" and `workers/rdagent/README.md` "Reproduce";
   - `scripts/gate.py`, `scripts/gate_components.py`, `scripts/git_guard.py`, `scripts/cloud_setup.sh`.
@@ -865,7 +865,7 @@ remain dated history. Private holdout coverage remains UNVERIFIED under those de
 scopes; no exception or stamp transfers to the cleanup successor. Scientific admission, provider
 qualification and the deferred Mac successor retain their existing requirements.
 
-The [cleanup/refactor successor](2026-10-30-project-lineage-projection-refactor.md) removes the
+The [cleanup/refactor successor](archive/2026-10/2026-10-30-project-lineage-projection-refactor.md) removes the
 item-4 `changed_paths` wrapper and records cloud-visible ref/worktree dispositions through the
 [existing hygiene plan](2026-10-08-repository-hygiene.md#cloud-visible-ledger-reconciliation-2026-10-30).
 Physical Mac reconciliation and the wider acceptance obligations above remain separately open.

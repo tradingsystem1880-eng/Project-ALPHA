@@ -1,7 +1,7 @@
 # Repository cleanup and bounded refactors
 
 **Delivery state:** Completed — bounded scope delivered through [PR99](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/99).
-The [verified main receipt](../../BUILD-STATUS.md#2026-10-30--verified-combined-delivery-on-main) records qualification and seven passing post-merge jobs. Private coverage remains UNVERIFIED; broader product and Mac scope remain open.
+The [verified main receipt](../../../../BUILD-STATUS.md#2026-10-30--verified-combined-delivery-on-main) records qualification and seven passing post-merge jobs. Private coverage remains UNVERIFIED; broader product and Mac scope remain open.
 
 The repository-wide cleanup retains the bounded maintainability plan's behavior-preservation
 constraint. It consolidates nested-history projection policy and removes the planned test-only
@@ -146,8 +146,8 @@ manifests are retained privately under `.alpha/state/project-cleanup-20261030/`.
 was BLOCK solely on the absent private suite. These receipts remain historical evidence and do
 not certify the expanded successor.
 
-The remaining implementation follows the existing [foundation backlog](2026-10-26-native-rule-authority.md#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation)
-and [hygiene plan](2026-10-08-repository-hygiene.md#cloud-visible-ledger-reconciliation-2026-10-30).
+The remaining implementation follows the existing [foundation backlog](../../2026-10-26-native-rule-authority.md#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation)
+and [hygiene plan](../../2026-10-08-repository-hygiene.md#cloud-visible-ledger-reconciliation-2026-10-30).
 A task-scoped absence-only decision through cleanup/refactor delivery, including necessary fixes,
 has been requested and remains pending. It is not an exact-tree approval or permission to publish.
 Keep private coverage UNVERIFIED and every real failure, gate and review requirement intact.

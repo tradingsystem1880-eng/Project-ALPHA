@@ -15,8 +15,8 @@ Baseline: `integration/project-alpha-pr81-88-qualified-20261024`, exact commit
 `codex/qlib-tabular-wave1-20261026`. The primary checkout is dirty and read-only for this task.
 
 The user-approved wave comprises LightGBM, Linear, CatBoost, XGBoost and DoubleEnsemble.
-The local source authority is [ADR-0016](../../adr/0016-isolated-qlib-worker.md), the
-[existing worker spec](../specs/2026-07-19-workstation-v3-qlib-worker-design.md), and the
+The local source authority is [ADR-0016](../../../../adr/0016-isolated-qlib-worker.md), the
+[existing worker spec](../../../specs/2026-07-19-workstation-v3-qlib-worker-design.md), and the
 explicit task instruction. Initially no expanded tabular plan or downloaded reviewed patch
 was found in the tracked context/planning routes. The parent subsequently supplied verified
 planning evidence from Library `libfile_52e745af42b48191b032a5eeea0a23d7`, version 1,
@@ -148,8 +148,8 @@ are bounded and recorded. Comparisons are predictive diagnostics, not model sele
 authorization or evidence of net profitability; economics continue through canonical ALPHA
 replay with explicit costs. Discovery-period approval remains pending.
 
-The existing [context index](../../context/README.md) and
-[Software Team map](../../context/software-team.md) remain the handoff routes. No new
+The existing [context index](../../../../context/README.md) and
+[Software Team map](../../../../context/software-team.md) remain the handoff routes. No new
 documentation hierarchy is introduced. Source handoff downloads that have not materialized
 are not integrated source. Planned, implemented, tested, integrated and accepted remain
 separate states; final receipts and remaining work will be appended here.
@@ -169,7 +169,7 @@ IC, turnover, concentration and net canonical replay retain distinct meanings.
 
 All eight entries below are **listed** and have a selectable adapter in this local candidate.
 None is integrated or accepted by this record. All share worker lock
-[`workers/qlib/uv.lock`](../../../workers/qlib/uv.lock), causal Alpha158-style OHLCV inputs
+[`workers/qlib/uv.lock`](../../../../../workers/qlib/uv.lock), causal Alpha158-style OHLCV inputs
 (20–512 aligned symbols, at least 756 sessions), and the exact target
 `open(t+2) / open(t+1) - 1`, cross-sectionally normalized for fitting. Prediction origin is
 close t (`session_ts + 23h`), entry target is open t+1 and the label finishes at open t+2.
@@ -436,7 +436,7 @@ Astra closed **AR-004** after an actual early-stop regression showed all eight f
 
 The ML list now distinguishes prepared inputs, predictions awaiting canonical replay, recorded replay and recorded counterfactual refit. Metadata no longer becomes a “VALIDATED” claim. The27-case browser replay includes those states, dependency failures, degenerate/tied diagnostics and all three viewport accessibility checks; existing macOS snapshots pass. Linux ML screenshots remain unqualified.
 
-Exact final tree, changed paths, source patch, independent review and canonical-gate result remain in the sealed sibling worktree. The final verification summary (`../qlib-tabular-wave1-20261026/.alpha/state/qlib-tabular-wave1/optional-backends/final-verification-summary.json`) records that wave's outcome; it does not certify successor edits. The first qualified checkpoint (`../qlib-tabular-wave1-20261026/.alpha/state/qlib-tabular-wave1/checkpoints/73daaeae84dc2a4a3fd5e8127dd1a3ad25e20582/verification-summary.json`) remains independently preserved. No authentic private suite has been established; no hidden-source access or waiver is claimed. Current successor work is scoped by the [W11 refit packet](2026-10-26-qlib-w11-refit.md).
+Exact final tree, changed paths, source patch, independent review and canonical-gate result remain in the sealed sibling worktree. The final verification summary (`../qlib-tabular-wave1-20261026/.alpha/state/qlib-tabular-wave1/optional-backends/final-verification-summary.json`) records that wave's outcome; it does not certify successor edits. The first qualified checkpoint (`../qlib-tabular-wave1-20261026/.alpha/state/qlib-tabular-wave1/checkpoints/73daaeae84dc2a4a3fd5e8127dd1a3ad25e20582/verification-summary.json`) remains independently preserved. No authentic private suite has been established; no hidden-source access or waiver is claimed. Current successor work is scoped by the [W11 refit packet](../../2026-10-26-qlib-w11-refit.md).
 
 Current states: listed/adapter-implemented/local-runtime-executable and bounded synthetic checks complete for all eight recipes. Delivery integration, Linux/Windows native execution and screenshots, broader numerical calibration, authentic private coverage, real-data/discovery approval, empirical economics, counterfactual refitting and promotion remain pending. Persistent fitted-model reuse remains unsupported. No package decision is needed for the verified local pins; unsupported OS/ABI/source-build or accepted-stack upgrades require a separate decision.
 
@@ -477,7 +477,7 @@ but only transitively declared; line 431 above cites receipts outside the reposi
 Retain this wave's historical recipes, qualification states and declared wider model scope.
 For successor work, prefer pinned native Qlib workflows and official model recipes, keeping
 ALPHA isolation, data eligibility, provenance and validation contracts. The
-[W11 native-workflow amendment](2026-10-26-qlib-w11-refit.md#native-workflow-preference--2026-11-06)
+[W11 native-workflow amendment](../../2026-10-26-qlib-w11-refit.md#native-workflow-preference--2026-11-06)
 identifies demonstrated feature duplication and pending parity/migration evidence; name equality
 or a synthetic demonstration does not accept a replacement. No recipe is removed or marked
 complete by this planning change. New acceptance proposals are NOT RUN.

@@ -111,7 +111,7 @@ intervals without an observation (series' own calendar), dense right value axes,
 axis tags, no toolbar, x-only pan/zoom with visible-window autoscale. Study values come only from
 `alpha chart overlays`; a study the CLI refuses as too long for the window is dropped by name, never
 estimated. Classic is the default `chartStyle`; recorded series and histogram/QQ plots share the chrome.
-See the [plan](../../docs/superpowers/plans/2026-10-07-technical-chart-language.md).
+See the [plan](../../docs/superpowers/plans/archive/2026-10/2026-10-07-technical-chart-language.md).
 
 Owner correction 2026-10-03: scientific rendering is default; keep the approved classic top bar. Bokeh views own standalone documents and must release both views and document/model registries on cancellation, failure and disposal. Price annotations must retain unit isolation. The visible project selector permits no-project market/archive browsing; project inventory errors stay explicit. Native interval discovery offers exact sources without automatic venue/market substitution. See [correction report](../../docs/records/2026-10-03-scientific-research-workstation.md).
 
@@ -121,7 +121,7 @@ The owner authorized the narrow managed advisory investigation controls inside R
 `research investigations` remains the CLI-owned public seam; typed web relays never import
 engines. Opaque IDs, immutable evidence, durable budgets and explicit comparison preview apply.
 This exception does not reopen research admission, D2, paper, broker or order authority.
-See `docs/superpowers/plans/2026-10-04-workstation-investigations.md`.
+See `docs/superpowers/plans/archive/2026-10/2026-10-04-workstation-investigations.md`.
 
 Volume painting uses exact native-index viewport intersections and complementary previous-close
 up/down views with scalar colors; retain the full x/volume source. Include partially intersecting
