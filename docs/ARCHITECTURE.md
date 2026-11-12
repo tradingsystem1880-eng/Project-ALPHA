@@ -41,6 +41,7 @@ graph TD
     cli --> research
     cli --> study
     cli --> fc
+    cli --> patterns
     cli --> core
     bt --> data
     bt --> core
@@ -64,12 +65,16 @@ graph TD
 alpha_mcp   alpha_web          surfaces: subprocess `alpha`; public metadata/read seams
      \       /
       alpha_cli               sole composer; may import every package below
-      /   |   \
-     /    |    +------------ alpha_backtest ---- alpha_data ----+
-alpha_strategies  alpha_validation  alpha_research  alpha_study  alpha_forecast
-    \             |                 |               |               |
-     +------------+-----------------+---------------+---------------+-------------+ -> alpha_core
-                                                               imports nothing internal
+          |
+          +--> alpha_backtest ----> alpha_data
+          +--> alpha_strategies --> alpha_patterns
+          +--> alpha_study -------> alpha_research, alpha_data, alpha_patterns
+          +--> alpha_validation
+          +--> alpha_research
+          +--> alpha_forecast
+          +--> alpha_data, alpha_patterns
+
+every package above --> alpha_core      (alpha_core imports nothing internal)
 ```
 </details>
 
@@ -102,6 +107,43 @@ remain bounded; Polars is allowed only for artifact verification/projection. Pro
 control-plane, engine/gauntlet/paper-node, Qlib, and Kronos work happens **out-of-process** through
 `alpha`. Composition, Nautilus execution, validation, and model stacks therefore never enter a
 surface process. See **[ADR-0002](adr/0002-cli-sole-composer-subprocess-surfaces.md)**.
+
+### Runtime data-directory layout
+
+Everything below lives under `AlphaSettings.data_dir` (`ALPHA_DATA_DIR`, default `data/`). The
+external public crypto bulk store is the separate `bulk_data_dir` setting. This table records the
+subfolders as the code creates them today; the `forecast`/`forecasts` and
+`research`/`research_executions` name pairs are an inconsistency recorded for a later migration,
+not something to rename by hand. Module paths are under `apps/alpha-cli/src/alpha_cli/` unless
+another package is named.
+
+| Subfolder | Owning module | Purpose |
+|---|---|---|
+| `store/` | `data_cmds` over `alpha_data` `ParquetStore` | Raw point-in-time Parquet bars, receipts, candidates, quarantine and provenance sidecars. |
+| `snapshots/` | `data_cmds` over `alpha_data.snapshot` | Immutable content-hashed data snapshots that runs and studies bind to. |
+| `runs/` | `_artifacts` (backtest/validate runs; listed in `run_store.RUN_DIRS`) | Immutable single-strategy run directories with manifest-pinned artifacts. |
+| `portfolio/` | `backtest_cmds` (`RUN_DIRS`) | Portfolio backtest run directories. |
+| `cross_sectional/` | `backtest_cmds` (`RUN_DIRS`) | Cross-sectional backtest run directories. |
+| `optim/` | `optim_cmds` (`RUN_DIRS`) | Parameter-sweep runs with multi-trial selection-bias statistics. |
+| `propfirm/` | `propfirm_cmds` (`RUN_DIRS`) | Prop-firm rule evaluation runs. |
+| `forecast/` | `forecast_cmds` (`RUN_DIRS`) | Kronos forecast-evaluation run directories. |
+| `forecasts/` | `_forecast_cache` | Content-keyed Kronos signal cache reused across runs (not a run directory). |
+| `figures/` | `figure_cache` (`FIGURE_ROOT`) | Rendered figure cache keyed by run, figure and format. |
+| `control/` | `control_store`, `_suite` | `workstation.sqlite3` control plane (projects, jobs, evidence, owner receipts) and `control/ml` worker exchanges. |
+| `research/` | `research_cmds` | Research-case objects, literature worker extractions and per-project research files. |
+| `research_executions/` | `research_execution` | Per-execution directories for governed research runs, keyed by execution digest. |
+| `diagnostics/` | `research_diagnostic_cmds` | Digest-keyed research diagnostic outputs. |
+| `scans/` | `scan_cmds` | Pattern/hypothesis scan outputs. |
+| `rules/` | `rules_cmds` | Rule definitions and rule-run records. |
+| `strategy-workspaces/` | `project_workspace` | Disposable hash-only per-project workspace projections. |
+| `crypto/` | `crypto_data_cmds`, `_crypto_panel` | Crypto manifests, asset masters, coverage profiles/batches, backfill ledgers and `storage-config.json`. |
+| `quantpad/` | `quantpad_data_cmds` | QuantPad manifests. |
+| `paper/` | `paper_store` | Operational paper-session journal (outside deterministic run directories). |
+| `operations/` | `daily_scheduler` | Daily scheduler cycle records (`operations/daily-cycles/<symbol>`). |
+| `web/` | `alpha_web._workspaces` | Workstation UI workspace layouts (`web/workspaces`); no research authority. |
+
+Native fixture/rule jobs also use per-job `payload-<job_id>` directories directly under the
+control-store data root (`native_supervisor`, `_native_fixture_store`, `_native_rule_completion`).
 
 ## 4. Data Flow
 
