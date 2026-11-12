@@ -2528,12 +2528,12 @@ dev = [
     { name = "httpx2", specifier = ">=0.1" },
     { name = "hypothesis", specifier = ">=6" },
     { name = "import-linter", specifier = ">=2.1" },
-    { name = "mypy", specifier = ">=1.11" },
+    { name = "mypy", specifier = "==2.1.0" },
     { name = "pandas-stubs", specifier = ">=2.0" },
-    { name = "pytest", specifier = ">=8" },
+    { name = "pytest", specifier = "==9.1.0" },
     { name = "pytest-cov", specifier = ">=6" },
     { name = "pytest-xdist", specifier = ">=3.6" },
-    { name = "ruff", specifier = ">=0.6" },
+    { name = "ruff", specifier = "==0.15.17" },
 ]
 
 [[package]]
