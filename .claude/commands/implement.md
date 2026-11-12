@@ -42,6 +42,7 @@ Per slice, in order:
 Own the task through QA, necessary fixes, independent review findings and documentation
 upkeep. Update the existing manual, plan and current-state records in the same candidate;
 use existing context maps and generated indexes rather than another module inventory.
+Keep the plan's `**Delivery state:**` line true; archive it when Completed (`.claude/rules/docs.md`).
 Do not hand implementation defects back to the user as planning questions.
 
 Before every actual commit, finish and stage a coherent candidate, then run
