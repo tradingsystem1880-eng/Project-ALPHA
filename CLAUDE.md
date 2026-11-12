@@ -3,7 +3,7 @@ Authority: `docs/governance/capability-authority-matrix.md`.
 
 Private research. Python 3.12/uv; no hosting/distribution.
 
-## Path-scoped rules
+## Rules
 
 `.agents/skills/`: always `karpathy-guidelines`; multi-file `incremental-implementation`;
 refactors `code-simplification`; merge `code-review-and-quality`; claims `verification-before-completion`.
@@ -15,7 +15,7 @@ Rules: `00-karpathy.md`, `alpha-core.md`, `alpha-data.md`, `alpha-strategies.md`
 `quant.md`, `tests.md`, `docs.md`.
 
 ## DAG
-Obey [DAG](docs/ARCHITECTURE.md#2-the-layered-dag)/[contracts](pyproject.toml); `uv run lint-imports`. Web/MCP actions/engine-backed projections subprocess CLI, never engine in-process. Study: projection-only, no persistence/approval authority. Isolate Qlib/literature workers.
+Obey [DAG](docs/ARCHITECTURE.md#2-the-layered-dag)/[contracts](pyproject.toml); `uv run lint-imports`. Web/MCP actions/engine-backed projections subprocess `alpha_cli`, never engine in-process. Study: projection-only, no persistence/approval authority. Isolate Qlib/literature workers.
 
 ## Invariants
 
@@ -26,8 +26,8 @@ Obey [DAG](docs/ARCHITECTURE.md#2-the-layered-dag)/[contracts](pyproject.toml); 
   at sanctioned vendor edges; type strictly. Tiingo transport: type-only.
 - Immutable, hash-bound runs/snapshots/receipts/admitted evidence; preserve readers/migrations.
   Deterministic seeds/execution fingerprints; D0/D1 seeds frozen, not settings-derived. Reverify reads/copy generations; retirement/retries preserve bytes.
-- Research before strategy: discovery-only D1 (CLI rules); owner-approved one-shot D2. Promotion:
-  verified evidence + owner decision required. Screening/Monte Carlo path risk proves no edge.
+- Research before strategy: discovery-only D1 (CLI rules); owner-approved one-shot D2. Promotion
+  needs verified evidence + owner decision. Screening/Monte Carlo path risk is not proof of edge.
 - Require explicit local owner confirmation (ADR-0038), paper opt-ins, provider/venue/unit boundaries,
   no-live-capital routing. UI/MCP output/account state/checks: no authority.
   Bounded owner-auth actions; infer no approvals.
