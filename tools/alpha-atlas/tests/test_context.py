@@ -88,6 +88,38 @@ def test_dated_records_are_history(context_repo: Path) -> None:
     assert [row.path for row in found] == sorted(list(files)[:3])
 
 
+def test_archived_plans_by_month_remain_tasks(context_repo: Path) -> None:
+    files = {
+        "docs/superpowers/plans/archive/2026-10/2026-10-26-done.md": "# Done\nArchived plan.\n",
+        "docs/superpowers/plans/archive/2026-06/2026-06-14-old.md": "# Old\nArchived plan.\n",
+        "docs/superpowers/plans/archive/README.md": "# Not a month\nArchived plan.\n",
+        "docs/superpowers/plans/archive/misc/x.md": "# Not a month\nArchived plan.\n",
+        "docs/superpowers/plans/archive/2026-10/deep/x.md": "# Too deep\nArchived plan.\n",
+    }
+    for rel, text in files.items():
+        (context_repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (context_repo / rel).write_text(text)
+    subprocess.run(["git", "-C", str(context_repo), "add", "."], check=True)
+    sources = read_sources(context_repo)
+    found = search_sections(sources, "archived plan", kind="task")
+    assert [row.path for row in found] == sorted(list(files)[:2])
+
+
+def test_roadmap_backlog_and_refactors_are_features(context_repo: Path) -> None:
+    files = {
+        "docs/roadmap/backlog/options-research.md": "# Options\nUnplanned roadmap item.\n",
+        "docs/roadmap/refactors/split-models.md": "# Split\nUnplanned roadmap item.\n",
+        "docs/roadmap/README.md": "# Generated index\nUnplanned roadmap item.\n",
+    }
+    for rel, text in files.items():
+        (context_repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (context_repo / rel).write_text(text)
+    subprocess.run(["git", "-C", str(context_repo), "add", "."], check=True)
+    sources = read_sources(context_repo)
+    found = search_sections(sources, "unplanned roadmap item", kind="feature")
+    assert [row.path for row in found] == sorted(list(files)[:2])
+
+
 def test_untracked_and_symlink_sources_are_never_opened(context_repo: Path) -> None:
     (context_repo / "docs/context/untracked.md").write_text("SECRET context")
     assert "docs/context/untracked.md" not in read_sources(context_repo)
