@@ -2,7 +2,7 @@
 
 # CLI flow
 
-233 leaf commands in 24 groups (from the committed `alpha info commands` cache); 9 MCP action tools bridge to CLI leaves via argv literals. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
+236 leaf commands in 24 groups (from the committed `alpha info commands` cache); 9 MCP action tools bridge to CLI leaves via argv literals. Interactive exploration (evidence provenance, excerpts, prompt packs): `cd tools/alpha-atlas && uv run alpha-atlas` → http://127.0.0.1:8803
 
 <!-- nodes: cli:alpha assistant|cli:alpha backtest|cli:alpha chart|cli:alpha crypto-data|cli:alpha data|cli:alpha evidence|cli:alpha figures|cli:alpha forecast|cli:alpha info|cli:alpha ml|cli:alpha monte-carlo|cli:alpha optim|cli:alpha owner-auth|cli:alpha paper|cli:alpha project|cli:alpha propfirm|cli:alpha provider|cli:alpha quantpad-data|cli:alpha research|cli:alpha risk|cli:alpha rules|cli:alpha scan|cli:alpha strategy-candidate|cli:alpha suite -->
 ```mermaid
@@ -99,13 +99,14 @@ cli:alpha suite
 
 | Command | Options |
 |---|---|
-| `alpha crypto-data acquire` | `--base`, `--quote`, `--category`, `--frequency`, `--period`, `--network` |
+| `alpha crypto-data acquire` | `--base`, `--quote`, `--category`, `--frequency`, `--period`, `--network`, `--expected-case-revision`, `--reason` |
 | `alpha crypto-data asset` | `--as-of`, `--json` |
 | `alpha crypto-data asset-contract` | `--asset-master-version`, `--as-of`, `--json` |
 | `alpha crypto-data asset-master-create` | `--coingecko-manifest-id`, `--geckoterminal-manifest-id`, `--json` |
 | `alpha crypto-data asset-master-verify` | `--json` |
 | `alpha crypto-data asset-masters` | `--json` |
 | `alpha crypto-data backfill` | `--symbols`, `--quote`, `--start`, `--end`, `--category`, `--frequency` |
+| `alpha crypto-data backfill-status` | `--symbols`, `--quote`, `--start`, `--end`, `--ledger`, `--max-ledger-bytes` |
 | `alpha crypto-data cache-clean` | `--confirm`, `--json` |
 | `alpha crypto-data capabilities` | `--json` |
 | `alpha crypto-data catalog` | `--json` |
@@ -124,7 +125,7 @@ cli:alpha suite
 | `alpha crypto-data profile-select-one-minute` | `--case-id`, `--expected-case-revision`, `--market`, `--reason`, `--json` |
 | `alpha crypto-data profile-show` | `--offset`, `--limit`, `--provider`, `--family`, `--category`, `--frequency` |
 | `alpha crypto-data profiles` | `--json` |
-| `alpha crypto-data quality` | `--json` |
+| `alpha crypto-data quality` | `--json`, `--coverage-start`, `--coverage-end`, `--as-of`, `--expected-cadence-seconds`, `--max-verify-artifact-bytes` |
 | `alpha crypto-data snapshot-create` | `--manifest-id`, `--asset-master-version`, `--json` |
 | `alpha crypto-data snapshot-query` | `--limit`, `--offset`, `--available-by`, `--manifest-id`, `--json` |
 | `alpha crypto-data snapshot-verify` | `--required-family`, `--purpose`, `--json` |
@@ -343,10 +344,11 @@ cli:alpha suite
 | `alpha research diagnostic execution-digest` | `--as-of` |
 | `alpha research diagnostic investigate` | `--run-id`, `--as-of`, `--question`, `--model`, `--resume`, `--comparisons` |
 | `alpha research diagnostic investigation-tool` | — |
+| `alpha research diagnostic native-result` | `--data-dir`, `--job-id`, `--profile-source`, `--profile-runtime`, `--profile-mode` |
 | `alpha research diagnostic run-plan` | — |
 | `alpha research diagnostic suggest` | `--as-of`, `--proposals` |
 | `alpha research diagnostic weekly-classifier` | `--snapshot`, `--as-of`, `--calendar`, `--cost-bps-per-side` |
-| `alpha research draft` | `--source-pack-id`, `--answer`, `--dataset`, `--answer-bundle`, `--operator`, `--expected-case-revision` |
+| `alpha research draft` | `--source-pack-id`, `--answer`, `--dataset`, `--paper-resource-mapping-json`, `--answer-bundle`, `--operator`, `--expected-case-revision` |
 | `alpha research draft-confirmation` | `--created-by`, `--json` |
 | `alpha research draft-daily` | `--source-pack-id`, `--snapshot-id`, `--normalized-manifest-id`, `--json` |
 | `alpha research evidence-hub` | `--json` |
@@ -369,7 +371,7 @@ cli:alpha suite
 | `alpha research reject` | `--actor`, `--reason`, `--json` |
 | `alpha research report` | `--json` |
 | `alpha research resume` | `--reason`, `--acknowledge-orphaned-process`, `--actor`, `--json` |
-| `alpha research revise` | `--source-pack-id`, `--answer`, `--dataset`, `--operator`, `--actor`, `--reason` |
+| `alpha research revise` | `--source-pack-id`, `--answer`, `--dataset`, `--paper-resource-mapping-json`, `--operator`, `--actor`, `--reason` |
 | `alpha research run` | `--json` |
 | `alpha research semantic-projection` | `--json` |
 | `alpha research sources acquire` | `--json` |
@@ -382,6 +384,7 @@ cli:alpha suite
 | `alpha research sources discover` | `--query`, `--unpaywall-email`, `--max-candidates`, `--max-full-texts`, `--json` |
 | `alpha research sources fetch` | `--objects-dir`, `--allow-host`, `--json` |
 | `alpha research sources freeze` | `--source-id`, `--definition-json`, `--json` |
+| `alpha research sources original-pdf` | `--project-id`, `--include-bytes`, `--json` |
 | `alpha research sources screen` | `--project-id`, `--page`, `--char-offset`, `--char-limit`, `--json` |
 | `alpha research sources search` | `--limit`, `--offset`, `--json` |
 | `alpha research status` | `--json` |
@@ -392,7 +395,7 @@ cli:alpha suite
 
 | Command | Options |
 |---|---|
-| `alpha risk scenario` | `--from-run`, `--confidence`, `--periods-per-year`, `--json` |
+| `alpha risk scenario` | `--from-run`, `--confidence`, `--periods-per-year`, `--json`, `--include-metric-basis` |
 
 </details>
 <details><summary>alpha rules → alpha_cli.rules_cmds</summary>
