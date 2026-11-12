@@ -4,7 +4,7 @@ paths:
 ---
 # alpha_forecast rules
 
-Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `tests/fixtures/claude_md_v1.md`). The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
+Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 ### `alpha_forecast` (`packages/alpha-forecast/src/alpha_forecast/`) — Kronos foundation-model forecasting. core only; only `alpha_cli` may import it. Importing the package never imports torch (facade imports are method-level).
 | Module | Responsibility | Key public symbols |
 |---|---|---|

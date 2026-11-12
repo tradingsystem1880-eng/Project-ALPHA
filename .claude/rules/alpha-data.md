@@ -4,7 +4,7 @@ paths:
 ---
 # alpha_data rules
 
-Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `tests/fixtures/claude_md_v1.md`). The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
+Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 ### `alpha_data` (`packages/alpha-data/src/alpha_data/`) — ingestion, PIT storage, snapshots.
 | Module | Responsibility | Key public symbols |
 |---|---|---|

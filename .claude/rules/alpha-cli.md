@@ -34,7 +34,7 @@ are not a containment guarantee. See the [cleanup plan](../../docs/superpowers/p
 values, pass/fail/unavailable conditions, signal, cutoff and exact rule hash. Only canonical
 stored daily bars are supported. Short-circuit and conflicting-side behavior match `rule_signal`.
 
-Verbatim relocation of the pre-v2 CLAUDE.md `CLI surface` section and `alpha_cli` MODULE MAP block (drift-tested against `tests/fixtures/claude_md_v1.md`). The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
+Verbatim relocation of the pre-v2 CLAUDE.md `CLI surface` section and `alpha_cli` MODULE MAP block. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 
 RISK TIER: `_gauntlet.py`, `_optim.py`, `_seeds.py`, `_identity.py`, `_surrogate.py`, `_synth.py`, `_runner.py` require an APPROVE `ReviewVerdict` (`/review-gate`) before commit.
 ## CLI surface (`apps/alpha-cli/src/alpha_cli/`)

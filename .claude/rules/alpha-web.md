@@ -47,7 +47,7 @@ Manual download symbols are not verified provider inventory. Keep real-backend b
 separate from deterministic API-mocked scenarios. Ordinary owner actions use local confirmation;
 legacy biometric enrollment is optional and local confirmation is not verified physical presence.
 
-Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `tests/fixtures/claude_md_v1.md`). The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
+Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 ### `alpha_web` (`apps/alpha-web/src/alpha_web/`) — the **ALPHA Workstation**: a thin JSON+SSE backend serving a built SPA (top of DAG; subprocesses CLI actions and status projections, composes nothing). Launch: `uv run alpha-web` → http://localhost:8801 (the socket remains loopback-only; the loopback-IP URL redirects to the canonical WebAuthn origin). Its platform imports are `alpha_core.config` plus supported public CLI seams for catalog/run-store, artifact contracts/projections, job capacity/durable leases, owner-auth verification, and the paper journal; bounded artifact reads may use Polars. Provider/system, control-plane, engine-backed, Qlib, and Kronos work stays behind CLI/out-of-process boundaries. The web process never imports or executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process.
 | Module | Responsibility | Key public symbols |
 |---|---|---|
