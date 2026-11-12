@@ -1,5 +1,7 @@
 # Phase 0 — Rails + Walking Skeleton Implementation Plan
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Stand up a CI-green `uv` workspace for Project ALPHA with all six package boundaries wired, the architecture enforced by import-linter, typed config, a working CLI, and the bias-guard test harness — proven end-to-end by a walking skeleton.

@@ -1,5 +1,7 @@
 # Assistant cleanup before lock release
 
+**Delivery state:** Completed — merged via PR #116
+
 ```json
 {
   "schema_version": 1,

@@ -1,6 +1,8 @@
 # Offline funding bounded response reader
 
-**Delivery state:** Focused offline implementation and source review complete; no live transport installed or production integration.
+**Delivery state:** Completed — merged via PR #117
+
+**Historical delivery state (as first recorded):** Focused offline implementation and source review complete; no live transport installed or production integration.
 
 ```json
 {

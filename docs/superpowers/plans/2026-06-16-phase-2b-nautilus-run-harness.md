@@ -1,5 +1,7 @@
 # Phase 2b — nautilus Run Harness + the t+1-Open Execution Convention
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** TDD per `CLAUDE.md`. This plan encodes a *spike finding*: nautilus's default bar execution fills market orders at the bar **close**, not the open of `t+1` the spec requires. The harness below makes nautilus honor "decide on close of `t`, fill at open of `t+1`."
 
 **Goal:** A minimal `BacktestEngine` run harness that feeds `PointInTimeSource`-derived bars through nautilus and honors the spec's execution convention (§7, §13), proven by a fill-price bias guard.

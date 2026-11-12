@@ -1,6 +1,8 @@
 # Gate preflight selection and freshness diagnostics
 
-**Delivery state:** Completed focused and cheap candidate qualification; no full gate for this follow-up.
+**Delivery state:** Completed — merged via PR #94
+
+**Historical delivery state (as first recorded):** Completed focused and cheap candidate qualification; no full gate for this follow-up.
 
 ## Feature plan
 

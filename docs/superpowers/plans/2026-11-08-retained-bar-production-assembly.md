@@ -1,5 +1,7 @@
 # Assemble and exercise the retained-coverage production bundle locally
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 This completes the candidate-local generated-output integration deferred by the preserved
 4845bfc951c9ace0511a4f5d181740ce1390e882 source candidate. Canonical W05/W18 and
 market-data slice F remain the controlling bounded read-only scope. No other owner's

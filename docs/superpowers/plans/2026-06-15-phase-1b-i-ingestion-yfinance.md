@@ -1,5 +1,7 @@
 # Phase 1b-i — Ingestion Framework + yfinance Adapter Implementation Plan
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Wire the first real data source end-to-end — a `DataAdapter` interface, corporate-action storage, a yfinance equities adapter (raw OHLC + splits/dividends), immutable provenance-tracked snapshots, and an `alpha data` CLI — so we can pull real equity history (with real splits) through the 1a point-in-time firewall.

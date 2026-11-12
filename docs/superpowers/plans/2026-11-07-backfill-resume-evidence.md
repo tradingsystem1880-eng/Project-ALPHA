@@ -1,6 +1,8 @@
 # Verify retained backfill work before resume
 
-Delivery state: focused implementation candidate. Exact-tree review/check receipts are separate;
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
+Historical delivery state (as first recorded): focused implementation candidate. Exact-tree review/check receipts are separate;
 release qualification and live/provider acceptance are NOT RUN.
 
 ```json

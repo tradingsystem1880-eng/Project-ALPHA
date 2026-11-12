@@ -1,6 +1,8 @@
 # Proposed minimal Playwright evidence helper
 
-**Delivery state:** Implementation candidate; final acceptance pending.
+**Delivery state:** Completed — merged via PR #74
+
+**Historical delivery state (as first recorded):** Implementation candidate; final acceptance pending.
 **Plan base:** `fbdcbcfdf29aebe3fd43e38bf5ae4051cbf23b98`.
 Reconcile actual accepted main before final acceptance. Keep PR71 and the separate prevention draft
 unchanged. This revision supersedes the larger plan; its review history is retained.

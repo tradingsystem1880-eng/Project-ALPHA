@@ -1,6 +1,8 @@
 # Retained stock RDLoop dispatch
 
-**Delivery state:** Implemented and focused-tested; full qualification/activation remain blocked.
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
+**Historical delivery state (as first recorded):** Implemented and focused-tested; full qualification/activation remain blocked.
 
 ```json
 {

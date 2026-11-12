@@ -1,5 +1,7 @@
 # Native stock snapshot validation prerequisite
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Canonical v9 (Library libfile_181ac6079dcc8191b222b76c1f10bf17) W02/T10
 requires truthful wrong/missing/changed artifact evidence. T07 cannot be implemented
 as cross-owner restart under the current contracts: original PID/retained lock and

@@ -1,6 +1,8 @@
 # Offline Bybit funding backward progression
 
-**Delivery state:** Focused offline implementation and source review complete. No live integration or publication.
+**Delivery state:** Completed — merged via PR #117
+
+**Historical delivery state (as first recorded):** Focused offline implementation and source review complete. No live integration or publication.
 
 ```json
 {

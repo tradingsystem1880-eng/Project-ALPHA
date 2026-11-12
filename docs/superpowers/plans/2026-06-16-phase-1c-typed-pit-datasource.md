@@ -1,5 +1,7 @@
 # Phase 1c — Settle the PIT Seam: a Typed Point-in-Time `DataSource`
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** TDD per `CLAUDE.md` — failing test → minimal code → green → commit. Steps use checkbox (`- [ ]`) syntax.
 
 **Goal:** Settle the point-in-time seam before the Phase-2 engine. `alpha_core` already defines the `DataSource` protocol — `available_symbols()` + `as_of(symbol, when) -> list[Bar]` (typed, validated `Bar`s). The current `PointInTimeReader` returns a Polars **DataFrame** and deliberately does *not* satisfy it ("reserved for a later phase"). This phase provides the typed bridge: a `PointInTimeSource` that emits chronologically-ordered, validated `Bar` objects — the single seam the backtest engine and strategies consume (they never touch a raw DataFrame).

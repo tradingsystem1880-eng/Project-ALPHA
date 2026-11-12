@@ -1,5 +1,7 @@
 # Phase 2d-ii — Frictions: fees + slippage (spec §7)
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** TDD per `CLAUDE.md`. Adds realistic, conservative costs to the backtest.
 
 **Goal:** Model the two v1 frictions (spec §7: "per-asset-class fee + a volatility-scaled slippage assumption (conservative)"; "slippage is modeled on the t+1 open"):

@@ -1,6 +1,8 @@
-**Delivery state:** Local uncommitted candidate; exact-tree verification is recorded in task evidence
+**Historical delivery state (as first recorded):** Local uncommitted candidate; exact-tree verification is recorded in task evidence
 
 # Pinned Semgrep gate execution
+
+**Delivery state:** Completed — merged via PR #95 (review candidate PR83)
 
 ```json
 {

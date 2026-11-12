@@ -1,6 +1,8 @@
 # Offline request-bound Bybit funding page
 
-**Delivery state:** Focused offline implementation and review complete; full qualification not run. No publication.
+**Delivery state:** Completed — merged via PR #117
+
+**Historical delivery state (as first recorded):** Focused offline implementation and review complete; full qualification not run. No publication.
 
 ```json
 {

@@ -1,5 +1,7 @@
 # Disposable acquisition transactions
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 This candidate is independent of preserved resume tree a20c88091c9951ea98b5202e6b1dfc999e8a79d0
 and verification-I/O tree 7953dcde1759b3a3094dd4325d1dcde9a55c12f9. It shares their base
 3f7b23185c29b2542605bd41b9485016c2ef3e79 but does not include their source delta.

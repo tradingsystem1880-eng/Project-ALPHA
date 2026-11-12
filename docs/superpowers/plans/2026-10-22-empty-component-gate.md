@@ -1,3 +1,5 @@
+**Delivery state:** Completed — merged via PR #95
+
 ```json
 {
   "schema_version": 1,

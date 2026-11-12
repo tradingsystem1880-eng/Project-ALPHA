@@ -1,5 +1,7 @@
 # Phase 1b-iii — Dividends as Decoupled Cash Events (PIT firewall)
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** TDD per `CLAUDE.md` — failing test → minimal code → green → commit. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Close the gap where cash dividends are *parsed and stored* (yfinance adapter emits `DIVIDEND` actions) but are **invisible to the point-in-time firewall** — `split_factor` applies only `SPLIT`s, and `PointInTimeReader` never surfaces dividends at all. After this phase the firewall exposes knowledge-gated cash dividends as a separate channel the backtest engine (Phase 2) will credit at `pay_date`.

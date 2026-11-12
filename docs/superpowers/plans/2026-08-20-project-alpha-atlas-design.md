@@ -1,5 +1,7 @@
 # Project Alpha Atlas — design and implementation plan
 
+**Delivery state:** Completed — all 12 slices done; Atlas S1–S12 commits on main 2026-08-20/21
+
 ```json
 {
   "schema_version": 1,

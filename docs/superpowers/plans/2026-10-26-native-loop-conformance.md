@@ -1,3 +1,5 @@
+**Delivery state:** Completed — merged via PR #95; build-status 2026-10-30 delivery reconciliation
+
 ```json
 {
   "schema_version": 1,

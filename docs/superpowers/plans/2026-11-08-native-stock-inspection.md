@@ -1,5 +1,7 @@
 # Native stock fixture inspection (offline successor)
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Canonical checklist: Library `libfile_181ac6079dcc8191b222b76c1f10bf17`, version 9,
 W02 and T09/T10 require truthful interrupted/failed evidence tied to one attempt.
 T07 restart continuation remains open: a checkpoint cannot restore the live owner or

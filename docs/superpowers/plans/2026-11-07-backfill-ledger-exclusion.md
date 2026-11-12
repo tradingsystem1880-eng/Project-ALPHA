@@ -1,5 +1,7 @@
 # Cooperative whole-file backfill progress exclusion
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 This is a separate successor to preserved resume/I/O tree
 7953dcde1759b3a3094dd4325d1dcde9a55c12f9 on base
 3f7b23185c29b2542605bd41b9485016c2ef3e79. Its accounting sibling

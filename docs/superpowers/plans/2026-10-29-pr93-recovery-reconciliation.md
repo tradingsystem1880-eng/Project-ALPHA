@@ -1,6 +1,8 @@
 # Reconcile retained PR93 recovery on PR95
 
-**Delivery state:** Completed bounded engineering delivery through [PR96](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/96), merged at `f847581f2703f6b5b36aeccdf877c4354a19e176`. The [delivery reconciliation](#delivery-reconciliation-2026-10-30) records the verified head and CI. Private coverage remains UNVERIFIED; later cleanup does not inherit this delivery's exception.
+**Delivery state:** Completed — merged via PR #96 (build-status 2026-10-30 delivery reconciliation)
+
+**Historical delivery state (as first recorded):** Completed bounded engineering delivery through [PR96](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/96), merged at `f847581f2703f6b5b36aeccdf877c4354a19e176`. The [delivery reconciliation](#delivery-reconciliation-2026-10-30) records the verified head and CI. Private coverage remains UNVERIFIED; later cleanup does not inherit this delivery's exception.
 
 ```json
 {

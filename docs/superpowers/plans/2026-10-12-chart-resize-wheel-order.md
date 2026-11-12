@@ -1,6 +1,8 @@
 # Wheel zoom and chart resize ordering
 
-**Delivery state:** Preparation; complete fixed browser and combined target acceptance pending.
+**Delivery state:** Completed — merged via PR #57 (fixture copy and chart resize races)
+
+**Historical delivery state (as first recorded):** Preparation; complete fixed browser and combined target acceptance pending.
 
 ```json
 {

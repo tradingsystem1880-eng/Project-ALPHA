@@ -1,6 +1,8 @@
 # Truthful durable cancellation publication
 
-**Delivery state:** Implementation complete. Aggregate qualification, independent review and guarded delivery are recorded separately; this document does not claim acceptance.
+**Delivery state:** Completed — merged via PR #107
+
+**Historical delivery state (as first recorded):** Implementation complete. Aggregate qualification, independent review and guarded delivery are recorded separately; this document does not claim acceptance.
 
 ```json
 {

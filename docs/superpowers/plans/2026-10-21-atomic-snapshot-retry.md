@@ -1,6 +1,8 @@
 # Atomic snapshot and promotion retry audit
 
-**Delivery state:** Implemented; final verification reported in task evidence
+**Delivery state:** Completed — merged via PR #79
+
+**Historical delivery state (as first recorded):** Implemented; final verification reported in task evidence
 
 ```json
 {

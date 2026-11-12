@@ -1,6 +1,8 @@
 # Qualification preflight
 
-**Delivery state:** Implementation complete; the first owner-authorized full-gate attempt exposed
+**Delivery state:** Completed — merged via PR #94
+
+**Historical delivery state (as first recorded):** Implementation complete; the first owner-authorized full-gate attempt exposed
 a synthetic-fixture omission, corrected by deriving the fixture from the canonical script list.
 The corrected candidate's qualification is governed by its exact-tree checks and canonical receipt.
 

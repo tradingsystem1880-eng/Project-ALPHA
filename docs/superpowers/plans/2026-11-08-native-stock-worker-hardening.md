@@ -1,6 +1,8 @@
 # Native stock worker boundary hardening
 
-**Delivery state:** Scoped candidate; exact final source/runtime qualification is recorded in receipts.
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
+**Historical delivery state (as first recorded):** Scoped candidate; exact final source/runtime qualification is recorded in receipts.
 
 ```json
 {

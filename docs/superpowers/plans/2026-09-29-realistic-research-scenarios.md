@@ -1,6 +1,8 @@
-**Delivery state:** In progress (2026-09-29).
+**Historical delivery state (as first recorded):** In progress (2026-09-29).
 
 # Realistic research scenarios for `alpha-eval` (second scenario set)
+
+**Delivery state:** Superseded by [2026-09-29-codex-benchmark-continuation.md](2026-09-29-codex-benchmark-continuation.md) — slice 4 runs/scoring finished there (build-status 2026-09-29/30)
 
 ```json
 {

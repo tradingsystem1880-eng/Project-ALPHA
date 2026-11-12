@@ -1,12 +1,14 @@
 # Qlib tabular research, first wave
 
+**Delivery state:** Completed — merged via PR #95
+
 > Evidence navigation: `.alpha/state/` paths below name ignored, machine-local receipts.
 > Receipt paths under `../qlib-tabular-wave1-20261026/` name a sibling worktree.
 > These are handoff locations, not repository links.
 > Their contents and continued availability are not established by this checkout;
 > retain the dated result and pending-evidence limits recorded below.
 
-**Delivery state:** Completed local implementation and bounded runtime checks — delivery integration and acceptance pending; final review/full-gate outcome is recorded separately below.
+**Historical delivery state (as first recorded):** Completed local implementation and bounded runtime checks — delivery integration and acceptance pending; final review/full-gate outcome is recorded separately below.
 
 Baseline: `integration/project-alpha-pr81-88-qualified-20261024`, exact commit
 `bc5b58351cc334d36112167c9463a80184411cc6`. Candidate branch:

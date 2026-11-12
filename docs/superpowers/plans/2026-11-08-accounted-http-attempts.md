@@ -1,5 +1,7 @@
 # Opt-in synthetic per-HTTP accounting integration
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Canonical requirement: v9 W05/W02 market-data slice C, persisted budget use across
 retry/resume without exposure reset. This is an inactive disposable-store engineering
 subset, not operational provider quota or provider qualification.

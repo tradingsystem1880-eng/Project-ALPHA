@@ -1,6 +1,8 @@
 # Workflow UI redesign and full-stack repair
 
-**Delivery state:** Implemented and independently reviewed. Offline component checks passed;
+**Delivery state:** Completed — merged via PR #53; build-status 2026-09-30 verification checkpoint
+
+**Historical delivery state (as first recorded):** Implemented and independently reviewed. Offline component checks passed;
 current aggregate acceptance is checked with `uv run python scripts/gate.py check --tier full`.
 Live-provider and physical-owner acceptance limits are recorded in the UI audit.
 

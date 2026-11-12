@@ -1,5 +1,7 @@
 # Current native stock profile verification
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Canonical v9 W02/T10 (Library libfile_181ac6079dcc8191b222b76c1f10bf17) requires
 identity-bound truthful evidence. Preserve bac7a0d5b62d3d6ed3f33a45e30d35b037d7f0ee
 and every earlier export. No T07 continuation, spending or ownership authority.

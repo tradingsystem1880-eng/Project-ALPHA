@@ -1,6 +1,8 @@
-**Delivery state:** Completed implementation; target acceptance is bound to external verification receipts.
+**Historical delivery state (as first recorded):** Completed implementation; target acceptance is bound to external verification receipts.
 
 # Bounded maintainability cleanup
+
+**Delivery state:** Completed — accepted through PR #58
 
 **Current status — 2026-10-17:** The bounded cleanup was accepted through [PR #58](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/58) after exact-tree validation and seven successful required checks. Private-suite coverage remains UNVERIFIED under the cleanup-only scoped exception.
 

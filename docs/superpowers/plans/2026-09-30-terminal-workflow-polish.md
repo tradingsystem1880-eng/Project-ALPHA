@@ -1,5 +1,7 @@
 # Terminal workflow polish
 
+**Delivery state:** Completed — all slices done; merged via PR #53
+
 ```json
 {
   "schema_version": 1,

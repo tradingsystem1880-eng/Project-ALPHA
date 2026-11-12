@@ -1,6 +1,8 @@
 # W05 opt-in daily acquisition budget
 
-**Delivery state:** Completed within the focused offline scope; full gate and publication not run.
+**Delivery state:** Completed — merged via PR #95
+
+**Historical delivery state (as first recorded):** Completed within the focused offline scope; full gate and publication not run.
 
 ```json
 {

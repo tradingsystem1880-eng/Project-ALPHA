@@ -1,6 +1,8 @@
 # Backend CI setup ownership
 
-**Delivery state:** Implementation complete; delivery acceptance requires exact-tree full-gate and independent-review receipts.
+**Delivery state:** Completed — merged via PR #113
+
+**Historical delivery state (as first recorded):** Implementation complete; delivery acceptance requires exact-tree full-gate and independent-review receipts.
 
 ```json
 {

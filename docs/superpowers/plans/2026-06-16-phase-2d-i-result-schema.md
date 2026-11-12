@@ -1,5 +1,7 @@
 # Phase 2d-i — Standard Result Schema (trade log + equity curve)
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** TDD per `CLAUDE.md`. Turns `run_backtest`'s output from bare counts into
 > the validatable result the Phase-3 gauntlet consumes (spec §11 success criterion).
 

@@ -1,5 +1,7 @@
 # Canonical native result operator command
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Canonical v9 W02/T10 (Library libfile_181ac6079dcc8191b222b76c1f10bf17) requires
 attempt-bound result/receipt recovery and wrong/missing artifact rejection. Preserve
 8eb6c16020136992a5701b1f3598515fc2dd0bbd and all predecessors/exports.

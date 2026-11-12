@@ -1,5 +1,7 @@
 # Crypto Operational-Readiness Closure — Implementation Plan
 
+**Delivery state:** Blocked — C4–C6 pending; build-status 2026-08-31 records release blocked by provider
+
 ```json
 {
   "schema_version": 1,

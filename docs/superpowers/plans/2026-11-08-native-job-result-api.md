@@ -1,5 +1,7 @@
 # Server-owned native-job result read contract
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 W04 prerequisite for W02/T10 receiver-backed results; canonical v9 Library
 libfile_181ac6079dcc8191b222b76c1f10bf17. Preserve1ef50df4c6df48edf5790d5698064431731e306b.
 Parent explicitly authorizes minimal shared router mount; no canonical run publication/link.

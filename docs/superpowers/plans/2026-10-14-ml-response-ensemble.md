@@ -1,6 +1,8 @@
 # ML response compatibility and atomic publication contract tests
 
-**Delivery state:** The isolated validation copy passed the documented holdout tests (17/17), the canonical full gate (all six components), and independent review. Hosted head and post-merge results are tracked in PR acceptance evidence; private coverage is UNVERIFIED. The temporary holdout activation and its Atlas refresh are validation setup, not product changes.
+**Delivery state:** Completed — merged via PR #61; final slice recorded local_verified, now done
+
+**Historical delivery state (as first recorded):** The isolated validation copy passed the documented holdout tests (17/17), the canonical full gate (all six components), and independent review. Hosted head and post-merge results are tracked in PR acceptance evidence; private coverage is UNVERIFIED. The temporary holdout activation and its Atlas refresh are validation setup, not product changes.
 
 ```json
 {
@@ -51,7 +53,7 @@
       "verify": "Supported Atlas refresh/check and exact-tree local full/review; hosted head and post-merge results are tracked separately in PR acceptance evidence.",
       "expected": "The combined source and generated contracts pass local acceptance on one exact tree; private coverage remains explicitly unverified.",
       "rollback": "Revert only this combined delivery after preserving its recovery receipt.",
-      "status": "local_verified"
+      "status": "done"
     }
   ],
   "tier_impact": [

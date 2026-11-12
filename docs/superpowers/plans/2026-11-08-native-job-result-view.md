@@ -1,6 +1,8 @@
 # Native job result web consumer
 
-**Delivery state:** Implemented and scoped-tested; full qualification unverified.
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
+**Historical delivery state (as first recorded):** Implemented and scoped-tested; full qualification unverified.
 
 ```json
 {

@@ -1,6 +1,8 @@
 # Stock RDLoop synthetic continuation
 
-**Delivery state:** Implementation and focused review complete; full qualification blocked, no activation.
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
+**Historical delivery state (as first recorded):** Implementation and focused review complete; full qualification blocked, no activation.
 
 ```json
 {

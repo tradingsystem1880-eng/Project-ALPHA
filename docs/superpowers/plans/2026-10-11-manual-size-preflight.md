@@ -1,6 +1,8 @@
-**Delivery state:** Completed implementation; release acceptance is bound to final verification receipts.
+**Historical delivery state (as first recorded):** Completed implementation; release acceptance is bound to final verification receipts.
 
 # Early manual-size preflight
+
+**Delivery state:** Completed — merged via PR #59
 
 ```json
 {

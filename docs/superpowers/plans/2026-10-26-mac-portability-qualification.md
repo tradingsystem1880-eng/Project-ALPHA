@@ -1,11 +1,13 @@
 # Combined Mac portability qualification
 
+**Delivery state:** In progress — checkpoint merged via PR #95; final successor qualification slice pending
+
 > Evidence navigation: `.alpha/state/` paths below name ignored, machine-local receipts.
 > These are handoff locations, not repository links.
 > Their contents and continued availability are not established by this checkout;
 > retain the dated result and pending-evidence limits recorded below.
 
-**Delivery state:** Preserved 24f checkpoint reviewed with 48/49 checks passing; aggregate coverage failed. An isolated portable-evidence successor is in progress. No integration or acceptance.
+**Historical delivery state (as first recorded):** Preserved 24f checkpoint reviewed with 48/49 checks passing; aggregate coverage failed. An isolated portable-evidence successor is in progress. No integration or acceptance.
 
 **Full scope:** owned by the [canonical feature readiness checklist](../../context/feature-readiness-checklist-2026-10-27.md); this plan covers only Mac portability qualification and marks no checklist feature done.
 

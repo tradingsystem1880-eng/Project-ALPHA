@@ -1,5 +1,7 @@
 # Synthetic native lifecycle foundation
 
+**Delivery state:** Completed — merged via PR #95; no native activation (out of scope)
+
 Status: local implementation; no native activation or release qualification.
 
 Baseline: qualified admission tree `93a85ff21874589f4d673a1849e684e5df9ab9e4`

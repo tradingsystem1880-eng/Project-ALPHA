@@ -1,5 +1,7 @@
 # Agentic research capability program
 
+**Delivery state:** Planned — broad programme not started; advisory teammate slice shipped via PR #56
+
 ```json
 {
   "schema_version": 1,

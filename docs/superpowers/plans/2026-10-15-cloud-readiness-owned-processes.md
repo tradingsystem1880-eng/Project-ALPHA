@@ -1,3 +1,5 @@
+**Delivery state:** Completed — accepted through PR #66
+
 ```json
 {
   "schema_version": 1,

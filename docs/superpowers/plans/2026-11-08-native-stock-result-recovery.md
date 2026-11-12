@@ -1,5 +1,7 @@
 # Retained-owner native result recovery
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Canonical v9 W02/T10 (Library libfile_181ac6079dcc8191b222b76c1f10bf17) requires
 exact attempt-bound receipts and rejection of changed artifacts. Preserve predecessor
 7e643bab52be6fcf2bd8c9fc9b9f2b5dd5c35622 and every export.

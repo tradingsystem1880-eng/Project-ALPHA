@@ -1,5 +1,7 @@
 # Phase 2c-ii — `TimeSeriesMomentum` nautilus Strategy (first end-to-end backtest)
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** TDD per `CLAUDE.md`. Wires the pure 2c-i functions into a nautilus
 > `Strategy` on the decide-on-close / execute-on-open base (Phase 2b), run via `run_backtest`.
 

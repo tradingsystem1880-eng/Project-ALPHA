@@ -1,6 +1,8 @@
 # Bounded comparison acquisition
 
-**Delivery state:** Implemented; live-provider acceptance unverified
+**Delivery state:** Completed — merged via PR #56; live-provider acceptance not claimed
+
+**Historical delivery state (as first recorded):** Implemented; live-provider acceptance unverified
 
 ```json
 {

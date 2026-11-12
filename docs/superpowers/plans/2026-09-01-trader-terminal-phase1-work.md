@@ -1,5 +1,7 @@
 # Trader Terminal — Phase 1 "Work": crypto data pulling that works
 
+**Delivery state:** Completed — merged via PR #47; build-status 2026-09-02 records delivery
+
 ```json
 {
   "schema_version": 1,

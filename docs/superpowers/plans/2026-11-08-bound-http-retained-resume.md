@@ -1,5 +1,7 @@
 # Versioned accounted retained completed-window resume
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Canonical v9 W05/W02 market-data slice C requires bounded acquire/resume, consumption
 persisting across retry/restart, reverified completed hashes and no partial publication or
 history/exposure reset. Thus successful completed-window reuse is required, not an optional

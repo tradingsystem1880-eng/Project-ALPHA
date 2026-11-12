@@ -1,5 +1,7 @@
 # Frozen rule native authority
 
+**Delivery state:** Completed — engineering delivered by PRs #95 and #96 (2026-10-30)
+
 **Current engineering delivery (2026-10-30):** The cloud foundation repairs were delivered by [PR95](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/95), and the recovery/cancellation reconciliation by [PR96](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/96). See the [delivery reconciliation](#delivery-reconciliation-2026-10-30) for exact heads, merges and CI. The dated unpublished/BLOCK entries below retain their original checkpoint status. The separate [cleanup/refactor successor](2026-10-30-project-lineage-projection-refactor.md) has its own qualification; neither delivery establishes empirical or Mac acceptance.
 
 Historical assembly baseline (2026-10-26): available synthetic workflow assembled onto bc5; scoped public regressions and cheap checks passed. Exact source identity, independent final-review disposition and remaining acceptance blockers are in the assembly packet below. Engineering only, no empirical approval.

@@ -1,6 +1,8 @@
-**Delivery state:** Completed with scoped owner exception (2026-09-19); exact-tree receipts govern guarded delivery.
+**Historical delivery state (as first recorded):** Completed with scoped owner exception (2026-09-19); exact-tree receipts govern guarded delivery.
 
 # Research walkthrough closure
+
+**Delivery state:** Completed — merged via PR #53; scoped owner exception
 
 ```json
 {

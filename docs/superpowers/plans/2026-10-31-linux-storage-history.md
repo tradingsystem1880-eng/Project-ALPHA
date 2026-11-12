@@ -1,5 +1,7 @@
 # Linux storage preparation without replacing research history
 
+**Delivery state:** Completed — merged via PR #108
+
 Status: implemented and qualified with public Linux fixtures; guarded delivery requires the exact-tree full gate and independent review. No runtime or scientific admission.
 
 ```json

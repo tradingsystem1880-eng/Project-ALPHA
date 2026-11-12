@@ -1,5 +1,7 @@
 # Inspect retained native daily bars against an explicit grid
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Canonical v9 W05 and the market-data amendment's page42 coverage/gap interface
 require truthful retained coverage evidence. The existing quality command reverifies
 bytes and displays an immutable stored report. The qualifier warns about adjacent

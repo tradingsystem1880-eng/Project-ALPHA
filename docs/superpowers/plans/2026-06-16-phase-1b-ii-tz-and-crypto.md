@@ -1,5 +1,7 @@
 # Phase 1b-ii — Timezone/Date Convention + Crypto (ccxt) Adapter Implementation Plan
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Close the timezone day-shift hard-gate (daily bars normalized to session-date @ 00:00 UTC, venue-agnostic) and add a second data source — a crypto adapter via ccxt — on the existing `DataAdapter` seam.

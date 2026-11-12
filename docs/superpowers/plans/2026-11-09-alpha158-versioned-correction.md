@@ -1,6 +1,8 @@
 # Explicit partial Alpha158 correction
 
-**Delivery state:** Local candidate; focused verification passed, final frozen-tree review pending. Full gate and native
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
+**Historical delivery state (as first recorded):** Local candidate; focused verification passed, final frozen-tree review pending. Full gate and native
 whole-recipe equivalence remain unverified.
 
 The preserved feature version 1 is an Alpha158-style recipe, not verified numerical Qlib

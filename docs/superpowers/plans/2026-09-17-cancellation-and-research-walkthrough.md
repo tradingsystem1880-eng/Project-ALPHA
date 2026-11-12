@@ -1,6 +1,8 @@
-**Delivery state:** Completed with documented hidden-suite exception (2026-09-17).
+**Historical delivery state (as first recorded):** Completed with documented hidden-suite exception (2026-09-17).
 
 # Cancellation regression, commit, and research walkthrough
+
+**Delivery state:** Completed — merged via PR #53; documented hidden-suite exception
 
 ```json
 {

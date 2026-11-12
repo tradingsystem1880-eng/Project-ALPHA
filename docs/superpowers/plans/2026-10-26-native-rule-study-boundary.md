@@ -1,5 +1,7 @@
 # Frozen-rule native study admission prerequisite
 
+**Delivery state:** Blocked — prerequisite merged via PR #95; scientific native integration blocked
+
 Status: bounded prerequisite implemented; scientific native integration blocked by existing
 protocol authority and isolated operator runtime. Independent review pending.
 

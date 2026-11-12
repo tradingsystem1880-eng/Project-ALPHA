@@ -1,5 +1,7 @@
 # DefiLlama Integration and Crypto Data Hygiene
 
+**Delivery state:** Completed — merged via PR #53 (DefiLlama families commit)
+
 ## Context
 
 The current crypto archive has broad provider plumbing but uneven usable coverage. Its metadata inventory reports 33,536 total manifests and 11,775 normalized records; the last observed CoinGecko, Coin Metrics, and GeckoTerminal artifacts are from August 2026. Several provider families have warning or quarantined artifacts. The full artifact verifier did not complete during the initial audit. The user requested a DefiLlama integration, removal of obsolete APIs, and cleanup of unusable old data.

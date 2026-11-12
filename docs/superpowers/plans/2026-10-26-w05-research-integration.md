@@ -1,11 +1,13 @@
 # W05 research integration successor
 
+**Delivery state:** Completed — merged via PR #95
+
 > Evidence navigation: `.alpha/state/` paths below name ignored, machine-local receipts.
 > These are handoff locations, not repository links.
 > Their contents and continued availability are not established by this checkout;
 > retain the dated result and pending-evidence limits recorded below.
 
-**Delivery state:** Completed local integration packet; aggregate qualification blocked pending native portability repair and final full gate.
+**Historical delivery state (as first recorded):** Completed local integration packet; aggregate qualification blocked pending native portability repair and final full gate.
 
 **Successor (open):** [Combined Mac portability qualification](2026-10-26-mac-portability-qualification.md#handoff-and-next-action), pending slice "Independent review and final successor qualification".
 

@@ -1,5 +1,7 @@
 # Crypto data workstation and timeframe coverage
 
+**Delivery state:** Completed — merged via PR #53 (crypto terminal workstation commit)
+
 Owner direction: crypto-only market research; make supported markets easy to find and pull, make the existing expansion-drive archive useful, and expose useful chart intervals. Keep source, venue, market type, quote, frequency, units, and exact manifest identity visible.
 
 ## Decisions and constraints

@@ -1,6 +1,8 @@
 # Opt-in backtest result card
 
-**Delivery state:** Implemented and independently source-reviewed; native UI base merged; delivery qualification and publication pending.
+**Delivery state:** Completed — merged via PR #119
+
+**Historical delivery state (as first recorded):** Implemented and independently source-reviewed; native UI base merged; delivery qualification and publication pending.
 
 ```json
 {

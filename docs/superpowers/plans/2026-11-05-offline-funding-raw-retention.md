@@ -1,6 +1,8 @@
 # Offline funding raw-first retention
 
-**Delivery state:** Focused offline implementation and source review complete. No production integration or publication.
+**Delivery state:** Completed — merged via PR #117
+
+**Historical delivery state (as first recorded):** Focused offline implementation and source review complete. No production integration or publication.
 
 ```json
 {

@@ -1,6 +1,8 @@
 # Non-destructive checkpoint retention and branch recovery
 
-**Delivery state:** Completed implementation and source qualification; coordinated delivery is tracked by the final foundation integration.
+**Delivery state:** Completed — merged via PR #104
+
+**Historical delivery state (as first recorded):** Completed implementation and source qualification; coordinated delivery is tracked by the final foundation integration.
 
 ```json
 {

@@ -1,3 +1,5 @@
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 ```json
 {
   "schema_version": 1,

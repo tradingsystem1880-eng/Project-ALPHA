@@ -1,5 +1,7 @@
 # Strict complete-response evidence before replay
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Canonical v9 W05/W02 slice C requires persistent consumption across retry/resume,
 no partial publication, and no history/exposure reset. Preserved predecessor is
 5af99595d9f5977136625d5dac0438dfd2926c21; cumulative base remains3f7b2318.

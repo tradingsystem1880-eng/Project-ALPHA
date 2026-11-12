@@ -1,6 +1,8 @@
 # Native RD cumulative qualification correction
 
-**Delivery state:** Scoped candidate; exact qualification outcome recorded in external receipts.
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
+**Historical delivery state (as first recorded):** Scoped candidate; exact qualification outcome recorded in external receipts.
 
 ```json
 {

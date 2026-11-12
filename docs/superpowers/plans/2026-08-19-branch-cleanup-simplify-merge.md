@@ -1,5 +1,7 @@
 # Branch Cleanup, Simplification, Verification & Merge — Implementation Plan
 
+**Delivery state:** Completed — merged to main via PR #42 (2026-08-20)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. **Every task begins by loading the repo skill `karpathy-guidelines`** (`.agents/skills/karpathy-guidelines/SKILL.md`); every simplify task also loads `code-simplification` (`.agents/skills/code-simplification/SKILL.md`) and runs the bundled `/simplify` four-lens pass on its own diff before committing; every task ends with `verification-before-completion`. Dispatch **Opus** subagents for the simplify/review tasks (4–9, 15) and **Sonnet** subagents for the mechanical sweeps (12–14).
 
 **Goal:** Reduce everything this branch added on top of `origin/main` (the 39-commit Claude harness + the merged Codex provider/crypto program + docs) to its simplest behavior-preserving form, prove every guardrail and CLI function works, fix docs drift, and land it on `main` through a PR with green CI and a merge commit.

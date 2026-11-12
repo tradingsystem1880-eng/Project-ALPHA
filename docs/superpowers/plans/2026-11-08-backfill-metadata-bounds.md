@@ -1,5 +1,7 @@
 # Bound status metadata before parsing
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Requirement: canonical v9 W05/W02, market-data amendment delivery slice C and its
 bounded status/recovery contract (pages 42–43; Library
 libfile_181ac6079dcc8191b222b76c1f10bf17, version 9). This is a quality successor to

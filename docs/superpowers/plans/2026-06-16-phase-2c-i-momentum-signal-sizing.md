@@ -1,5 +1,7 @@
 # Phase 2c-i — Time-Series Momentum Signal + Volatility-Target Sizing
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** TDD per `CLAUDE.md`. Pure functions only — the look-ahead-sensitive quant core of the v1 strategy. The nautilus `Strategy` wiring (decide-on-close / execute-on-open) is the next increment (2c-ii).
 
 **Goal:** Encode the v1 strategy's mathematics (spec §7) as pure, strongly-typed, bias-guarded functions in `alpha_strategies` (DAG-legal: depends only on `alpha_core`, no nautilus yet): the time-series momentum signal and volatility-targeted position sizing. These are the highest-risk, most testable pieces — isolating them as pure functions makes them trivial to unit-test and bias-guard before they touch the engine.

@@ -1,6 +1,8 @@
 # Keyboard and tap inspection for the technical chart
 
-**Delivery state:** Implementation and focused validation complete; independent review approved.
+**Delivery state:** Completed — merged via PR #95
+
+**Historical delivery state (as first recorded):** Implementation and focused validation complete; independent review approved.
 
 Selected scope: let users inspect the exact candle and already returned study values in the default Technical · Bokeh chart with keyboard navigation or a tap, using the chart's existing cursor/readout. Clear the active inspection when the chart is recomposed after a study change. Preserve Classic/Default chart grammar and the optional Market · Lightweight renderer. No backend/API change, new dependency, aggregation, or client-side study/P&L calculation.
 

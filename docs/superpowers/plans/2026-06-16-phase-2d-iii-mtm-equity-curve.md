@@ -1,5 +1,7 @@
 # Phase 2d-iii — Faithful per-session mark-to-market equity curve
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** TDD per `CLAUDE.md`. Replaces the realized-cash equity curve with a
 > per-session MtM net-liquidation curve — the clean returns input the Phase-3 gauntlet needs.
 

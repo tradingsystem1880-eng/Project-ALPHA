@@ -1,6 +1,8 @@
 # Research runner startup boundary
 
-**Delivery state:** Implemented; prior local full gate passed; merged-main delivery pending.
+**Delivery state:** Completed — merged via PRs #118/#119
+
+**Historical delivery state (as first recorded):** Implemented; prior local full gate passed; merged-main delivery pending.
 
 ```json
 {

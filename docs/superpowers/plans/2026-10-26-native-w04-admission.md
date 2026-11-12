@@ -1,5 +1,7 @@
 # Bounded W04 native admission integration
 
+**Delivery state:** Completed — merged via PR #95
+
 Status: bounded implementation and explicit public validation complete; independent review pending.
 
 ```json

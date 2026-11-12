@@ -1,5 +1,7 @@
 # Connect retained bar diagnostics to Coverage & Quality
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Canonical v9 W05, W18 and market-data slice F require the existing CLI-authoritative
 quality evidence to be reachable through thin API/UI parity. Predecessor deb5399 provides
 only the opt-in CLI evaluator. The existing CryptoQualityView displays stored mechanical

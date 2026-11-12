@@ -1,5 +1,7 @@
 # Phase 2a — Adopt nautilus_trader + the Bar-Feed Translation Seam
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** TDD per `CLAUDE.md` — failing test → minimal code → green → commit.
 
 **Goal:** Kick off Phase 2 (backtest core). Two steps: (1) adopt the spec-mandated engine `nautilus_trader` into the workspace, proving it installs, imports, and leaves the whole gate green; (2) build the first thin wrapper — translate the PIT firewall's typed `alpha_core.Bar` objects (from `PointInTimeSource`) into nautilus `Bar` objects, the data feed the `BacktestEngine` will consume. This is the spec §13 "early Phase-2 spike" reduced to its lowest-risk core: the data-feed bridge, offline-tested, before any engine run.

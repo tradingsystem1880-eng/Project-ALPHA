@@ -1,5 +1,7 @@
 # Read-only backfill status and safe recovery planning
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 Canonical requirement: W05/W02, market-data amendment delivery slice C, with the
 page-42 bounded-acquisition/status requirement. Source read directly from canonical
 Library libfile_181ac6079dcc8191b222b76c1f10bf17, version 9,

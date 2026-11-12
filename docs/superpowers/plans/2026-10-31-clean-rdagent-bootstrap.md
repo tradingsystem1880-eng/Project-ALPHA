@@ -1,6 +1,8 @@
 # Clean RD-Agent cloud bootstrap
 
-**Delivery state:** Completed implementation and clean-bootstrap qualification. Repository delivery still requires the normal full gate, independent review and hosted checks on the published candidate.
+**Delivery state:** Completed — merged via PR #104
+
+**Historical delivery state (as first recorded):** Completed implementation and clean-bootstrap qualification. Repository delivery still requires the normal full gate, independent review and hosted checks on the published candidate.
 
 ```json
 {

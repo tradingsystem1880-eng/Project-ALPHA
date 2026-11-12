@@ -1,5 +1,7 @@
 # Terminal usability, local confirmation and real market data
 
+**Delivery state:** Completed — all slices done; merged via PR #53
+
 Owner direction: restore the Windows-style terminal in `Desktop/ALPHA-terminal-designs`, replace mandatory Touch ID with explicit local UI confirmation, and make stored external-drive market data usable. This supersedes the September 29 workflow-page visual direction; retain its repairs and routes.
 
 ```json

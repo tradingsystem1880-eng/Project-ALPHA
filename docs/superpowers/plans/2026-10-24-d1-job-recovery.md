@@ -1,5 +1,7 @@
 # D1 durable job recovery repair
 
+**Delivery state:** Completed — merged via PR #96
+
 Historical packet for the e635-based PR93 candidate. Its original focused results below do not
 attest a later reconciliation. Current implementation and fresh verification are tracked in the
 [PR95 reconciliation](2026-10-29-pr93-recovery-reconciliation.md); aggregate acceptance remains pending.

@@ -1,5 +1,7 @@
 # Exercise retained coverage with ready synthetic project context
 
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
 This successor closes the disposable-project inventory limitation of preserved assembly
 30dcbf4a8db4e7c38a1d723cf10ea8adb101b27b. It changes only the fixture, focused public
 browser/API tests and this candidate-local record. No production app, shell, ControlStore,

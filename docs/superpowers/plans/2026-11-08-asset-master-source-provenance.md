@@ -1,6 +1,8 @@
 # Reopen frozen asset-master source evidence at retained-data consumers
 
-**Delivery state:** Completed
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
+**Historical delivery state (as first recorded):** Completed
 
 ```json
 {

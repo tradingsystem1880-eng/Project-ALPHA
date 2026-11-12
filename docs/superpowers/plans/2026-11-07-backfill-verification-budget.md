@@ -1,6 +1,8 @@
 # Bound explicit resume artifact verification
 
-Delivery state: isolated successor to approved resume tree
+**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+
+Historical delivery state (as first recorded): isolated successor to approved resume tree
 `a20c88091c9951ea98b5202e6b1dfc999e8a79d0`. Focused verification/review receipts are separate.
 No release, runtime/provider admission or durable quota qualification is claimed.
 

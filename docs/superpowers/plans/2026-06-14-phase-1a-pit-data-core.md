@@ -1,5 +1,7 @@
 # Phase 1a — Point-in-Time Data Core Implementation Plan
 
+**Delivery state:** Completed — build-status 2026-Q2 records Phases 0–2 delivered; code on main
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a correct, look-ahead-safe Point-in-Time data core — `Bar` with enforced invariants, a Parquet store, the two-clock (knowledge-time vs ex-date) **split** adjustment, and the `as_of(when)` firewall — proven entirely with deterministic fixtures, including the data bias-guards.
