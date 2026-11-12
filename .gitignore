@@ -7,18 +7,26 @@ build/
 
 # Tooling caches
 .venv/
+.venv-*/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
 .coverage
 .coverage.*
 htmlcov/
+.hypothesis/
+.import_linter_cache/
+mutants/
+*.log
 
 # uv
 # (uv.lock IS committed — do not ignore it)
 
 # Env / secrets
 .env
+.env.*
+# Example env templates stay committable (none are tracked today).
+!.env.example
 
 # macOS
 .DS_Store
@@ -29,6 +37,8 @@ node_modules/
 coverage/
 apps/alpha-web/frontend/playwright-report/
 apps/alpha-web/frontend/test-results/
+tools/alpha-atlas/frontend/playwright-report/
+tools/alpha-atlas/frontend/test-results/
 *.tsbuildinfo
 
 # Data is large + reproducible from snapshots; never commit it
