@@ -75,7 +75,9 @@ def test_explicit_v2_changes_only_feature_version_and_digest() -> None:
     value["stage_config"]["ml"]["feature_recipe_version"] = 2
     corrected = draft(value)
     expected = copy.deepcopy(legacy)
-    expected["feature_recipe"]["version"] = 2
+    expected_recipe = expected["feature_recipe"]
+    assert isinstance(expected_recipe, dict)
+    expected_recipe["version"] = 2
     assert corrected == expected
     assert compute_config_hash(corrected) != compute_config_hash(legacy)
 
