@@ -698,7 +698,8 @@ snapshot/derived admission, preserving its canonical bytes and lineage. A fresh 
 Seven unreferenced quarantined records were also retired after a locked local JSON/SQLite and
 manifest reference audit. Fifty-two referenced quarantines and all five warnings remain; four
 warnings have retained references. Zero immutable artifacts were deleted. Audit receipt:
-`output/data-hygiene/2026-10-02-retirement-applied-audit.json` (sha256
+`output/data-hygiene/2026-10-02-retirement-applied-audit.json` (archived to
+`docs/archive/data-hygiene-2026-10-02/`; sha256
 `aa8cae59a5e73daecda4ba28ef50460eed5a8d4f46b9d8fa9ccebaa6c45972fb`).
 Atomic hash-bound retirement markers distinguish archive integrity from new admission eligibility.
 Current yield-pool search verifies selected catalog and raw lineage before returning bounded
@@ -760,9 +761,9 @@ The canonical `gate.py full` passed all six components on the frozen shared tree
 "aggregate receipt pending" and "full gate blocked" statements in the 2026-09-30 through 2026-10-04
 records above, which remain as history. The 198-error ruff blocker was the benchmark session's
 scratch script; it and the benchmark PDFs are archived outside the repository and `tmp/` is now
-ignored. The DefiLlama retirement-audit receipts under `output/data-hygiene/` are committed so the
+ignored. The DefiLlama retirement-audit receipts under `output/data-hygiene/` (now `docs/archive/data-hygiene-2026-10-02/`) are committed so the
 sha256 citation above resolves in the repository. Five July research files deleted without record
-(`research/*mizerxbt_eth*`) are restored. ADR numbering is corrected before integration: published
+(`research/*mizerxbt_eth*`, now `docs/archive/research-one-offs/mizerxbt-eth/`) are restored. ADR numbering is corrected before integration: published
 ADR-0036 belongs to the DefiLlama family on origin/main, agent-neutral engineering becomes ADR-0037
 and local confirmation/terminal archive charts becomes ADR-0038; every reference and the Atlas
 were regenerated. Re-verification on 2026-10-05: pytest 4,879 passed, vitest 361 passed, ruff,

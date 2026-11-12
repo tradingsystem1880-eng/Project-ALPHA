@@ -10,7 +10,7 @@ policy, so the candle series is deterministic synthetic data (seed 7, matching
 window: repeated rejections at the $1,800 wall and a last price near $1,782.
 The chart footer discloses this.
 
-Run: ``uv run python research/charts/mizerxbt_eth_short_1h.py``
+Run: ``uv run python docs/archive/research-one-offs/mizerxbt-eth/mizerxbt_eth_short_1h.py``
 """
 
 from __future__ import annotations

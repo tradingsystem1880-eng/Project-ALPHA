@@ -11,7 +11,7 @@ Reuses ``alpha_validation.montecarlo.student_t_paths`` (fat-tailed, df=4) for th
 
 Outputs: a JSON summary on stdout and a 4-panel dark-terminal dashboard PNG next to this file.
 
-Run: ``uv run python research/analysis/mizerxbt_eth_trade_quant.py``
+Run: ``uv run python docs/archive/research-one-offs/mizerxbt-eth/mizerxbt_eth_trade_quant.py``
 """
 
 from __future__ import annotations
