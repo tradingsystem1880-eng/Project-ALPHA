@@ -160,11 +160,10 @@ session +23 hours, and executes long/flat one-share targets at the next syntheti
 Its recorded run produced 10 orders, 10 fills and five closed positions. The other two native
 views remain separate historical demonstrations.
 
-![Joined native Qlib and Nautilus synthetic execution, with explicit timestamp and instrument links](docs/assets/workstation/native-qlib-nautilus-pipeline.png)
-
-*Actual `qlib.cli.run` → fixed-unit `SignalReplay` → Nautilus `BacktestEngine`. The plotted cash
-observations are not mark-to-market equity; exact equity, commissions, score links, inputs,
-configuration and provenance are downloadable. Source/export support hashes are retained.*
+The view follows actual `qlib.cli.run` → fixed-unit `SignalReplay` → Nautilus `BacktestEngine`.
+Its plotted cash observations are not mark-to-market equity; exact equity, commissions, score
+links, inputs, configuration and provenance are downloadable. Source/export support hashes are
+retained. No screenshot of this view is committed.
 
 Reproduce from this checkout using an existing isolated Qlib environment and a **new** directory:
 
@@ -178,12 +177,13 @@ regression target are independently fabricated; this is not a tested paper hypot
 of market edge. The command reads only its bundled synthetic fixture and writes an isolated output
 bundle, without adding a canonical run, research history, admission, promotion or live routing.
 FitPlan/resource/release decisions and real-data scientific acceptance remain separate.
-The [implementation plan](docs/superpowers/plans/2026-11-07-native-qlib-nautilus-synthetic-bridge.md)
+The [delivery record](docs/BUILD-STATUS.md#2026-11-07--joined-native-qlib-to-nautilus-synthetic-pipeline-candidate)
 records this bounded scope. This delivery candidate is not yet merged or deployed.
 
 
-*All three images are genuine browser captures from the built ALPHA UI and isolated empty backend
-stores. These demonstrations create no admitted research, promotion approval or live-trading authority.*
+*Both native Results images above are genuine browser captures from the built ALPHA UI and
+isolated empty backend stores. These demonstrations create no admitted research, promotion
+approval or live-trading authority.*
 
 See the [Quant Platform map](docs/context/alpha-quant-platform.md),
 [bounded research workflow](docs/operations/bounded-research-workflow.md),
