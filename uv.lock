@@ -376,12 +376,16 @@ version = "1.0.0"
 source = { editable = "packages/alpha-study" }
 dependencies = [
     { name = "alpha-core" },
+    { name = "alpha-data" },
+    { name = "alpha-patterns" },
     { name = "alpha-research" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "alpha-core", editable = "packages/alpha-core" },
+    { name = "alpha-data", editable = "packages/alpha-data" },
+    { name = "alpha-patterns", editable = "packages/alpha-patterns" },
     { name = "alpha-research", editable = "packages/alpha-research" },
 ]
 

@@ -5,11 +5,15 @@ description = "Governed research-study composition and projections."
 requires-python = ">=3.12"
 dependencies = [
     "alpha-core",
+    "alpha-data",
+    "alpha-patterns",
     "alpha-research",
 ]
 
 [tool.uv.sources]
 alpha-core = { workspace = true }
+alpha-data = { workspace = true }
+alpha-patterns = { workspace = true }
 alpha-research = { workspace = true }
 
 [build-system]
