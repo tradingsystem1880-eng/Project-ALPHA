@@ -35,11 +35,25 @@ families at windows 5, 10, 20, 30 and 60. It does not label 40 columns as full 1
     {"title": "Explicit contracts and immutable lineage", "verify": "workers/qlib/tests/test_feature_recipe_contract.py and tests/unit/test_feature_recipe_versions.py", "expected": "Explicit v2 accepted, defaults unchanged, unsupported identities and lineage reuse rejected", "rollback": "Revert additive reader support; old readers reject v2", "status": "done"},
     {"title": "Provenance, generated projections and review", "verify": "Focused web/refit checks, API generation, lint/types and independent source review", "expected": "Honest partial scope, no native parity claim, source and upstream bindings", "rollback": "Retain unqualified candidate and failed evidence; no publication", "status": "pending"}
   ],
-  "dag_impact": "No new cross-package engine dependency. Qlib remains isolated and lazily imported only for feature v2.",
-  "lookahead_impact": "Only trailing rows in immutable input; prefix and future-poison checks without protected test access.",
-  "determinism_impact": "Exact versioned request/config identity, content-addressed operator cache and pinned numerical sources."
+  "tier_impact": ["quant", "bias", "determinism"],
+  "docs_to_update": ["workers/qlib/README.md"],
+  "out_of_scope": [
+    "Silently repairing or relabelling feature recipe version 1 or its historical results.",
+    "A general expression parser/provider or a full native Qlib handler replacement.",
+    "Real fitting/inference, provider initialization, market acquisition, broker operation, owner store or GPU work.",
+    "Full gate, Atlas, protected test suites, deployment and scientific acceptance claims."
+  ]
 }
 ```
+
+## Impact notes (moved from the front block)
+
+These three statements were extra front-block keys outside the `FeaturePlan` schema; they are kept
+here verbatim and summarised in `tier_impact`.
+
+- DAG: No new cross-package engine dependency. Qlib remains isolated and lazily imported only for feature v2.
+- Look-ahead: Only trailing rows in immutable input; prefix and future-poison checks without protected test access.
+- Determinism: Exact versioned request/config identity, content-addressed operator cache and pinned numerical sources.
 
 ## Contract and compatibility
 

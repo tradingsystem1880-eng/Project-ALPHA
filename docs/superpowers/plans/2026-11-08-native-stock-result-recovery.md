@@ -2,6 +2,69 @@
 
 **Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
 
+```json
+{
+  "schema_version": 1,
+  "title": "Retained-owner native result recovery",
+  "context": "Canonical v9 W02/T10 requires exact attempt-bound receipts; complete the existing owner→receipt→durable observation→artifact recovery workflow by persisting the stock receipt hash the finish step currently discards. Front block added 2026-11-13 during the plan status pass; every field restates this plan's own text. Implementation slices are marked done because the named code and tests exist in candidate a631e8e7; review slices stay pending unless the text records a review.",
+  "assumptions": [
+    {
+      "statement": "The stock worker already stops after coding and resumes in the same child with the same outside-pickle guard.",
+      "verified_by": "Plan text on the T07 boundary."
+    },
+    {
+      "statement": "Legacy rows without the new observation remain readable and report unavailable.",
+      "verified_by": "Plan slice 1 text."
+    }
+  ],
+  "alternatives_considered": [
+    "A new resume loop or mid-stage retry; rejected: complete the existing workflow, not a new loop."
+  ],
+  "pre_mortem": [
+    "A byte match could be read as scientific, ownership or resume authority; it is only an owner-observed artifact fact.",
+    "Duplicate dispatch, lost owner, stale profile or tampered bytes could be accepted; the journey test rejects each."
+  ],
+  "slices": [
+    {
+      "title": "Optional StockRDLoopObservationV1 in sealed native_outcome",
+      "verify": "Validation tests for claim, consumption, start, exit 0 and POSIX cleanup",
+      "expected": "Validated before commit; legacy rows readable and unavailable",
+      "rollback": "Not stated in the original plan text; revert this slice's candidate changes.",
+      "files": [],
+      "status": "done"
+    },
+    {
+      "title": "Match artifact-byte snapshot to the durable owner observation",
+      "verify": "Selected current profile/request declarations required for completed recovery",
+      "expected": "Byte match recorded as an owner-observed artifact fact only",
+      "rollback": "Not stated in the original plan text; revert this slice's candidate changes.",
+      "files": [],
+      "status": "done"
+    },
+    {
+      "title": "Fresh synthetic recovery journey and independent review",
+      "verify": "Checkpoint stop, same-guard remaining stages, owner capture, new-process recovery; focused public tests",
+      "expected": "Reservations and consumption unchanged; duplicate/lost-owner/stale/tampered cases rejected",
+      "rollback": "Not stated in the original plan text; revert this slice's candidate changes.",
+      "files": [],
+      "status": "pending"
+    }
+  ],
+  "tier_impact": [
+    "none"
+  ],
+  "docs_to_update": [
+    "docs/operations/native-stock-inspection.md"
+  ],
+  "out_of_scope": [
+    "ControlStore/schema/ledger/reservation/refund/budget/state-transition changes.",
+    "Worker continuation semantics, market/as-of/statistical logic, data, provider/model calls and installs.",
+    "Broad/full or private gates, publication, transfers and installs.",
+    "Shared generated outputs and shared README/CLAUDE documentation."
+  ]
+}
+```
+
 Canonical v9 W02/T10 (Library libfile_181ac6079dcc8191b222b76c1f10bf17) requires
 exact attempt-bound receipts and rejection of changed artifacts. Preserve predecessor
 7e643bab52be6fcf2bd8c9fc9b9f2b5dd5c35622 and every export.

@@ -2,6 +2,74 @@
 
 **Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
 
+```json
+{
+  "schema_version": 1,
+  "title": "Canonical native result operator command",
+  "context": "Canonical v9 W02/T10 requires attempt-bound result/receipt recovery and wrong/missing artifact rejection; add `alpha research diagnostic native-result` to the existing read-only non-admitted command group, reusing the module CLI's recovery. Front block added 2026-11-13 during the plan status pass; every field restates this plan's own text. Implementation slices are marked done because the named code and tests exist in candidate a631e8e7; review slices stay pending unless the text records a review.",
+  "assumptions": [
+    {
+      "statement": "The read-only non-admitted diagnostic group is already excluded from the launchable catalog.",
+      "verified_by": "Plan text; no frontend/info/science command edits needed."
+    },
+    {
+      "statement": "Predecessor 8eb6c160 and all earlier exports are preserved.",
+      "verified_by": "Plan text 'Preserve 8eb6c160...'."
+    }
+  ],
+  "alternatives_considered": [
+    "Another inspector or loop; rejected in favour of reusing the existing module CLI recovery."
+  ],
+  "pre_mortem": [
+    "Raw errors/logs or non-completed results could leak through the operator output; only completed artifact recovery exposes receipt/result.",
+    "Registration could construct AlphaSettings or call models/providers; tests assert it does not."
+  ],
+  "slices": [
+    {
+      "title": "Retain validated receipt and trace; thin CLI binding",
+      "verify": "Exit/status projection tests: completed 0, invalid 2, unavailable 3",
+      "expected": "Explicit root/job/source/runtime/mode; owner/profile/spec/hash provenance kept",
+      "rollback": "Not stated in the original plan text; revert this slice's candidate changes.",
+      "files": [
+        "apps/alpha-cli/src/alpha_cli/native_stock_cmds.py"
+      ],
+      "status": "done"
+    },
+    {
+      "title": "Idempotent registration through main._group",
+      "verify": "CLI discoverability, non-launchable classification and fail-closed output tests",
+      "expected": "Registered alongside the lazy research add-on without settings, model/provider calls or another data source",
+      "rollback": "Not stated in the original plan text; revert this slice's candidate changes.",
+      "files": [
+        "apps/alpha-cli/src/alpha_cli/main.py"
+      ],
+      "status": "done"
+    },
+    {
+      "title": "Actual console subprocess journey and independent review",
+      "verify": "Fresh disposable synthetic native job: checkpoint stop, remaining stages, owner validation, new-process durable read; changed bytes, missing owner binding, late cancellation",
+      "expected": "Exit/status/provenance verified and no result promotion",
+      "rollback": "Not stated in the original plan text; revert this slice's candidate changes.",
+      "files": [],
+      "status": "pending"
+    }
+  ],
+  "tier_impact": [
+    "none"
+  ],
+  "docs_to_update": [
+    "docs/operations/native-stock-inspection.md"
+  ],
+  "out_of_scope": [
+    "Any launching feature; the operator never creates job, owner, reservation or allowance.",
+    "T07 resume and accounting/policy/guard/schema/worker semantic changes.",
+    "Statistics, as-of or market data changes.",
+    "Broad/full or private gates, publication, transfers and installs.",
+    "Shared generated outputs and shared README/CLAUDE documentation."
+  ]
+}
+```
+
 Canonical v9 W02/T10 (Library libfile_181ac6079dcc8191b222b76c1f10bf17) requires
 attempt-bound result/receipt recovery and wrong/missing artifact rejection. Preserve
 8eb6c16020136992a5701b1f3598515fc2dd0bbd and all predecessors/exports.
