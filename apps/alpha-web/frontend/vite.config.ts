@@ -5,6 +5,7 @@ import { defineConfig } from 'vite'
 // A dedicated subdir keeps the built assets isolated from the (transitional) legacy Jinja statics.
 export default defineConfig({
   plugins: [react()],
+  resolve: { preserveSymlinks: true },
   base: '/static/app/',
   build: {
     outDir: '../src/alpha_web/static/app',

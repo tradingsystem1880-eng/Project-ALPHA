@@ -9,12 +9,12 @@ import math
 import os
 import re
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from functools import partial
 from pathlib import Path
-from typing import Annotated, Final, Literal, cast
+from typing import Annotated, Final, Literal, TypedDict, cast
 
 import polars as pl
 import typer
@@ -53,6 +53,8 @@ from alpha_cli._crypto_analysis import (
 from alpha_cli._crypto_analysis import (
     parquet_frame as _parquet_frame,
 )
+from alpha_cli._crypto_asset_master_sources import verify_asset_master_sources
+from alpha_cli._crypto_backfill_accounting import FixtureAccountingBlocked
 from alpha_cli._crypto_coverage import batch_digest as _coverage_batch_digest
 from alpha_cli._crypto_coverage import batch_directory as _coverage_batch_directory
 from alpha_cli._crypto_coverage import create_coverage_batch as _create_coverage_batch_at
@@ -93,7 +95,7 @@ from alpha_data.crypto.profiles import (
     active_option_markets,
     build_default_coverage_tasks,
 )
-from alpha_data.crypto.providers._wire import RequestBudget
+from alpha_data.crypto.providers._wire import CompleteHttpResponse, HttpAttemptHook, RequestBudget
 from alpha_data.crypto.providers.binance import (
     archive_checksum_sha256,
     archive_url,
@@ -153,6 +155,7 @@ from alpha_data.crypto.research import (
     assess_crypto_snapshot,
 )
 from alpha_data.crypto.storage import CryptoBulkStore
+from alpha_data.crypto.verification import DEFAULT_METADATA_READ_BYTES
 from alpha_research import (
     CryptoCrowdingObservationV1,
     CryptoCrowdingResearchPlanV1,
@@ -478,7 +481,16 @@ def _read_asset_master(version: str) -> AssetMaster:
         raw = json.loads((_asset_master_root() / f"{version}.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise DataError("crypto asset-master is unavailable or corrupt") from exc
-    return AssetMaster.from_dict(raw)
+    master = AssetMaster.from_dict(raw)
+    if master.version != version:
+        raise DataError("crypto asset-master file identity does not match its requested version")
+    return master
+
+
+def _verified_asset_master(store: CryptoBulkStore, version: str) -> AssetMaster:
+    master = _read_asset_master(version)
+    verify_asset_master_sources(store, master)
+    return master
 
 
 def _stable_resource_revision_lineage(
@@ -539,22 +551,32 @@ def _verify_snapshot_members(
 ) -> tuple[CryptoSnapshotV1, dict[str, CryptoQualityReportV1], CryptoResearchEligibilityV1, bool]:
     """Reverify one snapshot's bytes, identity, and member scope; report scope eligibility."""
     snapshot = _read_snapshot(snapshot_id)
+    store = _bulk_store()
     if snapshot.asset_master_version not in REVIEWED_NATIVE_LABELS:
-        master = _read_asset_master(snapshot.asset_master_version)
+        master = _verified_asset_master(store, snapshot.asset_master_version)
         if master.version != snapshot.asset_master_version:
             raise DataError("crypto snapshot asset-master identity is mismatched")
-    store = _bulk_store()
-    by_membership = {
-        (manifest.get("artifact_key"), manifest.get("artifact_sha256")): manifest
-        for manifest in store.inventory()
-        if manifest.get("artifact_kind") == "normalized"
-    }
+    retained = tuple(
+        manifest for manifest in store.inventory() if manifest.get("artifact_kind") == "normalized"
+    )
     scope_eligible = True
     reports: dict[str, CryptoQualityReportV1] = {}
     for member in snapshot.members:
-        manifest = by_membership.get((member.artifact_key, member.artifact_sha256))
-        if manifest is None or manifest.get("dataset") != member.dataset.to_dict():
+        matches = [
+            manifest
+            for manifest in retained
+            if manifest.get("artifact_key") == member.artifact_key
+            and manifest.get("artifact_sha256") == member.artifact_sha256
+            and manifest.get("dataset") == member.dataset.to_dict()
+        ]
+        if not matches:
             raise DataError("crypto snapshot member manifest is missing or mismatched")
+        if len(matches) != 1:
+            raise DataError(
+                "crypto snapshot member manifest is ambiguous; "
+                "frozen membership does not identify one retained capture"
+            )
+        manifest = matches[0]
         if tolerate_legacy_scope:
             try:
                 _manifest_acquisition_scope(manifest, member.dataset)
@@ -653,7 +675,7 @@ def _snapshot_asset_master(snapshot: CryptoSnapshotV1) -> AssetMaster:
     return (
         AssetMaster.with_reviewed_native_assets(snapshot.asset_master_version)
         if snapshot.asset_master_version in REVIEWED_NATIVE_LABELS
-        else _read_asset_master(snapshot.asset_master_version)
+        else _verified_asset_master(_bulk_store(), snapshot.asset_master_version)
     )
 
 
@@ -1365,7 +1387,7 @@ def asset_contract(
     """Resolve one contract by exact network and address; ticker lookup is unavailable."""
     try:
         instant = datetime.fromisoformat(as_of.replace("Z", "+00:00"))
-        identity = _read_asset_master(asset_master_version).resolve_contract(
+        identity = _verified_asset_master(_bulk_store(), asset_master_version).resolve_contract(
             network=network,
             contract_address=contract_address,
             as_of=instant,
@@ -1375,14 +1397,38 @@ def asset_contract(
     _emit(identity.to_dict(), json_out=json_out)
 
 
+class _BybitHttpOptions(TypedDict, total=False):
+    http_attempt_hook: HttpAttemptHook
+    http_response_evidence: Callable[[CompleteHttpResponse], None]
+    http_error_response_evidence: Callable[[CompleteHttpResponse], None]
+    http_retry_429: bool
+
+
 def _fetch_bybit_pages(
-    plan: _AcquisitionPlan, *, follow_cursors: bool
+    plan: _AcquisitionPlan,
+    *,
+    follow_cursors: bool,
+    http_attempt_hook: HttpAttemptHook | None = None,
+    http_response_evidence: Callable[[CompleteHttpResponse], None] | None = None,
+    http_error_response_evidence: Callable[[CompleteHttpResponse], None] | None = None,
+    http_retry_429: bool = False,
 ) -> tuple[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]], ...]:
     pages: list[tuple[bytes, tuple[tuple[str, str], ...], tuple[str, ...]]] = []
     params = dict(plan.params)
     seen_cursors: set[str] = set()
     for page_number in range(1, 101):
-        payload = fetch_bybit_public(plan.endpoint, params)
+        payload = (
+            fetch_bybit_public(plan.endpoint, params)
+            if http_attempt_hook is None and http_response_evidence is None
+            else fetch_bybit_public(
+                plan.endpoint,
+                params,
+                attempt_hook=http_attempt_hook,
+                response_evidence=http_response_evidence,
+                error_response_evidence=http_error_response_evidence,
+                retry_429=http_retry_429,
+            )
+        )
         frame = plan.parser(payload)
         range_start = params.get("startTime", params.get("start"))
         range_end = params.get("endTime", params.get("end"))
@@ -2587,10 +2633,22 @@ def _acquire_result(
     reason: str | None = typer.Option(None, help="bounded event-capture reason"),
     max_requests: int | None = None,
     max_total_bytes: int | None = None,
+    http_attempt_hook: HttpAttemptHook | None = None,
+    http_response_evidence: Callable[[CompleteHttpResponse], None] | None = None,
+    http_error_response_evidence: Callable[[CompleteHttpResponse], None] | None = None,
+    http_retry_429: bool = False,
 ) -> dict[str, object]:
     """Acquire one bounded public provider page; this grants no research or order authority."""
     dataset_family = _family(family)
     fetched_at = _now()
+    if (http_error_response_evidence is not None or http_retry_429) and (
+        http_response_evidence is None or http_attempt_hook is None
+    ):
+        raise FixtureAccountingBlocked("BOUND_RESPONSE_EVIDENCE_REQUIRED")
+    if http_response_evidence is not None and (provider != "bybit" or http_attempt_hook is None):
+        raise FixtureAccountingBlocked("COMPLETE_RESPONSE_REQUIRES_BYBIT_HTTP_ACCOUNTING")
+    if http_attempt_hook is not None and provider != "bybit":
+        raise FixtureAccountingBlocked("HTTP_ACCOUNTING_ROUTE_UNSUPPORTED")
     try:
         budget = None
         if max_requests is not None or max_total_bytes is not None:
@@ -2628,8 +2686,18 @@ def _acquire_result(
                 end=end,
                 fetched_at=fetched_at,
             )
+            http_options: _BybitHttpOptions = {}
+            if http_attempt_hook is not None:
+                http_options["http_attempt_hook"] = http_attempt_hook
+            if http_response_evidence is not None:
+                http_options["http_response_evidence"] = http_response_evidence
+            if http_error_response_evidence is not None:
+                http_options["http_error_response_evidence"] = http_error_response_evidence
+            if http_retry_429:
+                http_options["http_retry_429"] = http_retry_429
             pages = _fetch_bybit_pages(
                 plan,
+                **http_options,
                 follow_cursors=(
                     start is not None
                     or dataset_family in {"instrument_catalog", "option_instruments"}
@@ -2775,6 +2843,8 @@ def _acquire_result(
             quality = single_result.quality
             normalized_manifest = single_result.normalized_manifest
             raw_manifests = (single_result.raw_manifest,)
+    except FixtureAccountingBlocked:
+        raise
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     if quality.state == "qualified":
@@ -2906,8 +2976,89 @@ def coverage(
 def quality(
     manifest_id: str,
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+    coverage_start: str | None = typer.Option(
+        None, help="explicit expected daily grid start, ISO-8601"
+    ),
+    coverage_end: str | None = typer.Option(
+        None, help="explicit exclusive daily grid end, ISO-8601"
+    ),
+    as_of: str | None = typer.Option(None, help="closure cutoff; not a source availability claim"),
+    expected_cadence_seconds: int | None = typer.Option(
+        None, min=1, help="must match native 1d: 86400"
+    ),
+    max_verify_artifact_bytes: int | None = typer.Option(
+        None, min=1, help="required hash cap for grid audit"
+    ),
+    max_input_bytes: int | None = typer.Option(None, min=1, max=32 * 1024 * 1024),
+    max_rows: int | None = typer.Option(None, min=1, max=50000),
+    max_missing_ranges: int | None = typer.Option(None, min=1, max=1000),
+    max_verify_metadata_bytes: int | None = typer.Option(None, min=1),
 ) -> None:
     """Reverify and display one normalized artifact's mechanical quality report."""
+    if any(
+        value is not None
+        for value in (
+            coverage_start,
+            coverage_end,
+            as_of,
+            expected_cadence_seconds,
+            max_verify_artifact_bytes,
+            max_input_bytes,
+            max_rows,
+            max_missing_ranges,
+            max_verify_metadata_bytes,
+        )
+    ):
+        if any(
+            value is None
+            for value in (
+                coverage_start,
+                coverage_end,
+                as_of,
+                expected_cadence_seconds,
+                max_verify_artifact_bytes,
+            )
+        ):
+            raise typer.BadParameter(
+                "grid audit requires coverage-start/end, as-of, cadence and hash cap"
+            )
+        from alpha_cli._crypto_bar_coverage import retained_daily_bar_audit
+        from alpha_data.crypto.contracts import require_utc
+
+        assert coverage_start is not None and coverage_end is not None and as_of is not None
+        assert expected_cadence_seconds is not None and max_verify_artifact_bytes is not None
+        try:
+            first, final, cutoff = (
+                require_utc(datetime.fromisoformat(value.replace("Z", "+00:00")), "grid instant")
+                for value in (coverage_start, coverage_end, as_of)
+            )
+            result = retained_daily_bar_audit(
+                _bulk_store(),
+                manifest_id,
+                start=first,
+                end=final,
+                as_of=cutoff,
+                cadence_seconds=expected_cadence_seconds,
+                max_hash_bytes=max_verify_artifact_bytes,
+                max_input_bytes=max_input_bytes or 32 * 1024 * 1024,
+                max_rows=max_rows or 50000,
+                max_missing_ranges=max_missing_ranges or 1000,
+                max_metadata_bytes=max_verify_metadata_bytes or DEFAULT_METADATA_READ_BYTES,
+            )
+        except (DataError, OSError, ValueError, RecursionError):
+            result = {
+                "audit_state": "unavailable",
+                "reason": "RETAINED_BAR_AUDIT_UNAVAILABLE",
+                "execution_authority": False,
+                "inspection_provider_calls": 0,
+            }
+        _emit(result, json_out=json_out)
+        if (
+            result["audit_state"] != "inspected"
+            or not result["row_audit"]["declared_grid_satisfied"]
+        ):
+            raise typer.Exit(code=1)
+        return
     try:
         manifest = _bulk_store().verify_manifest(manifest_id)
         if manifest.get("artifact_kind") != "normalized":
@@ -3154,7 +3305,8 @@ def _qualified_normalized_frame(
     family: CryptoFamily,
     instrument: str | None = None,
 ) -> tuple[pl.DataFrame, CryptoQualityReportV1]:
-    manifest = store.verify_manifest(manifest_id)
+    store.require_active(manifest_id)
+    manifest, payload = store.read_verified_normalized(manifest_id, max_bytes=32 * 1024 * 1024)
     if manifest.get("artifact_kind") != "normalized":
         raise DataError("crypto asset-master sources must be normalized artifacts")
     dataset = CryptoDatasetIdentityV1.from_dict(manifest.get("dataset"))
@@ -3171,7 +3323,7 @@ def _qualified_normalized_frame(
     if not isinstance(artifact_key, str):
         raise DataError("crypto asset-master source artifact key is invalid")
     try:
-        frame = pl.read_parquet(store.bulk_root / artifact_key)
+        frame = pl.read_parquet(io.BytesIO(payload))
     except (OSError, pl.exceptions.PolarsError) as exc:
         raise DataError("crypto asset-master source artifact is unreadable") from exc
     return frame, quality_report
@@ -4087,22 +4239,24 @@ def asset_master_create(
     try:
         store = _bulk_store()
         store.verify_ready(required_bytes=0)
-        coingecko, quality_report = _qualified_normalized_frame(
-            store, coingecko_manifest_id, family="asset_metadata", instrument="all"
-        )
-        pools = tuple(
-            _qualified_normalized_frame(store, manifest_id, family="dex_pools")[0]
-            for manifest_id in geckoterminal_manifest_ids
-        )
-        if quality_report.observed_end is None:
-            raise DataError("CoinGecko asset catalog has no observation time")
-        master = build_cross_provider_asset_master(
-            coingecko_catalog=coingecko,
-            geckoterminal_pools=pools,
-            observed_at=quality_report.observed_end,
-            source_manifest_ids=(coingecko_manifest_id, *geckoterminal_manifest_ids),
-        )
-        _write_asset_master(master)
+        with store.admission_lock():
+            coingecko, quality_report = _qualified_normalized_frame(
+                store, coingecko_manifest_id, family="asset_metadata", instrument="all"
+            )
+            pools = tuple(
+                _qualified_normalized_frame(store, manifest_id, family="dex_pools")[0]
+                for manifest_id in geckoterminal_manifest_ids
+            )
+            if quality_report.observed_end is None:
+                raise DataError("CoinGecko asset catalog has no observation time")
+            master = build_cross_provider_asset_master(
+                coingecko_catalog=coingecko,
+                geckoterminal_pools=pools,
+                observed_at=quality_report.observed_end,
+                source_manifest_ids=(coingecko_manifest_id, *geckoterminal_manifest_ids),
+            )
+            verify_asset_master_sources(store, master)
+            _write_asset_master(master)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(
@@ -4128,7 +4282,7 @@ def asset_master_verify(
 ) -> None:
     """Rederive a frozen asset master's content identity before snapshot use."""
     try:
-        master = _read_asset_master(version)
+        master = _verified_asset_master(_bulk_store(), version)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(
@@ -4209,7 +4363,7 @@ def snapshot_create(
         store = _bulk_store()
         with store.admission_lock():
             if asset_master_version not in REVIEWED_NATIVE_LABELS:
-                _read_asset_master(asset_master_version)
+                _verified_asset_master(store, asset_master_version)
             resolved = tuple(_normalized_member(store, manifest_id) for manifest_id in manifest_ids)
             snapshot = CryptoSnapshotV1.create(
                 members=tuple(member for member, _ in resolved),
@@ -4304,7 +4458,7 @@ def snapshot_query(
         store.verify_readable()
         snapshot = _read_snapshot(snapshot_id)
         if snapshot.asset_master_version not in REVIEWED_NATIVE_LABELS:
-            master = _read_asset_master(snapshot.asset_master_version)
+            master = _verified_asset_master(_bulk_store(), snapshot.asset_master_version)
             if master.version != snapshot.asset_master_version:
                 raise DataError("crypto snapshot asset-master identity is mismatched")
         result = query_defi_tvl_snapshot(
@@ -4409,10 +4563,38 @@ def backfill(
     frequency: str = typer.Option("1h", help="provider-native bounded frequency"),
     ledger: str = typer.Option(..., help="ledger name under data_dir/crypto/backfill/"),
     dry_run: bool = typer.Option(False, "--dry-run", help="plan and count windows only"),
+    max_verify_artifact_bytes: int | None = typer.Option(
+        None,
+        min=1,
+        help="resume artifact hashing byte cap only; excludes metadata and HTTP",
+    ),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Run many bounded `acquire` pages over symbols x windows, resumably; grants no authority."""
-    from alpha_cli._crypto_backfill import run_backfill
+    from alpha_cli._crypto_backfill import BackfillWindow, run_backfill
+    from alpha_cli._crypto_backfill_evidence import verify_completed_window
+    from alpha_data.crypto.verification import ArtifactVerificationBudget
+
+    verification_budget = (
+        None
+        if max_verify_artifact_bytes is None
+        else ArtifactVerificationBudget(max_verify_artifact_bytes)
+    )
+
+    def verify_completed(symbol: str, window: BackfillWindow, entry: Mapping[str, object]) -> None:
+        verify_completed_window(
+            _bulk_store(),
+            symbol,
+            window,
+            entry,
+            provider=provider,
+            family=_family(family),
+            category=category,
+            frequency=frequency,
+            quote=quote,
+            now=_now(),
+            budget=verification_budget,
+        )
 
     try:
         start_date = date.fromisoformat(start)
@@ -4440,9 +4622,71 @@ def backfill(
             now=_now(),
             dry_run=dry_run,
             log=None if json_out else lambda line: typer.echo(line, err=True),
+            verify_completed=verify_completed,
         )
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
+    summary.update(
+        verification_artifact_byte_limit=max_verify_artifact_bytes,
+        verification_artifact_bytes_reserved=None
+        if verification_budget is None
+        else verification_budget.reserved_bytes,
+        verification_artifact_bytes_read=None
+        if verification_budget is None
+        else verification_budget.bytes_read,
+    )
     _emit(summary, json_out=json_out)
     if summary["failed"]:
+        raise typer.Exit(code=1)
+
+
+@crypto_data_app.command("backfill-status")
+def backfill_status(
+    provider: str,
+    family: str,
+    symbols: str = typer.Option(..., help="exact comma-separated provider symbols"),
+    quote: str = typer.Option(..., help="exact quote asset"),
+    start: str = typer.Option(..., help="requested first session YYYY-MM-DD"),
+    end: str = typer.Option(..., help="requested exclusive end YYYY-MM-DD"),
+    ledger: str = typer.Option(..., help="existing ledger name under data_dir/crypto/backfill/"),
+    max_ledger_bytes: int = typer.Option(..., min=1, help="maximum progress bytes per read"),
+    max_windows: int = typer.Option(..., min=1, help="maximum plan and split-node visits"),
+    max_verify_artifact_bytes: int = typer.Option(..., min=1, help="artifact hashing bytes only"),
+    max_verify_metadata_bytes: int = typer.Option(
+        DEFAULT_METADATA_READ_BYTES,
+        min=1,
+        help="total manifest/retirement JSON bytes (inspection only)",
+    ),
+    category: str = typer.Option("linear", help="exact spot, linear or inverse category"),
+    frequency: str = typer.Option("1h", help="requested native frequency"),
+    json_out: bool = typer.Option(False, "--json", help="emit structured inspection receipt"),
+) -> None:
+    """Inspect retained progress/evidence without writes or provider calls; grants no authority."""
+    from alpha_cli._crypto_backfill_inspection import inspect_backfill
+
+    try:
+        start_date, end_date = date.fromisoformat(start), date.fromisoformat(end)
+    except ValueError as exc:
+        raise typer.BadParameter("backfill-status --start/--end must be YYYY-MM-DD") from exc
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", ledger):
+        raise typer.BadParameter("ledger name must be a short filesystem-safe token")
+    summary = inspect_backfill(
+        provider=provider,
+        family=_family(family),
+        symbols=[symbol.strip() for symbol in symbols.split(",") if symbol.strip()],
+        quote=quote,
+        category=category,
+        frequency=frequency,
+        start=start_date,
+        end=end_date,
+        ledger_path=AlphaSettings().data_dir / "crypto" / "backfill" / f"{ledger}.json",
+        now=_now(),
+        max_ledger_bytes=max_ledger_bytes,
+        max_windows=max_windows,
+        max_verify_artifact_bytes=max_verify_artifact_bytes,
+        max_verify_metadata_bytes=max_verify_metadata_bytes,
+        load_store=_bulk_store,
+    )
+    _emit(summary, json_out=json_out)
+    if summary["inspection_state"] != "complete":
         raise typer.Exit(code=1)

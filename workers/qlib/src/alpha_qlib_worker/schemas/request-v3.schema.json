@@ -59,7 +59,7 @@
           "const": "alpha158"
         },
         "version": {
-          "const": 1
+          "type": "integer", "enum": [1, 2]
         },
         "parameters": {
           "type": "object",

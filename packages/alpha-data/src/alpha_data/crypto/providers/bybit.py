@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from datetime import datetime
 from typing import Final, Literal
 from urllib.parse import urlencode
@@ -12,6 +13,8 @@ import polars as pl
 from alpha_core import DataError
 
 from ._wire import (
+    CompleteHttpResponse,
+    HttpAttemptHook,
     decode_json_object,
     epoch_ms_to_utc,
     fetch_bounded,
@@ -95,7 +98,14 @@ def bybit_public_url(endpoint: str, params: dict[str, QueryScalar]) -> str:
 
 
 def fetch_bybit_public(
-    endpoint: str, params: dict[str, QueryScalar], *, timeout_seconds: int = 30
+    endpoint: str,
+    params: dict[str, QueryScalar],
+    *,
+    timeout_seconds: int = 30,
+    attempt_hook: HttpAttemptHook | None = None,
+    response_evidence: Callable[[CompleteHttpResponse], None] | None = None,
+    error_response_evidence: Callable[[CompleteHttpResponse], None] | None = None,
+    retry_429: bool = False,
 ) -> bytes:
     """Fetch one bounded credential-free public response from the pinned Bybit host."""
     if not 1 <= timeout_seconds <= 60:
@@ -107,6 +117,10 @@ def fetch_bybit_public(
         content_types=frozenset({"application/json", "text/json"}),
         max_bytes=_MAX_RESPONSE_BYTES,
         timeout_seconds=timeout_seconds,
+        attempt_hook=attempt_hook,
+        response_evidence=response_evidence,
+        error_response_evidence=error_response_evidence,
+        retry_429=retry_429,
     )
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -2296,23 +2297,179 @@ def test_empirical_daily_draft_binds_the_registered_dataset_and_reaches_deep_res
         "add",
         project_id,
         "--title",
-        "Technical trading revisited",
+        "Synthetic paper with linked resources",
         "--locator",
-        "doi:10.0000/example",
+        "https://research.example/synthetic-paper",
         "--provider",
-        "crossref",
+        "fixture",
         "--access-mode",
-        "metadata_only",
+        "owner_provided",
+        "--content-hash",
+        hashlib.sha256(b"synthetic-paper-fixture").hexdigest(),
     )
-    pack = _invoke("sources", "freeze", project_id, "--source-id", str(source["source_id"]))
+    initial_pack = _invoke("sources", "freeze", project_id, "--source-id", str(source["source_id"]))
+    initial_draft = _invoke(
+        *_daily_draft_args(project_id, str(initial_pack["pack_id"])),
+        "--dataset",
+        ref_id,
+    )
+    paper_text = (
+        "The accompanying dataset is available at https://research.example/synthetic.csv. "
+        "Replication code is listed at https://research.example/replication.zip."
+    )
+    extraction_id = "rx_" + hashlib.sha256(b"synthetic-paper-extraction").hexdigest()
+    source_hash = hashlib.sha256(b"synthetic-paper-fixture").hexdigest()
+    ControlStore(tmp_path).record_research_document_text(
+        str(source["source_id"]),
+        artifact={
+            "extraction_id": extraction_id,
+            "schema": "ResearchDocumentTextV1",
+            "source_sha256": source_hash,
+            "parser": "fixture",
+            "parser_version": "1",
+            "config_hash": hashlib.sha256(b"synthetic-extraction-config").hexdigest(),
+            "normalization": "NFC_LF_RSTRIP_V1",
+            "status": "extracted",
+            "pages": [
+                {
+                    "page": 1,
+                    "text": paper_text,
+                    "character_count": len(paper_text),
+                    "text_sha256": hashlib.sha256(paper_text.encode()).hexdigest(),
+                }
+            ],
+            "page_count": 1,
+            "character_count": len(paper_text),
+            "warnings": [],
+            "trust_label": "UNTRUSTED_SOURCE",
+        },
+    )
+    claim_start = paper_text.index("The accompanying dataset is available")
+    claim_excerpt = paper_text[
+        claim_start : claim_start + len("The accompanying dataset is available")
+    ]
+    claim_anchor = {
+        "schema": "SourceAnchorV1",
+        "extraction_id": extraction_id,
+        "page": 1,
+        "char_start": claim_start,
+        "char_end": claim_start + len(claim_excerpt),
+        "exact_text_sha256": hashlib.sha256(claim_excerpt.encode()).hexdigest(),
+    }
+    claim = _invoke(
+        "sources",
+        "claim",
+        "add",
+        project_id,
+        "--source-id",
+        str(source["source_id"]),
+        "--contract-id",
+        str(cast(dict[str, object], initial_draft["contract"])["contract_id"]),
+        "--text",
+        "The synthetic paper reports an accompanying dataset.",
+        "--direction",
+        "method",
+        "--strength",
+        "moderate",
+        "--method",
+        "The fixture mentions linked dataset and code resources.",
+        "--sample",
+        "Synthetic fixture only.",
+        "--market",
+        "SYNTHETIC",
+        "--limitations",
+        "No empirical paper or resource was retrieved.",
+        "--anchor-json",
+        json.dumps(claim_anchor),
+    )
+    _invoke("sources", "claim", "screen", project_id, str(claim["claim_id"]), "--actor", "owner")
+    data_anchor_start = paper_text.index("The accompanying dataset is available")
+    data_anchor_text = (
+        "The accompanying dataset is available at https://research.example/synthetic.csv."
+    )
+    code_anchor_start = paper_text.index("Replication code is listed")
+    code_anchor_text = "Replication code is listed at https://research.example/replication.zip."
+
+    def relation_anchor(start: int, excerpt: str) -> dict[str, object]:
+        return {
+            "schema": "SourceAnchorV1",
+            "extraction_id": extraction_id,
+            "page": 1,
+            "char_start": start,
+            "char_end": start + len(excerpt),
+            "exact_text_sha256": hashlib.sha256(excerpt.encode()).hexdigest(),
+        }
+
+    resource_definition = {
+        "paper_resources": {
+            "schema": "PaperResourceLinksV1",
+            "links": [
+                {
+                    "schema": "PaperResourceLinkV1",
+                    "kind": "dataset",
+                    "source_id": str(source["source_id"]),
+                    "source_claim_id": str(claim["claim_id"]),
+                    "locator_type": "url",
+                    "locator": "https://research.example/synthetic.csv",
+                    "relation": "dataset_available",
+                    "relation_anchor": relation_anchor(data_anchor_start, data_anchor_text),
+                    "availability_status": "reported_available",
+                },
+                {
+                    "schema": "PaperResourceLinkV1",
+                    "kind": "code",
+                    "source_id": str(source["source_id"]),
+                    "source_claim_id": str(claim["claim_id"]),
+                    "locator_type": "url",
+                    "locator": "https://research.example/replication.zip",
+                    "relation": "code_available",
+                    "relation_anchor": relation_anchor(code_anchor_start, code_anchor_text),
+                    "availability_status": "unavailable",
+                },
+            ],
+        }
+    }
+    pack = _invoke(
+        "sources",
+        "freeze",
+        project_id,
+        "--source-id",
+        str(source["source_id"]),
+        "--definition-json",
+        json.dumps(resource_definition),
+    )
+    pack_definition = cast(dict[str, object], pack["definition"])
+    paper_resources = cast(dict[str, object], pack_definition["paper_resources"])
+    links = cast(list[dict[str, object]], paper_resources["links"])
+    data_link = next(row for row in links if row["kind"] == "dataset")
     drafted = _invoke(
         *_daily_draft_args(project_id, str(pack["pack_id"])),
         "--dataset",
         ref_id,
+        "--paper-resource-mapping-json",
+        json.dumps(
+            {
+                "schema": "PaperResourceMappingRequestV1",
+                "resource_link_id": data_link["link_id"],
+                "dataset_ref_id": ref_id,
+                "analysis_family": "event_study",
+            }
+        ),
     )
     payload = cast(dict[str, object], cast(dict[str, object], drafted["contract"])["payload"])
     assert payload["approval_ready"] is True
     assert payload["blocking_questions"] == []
+    resource_mappings = cast(list[dict[str, object]], payload["paper_resource_mappings"])
+    assert {row["resolution"] for row in resource_mappings} == {"mapped", "blocked_data"}
+    mapped_resource = next(row for row in resource_mappings if row["resolution"] == "mapped")
+    blocked_resource = next(row for row in resource_mappings if row["resolution"] == "blocked_data")
+    assert mapped_resource["local_dataset_ref_id"] == ref_id
+    assert mapped_resource["analysis_family"] == "event_study"
+    assert mapped_resource["reproduction_claimed"] is False
+    assert mapped_resource["source_equivalence"] == "unverified"
+    assert blocked_resource["resource_kind"] == "code"
+    assert blocked_resource["reason"]
+    assert blocked_resource["linked_code_execution"] == "not_executed"
     hashes = cast(dict[str, object], payload["hashes"])
     data_hash = hashes["data"]
     assert isinstance(data_hash, str) and len(data_hash) == 64
@@ -2363,6 +2520,7 @@ def test_empirical_daily_draft_binds_the_registered_dataset_and_reaches_deep_res
     assert deep_manifest["watermark"] == "EXPLORATORY"
     assert deep_manifest["eligible_for_holdout_or_execution"] is False
     assert deep_manifest["dataset_hash"] == data_hash  # the approval-frozen dataset bytes
+    assert deep_manifest["paper_resource_mappings"] == resource_mappings
     deep_attempt = cast(dict[str, object], deep["attempt"])
     assert deep_attempt["status"] == "completed"
     assert deep_attempt["kind"] == "d1-deep-research"
@@ -3053,6 +3211,82 @@ def test_source_screen_reads_one_bounded_page_and_keeps_legacy_preview(
     assert "project id" in missing_project.output.lower()
 
 
+def test_research_source_original_pdf_cli_verifies_before_returning_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    captured = _invoke("capture", "Synthetic paper PDF download contract")
+    project_id = str(cast(dict[str, object], captured["project"])["project_id"])
+    raw = b"%PDF-1.7\nsynthetic owner paper\n%%EOF\n"
+    digest = hashlib.sha256(raw).hexdigest()
+    store = ControlStore(tmp_path)
+    source = store.create_research_source(
+        project_id,
+        title="Synthetic owner paper",
+        locator=f"owner-provided:sha256:{digest}",
+        provider="owner",
+        access_mode="owner_provided",
+        content_hash=digest,
+        metadata={
+            "origin_kind": "owner_provided_local_pdf",
+            "trust_label": "UNTRUSTED_SOURCE",
+        },
+    )
+    source_id = str(source["source_id"])
+    store.retain_research_source_original_pdf(project_id, source_id, raw)
+
+    status = runner.invoke(
+        app,
+        [
+            "research",
+            "sources",
+            "original-pdf",
+            source_id,
+            "--project-id",
+            project_id,
+            "--json",
+        ],
+    )
+    assert status.exit_code == 0, status.output
+    status_body = cast(dict[str, object], json.loads(status.output))
+    assert status_body["status"] == "available"
+    assert status_body["verified_sha256"] == digest
+    assert "content_base64" not in status_body
+
+    download = runner.invoke(
+        app,
+        [
+            "research",
+            "sources",
+            "original-pdf",
+            source_id,
+            "--project-id",
+            project_id,
+            "--include-bytes",
+            "--json",
+        ],
+    )
+    assert download.exit_code == 0, download.output
+    download_body = cast(dict[str, object], json.loads(download.output))
+    assert download_body["source_id"] == source_id
+    assert base64.b64decode(str(download_body["content_base64"]), validate=True) == raw
+
+    wrong_project = runner.invoke(
+        app,
+        [
+            "research",
+            "sources",
+            "original-pdf",
+            source_id,
+            "--project-id",
+            "00000000-0000-0000-0000-000000000000",
+            "--json",
+        ],
+    )
+    assert wrong_project.exit_code != 0
+    assert "unknown research source" in wrong_project.output.lower()
+
+
 def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -3105,11 +3339,20 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
     assert len(captured_argv) == 1
     argv = captured_argv[0]
     assert Path(argv[0]).name == "uv"
-    assert argv[1:4] == ["run", "--project", argv[3]]
-    assert argv[3].endswith("workers/literature")
-    assert argv[4:7] == ["literature-worker", "fetch", "--url"]
-    assert argv[7] == "https://arxiv.org/pdf/1234v1"
+    assert argv[1:8] == [
+        "run",
+        "--locked",
+        "--no-sync",
+        "--project",
+        argv[5],
+        "python",
+        "-P",
+    ]
+    assert argv[5].endswith("workers/literature")
+    assert argv[8:12] == ["-m", "literature_worker", "fetch", "--url"]
+    assert argv[12] == "https://arxiv.org/pdf/1234v1"
     assert "--objects-dir" in argv
+    worker_dir = Path(argv[5])
     child_env = cast(dict[str, str], captured_kwargs[0]["env"])
     assert "ALPHA_TIINGO_API_KEY" not in child_env
     assert "SHELL" not in child_env
@@ -3118,10 +3361,12 @@ def test_sources_fetch_drives_the_isolated_worker_with_closed_argv(
         "LANG",
         "LC_ALL",
         "PATH",
+        "PYTHONPATH",
         "UV_CACHE_DIR",
         "UV_NO_CONFIG",
         "UV_OFFLINE",
     }
+    assert child_env["PYTHONPATH"] == str(worker_dir / "src")
     assert captured_kwargs[0]["start_new_session"] is True
     assert callable(captured_kwargs[0]["preexec_fn"])
     assert len(captured_cache_dirs) == 1
@@ -3172,10 +3417,12 @@ def test_literature_worker_preserves_an_explicit_cache_directory(
         "LANG",
         "LC_ALL",
         "PATH",
+        "PYTHONPATH",
         "UV_CACHE_DIR",
         "UV_NO_CONFIG",
         "UV_OFFLINE",
     }
+    assert captured_env["PYTHONPATH"].endswith("workers/literature/src")
     assert "ALPHA_TIINGO_API_KEY" not in captured_env
     assert "HOME" not in captured_env
     assert cache_dir.is_dir()
@@ -3229,6 +3476,60 @@ def test_literature_worker_cleans_temporary_cache_after_subprocess_failure(
 
     assert len(cache_dirs) == 1
     assert not cache_dirs[0].exists()
+
+
+def test_literature_worker_requires_checked_out_module_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    cli_root = tmp_path / "apps" / "alpha-cli" / "src" / "alpha_cli"
+    cli_root.mkdir(parents=True)
+    worker_dir = tmp_path / "workers" / "literature"
+    worker_dir.mkdir(parents=True)
+    (worker_dir / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+    monkeypatch.setattr(research_cmds, "__file__", str(cli_root / "research_cmds.py"))
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail("worker started without checked-out source"),
+    )
+
+    with pytest.raises(DataError, match="literature worker source is unavailable"):
+        research_cmds._run_literature_worker(["probe"])
+
+
+def test_literature_worker_safe_path_ignores_a_caller_directory_module(
+    tmp_path: Path,
+) -> None:
+    import os
+    import subprocess
+    import sys
+
+    caller = tmp_path / "caller"
+    caller.mkdir()
+    (caller / "literature_worker.py").write_text(
+        "raise AssertionError('caller module shadowed the worker')\n", encoding="utf-8"
+    )
+    worker_source = tmp_path / "worker" / "src"
+    package = worker_source / "literature_worker"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    main_path = package / "__main__.py"
+    main_path.write_text(
+        "from pathlib import Path\nprint(Path(__file__).resolve())\n", encoding="utf-8"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-P", "-m", "literature_worker"],
+        cwd=caller,
+        env={"PATH": os.defpath, "PYTHONPATH": str(worker_source)},
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert Path(completed.stdout.strip()) == main_path.resolve()
 
 
 def test_literature_discovery_acquisition_and_extraction_link_end_to_end_offline(

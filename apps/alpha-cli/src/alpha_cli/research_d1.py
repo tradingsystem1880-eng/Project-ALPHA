@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any, Final, cast
 
 from alpha_cli import _artifacts
+from alpha_cli.paper_resources import validate_paper_resource_resolution_records
 from alpha_cli.research_analysis_plan import (
     ANALYSIS_FAMILIES,
     ANALYSIS_PLAN_SCHEMA_V2,
@@ -368,6 +369,20 @@ def _validate_contract(contract: Mapping[str, object]) -> None:
     hashes = contract.get("hashes")
     if not isinstance(hashes, Mapping):
         raise DataError("D1 execution requires frozen contract fingerprints")
+    if "paper_resource_mappings" in contract:
+        plan = _plan(contract)
+        planned_families = {
+            str(entry["family"])
+            for entry in plan["families"]
+            if isinstance(entry, Mapping) and isinstance(entry.get("family"), str)
+        }
+        empirical = protocol.get("empirical_dataset") if isinstance(protocol, Mapping) else None
+        dataset_ref_id = empirical.get("ref_id") if isinstance(empirical, Mapping) else None
+        validate_paper_resource_resolution_records(
+            contract["paper_resource_mappings"],
+            dataset_ref_id=dataset_ref_id if isinstance(dataset_ref_id, str) else None,
+            planned_families=planned_families,
+        )
 
 
 def _real_market_evidence(contract: Mapping[str, object]) -> bool:
@@ -1295,6 +1310,20 @@ def run_deep_research(
         "d1_evidence_artifact": D1_EVIDENCE_ARTIFACT,
         "d1_analyses_artifact": D1_ANALYSES_ARTIFACT,
     }
+    if "paper_resource_mappings" in contract:
+        plan_families = {
+            str(entry["family"])
+            for entry in plan["families"]
+            if isinstance(entry, Mapping) and isinstance(entry.get("family"), str)
+        }
+        protocol = contract.get("protocol")
+        empirical = protocol.get("empirical_dataset") if isinstance(protocol, Mapping) else None
+        dataset_ref_id = empirical.get("ref_id") if isinstance(empirical, Mapping) else None
+        manifest["paper_resource_mappings"] = validate_paper_resource_resolution_records(
+            contract["paper_resource_mappings"],
+            dataset_ref_id=dataset_ref_id if isinstance(dataset_ref_id, str) else None,
+            planned_families=plan_families,
+        )
     _artifacts.write_manifest(run_dir, manifest)
     return _artifacts.read_manifest(run_dir)
 

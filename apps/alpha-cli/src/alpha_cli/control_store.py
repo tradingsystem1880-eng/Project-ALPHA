@@ -7,6 +7,7 @@ links projects, attempts, jobs, and evidence to those completed runs.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import math
@@ -19,7 +20,7 @@ import tempfile
 import time
 import uuid
 from collections.abc import Iterator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
@@ -83,6 +84,11 @@ from alpha_cli.artifact_contract import (
     verify_manifest_artifacts,
 )
 from alpha_cli.job_capacity import HEAVYWEIGHT_JOB_CAPACITY, HEAVYWEIGHT_JOB_KINDS
+from alpha_cli.paper_resources import (
+    bind_paper_resource_link,
+    parse_paper_resources,
+    validate_paper_resource_resolutions,
+)
 from alpha_cli.research_readiness import derive_research_readiness
 from alpha_cli.run_store import find_run_dir, read_manifest
 from alpha_core import DataError
@@ -464,6 +470,7 @@ _SOURCE_RECORD_ADDITIVE_COLUMNS: Final = (
     ("authors_json", "TEXT"),
 )
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
+_MAX_OWNER_PDF_BYTES: Final = 10 * 1024 * 1024
 _SYMBOL_RE = re.compile(r"[A-Z0-9][A-Z0-9._:/-]{0,31}")
 _ARTIFACT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}")
 _MAX_TEXT = 8_192
@@ -2526,7 +2533,7 @@ class ControlStore:
             raise DataError("research contract approval requires source_pack_id")
         _require_content_id(pack_id, "research source_pack_id", prefix="sp")
         pack = connection.execute(
-            """SELECT 1 FROM research_source_packs
+            """SELECT * FROM research_source_packs
             WHERE project_id = ? AND pack_id = ?""",
             (row["project_id"], pack_id),
         ).fetchone()
@@ -2544,6 +2551,56 @@ class ControlStore:
                 analysis_plan,
                 max_grid_cells=int(variants) if int(variants) == variants else 0,
             )
+        pack_definition = _decode_json(pack["definition_json"], "research source pack definition")
+        if not isinstance(pack_definition, dict):
+            raise DataError("research source pack definition must be an object")
+        mapping_value = payload.get("paper_resource_mappings")
+        if "paper_resources" in pack_definition:
+            resource_links = parse_paper_resources(
+                pack_definition["paper_resources"], allow_bound=True
+            )
+            raw_source_ids = _decode_json(pack["source_ids_json"], "research source pack ids")
+            if not isinstance(raw_source_ids, list) or not all(
+                isinstance(item, str) for item in raw_source_ids
+            ):
+                raise DataError("research source pack ids are corrupt")
+            pack_identity = {
+                "schema_version": 1,
+                "project_id": str(row["project_id"]),
+                "source_ids": sorted(raw_source_ids),
+                "definition": pack_definition,
+            }
+            if _content_id("sp", pack_identity) != pack_id:
+                raise DataError("paper resource source pack failed identity verification")
+            plan_families = (
+                analysis_plan.get("families", []) if isinstance(analysis_plan, Mapping) else []
+            )
+            planned_families = {
+                str(item["family"])
+                for item in plan_families
+                if isinstance(item, Mapping) and isinstance(item.get("family"), str)
+            }
+            empirical = protocol.get("empirical_dataset")
+            dataset_ref_id = empirical.get("ref_id") if isinstance(empirical, Mapping) else None
+            resolutions = validate_paper_resource_resolutions(
+                mapping_value,
+                resource_links,
+                dataset_ref_id=dataset_ref_id if isinstance(dataset_ref_id, str) else None,
+                planned_families=planned_families,
+            )
+            for item in resolutions:
+                mapped_dataset = item.get("local_dataset_ref_id")
+                if isinstance(mapped_dataset, str):
+                    registered_dataset = connection.execute(
+                        "SELECT research_only FROM research_dataset_refs WHERE ref_id = ?",
+                        (mapped_dataset,),
+                    ).fetchone()
+                    if registered_dataset is None or not bool(registered_dataset["research_only"]):
+                        raise DataError(
+                            "paper resource mapping requires an existing research dataset"
+                        )
+        elif mapping_value not in (None, []):
+            raise DataError("paper resource mappings require links in the frozen source pack")
         hashes = payload.get("hashes")
         if not isinstance(hashes, dict):
             raise DataError("research contract approval requires a hashes object")
@@ -4368,6 +4425,247 @@ class ControlStore:
             raise DataError(f"unknown research source {sid!r}")
         return self._research_source_view(row)
 
+    def _owner_pdf_source(self, project_id: str, source_id: str) -> tuple[str, str | None]:
+        sid = _require_content_id(source_id, "research source_id", prefix="rs")
+        with self._transaction(write=False) as connection:
+            self._require_project(connection, project_id)
+            row = connection.execute(
+                "SELECT * FROM research_source_records WHERE source_id = ? AND project_id = ?",
+                (sid, project_id),
+            ).fetchone()
+        if row is None:
+            raise DataError(f"unknown research source {sid!r}")
+        source = self._research_source_view(row)
+        metadata = source.get("metadata")
+        digest = source.get("content_hash")
+        if (
+            source.get("provider") != "owner"
+            or source.get("access_mode") != "owner_provided"
+            or not isinstance(metadata, dict)
+            or metadata.get("origin_kind") != "owner_provided_local_pdf"
+            or metadata.get("trust_label") != "UNTRUSTED_SOURCE"
+            or not isinstance(digest, str)
+            or _SHA256_RE.fullmatch(digest) is None
+        ):
+            return sid, None
+        return sid, digest
+
+    def _open_research_source_pdf_directory(self, *, create: bool) -> int | None:
+        """Open the fixed PDF directory without following a directory symlink."""
+        if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+            raise DataError("this platform cannot safely store owner-provided PDF bytes")
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+        try:
+            current = os.open(self._data_dir, flags)
+        except FileNotFoundError:
+            return None
+        try:
+            for component in ("research", "literature", "source-pdfs"):
+                if create:
+                    with suppress(FileExistsError):
+                        os.mkdir(component, mode=0o700, dir_fd=current)
+                try:
+                    child = os.open(component, flags, dir_fd=current)
+                except FileNotFoundError:
+                    os.close(current)
+                    return None
+                os.close(current)
+                current = child
+            return current
+        except BaseException:
+            os.close(current)
+            raise
+
+    @staticmethod
+    def _read_research_source_pdf_at(
+        directory_fd: int, filename: str, expected_sha256: str
+    ) -> tuple[str, bytes | None, str | None]:
+        """Read and verify one bounded regular file relative to a pinned directory."""
+        flags = (
+            os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NONBLOCK", 0) | os.O_NOFOLLOW
+        )
+        try:
+            descriptor = os.open(filename, flags, dir_fd=directory_fd)
+        except FileNotFoundError:
+            return "missing", None, None
+        except OSError as exc:
+            return (
+                "corrupt" if exc.errno in {errno.ELOOP, errno.ENOTDIR} else "unavailable",
+                None,
+                None,
+            )
+
+        try:
+            before = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(before.st_mode)
+                or before.st_size < 5
+                or before.st_size > _MAX_OWNER_PDF_BYTES
+            ):
+                return "corrupt", None, None
+            contents = bytearray()
+            while len(contents) <= _MAX_OWNER_PDF_BYTES:
+                chunk = os.read(
+                    descriptor,
+                    min(64 * 1024, _MAX_OWNER_PDF_BYTES + 1 - len(contents)),
+                )
+                if not chunk:
+                    break
+                contents.extend(chunk)
+            after = os.fstat(descriptor)
+            try:
+                path_after = os.stat(filename, dir_fd=directory_fd, follow_symlinks=False)
+            except OSError:
+                return "corrupt", None, None
+
+            def identity(item: os.stat_result) -> tuple[int, int, int, int, int, int]:
+                return (
+                    item.st_dev,
+                    item.st_ino,
+                    stat.S_IFMT(item.st_mode),
+                    item.st_size,
+                    item.st_mtime_ns,
+                    item.st_ctime_ns,
+                )
+
+            raw = bytes(contents)
+            if (
+                len(raw) != before.st_size
+                or identity(after) != identity(before)
+                or identity(path_after) != identity(before)
+                or not raw.startswith(b"%PDF-")
+            ):
+                return "corrupt", None, None
+            observed_sha256 = hashlib.sha256(raw).hexdigest()
+            if observed_sha256 != expected_sha256:
+                return "corrupt", None, observed_sha256
+            return "available", raw, observed_sha256
+        except OSError:
+            return "unavailable", None, None
+        finally:
+            os.close(descriptor)
+
+    @staticmethod
+    def _research_source_pdf_status(
+        source_id: str,
+        expected_sha256: str | None,
+        status: str,
+        *,
+        raw: bytes | None = None,
+        observed_sha256: str | None = None,
+    ) -> dict[str, object]:
+        result: dict[str, object] = {
+            "schema": "ResearchSourceOriginalPdfV1",
+            "source_id": source_id,
+            "artifact_id": f"owner-pdf:{source_id}",
+            "status": status,
+            "sha256": expected_sha256,
+            "verified_sha256": observed_sha256 if status == "available" else None,
+            "observed_sha256": observed_sha256 if status == "corrupt" else None,
+            "byte_count": len(raw) if status == "available" and raw is not None else None,
+            "verification": "verified" if status == "available" else "unverified",
+            "trust_label": "UNTRUSTED_SOURCE",
+        }
+        return result
+
+    def read_research_source_original_pdf(
+        self, project_id: str, source_id: str
+    ) -> tuple[dict[str, object], bytes | None]:
+        """Return original owner-supplied PDF bytes only after source and hash verification."""
+        sid, expected_sha256 = self._owner_pdf_source(project_id, source_id)
+        if expected_sha256 is None:
+            return self._research_source_pdf_status(sid, None, "unavailable"), None
+        try:
+            directory_fd = self._open_research_source_pdf_directory(create=False)
+        except OSError as exc:
+            status = "corrupt" if exc.errno in {errno.ELOOP, errno.ENOTDIR} else "unavailable"
+            return self._research_source_pdf_status(sid, expected_sha256, status), None
+        if directory_fd is None:
+            return self._research_source_pdf_status(sid, expected_sha256, "missing"), None
+        try:
+            status, raw, observed_sha256 = self._read_research_source_pdf_at(
+                directory_fd, f"{sid}.pdf", expected_sha256
+            )
+        finally:
+            os.close(directory_fd)
+        return (
+            self._research_source_pdf_status(
+                sid, expected_sha256, status, raw=raw, observed_sha256=observed_sha256
+            ),
+            raw,
+        )
+
+    def retain_research_source_original_pdf(
+        self, project_id: str, source_id: str, raw: bytes
+    ) -> dict[str, object]:
+        """Idempotently retain verified owner PDF bytes without replacing an existing object."""
+        sid, expected_sha256 = self._owner_pdf_source(project_id, source_id)
+        if expected_sha256 is None:
+            return self._research_source_pdf_status(sid, None, "unavailable")
+        if (
+            not isinstance(raw, bytes)
+            or len(raw) < 5
+            or len(raw) > _MAX_OWNER_PDF_BYTES
+            or not raw.startswith(b"%PDF-")
+            or hashlib.sha256(raw).hexdigest() != expected_sha256
+        ):
+            raise DataError("owner PDF bytes do not match the immutable source hash")
+        try:
+            directory_fd = self._open_research_source_pdf_directory(create=True)
+        except OSError as exc:
+            raise DataError("owner PDF storage path is unavailable or unsafe") from exc
+        if directory_fd is None:
+            raise DataError("owner PDF storage directory could not be created")
+        filename = f"{sid}.pdf"
+        temporary = f".{sid}.{secrets.token_hex(12)}.tmp"
+        try:
+            status, existing, observed_sha256 = self._read_research_source_pdf_at(
+                directory_fd, filename, expected_sha256
+            )
+            if status != "missing":
+                return self._research_source_pdf_status(
+                    sid,
+                    expected_sha256,
+                    status,
+                    raw=existing,
+                    observed_sha256=observed_sha256,
+                )
+            descriptor = os.open(
+                temporary,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+                dir_fd=directory_fd,
+            )
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            with suppress(FileExistsError):
+                os.link(
+                    temporary,
+                    filename,
+                    src_dir_fd=directory_fd,
+                    dst_dir_fd=directory_fd,
+                    follow_symlinks=False,
+                )
+            os.fsync(directory_fd)
+            status, stored, observed_sha256 = self._read_research_source_pdf_at(
+                directory_fd, filename, expected_sha256
+            )
+            return self._research_source_pdf_status(
+                sid,
+                expected_sha256,
+                status,
+                raw=stored,
+                observed_sha256=observed_sha256,
+            )
+        except OSError as exc:
+            raise DataError("owner PDF bytes could not be retained safely") from exc
+        finally:
+            with suppress(FileNotFoundError):
+                os.unlink(temporary, dir_fd=directory_fd)
+            os.close(directory_fd)
+
     def get_research_source_context(
         self, source_id: str, *, excerpt_limit: int = 4_000
     ) -> dict[str, object]:
@@ -4375,6 +4673,18 @@ class ControlStore:
         if isinstance(excerpt_limit, bool) or not 1 <= excerpt_limit <= 8_000:
             raise DataError("research source excerpt limit must be in 1..8000")
         source = self.get_research_source(source_id)
+        metadata = source.get("metadata")
+        if (
+            source.get("provider") == "owner"
+            and source.get("access_mode") == "owner_provided"
+            and isinstance(metadata, dict)
+            and metadata.get("origin_kind") == "owner_provided_local_pdf"
+        ):
+            pdf_state, pdf_bytes = self.read_research_source_original_pdf(
+                str(source["project_id"]), str(source["source_id"])
+            )
+            del pdf_bytes
+            source = {**source, "original_pdf_artifact": pdf_state}
         with self._transaction(write=False) as connection:
             document = connection.execute(
                 "SELECT extraction_id FROM research_document_texts WHERE source_id = ?",
@@ -5264,13 +5574,17 @@ class ControlStore:
             {_require_content_id(value, "research source_id", prefix="rs") for value in source_ids}
         )
         clean_definition = _json_object(definition or {}, "research source pack definition")
+        has_paper_resources = "paper_resources" in clean_definition
+        paper_resources = clean_definition.get("paper_resources")
+        if has_paper_resources:
+            raw_links = parse_paper_resources(paper_resources)
+            clean_definition["paper_resources"] = {"schema": "PaperResourceLinksV1", "links": []}
         identity = {
             "schema_version": 1,
             "project_id": _canonical_uuid(project_id, "project_id"),
             "source_ids": clean_ids,
             "definition": clean_definition,
         }
-        pack_id = _content_id("sp", identity)
         timestamp = _at(at)
         with self._transaction(write=True) as connection:
             self._require_project(connection, project_id)
@@ -5282,6 +5596,43 @@ class ControlStore:
             ).fetchall()
             if {str(row["source_id"]) for row in rows} != set(clean_ids):
                 raise DataError("research source pack contains unknown or cross-project sources")
+            if has_paper_resources:
+                bound_links: list[dict[str, object]] = []
+                for link in raw_links:
+                    link_source_id = str(link["source_id"])
+                    if link_source_id not in clean_ids:
+                        raise DataError("paper resource source is not included in its source pack")
+                    claim = connection.execute(
+                        """SELECT * FROM research_source_claims
+                        WHERE claim_id = ? AND project_id = ? ORDER BY revision DESC LIMIT 1""",
+                        (link["source_claim_id"], project_id),
+                    ).fetchone()
+                    if claim is None:
+                        raise DataError("paper resource claim is not owned by this project")
+                    if claim["source_id"] != link_source_id:
+                        raise DataError("paper resource claim belongs to a different paper source")
+                    if claim["status"] != "screened":
+                        raise DataError(
+                            "paper resource links require an owner-screened source claim"
+                        )
+                    claim_view = self._source_claim_with_anchor(connection, claim)
+                    if claim_view.get("anchor_state") != "verified":
+                        raise DataError("paper resource links require a verified claim page anchor")
+                    self._verified_source_anchor(
+                        connection,
+                        source_id=link_source_id,
+                        anchor=cast(Mapping[str, object], link["relation_anchor"]),
+                    )
+                    bound_links.append(
+                        bind_paper_resource_link(link, claim_revision=int(claim["revision"]))
+                    )
+                bound_links.sort(key=lambda item: str(item["link_id"]))
+                clean_definition["paper_resources"] = {
+                    "schema": "PaperResourceLinksV1",
+                    "links": bound_links,
+                }
+                identity["definition"] = clean_definition
+            pack_id = _content_id("sp", identity)
             existing = connection.execute(
                 "SELECT * FROM research_source_packs WHERE pack_id = ?", (pack_id,)
             ).fetchone()

@@ -39,6 +39,26 @@ abstract as a conclusion.
    `leadlag_leakage`, or `shuffled_event_null`). If none fits, state that the extension is not
    currently testable with a registered family. A proposal is not evidence or approval to run it.
 
+## Finance-math evidence and numerical reuse
+A book cover is metadata, not book-text evidence. For a textbook or course lead, record the
+visible title/edition separately from acquired pages; keep an unknown edition, missing slide,
+truncated extraction or unsupported topic explicit. Do not attribute a formula, theorem or
+financial application to a book without a verified `SourceAnchorV1` for the relevant text.
+
+Keep **knowledge evidence**, **numerical verification** and **research/promotion authority**
+separate: no automatic promotion follows from a citation or passing test. Reuse existing
+`alpha_research` / `alpha_validation` functions before proposing a new numerical implementation.
+State inputs, units, assumptions, actual API, analytic/reference checks and limits; tolerance
+choices must reflect scale, units, conditioning and floating-point type. Fixed-input tests do
+not establish repeated-sample coverage or tradability. A callable that is not a registered
+analysis family cannot be proposed as though it were already a governed research operator.
+
+Use the [finance-math evidence guide](../../../docs/operations/finance-math-evidence.md) for the
+13-topic carousel intake and an executable synthetic PCA example using existing code. Treat its
+book list as unverified coverage and its example as numerical illustration, never market evidence.
+Return source gaps, reuse candidates and test/design proposals in the existing synthesis note;
+retain the claim, execution and owner-review boundaries below. Do not create a parallel registry.
+
 ## Output contract
 Source records via `alpha research sources add`; claim drafts via `draft_source_claim` or the
 source-claim CLI, with verified page anchors where claims rely on acquired text. Keep evidence and

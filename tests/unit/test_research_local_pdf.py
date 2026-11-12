@@ -126,14 +126,147 @@ def test_import_reuses_extractor_and_preserves_page_read_untrusted_boundary(
         "origin_kind": "owner_provided_local_pdf",
         "trust_label": "UNTRUSTED_SOURCE",
     }
+    artifact_state = cast(dict[str, object], result["original_pdf_artifact"])
+    assert artifact_state["schema"] == "ResearchSourceOriginalPdfV1"
+    assert artifact_state["status"] == "available"
+    assert artifact_state["source_id"] == source["source_id"]
+    assert artifact_state["sha256"] == digest
+    assert artifact_state["byte_count"] == len(PDF_BYTES)
     assert document["status"] == "extracted"
     assert "artifact" not in document
     assert len(staged_paths) == 1
     assert not staged_paths[0].exists()
 
+    stored_state, stored_bytes = store.read_research_source_original_pdf(
+        PROJECT_ID, str(source["source_id"])
+    )
+    assert stored_state == artifact_state
+    assert stored_bytes == PDF_BYTES
+    assert (
+        store.get_research_source_context(str(source["source_id"]))["original_pdf_artifact"]
+        == artifact_state
+    )
+
     page = store.get_research_source_page(PROJECT_ID, str(source["source_id"]), 1)
     assert page["page_text"] == HOSTILE_TEXT
     assert page["trust_label"] == "UNTRUSTED_SOURCE"
+
+    reused = local_pdf_cmds.import_owner_pdf_file(
+        store,
+        project_id=PROJECT_ID,
+        file_path=source_file,
+        title="Owner-provided paper",
+        worker=_fixture_worker(),
+    )
+    assert cast(dict[str, object], reused["source"])["source_id"] == source["source_id"]
+    assert cast(dict[str, object], reused["acquisition"])["idempotent_reuse"] is True
+    assert reused["original_pdf_artifact"] == artifact_state
+
+
+def test_original_pdf_retention_exposes_missing_corrupt_and_unavailable_states(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    source_file = tmp_path / "owner-paper.pdf"
+    source_file.write_bytes(PDF_BYTES)
+    result = local_pdf_cmds.import_owner_pdf_file(
+        store,
+        project_id=PROJECT_ID,
+        file_path=source_file,
+        title="Owner-provided paper",
+        worker=_fixture_worker(),
+    )
+    source = cast(dict[str, object], result["source"])
+    source_id = str(source["source_id"])
+    artifact_path = store._data_dir / "research" / "literature" / "source-pdfs" / f"{source_id}.pdf"
+
+    artifact_path.unlink()
+    missing, missing_bytes = store.read_research_source_original_pdf(PROJECT_ID, source_id)
+    assert missing["status"] == "missing"
+    assert missing_bytes is None
+    missing_screen = cast(
+        dict[str, object], store.get_research_source_context(source_id)["original_pdf_artifact"]
+    )
+    assert missing_screen["status"] == "missing"
+
+    restored = store.retain_research_source_original_pdf(PROJECT_ID, source_id, PDF_BYTES)
+    assert restored["status"] == "available"
+    assert artifact_path.read_bytes() == PDF_BYTES
+
+    artifact_path.write_bytes(b"%PDF-corrupt")
+    corrupt, corrupt_bytes = store.read_research_source_original_pdf(PROJECT_ID, source_id)
+    assert corrupt["status"] == "corrupt"
+    assert corrupt_bytes is None
+    assert corrupt["observed_sha256"] == hashlib.sha256(b"%PDF-corrupt").hexdigest()
+    corrupt_screen = cast(
+        dict[str, object], store.get_research_source_context(source_id)["original_pdf_artifact"]
+    )
+    assert corrupt_screen["status"] == "corrupt"
+    retained = store.retain_research_source_original_pdf(PROJECT_ID, source_id, PDF_BYTES)
+    assert retained["status"] == "corrupt"
+    assert artifact_path.read_bytes() == b"%PDF-corrupt"
+    with pytest.raises(DataError, match="do not match"):
+        store.retain_research_source_original_pdf(PROJECT_ID, source_id, b"%PDF-wrong")
+
+    metadata_source = store.create_research_source(
+        PROJECT_ID,
+        title="Metadata-only paper",
+        locator="https://example.invalid/paper",
+        provider="crossref",
+        access_mode="metadata_only",
+    )
+    unavailable, unavailable_bytes = store.read_research_source_original_pdf(
+        PROJECT_ID, str(metadata_source["source_id"])
+    )
+    assert unavailable["status"] == "unavailable"
+    assert unavailable_bytes is None
+
+
+def test_original_pdf_retention_rejects_cross_project_reads_and_symlink_targets(
+    tmp_path: Path,
+) -> None:
+    second_project_id = "fe4d7ca8-e1cd-4bb6-93f3-448c96d6a5a0"
+    store = ControlStore(tmp_path / "control")
+    _project(store)
+    _project(store, second_project_id)
+    source_file = tmp_path / "owner-paper.pdf"
+    source_file.write_bytes(PDF_BYTES)
+    result = local_pdf_cmds.import_owner_pdf_file(
+        store,
+        project_id=PROJECT_ID,
+        file_path=source_file,
+        title="Owner-provided paper",
+        worker=_fixture_worker(),
+    )
+    source = cast(dict[str, object], result["source"])
+    source_id = str(source["source_id"])
+    with pytest.raises(DataError, match="unknown research source"):
+        store.read_research_source_original_pdf(second_project_id, source_id)
+
+    artifact_path = store._data_dir / "research" / "literature" / "source-pdfs" / f"{source_id}.pdf"
+    artifact_path.unlink()
+    outside = tmp_path / "outside.pdf"
+    outside.write_bytes(PDF_BYTES)
+    artifact_path.symlink_to(outside)
+    symlink_state, symlink_bytes = store.read_research_source_original_pdf(PROJECT_ID, source_id)
+    assert symlink_state["status"] == "corrupt"
+    assert symlink_bytes is None
+    retained = store.retain_research_source_original_pdf(PROJECT_ID, source_id, PDF_BYTES)
+    assert retained["status"] == "corrupt"
+    assert artifact_path.is_symlink()
+    assert outside.read_bytes() == PDF_BYTES
+
+    artifact_path.unlink()
+    pdf_dir = artifact_path.parent
+    outside_dir = tmp_path / "outside-pdfs"
+    outside_dir.mkdir()
+    (outside_dir / artifact_path.name).write_bytes(PDF_BYTES)
+    pdf_dir.rmdir()
+    pdf_dir.symlink_to(outside_dir, target_is_directory=True)
+    parent_state, parent_bytes = store.read_research_source_original_pdf(PROJECT_ID, source_id)
+    assert parent_state["status"] == "corrupt"
+    assert parent_bytes is None
+    assert (outside_dir / artifact_path.name).read_bytes() == PDF_BYTES
 
 
 @pytest.mark.parametrize("kind", ["missing", "directory", "wrong_type"])
@@ -384,7 +517,7 @@ def test_source_without_text_binding_is_visible_and_recoverable(
         )
 
     assert "synthetic artifact-store failure" in str(raised.value)
-    assert "Check its extraction status" in str(raised.value)
+    assert "Check the source and extraction status" in str(raised.value)
     [partial] = store.list_research_sources(PROJECT_ID)
     source_id = str(partial["source_id"])
     assert partial["access_mode"] == "owner_provided"
@@ -393,6 +526,9 @@ def test_source_without_text_binding_is_visible_and_recoverable(
     partial_context = store.get_research_source_context(source_id)
     assert partial_context["document"] is None
     assert partial_context["page_previews"] == []
+    retained_state, retained_bytes = store.read_research_source_original_pdf(PROJECT_ID, source_id)
+    assert retained_state["status"] == "available"
+    assert retained_bytes == PDF_BYTES
     with pytest.raises(DataError, match="no extracted document text"):
         store.get_research_source_page(PROJECT_ID, source_id, 1)
 
@@ -406,4 +542,45 @@ def test_source_without_text_binding_is_visible_and_recoverable(
     )
     recovered_source = cast(dict[str, object], recovered["source"])
     assert recovered_source["source_id"] == source_id
+    assert store.get_research_source_page(PROJECT_ID, source_id, 1)["page_text"] == HOSTILE_TEXT
+
+
+def test_original_pdf_retention_failure_is_visible_and_recoverable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = _store(tmp_path)
+    source_file = tmp_path / "owner-paper.pdf"
+    source_file.write_bytes(PDF_BYTES)
+    original_retain = store.retain_research_source_original_pdf
+
+    def fail_retention(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise OSError("synthetic original-byte write failure")
+
+    monkeypatch.setattr(store, "retain_research_source_original_pdf", fail_retention)
+    with pytest.raises(DataError, match="recoverable partial owner PDF import") as raised:
+        local_pdf_cmds.import_owner_pdf_file(
+            store,
+            project_id=PROJECT_ID,
+            file_path=source_file,
+            title="Recoverable retained paper",
+            worker=_fixture_worker(),
+        )
+    assert "synthetic original-byte write failure" in str(raised.value)
+    [partial] = store.list_research_sources(PROJECT_ID)
+    source_id = str(partial["source_id"])
+    assert partial["extraction_id"] is None
+    state, raw = store.read_research_source_original_pdf(PROJECT_ID, source_id)
+    assert state["status"] == "missing"
+    assert raw is None
+
+    monkeypatch.setattr(store, "retain_research_source_original_pdf", original_retain)
+    recovered = local_pdf_cmds.import_owner_pdf_file(
+        store,
+        project_id=PROJECT_ID,
+        file_path=source_file,
+        title="Recoverable retained paper",
+        worker=_fixture_worker(),
+    )
+    assert cast(dict[str, object], recovered["source"])["source_id"] == source_id
+    assert cast(dict[str, object], recovered["original_pdf_artifact"])["status"] == "available"
     assert store.get_research_source_page(PROJECT_ID, source_id, 1)["page_text"] == HOSTILE_TEXT

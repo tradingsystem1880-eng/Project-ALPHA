@@ -349,7 +349,12 @@ def validate_request(exchange_dir: Path) -> WorkerRequest:
     folds = _validate_folds(request["folds"], sessions, purge=purge, embargo=embargo)
 
     feature = _exact(request["feature_recipe"], {"name", "version", "parameters"}, "feature_recipe")
-    if feature["name"] != "alpha158" or feature["version"] != 1 or feature["parameters"] != {}:
+    if (
+        feature["name"] != "alpha158"
+        or type(feature["version"]) is not int
+        or feature["version"] not in (1, 2)
+        or feature["parameters"] != {}
+    ):
         _fail("unsupported feature recipe")
     label = _exact(
         request["label_recipe"],

@@ -3635,3 +3635,381 @@ unresolved and did not reproduce in that successful full gate. No chart code cha
 Current merged-main delivery requires fresh native bindings and applicable qualification;
 post-merge CI is not assumed complete. Private-suite status remains UNVERIFIED. The feature
 remains default off, reversible in Settings, and carries no empirical or live-trading authority.
+
+
+<!-- Preserved owner narrative: Qlib048dc0ae; historical claims apply only to that owner candidate, not the combined tree. -->
+
+
+## 2026-11-07 — Joined native Qlib-to-Nautilus synthetic pipeline (candidate)
+
+Implemented a bounded functional route from upstream qrun's own prediction artifacts to the
+existing SignalReplay/native Nautilus harness and a third read-only Results view. It preserves
+all 128 native predictions and explicitly consumes 16 SYN00 scores for SYN00.SIM. Session identity,
+modeled +23-hour availability and the next synthetic opening quote remain separate. Fixed sizing
+is one share, CASH long/flat; declared demonstration fees/slippage are 1/2 bps. The final opening
+quote executes the final prediction without a phantom extra decision or invented liquidation.
+Existing SignalReplay defaults, independent native previews, canonical stores/history and
+admission/accounting policies remain unchanged.
+
+Selected recorder: `18cf75367c094be4831ad653233eb301`. Observed output: 10 orders, 10 fills,
+five closed positions and 27 quote/fill cash observations. The measured selected invocation
+completed in 7.24 seconds with 421,982,208 bytes peak single-process RSS, below the existing 2 GiB
+review ceiling. Six synthetic engineering fit attempts are retained from implementation; model,
+seed and dataset stayed fixed, and no global research trial-history audit is claimed. An unavailable
+`/usr/bin/time` invocation failed before execution; its receipt is retained separately and the
+successful run was measured using standard-library time/resource. No dependency pins changed.
+
+Public checks so far: 16 native backend tests, including future-score poison and its deliberately
+leaky control; 11 frontend model tests; scoped Ruff and production mypy; frontend build/types;
+real-backend browser checks at 1585/1280 widths. Browser verification matched every portable
+artifact hash and the cash CSV button, retained all 16 score links, and rendered both prior demos.
+The CSV line-ending regression and two independent-review findings were first reproduced as
+failures, then fixed: exporter/base/instrument/fee source bindings and strict next-session/long-flat
+consumer checks. Source review and final exact-tree qualification are still being finalized.
+
+The native qrun model/dataset pickles stay producer-local. The display receives inert JSON,
+CSV/Parquet and configuration only. This is one frozen LightGBM synthetic integration, not full
+Qlib support, a real-data/paper-hypothesis result, scientific acceptance, promotion or live trading.
+FitPlan/resource/protected-release policy is not adopted here. The 115 historical broad-run
+failures remain unclassified; no opaque mixed diagnostics or hidden holdouts were read. Claude
+code review is unavailable in this executor (no connector or desktop tool/capability exposed);
+independent Codex source review is retained instead and does not claim Claude qualification.
+The existing Qlib CI job also gains the actual bounded native pipeline command after its shared
+worker gate; no new adapter matrix or dependency environment is added. Hosted execution of this
+new step is pending publication. No commit, external publication, merge or deployment is
+established by this entry.
+
+A sixth bounded invocation used this checkout's cached, unchanged locked Qlib environment and
+the actual CI command. Native execution passed in 12.60 seconds at 470,388,736 bytes peak
+single-process RSS; its predictions are byte-identical to the selected fifth display run. A
+supplemental verification wrapper initially looked for counts at the wrong JSON level and
+failed after the successful native process. The checked-in CI already uses the correct
+`pipeline` nesting; its postconditions then passed against the retained output without refitting.
+The public frontend coverage command also passed all 492 tests across 74 files. These local
+results do not establish hosted CI, the canonical full gate or private-suite coverage.
+
+
+## 2026-11-07 — Native bridge complete-public-checkout qualification correction
+
+Preserved the native Qlib-to-Nautilus candidate `7c345fc6d7e792341656904abd0c2f56570a080f`
+and prepared an isolated successor on the same `3f7b23185c29b2542605bd41b9485016c2ef3e79`
+base. The original sparse Atlas generation had recorded only one root test input;
+complete approved public extraction records 541, with no private holdout input.
+All 71 protected public source identities are unchanged, and their contents were
+not displayed or edited. The native model, synthetic data and executed artifacts
+remain unchanged; no additional native fit was performed for this correction.
+
+The owner approved automated public-protected-file processing and the bridge's
+absence-only private-suite review exception. Private coverage remains UNVERIFIED.
+Fresh successor-bound public qualification, independent review and normal guards
+remain mandatory. No full stamp, publication, merge, deployment, real-data acceptance
+or trading authority is established by this preparation entry. The dated feature
+plan records the bounded scope and preserved evidence.
+
+
+<!-- Preserved owner narrative: Paper972e621d; historical claims apply only to that owner candidate, not the combined tree. -->
+
+**2026-11-07 isolated paper-to-experiment candidate (focused verification only):** On branch
+`codex/paper-to-experiment-20261107` from reconciled main
+`3f7b23185c29b2542605bd41b9485016c2ef3e79`, typed `PaperResourceLinkV1` references are frozen
+inside the existing content-addressed source pack and bound to a same-project owner-screened claim
+revision plus a verified page anchor. Draft/revise accepts explicit mapping proposals to an existing
+registered `rd_` dataset and analysis family in the frozen plan; contract approval revalidates the
+source-pack identity, mappings, research-only dataset registration, and planned family. D1 records
+the validated mapping projection. Code references remain provenance-only because no local code
+registry exists; they are not acquired or executed. Missing or unavailable resources remain
+`blocked_data`; links do not establish equivalence, acquisition, rights, reproduction, or code execution. An offline
+synthetic-paper CLI-to-D1 path passed. Focused source-pack/schema tests passed (179 total), and the
+CLI-to-D1 integration test passed (1); changed Python files passed Ruff lint/format and focused
+mypy. The canonical aggregate gate disposition is recorded only by the tree-bound harness receipt;
+this dated entry does not claim that disposition or empirical/provider validation. No external
+resource retrieval, provider request, new dependency, migration, live trade, commit, merge,
+deployment, or publication was performed.
+
+**2026-11-08 isolated original-paper retention successor (focused verification only):** On
+`codex/paper-original-pdf-retention-20261108`, based on `3f7b23185c29b2542605bd41b9485016c2ef3e79`
+and carrying the separate paper-to-experiment candidate, owner-selected local PDFs are now retained
+under `research/literature/source-pdfs/<source_id>.pdf`. The immutable source row's existing
+content hash and source identity bind the bytes; no table or schema migration was added. Writes are
+bounded to the existing 10 MiB intake limit, use a same-directory no-overwrite link after fsync,
+and reads use a pinned directory, reject symlinks/non-regular files, recheck concurrent replacement,
+and verify the exact PDF hash before reporting `available` in import or source-screen output.
+Owner/project provenance is revalidated;
+`missing`, `corrupt`, and `unavailable` remain explicit. Re-import can restore a missing original
+from the newly selected local file, but it will not overwrite corrupt bytes. Extracted text keeps
+the `UNTRUSTED_SOURCE` boundary and the existing page reader.
+
+The combined synthetic focused selection passed 202 tests across local PDF import, paper resource
+links, and research ControlStore. Ruff lint/format passed for the changed Python paths; configured
+mypy passed on the two changed source files. Independent code review returned APPROVE; no Claude
+review session/tool was available. Tests exercised the production import, storage, and page-read
+functions with a synthetic worker fixture. The isolated literature parser subprocess was not run:
+its locked worker environment is absent, and this slice did not authorize dependency restoration.
+No live provider, paper fetch, full gate, private suite, migration, publication, or commit is claimed;
+private coverage remains UNVERIFIED.
+
+**2026-11-08 isolated source-reader successor (focused verification only):** The existing Research
+Literature list can now check and download the retained original for a selected source. A read-only
+HEAD route reports availability without returning PDF bytes; GET returns only bytes whose source,
+project, size, PDF signature, and SHA-256 were revalidated by the existing CLI store and web API.
+The UI exposes `available`, `missing`, `corrupt`, and `unavailable` states and enables download only
+after a successful integrity check. OpenAPI/types and the committed Workstation build were
+regenerated. Focused synthetic Python tests passed (26); the browser client tests passed (7), along
+with TypeScript build, targeted Oxlint, Python Ruff, configured mypy, and OpenAPI generation.
+An offline Chromium smoke against the built local FastAPI app downloaded the synthetic 47-byte PDF
+with exact SHA-256 `e4bbc40ee9e4a69fbd027341718388015f9022f0cdfdaaa79e8eb5a171ce96b0` and verified
+missing and cross-project responses. The canonical full gate and private suite were not run; no
+provider access, external retrieval, source upload, publication, commit, or merge is claimed.
+The Atlas client scanner now recognizes HEAD calls and its focused route-join test passes. Full Atlas
+regeneration remains blocked in this sparse worktree because the required tracked source
+`apps/alpha-mcp/src/alpha_mcp/server.py` is absent; its CLI cache still lists 233 commands while
+the candidate CLI exposes 234, including `research sources original-pdf`. The generated Atlas
+graph and CLI flow have not been refreshed or claimed fresh.
+
+**2026-11-08 literature worker launcher correction:** The CLI now runs the checked-out
+`literature_worker` module with `uv run --locked --no-sync`, Python safe-path mode, a closed
+`PYTHONPATH` pointing only to the worker's `src`, network disabled, and existing process limits.
+This avoids resolving the worker's unpinned Hatchling build backend at launch. Prepare its
+environment separately with
+`uv sync --project workers/literature --locked --no-dev --no-install-project`.
+Six focused launcher tests and an actual offline synthetic-PDF import/page-read smoke passed
+through the production launcher using the locked `pypdf==6.14.2` environment. No provider request
+or full gate was run.
+
+
+<!-- Preserved owner narrative: RD468304a9; historical claims apply only to that owner candidate, not the combined tree. -->
+
+### 2026-11-07 — Stock RDLoop continuation candidate (unactivated)
+
+Isolated successor based on main `3f7b23185c29b2542605bd41b9485016c2ef3e79` adds
+an actual pinned stock RDLoop diagnostic with deterministic native-interface
+components. Existing owner/reservation references bind fixed worker identity and
+reserved capacity. Native proposal/coding checkpoint continuation, interruption,
+attempt exhaustion and tamper refusal are exercised; typed bounded artifact
+validation projects one explicitly synthetic, unaccepted native trace. No custom
+research scheduler, new ledger, dispatcher registration, model call or evidence
+admission is introduced. Canonical reservation bytes remain unchanged.
+
+Read-only references and same-process fixture counters do not establish durable
+cross-process spend protection; reserved CPU is not an enforced CPU cap. Full
+native deployment/process ownership, installed dependencies, real backend/model
+qualification and full project gates remain unverified. The pre-existing protected
+Atlas input restriction remains stopped; no private-suite/full-gate claim is made.
+The original preserved candidates, studies, budgets and holdouts are untouched.
+See `docs/superpowers/plans/2026-11-07-stock-rdloop-continuation.md` and the worker
+README for exact contracts and verification evidence.
+
+Focused stock-loop checks: 5 tests and 9 subtests passed, including actual native continuation/interruption and adversarial artifact/request cases; all four changed Python files pass Ruff, the ALPHA module passes focused strict mypy, and 13 import contracts remain kept. Independent Codex source review APPROVE within synthetic-only scope; Claude route unavailable. Full qualification, activation and publication remain blocked/unperformed.
+
+### 2026-11-07 — Retained stock dispatch/accounting successor (unactivated)
+
+Separate successor to reviewed tree `403da80e554efcb36049ae0f0f0568e12e1167bf`
+adds one exact closed StockFixtureLaunch identity to the existing internal
+synthetic dispatcher. The existing owner retains Popen/lease/process-group cleanup;
+canonical owner claims and reservation identity precede payload effects. One
+protected `native_invocation` event commits before spawn in existing job_events;
+no new ledger, budget reset, refund or history migration. Failure after commit
+burns availability. Native starts require consumption; reconnect never respawns.
+Strict bounded stock receipt validation binds returned bytes to their validated
+hash. All outcomes remain synthetic and scientifically unadmitted.
+
+The older model-allowance prototype remains separate and untouched; its fixed
+scope cannot authorize stock dispatch. Current main remains the verified
+3f7b2318 base. Original candidate trees are preserved. Live inference, production
+activation, runtime dependency qualification, token/USD/CPU enforcement and
+protected/full-gate qualification remain unverified. No protected Atlas retry,
+new authentication, installation, other-host operation, commit or publication.
+
+Retained stock successor focused checks: 16 tests plus 9 subtests passed, including actual retained-owner stock dispatch and three legacy boundary regressions. Post-insertion rollback, no-remint races, failed Popen, stop-after-commit, parser profile integrity and same-validated-receipt bytes are covered. Strict mypy passes all three touched control modules. Independent source review is scoped to synthetic functionality; final logs/tree binding accompany the handoff. Full qualification remains blocked.
+
+### 2026-11-07 — Scoped automated control-test qualification
+
+Approved automated processing of 65 unchanged control-test inputs enabled the
+Atlas refresh for the retained stock-dispatch candidate. Protected source was
+neither displayed nor edited, and each approved file matches its original Git
+blob. Private holdout remains excluded and unverified. Six additional oracle
+package/reference helper files remain outside this approval and excluded. The
+three generated Atlas artifacts are refreshed; full acceptance and guarded
+delivery remain conditional on the unchanged canonical gate and access scope.
+
+The canonical full gate passed locked dependency validation, setup and manual
+preflight, then stopped at 13 I001 import-order diagnostics in unchanged protected
+oracle tests. Raw source diagnostics remain undisplayed; no protected tests or
+lint configuration were edited. Six excluded oracle support files may affect
+import classification; their processing is not covered by the 65-file approval.
+No full pass or guarded delivery is claimed from the partial run.
+
+
+## 2026-11-08 — Shared authored-source integration (unqualified)
+
+This reconciliation composes the selected authored-source candidates on exact base
+`3f7b23185c29b2542605bd41b9485016c2ef3e79` (tree
+`12640d9ef71932d3ce6cafddb27f5354a1ccc008`): Qlib048dc0ae,
+Acquisition081e1776, RD468304a9, Paper972e621d and Science23cedef2.
+The source composition contains 169 selected authored files before these three shared docs.
+Two code overlaps merged cleanly: frontend `src/api/client.ts` (paper/science) and
+`src/shell/documents.ts` (Qlib/RDLoop). Clean text merges are not runtime verification.
+README merged cleanly; the manual keeps both native-bridge and stock-RDLoop boundaries.
+The preceding owner narratives are preserved with their original dates and claims; their
+focused checks, generated-output statements and qualification dispositions belong only to
+those isolated owner candidates. They do not transfer to this combined tree.
+
+Generated API, SPA and Atlas outputs, including the science synthetic-response fixture,
+remain deferred. Fresh generated-output reconciliation, applicable independent review and
+the unchanged canonical full gate are pending; no combined test, build, freshness, private-suite
+or full-gate pass is claimed. The older acquisition accounting result of 36 passing tests at
+4780 does not qualify the selected 081e successor. No tests or gate were run for this
+reconciliation; no protected test source or generated output was read, and no commit,
+publication, merge, deployment, empirical acceptance or trading authority is established.
+
+
+## 2026-11-09 — Finance-math literature protocol successor (unqualified)
+
+The existing literature-review protocol adds finance-math source-status and numerical-reuse
+guidance, with its indexed hash updated. A companion guide preserves the 13 pictured titles,
+unknown editions and missing slide, and exercises existing PCA on synthetic returns. No book
+text was read or ingested, and no loader/schema, numerical code, dependency or authority changed.
+The original loader tests and focused content/example checks are separate from full qualification;
+the frozen combined/Dell handoff is unchanged. No activation or market-readiness claim is made.
+
+
+## 2026-11-09 — Sparse generated-output successor (unqualified)
+
+The pre-documentation working/index candidate retains canonical HEAD
+`3f7b23185c29b2542605bd41b9485016c2ef3e79`. Its generated-output tree is
+`21bd8fde7772d04887beac143f7774330e633139`, a separate successor to the
+preserved sparse source candidate `618f1de8bf979e1f269c1e3279d68633367b587c`. These are
+staged-tree identities, not new commits. This documentation change requires a
+new final-tree identity; it does not extend the build evidence to edited bytes.
+
+Two clean copies at different local source paths used the existing locked Python
+and independently copied frontend dependencies. Canonical OpenAPI generation,
+API-client generation, and the TypeScript/Vite/normalization build all passed in
+both copies. The 55 regenerated output paths, modes, lengths, and SHA256 values
+match exactly: OpenAPI, API client, and 53 SPA files. Two governance generated
+documents remain unchanged. All 13 public assets match their copied outputs, and
+the favicon/JavaScript/CSS references in index.html resolve. This is local
+two-copy reproducibility, not cross-machine, UI, scientific, or full-gate acceptance.
+
+The only generation delta is nine restored canonical demo-output files. All prior
+44 SPA files, OpenAPI, and API client were freshly reproduced byte-identically.
+The generator bound 82 ALPHA modules to each source copy. No source or lockfile
+changed; predecessor source/index/objects and original dependency bytes remain
+unchanged. Build warnings remain visible for Bokeh CustomJS direct eval and a
+chunk larger than 1,500 kB. No dependency installation or additional test run occurred.
+
+All 77 excluded paths retain their original object IDs/modes and remain absent.
+Protected blob and parent-history closure remain incomplete; this is not a full
+checkout. Complete public Qlib/RD-Agent/literature source and source-based UI
+availability flags do not establish installed workers or successful training.
+Atlas/protected processing, required independent exact-tree review, and the
+unchanged full gate still require an authorized evaluation decision. Advisory
+Claude/Codex participation is not a gate or review attestation. No activation,
+publication, provider/model call, or trading authority is established.
+
+
+## 2026-11-09 — Bounded finance-math source metadata and PCA checks (unqualified)
+
+This separate revision preserves its predecessor and the frozen combined candidate. The existing
+finance-math guide adds verified public bibliographic/access metadata, explicitly distinguishing
+LADR fourth edition from the photographed third edition and preserving CC BY-NC conditions and
+Harvard's disabled-download boundary. Original finite-matrix PCA derivations and focused reference
+checks reuse unchanged numerical code. The literature protocol, its index and all 13 identities
+are unchanged. No SourceAnchorV1, project-bound extraction or admitted book claim is created.
+The later intake path requires a verified isolated worker, lawful owner-selected bounded source,
+original-page provenance and the existing hash-verified claim workflow; no limit is weakened.
+Focused test/lint/type evidence accompanies this isolated revision. No full-gate, production,
+market, ingestion, screening, promotion, publication or trading qualification is implied.
+
+## 2026-11-09 — Explicit partial Alpha158 feature correction (unqualified)
+
+A separate successor preserves feature recipe 1 and adds explicit feature recipe 2. The new
+recipe calls actual pinned Qlib 0.9.7 operators for eight families at five windows (40 columns);
+118 columns and the typical-price VWAP proxy retain legacy behavior. Partial-window semantics
+are recorded. This is not provider/calendar/corporate-action, full-handler or whole-Alpha158
+parity. Canonical input alignment is unchanged. No historical artifact is relabeled or recomputed.
+
+The existing producer/CLI/worker/request schemas and typed web projections now accept explicit
+v2. Default v1 request bytes and digests match the preserved predecessor on the frozen synthetic
+fixture; old readers reject v2. Prediction config hashes reject cross-recipe lineage reuse.
+New implementation fingerprints are genuine new code identities. Complete predecessor seven-file
+refit inventories remain plannable for v1; v2 requires the complete expanded inventory. Old frozen
+code is not treated as current code. Capability/v2 projection changes require a coordinated
+worker/web service upgrade. Legacy capability and tear-sheet response shapes remain accepted.
+
+Fresh focused evidence: 36 worker cases and 46 root cases passed, with no skips, on the current
+source. Coverage includes all five windows, finite values and NaN masks separately, independent
+numeric anchors, causal prefixes/future changes, cache isolation, original default behavior,
+versioned contracts, mocked pre-model dispatch, legacy response shapes and frozen-source refit
+planning. Exact predecessor-source inventory and old-reader probes passed separately. OpenAPI
+freshness, generated TypeScript/application type checking and changed-source lint/types passed.
+Expected test-first failures, one API regression subsequently fixed and a diagnostic exception-
+handling correction are retained in the external execution evidence rather than hidden as a
+single-run pass. Source review is read-only engineering advice; final frozen-tree review is
+recorded separately with the delivery receipt.
+
+No real model training/inference, provider initialization, market/broker access, owner-store
+operation, GPU work, package change, commit or publication occurred. Full gate, Atlas/protected
+suites, end-to-end fitting, UI visual qualification and scientific/economic acceptance remain
+unverified. See the [scope plan](superpowers/plans/2026-11-09-alpha158-versioned-correction.md).
+
+
+**2026-11-10 scoped candidate — deferred risk UI fixture capture:** Added a version-1
+capture command for the previously deferred public synthetic risk-metric-basis input.
+It uses the existing artifact/TestClient/CLI path over two fixed artificial equity
+curves, checks documented anchors/conventions, independently calculated base returns
+and drawdowns, strict schemas/finite JSON and complete legacy parity before immutable
+publication. The fixture sidecar distinguishes fresh captured UI inputs from independent
+numerical expectations and binds inputs, source/run/artifact hashes, runtime and output.
+The 31 focused producer cases, scoped Ruff/format and strict mypy passed. Existing
+application code and the four original source-mounted browser assertions/config are
+unchanged. Independent final review and the dedicated browser run remain separate;
+default browser-suite routing is still unresolved. No full gate, protected tests,
+providers/models/owner data, installs, commits or publication. See
+[the capture plan](superpowers/plans/2026-11-10-risk-basis-fixture-capture.md).
+
+## 2026-11-10 — Bounded browser-lane routing successor
+
+The existing mandatory frontend browser command now dispatches four fixed existing
+fixtures: ordinary/default, source-mounted risk basis, raw-Vite synthetic risk live,
+and the exact native-result pytest driver. Only the three incompatible specs are
+excluded from default discovery, paired in the same candidate with positive routes.
+Original browser specs, dedicated configs/drivers, project policies and gate/CI
+ordering remain unchanged. Fresh listing/execution identity binding prevents partial
+results being credited, and skipped/missing/wrong native JUnit cannot pass.
+
+This is scoped source/test/docs work on a distinct uncommitted successor of frozen
+`b38bda23a9db0ecdc6b7c5fc55889bc4e69b7901`. Public stub tests and scoped checks
+verify orchestration only. Full/default/native execution and project qualification
+remain unrun; installed native selectors remain a named prerequisite, not an accepted
+skip. Predecessor browser evidence is preserved at its original narrow scope.
+The [routing plan](superpowers/plans/2026-11-10-browser-lane-routing.md) records
+prerequisites, immutable evidence, README/manual review and remaining acceptance.
+
+## 2026-11-09 — Configured Matplotlib web-to-CLI environment
+
+The web-to-CLI default-deny process environment now permits only one additional
+name, `MPLCONFIGDIR`, for Matplotlib configuration and cache placement. A configured
+server-process string passes verbatim; unset stays absent. No default, path
+validation/normalization, request override, other environment-filter expansion or
+worker/model environment change is introduced. The renderer's Agg selection and
+rcParams-default initialization are unchanged.
+
+All 36 focused public cases passed: 24 original web invocation cases, 11 new
+configured/unset/literal-value/stdlib-child cases and the existing cache-seam
+no-heavy-import node. The test-first predecessor behavior failed seven configured
+forwarding assertions while four unset controls passed. Scoped Ruff/format and
+strict changed-file mypy passed. This verifies the direct environment contract,
+not an actual Matplotlib render or chosen cache location. Required documentation
+and the unchanged combined manual size limit are retained.
+
+This separate uncommitted successor preserves frozen selector tree
+`deb10cc217a7a7359f08e38a6cd4cc1542b9971e` and its evidence. Independent frozen-source
+review remains separate; selector browser cases/negative control, actual renderer
+verification, default/browser lanes and full qualification remain unrun here.
+Future rendering checks require fresh empty owned writable absolute configuration
+storage and a verified owned CWD without `matplotlibrc`. This is not whole-home,
+font-discovery, other-library/descendant-cache or network isolation, nor a sandbox.
+No owner configuration/data, provider/model workload, installation, history repair,
+commit or publication was used. See the
+[contract plan](superpowers/plans/2026-11-09-web-matplotlib-environment.md).

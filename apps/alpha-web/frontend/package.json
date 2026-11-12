@@ -10,9 +10,9 @@
     "lint": "oxlint",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "npm run build && playwright test",
+    "test:e2e": "npm run build && npm run test:e2e:built",
     "preview": "vite preview",
-    "test:e2e:built": "playwright test"
+    "test:e2e:built": "uv run --offline --no-python-downloads --no-sync python ../../../scripts/run_frontend_browser_lanes.py"
   },
   "dependencies": {
     "@bokeh/bokehjs": "3.10.0",

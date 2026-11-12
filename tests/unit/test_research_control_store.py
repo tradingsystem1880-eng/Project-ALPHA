@@ -7553,3 +7553,186 @@ def test_list_research_decisions_returns_append_only_history(tmp_path: Path) -> 
     }
     with pytest.raises(DataError, match="unknown"):
         store.list_research_decisions("00000000-0000-4000-8000-00000000ffff")
+
+
+def _screened_paper_resource_fixture(
+    store: ControlStore, project_id: str, *, at: datetime
+) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
+    source_sha = hashlib.sha256(b"synthetic-paper-bytes").hexdigest()
+    source = store.create_research_source(
+        project_id,
+        title="Synthetic paper with linked data",
+        locator="https://research.example/paper",
+        provider="fixture",
+        access_mode="owner_provided",
+        content_hash=source_sha,
+        at=at,
+    )
+    source_id = str(source["source_id"])
+    text = "The accompanying dataset is available at https://research.example/synthetic.csv."
+    extraction_id = "rx_" + hashlib.sha256(b"synthetic-extraction").hexdigest()
+    artifact = {
+        "extraction_id": extraction_id,
+        "schema": "ResearchDocumentTextV1",
+        "source_sha256": source_sha,
+        "parser": "pypdf",
+        "parser_version": "6.14.2",
+        "config_hash": hashlib.sha256(b"synthetic-config").hexdigest(),
+        "normalization": "NFC_LF_RSTRIP_V1",
+        "status": "extracted",
+        "pages": [
+            {
+                "page": 1,
+                "text": text,
+                "character_count": len(text),
+                "text_sha256": hashlib.sha256(text.encode()).hexdigest(),
+            }
+        ],
+        "page_count": 1,
+        "character_count": len(text),
+        "warnings": [],
+        "trust_label": "UNTRUSTED_SOURCE",
+    }
+    store.record_research_document_text(source_id, artifact=artifact)
+    anchor_text = "The accompanying dataset is available"
+    char_start = text.index(anchor_text)
+    anchor: dict[str, object] = {
+        "schema": "SourceAnchorV1",
+        "extraction_id": extraction_id,
+        "page": 1,
+        "char_start": char_start,
+        "char_end": char_start + len(anchor_text),
+        "exact_text_sha256": hashlib.sha256(anchor_text.encode()).hexdigest(),
+    }
+    claim = store.draft_source_claim(
+        project_id,
+        source_id=source_id,
+        contract_id=str(store.research_case_summary(project_id)["active_contract_id"]),
+        claim_text="The paper reports an accompanying dataset.",
+        direction="method",
+        strength="moderate",
+        method_summary="The paper links a supporting dataset.",
+        sample_summary="Synthetic fixture.",
+        markets=["SYNTHETIC"],
+        limitations="Synthetic fixture; no empirical inference.",
+        author="codex",
+        author_kind="agent",
+        source_anchor=anchor,
+        at=at + timedelta(minutes=1),
+    )
+    screened = store.screen_source_claim(
+        project_id,
+        claim_id=str(claim["claim_id"]),
+        actor="owner",
+        at=at + timedelta(minutes=2),
+    )
+    link: dict[str, object] = {
+        "schema": "PaperResourceLinkV1",
+        "kind": "dataset",
+        "source_id": source_id,
+        "source_claim_id": str(claim["claim_id"]),
+        "locator_type": "url",
+        "locator": "https://research.example/synthetic.csv",
+        "relation": "dataset_available",
+        "relation_anchor": anchor,
+    }
+    assert screened["status"] == "screened"
+    return source, screened, link
+
+
+def test_paper_resource_links_freeze_screened_claim_and_page_anchor(tmp_path: Path) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    source, claim, link = _screened_paper_resource_fixture(
+        store, project_id, at=START + timedelta(minutes=1)
+    )
+    definition = {
+        "paper_resources": {"schema": "PaperResourceLinksV1", "links": [link]},
+        "note": "Synthetic fixture; no external access was attempted.",
+    }
+    pack = store.create_research_source_pack(
+        project_id,
+        source_ids=[str(source["source_id"])],
+        definition=definition,
+        at=START + timedelta(minutes=4),
+    )
+    pack_definition = cast(dict[str, object], pack["definition"])
+    frozen_resources = cast(dict[str, object], pack_definition["paper_resources"])
+    frozen_links = cast(list[object], frozen_resources["links"])
+    frozen_link = cast(dict[str, object], frozen_links[0])
+    assert str(frozen_link["link_id"]).startswith("prl_")
+    assert frozen_link["source_claim_id"] == claim["claim_id"]
+    assert frozen_link["claim_revision"] == claim["revision"]
+    assert frozen_link["claim_status"] == "screened"
+    assert frozen_link["availability_status"] == "unknown"
+    assert frozen_link["access_status"] == "unknown"
+    assert frozen_link["license_status"] == "unknown"
+    assert frozen_link["trust_label"] == "UNTRUSTED_SOURCE"
+    assert "acquired_content_sha256" not in frozen_link
+    assert store.get_research_source_pack(str(pack["pack_id"])) == pack
+
+    legacy = store.create_research_source_pack(
+        project_id,
+        source_ids=[str(source["source_id"])],
+        definition={"legacy": ["opaque", "definition"]},
+    )
+    assert legacy["definition"] == {"legacy": ["opaque", "definition"]}
+
+
+def test_paper_resource_links_reject_unreviewed_cross_project_or_bad_anchor(
+    tmp_path: Path,
+) -> None:
+    store = ControlStore(tmp_path)
+    project_id = _captured_case(store, 0, at=START)
+    other_project_id = _captured_case(store, 1, at=START + timedelta(minutes=5))
+    source, screened, link = _screened_paper_resource_fixture(
+        store, project_id, at=START + timedelta(minutes=10)
+    )
+    unreviewed = dict(link)
+    draft = store.draft_source_claim(
+        project_id,
+        source_id=str(source["source_id"]),
+        contract_id=str(store.research_case_summary(project_id)["active_contract_id"]),
+        claim_text="An unscreened claim.",
+        direction="method",
+        strength="weak",
+        method_summary="A draft claim.",
+        sample_summary="Synthetic fixture.",
+        markets=["SYNTHETIC"],
+        limitations="Not screened.",
+        author="codex",
+        author_kind="agent",
+        source_anchor=cast(dict[str, object], link["relation_anchor"]),
+    )
+    unreviewed["source_claim_id"] = draft["claim_id"]
+    resources = {"schema": "PaperResourceLinksV1", "links": [unreviewed]}
+    with pytest.raises(DataError, match="screened"):
+        store.create_research_source_pack(
+            project_id,
+            source_ids=[str(source["source_id"])],
+            definition={"paper_resources": resources},
+        )
+
+    cross_project = {**link, "source_claim_id": screened["claim_id"]}
+    with pytest.raises(DataError, match="project"):
+        store.create_research_source_pack(
+            other_project_id,
+            source_ids=[str(source["source_id"])],
+            definition={
+                "paper_resources": {"schema": "PaperResourceLinksV1", "links": [cross_project]}
+            },
+        )
+
+    bad_anchor = dict(link)
+    bad_anchor["relation_anchor"] = {
+        **cast(dict[str, object], link["relation_anchor"]),
+        "exact_text_sha256": "0" * 64,
+    }
+    with pytest.raises(DataError, match="anchor"):
+        store.create_research_source_pack(
+            project_id,
+            source_ids=[str(source["source_id"])],
+            definition={
+                "paper_resources": {"schema": "PaperResourceLinksV1", "links": [bad_anchor]}
+            },
+        )

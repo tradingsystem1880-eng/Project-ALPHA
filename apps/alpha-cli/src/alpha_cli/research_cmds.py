@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -31,6 +32,10 @@ from alpha_cli.control_store import (
     research_case_revision,
 )
 from alpha_cli.investigation_workspace_cmds import app as investigations_app
+from alpha_cli.paper_resources import (
+    build_paper_resource_resolutions,
+    parse_paper_resources,
+)
 from alpha_cli.research_crypto_binding import (
     CryptoEmpiricalDataset,
     load_crypto_empirical_d1,
@@ -155,6 +160,9 @@ def _run_literature_worker(argv: list[str], *, timeout_seconds: int = 180) -> di
     worker_dir = Path(__file__).resolve().parents[4] / "workers" / "literature"
     if not (worker_dir / "pyproject.toml").is_file():
         raise DataError("literature worker is unavailable outside a checked-out repository")
+    worker_source = worker_dir / "src" / "literature_worker" / "__main__.py"
+    if not worker_source.is_file():
+        raise DataError("literature worker source is unavailable in the checkout")
     uv_executable = shutil.which("uv")
     if uv_executable is None or not Path(uv_executable).is_absolute():
         raise DataError("the pinned literature worker runtime is unavailable")
@@ -162,6 +170,7 @@ def _run_literature_worker(argv: list[str], *, timeout_seconds: int = 180) -> di
         "LANG": "C.UTF-8",
         "LC_ALL": "C.UTF-8",
         "PATH": os.defpath,
+        "PYTHONPATH": str(worker_dir / "src"),
         "UV_NO_CONFIG": "1",
         "UV_OFFLINE": "1",
     }
@@ -183,7 +192,19 @@ def _run_literature_worker(argv: list[str], *, timeout_seconds: int = 180) -> di
             cache_dir = configured_cache
         child_env["UV_CACHE_DIR"] = str(cache_dir)
         completed = subprocess.run(  # noqa: S603 - fixed executable and closed argument vector
-            [uv_executable, "run", "--project", str(worker_dir), "literature-worker", *argv],
+            [
+                uv_executable,
+                "run",
+                "--locked",
+                "--no-sync",
+                "--project",
+                str(worker_dir),
+                "python",
+                "-P",
+                "-m",
+                "literature_worker",
+                *argv,
+            ],
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
@@ -564,6 +585,7 @@ def _approval_payload(
     source_pack_id: str,
     d2_relation_to_prior: str | None = None,
     empirical_dataset: _EmpiricalDataset | CryptoEmpiricalDataset | None = None,
+    paper_resource_mappings: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     result = dict(draft)
     primary_claim = result.get("primary_claim")
@@ -574,6 +596,8 @@ def _approval_payload(
         raise DataError("approval-ready research contract requires a thesis")
     result["thesis"] = {**thesis, "primary_claims": [primary_claim]}
     result["source_pack_id"] = source_pack_id
+    if paper_resource_mappings is not None:
+        result["paper_resource_mappings"] = paper_resource_mappings
     result["budget"] = {"wall_seconds": 8_400, "source_requests": 40, "variants": 64}
     result["hashes"] = _implementation_hashes()
     resolved_choices = result.get("resolved_material_choices")
@@ -780,6 +804,42 @@ def _approval_payload(
 
         protocol["d0_operator"] = registered_crypto_d0_operator()
     return result
+
+
+def _paper_resource_mappings(
+    source_pack: Mapping[str, object],
+    requests_json: list[str],
+    *,
+    dataset_ref_id: str | None,
+    draft: Mapping[str, object],
+) -> list[dict[str, object]] | None:
+    definition = source_pack.get("definition")
+    if not isinstance(definition, Mapping):
+        raise DataError("research source pack definition must be an object")
+    paper_resources = definition.get("paper_resources")
+    if paper_resources is None:
+        if requests_json:
+            raise DataError("paper resource mappings require links in the frozen source pack")
+        return None
+    links = parse_paper_resources(paper_resources, allow_bound=True)
+    if not links:
+        if requests_json:
+            raise DataError("paper resource mappings require at least one frozen resource link")
+        return []
+    raw_plan = draft.get("analysis_plan")
+    family_rows = raw_plan.get("families") if isinstance(raw_plan, Mapping) else None
+    planned_families = {
+        str(row["family"])
+        for row in family_rows or []
+        if isinstance(row, Mapping) and isinstance(row.get("family"), str)
+    }
+    requests = [_object(item, "--paper-resource-mapping-json") for item in requests_json]
+    return build_paper_resource_resolutions(
+        links,
+        requests,
+        dataset_ref_id=dataset_ref_id,
+        planned_families=planned_families,
+    )
 
 
 def _case_name(raw_idea: str) -> str:
@@ -1386,13 +1446,39 @@ def sources_screen(
     _emit(row, json_out=json_out, fallback=f"research source {row['source_id']}")
 
 
+@sources_app.command("original-pdf")
+def sources_original_pdf(
+    source_id: str,
+    project_id: str = typer.Option(..., "--project-id", help="owning Research Case id"),
+    include_bytes: bool = typer.Option(
+        False, "--include-bytes", help="return verified original bytes as base64"
+    ),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Verify an owner-provided PDF artifact, optionally returning its exact bytes."""
+    try:
+        state, raw = _store().read_research_source_original_pdf(project_id, source_id)
+    except DataError as exc:
+        raise typer.BadParameter("unknown research source") from exc
+    result: dict[str, object] = dict(state)
+    if include_bytes and raw is not None:
+        result["content_base64"] = base64.b64encode(raw).decode("ascii")
+    _emit(
+        result,
+        json_out=json_out,
+        fallback=f"original PDF {state['status']} for research source {state['source_id']}",
+    )
+
+
 @sources_app.command("freeze")
 def sources_freeze(
     project_id: str,
     source_ids: list[str] = typer.Option(  # noqa: B008
         ..., "--source-id", help="included source id; repeatable"
     ),
-    definition_json: str = typer.Option("{}"),
+    definition_json: str = typer.Option(
+        "{}", help="source-pack JSON; paper_resources may use PaperResourceLinksV1"
+    ),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Freeze an order-independent, content-addressed source pack."""
@@ -1458,6 +1544,11 @@ def draft(
     ),
     dataset: str | None = typer.Option(
         None, "--dataset", help="registered rd_ research dataset (Gate-4 daily lane only)"
+    ),
+    paper_resource_mapping_json: list[str] = typer.Option(  # noqa: B008
+        [],
+        "--paper-resource-mapping-json",
+        help="PaperResourceMappingRequestV1 proposal for contract owner review; repeatable",
     ),
     answer_bundle: str | None = typer.Option(
         None, "--answer-bundle", help="registered atomic material-answer bundle"
@@ -1525,6 +1616,12 @@ def draft(
             raise DataError("all material research questions must be resolved in the one batch")
         if answer_bundle is not None:
             preview["answer_bundle_id"] = answer_bundle
+        paper_resource_mappings = _paper_resource_mappings(
+            source_pack,
+            paper_resource_mapping_json,
+            dataset_ref_id=dataset,
+            draft=preview,
+        )
         binding: _EmpiricalDataset | CryptoEmpiricalDataset | None
         if dataset is None:
             binding = None
@@ -1533,7 +1630,10 @@ def draft(
         else:
             binding = _empirical_dataset(store, dataset)
         payload = _approval_payload(
-            preview, source_pack_id=source_pack_id, empirical_dataset=binding
+            preview,
+            source_pack_id=source_pack_id,
+            empirical_dataset=binding,
+            paper_resource_mappings=paper_resource_mappings,
         )
         contract = store.create_research_contract(
             project_id,
@@ -1658,6 +1758,11 @@ def revise(
     dataset: str | None = typer.Option(
         None, "--dataset", help="registered rd_ research dataset (Gate-4 daily lane only)"
     ),
+    paper_resource_mapping_json: list[str] = typer.Option(  # noqa: B008
+        [],
+        "--paper-resource-mapping-json",
+        help="PaperResourceMappingRequestV1 proposal for contract owner review; repeatable",
+    ),
     operator: str | None = typer.Option(
         None, "--operator", help="explicit registered operator id; must agree with material answers"
     ),
@@ -1679,12 +1784,19 @@ def revise(
         )
         if preview["blocking_questions"]:
             raise DataError("all material research questions must be resolved in the one batch")
+        paper_resource_mappings = _paper_resource_mappings(
+            source_pack,
+            paper_resource_mapping_json,
+            dataset_ref_id=dataset,
+            draft=preview,
+        )
         binding = _empirical_dataset(store, dataset) if dataset is not None else None
         payload = _approval_payload(
             preview,
             source_pack_id=source_pack_id,
             d2_relation_to_prior="unopened_sealed_reuse",
             empirical_dataset=binding,
+            paper_resource_mappings=paper_resource_mappings,
         )
         active = case.get("active_contract")
         if (

@@ -131,4 +131,57 @@ describe('bounded Research Case API client', () => {
       expect(api).not.toHaveProperty(method)
     }
   })
+
+  it('reads original PDF status without requesting or caching the bytes', async () => {
+    const headers = new Headers({
+      'x-research-original-pdf-status': 'available',
+      'x-research-source-id': 'rs_synthetic',
+      'x-research-original-pdf-sha256': 'a'.repeat(64),
+      'x-research-original-pdf-verified-sha256': 'a'.repeat(64),
+      'x-research-original-pdf-bytes': '25',
+    })
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200, headers }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(api.researchSourceOriginalPdfStatus('project/id', 'rs_synthetic')).resolves.toEqual({
+      status: 'available',
+      source_id: 'rs_synthetic',
+      sha256: 'a'.repeat(64),
+      verified_sha256: 'a'.repeat(64),
+      byte_count: 25,
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/research/cases/project%2Fid/sources/rs_synthetic/original-pdf',
+      { method: 'HEAD', cache: 'no-store' },
+    )
+  })
+
+  it('returns only size-, signature- and hash-verified original PDF bytes', async () => {
+    const raw = new TextEncoder().encode('%PDF-1.7\nsynthetic\n%%EOF\n')
+    const digest = await crypto.subtle.digest('SHA-256', raw)
+    const sha256 = Array.from(new Uint8Array(digest), (part) => part.toString(16).padStart(2, '0')).join('')
+    const headers = new Headers({
+      'content-type': 'application/pdf',
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff',
+      'x-research-original-pdf-status': 'available',
+      'x-research-source-id': 'rs_synthetic',
+      'x-research-original-pdf-sha256': sha256,
+      'x-research-original-pdf-verified-sha256': sha256,
+      'x-research-original-pdf-bytes': String(raw.byteLength),
+    })
+    const fetchMock = vi.fn().mockResolvedValue(new Response(raw, { status: 200, headers }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await api.researchSourceOriginalPdfDownload('project/id', 'rs_synthetic')
+    expect(result.sha256).toBe(sha256)
+    expect(result.bytes).toEqual(raw)
+
+    const mismatched = new Headers(headers)
+    mismatched.set('x-research-original-pdf-sha256', 'b'.repeat(64))
+    mismatched.set('x-research-original-pdf-verified-sha256', 'b'.repeat(64))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(raw, { status: 200, headers: mismatched })))
+    await expect(api.researchSourceOriginalPdfDownload('project/id', 'rs_synthetic'))
+      .rejects.toThrow('hash did not match')
+  })
 })

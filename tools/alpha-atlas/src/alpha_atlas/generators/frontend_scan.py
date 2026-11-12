@@ -22,7 +22,7 @@ EXTRACTOR = "frontend_scan"
 CLIENT_REL = "apps/alpha-web/frontend/src/api/client.ts"
 DOCUMENTS_REL = "apps/alpha-web/frontend/src/shell/documents.ts"
 _METHOD_FLOOR = 100
-_SPEC_METHODS = ("get", "post", "put", "delete")
+_SPEC_METHODS = ("get", "head", "post", "put", "delete")
 
 # a method entry inside `export const api = { ... }` — `name: (...)` or shorthand `async name(...)`
 _ENTRY_RE = re.compile(r"^  (?:async )?(\w+)\s*[:(]", re.MULTILINE)
@@ -63,6 +63,8 @@ def join_client_methods(root: Path) -> dict[str, tuple[str, str]]:
         verb = "GET"
         if "postJSON" in segment or "method: 'POST'" in segment:
             verb = "POST"
+        if "method: 'HEAD'" in segment:
+            verb = "HEAD"
         if "method: 'DELETE'" in segment:
             verb = "DELETE"
         spec_path = by_normalized.get(_normalize(urls[0]))

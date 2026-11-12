@@ -10,6 +10,7 @@ import contextlib
 import os
 import signal
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -106,6 +107,98 @@ def test_web_ml_environment_preserves_configured_worker_cache(
     environment = _catalog._cli_environment(tmp_path, ["ml", operation])
     assert environment["UV_CACHE_DIR"] == cache
     assert not {"ALPHA_TIINGO_API_KEY", "CODEX_HOME"}.intersection(environment)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["figures", "list", "--json"],
+        ["figures", "render", "0123456789abcdef", "--json"],
+        ["data", "symbols", "--json"],
+    ],
+)
+@pytest.mark.parametrize("configured", [False, True])
+def test_web_cli_environment_preserves_only_configured_matplotlib_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: list[str], configured: bool
+) -> None:
+    directory = str(tmp_path / "matplotlib config ; $literal") + "/./"
+    monkeypatch.delenv("MPLCONFIGDIR", raising=False)
+    forbidden = {
+        "HOME",
+        "CODEX_HOME",
+        "XDG_CONFIG_HOME",
+        "XDG_CACHE_HOME",
+        "MATPLOTLIBRC",
+        "OPENAI_API_KEY",
+        "ALPHA_TIINGO_API_KEY",
+        "UNRELATED_STATE",
+    }
+    for name in forbidden:
+        monkeypatch.setenv(name, "synthetic-must-not-cross")
+    monkeypatch.setenv("ALPHA_DATA_DIR", "synthetic-stale-data-root")
+    monkeypatch.setenv("TYPER_USE_RICH", "1")
+    baseline = _catalog._cli_environment(tmp_path, command)
+    assert "MPLCONFIGDIR" not in baseline
+    if configured:
+        monkeypatch.setenv("MPLCONFIGDIR", directory)
+
+    environment = _catalog._cli_environment(tmp_path, command)
+
+    assert environment == (baseline | {"MPLCONFIGDIR": directory} if configured else baseline)
+    assert environment["ALPHA_DATA_DIR"] == str(tmp_path)
+    assert environment["TYPER_USE_RICH"] == "0"
+    assert not forbidden.intersection(environment)
+
+
+@pytest.mark.parametrize("value", ["", "relative config/../$literal", "/synthetic-unusable/config"])
+def test_web_cli_matplotlib_value_is_forwarded_without_path_validation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    """Pure contract check: these values never reach Matplotlib or a child process."""
+    monkeypatch.setenv("MPLCONFIGDIR", value)
+    environment = _catalog._cli_environment(tmp_path, ["figures", "list", "--json"])
+    assert environment["MPLCONFIGDIR"] == value
+
+
+@pytest.mark.parametrize("configured", [False, True])
+def test_web_cli_matplotlib_directory_reaches_subprocess(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, configured: bool
+) -> None:
+    directory = tmp_path / "matplotlib config ; $literal"
+    directory.mkdir(mode=0o700)
+    assert directory.is_absolute() and not any(directory.iterdir())
+    monkeypatch.delenv("MPLCONFIGDIR", raising=False)
+    if configured:
+        monkeypatch.setenv("MPLCONFIGDIR", str(directory))
+    forbidden = (
+        "HOME",
+        "CODEX_HOME",
+        "XDG_CONFIG_HOME",
+        "XDG_CACHE_HOME",
+        "MATPLOTLIBRC",
+        "OPENAI_API_KEY",
+        "ALPHA_TIINGO_API_KEY",
+        "UNRELATED_STATE",
+    )
+    for name in forbidden:
+        monkeypatch.setenv(name, "synthetic-must-not-cross")
+    selected = (*forbidden, "MPLCONFIGDIR", "ALPHA_DATA_DIR", "TYPER_USE_RICH")
+    script = (
+        "import json, os; "
+        f"print(json.dumps({{name: os.environ[name] for name in {selected!r} "
+        "if name in os.environ}))"
+    )
+    monkeypatch.setattr(
+        _catalog, "_command", lambda args: [sys.executable, "-I", "-S", "-c", script]
+    )
+
+    result = _catalog._run_json(["figures", "list", "--json"], data_dir=tmp_path)
+
+    expected = {"ALPHA_DATA_DIR": str(tmp_path), "TYPER_USE_RICH": "0"}
+    if configured:
+        expected["MPLCONFIGDIR"] = str(directory)
+    assert result == expected
+    assert not any(directory.iterdir())  # stdlib-only child, not renderer/cache verification
 
 
 def test_web_investigation_run_preserves_only_codex_auth_home(

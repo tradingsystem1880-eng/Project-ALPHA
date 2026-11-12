@@ -983,7 +983,10 @@ def list_experiments(
                     "status": summary["status"],
                     "universe_size": universe_size,
                     "aligned_sessions": aligned_sessions,
-                    "feature_recipe": feature.get("name"),
+                    "feature_recipe": (
+                        "alpha158 v2 (40-column correction)" if feature.get("version") == 2
+                        else feature.get("name")
+                    ),
                     "model": model.get("name"),
                     "folds": len(folds) if isinstance(folds, list) else 0,
                     "snapshot_hash": request.get("snapshot_hash"),

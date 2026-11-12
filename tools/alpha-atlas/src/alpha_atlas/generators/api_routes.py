@@ -25,7 +25,7 @@ OPENAPI_REL = "apps/alpha-web/frontend/openapi.json"
 CLASSIFICATION_REL = "docs/governance/openapi-operation-classification.json"
 ROUTERS_DIR = "apps/alpha-web/src/alpha_web/api"
 
-_HTTP_METHODS = ("get", "post", "put", "delete")
+_HTTP_METHODS = ("get", "head", "post", "put", "delete")
 
 
 def _router_prefix(tree: ast.Module) -> str:

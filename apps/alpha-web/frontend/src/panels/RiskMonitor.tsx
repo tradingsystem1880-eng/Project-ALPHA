@@ -8,6 +8,7 @@ import type { RiskReport } from '../api/types'
 import { usePanelLinked } from '../context/usePanelLinked'
 import { fmtNum, fmtPct } from '../util/format'
 import { Placeholder } from '../components/Placeholder'
+import { RiskMetricBasis } from './RiskMetricBasis'
 import { matchesRunScope, runScopeFromParams, runScopeLabel } from './v3Models'
 import type { PanelHandleProps } from '../context/panelHandle'
 
@@ -80,10 +81,11 @@ export function RiskMonitor(props: PanelHandleProps) {
           <Placeholder big="UNAVAILABLE">{compatibility}</Placeholder>
         ) : !runId ? (
           <Placeholder big="no run">Select a run in the browser (or paste a run id)</Placeholder>
-        ) : !report ? (
+        ) : !report || report.run_id !== runId ? (
           <Placeholder>loading…</Placeholder>
         ) : (
           <>
+          <RiskMetricBasis provenance={report.provenance} />
           <table className="blotter">
             <thead>
               <tr>

@@ -5,6 +5,92 @@ import type { DailyRuleEvidence, DailyRuleRole } from './dailyRule'
 
 type Schema = components['schemas']
 
+export type ResearchOriginalPdfStatus = 'available' | 'missing' | 'corrupt' | 'unavailable'
+
+export interface ResearchOriginalPdfInfo {
+  status: ResearchOriginalPdfStatus
+  source_id: string
+  sha256: string | null
+  verified_sha256: string | null
+  byte_count: number | null
+}
+
+export interface ResearchOriginalPdfDownload {
+  bytes: Uint8Array
+  sha256: string
+}
+
+const MAX_RESEARCH_ORIGINAL_PDF_BYTES = 10 * 1024 * 1024
+const SHA256_HEX = /^[0-9a-f]{64}$/
+
+function originalPdfInfo(response: Response, sourceId: string): ResearchOriginalPdfInfo {
+  const status = response.headers.get('x-research-original-pdf-status')
+  const responseSourceId = response.headers.get('x-research-source-id')
+  const sha256 = response.headers.get('x-research-original-pdf-sha256')
+  const verifiedSha256 = response.headers.get('x-research-original-pdf-verified-sha256')
+  const rawByteCount = response.headers.get('x-research-original-pdf-bytes')
+  if (
+    responseSourceId !== sourceId
+    || (status !== 'available' && status !== 'missing' && status !== 'corrupt' && status !== 'unavailable')
+    || (sha256 !== null && !SHA256_HEX.test(sha256))
+  ) {
+    throw new Error('The original PDF status response could not be verified.')
+  }
+  if (status === 'available') {
+    const byteCount = Number(rawByteCount)
+    if (
+      sha256 === null
+      || verifiedSha256 !== sha256
+      || !Number.isInteger(byteCount)
+      || byteCount < 5
+      || byteCount > MAX_RESEARCH_ORIGINAL_PDF_BYTES
+    ) {
+      throw new Error('The original PDF status response could not be verified.')
+    }
+    return { status, source_id: sourceId, sha256, verified_sha256: verifiedSha256, byte_count: byteCount }
+  }
+  if (verifiedSha256 !== null || rawByteCount !== null) {
+    throw new Error('The original PDF status response could not be verified.')
+  }
+  return { status, source_id: sourceId, sha256, verified_sha256: null, byte_count: null }
+}
+
+async function originalPdfDownload(
+  response: Response,
+  sourceId: string,
+): Promise<ResearchOriginalPdfDownload> {
+  const status = response.headers.get('x-research-original-pdf-status')
+  if (!response.ok) {
+    if (status === 'missing' || status === 'corrupt' || status === 'unavailable') {
+      throw new Error(`The original PDF is ${status}.`)
+    }
+    throw await responseError(response)
+  }
+  const info = originalPdfInfo(response, sourceId)
+  if (
+    info.status !== 'available'
+    || response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() !== 'application/pdf'
+    || response.headers.get('x-content-type-options')?.toLowerCase() !== 'nosniff'
+    || response.headers.get('cache-control')?.includes('no-store') !== true
+  ) {
+    throw new Error('The original PDF download response could not be verified.')
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  if (
+    bytes.byteLength !== info.byte_count
+    || bytes.byteLength > MAX_RESEARCH_ORIGINAL_PDF_BYTES
+    || new TextDecoder().decode(bytes.subarray(0, 5)) !== '%PDF-'
+  ) {
+    throw new Error('The original PDF download response could not be verified.')
+  }
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  const sha256 = Array.from(new Uint8Array(digest), (part) => part.toString(16).padStart(2, '0')).join('')
+  if (sha256 !== info.sha256 || sha256 !== info.verified_sha256) {
+    throw new Error('The original PDF download hash did not match its verified source.')
+  }
+  return { bytes, sha256 }
+}
+
 import type {
   ActiveResearchGateOverride,
   AgentBrief,
@@ -548,7 +634,7 @@ export const api = {
   deleteWorkspace: (slug: string): Promise<Response> =>
     fetch(`/api/workspaces/${slug}`, { method: 'DELETE' }),
   riskScenario: (runId: string, confidence = 0.95): Promise<RiskReport> =>
-    getJSON(`/api/risk/scenario?run_id=${encodeURIComponent(runId)}&confidence=${confidence}`),
+    getJSON(`/api/risk/scenario?run_id=${encodeURIComponent(runId)}&confidence=${confidence}&include_metric_basis=true`),
   researchCompare: (symbol: string, runContext: RunContextV1): Promise<ResearchReport> => {
     const params = new URLSearchParams({
       symbol,
@@ -613,6 +699,21 @@ export const api = {
     postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/notes`, body),
   researchSourceAdd: (projectId: string, body: ResearchSourceAddRequest): Promise<Record<string, unknown>> =>
     postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/sources`, body),
+  researchSourceOriginalPdfStatus: async (projectId: string, sourceId: string) => {
+    const response = await fetch(
+      `/api/research/cases/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(sourceId)}/original-pdf`,
+      { method: 'HEAD', cache: 'no-store' },
+    )
+    if (!response.ok) throw await responseError(response)
+    return originalPdfInfo(response, sourceId)
+  },
+  researchSourceOriginalPdfDownload: async (projectId: string, sourceId: string) => {
+    const response = await fetch(
+      `/api/research/cases/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(sourceId)}/original-pdf`,
+      { cache: 'no-store' },
+    )
+    return originalPdfDownload(response, sourceId)
+  },
   researchClaimAdd: (projectId: string, body: ResearchClaimAddRequest): Promise<Record<string, unknown>> =>
     postJSON(`/api/research/cases/${encodeURIComponent(projectId)}/claims`, body),
   dataSnapshots: (): Promise<DataSnapshots> => getJSON('/api/data/snapshots'),

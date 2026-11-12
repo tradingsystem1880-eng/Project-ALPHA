@@ -14,6 +14,7 @@ import platform
 from pathlib import Path
 from typing import Any
 
+from alpha_qlib_worker.feature_recipes import feature_capabilities
 from alpha_qlib_worker.tabular_contract import TABULAR_PARAMETER_RULES, validate_parameters
 
 _DEFAULTS: dict[str, dict[str, int | float | str]] = {
@@ -150,7 +151,8 @@ def backend_capabilities() -> dict[str, Any]:
     qlib_version = next(
         (row["versions"].get("pyqlib") for row in rows if "pyqlib" in row["versions"]), None
     )
-    return {"schema_version": 1, "qlib_version": qlib_version, "backends": rows}
+    return {"schema_version": 1, "qlib_version": qlib_version, "backends": rows,
+            "feature_recipes": feature_capabilities()}
 
 
 def require_backend(name: str) -> dict[str, str]:

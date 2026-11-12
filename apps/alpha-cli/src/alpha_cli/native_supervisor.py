@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from alpha_cli._native_daily_rule_container import DailyRuleContainer
     from alpha_cli._native_daily_rule_study import DailyRuleStudyV1
     from alpha_cli._native_loop_admission import NativeLaunch
+    from alpha_cli._native_stock_launch import StockFixtureLaunch
 
 if sys.platform != "win32":
     import fcntl
@@ -59,6 +60,12 @@ def _native_launch_type() -> type[NativeLaunch]:
     from alpha_cli._native_loop_admission import NativeLaunch
 
     return NativeLaunch
+
+
+def _stock_launch_type() -> type[StockFixtureLaunch]:
+    from alpha_cli._native_stock_launch import StockFixtureLaunch
+
+    return StockFixtureLaunch
 
 
 class _FixtureDeadlineExpired(DataError):
@@ -256,9 +263,9 @@ class _Owner:
         self.root = _fixture_root(root)
         self.job_id = job_id
         self.fixture = fixture
-        if (native is not None and type(native) is not _native_launch_type()) or (
-            (fixture == "native_loop") != (native is not None)
-        ):
+        if (
+            native is not None and type(native) not in (_native_launch_type(), _stock_launch_type())
+        ) or ((fixture == "native_loop") != (native is not None)):
             raise DataError("native loop fixture requires its fixed launch identity")
         self.native = native
         if (root / "daily-rule-workspace.json").exists():
@@ -442,6 +449,16 @@ class _Owner:
             raise _FixtureDeadlineExpired(
                 "native fixture deadline expired during launch preparation"
             )
+        if type(self.native) is _stock_launch_type():
+            from alpha_cli._native_stock_launch import consume_before_spawn
+
+            consume_before_spawn(self)
+            if self.poll_stop():
+                if self.stop_reason == "cancelled":
+                    raise _FixtureCancelledBeforeSpawn(
+                        "stock owner cancelled after durable consumption"
+                    )
+                raise _FixtureDeadlineExpired("stock owner stopped after durable consumption")
         self.spawn_attempted = True
         daily_environment: dict[str, str] = {}
         if self.native is not None and _is_daily_study(self.native.study):
@@ -487,17 +504,19 @@ class _Owner:
         fields: dict[str, object],
     ) -> _Observation:
         detached = fields.copy()
-        if "rule_result" in detached:
-            binding = detached["rule_result"]
+        for result_field in ("rule_result", "stock_result"):
+            if result_field not in detached:
+                continue
+            binding = detached[result_field]
             if (
                 not isinstance(binding, Mapping)
                 or set(binding) != {"schema", "receipt_sha256"}
                 or any(type(value) is not str for value in binding.values())
             ):
-                raise DataError("issued rule result requires its closed immutable string binding")
+                raise DataError("issued native result requires its closed immutable string binding")
             # Both the caller's dictionary and the issued nested view must be detached.
             # Closed string leaves need no generic recursive payload/signing mechanism.
-            detached["rule_result"] = MappingProxyType(dict(binding))
+            detached[result_field] = MappingProxyType(dict(binding))
         value = _Observation(self, kind, MappingProxyType(detached), _SEAL)
         self._issued[kind] = value
         return value
@@ -594,14 +613,23 @@ class _Owner:
             return self._issue(
                 "native_uncertain", {"reason": "container payload start/exit was not verified"}
             )
-        rule_result: dict[str, object] = {}
+        native_result: dict[str, object] = {}
         if self.native is not None and reason == "exit" and actual_returncode == 0:
             try:
                 receipt_bytes = self.native.verify_result(
                     self.root / f"payload-{self.job_id}", self.native_admission
                 )
-                if self.native.study is not None:
-                    rule_result = {
+                from alpha_cli._native_stock_launch import StockFixtureLaunch
+
+                if type(self.native) is StockFixtureLaunch:
+                    native_result = {
+                        "stock_result": {
+                            "schema": "StockRDLoopObservationV1",
+                            "receipt_sha256": hashlib.sha256(receipt_bytes).hexdigest(),
+                        }
+                    }
+                elif self.native.study is not None:
+                    native_result = {
                         "rule_result": {
                             "schema": "DailyNativeRuleObservationV1"
                             if _is_daily_study(self.native.study)
@@ -616,7 +644,7 @@ class _Owner:
         return self._issue(
             "native_outcome",
             {
-                **rule_result,
+                **native_result,
                 "reason": reason,
                 "returncode": actual_returncode,
                 "elapsed_seconds": time.monotonic() - self.started,
@@ -786,15 +814,17 @@ def start_synthetic_owner(
     """Start one trusted owner only. Reconnect is a separate, non-spawning store operation."""
     _fixture_root(root)
     host_identity()
-    if (native is not None and type(native) is not _native_launch_type()) or (
-        (fixture == "native_loop") != (native is not None)
-    ):
+    if (
+        native is not None and type(native) not in (_native_launch_type(), _stock_launch_type())
+    ) or ((fixture == "native_loop") != (native is not None)):
         raise DataError("native loop fixture requires its fixed launch identity")
     native_args = (
         []
         if native is None
         else ["--native-source", str(native.source), "--native-mode", native.mode]
     )
+    if type(native) is _stock_launch_type():
+        native_args += ["--stock-runtime", str(native.stock_runtime)]
     if native is not None and native.authority is not None:
         if native.authority.root != root:
             raise DataError("rule native owner belongs to another store")
@@ -875,6 +905,7 @@ def _entry() -> None:
     parser.add_argument("lock_fd", type=int)
     parser.add_argument("--native-source", type=Path)
     parser.add_argument("--native-mode", default="INCONCLUSIVE")
+    parser.add_argument("--stock-runtime", type=Path)
     parser.add_argument("--rule-project")
     parser.add_argument("--rule-contract")
     args = parser.parse_args()
@@ -897,8 +928,14 @@ def _entry() -> None:
                 if contract_is_daily(contract)
                 else selected_study(contract_is_costed(contract))
             )
+        if args.stock_runtime is not None and (args.native_source is None or authority is not None):
+            raise DataError("stock fixture cannot borrow scientific rule authority")
         native = (
-            None
+            _stock_launch_type()(
+                args.native_source, args.native_mode, stock_runtime=args.stock_runtime
+            )
+            if args.stock_runtime is not None
+            else None
             if args.native_source is None
             else _native_launch_type()(
                 args.native_source, args.native_mode, study=study, authority=authority

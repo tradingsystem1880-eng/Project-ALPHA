@@ -199,6 +199,7 @@ def test_rerun_skips_done_windows_and_retries_failed_ones(tmp_path: Path) -> Non
         acquire=_fake_acquire(calls),
         now=NOW,
         pause_seconds=0.0,
+        verify_completed=lambda symbol, window, entry: None,
     )
     assert [c["instrument"] for c in calls] == ["ETHUSDT"]
     assert second["done"] == 1 and second["failed"] == 0 and second["skipped"] == 1

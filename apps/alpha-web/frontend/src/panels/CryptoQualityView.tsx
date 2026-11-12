@@ -1,3 +1,4 @@
+import { RetainedBarCoverage } from './RetainedBarCoverage'
 import type {
   CryptoFeature,
   CryptoFeatureName,
@@ -99,6 +100,8 @@ export function CryptoQualityView({
           </div>
         </section>
       ) : null}
+
+      {quality ? <RetainedBarCoverage key={quality.manifest_id} quality={quality} /> : null}
 
       {showFeatures ? (
         <section className="provider-card" aria-label="Derived research features">

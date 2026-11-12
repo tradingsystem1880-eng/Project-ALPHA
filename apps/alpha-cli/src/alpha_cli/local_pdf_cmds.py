@@ -15,11 +15,11 @@ from typing import cast
 
 import typer
 
-from alpha_cli.control_store import ControlStore
+from alpha_cli.control_store import _MAX_OWNER_PDF_BYTES, ControlStore
 from alpha_cli.research_cmds import _emit, _run_literature_worker, _store
 from alpha_core import DataError
 
-_MAX_PDF_BYTES = 10 * 1024 * 1024
+_MAX_PDF_BYTES = _MAX_OWNER_PDF_BYTES
 _MAX_PDF_PAGES = 200
 _MAX_PDF_CHARACTERS = 2_000_000
 _SHA256 = re.compile(r"[0-9a-f]{64}")
@@ -200,6 +200,7 @@ def _import_result(
     *,
     byte_count: int,
     source_sha256: str,
+    original_pdf_artifact: dict[str, object],
     idempotent_reuse: bool = False,
 ) -> dict[str, object]:
     acquisition: dict[str, object] = {
@@ -215,6 +216,7 @@ def _import_result(
         "source": source,
         "document": _document_summary(document),
         "acquisition": acquisition,
+        "original_pdf_artifact": original_pdf_artifact,
     }
 
 
@@ -276,11 +278,20 @@ def import_owner_pdf_file(
             or existing_metadata.get("origin_kind") != "owner_provided_local_pdf"
         ):
             raise DataError("owner PDF extraction is already bound to a different source record")
+        original_pdf_artifact = store.retain_research_source_original_pdf(
+            project_id, existing_source_id, raw
+        )
+        if original_pdf_artifact.get("status") != "available":
+            raise DataError(
+                "owner PDF extraction remains attached, but its original bytes are "
+                f"{original_pdf_artifact.get('status')}; no replacement was made"
+            )
         return _import_result(
             existing_source,
             existing_document,
             byte_count=len(raw),
             source_sha256=source_sha256,
+            original_pdf_artifact=original_pdf_artifact,
             idempotent_reuse=True,
         )
 
@@ -297,15 +308,30 @@ def import_owner_pdf_file(
         content_hash=source_sha256,
     )
     try:
+        original_pdf_artifact = store.retain_research_source_original_pdf(
+            project_id, str(source["source_id"]), raw
+        )
+        if original_pdf_artifact.get("status") != "available":
+            raise DataError(
+                "original PDF bytes are "
+                f"{original_pdf_artifact.get('status')}; no bytes were reported as retained"
+            )
         document = store.record_research_document_text(str(source["source_id"]), artifact=artifact)
     except (DataError, OSError, sqlite3.Error) as exc:
         raise DataError(
             f"recoverable partial owner PDF import: source {source['source_id']} was recorded, "
-            "but extracted text did not return a verified attachment. Check its extraction "
-            "status before retrying with the same project, file, and title. "
+            "but original-byte retention or extracted text did not return a verified attachment. "
+            "Check the source and extraction status before retrying with the same project, "
+            "file, and title. "
             f"Cause: {exc}"
         ) from exc
-    return _import_result(source, document, byte_count=len(raw), source_sha256=source_sha256)
+    return _import_result(
+        source,
+        document,
+        byte_count=len(raw),
+        source_sha256=source_sha256,
+        original_pdf_artifact=original_pdf_artifact,
+    )
 
 
 def import_pdf_command(

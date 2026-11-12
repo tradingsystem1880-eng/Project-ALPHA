@@ -31,6 +31,7 @@ _PROCESS_ENV_NAMES = frozenset(
         "LANG",
         "LC_ALL",
         "LC_CTYPE",
+        "MPLCONFIGDIR",  # Preserve configured Matplotlib configuration and cache placement.
         "PATH",
         "PYTHONPATH",
         "TMPDIR",

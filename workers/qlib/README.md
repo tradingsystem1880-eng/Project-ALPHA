@@ -212,3 +212,35 @@ uv run pytest -q
 
 Removal is bounded: delete `workers/qlib`, remove the root `alpha ml` projections, and delete
 worker exchanges/control links. No root package dependency or run artifact needs migration.
+
+## Opt-in partial Alpha158 feature correction
+
+Feature recipe version **1 remains the default**, with unchanged formulas and default request
+bytes. Set `stage_config.ml.feature_recipe_version` to `2` when preparing a new experiment, or
+use `{"name":"alpha158","version":2,"parameters":{}}` in a new exchange request. This is
+independent of request envelope versions 1/2/3, which select model families. Older readers reject
+v2 rather than downgrade it. Fake-worker output remains synthetic transport, not feature validation.
+
+V2 is an **Alpha158-style 40-column correction**, not full native Alpha158 equivalence. Actual pinned
+Qlib 0.9.7 operators compute MA, STD, VSTD, RANK, IMAX, IMIN, IMXD and WVMA at 5/10/20/30/60
+sessions, including upstream partial-window behavior. The other 118 columns retain legacy formulas
+and warm-up. VWAP0 remains the explicitly disclosed typical-price proxy; input has no vendor VWAP
+or pre-panel history. Undefined NaNs remain missing. Source/dependency mismatches fail closed.
+No provider initialization is needed for this feature calculation.
+
+The full recipe is already in `config_hash`, which prediction readers enforce. Preserve request/
+config and worker-lock identity alongside model hashes; do not reuse a model solely because its
+feature names match. New worker-code fingerprints are genuine new implementations, including for
+v1 executions, not changes to recipe-1 meaning. Historical results and frozen-source protocols are
+not rewritten. See the [scope and verification plan](../../docs/superpowers/plans/2026-11-09-alpha158-versioned-correction.md).
+
+Service compatibility is narrower than data compatibility: upgrade the worker and typed web API
+together for the new capability fields and v2 diagnostics. An old strict web service is not
+qualified to consume a new worker's capability response. Updated web projections accept old
+responses; the new correction field is omitted from legacy v1 tear-sheet JSON. Frozen
+legacy seven-file worker inventories remain plannable only for feature v1; v2 requires both new
+modules in the complete fingerprint-bound inventory. Current-worker code does not satisfy an old
+frozen-code hash merely because the recipe version is still 1.
+
+Operator checks compare the same supplied row-indexed series. They do not establish Qlib
+provider/calendar/corporate-action or full-handler parity. Existing input alignment is unchanged.

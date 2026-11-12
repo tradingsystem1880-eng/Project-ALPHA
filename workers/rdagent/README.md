@@ -4,7 +4,8 @@ This isolated Python 3.12 project exercises RD-Agent commit
 `484776c211e4fbbeef03e0ec00d6bbee7362a4f4` with fixed synthetic inputs. It has no application
 dispatch route. No ALPHA package imports this worker. `NativeFixtureLoop` explicitly uses
 upstream `LoopMeta` and inherits upstream `run`, `_run_step`, `dump` and `load` without overrides.
-It never imports or instantiates stock `RDLoop`.
+That original fixture never imports or instantiates stock `RDLoop`; the separate
+stock continuation diagnostic below does.
 
 ## Reproduce
 
@@ -214,3 +215,108 @@ and unknown records first; do not import artificial ledgers, copy stale authorit
 state, or reset consumption. Actual activation still requires qualified Linux process/container
 boundaries, retained storage, real input bindings and exact local owner confirmation. See the
 [implementation record](../../docs/superpowers/plans/2026-10-31-linux-storage-history.md).
+
+## Stock RDLoop continuation diagnostic
+
+The additive `stock_fixture_entry.py` now executes the actual pinned
+`rdagent.components.workflow.rd_loop.RDLoop`. Its constructor loads fixed native
+Scenario, HypothesisGen, Hypothesis2Experiment, Developer (coder/runner) and
+Experiment2Feedback implementations from `stock_fixture.py`. All five stock stage
+methods and upstream run/dump/load remain unchanged; the trace guard delegates
+recording to native `Trace.sync_dag_parent_and_hist`. This uses an isolated pinned
+source loader, not the stock CLI or a financial scenario.
+
+The public `test_native_stock_fixture.py` obtains a reference through
+`alpha_cli.native_stock_fixture.request_from_owner`, checking the existing exact
+synthetic owner, canonical running reservation, cancellation, code/evaluator
+fingerprint and minimum reserved envelope. It runs only with explicitly supplied
+`ALPHA_RDAGENT_SOURCE`, `ALPHA_STOCK_PYTHON` and `ALPHA_STOCK_RECEIPTS` paths.
+Root test dependencies and the full native application environment are separate;
+no installation or dependency change is part of this slice.
+
+The child rejects malformed/oversized requests before native imports, rechecks
+worker/source identity, clears inherited environment, uses public synthetic
+signing material and rejects network, provider, shell and credential-file effects.
+Only the existing read-only `uname -p` and `ldconfig -p` dependency import probes
+are allowed. No generated code or real tool executes.
+
+Native `step_n=1` completes proposal AND coding before stopping. The last successful
+signed checkpoint is hash-checked and loaded into a fresh checkout directory;
+remaining running/feedback/record stages complete without repeating earlier
+attempts. Pre-effect counters stay in the live fixture guard outside the pickle.
+Tests also inject actual `asyncio.CancelledError` before the runner body, exhaust
+fake model allowance before feedback and tamper checkpoint bytes before load.
+The cancelled guard cannot continue, and the last successful checkpoint survives.
+Cross-owner/process restart recovery remains unqualified.
+
+`validate_stock_artifacts` reads bounded JSON and checkpoint bytes only, never
+unpickles worker artifacts. It checks exact request/hash bindings, native class,
+stage order, trace history/parent/loop identities, fixed synthetic observations
+and unaccepted feedback. Canonical JSON comparison rejects boolean/numeric type
+substitutions independently of hashes. Successful diagnostic output remains
+`synthetic_only`, `not_admitted` and `production_dispatch=false`.
+
+These references and counters are NOT durable consumption or a new ledger.
+Repeated reference creation does not prevent another process from reusing one;
+the whole existing reservation remains unchanged. CPU allocation is checked but
+not enforced as a CPU cap; tests apply their own 40-second child timeout and reap
+it. This does not qualify provider/subscription limits, dollar caps, installed
+dependency integrity, hostile-code containment or production process ownership.
+The standalone diagnostic adds no launch authority; the retained-owner successor
+below extends only internal synthetic dispatch, using the existing accounting store.
+Production registration, durable execution ownership, scientific admission,
+protected-suite/full-gate qualification and independent release review remain gates.
+
+## Retained-owner stock dispatch successor
+
+`StockFixtureLaunch` is a second exact, closed launch identity accepted by the
+existing internal synthetic owner. It inherits the non-scientific NativeLaunch
+shape but rejects every study/authority and arbitrary mode. The runtime selector
+names an existing bundle containing `venv/bin/python`, `venv/pyvenv.cfg` and
+`dependencies.lock.txt`. Code/source/worker/interpreter/config/lock identity is
+bound into the canonical approved invocation. This measures a runtime; it does
+not install or qualify its dependencies, grant inference or bypass storage rules.
+No public research command or production activation is added.
+
+The existing `start_synthetic_owner` reconstructs that exact identity in its
+retained owner process. `_Owner.spawn`, its `Popen`, immediate safety lease,
+process-group cleanup and existing immutable observations remain the launch path.
+The child receives only a fixed bounded reference, neither owner lock nor store.
+The supervised workspace requires the existing synthetic marker and exact job
+path. Its own environment is cleared before native settings import.
+
+A stock claim carries its full launch-profile hash. Immediately before spawn,
+`consume_before_spawn` uses the existing ControlStore write transaction to validate
+the live owner/claim, active reservation, unchanged profile, stop/deadline state
+and the fixed reserved envelope. One protected `native_invocation` event in
+existing `job_events` records five stages/two fake-model/two fake-tool attempts;
+commit precedes `Popen`. It is whole-invocation consumption, not measured API
+usage or another ledger. No reservation/balance row is rewritten or refunded.
+
+Rollback prevents spawn. A committed consumption followed by cancellation,
+process-creation failure or lost availability cannot be reminted. Existing durable
+claims prohibit relaunch after owner exit/reopen; start requires prior stock
+consumption. Generic journal append cannot write the private event. Legacy
+histories without stock markers remain readable; malformed stock events on
+legacy claims are rejected. Readers/writers must deploy coherently: older readers
+cannot validate the new scoped claim/event; no history migration is performed.
+The earlier synthetic-model-allowance prototype has a different fixed profile
+and grants no authority for this route; it is not copied as a second ledger.
+
+A successful retained stock child must pass the same strict artifact validator.
+The returned bounded receipt bytes are rechecked against the validated hash,
+preventing replacement between validation and publication. Every result remains
+synthetic/process-only and `not_admitted`, with no scientific run/D1 completion
+invented. Internal dispatch now executes this fixture; production registration,
+actual provider/subscription/token/USD enforcement, CPU caps, full installed
+runtime integrity, arbitrary-descendant containment and full project qualification
+remain separate gates. No live inference or other-host work is part of this slice.
+
+## Typed stock-worker boundary successor
+
+[Worker hardening](../../docs/operations/native-worker-hardening.md) records targeted
+Python3.11 stock-runtime typing separately from the lighter conformance environment.
+Its closed request/audit/context/result checks keep the exact native RDLoop and the
+existing three-file worker manifest. Changed bytes require freshly derived profiles;
+old approvals/history are not rewritten. Synthetic execution remains unqualified for
+live inference, scientific admission or hard budget enforcement.

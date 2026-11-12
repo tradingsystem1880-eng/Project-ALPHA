@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from alpha_atlas.core.mermaid import DOC_PATHS, GENERATED_HEADER, MAX_DIAGRAM_NODES, _diagram
 from alpha_atlas.core.model import AtlasError
 from alpha_atlas.generate import GRAPH_PATH, build_outputs
@@ -57,6 +56,17 @@ class TestDocs:
         ]
         assert positions == sorted(positions)
         assert "research_d1.py" in text
+
+    def test_cli_flow_keeps_required_options_visible_with_paper_mappings(
+        self, outputs: dict[str, str]
+    ) -> None:
+        rows = outputs["docs/atlas/cli-flow.md"].splitlines()
+        draft = next(row for row in rows if row.startswith("| `alpha research draft`"))
+        revise = next(row for row in rows if row.startswith("| `alpha research revise`"))
+        assert "--paper-resource-mapping-json" in draft
+        assert "--expected-case-revision" in draft
+        assert "--paper-resource-mapping-json" in revise
+        assert "--reason" in revise
 
     def test_unknowns_queue_is_surfaced(self, outputs: dict[str, str]) -> None:
         assert "Unknowns" in outputs["docs/atlas/system-map.md"]

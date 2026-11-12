@@ -247,3 +247,13 @@ The [DeltaTrend workflow proposal](../superpowers/plans/2026-10-26-native-rule-a
 maps description/chapter-level source observations and separately labeled ALPHA research-card,
 contract, control and educational-UI proposals to W07/W08/W10/W17/W18. Full spoken transcripts
 were not verified; Instagram supports no claim. New acceptance proposals remain NOT RUN.
+
+### Versioned feature correction candidate (2026-11-09)
+
+An explicit feature recipe v2 now reuses pinned Qlib operators for 40 columns across eight
+families and all five windows. The other 118 columns and the VWAP proxy remain legacy.
+Feature v1/default requests remain unchanged. This is a bounded correction, not completion of
+the native feature/provider/handler replacement or whole-Alpha158 parity. See the
+[scope and compatibility plan](../superpowers/plans/2026-11-09-alpha158-versioned-correction.md).
+Focused synthetic engineering checks do not establish model, provider, economic or scientific
+qualification. No historical output is reinterpreted.

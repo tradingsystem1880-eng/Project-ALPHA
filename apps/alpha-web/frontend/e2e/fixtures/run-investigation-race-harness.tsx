@@ -1,6 +1,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { RunInvestigation } from '../../src/panels/RunInvestigation'
+import { investigations } from '../../src/api/investigations'
 
 const runId = 'run-fixture'
 const parentId = 'parent-investigation'
@@ -22,8 +23,23 @@ const child = investigation(childId, 'ready')
 const created = investigation(createdId, 'ready')
 const cases = new Map([[parentId, parent], [childId, child], [createdId, created]])
 const held = new Set<string>([parentId])
+const heldPolls = new Set<string>()
+const heldShows = new Map<string, Array<Promise<unknown>>>()
 const pending = new Map<string, Array<(response: Response) => void>>()
 let root: Root | null = null
+
+// Capture only: return the real API promise without adding a reaction ahead of poll's await.
+const show = investigations.show
+investigations.show = id => {
+  const isHeld = held.has(id) || heldPolls.has(id)
+  const request = show(id)
+  if (isHeld) {
+    const requests = heldShows.get(id) ?? []
+    requests.push(request)
+    heldShows.set(id, requests)
+  }
+  return request
+}
 
 function json(value: unknown): Response {
   return new Response(JSON.stringify(value), {headers: {'Content-Type': 'application/json'}})
@@ -44,8 +60,16 @@ function resolve(key: string, outcome: 'success' | 'error' = 'success'): void {
   else resolver(json(key === 'turn' ? {job_id: 'new-job', status: 'running'} : key === 'create' ? created : cases.get(key) ?? parent))
 }
 
+async function resolvePoll(key: string, outcome: 'success' | 'error' = 'success'): Promise<void> {
+  const request = heldShows.get(key)?.shift()
+  if (!request) throw new Error(`No held ${key} poll request to settle`)
+  resolve(key, outcome)
+  // Registered after poll's await; this fixture's obsolete poll continuation is synchronous.
+  await request.then(() => undefined, () => undefined)
+}
+
 function responseForKey(key: string): Promise<Response> {
-  if (held.delete(key)) return waitFor(key)
+  if (heldPolls.has(key) || held.delete(key)) return waitFor(key)
   if (key === 'eligibility') return Promise.resolve(json({run_id: runId, eligible: true, cutoff: '2020-01-02', reason: null}))
   if (key === 'list') return Promise.resolve(json([parent, child]))
   if (key === 'turn') return Promise.resolve(json({job_id: 'new-job', status: 'running'}))
@@ -71,6 +95,7 @@ declare global {
       ready: boolean
       ids: {parent: string; child: string; created: string}
       holdNext(key: string): void
+      holdPolls(id: string): void
       pendingCount(key: string): number
       select(id: string): Promise<void>
       selectAndResolve(id: string, key: string, outcome?: 'success' | 'error'): Promise<void>
@@ -89,6 +114,7 @@ window.__panelRace = {
   ready: false,
   ids: {parent: parentId, child: childId, created: createdId},
   holdNext(key) { held.add(key) },
+  holdPolls(id) { heldPolls.add(id) },
   pendingCount(key) { return pending.get(key)?.length ?? 0 },
   async select(id) {
     await act(async () => {
@@ -104,18 +130,12 @@ window.__panelRace = {
       if (!select) throw new Error('Saved investigations selector is not mounted')
       select.value = id
       select.dispatchEvent(new Event('change', {bubbles: true}))
-      resolve(key, outcome)
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
+      await resolvePoll(key, outcome)
     })
   },
   async resolve(key, outcome = 'success') {
     await act(async () => {
-      resolve(key, outcome)
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
+      await resolvePoll(key, outcome)
     })
   },
   async startAndResolve(key, outcome = 'success') {
@@ -126,18 +146,14 @@ window.__panelRace = {
       resolve('create')
       await Promise.resolve()
       await Promise.resolve()
-      resolve(key, outcome)
-      await Promise.resolve()
-      await Promise.resolve()
+      await resolvePoll(key, outcome)
     })
   },
   async unmountAndResolve(key) {
     await act(async () => {
       root?.unmount()
       root = null
-      resolve(key)
-      await Promise.resolve()
-      await Promise.resolve()
+      await resolvePoll(key)
     })
   },
 }

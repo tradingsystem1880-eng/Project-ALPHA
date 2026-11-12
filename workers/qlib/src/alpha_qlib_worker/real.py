@@ -27,6 +27,7 @@ from alpha_qlib_worker.contract import (
     sha256_file,
     validate_request,
 )
+from alpha_qlib_worker.feature_recipes import build_features, feature_recipe_diagnostics
 from alpha_qlib_worker.features import alpha158_feature_names, alpha158_features
 from alpha_qlib_worker.fit_provenance import (
     FitInvocation,
@@ -984,12 +985,7 @@ def _portable_diagnostics(
             "pyqlib": qlib_version,
             "lightgbm": lightgbm_version,
         },
-        "feature_recipe": {
-            "name": "Alpha158-style",
-            "feature_count": len(alpha158_feature_names()),
-            "names": list(alpha158_feature_names()),
-            "vwap_source": "causal_typical_price_proxy_not_vendor_vwap",
-        },
+        "feature_recipe": feature_recipe_diagnostics(request.payload["feature_recipe"]["version"]),
         "label_recipe": {
             "name": "next_session_open_to_open",
             "definition": "open[target+1] / open[target] - 1",
@@ -1260,6 +1256,8 @@ def source_fingerprint() -> str:
     sources = (
         "real.py",
         "features.py",
+        "feature_recipes.py",
+        "native_feature_corrections.py",
         "fit_provenance.py",
         "contract.py",
         "tabular.py",
@@ -1337,7 +1335,11 @@ def _run_real(
     adapter_hash = source_fingerprint() if request.payload["schema_version"] == 3 else None
     request_hash = value_digest(request.payload)
 
+    feature_binding: dict[str, Any] | None = None
+
     def verify_source() -> None:
+        if feature_binding is not None and feature_recipe_diagnostics(2) != feature_binding:
+            raise RuntimeError("feature recipe v2 source or dependency binding changed")
         if adapter_hash is not None and source_fingerprint() != adapter_hash:
             raise RuntimeError("worker adapter source changed during execution")
         if (adapter_hash is not None or observe_legacy) and (
@@ -1371,7 +1373,12 @@ def _run_real(
     observation.require_checkpoint_context()
     qlib_module, lightgbm_module = require_real_dependencies()
     _official_feature_names()
-    features = alpha158_features(request.panel)
+    feature_version = request.payload["feature_recipe"]["version"]
+    feature_binding = feature_recipe_diagnostics(2) if feature_version == 2 else None
+    features = (
+        alpha158_features(request.panel) if feature_version == 1
+        else build_features(request.panel, version=feature_version)
+    )
     samples = _sample_table(request, features)
     prediction_frames: list[pl.DataFrame] = []
     ensemble_frames: list[pl.DataFrame] = []

@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from alpha_web import _catalog, _invoke, _research
+from alpha_web._retained_coverage import retained_coverage
 from alpha_web.api._common import data_dir
 from alpha_web.api.models import (
     CryptoAcquisitionRequest,
@@ -48,6 +49,10 @@ from alpha_web.api.models import (
     CryptoStorageVerifyResponse,
     CryptoYieldPoolCatalogResponse,
     JobStatus,
+)
+from alpha_web.api.retained_coverage_models import (
+    RetainedCoverageRequest,
+    RetainedCoverageResponse,
 )
 
 router = APIRouter(prefix="/api/crypto-data", tags=["crypto-data"])
@@ -359,6 +364,18 @@ def quality(manifest_id: str) -> Any:
     if len(manifest_id) != 64 or any(char not in "0123456789abcdef" for char in manifest_id):
         raise HTTPException(status_code=422, detail="crypto manifest id is invalid")
     return _project(["crypto-data", "quality", manifest_id, "--json"])
+
+
+@router.post("/quality/{manifest_id}/retained-coverage", response_model=RetainedCoverageResponse)
+def retained_quality(
+    manifest_id: str, request: RetainedCoverageRequest
+) -> RetainedCoverageResponse:
+    """Manual read-only evaluation of an explicit native daily grid; no acquisition or mutation."""
+    identity = _digest(manifest_id, "manifest")
+    try:
+        return retained_coverage(identity, request, data_dir=data_dir())
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="RETAINED_COVERAGE_RELAY_UNAVAILABLE") from None
 
 
 @router.post("/features", response_model=CryptoFeatureResponse)

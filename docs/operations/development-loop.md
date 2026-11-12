@@ -33,12 +33,29 @@ can use the runtime's writable cache when the default home cache is read-only. I
 a cache path when none is configured. HOME and credential filtering, worker exit/schema
 validation and installed-versus-missing readiness behavior retain their existing boundaries.
 
+The same web-to-CLI filter now forwards `MPLCONFIGDIR` only when present in the server's
+process environment, verbatim, for Matplotlib configuration and cache placement. It adds no
+default, validation, normalization or directory creation. Unset stays absent; empty, relative
+or unusable values are forwarded too and may leave Matplotlib using a fallback. This is
+trusted operator configuration, including inherited shell state, not a request environment
+map. Other allowlists, HOME/XDG/credential filtering and separate worker/model filters are
+unchanged. Existing renderer Agg selection and rcParams-default initialization remain intact.
+
+For bounded verification, clear unrelated inherited state before starting the server and
+supply a new empty owned writable absolute directory. Do not copy owner configuration:
+`MPLCONFIGDIR` can contain `matplotlibrc`, so it is not merely output storage. Also verify
+an owned working directory without `matplotlibrc`, which can take precedence. Keep the
+directory through the run and retain required evidence before cleanup. Passing a path does
+not prove the directory Matplotlib actually used; verify that separately when rendering.
+This first-hop contract does not isolate the whole home, Python bytecode, font discovery,
+other library/descendant caches or networking, and is not a sandbox.
+
 | Change | Start here |
 | --- | --- |
 | Python behavior | `uv run pytest -q tests/unit/test_<feature>.py` and its covering integration tests |
 | Python imports | `uv run lint-imports` |
 | Frontend model | In `apps/alpha-web/frontend`: `npm test -- src/path/model.test.ts` |
-| Browser behavior | In that directory: `npm run test:e2e -- e2e/feature.spec.ts` |
+| Browser behavior | Use the focused Playwright evidence workflow below with the intended existing config |
 | Component readiness | `uv run python scripts/gate.py component NAME` |
 | Candidate qualification | `python3 scripts/gate.py preflight [--json]` |
 | Final acceptance | `uv run python scripts/gate.py full` |
@@ -71,6 +88,40 @@ stale. The Atlas generator's `--check` remains a separate executed check and rep
 The frontend component runs `npm run build` once, including TypeScript, before
 `test:e2e:built`. The standalone `test:e2e` still builds first; use the built-only
 command only after a fresh build. API and SPA freshness remain required.
+Both npm entry points route through `scripts/run_frontend_browser_lanes.py`, a fixed,
+fail-fast default → risk-basis → risk-live → native sequence. It has no test-selection
+pass-through. For a deliberately focused ordinary check, use the existing evidence
+workflow below; dedicated fixtures require their own config/driver, not a default
+file filter. A focused result never substitutes for the mandatory sequence.
+
+All lanes require installed Node/Playwright/Chromium, Vite and the controller Python
+with `uv`, `alpha` and dependencies. The native lane additionally requires explicit
+`ALPHA_RDAGENT_SOURCE` and `ALPHA_STOCK_PYTHON` (the installed runtime's lexical
+`venv/bin/python` path), with its lock/config files. The existing native validator
+checks the pinned source and measures the runtime; presence checks alone are not
+runtime qualification. An explicit installed `PLAYWRIGHT_BROWSERS_PATH` survives
+native's fresh HOME; otherwise the current Linux cache is made explicit. No install,
+resolution or browser download is performed. The npm uv launcher uses
+`--offline --no-python-downloads --no-sync`; child uv calls inherit equivalent
+controls. Missing inputs fail before any lane.
+
+Fresh selection reports come from the original Playwright configs and retain every
+configured project repetition and existing performance opt-in. Execution must return
+exactly those `(projectName, spec.id, file)` identities. Existing retry and skip
+policies remain unchanged. The native driver is selected by one exact pytest node;
+its fresh JUnit must contain exactly one matching executed testcase with no
+skip/error/failure. Pytest exit zero alone is insufficient.
+
+The adapter prints a retained `alpha-browser-lanes-*` temporary directory outside
+source, with separate selection reports, execution reports, logs and artifacts.
+`--output-parent /existing/private/parent` chooses another existing parent. Every
+invocation allocates a new directory. On failure, prior completed lanes and the
+error are recorded, later lanes remain unrun, and all outputs are kept. Native
+allocates its own new `native/evidence` child. Historical receipts are never inputs.
+Risk-live builds directly with Vite into its fresh `risk-live/spa`; it must not use
+`normalize-build.mjs` or a copied production bundle. Ordinary/native lanes still
+require the normal production build. See the [routing scope](../superpowers/plans/2026-11-10-browser-lane-routing.md)
+for bounded checks and still-pending full acceptance.
 
 The hosted backend job starts the stdlib-only runner with
 `uv run --no-project --python 3.12 python scripts/gate.py component backend`.
@@ -174,3 +225,9 @@ errors take precedence over a local cancellation request in UI/SSE status. An un
 write uses `project job-show --event-limit 1 --event-tail --json` within the original CLI deadline;
 matching job/status recovers a lost response. There is no second terminal write. Unresolved state
 remains reserved until authoritative reconciliation; process cleanup alone does not release it.
+
+The self-owned retained browser fixtures keep their original interpreter selection:
+`ALPHA_TEST_PYTHON` when set, otherwise the candidate's `.venv/bin/python`. The
+adapter checks executable presence without replacing that selector. This and the
+other prerequisite diagnostics are not exhaustive runtime qualification; actual
+fixture/browser execution is still required.
