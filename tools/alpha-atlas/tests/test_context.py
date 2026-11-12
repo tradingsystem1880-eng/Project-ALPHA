@@ -54,6 +54,24 @@ def test_query_filters_tasks_and_rejects_empty_query(context_repo: Path) -> None
         search_sections(sources, "   ", kind="all")
 
 
+def test_rotated_build_status_archives_are_history(context_repo: Path) -> None:
+    files = {
+        "docs/BUILD-STATUS.md": "# Build status\n## 2026-11-01 Current\nCurrent delivery.\n",
+        "docs/build-status/2026-Q3.md": "# History Q3\n## 2026-09-30 Rotated\nRotated delivery.\n",
+        "docs/build-status/notes/deep.md": "# Not a family\nRotated delivery.\n",
+    }
+    for rel, text in files.items():
+        (context_repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (context_repo / rel).write_text(text)
+    subprocess.run(["git", "-C", str(context_repo), "add", "."], check=True)
+    sources = read_sources(context_repo)
+    assert sources["docs/BUILD-STATUS.md"].kind == "history"
+    assert sources["docs/build-status/2026-Q3.md"].kind == "history"
+    assert "docs/build-status/notes/deep.md" not in sources
+    found = search_sections(sources, "rotated delivery", kind="history")
+    assert [row.path for row in found] == ["docs/build-status/2026-Q3.md"]
+
+
 def test_untracked_and_symlink_sources_are_never_opened(context_repo: Path) -> None:
     (context_repo / "docs/context/untracked.md").write_text("SECRET context")
     assert "docs/context/untracked.md" not in read_sources(context_repo)

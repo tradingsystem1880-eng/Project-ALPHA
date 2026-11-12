@@ -17,6 +17,7 @@ _ROOT_FILES = {"AGENTS.md", "CLAUDE.md", "docs/ARCHITECTURE.md", "docs/BUILD-STA
 _FAMILIES = {
     "docs/context": "project",
     "docs/adr": "decision",
+    "docs/build-status": "history",
     "docs/superpowers/plans": "task",
     "docs/superpowers/specs": "feature",
     "docs/governance": "reference",

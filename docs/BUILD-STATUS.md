@@ -1,635 +1,18 @@
 # Project ALPHA — Build Status (delivery history)
 
-**2026-10-25 local candidate — bounded DefiLlama snapshot query:** On isolated branch
-`codex/storage-snapshot-query-audit` from verified commit `e635e6cb5bc7b9fa688dc524998d7fe1ff8eebdc`,
-added `alpha crypto-data snapshot-query SNAPSHOT_ID` for exactly one `defi_tvl` member. The reader
-checks volume UUID, exact snapshot/member identity, manifest and raw lineage, artifact hash, quality,
-and schema. It caps normalized Parquet at 32 MiB, the raw receipt at 8 MiB, accepted input at 50,000
-rows, and each page at 1,000 rows; `has_more` and `next_offset` make continuation explicit. A
-50,001st row is only a rejection sentinel. Fixed-width selected columns contribute about 1.2 MB /
-1.15 MiB at the accepted row cap before Polars internal buffers; this is a logical materialization
-bound, not an OS-enforced decompression or process-RSS ceiling. JSON retains observation and
-availability clocks, USD units, artifact/dataset/raw-response hashes, provider schema/parser
-versions, and receipt fetch time. `available_at` uses only the parser's next-UTC-day convention;
-fetch time is retrieval evidence, every result sets `point_in_time_claim=false`, and no historical
-publication time is inferred.
-
-Synthetic focused storage/query/CLI tests passed (39); DefiLlama fixture/acquisition tests passed
-(21); public fixture/harness checks passed (14); manual-size tests passed (23). Root Ruff check and
-format passed (1,001 files); strict mypy passed across packages/apps/tests (859 files) and harness
-scripts (17 files); import contracts kept all 13 rules. Atlas lock/sync, lint/format, package mypy
-(23 files), full non-network tests (102 passed, one Starlette deprecation warning), and generated
-freshness (8 outputs) passed. Root and Atlas lock/sync, harness lint, plan-check, and `git diff
---check` passed. Independent read-only review approved the byte/row/page bounds and confirmed no
-silent truncation or historical point-in-time claim. Changed-files Semgrep passed (198.2 seconds),
-and the Semgrep contract check passed. No full gate, DuckDB/dependency change, migration, provider
-call, commit, merge, deployment, or publication was performed.
-
-**2026-10-02 crypto provider and archive hygiene work (in progress):** Added DefiLlama public
-reference data for protocol TVL, stablecoin supply, current yield-pool snapshots, and exact-pool
-history across parser, qualification, CLI acquisition, typed API, and Data Manager surfaces. The
-archive's immutable artifact verifier did not complete in the prior audit; no immutable artifacts
-were removed. Existing provider adapters remain reachable in current route/use mapping. Focused
-DefiLlama parser/acquisition/API tests pass; aggregate gates and full archive verification remain
-unverified for this exact shared tree. On 2026-10-02, live acquisitions for Aave TVL (2,328 rows),
-stablecoin id `1` supply (3,230), yield-pool snapshot (17,061), and an Aave/Ethereum pool history
-(902) all qualified and passed recursive manifest/raw-lineage verification. `cache-clean` removed
-2,190 explicitly disposable bytes and zero immutable artifacts. Backend and frontend full component
-gates passed, as did Atlas and eval component checks after Atlas regeneration. The full aggregate
-command must still be rerun on that regenerated tree; a full archive inventory also remains open.
-
 Relocated from `CLAUDE.md` on 2026-08-18; CLAUDE.md keeps only the governing
 current-status paragraph, which is maintained there and may be newer than the copy
 below. With ADR-0027/0028, that paragraph takes precedence over the dated narratives
 below wherever they conflict. Append new delivery records HERE.
 
-**2026-10-23 local candidate — unscheduled ML membership guard:** On main `99f2d472dd4511b446e1198ae80201e7207d089d`, schema versions 1 and 2 could accept `point_in_time` without a membership schedule. This local protective slice rejects that declaration at new export/preparation, retains `current_membership` only with its visible warning, and leaves historical artifacts byte-identical and inspectable with a `declared_unverified` status carried through CLI and web result/evaluation/tear-sheet projections. Existing frozen unscheduled PIT inputs cannot be trained or replayed by ALPHA/Qlib. No promotion gate changed; no schedule-v2 or date-varying model support is claimed. Focused synthetic contract, exporter, CLI, worker and web response tests passed; independent review approved the guard and read-only web projection. The full gate was not run, and this patch is not committed or merged.
+## History
 
-**Current research-program status (2026-08-11):** R1–R6 are implemented and integrated, and the
-scientific-authority hardening in ADR-0027 is complete. The private local implementation is
-complete; production, distribution, sale, hosting, and multi-user readiness are permanently out of
-scope. The owner real-case pilot remains an empirical-validation action, not a software release gate.
-Python is the sole readiness authority; the temporary D1/D2 admission flags and duplicate
-TypeScript scorecard/checklist derivations are retired. Research now lives in the fixed six-screen
-Workstation, the MCP surface remains pinned at 62 tools, and immutable D1 chart/table evidence is
-rendered through the server figure system. ADR-0028's modeling capabilities are implemented:
-immutable `MarketStateV1`, validation-frozen Kronos calibration and `kronos_calibrated` candidate
-assessments, additive Qlib `rank_ensemble_v1` exchanges, and six server-rendered modeling
-diagnostics. These remain research-only capabilities, not evidence of profitable improvement; the
-candidate-promotion gates still apply. The dated implementation
-narratives below are retained as historical delivery records; where they conflict, this paragraph
-and ADR-0027/0028 govern.
+Entries dated before 2026-10-01 were rotated verbatim into quarterly archives on 2026-11-13:
 
-Phase 0 (rails) ✅ · Phase 1 (data spine) ✅ · Phase 2 (backtest core + strategy) ✅ · Phase 3 (validation gauntlet) ✅ · Phase 5 (tear sheet + CLI) ✅.
-**Live data spine verified against real markets** ✅ (yfinance + ccxt/coinbase end-to-end; gauntlet correctly rejects single-name `ts_momentum` on AAPL and accepts a diversified basket. Stooq is anti-bot-gated → fails loud).
-Phase 6 shipped scope — complete and professionally hardened: strategy registry + 3 more strategies ✅ · institutional gauntlet ✅ · overfitting-aware optimization ✅ · basket portfolio ✅ · returns-level cross-sectional momentum ✅ · Stooq adapter ✅ · prop-firm Monte Carlo ✅. Explicitly deferred product expansion: full-engine cross-sectional execution, FRED/non-OHLCV macro data, and model fine-tuning.
-**2026-07 institutional audit** ✅ — 38 verified findings fixed on main (see `docs/audit/2026-07-05-institutional-audit.md`): yfinance raw-price reconstruction (PARSER_VERSION=2), allow-short-by-account fail-loud, honest two-tier nulls (+ convention-divergence guard), verified `--snapshot` reads, causal portfolio weights, dividend cash crediting at `pay_date`, opt-in `--size-on-equity`/`--halt-drawdown`, crypto instruments, web/MCP hardening, schema-v2 manifests.
-Kronos foundation-model track (spec `docs/superpowers/specs/2026-07-04-kronos-forecast-integration-design.md`, ADRs 0008/0009/0010) — COMPLETE, landed on main via the 2026-07 cleanup: `alpha_forecast` package (vendored pinned model @ `67b630e6`, typed facade, FakeForecaster, torch-cpu CI index) ✅ · `alpha forecast run` (outcome cones, leakage warn, MCP) ✅ · web fan chart ✅ · `alpha forecast eval` (CRPS/coverage vs RW+bootstrap baselines, pre/post-cutoff split) ✅ · `kronos` strategy via content-addressed signal caches through backtest/validate/optim (+ `--tier2-mode replay|model`) ✅ · fully-local weights: Kronos-base (largest released; Kronos-large is closed) cached at `data/models`, hash-pinned + offline-loaded via `.env` (`ALPHA_FORECAST_HUB_CACHE`/`_LOCAL_ONLY`, ADR-0010) ✅. Deferred: kronos through portfolio/propfirm-fresh paths (build fails loud with guidance), tearsheet caveat note, fine-tuning (zero-shot only per spec).
-**Four-family Monte Carlo validation (2026-08-12)** ✅ — ADR-0029 and the dedicated design spec add a required `monte_carlo` stage after robustness and before optimization: 10,000 IID empirical, causal calm/volatile Markov, and Student-t paths over canonical OOS account returns plus 128 exact-calendar Kronos OHLCV tails replayed through fresh canonical engines. Immutable v3 evidence, independent ALPHA risk grades, derived Workstation figures, fail-closed non-estimability/tamper checks, and CLI-only exact-hash owner warning review are implemented. This evidence measures scenario/path risk only; the randomized-price gate, holdout, paper, and execution authorities are unchanged.
-Phase 4 (paper trading) — **offline implementation extended and verified 2026-08-04**: the original public-Binance-data/local-Nautilus-Sandbox path remains; Tiingo EOD now supplies strict receipt-backed authoritative stock/ETF candidates, quality/quarantine/correction/promotion recovery, raw-receipt re-verification, and versioned provenance; an exchange-calendar launchd tick creates verified snapshots, resumes an already-published exact snapshot after repair, runs real Nautilus simulations, and emits exact immutable order intents; native pinned Nautilus IB clients add a paper-only loopback/DU-account boundary with dual flags, allowlists, one-shot cross-process intent claims, reconciliation that seeds overnight units, hard risk, exact fresh-quote/cutoff enforcement, intent-as-client-order-ID, cancellation/expiration journaling, and safe stop without flattening. Journal schema v2 distinguishes `local_sandbox`/`ibkr_paper` while preserving v1 reads; the Workstation shows provenance, paper markers, mode, reconciliation, and machine readiness. The standalone R-14 public Binance quote smoke passed locally on 2026-08-04, but durable readiness evidence and R-24 UTC rollover remain pending alongside current-universe Tiingo cross-source qualification and every real IBKR Paper equity/futures scenario. No live-capital route exists; futures remain micro-contract connectivity probes and research-unsupported. “Paper passed” remains machine-pending until all scenarios are recorded without blockers.
-**QuantPad external research access (2026-08-04)** — project-scoped Codex MCP registration is documented for symbol/schema/coverage discovery and bounded bar previews; the official REST/Python API is the only approved bulk bars/ticks/L1/L2 route. QuantPad remains historical research scratch data, not canonical authority or paper evidence, until a receipt-backed adapter, qualification suite, and retention/license evidence are approved (ADR-0018).
-**2026-08-04 release-candidate network evidence** — Binance public quotes, CCXT history, Kronos, Yahoo, and a short AAPL Tiingo receipt→promotion→snapshot→candle cycle passed locally; Stooq returned its documented anti-bot skip. Durable Binance readiness evidence, R-24 UTC rollover, Tiingo-universe qualification, and every real IBKR scenario remain pending.
-QuantPad-parity track (separate from the internal phase numbers above): A–F Verdict + tail-risk ✅ · prop-firm Monte Carlo ✅ · conversational agent = MCP server (`alpha_mcp`, subprocesses the CLI; `uv run alpha-mcp` / repo `.mcp.json`) ✅ · local web IDE (`alpha_web`; now the Workstation SPA) ✅. All four QuantPad-parity surfaces shipped.
-**ALPHA Workstation** ✅ (spec `docs/superpowers/specs/2026-07-16-alpha-workstation-design.md`) — this historical delivery introduced the FastAPI/Vite application. Its current form is the fixed six-screen Research · Build · Results · Compare · Studios · Operate shell: Research contains the guided case, evidence, price, backlog, literature, research-data, market-data, and Codex Research surfaces; Build keeps governed development separate from the permanently unqualified Standalone Sandbox. The browser holds no vendor or broker secrets, derives no research authority, and uses the same Python gates in Guided and Advanced modes. SPA source lives under `apps/alpha-web/frontend`; built assets are committed and CI verifies frontend lint, coverage, generated types, build, and asset freshness.
-**Workstation v2 — the real trading terminal** ✅ (2026-07-18) — the 10x pass: **live desk** (`/api/activity/stream` SSE store/job diffs; Activity Feed + Job Monitor panels, toasts, live Run Browser — Claude-launched CLI/MCP runs surface without reload) · **explanation engine** (`frontend/src/explain/`: dual-voice gate/verdict narratives drift-guarded against `verdict.py`, next-step suggestions, expanded glossary + Term tooltips + Glossary panel) · **run story** (tabbed kind-aware Run Detail: gates w/ null histograms + CI bar, fold-shaded synced equity/drawdown w/ trade markers, optim param heatmap + per-trial curves, propfirm funnel + outcome histograms, forecast 50/90% fan + spaghetti, forecast-eval CRPS-per-origin) · **shell v2** (working SYM/ASOF, palette v2 w/ symbol/run/action/workspace pages, density + narrative/terse toggles, first-run desk preset, `#run=` deep links, per-panel error boundaries, self-hosted fonts, full A–F verdict colors) · **Pipeline panel** (guided loop w/ prefilled next steps) · TanStack sortable/virtualized blotters · Phase-6 deterministic artifacts (nulls/trials/propfirm-paths/portfolio-equity parquet) + typed projections serving them. Frontend vitest (node-env, local-only) guards the band mirror.
-**Workstation v3 — professional strategy-development program** (implementation and offline release gates verified 2026-07-19; paper/data surfaces extended 2026-08-03) — **Implemented; offline release gate passed.** The program includes manifest/run-identity/artifact-contract v3 with immutable causal chart traces and v1/v2 readers; fresh-state OOS/holdout execution with matching scoped evidence; six curated linked desks with atomic v2→v3 layout migration; bounded native dark Python-authored tear sheets plus deterministic QuantStats-Lumi audit export; complete-path Kronos K-line/cone/distribution/calibration; a governed SQLite project/version/experiment/14-stage/attempt/holdout/job/evidence control plane; versioned bounded REST projections; the then-current bounded MCP surface with `AgentBrief`; and a separately locked Qlib/LightGBM worker whose close-stamped predictions are validated and synchronously replayed across the frozen universe through ALPHA's canonical engine. Qlib replay metrics are authoritative for that execution, but full counterfactual model-refit validation remains explicitly unimplemented. The browser has no vendor/broker credentials or direct streams, displays source/snapshot/quality provenance and low-volume paper journal markers, and never constructs orders. Holdout reveal and paper enabling remain unavailable to unattended agents. R-22 is retired under the permanent private/local-only scope; all real-network paper acceptance listed above remains pending.
-**2026-08-03 live-UI hardening** ✅ — capability-scoped desks, dormant hidden tabs, bounded causal marker layers/payloads, explicit artifact-unavailability states, suite-managed Qlib lineage, and single-pass vector annotation rendering were verified against representative v3 portfolio, Kronos, trace, development, evidence, and real isolated-Qlib artifacts. The full offline Python and frontend gates remain green. Its research-decision scope remains sandbox-only; operational broker paper is the separately governed Phase-4 boundary above.
-**Research Scientist program (2026-08-06)** — **Gate 0 and the deterministic Gate 1/D0 walking skeleton implemented.** The authoritative spec, ADR-0019/0020, risk/dependency decisions, and Research Scientist/adversarial-reviewer skills define the finite owner workflow. Schema v2 adds a research-required governance marker, immutable source packs/contracts, independent phase, execution, D2, attempt, and decision histories, and append-only launch reservations with one-to-one terminal-attempt links; project/case capture is one restart-idempotent SQLite transaction, normal APIs cannot forge migrated grandfathering, and v1 rollback backups are logically bound to the migrated source. `alpha research` locally captures an intake preview, materializes an approval-ready draft, records trusted-local owner review, runs/verifies the one contract-bound canonical double-bottom D0 operator, projects status, exports/verifies the canonical `data_dir/research/projects/<project_id>/` dossier, supports audited pre-D2 close/revision, and emits a content-addressed terminal ResearchGatePacket that says `NOT_TESTED` when typed D1/D2 evidence is absent. The only approval-ready Gate 1 operator uses the exact `alpha_synthetic_fixture`/`SYNTHETIC_SPY`/UTC 60-minute plus 240-minute-window fingerprint; other material choices remain explicit unavailable drafts. D0 completion requires one artifact-complete v3 run whose ID is derived from the frozen contract, fixture, and execution fingerprint plus a canonical hashed `ResearchD0AcceptanceV1` artifact containing raw measurements only. Admission mechanically reruns the frozen detector, null, four-observation topology-embargo, and prospective-power criteria; producer-supplied pass flags are not authority. A launch also fails before compute when the approved code, dependency-lock, evaluator, or environment fingerprint has drifted. Each queued D0 launch atomically enters `running` and reserves its fixed budget and one of three lifetime launch slots before compute; a process crash consumes that reservation permanently, while a linked terminal attempt cannot debit it again. Successful D0 moves directly to owner-owned `research_decision`, cannot admit typed D1 evidence, cannot claim `CONTRADICTED`, and cannot enter the generic corroborated-evidence ledger. The default evidence commitment allocates indivisible chronological eligible date/session/dependency groups 60/20/20; any alternative must be event-blind, owner-approved before D1, and retain D3 at 20% or more. The bounded MCP and matching strict REST/Cockpit operations can capture/get/propose/launch allowed approved D0 work/read status/report but cannot approve, reject, decide, consume D2, or run deep research; the generic REST job console also rejects governed research commands. Gate 1 uses synthetic 60-minute proxy data only. At that initial slice, production empirical D1/D2 was hard-disabled. ADR-0024 through ADR-0028 later admitted isolated source acquisition, qualified daily research data, governed D1/D2, tiered readiness, connected evidence views, and research-only modeling diagnostics. Licensed real intraday data, verified owner-presence authentication, the real-case pilot, and paper/order authority remain evidence-dependent; production, distribution, hosting, and multi-user readiness are out of scope.
-**Research-first workstation program (2026-08-07)** — **design approved; R1-R5 implemented 2026-08-09; R6a-R6i implemented 2026-08-10 — the implementation scope is integrated and ADR-0021..0026 are Accepted; the private local implementation is complete; production, distribution, hosting, and multi-user readiness are out of scope.** R6i landed the program acceptance suite (`tests/integration/test_research_program_acceptance.py`): three spec-§17 composite end-to-end stories through the public CLI — the golden path (raw sentence with wording preserved → honest all-not_tested fresh scorecard/hub → governed D1 → one-shot sealed D2 → SUPPORTED → advance_to_strategy → terminal packet + passed gate → exactly one byte-identically retrievable promotion dossier → linked strategy version → AgentBrief embedding the exact recorded packet/gate-packet identities, with an unlinked version still refused after passing), SUPPORTED-with-reject closing honestly without any promotion dossier (gate stays open; both version paths refused), and a pre-D2 park that cannot claim SUPPORTED and closes with an honest NOT_TESTED terminal packet — plus the 2026-08-06 spec Gate-2/3/6 delivery-state updates (the owner pilot remains empirical validation; R-22 is retired for the permanent private/local-only scope). R6h landed the spec-§15 UI gate: while the linked project's recorded `research_gate_state` is `open`, the Develop desk disables immutable-version/experiment creation, stage prep/launch, and the Strategy Lab launch (`researchGateModel.strategyGateLock` + `useLinkedProjectGate`; the SPA relays the Python-authoritative state and never derives it, a failed projection read fails open because the CLI/store are the enforcing authority, and the Pipeline Data stage stays enabled — pulling point-in-time history is research work); every `ResearchGateLockNotice` states the reason and deep-links to the research case through a one-shot cross-desk signal (`context/researchCase.ts`) that switches to the research preset and focuses the cockpit; e2e covers gated vs grandfathered projects across all three surfaces plus the case link. R6g landed the recorded research-gate override plane (spec §15, ADR-0026): `ControlStore` derives `research_gate_state ∈ {not_required, open, passed, overridden}` strictly from governance, decision, and append-only override records (`record_research_gate_override` appends actor+reason events — never a mutable boolean — fails closed on grandfathered or already-passed gates, and a later pass supersedes and re-locks the override); an overridden gate is the only unlinked path through `create_strategy_version`; `alpha project override-research-gate` / `research-gate-overrides` are the trusted-local owner surface; project projections across CLI/REST/typed-MCP carry the state plus the bounded per-project override ledger (the generated matrix now owns the count); every strategy-run-producing command (`backtest run/oos/holdout/portfolio/cross-sectional`, `validate`, `optim grid`) accepts `--research-gate-override`, records manifest `research_gate {state: overridden, watermark: "EXPLORATORY / RESEARCH GATE NOT COMPLETED"}`, and includes the marker in run identity so a watermarked run can never collide with an unmarked identity-matched run; suite plans over an overridden project inject the flag mechanically and record `governance["research_gate"]`; `alpha report`, the web run index/detail (`research_gate_watermark`), the RunBrowser row chip, the run-story banner, and the native tear-sheet banner all render it (an e2e test asserts the ≥3-surface requirement on one desk), and the Operations desk lists active overrides via `GET /api/research-gate-overrides`; the SPA `researchGateModel.ts` relays the Python-authoritative string and never derives gate state. R6e landed the owner decision plane: `derive_research_checklist` answers the fourteen spec-§10.1 edge-validation questions strictly from recorded typed finding statuses (each row binds one evidence class; regime and economic-hurdle rungs stay honestly NOT_TESTED until their evidence classes exist; never a numeric aggregate), `research_decision_view_projection` + `ControlStore.list_research_decisions` assemble checklist + full scorecard + terminal gate packet (closed cases only) + append-only decision history behind `alpha research decision-view --json`, a read-only GET `/api/research/cases/{id}/decision-view` REST route (mutation-verb pin extended), and the ResearchCockpit Decision tab rendering all four blocks with the `researchChecklistModel.ts` TS twin drift-pinned by `__fixtures__/researchChecklist.json` asserted in BOTH pytest and vitest (same six scenario inputs as the scorecard fixture; e2e covers the closed-case tab). R6a-R6d (ADR-0026) landed the empirical confirmation lane: R6a registered the Gate-4 daily empirical exploration boundary (the `empirical_dataset` boundary authority binds the registered `rd_` dataset's exact content hash and seals the indivisible 60/20/20 session-group topology at draft time); R6b ran governed empirical D1 deep research on the registered daily lane; R6c landed `draft-confirmation` — the one-shot D2 contract is frozen MECHANICALLY from admitted clearing D1 evidence (one-variant primary event-study family, direction, minimum effect, frozen 0.05 familywise alpha / 0.90 target power; degenerate discovery intervals fail loud; the boundary hash must equal the exploration parent's); R6d admitted the live one-shot D2 after ADR-0026 acceptance: owner `approve confirmation` authorizes the sealed share (d2 sealed→authorized) and enters `sealed_confirmation`; the deterministic sealed executor (`research_d2.py`) re-verifies contract/boundary/data-hash alignment, materializes ONLY the confirmation share (a bias guard proves D3 rewrites never change a measurement), reads it exactly once with the protocol-frozen seed-7 weekday-matched cluster bootstrap, and publishes raw measurements plus mechanically derived `ResearchGateEvidenceV1` under a REGISTERED CONFIRMATORY watermark (ONE classifier serves write, store admission, and every read; producer flags never authority; INVALID is unreachable from evidence and exists only through contamination); success consumes D2 and routes to the owner decision bound to the mechanical classification (`advance_to_strategy` requires SUPPORTED); failures checkpoint honestly (initial attempt + two safe retries → blocked) and kill-and-resume recovers the identical immutable run; implementation drift or sealed-dataset integrity failure contaminates the share pre-read — registered snapshot payload files are fully re-hashed at every load (typed `DataError`, never a raw parquet crash) — leaving owner INVALID with revise/park/reject as the only exit. R6f landed the promotion plane: `build_strategy_promotion_payload` assembles the lossless spec-§11 dossier purely from authoritative records (decision row, HypothesisCard over the confirmation contract, terminal gate-packet id+hash, registered `rd_` dataset views with latest audits, latest-revision SCREENED literature claims, confounder ledger, falsification/stability/negative-control findings, known failure conditions, assumptions/limitations, exact content-addressed chart-data references from verified immutable runs, honest negative-attempt summary, open questions); `ControlStore._record_strategy_promotion_packet` commits it as a content-addressed `strategy_promotion` context packet INSIDE the `transition_research_phase(closed)` write transaction (the terminal packet exists only at close; decide-then-crash recovery replays decide idempotently and the single legal close records exactly one dossier; closed→closed is unreachable), packet inputs now bind only the immutable project identity (project_id/name/hypothesis/falsification_criterion/created_at) so post-promotion strategy-plane mutations can never drift the recorded terminal packet id/hash, `get_agent_brief_context` + `alpha project agent-brief` embed the as-of-filtered `research_promotion` reference (additive `AgentBrief.research_promotion` on REST + MCP typed models — the generated matrix now owns the count; a linked version without a dossier warns as pre-R6f), and thin Codex `strategy_promotion` packets additionally carry `promotion_packet_id`. R5 (ADR-0025) landed the pre-strategy experiment engine: four pure D1 analysis-family modules with future-poison bias guards; the `ResearchAnalysisPlanV1` contract section frozen and validated at exploration approval (registered families only, bounded grids capped by the variants budget, exactly one primary, frozen Holm/falsification multiplicity, blanket batteries rejected); the deterministic D1 executor publishing raw measurements + mechanically derived `ResearchGateEvidenceV1` + EXPLORATORY charts strictly from the discovery share (a bias guard proves confirmation/holdout bars are never read); governed `alpha research run deep` durable jobs (reserved `research:event-study` heavyweight capacity via `ControlStore.create_research_job`, heartbeat checkpoints, cancellation, honest failure checkpoints, exact-re-execution resume with identical hashes); store admission that re-verifies D1 evidence by exact recomputation from raw measurements on every write AND read (post-admission rewrites fail closed); acceptance fixtures (planted-pattern recovery, planted-weekday-confounder rejection via exact matched controls, null-stays-null after Holm, honest insufficient-events packets); the Gate-4 Tiingo-daily fallback lane (fail-closed registered-dataset loading with ADR-0020 session/equal-duration acceptance; QuantPad intraday stays licensing-gated); live Evidence Hub/scorecard from admitted D1 evidence (sixth drift-fixture scenario pinning both scorecard twins), the HypothesisCard analysis-plan display, and the six-category headline board; and the scoped admission of `deep_research` attempts only (confirmation approval and all D2 transitions remained behind the later R6 gate). R4 (ADR-0024) landed the source plane: append-only `research_source_claims` (content-addressed `sc_` ids, direction/strength/method/sample/limitations, draft→screened only via owner CLI `sources claim screen`; screening appends a revision, never mutates the draft), typed `doi`/`year`/`authors_json` columns on `research_source_records` (idempotent column heal for pre-R4 stores; identity backward-compatible), token-AND local `sources search`, the isolated **stdlib-only** literature worker (`workers/literature`, own uv.lock, vendored acquisition primitives byte-pinned to `research_acquisition.py` by a repo test, manual-redirect fetch re-validating every hop, content-addressed UNTRUSTED_SOURCE objects, tamper-detecting `verify_object`, and the phase-gating hostile-document suite incl. verbatim-stored prompt-injection text), the owner-invoked `sources fetch` driver, bounded MCP source tools (search/get sources and agent-authored draft_source_claim; screening has NO tool), the scorecard literature dimension now aggregating screened claim directions (supporting/mixed/contradictory/insufficient; drafts never count; TS twin + fifth drift-fixture scenario), and the live Evidence Hub literature section (claims map with SCREENED vs DRAFT—UNSCREENED badges above the bibliography). R3 (ADR-0023) landed the Research Data Hub: `alpha data snapshots --json`; fail-closed `research_dataset_refs` (+`research_dataset_audits`) with content-addressed `rd_` refs bound to exact snapshot-manifest/provenance/receipt bytes; pure `alpha_research.descriptives` (bias-guarded causal regime tags); the bounded `research_data_audit` EXPLORATORY run class whose findings feed only the scorecard/hub data dimension (proved by test); the research-only QuantPad daily adapter sub-slice (pinned wire schema fails loud on drift; provider `research_bars`, never in `data pull`); bounded read-only MCP data-inventory tools (candle previews bounded to ≤500 bars); a `GET /api/research/datasets` read route; and the ResearchDataExplorer panel (refs·receipts·audits·inventory) on the research desk. R1 landed the ADR-0021 read plane (`ControlStore.list_research_cases` + `alpha research list/evidence-hub --json`, additive `hypothesis_card`/`scorecard` status keys, three read-only REST routes with a negative test pinning the research router to exactly the three Gate-1 POSTs), the pure HypothesisCard/scorecard/evidence-hub projections, the dual-implementation readiness scorecard (Python + `researchScorecardModel.ts`, drift-pinned by a fixture asserted in both pytest and vitest), the seventh `research` desk (ResearchBacklog · ResearchCockpit · EvidenceHub) and the New Idea front door with an e2e-asserted absence of trading-rule inputs. R2 (ADR-0022) landed the Codex collaboration surface: append-only `research_context_packets` (content-addressed `cp_<sha256>` over canonical payload bytes, bounded collections with truncation flags, heal-path DDL) and `research_case_notes` (structurally outside `research_gate_packet_inputs` — byte-identical before/after, proven by test), the "Resume with Codex" delta brief with history cursors, the Git-owned 13-protocol library (`.agents/skills/alpha-research-protocols/` + hash-verified `protocols.json`; drift fails loud), CLI `context build|show|list` · `note add|list` · `protocols list|show` · `brief`, bounded MCP collaboration tools (notes forced agent-authored), four read-only REST routes, and the CodexBench panel (packet composer that prepares-but-never-records, byte-identical packet history, notes fenced "CODEX COMMENTARY — NOT EVIDENCE"). Mutation authority and the dossier-embedded summary bytes were unchanged in R2; D1/D2 were admitted only later under ADR-0025/0026. The master spec (`docs/superpowers/specs/2026-08-07-research-first-workstation-design.md`), ADR-0021..0026 (Accepted), and phase plans R1-R6 define the extension: a Research Command Center desk with read-only backlog/evidence-hub/scorecard projections (R1), a Codex context-packet/protocol desk over MCP (R2), MCP data-inventory tools plus research dataset registration and a QuantPad qualification lane (R3), a claim-level literature system with an isolated acquisition worker (R4), preregistered-analysis-plan D1 runners emitting `ResearchGateEvidenceV1` (R5), and one-shot D2 confirmation, readiness scorecard, promotion packets, and a recorded/watermarked exploratory research-gate override (R6). Codex remains the sole in-product research AI (MCP-attached, no API key in-app); owner-only approve/reject/decide stays trusted-local CLI, the generated matrix owns the current MCP count, and every authority flip (empirical D1 at R5, one-shot D2 at R6d) landed only with its phase's ADR.
-**2026-08-07 independent audit + hardening** ✅ — a six-reviewer read-only audit of the complete program found 0 critical/high and 7 medium findings; all were fixed test-first on `codex/research-improvements` (PR #36): write-free steady-state store opens with a read-only schema probe, left-pivot-window knowledge time, numeric `confirmation_claim` binding for TESTED D2 evidence, explicit generation-mismatch errors with a documented fixture-version bump policy, a 120s MCP launch-class timeout, ledger-honest attempt recording with an executed resume/re-run recovery, typed 4xx for option-shaped web path values, `low_cluster_count` flags below ten effective clusters, a 10% holdout observation-share floor, an exactly pinned 48-tool MCP surface, golden-pinned content-identity digests and dual canonical-JSON conventions, and byte-neutral deduplication of the revise-reuse/bootstrap/D0-measurement logic. Gates re-verified on the branch head: 1,794 offline tests, 93.03% coverage (93.0% floor), strict mypy across 389 files, 13/13 import contracts, 12-wheel build/import smoke, and the full frontend gate including Playwright e2e.
-**Workstation v4 — server-rendered figures + information architecture (2026-08-07)** — the charts became Python, and the shell stopped being furniture. **Figure engine:** a declarative `FigureSpec` in `alpha_research/figures/` that the renderer cannot add to (it draws, it never computes) plus 23 catalogued figures built in `alpha_cli/figures/` from immutable run artifacts — equity/underwater, strategy versus the passive price index, rolling risk as three small multiples rather than a dual axis, monthly heatmap, return distribution and Q-Q, trade P&L, holding periods, exposure/turnover, top-5 drawdown episodes, the causal price/signal chart drawn from `chart_annotations` and `indicator_series`, null distributions, fold strips, CI forests, optim surfaces and trial curves, portfolio weights/correlations/contributions, prop-firm outcomes and funnel, forecast fan/skill/calibration, and ML prediction-versus-realised. Every figure carries the question it answers, its uncertainty and its caveat as required fields, so none ships without the text that makes it readable. Output is byte-stable across fresh processes under a hostile `matplotlibrc`, either `PYTHONHASHSEED`, and three timezones. Figures render to a **derived cache** (`data_dir/figures/`), never into run directories: `ARTIFACT_CONTRACT_VERSION` stays at 3, `verify_manifest_artifacts` still passes after rendering, and a v1 run from months ago renders as well as one produced today. `alpha_web` serves them with a content-addressed ETag and never imports matplotlib or `alpha_research`. **IA:** free-form docking is retired in favour of six purpose-built screens (Explore · Build · Results · Compare · Studios · Operate), a persistent Library rail, and one context chip replacing five top-bar controls; a workspace is now a saved research context rather than saved window positions, and Compare finally calls the run-comparison endpoint that had existed since v3 with no caller. uPlot, Dockview and 14 hand-rolled SVG chart components are gone (bundle 1,200 kB → 730 kB). Contrast is enforced mechanically: `--muted` must clear AA on the lightest surface it can land on, and `--faint` may never colour text.
-**Full repair program Stages 0–5 (2026-08-13)** ✅ — every empirical Workstation launch now requires a server-resolved `RunContextV1`: governed projects fail closed on open/unreadable gates and standalone work is identity-bound and manifest-watermarked `STANDALONE_UNQUALIFIED`; missing-context history projects as `LEGACY_CONTEXT_UNKNOWN` without rewrite. Generic jobs reject owner-only research/project/evidence/data-repair/paper commands. REST and SSE entry points share redacted `ApiErrorV1`; comparison never invents a preference for ties, zero-trade, partial, or single results; legacy journal assertions cannot pass paper readiness; and the literature child has a minimal credential-free environment plus fixed argv/host/resource bounds. Stage 1 preserves the real three-question object contract end to end, exposes Python-authoritative atomic proposal bundles/packs/qualified datasets/blockers/revision, makes the recommendation executable by construction without guessing ambiguous ideas, caps and versions AR(1) effective sample size, writes compact exact-membership `ResearchD2BoundaryV2` while preserving V1 bytes, and normalizes/validates arXiv PDF acquisition. Stage 2 keeps the six screen IDs while presenting Research as the front door, defaults to per-project Guided mode, separates the permanently unqualified sandbox, uses one project workspace context with stale-response guards, exposes canonical recovery actions, distinguishes bound/global research data and standalone/legacy run history, and adds a server-authoritative ML preflight. Stage 3 canonicalizes WebAuthn to `http://localhost:8801`, adds exact-backup schema-v3 credential/challenge/receipt persistence, keeps enrollment and recovery behind trusted `alpha owner-auth`, and requires a fresh single-use Touch ID assertion bound to the exact project, artifact, case revision, consequence, reason, and payload for every closed research-lifecycle Workstation action. Stage 4 adds bounded explicit scholarly discovery, direct-PDF acquisition, `pypdf==6.14.2` extraction, immutable `ResearchDocumentTextV1`, reverified `SourceAnchorV1`, cited `ResearchRecommendationV1`, bounded MCP excerpts, and a guided Literature UI. Document text and Codex recommendations remain untrusted/draft-only; Touch ID alone screens claims and freezes packs. Stage 5 separates provider configuration, explicit verification, and granted capability; stores redacted content-addressed `ProviderCheckReceiptV1`; provides a one-item Keychain launcher and owner-clicked Tiingo/QuantPad/IBKR checks; replaces journal assertions with plan-bound hash-chained `PaperAcceptanceV2`; and provides an offline redacted `IBKRWhatIfPlanV2` plus explicit one-shot executor. The executor uses IBKR's required wire `transmit=true` only with `whatIf=true`, verifies no broker order/fill or position change, and grants no paper-readiness credit; V1 plans remain readable but non-executable. Advanced mode, MCP, generic jobs, and excluded gate/holdout/paper/broker/order actions gain no authority. Stage 6 remains pending; this line does not claim the seven-stage program complete.
-**Crypto Data House Stages 0–6 (2026-08-15)** ✅; **Stage 7 acceptance** 🚧 — family-scoped authority and the external-bulk/internal-control boundary are governed by ADR-0032. Additive immutable crypto contracts, fail-closed Expansion UUID/capacity publication, native Binance history, and Bybit public derivatives/options are implemented without changing legacy CCXT bytes or execution authority. Stage 4 adds point-in-time network-plus-contract identity (ticker joins prohibited), explicit native BTC/ETH mappings, bounded CoinGecko Demo market/reference ingestion with Keychain-only process injection, separate keyless GeckoTerminal pool/OHLCV/trade ingestion, and reviewed Coin Metrics Community catalog/timeseries ingestion. Contract-capable asset masters are content-addressed over ordered identities and exact qualified CoinGecko/GeckoTerminal source manifests; non-legacy snapshots reverify them before use, while `reviewed-native-v1` remains byte-compatible. The fixed Keychain `catalog` and `reference` actions and guided Workstation flow require no secret or opaque-ID copying. Coverage profiles bind an exact qualified Coin Metrics Community catalog and schedule on-chain metrics only from its point-in-time rows, so unavailable paid metrics cannot be advertised. Stage 5 adds provider-native mechanical qualification, non-substituting Coinbase/Bybit divergence diagnostics, provenance- and availability-bound funding/basis/OI/volatility-surface/liquidity/on-chain features, and exact snapshot research-eligibility revalidation. Stage 6 provides the guided Crypto Data Center and the same fail-closed contracts in Advanced mode. Stage 7 is complete only after the current branch passes every three-viewport, live-provider, offline-replay, tamper, secret-redaction, V1 compatibility, wheel, documentation-truth, and GitHub check on the exact publication SHA. Warning, quarantined, future, uncommitted, missing, or wrong-authority inputs fail closed; CoinGecko metadata/reference data remains supplemental and cannot satisfy validation or execution-price requirements.
-**Crypto Data House Bybit live acceptance (2026-08-15)** ✅ — the Expansion UUID verifier now resolves the containing macOS mount point before invoking `diskutil`, preserving the substitution check for nested bulk roots. Bounded credential-free live runs qualified BTCUSDT perpetual funding/OI/holder-ratio/trade/mark/index/premium bars, recent executions, an exact order-book snapshot, complete spot/linear/inverse/option instrument catalogs, and exact-USDT BTC option catalog/chain/historical-volatility datasets. Point-in-time acquisition uses network completion—not request start—as the local knowledge clock. Derivative trades and books require an existing research case, its exact fresh revision, and a bounded reason before any network request; the revision is rechecked after fetch, and the immutable normalized manifest records `CryptoAcquisitionScopeV1`. Legacy unscoped event artifacts stay readable but cannot enter a new or reverified governed snapshot. Catalog snapshot `9befa772…f96e9` and scoped market snapshot `3e07234a…92187a` replayed with provider networking disabled. A fresh post-fix run now requires the truthful `option` category at both CLI and UI boundaries; its 14-member complete-catalog/perpetual/options snapshot `05ab9509…dd98` reverified offline as research-eligible. Live discovery also proved that dated futures may report a zero funding interval, premium-index tuples cannot use ordinary positive-price OHLC assumptions, and point-in-time cross-sections legitimately share an observation timestamp; exact quote filtering prevents USD/USDT relabeling. Earlier wrong-quote, future-clock, or unscoped-event artifacts remain immutable and outside eligible evidence. This grants no execution authority and does not complete Stages 6–7.
-**Crypto Data House guided-control checkpoint (2026-08-15)** ✅ — the Workstation now has a typed Crypto Data Center inside Research Data for family-authoritative coverage, bounded estimates/acquisition jobs, mechanical quality, exact qualified snapshot freeze/verification, asset identity, fail-closed storage status, and explicit research-only snapshot registration. Registration re-verifies every external member, derives range/frequency from immutable qualifications, preserves the historical strict research-store schema through `dataset_kind=snapshot` plus `snapshot_schema=CryptoSnapshotV1`, and never makes an incompatible proposal operator available. Guided mode hides opaque manifests and shows one canonical next action; Advanced exposes receipts/commands without gaining authority. Registration refreshes render explicit registered-dataset and stored-symbol loading states instead of briefly presenting empty inventory. Bybit bounded OI and holder-ratio ranges now honor paired ISO timestamps and follow cursors with repeated-cursor and 100-page guards. Every successful page is frozen as separate exact provider bytes before parsing, and the normalized artifact commits to all ordered raw manifests. Non-cursor history fails closed when one bounded response reaches its provider limit, rather than claiming silently truncated coverage. A real two-page BTCUSDT hourly-OI acquisition produced 241 qualified observations across the exact inclusive 2026-08-04 through 2026-08-14 UTC window; its frozen snapshot reverified as research-eligible with all provider networking disabled and registered as `rd_2137ba…60d1`. Three-viewport Playwright coverage holds the guided journey, accessibility, and zero horizontal overflow. Research proposals may bind only an already registered compatible dataset operator; this data subsystem does not invent a strategy or empirical operator.
-**Governed BTCUSDT crowding research extension (implemented 2026-08-15; owner pilot pending)** 🚧 — ADR-0033 freezes the registered `bybit_btcusdt_crowding_reversal_v1` research bundle and sandbox-only `hedged_basis_crowding_v1` development candidate. Proposal preflight offers the bundle only for one exactly compatible registered `CryptoSnapshotV1`; submission and launch reverify the snapshot, asset master, qualification versions, case revision, source pack, and evaluator fingerprint. The evaluator preserves exact Bybit linear BTCUSDT/USDT identity, causal funding/OI/premium/mark/index availability, the group-atomic 60/20/20 boundary, one-shot owner-authorized D2, and an `INCONCLUSIVE` result when the effective-event minimum is absent. Deterministic planted, null, confounded, future-poisoned, missing, corrected, and insufficient-sample D0 scenarios are mechanically rerun. The two-venue fixture preserves both legs, funding, 40 bp costs, 365-day annualization, and exact lineage through the complete pre-paper suite; it grants no credential, paper, broker, or order authority and stops at `UNSUPPORTED_MULTI_VENUE_PAPER`. The real owner pilot remains incomplete until lawful literature is anchored and owner-screened, the source pack is frozen, exploration is approved, and any mechanically eligible D2 receives a separate fresh owner action; no agent may perform those actions.
-**Crypto branch simplification and local acceptance (2026-08-15)** ✅ / **publication and owner pilot** 🚧 — branch-owned acquisition, analysis/artifact, coverage-batch, Workstation acquisition-view, and candidate-suite hotspots have behavior-preserving private seams; exact V1 bytes, public commands, manifests, errors, and authority boundaries remain stable. The current local gate passed 3,395 non-network tests at 93.02% coverage, 128 bias guards, 6 live-network tests with one documented provider skip, 166 frontend tests, 83/83 Playwright cases with zero skips at all required viewports, 29 literature-worker tests, 14 Qlib-worker tests, all 13 wheel import/version assertions, OpenAPI classification/freshness, and Expansion verification over 372 manifests and 14 snapshots. CoinGecko and Tiingo are verified. On 2026-08-18, the official signed/notarized local IB Gateway was installed, its paper endpoint and a masked DU account were read-only verified; Docker is no longer a prerequisite for that local installation mode. QuantPad REST is separately live-verified and exact-byte archiving is research-only. Publication still requires the Unpaywall contact email, separately checkpointed IBKR what-if/market-data evidence, fresh owner research actions, independent review, and green GitHub checks on the exact publication SHA. See `docs/audit/2026-08-15-crypto-branch-acceptance.md`; this checkpoint grants no gate, holdout, paper, broker, or order authority.
-**Crypto Data House final live acceptance (2026-08-15)** ✅ — the scoped Keychain launcher verified CoinGecko and qualified the exact contract catalog plus a 64-page USD market-reference universe after live fixtures exposed and test-first fixes covered provider-null platform fields, lowercase boolean query encoding, mixed numeric wire types, and cross-page asset movement. Asset master `b3e1f270…7b449` rederived 13 identities from exact qualified CoinGecko and GeckoTerminal inputs, including reviewed BTC/ETH native mappings and exact-contract USDC resolution. Multi-provider snapshot `097607bd…79fce` freezes 12 qualified families across Binance, Bybit, Coinbase comparison, CoinGecko, Coin Metrics, and GeckoTerminal; it reverified offline as research-eligible for market bars, funding, OI, options, on-chain, and DEX data while retaining `execution_authority=false`. Exact-input funding, OI-change, basis, volatility-surface, liquidity, and on-chain features were frozen separately. Expansion verification covered 372 immutable manifests, 14 snapshots, one asset master, zero private-path exposure, and zero credential/header/service-name sentinels in manifest JSON. Failed and warning acquisitions remain immutable non-evidence rather than being rewritten.
-**Crypto external-storage operational checkpoint (2026-08-15)** ✅ — `storage-inventory` reports immutable kind/byte counts, snapshots, staging, and removable cache without absolute paths; `storage-verify` re-hashes every external artifact and rederives every frozen snapshot membership; `cache-clean` requires `--confirm` and can delete only `bulk/cache`. The guided Storage & Jobs UI provides inventory, full verification, and a two-step cache confirmation with the immutable-exclusion boundary visible. Real Expansion verification passed for 31 manifests and four frozen research-eligible snapshots with zero staged downloads and zero cache bytes; no cleanup was executed because nothing was removable.
-**Crypto independent-comparison checkpoint (2026-08-15)** ✅ — `comparison_bars` now has an executable `ccxt:coinbase` acquisition path at 1m/5m/1h/1d and an explicit CLI-only Bybit spot diagnostic path. Both preserve exact venue/base/quote/frequency identity; Bybit diagnostic bars are deliberately rejected from snapshots because Coinbase remains the one declared comparison-family authority. `alpha crypto-data compare` requires an authoritative Binance primary plus exact-identity comparison manifests, retains every venue close, and publishes a content-addressed derived diagnostic with warning/quarantine thresholds, no fallback, and no execution authority. A live BTC/USDT hourly comparison over 2026-08-14 matched 38 observations across Binance, Coinbase, and Bybit with 5.91 bps maximum divergence and froze qualified comparison manifest `5838f82b…243a8`.
-**Crypto reference-catalog pagination checkpoint (2026-08-15)** ✅ — `coingecko market_reference all` freezes ordered 250-row Demo pages through the first short terminal page, with a 100-page safety ceiling and no false single-base identity. GeckoTerminal `dex_pools` freezes exactly five 20-row pages for each of Arbitrum, Base, BNB Chain, Ethereum, and Solana; incomplete pages fail before publication. Live breadth exposed public 429s, so the keyless client now applies proactive 2.1-second page pacing plus bounded exponential 429 backoff, while failed batch projections display the safe provider/data blocker and retain completed members for exact resume. The five-network batch then completed without overwriting its earlier pages: Base, BNB Chain, and Ethereum remained warnings; Arbitrum and Solana were quarantined for duplicate/invalid observations. These are honest quality outcomes, not provider-readiness failures or qualified evidence. Remaining Stage-7 gates are still pending.
-**Crypto Community-catalog checkpoint (2026-08-15)** ✅ — Coin Metrics coverage no longer trusts a hard-coded metric list. A supplemental `onchain_catalog` family freezes the exact paginated Community catalog, commits to each cursor without recording raw cursor text, and supplies only its point-in-time BTC/ETH daily metric membership to `CryptoCoverageProfileV1`. The live schema required four 1,000-row pages to remain below ALPHA's 16 MiB response bound; the resulting qualified catalog produced a fresh 7,603-task profile. Its exact three-task Community batch qualified the catalog and BTC observations while honestly retaining an ETH `missing_onchain_value` warning. The 16 MiB bound was not weakened, and catalog evidence remains supplemental rather than market-price or execution evidence.
-**Crypto default-coverage profile and batch checkpoint (2026-08-15)** — `alpha crypto-data profile-create|profile-show|profiles` freezes and paginates a content-addressed, non-authoritative acquisition plan from exact qualified Bybit linear/inverse/option catalogs, complete option-chain OI sources, and exact qualified Binance spot/USD-M/COIN-M membership. Current profile `79f1c9d5…ee83a` contains 7,602 tasks: 803 active Bybit perpetuals and 1,961 active Binance spot/perpetual markets, plus public reference/catalog, hourly option, and one five-minute BTC option tier. Dated/future contracts are excluded point-in-time; missing option-OI or venue-membership coverage fails profile creation. Binance provider symbols preserve bounded Unicode identity and use percent encoding only at archive URL boundaries. Every daily Binance task requests only the previous complete UTC day; a live profile batch qualified exact BTCUSDT spot membership and its prior-day bar. `liquidity-freeze` refuses incomplete, future, conflicting, cross-quote, or cross-unit inputs; it freezes at most 250 instruments per exact spot-USDT, USD-M-USDT, or COIN-M-USD scope and the next profile uses those receipts for previous-complete-hour tasks. Current live profile truthfully reports all three hourly scopes missing until the 1,961-member prior-day cycle completes. `profile-select-one-minute` separately requires a current research case/revision, bounded reason, and 1–50 exact `category:symbol` daily members; it freezes the selection receipt, rechecks case freshness, and schedules only the previous complete hour. `profile-run|profile-resume|profile-batches` execute explicitly confirmed cadence slices of at most 25 tasks from an immutable plan, checkpoint each completed normalized manifest atomically, reverify frozen sources and exact task membership, reject tampering, and retry only unfinished membership. Fresh Bybit 14-member snapshot `9431f968…c6fa79` reverified as research-eligible with networking forced offline. Profiles and batches grant no research, paper, broker, or order authority.
-**Crypto derived-feature persistence checkpoint (2026-08-15)** — the six Stage-5 feature families now publish exact deterministic Parquet bytes through a content-addressed `CryptoFeatureArtifactV1` manifest instead of remaining transient frames. Every create/show/list operation re-verifies the feature bytes, expected named input set and order, top-level lineage IDs, each qualified normalized source and exact artifact hash, availability, and method identity. CLI and REST expose the same closed feature enum. The Guided Crypto Data Center derives inputs only from human-selected compatible qualified datasets, reports missing or cross-identity blockers without requiring opaque IDs, and lists frozen features; Advanced shows the same command and hashes without additional authority. Features remain non-authoritative research inputs beside an exact snapshot and cannot change a gate, paper state, broker, or order path. Stages 6–7 remain pending.
-**Crypto guided acquisition-control checkpoint (2026-08-15)** — the Storage & Jobs view now projects immutable profile summaries and filtered 25-task cadence pages through typed REST/TypeScript contracts, starts provider work only after one explicit bounded click, and resumes only failed content-addressed batches. It exposes human-readable task identity, counts, progress, and recovery without requiring manifest or task IDs. The same view freezes an exact prior-day Binance top-liquidity scope and offers paginated selection of at most 50 daily-member markets for a fresh case-revision-bound one-minute profile; cross-paired spot/linear/inverse quote scopes, future profile clocks, stale case revisions, and stale async profile pages fail closed. Critical guided acquisition/feature/snapshot/storage behavior passes at 1280×720, 1440×900, and 1920×1080 with accessibility and horizontal-overflow assertions. This completes the planned Stage-6 control surfaces, but Stage-7 exhaustive acceptance and remaining real-network breadth are still pending.
-**QuantPad external research access (updated 2026-08-18)** — the current REST contract is live-verified; owner-attested written permission is the private-retention basis. `alpha quantpad-data archive` streams exact symbol-scoped responses to UUID-pinned external storage and publishes content-addressed internal manifests last. The provider exposes no complete universe export, so coverage is an explicit backlog and never guessed. All artifacts remain research-only—not canonical, validation, paper, or execution authority—until separately qualified (ADR-0018).
+- [2026 Q2 (April–June)](build-status/2026-Q2.md)
+- [2026 Q3 (July–September)](build-status/2026-Q3.md)
 
-**Generic study composition architecture freeze (2026-08-21)** ✅ — ADR-0035 accepts
-`alpha-study` only as a future composition/projection layer over the existing governed research
-program. The authority map preserves the current ControlStore, immutable D0/D1/D2 artifacts,
-owner-only D1 launch, one-shot D2, Touch ID, strategy-promotion firewall, 62-tool MCP pin, existing
-Qlib worker, figure engine, and six-screen Workstation. S0/S1 add documentation only; package and
-runtime behavior begin in later independently verified slices. Every third-party capability remains
-subject to its own ADR-0011 evidence gate, and this checkpoint grants no provider, paper, broker,
-order, holdout, or execution authority.
-
-**Generic study composition S2 package seam (2026-08-21)** ✅ — the additive `alpha-study`
-workspace package now has versioned metadata, a `py.typed` marker, and no runtime composition
-behavior. `alpha-cli` declares the workspace dependency; root isort/coverage awareness and the
-15-contract import-linter boundary enforce the approved research-plane inputs and bidirectional
-exclusion from lower layers and top surfaces. CI and the canonical gate now build/import 14
-wheels. Independent Terra reviews cleared both delivery findings; focused documentation, awareness,
-and seam tests pass (`51 passed`), all 15 import contracts are kept, and the canonical full gate
-passes the complete non-network suite with coverage, OpenAPI freshness, 14 wheel builds, and exact
-wheel import smoke. No canonical contracts, persistence, CLI command, UI, external dependency,
-owner/D1/D2, promotion, paper, broker, or order authority was added.
-
-**Generic study composition S3a1 feature-lineage contracts (2026-08-21)** 🚧 —
-`alpha-study` now defines strict immutable feature-input/value lineage. Canonical identities
-content-bind UTC semantic clocks and non-empty multi-artifact, snapshot, vintage, computation,
-provider, family, frequency, and explicit venue references; every lineage is permanently labelled
-`unverified_reference` until the existing-authority verifier checks it. Operational timestamps are
-absent. Focused seam/lineage tests pass (`12 passed`); event/factor table and cross-process
-determinism completion remain pending in S3a2. These projections grant no evidence, approval,
-D1/D2, promotion, paper, broker, order, persistence, CLI, MCP, web, or provider authority.
-
-**Generic study composition S3a2 observation tables (2026-08-21)** ✅ — `alpha-study`
-adds sealed `EventRowV1`/`EventTableV1` occurrence geometry and a separate
-`FactorObservationV1`/`FactorObservationTableV1` cross-sectional geometry. Event clocks,
-operator/code/parameter fingerprints, source availability, and factor universe availability are
-content-bound; row/table order and IDs are canonical. All lineages remain
-`unverified_reference`, every table declares `authority: none`, and event schemas reject realized
-outcomes. Focused study tests pass (`22 passed`), the environment-perturbed determinism gate passes,
-and the canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and
-exact wheel import smoke. No authority surface changed.
-
-**Generic study composition S3b authority references (2026-08-21)** ✅ — `alpha-study`
-now publishes one closed Git-owned declaration of the existing causal double-bottom operator plus
-strict `DetectorValidationV1` and `ExplorationMandateV1` projections. The projections bind current
-ControlStore/run identity shapes (`rc_`, `ra_`, 16-hex D0 run, `rl_`, SHA-256 execution
-fingerprints, and exact `d0_acceptance.json`) and hash-bind frozen D1 inputs and child references.
-They are explicitly `not_checked`/`not_attested`, create no D1 reservation, and expose no launch,
-approval, budget mutation, or verdict authority. Focused study tests, strict typing, all 15 import
-contracts, perturbed-environment golden determinism, fast gate, and independent Terra review pass;
-the canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and
-exact wheel import smoke.
-
-**Generic study composition S3c derived projections (2026-08-22)** ✅ — `alpha-study`
-adds strict content-hashed `FindingV1`, `MechanismGraphV1`, `AdvisorProposalV1`, and
-`StudyWorkspaceManifestV1` projections. Findings copy only registered typed D1/D2 fields with
-field-specific statuses and exact evidence provenance; graph node and edge vocabularies enforce
-source-kind semantics; advisor actions are closed non-executable recommendation codes; workspace
-collections enforce exact reference kinds and contain no raw data or mutable authority. All objects
-remain `authority: none` and `verification: not_checked`. Focused study tests, strict typing,
-perturbed-environment golden determinism, fast gate, and independent Terra review pass; the
-canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel builds, and exact
-wheel import smoke.
-
-**Generic study composition S4 double-bottom parity (2026-08-22)** ✅ — the first generic
-vertical calls the existing `detect_double_bottom_events` source of truth exactly once and projects
-its geometry into content-hashed `EventTableV1` rows. The adapter binds the closed registry, frozen
-parameter hash, exact artifact/dataset hash, provider/frequency/venue lineage, and the detector's
-full causal availability clock. Tests reproduce the registered 60-minute `d0-planted`,
-`d0-monotonic`, and `d0-single-trough` identities and 1/0/0 results; future-append, delayed-input,
-must-fail leaky-twin, round-trip, and perturbed-environment golden guards pass. The existing D1
-confirmation-bar mapping can precede full causal knowledge under delayed earlier inputs, so an
-`EventStudyObservation` bridge is explicitly deferred rather than introducing look-ahead. The
-198-test study+bias suite, strict typing, all 15 import contracts, fast gate, and independent Terra
-review pass. The canonical full gate passes complete pytest/coverage, OpenAPI freshness, 14 wheel
-builds, and exact wheel import smoke.
-
-**Generic study composition S5 scope hardening (2026-08-22)** 🚧 — independent Terra review
-found that the combined semantic slice could not truthfully use an “existing” owner semantic action:
-the control store remains schema v4 and the CLI, database, and web owner-action vocabularies are
-closed without a semantic label/freeze action. ADR-0035 and the FeaturePlan now split delivery into
-S5a read-only masking at the mechanically recomputed `d0_acceptance.json` event cutoff after exact
-identity/clock agreement with integrity-checked `events.json` and `chart-data.json.events`, S5b
-additive exact-backup SQLite v5 semantic definition/review events with action-bound Touch ID receipt
-and case-revision binding, and S5c presentation inside the existing Research screen. This hardening
-changes no runtime,
-schema, owner authority, MCP tool, D1/D2, promotion, paper, broker, or order behavior; S5a remains
-the next implementation slice.
-
-**Generic study composition S5a1 blind-read contract (2026-08-22)** 🚧 — `alpha-study` now
-publishes a strict byte-bound `BlindSemanticProjectionV1`. The pure builder hashes the complete D0
-acceptance, events, and chart artifacts internally; rejects duplicate JSON keys, missing/extra
-events, cross-artifact identity/clock disagreements, nonnumeric chart values, inconsistent
-dataset/protocol/series lineage, and noncanonical visible-point collections; and emits only points
-available by the acceptance-event cutoff plus an aggregate masked count. The cutoff source remains
-an explicit acceptance-measurement reference with `lineage_verification: not_checked`: existing CLI
-mechanical D0 verification is now composed by the S5a2 read slice; server projection, persistence,
-owner semantic actions, and UI are still pending. Focused semantic tests, the study+bias suite, strict typing, all
-15 import contracts,
-perturbed-environment determinism, fast gate, and independent Terra review pass. S5a remains in
-progress until server projection and the later protected persistence/semantic-action slices land.
-
-**Generic study composition S5a2 boundary freeze (2026-08-22)** 🚧 — the next read slice is
-split from web delivery. A narrow ControlStore resolver will reuse the existing completed-D0
-mechanical verifier, then return only bounded acceptance/events/chart bytes after rechecking their
-hashes against the verified manifest. This verifier may recompute the registered synthetic fixture;
-the pure `alpha_study` projection still never imports or calls a detector. The CLI response is frozen
-as `VerifiedBlindSemanticReadV1`: an outer verified-source envelope around the unchanged inner
-`BlindSemanticProjectionV1`, with no operational timestamp or mutation authority. REST delivery is
-deferred to S5a3. This planning refinement changes no runtime, database, owner action, MCP, D1/D2,
-promotion, paper, broker, or order behavior.
-
-**Generic study composition S5a2 verified semantic read (2026-08-22)** 🚧 — implemented as a
-read-only CLI composition. `ControlStore.verified_blind_semantic_artifacts` resolves the active
-exploration lineage (including a confirmation parent), requires the single registered
-`double_bottom` completed D0 pilot through the existing mechanical verifier, and returns only
-bounded `d0_acceptance.json`, `events.json`, and `chart-data.json` bytes after a post-read manifest
-recheck. `alpha research semantic-projection PROJECT_ID --json` wraps the unchanged
-`BlindSemanticProjectionV1` in the exact seven-key `VerifiedBlindSemanticReadV1` envelope with
-`verified_completed_d0_recomputation` and no authority. Focused envelope, integration, future-poison,
-leaky-twin, race/tamper, no-write, and MCP-surface tests pass. The D0 runtime now delegates its
-existing canonical/identity/mechanical acceptance checks to exact in-memory bytes after binding;
-detector, fixture, estimator, power, and other quantitative semantics are unchanged. REST/UI,
-semantic writes, and owner actions remain deferred to later S5 slices. Independent Terra review
-passes; S5a2 is complete and S5a3 remains pending.
-
-**Generic study composition S5a3 web projection (2026-08-22)** ✅ — the web slice is fixed as
-`GET /api/research/cases/{project_id}/semantic-projection`, with no query or body input and only the
-existing CLI command as its source. Strict nested server models preserve the exact seven-key outer
-envelope, fourteen-key inner projection, and three-key points; the web layer does not recompute
-hashes, cutoff, masking, or detector semantics. CLI unavailability maps to 404 and structurally
-invalid parsed CLI output to a redacted 502. Only generated OpenAPI/types and operation-governance
-records may change; handwritten frontend client/types, presentation, mutations, jobs, owner actions,
-MCP, D1/D2, promotion, paper, broker, and order surfaces remain unchanged. The exact-argv
-subprocess adapter and strict frozen response models are implemented; malformed parsed output is
-redacted at 502 and CLI unavailability at 404.
-
-The S5a2 envelope is now frozen to exactly seven keys (`schema`, `schema_version`,
-`source_verification`, `authority`, `run_id`, `projection`, and `content_sha256`), with explicit
-`authority: none` and a self-excluding canonical hash. Selection is limited to the unique completed
-pilot attempt on the current active exploration lineage; a confirmation case resolves through its
-exploration parent. The future-poison invariant compares only cutoff and emitted pre-cutoff point
-semantics because the source hash and aggregate masked count are expected to change when future
-data is appended. This clarification is planning-only.
-
-**Generic study composition S5b semantic owner-event delivery (2026-08-23)** ✅ — the bounded S5b
-implementation is delivered across `5fd3d02`, `07d48bb`, `3f18f4c`, `9ca9377`, `c72b9ee`,
-`6804db5`, `40861b6`, and `f935744`.
-The CLI-owned ControlStore now opens at schema v5, with the exact v4 backup and lossless
-`owner_action_receipts` `CHECK` rebuild, protected append-only `research_semantic_events` DDL,
-canonical `sd_`/`sr_`/`sf_` artifacts and `se_` event identities, contiguous definition→review→freeze
-transitions, receipt/event bijection, fail-closed persisted reads, and explicit owner-approved
-forensic forward recovery after a committed-v5 protected-object failure. The owner-auth seam binds
-the server-derived artifact and current case/source/head to one fresh Touch ID assertion and commits
-credential counter, challenge consumption, exactly one receipt, and exactly one semantic event in
-one transaction; exact response-loss retries are read-only linkage-validated recovery. The existing
-owner-auth REST challenge/perform routes accept the single closed `record_semantic_event` literal and
-special-dispatch that seam without `_action_argv`, `_run_json`, a subprocess, CLI job, or second
-mutator; existing actions retain their behavior. The final Terra review is APPROVE; all six identified
-S5b blockers were repaired, including resolver/source-pack parity, the explicit freeze review binding,
-canonical semantic text, whitespace-safe recovery, legacy migration proof, and deterministic concurrent
-migration setup. Focused ControlStore/owner-auth suites pass (`150 passed`), a deterministic
-100-run concurrent v4→v5 migration stress passes with zero failures, and the final canonical full
-gate passes pytest/coverage, OpenAPI freshness, 14-wheel build/import smoke, typing, imports, lint,
-harness, and semgrep. The verified semantic CLI read and existing semantic GET bytes remain
-unfrozen and unchanged in meaning; there is no direct semantic-write CLI command, new REST route,
-screen, handwritten frontend or frontend-derived authority, MCP semantic capability, D1/D2 or
-promotion authority, holdout access, paper, broker, or order widening. S5c presentation remains
-pending.
-
-**Generic study composition S5c/S6 existing-screen delivery (2026-08-30)** ✅ — the existing
-ResearchCockpit Study tab now renders the unchanged seven-key server-masked semantic response beside
-additive `ResearchStudyStatusV1`. The CLI-owned status projection verifies the append-only ledger,
-reads events and their head in one SQLite transaction, projects only the semantic cycle bound to the
-current contract and case revision, and marks an older cycle stale instead of pairing it with current
-masked points. It links the existing D1 terminal-attempt ledger and live queued/running/paused/failed
-execution state, elapsed/remaining budgets, promotion dossier reference/readiness, and
-Python-authoritative next-owner action. A real D0→D1 path also closes the second-precision semantic
-cutoff compatibility defect without changing the frozen S5a response bytes.
-
-The browser derives neither masking nor authority: a stale or hash-mismatched semantic source hides
-the masked read, D1 is labeled `OWNER CLI ONLY`, and no launch affordance exists. CLI/REST parity is
-proved on one data directory with a populated Touch-ID-bound semantic event and completed D1 attempt.
-The focused Python suite passes (`208 passed`), frontend coverage passes (`167 passed`), the Study-tab
-Playwright/accessibility case passes at all three supported viewports, generated OpenAPI/TypeScript and
-committed SPA assets are fresh, the MCP surface remains exactly 62 tools, and the fast and canonical
-full gates pass on the exact tree. No route, screen, MCP tool, owner action, D2/promotion control,
-paper, broker, or order authority was added.
-
-**Crypto operational-readiness C2 project workspaces (2026-08-30)** ✅ — every governed strategy
-project now has one deterministic `StrategyProjectWorkspaceV1` reference projection at
-`data/strategy-workspaces/<project-slug>--<project-id>/`. Twelve strict category indexes store only
-reference identifiers, availability, and hashes; SQLite, research dossiers, datasets, snapshots,
-immutable runs, figures, and reports remain in place and authoritative. A complete self-verified
-content-addressed revision is durably staged before atomically replacing `current.json`; repeated
-sync is byte-idempotent, a failed pointer publication preserves the prior current revision, and
-generated-state tamper fails closed until `alpha project workspace recover` quarantines invalid
-bytes and rebuilds solely from authority. `sync`, `sync-all`, `show`, and explicit `recover` are
-CLI-owned; project creation commits its authoritative transaction before initial materialization.
-
-The existing Development Center renders the same strict REST/CLI projection and one bounded refresh
-action. It labels authority `none`, execution disabled, and the non-transmitting sandbox
-classification; FastAPI remains a thin CLI relay. Focused unit/integration tests cover deterministic
-bytes, stale revisions, missing immutable-run references, raw-byte exclusion, atomic failure,
-tamper recovery, two-project backfill, creation failure timing, and exact CLI/REST parity. The
-Workstation walkthrough passes at all three supported viewports. No SQLite identity, run ID,
-artifact layout, research gate, owner-auth ceremony, MCP tool, D1/D2/promotion action, paper,
-broker, or order authority changed.
-
-**Generic study composition S7/S8 closure (2026-08-30)** ✅ — the crypto-readiness release adopts
-no new `alpha-study` adapter or dependency. ADR-0035 records an explicit disposition for TA-Lib,
-Twelve Data, Alphalens, mplfinance, Qlib, RD-Agent, PyPortfolioOpt, Riskfolio-Lib, `bt`, Zipline
-Reloaded, pfhedge, and pybotters. The existing separately locked Qlib diagnostic worker is retained
-unchanged; it is not newly adopted into the study layer. Every future candidate still requires a
-separate ADR-0011 evidence packet.
-
-S8 acceptance uses the existing common contracts: provider-native BTCUSDT technical and registered
-Bybit linear BTCUSDT/USDT crowding events round-trip through `EventTableV1`, while an exact Binance
-spot/USDT BTC/ETH universe round-trips through `FactorObservationTableV1`. The fixtures bind causal
-availability, input, vintage, universe-snapshot, provider, family, venue, instrument, and quote
-identity; future source/universe poison fails closed. The focused study/provider/bias suite passes
-(139 tests), the complete bias-guard family passes (158 tests), two perturbed-environment
-determinism passes are green, and the canonical full gate passes on the exact tree. No empirical
-support, owner decision,
-D2, promotion, execution, paper, broker, order, MCP, or new UI authority is introduced; no legacy
-or immutable artifact is deleted.
-
-**Crypto operational-readiness C4/C5 checkpoint (2026-08-31)** 🚧 — the release remains blocked,
-with exact evidence in `docs/audit/2026-08-30-crypto-operational-readiness-checkpoint.md`. After
-enabling iTerm removable-volumes access, the Expansion mount is read-write, UUID-matched, and has
-1.949 TB free. The exact-root write/hash/delete probe and ALPHA storage gate pass; full verification
-rehashes all 372 manifests and rederives all 14 snapshots, with 13 research-eligible snapshots, one
-asset master, zero staging entries, and no private paths exposed. All nine recorded bounded batches
-are complete, both asset masters and all 12 feature artifacts verify, and execution authority
-remains false. Four scoped public crypto network tests pass. The canonical CoinGecko Keychain check
-currently reports its `rate_limited` receipt, which remains an explicit provider blocker rather than
-a skipped success. The isolated program acceptance now composes
-the public research lifecycle through a matching research-contract-bound experiment, suite-owned
-baseline/OOS/validation, disclosed fake-model interface evidence, classical plus Kronos path-risk
-Monte Carlo, stored reports, and the non-authoritative project workspace. This exposed and repaired
-the missing experiment contract relay and noncanonical Monte Carlo run-output token. The standalone
-hedged-basis suite passes and its live preflight remains `UNSUPPORTED_MULTI_VENUE_PAPER` with no
-credentials, broker connection, order, fill, or position change. The external-storage blocker is
-closed without rewriting historical warning or quarantined evidence. A provider-backed BTC
-journey, the connected-browser six-area walkthrough, fresh owner Touch ID ceremonies, C6 gates/CI,
-and merge are still pending; no readiness, profitability, paper, broker, or order claim follows from
-this checkpoint.
-
-**Trader terminal Phase 1 "Work" (2026-09-02)** ✅ — the owner's crypto walkthrough findings #1–#6 and #13 (`docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md`) are closed on the approved design `docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md` through plan `docs/superpowers/plans/2026-09-01-trader-terminal-phase1-work.md` (W1–W8, each committed behind the full gate): a failed job now carries the CLI's own error line; `data pull` normalises symbols, rejects reversed ranges and refuses a ccxt start before the pair's first listed bar while naming the retry start; `alpha data first-bar` and `GET /api/data/first-bar` project that listing read-only; the SPA gains a crypto/equities `profile` (data defaults only) and one Data Manager panel replacing Market Data/Research Data (native dates, Estimate + `Start there`, stored pairs, Expansion SSD datasets with an honest unmounted state, reviewed-asset recipe, governed Research Data embedded); `reviewed-native-v2` adds XRP and SOL with v1 bytes pinned and unchanged. Still owner-run: regenerating the cross-provider asset master with the receipted `asset-master-create`, the in-browser acceptance walkthrough, and a `tests/bias_guards/` future-poison guard for `AssetMaster.resolve_native` (protected path; invariants-auditor low finding). No readiness, profitability, paper, broker, or order claim follows.
-
-**Trader terminal Phase 2 "Clean" (2026-09-02)** ✅ — findings #8–#12 of the owner walkthrough (`docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md`) are closed on the approved design (`docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md` §4.4, §4.5, §7) through plan `docs/superpowers/plans/2026-09-02-trader-terminal-phase2-clean.md` (C1–C8, each committed behind the full gate on `feat/trader-terminal-phase1-work`): a server-computed additive `display_name` on every run projection and a Library rail that reads strategy · D1 · symbol · dates (`bfda12a`); the Strategy Performance Report — one window, left tree, Summary table of recorded values only, the outcome band/tabs/banners collapsed into one watermark chip (`c6e5397`); figure maximise with Save PNG / Save SVG / Copy / Esc and prose kept in the DOM in both explain modes (`fecc14d`); a shell-level Governance dialog composed from existing reads that absorbs the five hazard-stripe sentences, the Development Center lock notice and the Operate Glossary foot (`364e655`); one topbar status chip with the research-gate watermark asserted on three surfaces (`d3e424c`); one dense jobs table (`13f2a30`); the Phase 2 acceptance e2e and all twelve baselines (`a2569a0`). Deviations from the plan block are recorded in the plan: Governance is a dialog opened from the topbar button and the status chip, not an Operate pane; the glossary is unfiltered (no entry carries a profile tag); contextual `role=note` notices that name a next action stay on working screens. No API, statistic, figure byte, DAG, MCP, point-in-time reader or authority changed; the watermark remains a server string relayed verbatim. Still owner-run: the in-browser Phase 1/2 acceptance walkthroughs and the Phase 1 follow-ups. Phase 3 "Terminal" needs its own plan. No readiness, profitability, paper, broker, or order claim follows.
-
-**Trader terminal Phase 3 "Terminal" (2026-09-03)** ✅ — finding #12 of the owner walkthrough (`docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md`, workflow-centric navigation) is closed on the approved design (`docs/superpowers/specs/2026-09-01-trader-terminal-ui-design.md` §4.1, §4.2, §4.6, §7) through plan `docs/superpowers/plans/2026-09-03-trader-terminal-phase3-terminal.md` (T1–T8, each committed behind the full gate on `feat/trader-terminal-phase1-work`): a server-side additive `market` field on run and project projections (`8d49fc9`); static crypto/equities profile manifests that gate windows, docks and provider lists in the browser and are never sent to the server (`eab1a94`); the Option E terminal-classic theme as the default figure theme with the SPA's canvas tokens generated from it and drift-tested, RENDERER_VERSION 3 → 4 (`d8a04c5`, quant and review attestations bound); document and dock registries replacing the six-screen registry (`fc8f577`); pure MDI/menu/toolbar/status-bar models with every served CLI command group assigned to exactly one menu (`c8321f0`, `tests/unit/test_web_menu_groups.py`); Market Watch and Navigator models and panels plus a profile-tagged glossary (`21dd1b7`); the terminal shell itself — title bar, eleven-entry menu bar, toolbar with the symbol · venue · timeframe chip, status chip and Governance button, left Market Watch and Navigator docks, the MDI document area whose bottom tabs mount only the active document, the collapsible Toolbox (Jobs · Trades · Backtests · Data pulls · Log), the right Data Manager dock and the status bar, with Governance now a document and `screens.tsx`/`LibraryRail.tsx` deleted, and the Playwright harness rewritten to documents and docks (`5771447`, one commit rather than the planned two); twenty `*-document-*.png` baselines replacing the twelve screen baselines with `npm run test:e2e` green on all four projects (`f109f90`); and this docs commit (T8). Deviations are recorded in the plan (side panes, unique document titles, one MDI close button plus the Delete key, the Toolbox starting collapsed below an 800px-high window, no Stop button, the watermark's three surfaces proven sequentially). No statistic, point-in-time reader, DAG contract, MCP tool, or authority changed; figure bytes changed deliberately and only through the renderer version.
-
-A scripted real-backend smoke of every document in both profiles then fixed four defects the mocked harness could not show (Market Watch reading `—` for pairs whose history ends before a ten-day lookback — now the additive `GET /api/candles/{symbol}?tail=N`; a crypto pair surviving the switch to Equities; MDI tabs overlapping past ten documents; regenerated OpenAPI/TS client). Still owner-run: the acceptance walkthrough in both profiles at 1440×900, the Phase 1/2 walkthroughs, the receipted asset-master regeneration, and the `tests/bias_guards/` guard for `AssetMaster.resolve_native`. The branch is not merged. No readiness, profitability, paper, broker, or order claim follows.
-
-**Trader terminal Phase 4 "Pixel" (2026-09-03/04, `docs/superpowers/plans/2026-09-04-trader-terminal-phase4-pixel.md`, branch `feat/trader-terminal-phase1-work`, PR #47)** ✅ The owner rejected the Phase 3 build on three grounds (findings #14–#16 in `docs/audit/2026-09-01-owner-crypto-walkthrough-findings.md`) and decided: one Market Watch row per stored pair with its venue shown, an opt-in live public ticker with the stored close and its date as the fallback, every artboard element reproduced and disabled with a reason where unbacked, and a button on every "owner approval" notice. Delivered behind the full gate: P1 Market Watch venue + Age columns over the existing `?tail=2` candles read (`d823961`); P2 `CCXTAdapter.ticker`, `alpha data ticker`, `GET /api/data/ticker` and the `Live` toggle — display only, never stored, no data authority (`efe3322`); P3a artboard-exact shell models and chrome — window title, icon toolbar with chart controls, dock frames with bottom tabs, document header bar, Toolbox table, status bar (`8d72d3c`, `ab3bda0`); P3b report toolbar/tree, Governance `Item | State | Detail`, full-window figure overlay, twenty baselines re-taken (`fee839e`); P4 `OwnerActionButton` on every owner step (`launch_d1`, `launch_d2`, `revise_exploration`, `record_final_disposition` through the unchanged owner-auth routes), `Copy command` with the ADR reason where a step stays CLI-only, `Enroll Touch ID` link, and `tests/unit/test_web_owner_actions_drift.py` (`7acf3eb`); P5 a scripted real-backend acceptance in both profiles at 1585×991 and 1440×900 (every document and dock tab, no console errors, no horizontal overflow, honest Market Watch rows, Navigator backtest → report toolbar, Live ticker and an XRP/USDT Binance pull over the network) that fixed `unknown`-provenance venues and float32 price noise, plus this docs commit. Touch ID prompts cannot be scripted; the owner completes one real owner step. No statistic, point-in-time reader, DAG contract, MCP tool (62), or authority changed. No readiness, profitability, paper, broker, or order claim follows.
-
-**Trader terminal Phase 5 "Analyst" (2026-09-04/06, `docs/superpowers/plans/2026-09-04-trader-terminal-phase5-analyst.md`, branch `feat/trader-terminal-phase5-analyst`)** ✅ The owner asked for the terminal to be the main surface and "more like TrendSpider"; the AskUserQuestion decisions were chart-first analysis, a no-code strategy builder + tester, a scanner + alerts, and the approved artboard chrome kept. Delivered behind the full gate: S3 `alpha chart overlays` (indicator series and knowable-by-last-bar pattern annotations over the PIT candle window via lazily imported `alpha_patterns`, head-only warm-up nulls), `GET /api/overlays/{symbol}`, the Insert › Indicators… dialog, indicator panes and swing markers on the chart, New chart window + Tile charts (`c405c16`, `e1221b1`, `89a4577`); S4 the `rules` strategy — `alpha_strategies.rules` parses a strict canonical spec of `left op right` state conditions over `alpha_patterns` indicators, `RuleStrategy` runs it in nautilus, the Tier-1 surrogate evaluates the same `rule_signal`, `alpha rules save|list|show|validate|delete`, `--rules NAME` on `backtest run`/`validate` with the spec bytes in run identity and manifests, `/api/rules`, and the Strategy Builder document; the import-linter contract became `alpha_strategies depends only on core and patterns` and `alpha_patterns` joined the execution fingerprint (`875f8ad`…`aa1e0f2`, risk-tier review APPROVE attested); S5 `alpha scan save|list|show|delete|run|check|alerts` over PIT reads with a bias guard, `/api/scans` + `/api/alerts`, the Scanner document and the live Toolbox › Alerts tab that checks every scan on mount and after each pull (`09fa132`…`b8238d2`); S6 the scripted real-backend acceptance extended to overlays, builder → sandbox run, scanner → alerts, which found two defects the mocked harness could not: the SIM account was always denominated in USD so a USDT-quoted pair on MARGIN crashed inside nautilus the first time a netting flip left a position snapshot to convert (fixed in `alpha_backtest.engine`: the account is denominated in the instrument's quote currency; regression test `test_margin_account_settles_in_the_pair_quote_currency_across_a_flip`), and the builder validated with an empty spec name before a file name was typed. The MCP surface stays pinned at 62; no statistic, point-in-time reader, or authority changed; the DAG gained one edge (`alpha_strategies → alpha_patterns`). Rule and scan results are screens of the current state, never evidence; no readiness, profitability, paper, broker, or order claim follows.
-
-**Edge-first Phase A "shorten the loop" (2026-09-10, `docs/superpowers/plans/2026-09-10-edge-first-phase-a-shorten-the-loop.md`, `main`)** — from the audit `docs/audit/2026-09-10-edge-first-system-audit.md`. S1: `pytest-xdist` in the full gate and CI (`-n auto`); the pytest step fell from 609 s to ~200 s on 10 cores with the 93% coverage floor still combined. S2: `platform` marker auto-applied by `tests/conftest.py` from the pure `tests/_tiers.py::classify_platform`; the fast gate now runs the alpha tier (~1,700 tests, ~43 s) where it ran no tests before. S3: surface freeze recorded in `CLAUDE.md` (MCP pinned, REST and Trader Terminal frozen at Phase 5; research capability ships CLI `--json` first). S4: `alpha_options` and `alpha_screener` retired end to end (packages, CLI sub-apps, web relays/models, SPA panels, 15→13 import-linter contracts, 14→12 wheels); the `alpha-analytics.md` rule and its fixture lines were removed (zero-loss fixture refreshed as its docstring permits). Deferred: QuantPad removal (control-store CHECK constraint, ADR-0018/0023, SPA models) and the stale `.claude/worktrees/agent-*` checkout (owner filesystem action). Harness deviation, recorded for the owner: nine protected-path edits in S4 were applied by a python script before their acks armed (a zsh variable-expansion failure silently skipped the ack commands) and retroactive acks were refused by the session permission classifier; the plan doc lists the files.
-
-**neurotrader888 technique port (2026-09-12/14, `docs/superpowers/plans/2026-09-12-neurotrader888-port.md`, PR #50, branch `claude/integrate-trader-github-xy6rxs`)** ✅ — every public technique of github.com/neurotrader888 ported into ALPHA's own layers with provenance (`docs/governance/2026-09-12-neurotrader888-provenance.md`; the owner holds the author's personal approval; IntramarketDifference re-implemented from Masters 2020 because it carries no licence). Stream A (`alpha_patterns`): directional change, PIPs, market structure, trendline fit/breakout meta-label features, harmonics, flags, weighted-KDE market profile, Hawkes volatility, VSA + generic rolling OLS residual, runs z, permutation entropy, visibility graphs, reversibility, CMMA, multi-period RSI matrix — each with exact upstream parity fixtures and a future-poison guard. Stream B (`alpha_research`): PIP cluster miner (k-means++ / silhouette / Martin ratio, label-leak purge), retracement-ratio density, rolling PCA — with oracles, `/verify-quant` and `/review-gate` attestations, mutation kill-rate ≥ 0.90. Stream C: `alpha_validation.bar_permutation` + `mcpt.permutation_test` (Masters 2018 ch. 7; Davison & Hinkley `(1+c)/(1+N)`), `metrics.profit_factor` promoted, `trade_dependence` runs test in the native tear sheet (`trade_runs_z`), gauntlet Tier 3 `bar_permutation` (walk-forward, engine-scored, never rescued, `--tier3-paths`), and `alpha optim mcpt` (in-sample optimisation-overfit test writing `mcpt_null.parquet`; never OOS evidence). Stream D: ADR-0036 `defi_tvl` family with `defillama` as sole authority, keyless provider check receipt, `alpha crypto-data acquire defillama defi_tvl <chain>`, and the `defi_tvl_residual` feature with honest next-day availability (the live endpoint is UNVERIFIED in the build sandbox; the owner's first `alpha provider check defillama` receipt confirms it). Stream E: eight oscillators and six patterns on `alpha chart overlays` (generic sub-pane per indicator, `marker` annotations, per-indicator bar guard, every pattern through its `*_known_by(last)`), the same indicators as rule operands (`hawkes`/`vsa`/`runs_z`/`perm_entropy`/`cmma`/`vg_path`/`reversibility`; `rsi_pc1` excluded because the strategy layer cannot import `alpha_research`; rule specs using them fork run identity by design), the SPA Indicators dialog / Strategy Builder / three-tier null narration, a Python↔TypeScript table drift test, and the figures `trade_runs_test` and `mcpt_null_histogram` (`pip_cluster_examples` / `retracement_density` deliberately not built: no run publishes their artifact and a builder may not compute its own statistic). Not ported: `rolling_window` (≡ `find_swings`), `tree_strat`, the demo strategies. MCP stays pinned at 62; no new import-linter contract; no new third-party dependency. Sandbox limitation recorded in every commit override: the full-gate stamp cannot be written here (torch wheel egress-blocked), so each commit lists its hand-run checks and CI is the authoritative full gate; Playwright e2e ran here only after aliasing the pre-installed Chromium revision. Research-only capabilities: none of this is evidence of a profitable edge, and every candidate-promotion gate still applies.
-
-## 2026-09-16 — Agent-neutral refactor, local discovery and metadata slices
-
-**Delivery state: Implemented locally; aggregate candidate gate passed.** The accepted plan is
-[`2026-09-16-agent-neutral-reproducible-research.md`](superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md).
-[ADR-0037](adr/0037-agent-neutral-research-engineering.md) changes engineering ceremony only;
-application owner authority and scientific controls remain intact.
-
-Implemented locally: `alpha info commands --all --json` discovers all registered leaves without
-changing default catalog filtering; `alpha info procedures --json` describes V2 analysis-family,
-verified protocol and actual scan-command metadata. The optional Atlas now extracts current
-`documents.ts` registrations, resolves imported component paths, and shares computed extraction
-with bounded source-only `gate.py orient`. Default orientation was measured at 1,450 bytes and
-rejects summaries above 6,000 bytes; it reads no owner store or hidden tests. Atlas outputs were
-regenerated and freshness passed in the aggregate gate.
-
-Suite action vocabulary now lives in one lightweight CLI module; MCP still excludes owner-only
-holdout reveal. Frontend owner actions derive from generated contracts with semantic-ledger
-events explicitly excluded from generic owner buttons. Removed obsolete options/screener safe
-classification entries. OpenAPI freshness checked unchanged. Local evidence: 88 targeted Python
-suite/MCP/REST tests, 10 CLI/Atlas consistency tests, 43 affected Atlas tests, the owner vocabulary
-test and 20 frontend client/type tests passed; targeted mypy, TypeScript, lint and import checks
-passed. These incremental checks were followed by focused independent reviews and the aggregate gate.
-
-The root operating instructions are compressed into current invariants and source pointers;
-domain details live in [research-platform contracts](operations/research-platform-contracts.md).
-The historical prose relocation test is replaced by current link/invariant/size checks.
-The shared aggregate gate covers backend, frontend, literature, Qlib and Atlas components;
-thin Git guards are now installed locally and old per-edit/Stop/shell-parser hooks are retired.
-No commit, merge or live provider acceptance is claimed
-by this local delivery record. Historical narratives above remain historical, including obsolete
-screen counts and prior operating ceremonies.
-
-### Refactor delivery and verification
-
-Implementation slices 0–5 are locally verified under the
-[execution plan](superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md).
-New exploration plans use resolved V2 axes and actual finding roles with one primary
-horizon. Historical V1 execution/confirmation/read paths remain supported. Screening
-freezes inputs/code/lock, records distinct attempts and partial trials, and replays
-without discovering new data; optional context-packet references are hash-only and
-`authority: none`. Screening does not authorize strategy promotion, paper or execution.
-
-The full gate rejects concurrent tree changes. The Claude adapter is 113 lines;
-old audit data remains readable (`audit --legacy`, 833 verified events). Root guidance
-is 5,968 bytes. Shared vocabulary, generated owner-action types, schema constants and
-bounded planner helpers preserve authorities and transaction ordering.
-
-Independent focused reviews closed observed PIT outcome-censoring, crypto-quality,
-V2 approval/primary-role, tree-hash and commit-race defects. Six slow oracles passed;
-panel mutation score 94.48% and overfitting 81.38% met their recorded floors.
-Twelve built wheels imported from an isolated installation. The full aggregate gate
-passed all five components on one stable candidate tree in 709.8 seconds of checks
-(2026-09-16). Final hardening also canonicalizes V2 family order so equivalent plans
-share fingerprints while V1 remains unchanged. The delivery tree must carry a fresh
-`gate.py check --tier full` result after these final source/documentation updates;
-receipts live in ignored `.alpha/state/`, not in this historical status narrative.
-No owner data or approvals were exercised; changes remain uncommitted.
-
-## 2026-09-17 — Cancellation regression and commit preparation
-
-The [follow-up plan](superpowers/plans/2026-09-17-cancellation-and-research-walkthrough.md)
-reproduces a test-deadline defect: two valid, delayed real CLI journal calls exceeded
-the old five-second aggregate wait although cancellation completed and capacity was
-released. The test now synchronizes on heartbeat startup and budgets the existing
-bounded operations; production timeouts and terminal-state assertions are unchanged.
-Normal and delayed cases passed independently. Full-tree verification is required
-after these changes; the current ignored receipts are authoritative.
-
-Commit review also found and fixed staged-rename classification in the Git guard:
-both source and destination paths now participate in review/quant requirements.
-Three regressions failed before the fix; eleven guard tests passed afterwards.
-Panel documentation now identifies per-function sources versus local conventions;
-its non-docstring executable AST is unchanged. The independent quant review passed
-117 tests and six spot checks, including a new explicit-trade cost-accounting oracle.
-
-The required private `tests/holdout` suite is absent, so independent commit approval
-remains blocked pending restoration or an explicit documented owner exception.
-No absent tests are called passing; no commit-hook bypass is authorized. The planned
-real-data walkthrough is prepared read-only and awaits the requested commit step.
-
-## 2026-09-17 — Owner exception for unavailable hidden suite
-
-After restoration checks found no copy, the owner explicitly authorized documenting
-a one-time missing-suite exception, finishing independent review, committing, then
-running the research walkthrough. The [follow-up plan](superpowers/plans/2026-09-17-cancellation-and-research-walkthrough.md)
-records the exact scope: the integrated refactor/cancellation commit only. Hidden
-tests remain UNVERIFIED, not passed. All other checks, independent review and
-installed commit guards remain mandatory. Final commit and walkthrough results are
-recorded in the handoff and ignored evidence receipts, not assumed here.
-
-## 2026-09-19 — Walkthrough issue closure implementation
-
-The [closure plan](superpowers/plans/2026-09-19-research-walkthrough-closure.md)
-records selective artifact verification and neutral unsupported research intake.
-Screening still hash-verifies all discovery metadata, but reads bulk artifact bytes
-only for selected inputs and their raw lineage. The full inventory audit and frozen
-replay integrity checks are unchanged. The existing 33,534-manifest real-data screen
-completed in 7.25 seconds, replay in 1.50 seconds, matching the earlier result digest
-without the scoped-inventory workaround. These are observed local timings only.
-
-Generic capture now reports a missing research operator with neutral unresolved
-fields instead of inventing a double-bottom thesis. Registered operator paths and
-historical immutable contracts are preserved. New context-packet reads were
-byte-identical and the linked screening reference was independently reverified;
-case review remained pending and execution idle. The original follow-up plan now
-records its actual completed commit `b1b7510` and walkthrough evidence.
-
-Final aggregate and review status are receipt-driven. The private hidden suite is
-still absent; the prior one-time exception does not extend to this change. That
-external review prerequisite remains UNVERIFIED, and no new commit or complete
-platform-readiness claim is implied by this implementation record.
-
-## 2026-09-19 — Owner resolution of closure review prerequisite
-
-Following the explicit request for a new missing-suite exception covering this
-closure commit, the owner authorized proceeding. The [closure plan](superpowers/plans/2026-09-19-research-walkthrough-closure.md)
-records this separate, narrowly scoped exception; the absent private suite remains
-UNVERIFIED. No future waiver, failing-test exemption, hook bypass or trading authority
-follows. All implementation and runtime checks are complete, with a passing full
-aggregate on the pre-exception tree; final delivery requires refreshed exact-tree
-verification and independent review. Final receipts and commit outcome are retained
-under `.alpha/state/` and in the handoff.
-
-## 2026-09-28 — Codex second-model seam repaired after codex-cli 0.154
-
-Two independent breaks were found while verifying the Claude↔Codex connection. codex-cli
-0.154.0 removed the `mcp-server` subcommand that `.mcp.json` launched, so every Claude Code
-session reported `codex (CONNECTION_CLOSED)`; the dead entry was removed (no replacement MCP
-mode exists in 0.154). The bridge default model `gpt-5.3-codex-spark` was retired from the
-models cache, so `scripts/codex_bridge.py probe` returned `available: false`; the default is
-now `gpt-6-astra` (the owner's Codex default), still overridable by `--model` and
-`ALPHA_CODEX_MODEL`; the owner also set the default reasoning effort to `medium` (was `xhigh`;
-`--effort` overrides). Live `research` and `review` round-trips through the bridge were verified
-against the real model on this tree. A third fault surfaced during that test: the desktop
-Codex apps (bundled codex 0.152.1 / 0.149) rewrite the shared models cache without the new
-model, which flipped the probe to a false `unavailable`; the probe now ignores a cache stamped
-with a different `client_version`. Runbook, owner checklist and ADR-0034 carry the amendment; plan:
-[codex seam repair](superpowers/plans/2026-09-28-codex-seam-repair.md). The hidden holdout
-suite is still absent; the owner granted a separate one-time exception for this commit only,
-recorded in that plan. Hidden tests remain UNVERIFIED. Codex remains
-optional and non-authoritative; no gate, surface or approval authority changed. Protected
-control-plane paths were edited, so commit requires the usual independent review and a fresh
-full stamp.
-
-## 2026-09-29 — Codex-only research benchmark continuation
-
-Owner approved preservation of all Claude evidence and Codex-only future execution. The
-[continuation plan](superpowers/plans/2026-09-29-codex-benchmark-continuation.md) adds non-destructive
-attempts/scoring revisions, execution fingerprints, streamed partial traces, per-turn failure checks,
-and verified filesystem/MCP boundaries. Original reports and 57,664 inventoried evidence files remain
-historical. The [capability audit](audit/2026-09-29-codex-capability-audit.md) records omitted web-search
-and truncated-note evidence that made two fabrication allegations unreliable, alongside a confirmed
-historical read escape and shared-export writes. These are benchmark findings, not platform fixes.
-
-At this implementation checkpoint, 74 evaluator tests and 44 affected bridge/gate tests passed.
-The corrected live smoke reached 62 MCP tools, retrieved seeded candles, and preserved owner control
-state. Retained-trace Codex scoring and the 15 missing realistic variants are in progress. A full-gate
-stamp, independent final review and complete campaign conclusions are not claimed at this checkpoint.
-Concurrent UI work in the same checkout is preserved and excluded from benchmark changes.
-
-## 2026-09-29 — Workflow UI repair (verification in progress)
-
-Owner-authorised replacement of the terminal menu/dock shell with full-width workflow pages is
-implemented in the working tree. Existing research and execution authority stays behind the same
-CLI and owner-auth seams. Shared asset selection, navigation/history, independent data-status
-reads, and stale saved-rule protections are under browser regression testing. The web integration
-suite passed 187 tests; this is not a full-gate or live-provider acceptance claim.
-
-Current plan: [workflow UI repair](superpowers/plans/2026-09-29-workflow-ui-repair.md).
-Evidence and external limitations: [UI audit](audit/2026-09-29-workflow-ui.md).
-
-## 2026-09-29 — Benchmark final evidence checkpoint
-
-Codex-only continuation implementation, bounded campaign and independent review are complete.
-All 57,664 original evidence files, including Claude results, remain byte-identical. The 15 new
-isolated variants scored 12 pass / 3 fail; retained realistic V4 covers 132 trajectories and qualifies
-all 11 automated critical cards in a separate review ledger. Evaluator tests: 84 passed; strict
-source typing: 22 files passed. See the [capability audit](audit/2026-09-29-codex-capability-audit.md).
-
-Aggregate verification remains blocked: frozen-copy backend passed with four workers, but the
-concurrent minimum-width UI scan-deletion browser test failed (188 passed, 1 failed, 4 not run).
-Frontend assets also changed that snapshot. No full-gate, hidden-suite or live-provider acceptance
-is claimed; UI repair remains separate. No benchmark commit or push was made.
-
-
-## 2026-09-30 — Workflow UI repair verification checkpoint
-
-Workflow pages and searchable stored-asset selection are delivered in the working tree. Repairs
-cover download clicks, independent storage/provider status, market switches, stale saved rules,
-navigation/history, browser-storage failures and uncertain ML terminal-journal writes. The latter
-uses the existing CLI journal, verifies before retrying and preserves unverified capacity.
-
-Final frontend run: **193 browser tests passed**, **312 unit tests passed**, and build/API/SPA
-freshness checks passed. Every backend component check passed, including coverage (**93.17%**),
-slow oracles and mutation checks. This supersedes the earlier scan-deletion test failure noted in
-the benchmark checkpoint; the trace showed successful deletion followed by a slow refresh.
-Independent review found no remaining production blocker. The integrated app is available at
-localhost:8801; its read-only owner-machine navigation check passed.
-
-Concurrent benchmark documentation/results updates invalidated earlier aggregate stamps despite
-passing repair checks. Use `uv run python scripts/gate.py check --tier full` for current whole-tree
-acceptance. Live vendors, physical Touch ID, model weights and paper-broker acceptance remain
-unverified. Details: [UI audit](audit/2026-09-29-workflow-ui.md) and
-[implementation plan](superpowers/plans/2026-09-29-workflow-ui-repair.md).
-
-## 2026-09-30 — Benchmark continuation verification closed
-
-The [Codex-only continuation](superpowers/plans/2026-09-29-codex-benchmark-continuation.md) is delivered.
-All six canonical full-gate components passed on one stable tree; the stamp matched the live
-checkout before this documentation update. Previous UI deletion and generated-output blockers
-are cleared. Independent final benchmark review found no remaining delivery gap. The
-[new verification receipt](../tools/alpha-eval/results/2026-09-29-continuation/verification-2026-09-30.json)
-preserves the successful run separately from earlier failures. Documentation edits follow the
-tested tree; no later exact-tree stamp, commit, push, hidden-suite or live-provider acceptance
-is claimed. Existing Claude evidence and benchmark conclusions are unchanged.
-
-## 2026-09-30 — Benchmark-only commit preparation
-
-The benchmark delivery is isolated from concurrent UI changes for exact-tree verification and
-independent protected-file review. Its commit includes the evaluator, Codex judge bridge, shared
-evaluator gate/CI integration, preserved evidence reports and benchmark documentation. UI code,
-UI plans and UI-specific manual changes remain outside this commit. The historical combined-tree
-receipts above retain their original scope. Final commit checks require a new full-gate stamp and
-independent review on this isolated tree; local receipts are retained in `.alpha/state/`.
-
-Independent delivery review reproduced three offline test failures when Codex was absent from
-PATH. The scorer unit tests now mock the client-version lookup as well as judging; production
-version fingerprints remain real. The evaluator suite is checked with a Codex-free PATH before
-the refreshed aggregate gate.
-
-
-**2026-09-30 — Terminal usability and external archive charts (implemented; full gate blocked).**
-Owner direction restores compact grey Windows-style chrome, chart docks, square controls and a
-large candle canvas while preserving workflow routes. ADR-0038 replaces mandatory biometric
-ceremonies with explicit bound local confirmation and honest V6 receipts; historical WebAuthn
-receipts remain intact. External archive selection now opens exact verified Binance/Bybit OHLCV
-windows with explicit market, venue, interval and volume units. Metadata-only ordinary discovery
-avoids whole-drive hashing; selected artifacts and raw lineage still require full verification.
-A real owner browser loaded 901 AAVEUSDT daily bars; discovery returned 2,178 compatible datasets.
-
-Final application checks: 4,740 Python tests passed (93.11% coverage), 314 frontend unit tests and
-all 196 browser scenarios passed; strict typing, import contracts, OpenAPI, scoped lint, semgrep
-and wheel smoke passed. Independent UI/backend inspection found no remaining blockers. Global
-`gate.py full` remains blocked by 198 ruff errors in the concurrent benchmark session's untracked
-PDF scratch script; no full-repository acceptance or universal live-provider readiness is claimed.
-See [verification and limitations](audit/2026-09-30-terminal-usability.md) and
-[open-source component decisions](audit/2026-09-30-open-source-component-review.md).
-
-
-**2026-09-30 — Terminal workflow polish.**
-F2 function navigation, task-level search with retry, remembered task tabs, keyboard tab navigation,
-profile-specific chart layout preferences and a shared comparison grid extend the grey Windows
-terminal. Watchlist data scrolls independently of its tabs. Independent review findings on palette
-search carryover and duplicate comparisons were corrected. This is workflow inspiration, not a
-claim of Bloomberg parity. Current verification and cross-session browser isolation findings are
-recorded in [the polish audit](audit/2026-09-30-terminal-workflow-polish.md).
-
-## 2026-09-30 — Connected edge research workspace
-
-Implemented the owner-approved chart/conditions/assistant/results plan. CLI owns condition
-semantics and bounded native Codex context; structured drafts require source freshness and rule
-validation before opening the existing builder. Docked scans/trades/results, indicator search
-and favourites, and case-linked observations connect the research journey. Recorded metrics
-retain costs, baseline and OOS limitations. Deferred-response state races and lost-heartbeat ML
-cancellation classification were fixed with targeted regressions. Aggregate verification pending;
-see [implementation audit](audit/2026-09-30-edge-workspace.md). Separate research branch remains
-unmerged, with shared ownership handoff documented.
-
-**2026-09-30 — Connected edge workspace verification completed.**
-All six canonical full-gate components passed on one stable implementation tree; the full browser
-suite passed all 244 scenarios. Fifty-eight focused assistant tests include exact provider-symbol
-compatibility and retained traversal rejection. Independent review closed the findings. A real
-supervised Codex smoke returned cited, appropriately limited analysis. The delivery plan is
-completed; current-tree acceptance is recorded by the fresh machine gate receipt after documentation
-closeout. See [verification evidence and limitations](audit/2026-09-30-edge-workspace.md).
+Entries below run in date order, oldest first.
 
 **2026-10-01 — Stored watchlist and context picker.**
 Market Watch now omits profile starter pairs absent from stored inventory, preserves exact venue/quote
@@ -646,6 +29,34 @@ catalog and distinguishes venue listings from downloaded history. Native Binance
 and opened in the archive chart. This does not change the canonical daily strategy/backtest store.
 Focused backend/frontend checks passed; full gate and live browser acceptance remain pending.
 
+## 2026-10-01 — Immutable rule execution in the bounded research controller
+
+The isolated research branch adds embedded canonical rule specifications to `BaselineExecutionPlan`.
+Both baseline and validation consume one immutable rule file plus its exact byte hash, and the
+collector verifies returned rule identity. Existing named-rule behavior, CASH/long-only policy,
+validation defaults and two-operation budget remain unchanged. Invalid or altered inputs fail
+before engine execution. Default launch forms omit the new local-file options; existing authorized
+generic CLI transport can relay them. No new REST schema, MCP tool or approval authority.
+
+This addresses fixed-rule operator coverage, not agent pressure-turn behavior or whole-agent
+information isolation. Historical Claude evidence is unchanged; no new model trial is claimed.
+See the [plan](superpowers/plans/2026-10-01-immutable-research-rules.md) and
+[usage guide](operations/bounded-research-workflow.md). Acceptance is recorded separately in
+exact-tree gate and independent-review receipts; combined main/UI integration remains pending.
+
+**2026-10-02 crypto provider and archive hygiene work (in progress):** Added DefiLlama public
+reference data for protocol TVL, stablecoin supply, current yield-pool snapshots, and exact-pool
+history across parser, qualification, CLI acquisition, typed API, and Data Manager surfaces. The
+archive's immutable artifact verifier did not complete in the prior audit; no immutable artifacts
+were removed. Existing provider adapters remain reachable in current route/use mapping. Focused
+DefiLlama parser/acquisition/API tests pass; aggregate gates and full archive verification remain
+unverified for this exact shared tree. On 2026-10-02, live acquisitions for Aave TVL (2,328 rows),
+stablecoin id `1` supply (3,230), yield-pool snapshot (17,061), and an Aave/Ethereum pool history
+(902) all qualified and passed recursive manifest/raw-lineage verification. `cache-clean` removed
+2,190 explicitly disposable bytes and zero immutable artifacts. Backend and frontend full component
+gates passed, as did Atlas and eval component checks after Atlas regeneration. The full aggregate
+command must still be rerun on that regenerated tree; a full archive inventory also remains open.
+
 **2026-10-02 — Crypto archive and market-discovery verification.**
 Verified archive segments with identical native identity are now charted as a single series. Identical
 overlap bars at file boundaries are coalesced; conflicting OHLCV values fail closed. The mounted
@@ -657,7 +68,6 @@ focused regression test. The full frontend component gate passed, including the 
 Playwright matrix. Backend and frontend component receipts were produced on separate trees because
 API types/static assets were synchronized between checks, so no aggregate full-gate stamp is claimed.
 
-
 **2026-10-02 — Agentic research capability program (planning only).**
 The [proposed program](superpowers/plans/2026-10-02-agentic-research-capability-program.md)
 defines autonomous loss/regime investigation, bounded chart-pattern search, typed evidence,
@@ -667,7 +77,6 @@ Independent planning review sharpened the retrospective/predictive handoff, hist
 operator, minimal four-action demo, and initiative/ablation metrics. No runtime change, dependency
 installation or agent campaign was performed. Next: isolated integration inventory, minimum safe
 information boundary, then the three-case drawdown investigation demonstration.
-
 
 **2026-10-02 DefiLlama review correction and active-data retirement:** The first stablecoin
 capture used an incorrect USD supply unit label; parser v2 preserves native USD-pegged token
@@ -688,7 +97,6 @@ rejects retroactive availability. Focused tests, typing and independent review p
 aggregate gate is pending at this delivery-record update. Full archive-wide byte integrity remains
 unverified; the selected live acquisitions and all 64 flagged candidates were individually verified.
 
-
 **2026-10-02 Unified crypto asset picker:** Main context and Market Watch selectors now combine
 canonical symbols with read-only external-drive chart discovery. The current local inventory
 contains 50 coins, 52 grouped pairs and 102 archive series, all represented in the selection model.
@@ -700,6 +108,71 @@ canonical candles. Non-price families remain reachable via the typed crypto data
 Independent review corrections cover manifest labels, chart heading, supported listbox semantics
 and Escape focus restoration. Focused model/browser checks and live inventory grouping verified
 the behavior; final canonical aggregate gate is pending at this record update.
+
+## 2026-10-02 — Research teammate advisory slice
+
+Implemented in isolated `feat/research-teammate` on `73fb2a9`, preserving concurrent primary
+checkout changes and historical Claude evidence. New CLI `research diagnostic suggest` verifies
+retained evidence, measures existing drawdown episodes and proposes bounded follow-ups. Typed
+external proposals permit novel questions with exact brief binding; no automatic execution.
+Exploratory-analysis protocol now explicitly asks for useful unsolicited questions and justified
+skips. Focused tests cover corrupt evidence, cutoff, loss diagnosis, reference binding and CLI.
+Acceptance requires independent review and a fresh full-gate receipt; this entry is not a receipt.
+The broader capability program, isolation and agent-reasoning benchmark uplift remain pending.
+
+## 2026-10-02 — Closed synthetic investigation demo
+
+Next slice after `535a461`, implemented in isolated `feat/research-investigation-demo`.
+The evaluator exports neutral cutoff-scoped synthetic panels and dispatches four fixed measurements
+from typed model proposals. Input mutation/path escape/network denial are tested by actual worker
+preflight. Failed/denied attempts consume bounds; accounting failure blocks interpretation and
+synthesis requires an inspection receipt. Fresh tools-disabled Codex turns retain raw evidence.
+Designed controls distinguish a planted indicator, a frozen-indicator null and an accounting defect;
+they are not engine backtests or evidence of real predictive causality. Model completion and research
+quality are separate. The original general harness and historical results are unchanged.
+Independent review and a fresh full-gate stamp remain acceptance requirements; this narrative is
+not a receipt. Consult the retained development report for live outcomes and limitations.
+
+Retained [synthetic live evidence](../tools/alpha-eval/results/investigation-demo-20261002/README.md)
+records three final responses, 12 model calls and nine measurements. The planted indicator and
+frozen-indicator null received distinct interpretations; the defect case stopped after inspection.
+These observations do not establish benchmark uplift, unrestricted initiative or real trading edge.
+
+Verification infrastructure: `ALPHA_PLAYWRIGHT_PORT` selects a separate test-only backend port
+(default 8802, excludes owner port 8801); Playwright refuses reuse of another server. This fixes
+observed cross-checkout verification interference without changing application routes or authority.
+
+## 2026-10-02 — Investigation efficiency comparison
+
+Implemented on isolated `feat/research-investigation-efficiency` after `d5f3cd4`. New
+`alpha-eval investigate-compare` freezes three policies across the same three synthetic panels:
+legacy adaptive, prechecked adaptive and fixed-evidence advisory synthesis. Automatic work
+uses the existing attempt budget; lossless compact JSON retains complete evidence. Setup failures
+are reserved and retained; missing or malformed usage stays unknown. Defaults and historical
+evidence are unchanged. No model, dependency, statistical operator or application authority changed.
+
+[Retained report](../tools/alpha-eval/results/investigation-efficiency-20261002/report.md): all nine
+trials completed. Legacy used 12 calls / 127832 input tokens, prechecked 7 / 74126 (42.01% fewer
+input tokens), fixed 3 / 32425 (74.63% fewer). A separate reviewer recomputed measurements and
+checked all 22 transport usage records; no critical regression was observed in these outputs.
+Three designed cases, one trial per cell, do not establish general reliability or real edge.
+The simpler fixed-evidence baseline motivates richer task-selection tests before adding teams.
+Fresh exact-tree full-gate and code-review receipts remain required for engineering acceptance.
+
+## 2026-10-02 — Research judgment development cases
+
+Implemented in isolated `feat/research-judgment-cases` after `77d6e94`. The optional evaluator
+judgment path adds six contrasting cases, explicit missingness, cutoff-safe indicator provenance,
+and a labeled measurement outage. It asks for competing explanations, discriminating evidence and
+prioritized next work. Existing demo defaults and historical Claude evidence remain unchanged.
+
+[Retained evidence](../tools/alpha-eval/results/research-judgment-20261002/report.md) separates
+original A (4/12 finals, provider interruptions), recovery B (local path failure, zero inference),
+and recovery C (8/8 finals, 16 calls). Independent review found no critical factual or causal failure
+in the available finals. This does not repair A's completion rate or establish general reliability.
+New transport metadata distinguishes provider errors from tool events. The production assistant
+is not integrated with this optional judgment path; real-run export and independent execution
+reconciliation are next. Engineering acceptance requires fresh full-gate and exact-tree review receipts.
 
 **2026-10-03 reference quant workstation:** Classic menus and one active-panel toolbar now expose
 existing workflow routes through View/Search, with document tabs/Toolbox below the analytical area.
@@ -717,8 +190,52 @@ three recorded panels remained usable. Aggregate acceptance is represented only 
 exact-tree full-gate receipt. See the [delivery report](operations/2026-10-03-reference-quant-workstation.md)
 for architecture, review findings, checks and limitations.
 
-
 **2026-10-03 scientific workstation correction:** Owner retained the classic top bar but corrected the renderer direction: Qbot's actual Bokeh report and Matplotlib integration are scientific references, beyond panel composition. BokehJS now defaults for market observations, recorded series, histograms and QQ plots; optional Lightweight preserves existing market features. The research report preset combines equity, drawdown, diagnostics and genuine backend figures. Visible project selection supports no-project browsing and clears dependent evidence identity while retaining market/archive views. Native-hourly discovery opens an exact venue/market chooser. No backend endpoint, statistical calculation, artifact or domain authority change. Verification is determined by the current exact-tree aggregate receipt; see the [correction report](operations/2026-10-03-scientific-research-workstation.md).
+
+## 2026-10-03 — Codex-first recorded-run runtime, first increment
+
+Implemented on isolated `feat/codex-research-runtime` based on the delivered research checkout
+`8a00b27`; concurrent primary workstation changes remain untouched. The CLI connects Codex App
+Server to three fixed-case MCP tools, verifies actual execution isolation and thread policy,
+retains durable tool/model budgets and evidence receipts, and validates final citation bindings.
+Completed checkpoint resume revalidates evidence without spending another model turn. Transport
+steering/interruption seams exist; workstation controls and chart input are not integrated yet.
+
+Local acceptance used existing MSFT run `8648eedee80cbdc4` at its recorded 2024-12-30 cutoff.
+The successful trial invoked execution, loss and follow-up tools and produced three verified
+receipts. It preserved unverified coverage, distinguished fills from independent closed bets,
+and proposed reconciliation before causal attribution. This is one operational smoke, not a
+benchmark win or a claim of reliable trading judgment. Earlier development failures are retained:
+initial isolation probe denied launch; first model turn could not discover tools with code-mode
+host disabled; second model turn encountered missing per-tool preauthorization. Both unsupported
+reports failed admission. The corrected configuration preauthorizes only the three fixed tools.
+
+Raw cases and reports remain private under `/private/tmp/alpha-codex-acceptance-20261003`, outside
+Git; they contain conversation history and should not be published. The source run and historical
+Claude benchmarks were not edited. [Operation and limits](operations/codex-investigations.md),
+[execution plan and remaining roadmap](superpowers/plans/2026-10-03-codex-research-runtime.md).
+Engineering acceptance requires the canonical full gate and independent review of the final tree;
+this runtime grants no research, confirmation, paper or trading authority.
+
+### First-increment acceptance record
+
+The 65 targeted runtime tests and all six canonical full-gate components passed. Independent
+review approved the implementation and reproduced the three live receipts from source. Native
+thread resume and CLI checkpoint resume succeeded without another model turn. Full-gate scope
+was the 25-file increment against `8a00b2749984f937c994c0b7bc6b261de297cc89`; this is not cumulative
+branch-versus-main acceptance. The passing implementation tree and private log are recorded in
+the execution plan. Final delivery-record changes must receive a fresh full stamp before commit.
+Earlier gate failures were retained and addressed: manual size and coverage were corrected;
+two existing cancellation tests failed under concurrent load, passed in isolation, and passed in
+the clean aggregate rerun with four workers. No test threshold or authority boundary was waived.
+
+## 2026-10-03 — Frozen comparison evidence for Codex investigations
+
+Continued `feat/codex-research-runtime` from `e111377`. New investigations optionally freeze up to four snapshot series with expected manifest hashes and operator-selected roles. Existing loss inspection reports exact daily endpoint price changes over strategy drawdowns, observed rows, declared instrument/fetch provenance and explicit blockers. Source integrity is reverified on every cached read; schema-v2 identities and completed checkpoints remain compatible. Schema-v3 cases bind the comparison plan, data root and evidence. No new tools, model providers, permissions or dependencies were added.
+
+Forty-eight new tests passed, including actual MCP-to-CLI comparison execution, future-poison controls, sparse/malformed inputs and bounded reads. The fast gate passed after test-typing corrections. Independent review identified an all-member hashing limit gap; pre-hash manifest/member/payload bounds and pre-materialization row/schema limits resolved it. A real Codex session on a labeled synthetic fixture reported the known 40% versus 20% declines with limitations; both its resume and the earlier real MSFT v2 checkpoint preserved findings without another model turn. This confirms operational wiring, not trading reliability or economic benefit.
+
+[Runbook](operations/codex-investigations.md), [scope and acceptance record](superpowers/plans/2026-10-03-codex-comparison-evidence.md). Final-tree full gate and independent review are required before commit. Snapshot provenance is not quality certification or historical-vintage proof; schedule completeness, causality and benchmark suitability remain unverified. Bounded acquisition and existing-contract data qualification remain next. Historical Claude results and concurrent primary UI work were untouched.
 
 **2026-10-04 workstation performance continuation:** Scientific cursor overlays and a frame-budgeted resize queue preserve real series and chart lifetime; market resizing coalesces while retaining the latest logical range. Revised large-series checks require an actual changed-size settled redraw within the original timing limits. All frontend steps passed; a documentation edit invalidated that component receipt. Current aggregate acceptance still requires the exact-tree canonical full receipt. See the correction report for the methodology and evidence.
 
@@ -733,6 +250,53 @@ The first chart-exploration canonical tree (`2be915e…`) passed backend and 311
 The second chart-exploration canonical run passed backend and 311 browser tests but missed optional market p99 (36.1 > 34 ms). Both renderers now share cancellable staggered resizing, and linked ranges deliver one latest-value peer per frame while cursors stay together. Unchanged focused performance passed both p99 at 26.3 ms with real changed/settled canvases; independent scoped review approves. Historical failures and range-convergence latency remain in the delivery report. Current exact-tree full receipt remains mandatory.
 
 The third frozen chart-exploration full run passed backend and 311 browser tests but scientific p99 missed by 1 ms (35 > 34). Axis dispatch now coordinates resizing and linked ranges; cursor transforms avoid redundant geometry writes. Native painting may still overlap. Acceptance remains dependent on the current exact-tree full receipt; failures are retained in the delivery report.
+
+## 2026-10-04 — Bounded private comparison acquisition
+
+Continued `feat/codex-research-runtime` from `dd1c745`. An inspected parent investigation can
+reserve one explicit batch of up to four daily Tiingo stock/ETF comparisons. The trusted CLI
+runs bounded downloads through the existing ingestion checks in a private store, retains emitted
+receipts/quarantine, and publishes a snapshot and comparison plan only when all requests pass.
+Completed reads reverify hashes and replay raw parsing/quality checks; failed or ambiguous batches
+never automatically retry. A separate comparison-data root leaves original run resolution unchanged.
+The model retains its three read-only tools. No canonical data, research admission or trading
+authority is granted; historical Claude evidence and concurrent workstation edits are preserved.
+
+Fixture tests cover CLI acquisition, private snapshot-to-investigation handoff, unchanged parent
+budgets, cached reads without credentials, tampering, failed batches, bounded transport and future
+poison with discriminating controls. These are synthetic operational checks, not real-market
+findings. Live Tiingo acceptance is **UNVERIFIED**: no provider credential is configured here.
+Declared instrument metadata, proxy suitability, historical vintage and independent-source
+agreement remain unverified. Final-tree full gate and independent review are required before commit.
+
+[Runbook](operations/codex-investigations.md),
+[scope and acceptance plan](superpowers/plans/2026-10-04-bounded-comparison-acquisition.md).
+Next: live-provider acceptance when configured and workstation integration after reconciling its
+separate active changes; macro attribution, regime learning and strategy engineering remain later
+increments, not implied capabilities of this download path.
+
+## 2026-10-04 — Managed recorded-run investigations in the workstation
+
+Continued `feat/codex-research-runtime` from `4b93c97`. The shared run report now starts and
+restores CLI-owned investigations, shows evidence separately from hypotheses and proposed tests,
+and supports same-case follow-ups, cancellation and refresh recovery within durable budgets.
+Explicit comparison previews lead to private acquisition and a linked new exposed case; an
+interrupted child publication can finish without another download or duplicate child. Verified
+list/show projections do not initialize sessions or acquire data. Ambiguous model reservations
+remain blocked. Parent-death/deadline supervision reaps the owned Codex process group.
+
+Browser acceptance passed through actual HTTP, CLI processes and persisted state, using labeled
+model/provider doubles. Separate live Codex CLI and web follow-ups passed; active-turn cancellation
+left none of four observed descendant processes alive and preserved consumed turn budgets. An
+initial cancellation status mismatch was fixed and rechecked against live Codex. Live Tiingo
+acceptance remains UNVERIFIED without a configured credential. These are operational checks,
+not evidence of trading reliability. The final staged tree requires independent review and the
+canonical full gate before commit; its receipt records aggregate acceptance.
+
+[Plan and acceptance scope](superpowers/plans/2026-10-04-workstation-investigations.md),
+[operator workflow](operations/codex-investigations.md). Primary checkout's concurrent UI is
+untouched; this branch's acceptance does not certify a future combined tree. Codex stays the only
+reasoning model; Claude artifacts, research admission and trading authority are unchanged.
 
 **2026-10-05 — Aggregate acceptance recorded for the crypto terminal tree.**
 The canonical `gate.py full` passed all six components on the frozen shared tree (stamp tree
@@ -778,221 +342,6 @@ rendered in the `mcr.microsoft.com/playwright:v1.61.1-noble` container (linux/am
 unchanged 2% tolerance. The CI frontend job's timeout rose from 15 to 40 minutes for the 308-test
 browser suite.
 
-### 2026-09-30 — bounded research diagnostics (verification in progress)
-
-Isolated continuation from e54aa7a adds a non-admitted weekly-close classifier CLI, typed advisory
-specialist review contracts and evidence-selector checking, and a bounded baseline-before-variants
-procedure. Qlib, research approvals, D2, promotion and the MCP/REST tool surfaces are unchanged.
-Versioned benchmark worlds add XNYS calendars and reconciling synthetic MTM; historical scenarios
-and model evidence remain retained. The classifier, fixture and contract tests have focused
-coverage; aggregate acceptance and the paired diagnostic panel remain pending in the
-[delivery plan](superpowers/plans/2026-09-30-research-workflow-completion.md).
-
-
-## 2026-09-30 — Research workflow paired closeout
-
-Implementation `8d0db28` passed the canonical full gate on tree `7ad880237b475f741c8b19106e58ac8fcc8d139498e299c1210e5ba64a812a7d`, independent APPROVE and quant PASS. New calendar/MTM fixtures, weekly classification diagnostics, typed advisory reviews and bounded workflow guidance are delivered; historical Claude evidence remains unchanged.
-
-The bounded ten-trial Codex-only diagnostic is complete. It supports further work on execution budgets, evidence reconciliation and information boundaries; it does not establish a general model ranking or validate an independent multi-agent architecture. Scenario-specific outcomes and control diagnoses remain in `tools/alpha-eval/results/workflow-v2-20260930/README.md` and the architecture audit, which are excluded from agent workspace exports. This public build record deliberately omits those answers. Closure documentation is committed only after its own exact-tree full gate.
-
-
-## 2026-09-30 — Bounded baseline execution controller
-
-A CLI-first controller now runs one frozen momentum baseline and validation, preserves durable attempts, reserves reconciliation time and publishes verified execution digests. It makes no model calls, launches no candidate variants, and grants no research admission or owner authority. The digest retains order denials independently of model narrative and checks execution quantities and session coverage. This bounds controller operations; surrounding-agent temporal read isolation and specialist-agent effectiveness remain unverified. Historical benchmark evidence is retained. See the [controller plan](superpowers/plans/2026-09-30-bounded-research-controller.md); exact-tree gate/review receipts determine acceptance.
-
-
-## 2026-10-01 — Immutable rule execution in the bounded research controller
-
-The isolated research branch adds embedded canonical rule specifications to `BaselineExecutionPlan`.
-Both baseline and validation consume one immutable rule file plus its exact byte hash, and the
-collector verifies returned rule identity. Existing named-rule behavior, CASH/long-only policy,
-validation defaults and two-operation budget remain unchanged. Invalid or altered inputs fail
-before engine execution. Default launch forms omit the new local-file options; existing authorized
-generic CLI transport can relay them. No new REST schema, MCP tool or approval authority.
-
-This addresses fixed-rule operator coverage, not agent pressure-turn behavior or whole-agent
-information isolation. Historical Claude evidence is unchanged; no new model trial is claimed.
-See the [plan](superpowers/plans/2026-10-01-immutable-research-rules.md) and
-[usage guide](operations/bounded-research-workflow.md). Acceptance is recorded separately in
-exact-tree gate and independent-review receipts; combined main/UI integration remains pending.
-
-
-## 2026-10-02 — Research teammate advisory slice
-
-Implemented in isolated `feat/research-teammate` on `73fb2a9`, preserving concurrent primary
-checkout changes and historical Claude evidence. New CLI `research diagnostic suggest` verifies
-retained evidence, measures existing drawdown episodes and proposes bounded follow-ups. Typed
-external proposals permit novel questions with exact brief binding; no automatic execution.
-Exploratory-analysis protocol now explicitly asks for useful unsolicited questions and justified
-skips. Focused tests cover corrupt evidence, cutoff, loss diagnosis, reference binding and CLI.
-Acceptance requires independent review and a fresh full-gate receipt; this entry is not a receipt.
-The broader capability program, isolation and agent-reasoning benchmark uplift remain pending.
-
-
-## 2026-10-02 — Closed synthetic investigation demo
-
-Next slice after `535a461`, implemented in isolated `feat/research-investigation-demo`.
-The evaluator exports neutral cutoff-scoped synthetic panels and dispatches four fixed measurements
-from typed model proposals. Input mutation/path escape/network denial are tested by actual worker
-preflight. Failed/denied attempts consume bounds; accounting failure blocks interpretation and
-synthesis requires an inspection receipt. Fresh tools-disabled Codex turns retain raw evidence.
-Designed controls distinguish a planted indicator, a frozen-indicator null and an accounting defect;
-they are not engine backtests or evidence of real predictive causality. Model completion and research
-quality are separate. The original general harness and historical results are unchanged.
-Independent review and a fresh full-gate stamp remain acceptance requirements; this narrative is
-not a receipt. Consult the retained development report for live outcomes and limitations.
-
-Retained [synthetic live evidence](../tools/alpha-eval/results/investigation-demo-20261002/README.md)
-records three final responses, 12 model calls and nine measurements. The planted indicator and
-frozen-indicator null received distinct interpretations; the defect case stopped after inspection.
-These observations do not establish benchmark uplift, unrestricted initiative or real trading edge.
-
-Verification infrastructure: `ALPHA_PLAYWRIGHT_PORT` selects a separate test-only backend port
-(default 8802, excludes owner port 8801); Playwright refuses reuse of another server. This fixes
-observed cross-checkout verification interference without changing application routes or authority.
-
-
-## 2026-10-02 — Investigation efficiency comparison
-
-Implemented on isolated `feat/research-investigation-efficiency` after `d5f3cd4`. New
-`alpha-eval investigate-compare` freezes three policies across the same three synthetic panels:
-legacy adaptive, prechecked adaptive and fixed-evidence advisory synthesis. Automatic work
-uses the existing attempt budget; lossless compact JSON retains complete evidence. Setup failures
-are reserved and retained; missing or malformed usage stays unknown. Defaults and historical
-evidence are unchanged. No model, dependency, statistical operator or application authority changed.
-
-[Retained report](../tools/alpha-eval/results/investigation-efficiency-20261002/report.md): all nine
-trials completed. Legacy used 12 calls / 127832 input tokens, prechecked 7 / 74126 (42.01% fewer
-input tokens), fixed 3 / 32425 (74.63% fewer). A separate reviewer recomputed measurements and
-checked all 22 transport usage records; no critical regression was observed in these outputs.
-Three designed cases, one trial per cell, do not establish general reliability or real edge.
-The simpler fixed-evidence baseline motivates richer task-selection tests before adding teams.
-Fresh exact-tree full-gate and code-review receipts remain required for engineering acceptance.
-
-
-## 2026-10-02 — Research judgment development cases
-
-Implemented in isolated `feat/research-judgment-cases` after `77d6e94`. The optional evaluator
-judgment path adds six contrasting cases, explicit missingness, cutoff-safe indicator provenance,
-and a labeled measurement outage. It asks for competing explanations, discriminating evidence and
-prioritized next work. Existing demo defaults and historical Claude evidence remain unchanged.
-
-[Retained evidence](../tools/alpha-eval/results/research-judgment-20261002/report.md) separates
-original A (4/12 finals, provider interruptions), recovery B (local path failure, zero inference),
-and recovery C (8/8 finals, 16 calls). Independent review found no critical factual or causal failure
-in the available finals. This does not repair A's completion rate or establish general reliability.
-New transport metadata distinguishes provider errors from tool events. The production assistant
-is not integrated with this optional judgment path; real-run export and independent execution
-reconciliation are next. Engineering acceptance requires fresh full-gate and exact-tree review receipts.
-
-## 2026-10-03 — Codex-first recorded-run runtime, first increment
-
-Implemented on isolated `feat/codex-research-runtime` based on the delivered research checkout
-`8a00b27`; concurrent primary workstation changes remain untouched. The CLI connects Codex App
-Server to three fixed-case MCP tools, verifies actual execution isolation and thread policy,
-retains durable tool/model budgets and evidence receipts, and validates final citation bindings.
-Completed checkpoint resume revalidates evidence without spending another model turn. Transport
-steering/interruption seams exist; workstation controls and chart input are not integrated yet.
-
-Local acceptance used existing MSFT run `8648eedee80cbdc4` at its recorded 2024-12-30 cutoff.
-The successful trial invoked execution, loss and follow-up tools and produced three verified
-receipts. It preserved unverified coverage, distinguished fills from independent closed bets,
-and proposed reconciliation before causal attribution. This is one operational smoke, not a
-benchmark win or a claim of reliable trading judgment. Earlier development failures are retained:
-initial isolation probe denied launch; first model turn could not discover tools with code-mode
-host disabled; second model turn encountered missing per-tool preauthorization. Both unsupported
-reports failed admission. The corrected configuration preauthorizes only the three fixed tools.
-
-Raw cases and reports remain private under `/private/tmp/alpha-codex-acceptance-20261003`, outside
-Git; they contain conversation history and should not be published. The source run and historical
-Claude benchmarks were not edited. [Operation and limits](operations/codex-investigations.md),
-[execution plan and remaining roadmap](superpowers/plans/2026-10-03-codex-research-runtime.md).
-Engineering acceptance requires the canonical full gate and independent review of the final tree;
-this runtime grants no research, confirmation, paper or trading authority.
-
-### First-increment acceptance record
-
-The 65 targeted runtime tests and all six canonical full-gate components passed. Independent
-review approved the implementation and reproduced the three live receipts from source. Native
-thread resume and CLI checkpoint resume succeeded without another model turn. Full-gate scope
-was the 25-file increment against `8a00b2749984f937c994c0b7bc6b261de297cc89`; this is not cumulative
-branch-versus-main acceptance. The passing implementation tree and private log are recorded in
-the execution plan. Final delivery-record changes must receive a fresh full stamp before commit.
-Earlier gate failures were retained and addressed: manual size and coverage were corrected;
-two existing cancellation tests failed under concurrent load, passed in isolation, and passed in
-the clean aggregate rerun with four workers. No test threshold or authority boundary was waived.
-
-
-## 2026-10-03 — Frozen comparison evidence for Codex investigations
-
-Continued `feat/codex-research-runtime` from `e111377`. New investigations optionally freeze up to four snapshot series with expected manifest hashes and operator-selected roles. Existing loss inspection reports exact daily endpoint price changes over strategy drawdowns, observed rows, declared instrument/fetch provenance and explicit blockers. Source integrity is reverified on every cached read; schema-v2 identities and completed checkpoints remain compatible. Schema-v3 cases bind the comparison plan, data root and evidence. No new tools, model providers, permissions or dependencies were added.
-
-Forty-eight new tests passed, including actual MCP-to-CLI comparison execution, future-poison controls, sparse/malformed inputs and bounded reads. The fast gate passed after test-typing corrections. Independent review identified an all-member hashing limit gap; pre-hash manifest/member/payload bounds and pre-materialization row/schema limits resolved it. A real Codex session on a labeled synthetic fixture reported the known 40% versus 20% declines with limitations; both its resume and the earlier real MSFT v2 checkpoint preserved findings without another model turn. This confirms operational wiring, not trading reliability or economic benefit.
-
-[Runbook](operations/codex-investigations.md), [scope and acceptance record](superpowers/plans/2026-10-03-codex-comparison-evidence.md). Final-tree full gate and independent review are required before commit. Snapshot provenance is not quality certification or historical-vintage proof; schedule completeness, causality and benchmark suitability remain unverified. Bounded acquisition and existing-contract data qualification remain next. Historical Claude results and concurrent primary UI work were untouched.
-
-
-## 2026-10-04 — Bounded private comparison acquisition
-
-Continued `feat/codex-research-runtime` from `dd1c745`. An inspected parent investigation can
-reserve one explicit batch of up to four daily Tiingo stock/ETF comparisons. The trusted CLI
-runs bounded downloads through the existing ingestion checks in a private store, retains emitted
-receipts/quarantine, and publishes a snapshot and comparison plan only when all requests pass.
-Completed reads reverify hashes and replay raw parsing/quality checks; failed or ambiguous batches
-never automatically retry. A separate comparison-data root leaves original run resolution unchanged.
-The model retains its three read-only tools. No canonical data, research admission or trading
-authority is granted; historical Claude evidence and concurrent workstation edits are preserved.
-
-Fixture tests cover CLI acquisition, private snapshot-to-investigation handoff, unchanged parent
-budgets, cached reads without credentials, tampering, failed batches, bounded transport and future
-poison with discriminating controls. These are synthetic operational checks, not real-market
-findings. Live Tiingo acceptance is **UNVERIFIED**: no provider credential is configured here.
-Declared instrument metadata, proxy suitability, historical vintage and independent-source
-agreement remain unverified. Final-tree full gate and independent review are required before commit.
-
-[Runbook](operations/codex-investigations.md),
-[scope and acceptance plan](superpowers/plans/2026-10-04-bounded-comparison-acquisition.md).
-Next: live-provider acceptance when configured and workstation integration after reconciling its
-separate active changes; macro attribution, regime learning and strategy engineering remain later
-increments, not implied capabilities of this download path.
-
-
-## 2026-10-04 — Managed recorded-run investigations in the workstation
-
-Continued `feat/codex-research-runtime` from `4b93c97`. The shared run report now starts and
-restores CLI-owned investigations, shows evidence separately from hypotheses and proposed tests,
-and supports same-case follow-ups, cancellation and refresh recovery within durable budgets.
-Explicit comparison previews lead to private acquisition and a linked new exposed case; an
-interrupted child publication can finish without another download or duplicate child. Verified
-list/show projections do not initialize sessions or acquire data. Ambiguous model reservations
-remain blocked. Parent-death/deadline supervision reaps the owned Codex process group.
-
-Browser acceptance passed through actual HTTP, CLI processes and persisted state, using labeled
-model/provider doubles. Separate live Codex CLI and web follow-ups passed; active-turn cancellation
-left none of four observed descendant processes alive and preserved consumed turn budgets. An
-initial cancellation status mismatch was fixed and rechecked against live Codex. Live Tiingo
-acceptance remains UNVERIFIED without a configured credential. These are operational checks,
-not evidence of trading reliability. The final staged tree requires independent review and the
-canonical full gate before commit; its receipt records aggregate acceptance.
-
-[Plan and acceptance scope](superpowers/plans/2026-10-04-workstation-investigations.md),
-[operator workflow](operations/codex-investigations.md). Primary checkout's concurrent UI is
-untouched; this branch's acceptance does not certify a future combined tree. Codex stays the only
-reasoning model; Claude artifacts, research admission and trading authority are unchanged.
-
-
-**2026-10-10 existing research-runtime reconciliation (local candidate):** The thirteen committed
-bounded runtime increments through `b18cf921` are merged without a commit against main `454c940f`
-in an isolated checkout. Recorded-run investigations, immutable case budgets, scoped MCP findings,
-frozen comparisons and managed acquisition/cancellation/follow-up/handoff coexist with main's
-current API, recorded panels and authority controls. Bounded compatibility regressions repair
-custom Codex home propagation, fail-closed event handling and disposable backend/test isolation.
-Generated OpenAPI, SPA and Atlas describe the combined source. Fresh primary-source quant checks
-pass; cumulative public full verification and independent risk acceptance are still pending.
-Private-suite, current live Codex isolation and provider acceptance remain unverified. No standing
-exception or publication permission is assumed. See the research-runtime reconciliation plan.
-
-
 **2026-10-07 — Technical chart language (StockCharts Classic/Default grammar).** Owner request:
 make the primary analytical chart read as market-analysis software rather than a web component.
 The default Bokeh price renderer is replaced by `frontend/src/components/technical/`: one BokehJS
@@ -1024,67 +373,26 @@ measured against `main` on the same machine: both exceed the 34 ms p99 intermitt
 
 **2026-10-08 — Exact viewport volume mask and orphan recovery.** The volume renderer now restricts painting to every original bar rectangle intersecting the observation-index viewport, including partial edge bars, while preserving the full native source and colors. Four failing-first geometry tests are covered by 23 passing model tests; seven focused browser tests pass with unchanged screenshots and actual PNG export. An isolated timing run passed at 28.5 ms p99; repeats were 26.3/26.2/43.0 ms, so intermittent timing remains unresolved under unchanged limits. A discovered unregistered worktree folder was retired after byte-verifying an archive of all 181 noncache files; its partial source is preserved, not assumed delivered. Final aggregate and hidden-suite acceptance remain required. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
 
-
 **2026-10-09 — Malformed PIT bar error boundary corrected (unmerged).** Visible malformed bars now raise chained `DataError` with symbol, timestamp and original validation reason instead of leaking Pydantic errors past CLI handlers. Point-in-time filtering remains first; invalid rows are neither dropped nor coerced. Twenty failures were reproduced before the source fix; all 27 focused source/bias/public-seed tests pass, including future exclusion, a deliberately leaky twin, and CLI exit 2 with no run publication. The previous primary tree passed all six canonical components; this changed tree requires fresh aggregate verification and independent review. Hidden-suite acceptance remains UNVERIFIED/BLOCK; no commit, merge or scheduled-workflow deployment is claimed. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
-
 
 **2026-10-09 — Exact volume color views (unmerged).** Post-mask profiling exposed full-source CSS color materialization on every view update. Complementary up/down views now share the full native x/volume source with scalar style colors, retaining previous-close classification, equal-close bars, partial viewport intersections, width, scales, cursor and exports. Three failing-first partition tests are covered by 26 passing model tests; seven focused browser tests pass with unchanged screenshots and PNG export. The new profile recorded zero `_from_css_array` samples, versus about 165.5 ms directly before the change. Profiled/ordinary p99 passed at 27.2/27.3 ms; a fixed three-repeat run passed at 27.2/27.3/27.2 ms against the unchanged 34 ms limit. This evidence improves the previously intermittent timing lane without promising every future machine/run will pass. Fresh final aggregate and independent acceptance remain required; hidden-suite execution stays UNVERIFIED/BLOCK. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
 
+**2026-10-10 existing research-runtime reconciliation (local candidate):** The thirteen committed
+bounded runtime increments through `b18cf921` are merged without a commit against main `454c940f`
+in an isolated checkout. Recorded-run investigations, immutable case budgets, scoped MCP findings,
+frozen comparisons and managed acquisition/cancellation/follow-up/handoff coexist with main's
+current API, recorded panels and authority controls. Bounded compatibility regressions repair
+custom Codex home propagation, fail-closed event handling and disposable backend/test isolation.
+Generated OpenAPI, SPA and Atlas describe the combined source. Fresh primary-source quant checks
+pass; cumulative public full verification and independent risk acceptance are still pending.
+Private-suite, current live Codex isolation and provider acceptance remain unverified. No standing
+exception or publication permission is assumed. See the research-runtime reconciliation plan.
 
 **2026-10-10 — Preserved feature reconciliation (local, unaccepted).** Recovered intended technical charts, exact PNG layers and volume views, CASH fee-affordability rejection evidence, typed PIT errors and core-only research import hygiene into an isolated checkout. Standing engineering holdout policy and active mutation/maintainability work are excluded. Original index/source bytes remain preserved and unchanged. Focused verification and final aggregate acceptance are pending; no publication or integration is claimed.
 
-
 **2026-10-10 — Preserved feature focused verification (local).** CASH/PIT/core/artifact/boundary regressions:69 passed. The chart PNG lost its visible outside-window annotation warning and gradient-based volume swatch; two failing browser regressions reproduced both omissions, then eight technical-chart tests passed after sharing the warning text and painting the same three swatch rectangles in DOM/export. Classic/Default screenshots are unchanged. Frontend lint/type/build/unit-coverage and Python import/lint/format checks pass. Packaged SPA rebuilt from this source. Fresh aggregate and independent release acceptance remain pending; no new private-suite exception or standing policy is adopted.
 
-
 **2026-10-10 — Preserved feature integration corrections (local, unaccepted).** Independent review reproduced a strict chart API response failure for CASH pretrade `execution_rejection` events and a native recorded-series PNG export missing its visible value tag. Backend/OpenAPI/frontend event contracts now include rejection events; an artifact-bound response regression fails before and passes after correction, and all 42 chart API integration tests pass. The native Save export now composites the recorded tag while preserving Save/Copy/Open controls and prompt; its browser regression fails before and passes after repair. Empty export headers retain image dimensions. Independent source review found no remaining issue in those repairs; the pixel placement of the recorded tag is not separately asserted. Type/lint and both lifecycle unit tests pass. Packaged assets are rebuilt. A new exact-tree canonical full run follows these final sources; release acceptance remains blocked by the unchanged absent-private-suite rule. No scoped exception has been extended, no feature committed or published, and the original shared index/source remain byte-identical.
-
-
-**2026-10-11 — Recovered-work scoped delivery authorized.** The owner approved separate
-chart/CASH/PIT/hygiene and existing research-runtime PRs/merges after all available checks,
-with the [one-time private-suite exception](operations/2026-10-11-recovered-work-private-suite-exception.md).
-Private coverage remains UNVERIFIED; the standing policy is excluded. Recovered feature source
-previously passed all six components on f54af6df. Refresh exact-tree validation and independent
-review for this delivery record; exact-target hosted CI and legitimate dependency order remain
-required. No live-provider acceptance, strategy admission or trading authority is conferred.
-
-
-**2026-10-11 — Existing research-runtime delivery authorized.** Existing source through b18cf921
-previously passed all six components on fefe81cb, with fresh quant verification and no independent
-source findings. The owner approved the one-time exception documented above, keeping private
-coverage UNVERIFIED. The combined candidate incorporates recovered chart/CASH/PIT/hygiene source
-and preserves recorded investigation/report, immutable-rule, budget and authority boundaries.
-Regenerate contracts/assets and obtain fresh full/source/quant/independent review plus exact-target
-hosted CI before merge. Live Codex0.161/Tiingo acceptance remains UNVERIFIED; no live credentials,
-private data, new strategy authority or standing policy is introduced.
-
-
-**2026-10-11 — Hosted research configuration-test portability repair.** Research PR #56's
-first hosted backend gate failed three public configuration tests because their executable
-lookup relied on Codex being installed on the test machine. The same failures reproduce locally
-with Codex removed from PATH. Those tests now discover a synthetic executable in a fixture-only
-PATH, assert its exact launch argv, and retain configuration/auth-reference/isolation assertions.
-A new negative test removes the fixture executable and verifies the production unavailable error
-before runtime-directory creation. All ten environment tests pass with no installed executable;
-production behavior and live-provider acceptance are unchanged. Fresh exact-tree independent
-review, canonical full and hosted checks follow this bounded test-only repair.
-**2026-10-10 mutation sweep durability (isolated publication):** Serial nightly sweeps were
-cancelled near six hours. The owner selected weekly exhaustive singleton jobs; nightly Semgrep,
-determinism and raise-site coverage remain. Identity-bound atomic checkpoints, persisted logs,
-unique staging, bounded matrix/internal workers, deadline process-group cleanup and exact aggregate
-validation separate complete infrastructure from report-only hosted scores. Floors, tolerance,
-module/test scope, excluded-test audit and local tooling-unavailable semantics are unchanged.
-The shared-tree implementation passed 225 focused tests, four Atlas consistency tests and the
-six-component canonical full gate. This focused branch requires its own fresh full verification,
-independent review and hosted evidence. Private engineering coverage remains UNVERIFIED; main's
-review policy must be satisfied before any protected commit. After an explicit question,
-the owner answered "yes" to a one-time absent-private-suite exception for the mutation fix
-under `docs/superpowers/plans/2026-10-10-mutation-checkpoints.md` only. Its absence remains
-UNVERIFIED; the denied private execution will not be retried. No actual failure, public
-check, independent review, hosted mutation completeness or Git protection is waived, and
-no private-source access or future exception is granted. The isolated pre-exception tree
-passed all six full-gate components; the updated tree requires fresh full verification
-and independent review before guarded publication.
 
 ## 2026-10-10 — Hosted mutation constant-module repair (verification pending)
 
@@ -1126,6 +434,49 @@ used the final pinned adapter. These are diagnostic receipts, never full hosted 
 The old hosted head also retained gate-packet timeout progress 2250/3019. New exact-head hosted
 completion, final canonical full and fresh bound review remain acceptance requirements.
 
+**2026-10-11 — Recovered-work scoped delivery authorized.** The owner approved separate
+chart/CASH/PIT/hygiene and existing research-runtime PRs/merges after all available checks,
+with the [one-time private-suite exception](operations/2026-10-11-recovered-work-private-suite-exception.md).
+Private coverage remains UNVERIFIED; the standing policy is excluded. Recovered feature source
+previously passed all six components on f54af6df. Refresh exact-tree validation and independent
+review for this delivery record; exact-target hosted CI and legitimate dependency order remain
+required. No live-provider acceptance, strategy admission or trading authority is conferred.
+
+**2026-10-11 — Existing research-runtime delivery authorized.** Existing source through b18cf921
+previously passed all six components on fefe81cb, with fresh quant verification and no independent
+source findings. The owner approved the one-time exception documented above, keeping private
+coverage UNVERIFIED. The combined candidate incorporates recovered chart/CASH/PIT/hygiene source
+and preserves recorded investigation/report, immutable-rule, budget and authority boundaries.
+Regenerate contracts/assets and obtain fresh full/source/quant/independent review plus exact-target
+hosted CI before merge. Live Codex0.161/Tiingo acceptance remains UNVERIFIED; no live credentials,
+private data, new strategy authority or standing policy is introduced.
+
+**2026-10-11 — Hosted research configuration-test portability repair.** Research PR #56's
+first hosted backend gate failed three public configuration tests because their executable
+lookup relied on Codex being installed on the test machine. The same failures reproduce locally
+with Codex removed from PATH. Those tests now discover a synthetic executable in a fixture-only
+PATH, assert its exact launch argv, and retain configuration/auth-reference/isolation assertions.
+A new negative test removes the fixture executable and verifies the production unavailable error
+before runtime-directory creation. All ten environment tests pass with no installed executable;
+production behavior and live-provider acceptance are unchanged. Fresh exact-tree independent
+review, canonical full and hosted checks follow this bounded test-only repair.
+**2026-10-10 mutation sweep durability (isolated publication):** Serial nightly sweeps were
+cancelled near six hours. The owner selected weekly exhaustive singleton jobs; nightly Semgrep,
+determinism and raise-site coverage remain. Identity-bound atomic checkpoints, persisted logs,
+unique staging, bounded matrix/internal workers, deadline process-group cleanup and exact aggregate
+validation separate complete infrastructure from report-only hosted scores. Floors, tolerance,
+module/test scope, excluded-test audit and local tooling-unavailable semantics are unchanged.
+The shared-tree implementation passed 225 focused tests, four Atlas consistency tests and the
+six-component canonical full gate. This focused branch requires its own fresh full verification,
+independent review and hosted evidence. Private engineering coverage remains UNVERIFIED; main's
+review policy must be satisfied before any protected commit. After an explicit question,
+the owner answered "yes" to a one-time absent-private-suite exception for the mutation fix
+under `docs/superpowers/plans/2026-10-10-mutation-checkpoints.md` only. Its absence remains
+UNVERIFIED; the denied private execution will not be retried. No actual failure, public
+check, independent review, hosted mutation completeness or Git protection is waived, and
+no private-source access or future exception is granted. The isolated pre-exception tree
+passed all six full-gate components; the updated tree requires fresh full verification
+and independent review before guarded publication.
 
 ## 2026-10-11 — bounded WAL negotiation during hosted mutation collection
 
@@ -1149,7 +500,6 @@ Fresh public full verification, independent review and new exact-head complete h
 remain pending for this follow-up. No partial/stale hosted verdict, score floor or private-suite
 exception is reused or broadened. SQLite reference: https://www.sqlite.org/c3ref/busy_handler.html.
 
-
 ### 2026-10-11: measured fragment sizing follow-up
 
 At `da463cee`, hosted sweep `38136100567` failed rendering fragment 46 at the unchanged
@@ -1171,7 +521,6 @@ checks, canonical full verification, independent review and exact-head hosted CI
 are required before this follow-up can be accepted or merged. Private suites remain unverified under
 the existing scoped owner exception; standing policy is unchanged.
 
-
 ### 2026-10-12: deterministic signed PIP oracle follow-up
 
 Sweep `38151251890` at `3c3a7760` completed 249 of 250 fragments successfully. PIP-miner
@@ -1189,7 +538,6 @@ floors are unchanged. Repeated/reversed execution, applicable static checks, fre
 full, independent review and new exact-head hosted CI/exhaustive acceptance remain required.
 Private coverage remains UNVERIFIED under the existing scoped decision. PR #54's description
 remains untouched; failed/partial historical verdicts are never reused for acceptance.
-
 
 ### 2026-10-12: post-merge harness-template isolation follow-up
 
@@ -1212,7 +560,6 @@ Focused public checks pass; fresh canonical full, independent review and hosted 
 remain required. Private coverage remains UNVERIFIED. This standalone fixture delta has
 no risk-tier, quant or protected-path trigger, so the specialized private-suite review rule
 does not apply. No exception is inferred or broadened; no private execution has been retried.
-
 
 ### 2026-10-13: combined post-merge fixture and single-wheel resize repair
 
@@ -1243,9 +590,7 @@ floors, exclusions, policy and PR #54's description are unchanged.
 
 Integrated the cleanup-only runtime/tests delta on accepted main `d914be9f` (PR54 and PR57). Immutable crypto writes and pure control JSON helpers are separated without changing bytes, limits, facade names, migrations or authority. The accepted WAL busy retry, disposable fixture repair and wheel restoration remain unchanged. Frontend checks build/type-check once before built-only browsers; standalone browser commands still build. Added focused development navigation. Source relocation intentionally changes new execution fingerprints; historical evidence remains untouched. The owner-approved one-time cleanup exception records unavailable private coverage UNVERIFIED; no standing policy change. Fresh target acceptance is recorded externally after public full verification and independent review; prior prototype evidence is not reused.
 
-
 **2026-10-13 — Recovered feature integration against accepted cleanup (pending).** PR55 is refreshed against accepted main d3043d6c (mutation checkpoints/WAL, disposable Git fixture, chart wheel order and bounded maintainability). Source repairs are retained; historical feature and acceptance records remain intact. Conflicting SPA and Atlas output is regenerated from the combined source. Fresh focused tests, independent review, quant verification, all six canonical components and exact-head/postmerge CI govern final acceptance. Private coverage remains UNVERIFIED under the existing recovered-work scoped exception; protected mutation staging remains separate and unapproved.
-
 
 **2026-10-13 — Technical price-mount lifecycle repair.** Fresh clean-context review found that a cancelled asynchronous technical-price mount registered its UTC endpoint before the component checked whether its effect was live. If it resolved after its replacement, stale cleanup removed the replacement link. Two actual-renderer unit regressions fail on the old source (premature registration and missing replacement cursor delivery). The renderer now exposes deferred activation, and the component activates only after its live check, matching the recorded-plot protocol. Both completion orders pass; native data, rendering geometry and screenshot baselines are unchanged. Previous 5a855ce4 full/CI evidence is retained as historical evidence; fresh final-tree full, independent review and exact-head CI remain required.
 
@@ -1273,7 +618,6 @@ skipped) but stopped because the combined manuals exceeded the 6,000-byte cap. T
 full, required hosted CI and post-merge checks. Private coverage and live Codex 0.161/Tiingo acceptance
 remain UNVERIFIED; no credential access, hosted-provider activation, new strategy authority or
 standing policy is added. Protected mutation-staging work remains separate and unapproved.
-
 
 ## 2026-10-13 — Scoped preflight and tooling integration candidate
 
@@ -1313,7 +657,6 @@ fixed-decimal form and backend study values remain untouched. A browser regressi
 shadow-root gutter and signed fixed-decimal label, with PNG export checks retained. Fresh full
 verification, independent review, and exact-head hosted checks are pending.
 
-
 ## 2026-10-14 — Existing ML ensemble response compatibility preparation
 
 A synthetic exchange reproduction through actual FastAPI response validation on main `fc6d3b90`
@@ -1340,7 +683,6 @@ holdout suite passed 17 tests, and the validation copy passed all six canonical 
 fresh independent review approved that validated tree. Hosted head and post-merge results are tracked
 separately in PR acceptance evidence, and private coverage remains UNVERIFIED. No worker, numerical,
 research-authority, or protected-gate behavior changed.
-
 
 ## 2026-10-15 — Current-main documentation and Atlas upkeep preparation
 
@@ -1586,7 +928,6 @@ did not inspect physical storage, launch persistence, live providers, broker
 connectivity, the full gate, or the Playwright suite. The 2026-10-18 foundation
 record above remains the historical basis for items not changed by this update.
 
-
 ## 2026-10-21 — Atomic snapshot and receipt retry corrections
 
 On the isolated branch based on `b2556c0ede016f99dba687187b6e9f501bedd5cb`, synthetic deterministic
@@ -1611,47 +952,6 @@ and passed Atlas tests, then stopped on stale generated Atlas graph/input/unknow
 Their canonical regeneration is part of this change; the failed attempt remains preserved and is
 not aggregate acceptance. Final regenerated-tree results remain in the separate task receipts.
 
-## 2026-10-22 — Technical-chart cursor inspection (unaccepted)
-
-On clean supplied base `99f2d472dd4511b446e1198ae80201e7207d089d` (isolated branch `work`), the
-existing Technical · Bokeh chart now supports exact candle/study inspection by hover, touch tap, and
-focused Left/Right/Home/End/Escape keys. Selection uses the returned candle index and aligned backend
-overlay value, preserves `—` for missing study points, publishes the existing UTC linked cursor, and
-clears on chart recomposition so the header returns to the latest returned candle. Classic/Default
-grammar and optional Market · Lightweight are preserved. No backend, API, dependency, or research
-artifact changes. The deterministic E2E uses mocked synthetic bars and is not research evidence.
-
-Focused evidence: renderer unit tests 3 passed; technical-chart Chromium reference spec 18 passed,
-including keyboard/touch value identity, study-change stale clearing, loading/empty/503 states, and
-both theme screenshots; TypeScript build check and warning-denying lint passed. The packaged SPA
-build passed with existing Vite dependency-eval/chunk-size warnings. Visual captures and exact
-candidate/recovery patch are in `/workspace/task-evidence/alpha-chart-inspection/`. Independent
-read-only review approved the implementation and scoped evidence. This is not a full repository gate
-or feature-release acceptance. No commit, publication, or merge was made.
-
-## 2026-10-23 — Strict alpha-study feature schema versions
-
-`FeatureInputRefV1` and `FeatureValueV1` now reject schema-version values that are not
-integers equal to `1`, including JSON booleans and floating-point `1.0`. Public
-regressions cover valid round trips with unchanged content hashes, both top-level
-readers, nested input references, unsupported and missing versions, semantic tampering,
-extra keys, and boolean feature scalars. Valid serialized output and hashes remain
-unchanged. No schema migration, dependency, store, or authority change was introduced.
-Private external coverage remains **UNVERIFIED**.
-
-## 2026-10-23 — Boolean guard for frozen baseline numeric inputs
-
-`alpha research diagnostic run-plan` previously accepted JSON booleans in numeric plan fields and
-`schema_version`: `seed: true` became `1`, `target_vol: true` became `1.0`, and
-`schema_version: true` became `1` before plan identity was calculated. Focused regressions reproduce
-all three conversions. The existing `BaselineExecutionPlan` now rejects booleans in numeric fields
-and `schema_version` while preserving Pydantic's existing numeric-string and integral-float
-coercions; a compatibility test verifies equivalent inputs retain the same normalized plan hash.
-This is a fail-closed input-contract change only: no metrics, experiment lineage, reservation,
-semantic freeze, strategy behavior or authority changed. The focused module passed all 40 tests when
-run through `scripts/run_owned_test.py`, and an independent review approved the bounded patch. The
-canonical full gate was not run. No commit or publication was made.
-
 ## 2026-10-21 — Stooq interrupted-response error boundary candidate
 
 An offline probe through the real Stooq adapter and `data pull` on accepted main
@@ -1670,6 +970,24 @@ A separate dated correction in the owner-actions register supersedes its preserv
 August 19 branch-only harness advice: accepted main tracks the two named harness
 files. Their presence does not establish hook installation, trust, permissions or
 local readiness. The old inspection date and historical text remain unchanged.
+
+## 2026-10-22 — Technical-chart cursor inspection (unaccepted)
+
+On clean supplied base `99f2d472dd4511b446e1198ae80201e7207d089d` (isolated branch `work`), the
+existing Technical · Bokeh chart now supports exact candle/study inspection by hover, touch tap, and
+focused Left/Right/Home/End/Escape keys. Selection uses the returned candle index and aligned backend
+overlay value, preserves `—` for missing study points, publishes the existing UTC linked cursor, and
+clears on chart recomposition so the header returns to the latest returned candle. Classic/Default
+grammar and optional Market · Lightweight are preserved. No backend, API, dependency, or research
+artifact changes. The deterministic E2E uses mocked synthetic bars and is not research evidence.
+
+Focused evidence: renderer unit tests 3 passed; technical-chart Chromium reference spec 18 passed,
+including keyboard/touch value identity, study-change stale clearing, loading/empty/503 states, and
+both theme screenshots; TypeScript build check and warning-denying lint passed. The packaged SPA
+build passed with existing Vite dependency-eval/chunk-size warnings. Visual captures and exact
+candidate/recovery patch are in `/workspace/task-evidence/alpha-chart-inspection/`. Independent
+read-only review approved the implementation and scoped evidence. This is not a full repository gate
+or feature-release acceptance. No commit, publication, or merge was made.
 
 ## 2026-10-22 — Empty component gate definitions fail closed
 
@@ -1702,6 +1020,31 @@ regressions cover bootstrap stderr with the exact pin, wrong/empty/extra stdout,
 text in diagnostics, failed bootstrap, both callers, scan arguments and full scan failures. The
 failed cold-cache full-gate attempt is preserved in durable task evidence; it exposed the adapter
 issue before any scan began. This entry makes no private-suite or release-qualification claim.
+
+**2026-10-23 local candidate — unscheduled ML membership guard:** On main `99f2d472dd4511b446e1198ae80201e7207d089d`, schema versions 1 and 2 could accept `point_in_time` without a membership schedule. This local protective slice rejects that declaration at new export/preparation, retains `current_membership` only with its visible warning, and leaves historical artifacts byte-identical and inspectable with a `declared_unverified` status carried through CLI and web result/evaluation/tear-sheet projections. Existing frozen unscheduled PIT inputs cannot be trained or replayed by ALPHA/Qlib. No promotion gate changed; no schedule-v2 or date-varying model support is claimed. Focused synthetic contract, exporter, CLI, worker and web response tests passed; independent review approved the guard and read-only web projection. The full gate was not run, and this patch is not committed or merged.
+
+## 2026-10-23 — Strict alpha-study feature schema versions
+
+`FeatureInputRefV1` and `FeatureValueV1` now reject schema-version values that are not
+integers equal to `1`, including JSON booleans and floating-point `1.0`. Public
+regressions cover valid round trips with unchanged content hashes, both top-level
+readers, nested input references, unsupported and missing versions, semantic tampering,
+extra keys, and boolean feature scalars. Valid serialized output and hashes remain
+unchanged. No schema migration, dependency, store, or authority change was introduced.
+Private external coverage remains **UNVERIFIED**.
+
+## 2026-10-23 — Boolean guard for frozen baseline numeric inputs
+
+`alpha research diagnostic run-plan` previously accepted JSON booleans in numeric plan fields and
+`schema_version`: `seed: true` became `1`, `target_vol: true` became `1.0`, and
+`schema_version: true` became `1` before plan identity was calculated. Focused regressions reproduce
+all three conversions. The existing `BaselineExecutionPlan` now rejects booleans in numeric fields
+and `schema_version` while preserving Pydantic's existing numeric-string and integral-float
+coercions; a compatibility test verifies equivalent inputs retain the same normalized plan hash.
+This is a fail-closed input-contract change only: no metrics, experiment lineage, reservation,
+semantic freeze, strategy behavior or authority changed. The focused module passed all 40 tests when
+run through `scripts/run_owned_test.py`, and an independent review approved the bounded patch. The
+canonical full gate was not run. No commit or publication was made.
 
 ## 2026-10-24 — Local PR81–88 UI integration derivative
 
@@ -1780,6 +1123,37 @@ Invalid explicit cache paths fail before worker startup rather than silently swi
 Focused tests cover the configured and temporary paths, cleanup on success/failure, read-only home,
 and environment isolation. A real synthetic owner-PDF CLI import and page read passed with no
 inherited cache setting and a read-only home; no provider request or owner paper was used.
+
+**Tiingo transport-error redaction (2026-10-24)** — `TiingoAdapter.fetch` converts URL, timeout,
+incomplete-read, and OS transport failures into type-only `DataError` messages and suppresses their
+exception context for both bounded and unbounded reads. HTTP status errors, response-size limits,
+parsing, and adapter result contracts are unchanged. Synthetic offline tests cover both read paths,
+oversized responses, normal responses, and response cleanup.
+
+**2026-10-25 local candidate — bounded DefiLlama snapshot query:** On isolated branch
+`codex/storage-snapshot-query-audit` from verified commit `e635e6cb5bc7b9fa688dc524998d7fe1ff8eebdc`,
+added `alpha crypto-data snapshot-query SNAPSHOT_ID` for exactly one `defi_tvl` member. The reader
+checks volume UUID, exact snapshot/member identity, manifest and raw lineage, artifact hash, quality,
+and schema. It caps normalized Parquet at 32 MiB, the raw receipt at 8 MiB, accepted input at 50,000
+rows, and each page at 1,000 rows; `has_more` and `next_offset` make continuation explicit. A
+50,001st row is only a rejection sentinel. Fixed-width selected columns contribute about 1.2 MB /
+1.15 MiB at the accepted row cap before Polars internal buffers; this is a logical materialization
+bound, not an OS-enforced decompression or process-RSS ceiling. JSON retains observation and
+availability clocks, USD units, artifact/dataset/raw-response hashes, provider schema/parser
+versions, and receipt fetch time. `available_at` uses only the parser's next-UTC-day convention;
+fetch time is retrieval evidence, every result sets `point_in_time_claim=false`, and no historical
+publication time is inferred.
+
+Synthetic focused storage/query/CLI tests passed (39); DefiLlama fixture/acquisition tests passed
+(21); public fixture/harness checks passed (14); manual-size tests passed (23). Root Ruff check and
+format passed (1,001 files); strict mypy passed across packages/apps/tests (859 files) and harness
+scripts (17 files); import contracts kept all 13 rules. Atlas lock/sync, lint/format, package mypy
+(23 files), full non-network tests (102 passed, one Starlette deprecation warning), and generated
+freshness (8 outputs) passed. Root and Atlas lock/sync, harness lint, plan-check, and `git diff
+--check` passed. Independent read-only review approved the byte/row/page bounds and confirmed no
+silent truncation or historical point-in-time claim. Changed-files Semgrep passed (198.2 seconds),
+and the Semgrep contract check passed. No full gate, DuckDB/dependency change, migration, provider
+call, commit, merge, deployment, or publication was performed.
 
 **Read-only qualification preflight (2026-10-25)** — Added `python3 scripts/gate.py preflight
 [--json]` to identify known blockers before the full gate. It checks only allowlisted public
@@ -1864,6 +1238,7 @@ candidate-local `.venv` and mypy present, and Atlas outputs fresh. It reported t
 zero quant targets. Frontend freshness paths matched the index. The preflight's own mypy entries
 remain correctly labeled `scope_only` and `not_run`; the passing mypy result above came from a
 separate command. No full gate, publication, merge, or deployment was performed for this follow-up.
+
 ## 2026-10-26 — Synthetic native lifecycle candidate (local, inactive)
 
 Adds protected typed native lifecycle events and atomic failure/cancellation closure using existing
@@ -2010,7 +1385,6 @@ compatibility remain blocked. Real discovery, empirical W08 and full report/UI a
 unqualified. See [current plan](superpowers/plans/2026-10-26-native-rule-authority.md) for exact
 authority, source paths, receipt map, blockers, rollback and resume.
 
-
 ## 2026-10-26 — Native workflow assembly onto current integration (pending qualification)
 
 Preserved original tree d67a13e88ced67e234dd0183ad7fd01ed8c53e74 and its receipts. Applied its full
@@ -2019,7 +1393,6 @@ without conflicts; retained both build histories and regenerated Atlas. Moved de
 invariants from the operating manual to the existing current plan to preserve the canonical
 manual-size guard. Fresh scoped verification and independent review are pending. No handoff,
 private-suite, rendered UI, scientific or production acceptance is inherited. No commits/publication.
-
 
 ### Native assembly independent review corrections (2026-10-26)
 
@@ -2094,8 +1467,6 @@ source/runtime failures are preserved in the executor's engineering-gate-followt
 No private-suite, real-data/scientific, rendered native-UI or deployment acceptance follows from
 engineering checks. No Library-transfer workaround or Qlib adapter change is included.
 
-
-
 ## 2026-10-26 Qlib tabular first-wave local candidate
 
 Implemented in isolated `Project-ALPHA-handover/qlib-tabular-wave1-20261026`, branch
@@ -2155,7 +1526,6 @@ pending or absent receipts confer no pass. Linux/Windows transport, authentic pr
 empirical/data approval and promotion remain separate; no new local dependency authorization
 is needed for these verified pins. No GitHub publication or accepted-stack upgrade occurred.
 
-
 ## 2026-10-26 — Qlib W11 successor engineering packet (in progress)
 
 The five-backend/eight-recipe wave remains sealed at tree
@@ -2200,7 +1570,6 @@ programme receipts and explicit remaining authority/statistical limits are linke
 plan. Peak RSS was838,926,336bytes. The assembled-tree full gate and final independent review
 remain separate required receipts; this entry does not grant scientific acceptance or promotion.
 
-
 ## 2026-10-26 W05 integration successor (local; qualification pending)
 
 Preserved W11/native/tabular tree `a284def9502c20884ecf9740867db0810dc9ec83` remains unchanged.
@@ -2212,14 +1581,6 @@ for code, current checks, source identities, recovery and deferred final gate.
 
 Imported producer behavior notes below describe the reviewed source; their historical tests do not
 constitute verification of this successor.
-
-
-**Tiingo transport-error redaction (2026-10-24)** — `TiingoAdapter.fetch` converts URL, timeout,
-incomplete-read, and OS transport failures into type-only `DataError` messages and suppresses their
-exception context for both bounded and unbounded reads. HTTP status errors, response-size limits,
-parsing, and adapter result contracts are unchanged. Synthetic offline tests cover both read paths,
-oversized responses, normal responses, and response cleanup.
-
 
 **W05 bounded daily reference qualification (2026-10-26)** — A synthetic receipt-backed
 Tiingo-format path exercises normalization, immutable snapshots, reopened typed queries,
@@ -2246,14 +1607,12 @@ query/report/navigation source handoffs remain unavailable. Existing `data candl
 and member-level snapshot contracts are the current query seams, not the unpublished query/restore
 work. No real acquisition, accepted discovery interval, scientific qualification or publication.
 
-
 ## 2026-10-26 combined Mac portability qualification
 
 Preserved W05 successor `b0b9c8ea` and earlier W11/tabular checkpoints remain unchanged.
 Verified native incremental archive `libfile_229009c0e56481918322aacbfcc0881b` reproduces
 `f15c9063` → `35e762d5` exactly; actual consumer native production/test base hashes match.
 The following producer notes describe imported source, not a Mac aggregate result.
-
 
 **Native source portability follow-through (2026-10-26; qualification pending).** Explicit Linux
 guards type the retained-child observer and Linux-only fixture probes for Darwin development.
@@ -2277,7 +1636,6 @@ Linux producer 49-stage/93.05% evidence and Darwin-target typing are not a Mac g
 Existing schema-v7 writable-open migration remains; synthetic stores only. Source reversal is
 not database rollback. No scientific/private-suite acceptance or native Mac activation follows.
 
-
 ### Combined Mac portability follow-up (2026-10-26)
 
 Verified native incremental f15c9063 → 35e762d5 was reconciled into an isolated
@@ -2286,7 +1644,6 @@ failed with two missing-worker capability routes and 91.60% coverage against 93%
 A bounded readiness fix and portable approval-integrity verification follow; aggregate
 acceptance is not granted by the producer Linux result or targeted checks. Exact final
 receipts and next action are linked by the [Mac qualification plan](superpowers/plans/2026-10-26-mac-portability-qualification.md).
-
 
 ### Portable-evidence successor (2026-10-26, in progress)
 
@@ -2469,7 +1826,6 @@ PR #95 follow-up:
 Details:
 [native plan](superpowers/plans/2026-10-26-native-rule-authority.md#gate10gate11-repairs-and-retained-diagnostics-2026-10-28).
 
-
 ## 2026-10-29 — Isolated PR93 recovery reconciliation on PR95
 
 The retained PR93 recovery and cancellation implementation is reconciled locally onto published
@@ -2499,6 +1855,25 @@ absence-only private-suite exception for this bounded PR93 work through delivery
 coverage remains UNVERIFIED. All other checks and independent review remain mandatory.
 Final aggregate/review outcomes are recorded in the candidate evidence; historical receipts are
 not reused. Publication waits for verified PR95 integration into main and parent coordination.
+
+## 2026-10-29 PR #95 post-merge advisory findings (follow-up)
+
+After PR #95 merged, the advisory Codex review raised two P2 findings in code from the preserved
+integration history; both were verified as real:
+- `GET /api/ml/exchanges/{id}/evaluation` rejected schema 2 and 3 exchanges: `MlEvaluation`
+  allowed only version 1, while `ml evaluate` keeps the request's contract version.
+- The owner-selected local PDF import blocked indefinitely on a FIFO before its regular-file
+  check could reject it.
+
+Fixes:
+- The response model accepts the CLI's supported versions; OpenAPI and the client were regenerated.
+- The PDF open uses `O_NONBLOCK`; the regular-file, symlink, size and replacement checks are
+  unchanged.
+
+Regressions: every supported evaluation version (parametrized over the CLI's supported set, so a
+new CLI version fails until the web contract follows), a bounded FIFO rejection, and a negative
+control that an unsupported version is still rejected. Versions 2 and 3 and the FIFO case were red
+before the fix; version 1 and the negative control passed before and after.
 
 ## 2026-10-30 Software Team workflow candidate
 
@@ -2600,7 +1975,6 @@ The approval record is itself a protected source change. At writing, its final t
 fresh full verification and independent attestation. No earlier stamp is rebound or reused as that
 tree's acceptance. Publication remains subject to coordination and its separate authorization.
 
-
 ## 2026-10-30 Delivery status and bounded cloud cleanup reconciliation
 
 Direct GitHub and Git parentage checks confirm [PR95](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/95)
@@ -2625,7 +1999,6 @@ records the observed cloud branch/path/operation ledger, retained refs and verif
 cancelled docs-only predecessor. The saved Mac ledger, physical storage and historical owner-side
 counts remain unverified and separately blocked; no unique local data was deleted. This bounded
 cloud reconciliation does not declare the broader cleanup/refactor programme complete.
-
 
 ### Cleanup aggregate re-entry findings (2026-10-30)
 
@@ -2742,7 +2115,6 @@ fresh context handoff demonstration and final combined-tree gate/review are sepa
 obligations at this entry; no standalone receipt qualifies this assembled tree. Final receipts
 and publication disposition are retained in the exact candidate's ignored evidence directory.
 
-
 ## 2026-10-30 — Recover stranded bounded snapshot query
 
 The existing snapshot-query slice from `4710a00392cc40739f97ed49890a85ac911ec6e0` is
@@ -2766,26 +2138,6 @@ subtests passed, but 92.98% missed the unchanged 93% floor. Added public malform
 lineage regressions address new-reader error paths; no production code or threshold changes.
 A fresh complete gate and final independent review are required for this corrected tree.
 
-## 2026-10-29 PR #95 post-merge advisory findings (follow-up)
-
-After PR #95 merged, the advisory Codex review raised two P2 findings in code from the preserved
-integration history; both were verified as real:
-- `GET /api/ml/exchanges/{id}/evaluation` rejected schema 2 and 3 exchanges: `MlEvaluation`
-  allowed only version 1, while `ml evaluate` keeps the request's contract version.
-- The owner-selected local PDF import blocked indefinitely on a FIFO before its regular-file
-  check could reject it.
-
-Fixes:
-- The response model accepts the CLI's supported versions; OpenAPI and the client were regenerated.
-- The PDF open uses `O_NONBLOCK`; the regular-file, symlink, size and replacement checks are
-  unchanged.
-
-Regressions: every supported evaluation version (parametrized over the CLI's supported set, so a
-new CLI version fails until the web contract follows), a bounded FIFO rejection, and a negative
-control that an unsupported version is still rejected. Versions 2 and 3 and the FIFO case were red
-before the fix; version 1 and the negative control passed before and after.
-
-
 ## 2026-10-30 — Coordinated P2 and snapshot follow-on assembly
 
 A separate integration candidate retains foundation PR97 `d1aa8157`, P2 PR98 `daece223` and
@@ -2797,7 +2149,6 @@ from the complete tree. The combined candidate requires its own exact-tree full 
 independent review; no prior individual pass accepts this assembly. Private coverage stays
 UNVERIFIED under the existing task-scoped absence-only decisions. Main and existing PRs are not
 mutated during preparation. See the [follow-on execution record](superpowers/plans/2026-10-25-crypto-snapshot-query.md#coordinated-follow-on-assembly--2026-10-30).
-
 
 ## 2026-10-30 — Verified combined delivery on main
 
@@ -2839,7 +2190,6 @@ full qualification, independent review and hosted checks remain required for del
 candidate. README remains owned by its separate task. Archive bytes, upstream's whole dependency
 API, private coverage and Mac readiness remain UNVERIFIED; provisioning confers no execution,
 scientific or product authority. Historical failure and gate records remain preserved.
-
 
 ## 2026-10-31 — Non-destructive checkpoint retention and branch recovery
 
@@ -2996,7 +2346,6 @@ without inventing an order. Missing older evidence remains explicitly not record
 artifacts, economics and authority are unchanged. Focused/final qualification and guarded delivery
 are recorded in this follow-up's evidence; no real study or Mac access is involved.
 
-
 ## 2026-10-31 — Truthful durable cancellation publication candidate
 
 The durable lease now completes cancellation only after verified child cleanup and a successful
@@ -3013,7 +2362,6 @@ regression failed before the fix. Final aggregate verification and independent r
 separate delivery evidence; this entry does not assert either. Private coverage is UNVERIFIED
 under the recorded task-scoped four-workstream absence-only exception. No real study ran.
 See [plan](superpowers/plans/2026-10-31-durable-cancellation-publication.md).
-
 
 ### 2026-10-31 — Daily history inspection before Linux storage selection (candidate)
 
@@ -3040,7 +2388,6 @@ history; API/script regressions reproduce the former failure and pass with the f
 focused verification passed 41 tests; ruff/mypy passed. Earlier 37-test results remain the
 previous candidate checkpoint. Full release qualification remains pending.
 
-
 ### 2026-11-01 — Read-only daily-history Linux integration
 
 Integrated the retained reader onto fetched main `fcec79b9` without changing its authored
@@ -3052,7 +2399,6 @@ Final aggregate qualification, independent verdict and hosted results are retain
 normal gate/review/PR workflow; focused tests alone confer no release or runtime authority.
 Private coverage remains UNVERIFIED under the existing bounded absence-only exception. No real
 history, Mac access, storage activation, study, allowance, credentials or security changes.
-
 
 ## 2026-11-01 — Fail early on invalid supplied cloud-bootstrap inputs
 
@@ -3068,7 +2414,6 @@ README and the operating manual explain early refusal. Final-tree full qualifica
 review and hosted delivery evidence are separate requirements; this record claims no aggregate pass.
 Private coverage remains UNVERIFIED. No live study, allowance consumption, Mac access or trading.
 See the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#supplied-input-validation-follow-up--2026-11-01).
-
 
 ## 2026-11-01 — Cloud setup public-fixture correction checkpoint
 
@@ -3086,7 +2431,6 @@ uncertainties, and no focused pass is aggregate acceptance. Reader-first reconci
 private-suite absence authorization and final-tree full verification remain required. Evidence and
 limits are in the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#bounded-public-fixture-repair-checkpoint--2026-11-01).
 
-
 ## 2026-11-01 — Narrow heartbeat CLI startup optimization
 
 Measured heartbeat time was dominated by unused research-intake imports before journal entry.
@@ -3102,7 +2446,6 @@ aggregate acceptance. The original full-gate/TMPDIR/supervisor uncertainties rem
 Reader-first base reconciliation, pending private-suite approval, fresh independent review and the
 required final-tree full gate remain open. See the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#lazy-intake-startup-correction-checkpoint--2026-11-01).
 
-
 ## 2026-11-01 — Cloud workflow correction reconciled after PR108
 
 The bootstrap/lazy-intake/public-fixture candidate is reconciled onto reader main `4e3ca30d`.
@@ -3116,7 +2459,6 @@ The environment restart lost prior `/tmp` raw logs. Exact source preservation, s
 receipts/coverage and transcript-only historical results are explicitly distinguished. Fresh final
 qualification evidence is retained under ignored workspace state. This entry records reconciliation
 and scope, not a final pass. See the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#reader-main-reconciliation-and-bounded-approval--2026-11-01).
-
 
 ### 2026-11-02 — Inert W09 planning identities and blocked readiness
 
@@ -3232,7 +2574,6 @@ activation, worker setup and frontend behavior are untouched. The reviewer scope
 keeps private coverage UNVERIFIED and every real failure blocking. The unchanged full gate,
 93% floor, README evidence and exact-final-tree independent review remain mandatory;
 their receipts establish acceptance separately from the historical focused checks above.
-
 
 ### 2026-11-04 — W09 durable diagnostic integration and authorization
 
@@ -3437,7 +2778,6 @@ only documentation and generated-Atlas overlap is resolved. Final evidence binds
 actual integrated tree. Separate standing direction permits a qualified merge through
 normal protections; no live-provider admission, trading or deployment is authorized.
 
-
 ## 2026-11-06 — Native Qlib and Nautilus Results previews (delivery pending)
 
 The existing Results area has read-only views of separately executed synthetic upstream
@@ -3515,7 +2855,6 @@ No private test content was read; private-suite coverage is UNVERIFIED.
 
 Plan: [backtest result card](superpowers/plans/2026-11-06-backtest-result-card.md).
 
-
 ## Backtest card parent-review corrections — 6 November 2026
 
 Parent inspection identified a scope regression in the initial candidate: enabling the card
@@ -3532,7 +2871,6 @@ browser cases, including forecast/validation summaries, load errors, fractional 
 range rejection and late-response ownership. The earlier bundle/receipts remain historical.
 Final-tree independent source review is recorded in the replacement delivery bundle. Integration,
 Atlas freshness, the unchanged full gate and guarded publication still follow native UI delivery.
-
 
 ## Backtest card and original native Results integration preparation — 6 November 2026
 
@@ -3558,7 +2896,6 @@ This is preparation against the original UI tree, not qualification of its fundi
 successor or actual merged head. The UI owner's executor, branch and live gate were untouched.
 Full gate, full browser matrix, merged-head README/review bindings and guarded publication remain
 pending. Hidden holdout coverage is UNVERIFIED; no private content was inspected.
-
 
 ## Card preparation on qualified PR118 funding/UI head — 6 November 2026
 
@@ -3619,7 +2956,6 @@ remains default off, reversible in Settings, and carries no empirical or live-tr
 
 <!-- Preserved owner narrative: Qlib048dc0ae; historical claims apply only to that owner candidate, not the combined tree. -->
 
-
 ## 2026-11-07 — Joined native Qlib-to-Nautilus synthetic pipeline (candidate)
 
 Implemented a bounded functional route from upstream qrun's own prediction artifacts to the
@@ -3668,7 +3004,6 @@ failed after the successful native process. The checked-in CI already uses the c
 The public frontend coverage command also passed all 492 tests across 74 files. These local
 results do not establish hosted CI, the canonical full gate or private-suite coverage.
 
-
 ## 2026-11-07 — Native bridge complete-public-checkout qualification correction
 
 Preserved the native Qlib-to-Nautilus candidate `7c345fc6d7e792341656904abd0c2f56570a080f`
@@ -3705,59 +3040,6 @@ mypy. The canonical aggregate gate disposition is recorded only by the tree-boun
 this dated entry does not claim that disposition or empirical/provider validation. No external
 resource retrieval, provider request, new dependency, migration, live trade, commit, merge,
 deployment, or publication was performed.
-
-**2026-11-08 isolated original-paper retention successor (focused verification only):** On
-`codex/paper-original-pdf-retention-20261108`, based on `3f7b23185c29b2542605bd41b9485016c2ef3e79`
-and carrying the separate paper-to-experiment candidate, owner-selected local PDFs are now retained
-under `research/literature/source-pdfs/<source_id>.pdf`. The immutable source row's existing
-content hash and source identity bind the bytes; no table or schema migration was added. Writes are
-bounded to the existing 10 MiB intake limit, use a same-directory no-overwrite link after fsync,
-and reads use a pinned directory, reject symlinks/non-regular files, recheck concurrent replacement,
-and verify the exact PDF hash before reporting `available` in import or source-screen output.
-Owner/project provenance is revalidated;
-`missing`, `corrupt`, and `unavailable` remain explicit. Re-import can restore a missing original
-from the newly selected local file, but it will not overwrite corrupt bytes. Extracted text keeps
-the `UNTRUSTED_SOURCE` boundary and the existing page reader.
-
-The combined synthetic focused selection passed 202 tests across local PDF import, paper resource
-links, and research ControlStore. Ruff lint/format passed for the changed Python paths; configured
-mypy passed on the two changed source files. Independent code review returned APPROVE; no Claude
-review session/tool was available. Tests exercised the production import, storage, and page-read
-functions with a synthetic worker fixture. The isolated literature parser subprocess was not run:
-its locked worker environment is absent, and this slice did not authorize dependency restoration.
-No live provider, paper fetch, full gate, private suite, migration, publication, or commit is claimed;
-private coverage remains UNVERIFIED.
-
-**2026-11-08 isolated source-reader successor (focused verification only):** The existing Research
-Literature list can now check and download the retained original for a selected source. A read-only
-HEAD route reports availability without returning PDF bytes; GET returns only bytes whose source,
-project, size, PDF signature, and SHA-256 were revalidated by the existing CLI store and web API.
-The UI exposes `available`, `missing`, `corrupt`, and `unavailable` states and enables download only
-after a successful integrity check. OpenAPI/types and the committed Workstation build were
-regenerated. Focused synthetic Python tests passed (26); the browser client tests passed (7), along
-with TypeScript build, targeted Oxlint, Python Ruff, configured mypy, and OpenAPI generation.
-An offline Chromium smoke against the built local FastAPI app downloaded the synthetic 47-byte PDF
-with exact SHA-256 `e4bbc40ee9e4a69fbd027341718388015f9022f0cdfdaaa79e8eb5a171ce96b0` and verified
-missing and cross-project responses. The canonical full gate and private suite were not run; no
-provider access, external retrieval, source upload, publication, commit, or merge is claimed.
-The Atlas client scanner now recognizes HEAD calls and its focused route-join test passes. Full Atlas
-regeneration remains blocked in this sparse worktree because the required tracked source
-`apps/alpha-mcp/src/alpha_mcp/server.py` is absent; its CLI cache still lists 233 commands while
-the candidate CLI exposes 234, including `research sources original-pdf`. The generated Atlas
-graph and CLI flow have not been refreshed or claimed fresh.
-
-**2026-11-08 literature worker launcher correction:** The CLI now runs the checked-out
-`literature_worker` module with `uv run --locked --no-sync`, Python safe-path mode, a closed
-`PYTHONPATH` pointing only to the worker's `src`, network disabled, and existing process limits.
-This avoids resolving the worker's unpinned Hatchling build backend at launch. Prepare its
-environment separately with
-`uv sync --project workers/literature --locked --no-dev --no-install-project`.
-Six focused launcher tests and an actual offline synthetic-PDF import/page-read smoke passed
-through the production launcher using the locked `pypdf==6.14.2` environment. No provider request
-or full gate was run.
-
-
-<!-- Preserved owner narrative: RD468304a9; historical claims apply only to that owner candidate, not the combined tree. -->
 
 ### 2026-11-07 — Stock RDLoop continuation candidate (unactivated)
 
@@ -3819,6 +3101,58 @@ lint configuration were edited. Six excluded oracle support files may affect
 import classification; their processing is not covered by the 65-file approval.
 No full pass or guarded delivery is claimed from the partial run.
 
+**2026-11-08 isolated original-paper retention successor (focused verification only):** On
+`codex/paper-original-pdf-retention-20261108`, based on `3f7b23185c29b2542605bd41b9485016c2ef3e79`
+and carrying the separate paper-to-experiment candidate, owner-selected local PDFs are now retained
+under `research/literature/source-pdfs/<source_id>.pdf`. The immutable source row's existing
+content hash and source identity bind the bytes; no table or schema migration was added. Writes are
+bounded to the existing 10 MiB intake limit, use a same-directory no-overwrite link after fsync,
+and reads use a pinned directory, reject symlinks/non-regular files, recheck concurrent replacement,
+and verify the exact PDF hash before reporting `available` in import or source-screen output.
+Owner/project provenance is revalidated;
+`missing`, `corrupt`, and `unavailable` remain explicit. Re-import can restore a missing original
+from the newly selected local file, but it will not overwrite corrupt bytes. Extracted text keeps
+the `UNTRUSTED_SOURCE` boundary and the existing page reader.
+
+The combined synthetic focused selection passed 202 tests across local PDF import, paper resource
+links, and research ControlStore. Ruff lint/format passed for the changed Python paths; configured
+mypy passed on the two changed source files. Independent code review returned APPROVE; no Claude
+review session/tool was available. Tests exercised the production import, storage, and page-read
+functions with a synthetic worker fixture. The isolated literature parser subprocess was not run:
+its locked worker environment is absent, and this slice did not authorize dependency restoration.
+No live provider, paper fetch, full gate, private suite, migration, publication, or commit is claimed;
+private coverage remains UNVERIFIED.
+
+**2026-11-08 isolated source-reader successor (focused verification only):** The existing Research
+Literature list can now check and download the retained original for a selected source. A read-only
+HEAD route reports availability without returning PDF bytes; GET returns only bytes whose source,
+project, size, PDF signature, and SHA-256 were revalidated by the existing CLI store and web API.
+The UI exposes `available`, `missing`, `corrupt`, and `unavailable` states and enables download only
+after a successful integrity check. OpenAPI/types and the committed Workstation build were
+regenerated. Focused synthetic Python tests passed (26); the browser client tests passed (7), along
+with TypeScript build, targeted Oxlint, Python Ruff, configured mypy, and OpenAPI generation.
+An offline Chromium smoke against the built local FastAPI app downloaded the synthetic 47-byte PDF
+with exact SHA-256 `e4bbc40ee9e4a69fbd027341718388015f9022f0cdfdaaa79e8eb5a171ce96b0` and verified
+missing and cross-project responses. The canonical full gate and private suite were not run; no
+provider access, external retrieval, source upload, publication, commit, or merge is claimed.
+The Atlas client scanner now recognizes HEAD calls and its focused route-join test passes. Full Atlas
+regeneration remains blocked in this sparse worktree because the required tracked source
+`apps/alpha-mcp/src/alpha_mcp/server.py` is absent; its CLI cache still lists 233 commands while
+the candidate CLI exposes 234, including `research sources original-pdf`. The generated Atlas
+graph and CLI flow have not been refreshed or claimed fresh.
+
+**2026-11-08 literature worker launcher correction:** The CLI now runs the checked-out
+`literature_worker` module with `uv run --locked --no-sync`, Python safe-path mode, a closed
+`PYTHONPATH` pointing only to the worker's `src`, network disabled, and existing process limits.
+This avoids resolving the worker's unpinned Hatchling build backend at launch. Prepare its
+environment separately with
+`uv sync --project workers/literature --locked --no-dev --no-install-project`.
+Six focused launcher tests and an actual offline synthetic-PDF import/page-read smoke passed
+through the production launcher using the locked `pypdf==6.14.2` environment. No provider request
+or full gate was run.
+
+
+<!-- Preserved owner narrative: RD468304a9; historical claims apply only to that owner candidate, not the combined tree. -->
 
 ## 2026-11-08 — Shared authored-source integration (unqualified)
 
@@ -3842,7 +3176,6 @@ or full-gate pass is claimed. The older acquisition accounting result of 36 pass
 reconciliation; no protected test source or generated output was read, and no commit,
 publication, merge, deployment, empirical acceptance or trading authority is established.
 
-
 ## 2026-11-09 — Finance-math literature protocol successor (unqualified)
 
 The existing literature-review protocol adds finance-math source-status and numerical-reuse
@@ -3851,7 +3184,6 @@ unknown editions and missing slide, and exercises existing PCA on synthetic retu
 text was read or ingested, and no loader/schema, numerical code, dependency or authority changed.
 The original loader tests and focused content/example checks are separate from full qualification;
 the frozen combined/Dell handoff is unchanged. No activation or market-readiness claim is made.
-
 
 ## 2026-11-09 — Sparse generated-output successor (unqualified)
 
@@ -3886,7 +3218,6 @@ Atlas/protected processing, required independent exact-tree review, and the
 unchanged full gate still require an authorized evaluation decision. Advisory
 Claude/Codex participation is not a gate or review attestation. No activation,
 publication, provider/model call, or trading authority is established.
-
 
 ## 2026-11-09 — Bounded finance-math source metadata and PCA checks (unqualified)
 
@@ -3933,6 +3264,33 @@ operation, GPU work, package change, commit or publication occurred. Full gate, 
 suites, end-to-end fitting, UI visual qualification and scientific/economic acceptance remain
 unverified. See the [scope plan](superpowers/plans/2026-11-09-alpha158-versioned-correction.md).
 
+## 2026-11-09 — Configured Matplotlib web-to-CLI environment
+
+The web-to-CLI default-deny process environment now permits only one additional
+name, `MPLCONFIGDIR`, for Matplotlib configuration and cache placement. A configured
+server-process string passes verbatim; unset stays absent. No default, path
+validation/normalization, request override, other environment-filter expansion or
+worker/model environment change is introduced. The renderer's Agg selection and
+rcParams-default initialization are unchanged.
+
+All 36 focused public cases passed: 24 original web invocation cases, 11 new
+configured/unset/literal-value/stdlib-child cases and the existing cache-seam
+no-heavy-import node. The test-first predecessor behavior failed seven configured
+forwarding assertions while four unset controls passed. Scoped Ruff/format and
+strict changed-file mypy passed. This verifies the direct environment contract,
+not an actual Matplotlib render or chosen cache location. Required documentation
+and the unchanged combined manual size limit are retained.
+
+This separate uncommitted successor preserves frozen selector tree
+`deb10cc217a7a7359f08e38a6cd4cc1542b9971e` and its evidence. Independent frozen-source
+review remains separate; selector browser cases/negative control, actual renderer
+verification, default/browser lanes and full qualification remain unrun here.
+Future rendering checks require fresh empty owned writable absolute configuration
+storage and a verified owned CWD without `matplotlibrc`. This is not whole-home,
+font-discovery, other-library/descendant-cache or network isolation, nor a sandbox.
+No owner configuration/data, provider/model workload, installation, history repair,
+commit or publication was used. See the
+[contract plan](superpowers/plans/2026-11-09-web-matplotlib-environment.md).
 
 **2026-11-10 scoped candidate — deferred risk UI fixture capture:** Added a version-1
 capture command for the previously deferred public synthetic risk-metric-basis input.
@@ -3965,31 +3323,3 @@ remain unrun; installed native selectors remain a named prerequisite, not an acc
 skip. Predecessor browser evidence is preserved at its original narrow scope.
 The [routing plan](superpowers/plans/2026-11-10-browser-lane-routing.md) records
 prerequisites, immutable evidence, README/manual review and remaining acceptance.
-
-## 2026-11-09 — Configured Matplotlib web-to-CLI environment
-
-The web-to-CLI default-deny process environment now permits only one additional
-name, `MPLCONFIGDIR`, for Matplotlib configuration and cache placement. A configured
-server-process string passes verbatim; unset stays absent. No default, path
-validation/normalization, request override, other environment-filter expansion or
-worker/model environment change is introduced. The renderer's Agg selection and
-rcParams-default initialization are unchanged.
-
-All 36 focused public cases passed: 24 original web invocation cases, 11 new
-configured/unset/literal-value/stdlib-child cases and the existing cache-seam
-no-heavy-import node. The test-first predecessor behavior failed seven configured
-forwarding assertions while four unset controls passed. Scoped Ruff/format and
-strict changed-file mypy passed. This verifies the direct environment contract,
-not an actual Matplotlib render or chosen cache location. Required documentation
-and the unchanged combined manual size limit are retained.
-
-This separate uncommitted successor preserves frozen selector tree
-`deb10cc217a7a7359f08e38a6cd4cc1542b9971e` and its evidence. Independent frozen-source
-review remains separate; selector browser cases/negative control, actual renderer
-verification, default/browser lanes and full qualification remain unrun here.
-Future rendering checks require fresh empty owned writable absolute configuration
-storage and a verified owned CWD without `matplotlibrc`. This is not whole-home,
-font-discovery, other-library/descendant-cache or network isolation, nor a sandbox.
-No owner configuration/data, provider/model workload, installation, history repair,
-commit or publication was used. See the
-[contract plan](superpowers/plans/2026-11-09-web-matplotlib-environment.md).
