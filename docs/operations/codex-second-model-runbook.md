@@ -32,7 +32,7 @@ touches only `~/.codex/`.
 | Auth | `$CODEX_HOME/auth.json` | `CODEX_HOME` defaults to `~/.codex`. Holds `auth_mode: chatgpt`, an access token, an id token, a refresh token, and `last_refresh`. `OPENAI_API_KEY` is null. |
 | Model list | `$CODEX_HOME/models_cache.json` | Written by the CLI. The bridge refuses a model that is absent from it. |
 | Global config | `$CODEX_HOME/config.toml` | Default model, reasoning effort, and per-project `trust_level`. |
-| Project config | `.codex/config.toml` (this repo) | Registers the `alpha` and `quantpad-data` MCP servers for interactive Codex sessions. |
+| Project config | `.codex/config.toml` (this repo) | Registers the `alpha` MCP server for interactive Codex sessions. |
 
 None of these are in the repository, and none should ever be copied into it. Refresh is
 automatic: the CLI rotates the access token using the refresh token and updates `last_refresh`.

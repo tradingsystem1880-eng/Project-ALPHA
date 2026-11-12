@@ -46,20 +46,15 @@ absent from request receipts, manifests, logs, and command arguments. The refere
 supplemental research context and cannot satisfy venue-price, validation-price, or execution-price
 requirements.
 
-## 1. Use QuantPad for external historical research
+## 1. QuantPad (retained historical code; not an active data source)
 
-The project-scoped `.codex/config.toml` registers QuantPad's OAuth MCP endpoint. Start a new Codex
-session, run `/mcp`, and complete the QuantPad sign-in. Use MCP only for:
-
-- symbol search and symbology resolution;
-- coverage and schema discovery;
-- recent usage/quota inspection; and
-- a small OHLCV shape/quality preview (at most 500 bars and 31 days).
-
-Do not loop previews to build history. For bars beyond that bound, ticks, L1, L2/`mbp-10`,
-notebooks, or backtests, use QuantPad's official REST API/Python SDK. Load the API key into only the
-process that needs it. The checked launcher retrieves one named item and replaces itself with the
-exact check or Workstation process:
+QuantPad is excluded from active and future data-source plans (see the root
+[README](../../README.md)). The project-scoped Codex MCP registration for QuantPad has been removed
+from `.codex/config.toml`. The launcher action and `alpha quantpad-data` commands below remain only
+as historical code for existing records; removing that code is a separate backlog decision. Do not
+start new research with them. If an existing record must be rechecked, load the API key into only
+the process that needs it. The checked launcher retrieves one named item and replaces itself with
+the exact check or Workstation process:
 
 ```bash
 scripts/alpha-with-keychain-provider quantpad check
