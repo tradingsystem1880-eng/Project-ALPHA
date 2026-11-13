@@ -9,7 +9,10 @@ pydantic models (scripts/harness_models.py) are imported lazily where they are n
 
 CLI:
     python3 scripts/gate.py check [--all] [--base REF]  # fast local check (~3 min)
-    python3 scripts/gate.py component NAME     # one CI job's steps, exactly as CI runs them
+    python3 scripts/gate.py component NAME [--shard I/N]  # one CI job's steps, as CI runs them
+    python3 scripts/gate.py changes [--all]    # which conditional CI jobs a change needs
+    python3 scripts/gate.py coverage --shards N [--base REF]  # combine shards, gate changed lines
+    python3 scripts/gate.py durations JUNIT... [--output F]  # per-file seconds for shard balance
     python3 scripts/gate.py preflight [--json] # read-only environment readiness report
     python3 scripts/gate.py orient [--json]    # source orientation (same as scripts/fs.py orient)
     python3 scripts/gate.py lint-harness       # weakening scanner vs .claude/harness-baseline.json
@@ -178,6 +181,8 @@ def harness_metrics(root: Path) -> dict[str, Any]:
     deny = sorted(str(rule) for rule in permissions.get("deny") or [])
     hook_events = sorted(str(k) for k in (settings.get("hooks") or {}))
     pyproject = (root / "pyproject.toml").read_text() if (root / "pyproject.toml").is_file() else ""
+    # The one coverage floor in pyproject: since the global floor was retired it is the
+    # changed-line floor under [tool.diff_cover].
     fail_under = 0
     match = re.search(r"^fail_under\s*=\s*(\d+)", pyproject, re.MULTILINE)
     if match:
@@ -547,6 +552,18 @@ def _reexec_with_pydantic(root: Path) -> None:
     )
 
 
+def _shard_spec(value: str) -> tuple[int, int]:
+    """``I/N`` with 1 <= I <= N, as a CI matrix names its shard."""
+    index, _, total = value.partition("/")
+    try:
+        shard = (int(index), int(total))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"shard must look like 2/4, got {value!r}") from None
+    if not 1 <= shard[0] <= shard[1]:
+        raise argparse.ArgumentTypeError(f"shard index must be within 1..N, got {value!r}")
+    return shard
+
+
 def build_parser() -> argparse.ArgumentParser:
     """The full CLI parser (built apart from ``main`` so every subcommand is testable)."""
     parser = argparse.ArgumentParser(prog="gate", description=__doc__)
@@ -557,7 +574,32 @@ def build_parser() -> argparse.ArgumentParser:
     preflight_p = sub.add_parser("preflight", help="read-only environment readiness report")
     preflight_p.add_argument("--json", action="store_true")
     component_p = sub.add_parser("component", help="one CI job's steps, as CI runs them")
-    component_p.add_argument("name", choices=("backend", "frontend", "literature", "qlib", "eval"))
+    component_p.add_argument(
+        "name",
+        choices=(
+            "backend",
+            "backend-static",
+            "backend-tests",
+            "backend-quant",
+            "frontend",
+            "frontend-full",
+            "literature",
+            "qlib",
+            "eval",
+        ),
+    )
+    component_p.add_argument(
+        "--shard", type=_shard_spec, default=None, help="backend-tests only: I/N, 1-based"
+    )
+    changes_p = sub.add_parser("changes", help="which conditional CI jobs the change needs")
+    changes_p.add_argument("--all", action="store_true", help="select every job (push to main)")
+    coverage_p = sub.add_parser("coverage", help="combine shard coverage; gate changed lines")
+    coverage_p.add_argument("--shards", type=int, required=True)
+    coverage_p.add_argument("--base", default=None, help="gate changed lines against this ref")
+    coverage_p.add_argument("--summary", type=Path, default=None, help="append a Markdown report")
+    durations_p = sub.add_parser("durations", help="per-file test seconds from JUnit reports")
+    durations_p.add_argument("reports", nargs="+", type=Path)
+    durations_p.add_argument("--output", type=Path, default=None, help="write this JSON file")
     orient_p = sub.add_parser("orient")
     orient_p.add_argument("--component")
     orient_p.add_argument("--json", action="store_true")
@@ -604,7 +646,31 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "component":
         from gate_components import run_component
 
-        return run_component(root, args.name)
+        if args.shard is not None and args.name != "backend-tests":
+            print("--shard applies only to backend-tests", file=sys.stderr)
+            return 2
+        return run_component(root, args.name, shard=args.shard)
+    if args.command == "coverage":
+        from gate_components import run_coverage
+
+        return run_coverage(root, shards=args.shards, base=args.base, summary=args.summary)
+    if args.command == "durations":
+        from gate_components import file_durations
+
+        text = json.dumps({"seconds": file_durations(args.reports)}, indent=1, sort_keys=True)
+        if args.output is None:
+            print(text)
+        else:
+            args.output.write_text(text + "\n")
+        return 0
+    if args.command == "changes":
+        from gate_components import ci_changes, comparison_context
+
+        selected = ci_changes(root, comparison_context(root), run_all=args.all)
+        # One `name=true|false` line each: the format GitHub reads from $GITHUB_OUTPUT.
+        for name, needed in sorted(selected.items()):
+            print(f"{name}={'true' if needed else 'false'}")
+        return 0
     if args.command == "orient":
         from fs_orient import orientation, render_orientation
 

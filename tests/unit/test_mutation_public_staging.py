@@ -21,7 +21,7 @@ def test_selected_theme_fixtures_are_exact_and_nested_copy_is_configured(tmp_pat
         relative = Path("apps/alpha-web/frontend/src") / name
         assert (staging / relative).read_bytes() == (ROOT / relative).read_bytes()
     config = tomllib.loads((staging / "pyproject.toml").read_text())["tool"]["mutmut"]
-    assert config["also_copy"] == ["packages", "apps"]
+    assert config["also_copy"] == ["packages", "scripts", "apps"]
     assert config["pytest_add_cli_args_test_selection"] == ["tests"]
     assert config["only_mutate"] == ["src/alpha_research/data.py"]
 
@@ -33,7 +33,7 @@ def test_unselected_theme_does_not_expand_mutation_staging(tmp_path: Path) -> No
     )
     config = tomllib.loads((staging / "pyproject.toml").read_text())["tool"]["mutmut"]
     assert not (staging / "tests/unit/test_theme_drift.py").exists()
-    assert config["also_copy"] == ["packages"]
+    assert config["also_copy"] == ["packages", "scripts"]
     assert not (staging / "apps").exists()
 
 

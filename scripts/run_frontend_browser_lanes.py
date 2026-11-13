@@ -4,6 +4,8 @@ Requires already installed assets. Every run retains fresh evidence outside sour
 failed prerequisites or a skipped native driver never count as aggregate success.
 When neither native selector is set (e.g. CI), the three asset-free lanes still run
 and the native lane is reported as explicitly skipped; a half-set selector fails.
+``--viewports reference`` (pull-request CI) runs the default lane at the reference viewport
+only; the full four-viewport run (``all``, the default) is the nightly and local route.
 """
 
 from __future__ import annotations
@@ -27,6 +29,19 @@ NATIVE_METHOD = "test_built_spa_reads_native_owner_receipt_without_interception"
 NATIVE_NODE = f"tests/unit/test_native_result_web.py::NativeWebJourney::{NATIVE_METHOD}"
 NATIVE_SELECTORS = ("ALPHA_RDAGENT_SOURCE", "ALPHA_STOCK_PYTHON")
 NATIVE_SKIPPED = "native lane skipped: ALPHA_RDAGENT_SOURCE/ALPHA_STOCK_PYTHON not provisioned"
+ALL_PROJECTS = frozenset(
+    {"chromium-minimum", "chromium-reference", "chromium-wide", "chromium-reference-only"}
+)
+# The pull-request route: one viewport plus the reference-only journeys, which already run at
+# that viewport. ``--no-deps`` stops Playwright pulling the other viewports back in as
+# dependencies of the reference-only project.
+VIEWPORT_SETS: dict[str, tuple[frozenset[str], tuple[str, ...]]] = {
+    "all": (ALL_PROJECTS, ()),
+    "reference": (
+        frozenset({"chromium-reference", "chromium-reference-only"}),
+        ("--project", "chromium-reference", "--project", "chromium-reference-only", "--no-deps"),
+    ),
+}
 
 
 def native_provisioned(env: dict[str, str]) -> bool:
@@ -142,7 +157,13 @@ def run_child(command: list[str], cwd: Path, env: dict[str, str], log: Path, roo
 
 
 def validate_browser_report(
-    path: Path, frontend: Path, config: str, file: str | None, *, listing: bool = False
+    path: Path,
+    frontend: Path,
+    config: str,
+    file: str | None,
+    *,
+    listing: bool = False,
+    selected_projects: frozenset[str] | None = None,
 ) -> set[tuple[str, str, str]]:
     """Check handoff membership and actual execution, without changing skip/retry policy."""
     report = json.loads(path.read_text())
@@ -159,16 +180,7 @@ def validate_browser_report(
     ):
         raise ValueError(f"Failed, empty or mismatched browser report: {path}")
     projects = {project["name"] for project in report["config"]["projects"]}
-    expected_projects = (
-        {""}
-        if file
-        else {
-            "chromium-minimum",
-            "chromium-reference",
-            "chromium-wide",
-            "chromium-reference-only",
-        }
-    )
+    expected_projects = {""} if file else set(ALL_PROJECTS)
     if projects != expected_projects or report["config"]["rootDir"] != str(frontend / "e2e"):
         raise ValueError("Browser config projects/root differ from the existing lanes")
     selected: set[str] = set()
@@ -191,7 +203,8 @@ def validate_browser_report(
             visit(suite.get("suites", []))
 
     visit(report["suites"])
-    if {item[0] for item in identities} != projects:
+    wanted = projects if file or selected_projects is None else set(selected_projects)
+    if {item[0] for item in identities} != wanted:
         raise ValueError("Browser selection omits a configured project")
     if (
         (not listing and not executed)
@@ -223,12 +236,18 @@ def validate_native_report(path: Path) -> None:
         raise ValueError("Native lane requires exactly one executed, passing, exact-node testcase")
 
 
-def run(root: Path, inherited: dict[str, str], output_parent: Path) -> Path:
+def run(root: Path, inherited: dict[str, str], output_parent: Path, viewports: str = "all") -> Path:
+    selected_projects, project_args = VIEWPORT_SETS[viewports]
     parent = output_parent.resolve(strict=True)
     if parent.is_relative_to(root.resolve()):
         raise ValueError("Browser evidence parent must be outside the source checkout")
     run_dir = Path(tempfile.mkdtemp(prefix="alpha-browser-lanes-", dir=parent))
-    summary: dict[str, Any] = {"status": "failed", "completed_lanes": [], "run_dir": str(run_dir)}
+    summary: dict[str, Any] = {
+        "status": "failed",
+        "completed_lanes": [],
+        "run_dir": str(run_dir),
+        "viewports": viewports,
+    }
     print(f"Browser lane evidence: {run_dir}", flush=True)
     try:
         env = prerequisites(root, inherited)
@@ -295,6 +314,7 @@ def run(root: Path, inherited: dict[str, str], output_parent: Path) -> Path:
                     str(frontend / config),
                     "--list",
                     "--reporter=json",
+                    *(project_args if lane == "default" else ()),
                 ],
                 frontend,
                 listing_env,
@@ -302,7 +322,7 @@ def run(root: Path, inherited: dict[str, str], output_parent: Path) -> Path:
                 root,
             )
             selections[lane] = validate_browser_report(
-                listing, frontend, config, file, listing=True
+                listing, frontend, config, file, listing=True, selected_projects=selected_projects
             )
         for lane, config, file in routes:
             directory = run_dir / lane
@@ -336,13 +356,17 @@ def run(root: Path, inherited: dict[str, str], output_parent: Path) -> Path:
                     str(directory / "artifacts"),
                     "--reporter",
                     reporter,
+                    *(project_args if lane == "default" else ()),
                 ],
                 frontend,
                 lane_env,
                 directory / "run.log",
                 root,
             )
-            if validate_browser_report(report, frontend, config, file) != selections[lane]:
+            identities = validate_browser_report(
+                report, frontend, config, file, selected_projects=selected_projects
+            )
+            if identities != selections[lane]:
                 raise ValueError(f"Browser execution differs from its fresh selection: {lane}")
             summary["completed_lanes"].append(lane)
         if native:
@@ -373,9 +397,10 @@ def run(root: Path, inherited: dict[str, str], output_parent: Path) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-parent", type=Path, default=Path(tempfile.gettempdir()))
+    parser.add_argument("--viewports", choices=sorted(VIEWPORT_SETS), default="all")
     args = parser.parse_args()
     try:
-        run(ROOT, dict(os.environ), args.output_parent)
+        run(ROOT, dict(os.environ), args.output_parent, args.viewports)
     except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
         print(f"Browser lanes failed: {exc}", file=sys.stderr)
         return 1

@@ -51,9 +51,11 @@ this file holds the mechanics.
 - What runs where:
   - `gate.py check --all`: `-m "not platform and not network and not slow_oracle"`.
   - `gate.py check`: `-m "not network and not slow_oracle"` over the `gate_select.py` selection.
-  - CI backend (`gate.py component backend`): `pytest -q -n auto -m "not network and not slow_oracle" --cov`
-    with coverage `fail_under = 93`; it adds `-m slow_oracle` and the mutation gate only when a quant
-    source module changed.
+  - CI (`gate.py component backend-tests --shard I/4`, four shards of whole files):
+    `pytest -q -n auto --dist worksteal -m "not network and not slow_oracle" --cov`. Changed lines of
+    product source must be 85% covered (`[tool.diff_cover]`); the global figure is reported, not gated.
+    The `quant` job adds `-m slow_oracle` and the mutation gate only when a quant source module changed.
+    Every job and tier: [checks](../checks.md).
   - `network` tests never run in CI.
 - `gate_select.py` always runs `tests/bias_guards`, `tests/oracles` and `tests/acceptance`, plus changed
   test files, test files whose text imports a changed module (a text search, not an import graph), and
@@ -77,7 +79,7 @@ this file holds the mechanics.
 
 - `oracle` marks fast metamorphic and differential checks; `slow_oracle` marks known-truth calibration and
   coverage oracles. Every module in `tests/oracles/` carries one of the two.
-- Slow oracles run in CI only on a quant-source change, or locally with `uv run pytest -q -m slow_oracle`.
+- Slow oracles run in CI on a quant-source change and every night, or locally with `uv run pytest -q -m slow_oracle`.
 
 ## Protected and hidden tests
 
@@ -126,8 +128,8 @@ this file holds the mechanics.
   Name a byte-stability test with one of those words or the sweep never sees it.
 - `gate.py raise-cov`: lists `raise` lines in quant modules that the unit, oracle and bias-guard tests never
   reach. Nightly runs it report-only (no `--fail`).
-- `.github/workflows/nightly.yml` runs the whole-repo Semgrep, determinism and raise-cov sweeps; CI's backend
-  job runs Semgrep on every pull request.
-- `gate.py lint-harness` fails when a deny rule is removed, a hook is unwired, coverage `fail_under` drops,
+- `.github/workflows/nightly.yml` runs the whole-repo Semgrep, determinism and raise-cov sweeps and every slow
+  oracle; CI's `static` job runs Semgrep over the whole repo on every pull request.
+- `gate.py lint-harness` fails when a deny rule is removed, a hook is unwired, the coverage `fail_under` drops,
   strict markers are off, quant-module `# noqa` / `# type: ignore` counts grow, or CI pytest uses `-x` or
   `--maxfail`. [engineering § Checks and commits](engineering.md#checks-and-commits).
