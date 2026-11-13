@@ -37,8 +37,10 @@ the status page and roadmap tell the truth.
 3. CI on the pull request is the merge gate ([ADR-0039](../../../docs/adr/0039-ci-is-the-merge-gate.md)).
    Fix every failing job on the branch; mark the pull request ready only when CI is green. Review
    by another model goes on the pull request and is advisory.
-4. The owner merges. Never merge, approve or mark your own work accepted; a green CI grants no
-   research or owner authority.
+4. The orchestrating session merges once `ci-ok` is green and the branch is up to date:
+   `gh pr merge <n> --merge` (a merge commit, never squash or rebase: documents pin `verified:`
+   commits). The owner delegated routine merging on 2026-11-14. It grants nothing else: research
+   approvals, branch protection, required checks and credentials stay with the owner.
 5. After the merge, on a new branch: set the plan's line to `**Delivery state:** Completed — PR
    #<n>`; `git mv docs/work/<task> docs/work/archive/<yyyy-mm>/`; remove the task from
    `docs/roadmap/capabilities.toml`; lower `ceiling` in `docs/roadmap/wip-limit.json` when the
@@ -66,7 +68,7 @@ Done means all of these hold:
 - Each changed fact is updated in its one owning document, in current-state language; a decision
   worth keeping is an ADR; the README was checked and the pull request says so.
 - Untrusted input, authority and credentials were looked at; a risky change has a rollback.
-- CI is green and the owner merged.
+- CI is green and the pull request is merged.
 
 ## Checkpoint
 

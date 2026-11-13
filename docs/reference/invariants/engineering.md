@@ -123,7 +123,8 @@ Project-wide coding rules. Area files add their own detail and link here. The re
 
 - Loop: edit, then `uv run python scripts/gate.py check` (ruff, import contracts, mypy, and the
   tests mapped from changed files), then commit, push, open a draft pull request.
-- CI on the pull request is the merge gate; the owner merges. A commit needs only a
+- CI on the pull request is the merge gate; the orchestrating session merges on green
+  (merge commits only; owner's delegation, 2026-11-14). A commit needs only a
   `type(scope): summary` message. Model review is advisory.
   [ADR-0039](../../adr/0039-ci-is-the-merge-gate.md)
 - One CI job locally: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
