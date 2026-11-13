@@ -93,10 +93,15 @@ PLATFORM_PREFIXES: dict[str, tuple[str, ...]] = {
 # Files of about ten seconds or more that no prefix above covers (per-file sums, 2026-11-13).
 SLOW_FILES: frozenset[str] = frozenset(
     {
+        "tests/integration/test_asset_master_provenance.py",
+        "tests/integration/test_c04_web_metric_basis.py",
         "tests/integration/test_monte_carlo_cli.py",
+        "tests/integration/test_risk_strict_json.py",
+        "tests/integration/test_tearsheet_html.py",
         "tests/integration/test_validate_determinism.py",
         "tests/unit/test_cli_entry_lazy_groups.py",
         "tests/unit/test_investigation_lifecycle.py",
+        "tests/unit/test_w09_durable_observations.py",
     }
 )
 
