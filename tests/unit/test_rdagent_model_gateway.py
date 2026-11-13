@@ -357,7 +357,6 @@ def test_codex_confinement(
         "include_permissions_instructions=false",
         "include_collaboration_mode_instructions=false",
         "include_apps_instructions=false",
-        "include_plugin_usage_instructions=false",
         "skills.include_instructions=false",
         "skills.bundled.enabled=false",
         "agents.enabled=false",
@@ -675,3 +674,19 @@ def test_budget_lock_failure_is_openai_shaped(mod: ModuleType, tmp_path: Path) -
         pytest.fail("unreadable lock granted a reservation")
     assert error.value.status == 503
     assert error.value.code == "budget_state_unreadable"
+
+
+def test_codex_notice_items_are_not_tools(mod: ModuleType, tmp_path: Path) -> None:
+    # codex-cli 0.167.0 reports "code mode fails closed" as an item of type "error".
+    events = [
+        {
+            "type": "item.completed",
+            "item": {"type": "error", "message": "Code Mode is unavailable"},
+        },
+        {"type": "item.completed", "item": {"type": "agent_message", "text": '{"ok":true}'}},
+        {"type": "turn.completed", "usage": {"input_tokens": 3, "output_tokens": 2}},
+    ]
+    exe, _ = fake_codex(tmp_path, events)
+    gw = mod.Gateway(mod.Settings(data_dir=tmp_path, run_id="x", codex_bin=str(exe)))
+    gw.chat(request())
+    assert logged(gw)[-1]["tool_events"] == 0

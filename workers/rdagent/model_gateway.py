@@ -428,7 +428,6 @@ class CodexChat:
                 "include_permissions_instructions=false",
                 "include_collaboration_mode_instructions=false",
                 "include_apps_instructions=false",
-                "include_plugin_usage_instructions=false",
                 "skills.include_instructions=false",
                 "skills.bundled.enabled=false",
                 "agents.enabled=false",
@@ -469,12 +468,13 @@ class CodexChat:
             tool_events = 0
             failures: list[str] = []
             try:
+                # An "error" item is a CLI notice (e.g. code mode failing closed), not a tool.
                 for line in stdout.splitlines():
                     event = json.loads(line)
                     kind = event.get("type")
                     if kind in ("item.started", "item.completed") and event.get("item", {}).get(
                         "type"
-                    ) not in ("agent_message", "reasoning"):
+                    ) not in ("agent_message", "reasoning", "error"):
                         tool_events += 1
                     if kind == "turn.completed":
                         usage = event.get("usage") or {}
@@ -588,7 +588,11 @@ class ApiChat:
         s = self.settings
         response = post_json(
             self.base + "/chat/completions",
-            {**request, "model": s.api_model, "stream": False},
+            {
+                **{k: v for k, v in request.items() if k != "stream_options"},
+                "model": s.api_model,
+                "stream": False,
+            },
             self.key,
         )
         try:
@@ -742,7 +746,9 @@ class Gateway:
                 line = line.replace(json.dumps(secret)[1:-1], "[redacted]")
         return line
 
-    def log(self, row: dict[str, Any], prompt: str = "", reply: str = "") -> None:
+    def log(
+        self, row: dict[str, Any], prompt: str = "", reply: str = "", instructions: str = ""
+    ) -> None:
         line = self.log_json(row)
         with self.log_lock, self.log_path.open("a", encoding="utf-8") as file:
             file.write(line + "\n")
@@ -752,7 +758,15 @@ class Gateway:
                     "a", encoding="utf-8"
                 ) as content:
                     content.write(
-                        self.log_json({"ts": row["ts"], "prompt": prompt, "reply": reply}) + "\n"
+                        self.log_json(
+                            {
+                                "ts": row["ts"],
+                                "instructions": instructions,
+                                "prompt": prompt,
+                                "reply": reply,
+                            }
+                        )
+                        + "\n"
                     )
 
     def check_model(self, request: dict[str, Any], alias: str) -> None:
@@ -768,7 +782,9 @@ class Gateway:
         schema = None
         json_required = False
         if api:
-            row["honoured"] = list(request)
+            # The provider is called without streaming; the reply is replayed as a stream.
+            row["honoured"] = [k for k in request if k not in ("stream", "stream_options")]
+            row["enforced"] += [k for k in request if k in ("stream", "stream_options")]
             fmt = request.get("response_format", {})
             json_required = isinstance(fmt, dict) and fmt.get("type") == "json_object"
             if json_required:
@@ -899,10 +915,10 @@ class Gateway:
     def chat(self, request: dict[str, Any]) -> dict[str, Any]:
         row = self.record("/v1/chat/completions", request)
         start = time.monotonic()
-        prompt = reply = ""
+        prompt = reply = instructions = ""
         try:
             plan = self.chat_plan(request, row)
-            prompt = plan.prompt
+            prompt, instructions = plan.prompt, plan.instructions
             row.update(effort=plan.effort, prompt_sha256=digest(prompt), prompt_chars=len(prompt))
             for _ in range(self.settings.json_retries + 1):
                 with self.slot(row):
@@ -983,7 +999,7 @@ class Gateway:
             raise
         finally:
             row["latency_ms"] = (time.monotonic() - start) * 1000
-            self.log(row, prompt, reply)
+            self.log(row, prompt, reply, instructions)
 
     def embeddings(self, request: dict[str, Any]) -> dict[str, Any]:
         row = self.record("/v1/embeddings", request)
