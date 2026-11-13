@@ -58,7 +58,8 @@ See the capabilities below on [STATUS.md](../../../../STATUS.md).
 ## Decisions and open questions
 
 - The owner no longer uses QuantPad ([log](../owner-decisions.md#2026-11-14-quantpad-no-longer-used)).
-  Owner to confirm: delete the remaining QuantPad code now (triage card D), keeping old records readable?
+Decided: the unused QuantPad code is removed and old records stay readable
+  ([log](../owner-decisions.md#2026-11-14-agents-merge-and-decide-routine-matters)).
 - Triage cards 1, 2, 3, 4 and B are waiting for the owner ([triage sheet](../../../roadmap/triage-2026-11.md)).
   Card 2 and B depend on whether the owner wants download budgets at all (question 2 on that sheet).
 

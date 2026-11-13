@@ -70,12 +70,13 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
 - KEEP, owner, 2026-11-14 ([log](../owner-decisions.md#2026-11-14-rd-agent-is-a-key-component)).
 - What is next, in order, with what each needs from the owner:
   [the seven blockers](../../../roadmap/rd-agent-in-alpha.md#what-stands-between-today-and-rd-agent-researching-real-ideas).
-- Owner to confirm: RD-Agent calls AI models through an API. If the ChatGPT subscription cannot be
-  used that way, what monthly spending limit should the API key have?
-- Owner to confirm: which machine and disk should hold long studies? The Dell has about 48 GB free
-  and a study needs at least 100 GB.
-- Owner to confirm: is the "autonomous AI research team" plan (triage card 15) part of RD-Agent's
-  future, or a separate idea?
+- Decided: the Codex route comes first; an API key is the fallback, capped at about 50 US dollars a
+  month ([log](../owner-decisions.md#2026-11-14-api-spending-limit-for-rd-agents-models)).
+- Decided: long studies use the Dell's disk for now
+  ([log](../owner-decisions.md#2026-11-14-use-the-dells-disk-for-studies-for-now)).
+- Decided: the autonomous research team is a broader ALPHA capability built around and using
+  RD-Agent, started small; it reuses RD-Agent's native abilities and never bypasses ALPHA's controls
+  ([log](../owner-decisions.md#2026-11-14-the-autonomous-research-team)).
 - Open: no decision record states RD-Agent's role; write one once the owner confirms the summary
   in the [overview](../overview.md#the-research-loop).
 

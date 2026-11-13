@@ -94,3 +94,91 @@ for the RD-Agent entry (dated on the triage sheet), the exact day of each was no
   mess".
 - **Governs:** [delivery and agent tooling](components/delivery-and-agent-tooling.md), this file
   system, and how every agent reports work.
+
+### 2026-11-14 The architecture in one line
+
+- **Said:** "RD-Agent runs the research loop; Qlib supplies research tools and models; Nautilus
+  runs execution-aware backtests; ALPHA connects and governs them." And: "ALPHA is more than a
+  shell: it owns budgets, data rules, experiment records, validation and approvals. Not every
+  experiment needs Qlib. Also, this describes the intended architecture: the complete
+  model-connected, real-data loop is not yet qualified."
+- **Context:** the owner's answer when asked to confirm the recorded understanding in
+  [RD-Agent is a key component](#2026-11-14-rd-agent-is-a-key-component). It replaces that
+  understanding; do not call ALPHA a "shell".
+- **Governs:** the [overview](overview.md#the-research-loop) and every component page.
+
+### 2026-11-14 API spending limit for RD-Agent's models
+
+- **Said:** "Around 50 usd a month for api credits. That's only if we can't get codex to work in
+  the rd agents info structure."
+- **Governs:** [RD-Agent](components/rd-agent.md), its model connection: the Codex route comes
+  first; an API key is the fallback, capped at about 50 US dollars a month.
+
+### 2026-11-14 What Kronos is for
+
+- **Said:** "Kronos is a flexible research and exploration tool within ALPHA. It powers one of our
+  Monte Carlo methods by generating possible market paths that strategies can be tested against."
+  And: "It may become useful for signals or risk research, but I don't want to restrict it to
+  either role before we've experimented." And: "its forecasts and scenarios still need validation
+  before we rely on them for decisions."
+- **Governs:** [forecasting](components/forecasting.md) and the Monte Carlo method in
+  [validation and evidence](components/validation-and-evidence.md).
+
+### 2026-11-14 Literature strengthens RD-Agent's proposal step
+
+- **Said:** "Use RD-Agent's native paper ingestion, hypothesis generation and experiment
+  capabilities wherever they meet our needs. Keep or build a literature worker only where it
+  provides meaningful additions, such as discovering relevant research, preserving source
+  citations and limitations, and identifying conflicting evidence. Those findings should
+  strengthen RD-Agent's proposal step, not create a duplicate research system."
+- **Context:** the owner added that the hand-off between the two is not yet shown working end to
+  end, and that RD-Agent's finance loop was not found to search for papers by itself.
+- **Governs:** [literature worker](components/literature-worker.md), [RD-Agent](components/rd-agent.md).
+
+### 2026-11-14 The autonomous research team
+
+- **Said:** "RD-Agent is the research engine; the autonomous team is the broader capability around
+  and using it; ALPHA coordinates and governs both." And: "We should start with a small team and a
+  working end-to-end research process, then add specialist roles when they demonstrably improve
+  the work. Reuse RD-Agent's native capabilities instead of rebuilding them, and avoid multiple
+  overlapping agents doing the same job." And: the team "cannot bypass those controls or place
+  trades."
+- **Context:** the owner noted it is still a plan with some advisory work, not operational today.
+- **Governs:** [RD-Agent](components/rd-agent.md) (capability `ai-research-team`, triage card 15).
+
+### 2026-11-14 Live trading is deferred
+
+- **Said:** "for live trading, that will currently be deferred until we have the entire system
+  working and built out and functional." And: "Until all of that can be proven, no use for live
+  trading as of now." And: "just defer live trading for now."
+- **Context:** the proof the owner named is finding alpha and edge and building profitable models
+  and trading systems; the focus until then is the research pipeline, data and learning.
+- **Governs:** [paper and live trading](components/paper-and-live.md); the
+  [phases](overview.md#phases). Broker, instruments and risk limits are not to be asked for yet.
+
+### 2026-11-14 Use the Dell's disk for studies for now
+
+- **Said:** "Can we just use the disk space available on the dell for now. I will worry about it
+  when it gets low on free disk space"
+- **Governs:** [RD-Agent](components/rd-agent.md) studies and the storage reserve in the
+  [data layer](components/data-layer.md) ([ADR-0043](../../adr/README.md)).
+
+### 2026-11-14 Agents merge and decide routine matters
+
+- **Said:** "I don't know how to merge. Claude should have access to my GitHub and be able to do
+  everything for me" And, on the triage sheet: "Build whatever you believe is the right decision"
+- **Context:** under that delegation the agent kept the groundwork for RD-Agent driving Qlib
+  (triage card A: shelved, not deleted), removed the unused QuantPad code (card D) and treated
+  card G as replaced by [Codex builds, Claude plans](#2026-11-14-codex-builds-claude-plans).
+  Research approvals, branch protection and credentials stay with the owner.
+- **Governs:** [delivery and agent tooling](components/delivery-and-agent-tooling.md), the
+  [triage sheet](../../roadmap/triage-2026-11.md), [Qlib](components/qlib.md).
+
+### 2026-11-14 What the file system is for
+
+- **Said:** "if the file system was set up correctly you would have been able to understand
+  exactly the thought, reasoning, expected plan, location etc for rd agents. That's the purpose of
+  the file system."
+- **Governs:** this project layer and every `CONTEXT.md`: a reader starting at `CLAUDE.md` must be
+  able to learn what a part is for, why, the plan, where it lives and what must not be done.
+
