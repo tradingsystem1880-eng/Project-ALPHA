@@ -160,6 +160,10 @@ def test_limit_and_budget_name_every_omitted_match(docs_repo: Path) -> None:
     tight = search(docs_repo, "context filesystem", budget_bytes=10)
     assert tight["results"] == [] and len(tight["omitted"]) == 3
     assert search(docs_repo, "absentneedle")["matched"] == 0
+    # A large first match that does not fit is not skipped in favour of later, smaller ones.
+    first = search(docs_repo, "context filesystem")["results"][0]
+    tight = search(docs_repo, "context filesystem", budget_bytes=len(first["text"]) - 1)
+    assert tight["results"] == [] and tight["omitted"][0]["path"] == first["path"]
     for limit in (0, 21, True):
         with pytest.raises(ValueError, match="limit"):
             search(docs_repo, "context", limit=limit)

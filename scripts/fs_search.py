@@ -216,7 +216,8 @@ def search(
     used = 0
     for row in matches:
         size = len(row.text.encode("utf-8"))
-        if len(shown) < limit and used + size <= budget_bytes:
+        # Stop at the first excerpt that does not fit, so what is shown keeps the ranking order.
+        if not omitted and len(shown) < limit and used + size <= budget_bytes:
             shown.append({**row.location(), "score": row.score, "text": row.text})
             used += size
         else:
