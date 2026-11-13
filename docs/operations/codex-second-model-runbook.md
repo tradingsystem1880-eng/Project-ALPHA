@@ -63,7 +63,7 @@ python3 scripts/codex_bridge.py review --diff /path/to/some.diff
 python3 scripts/codex_bridge.py research --question "..."
 ```
 
-Every call runs `codex exec` with `--ephemeral`, sandbox `read-only`, and an output JSON schema
+Every call runs `codex exec` with `--ephemeral`, sandbox `read-only`, `--ignore-user-config` (the owner's global MCP servers, plugins and settings are not inherited), the apps, plugins, browser, computer-use, image, multi-agent, memories and hooks features disabled, the repository's own `.codex/config.toml` MCP servers replaced by disabled stubs, web search off (research alone keeps it live), and an output JSON schema
 from `scripts/schemas/`, under a wall-clock cap (review 900 s, research 600 s). Diffs are capped
 at 200 000 bytes and prompt-injection patterns in the reviewed text are neutralised before the
 model sees them.

@@ -10,7 +10,7 @@ sources:
   - tests/unit/test_docs_links.py
   - tests/unit/test_repo_awareness_drift.py
   - tests/unit/test_roadmap_index.py
-verified: 1724a5befe5d
+verified: f2779da9fef4
 ---
 
 # Documentation invariants
@@ -22,8 +22,8 @@ delivery states, the generated roadmap index, append-only records, and relative 
 
 - Living documents (`ARCHITECTURE.md`, `context/`, `governance/` hand-written files, `operations/`) are
   updated in place when behaviour changes (`docs/README.md`).
-- Research reports (`research/`) and dated specs and plans are rationale and intent: neither a
-  recommendation nor a `Completed` plan proves current behaviour. Read the accepted ADR, the code and a
+- The June 2026 research reports (`archive/2026-06-research-notes/`) and dated specs and plans are rationale
+  and intent: neither a recommendation nor a `Completed` plan proves current behaviour. Read the accepted ADR, the code and a
   fresh check result. A `verified` commit or resolving links show a document was checked, not that it is right.
 - Private research material (such as the owner's October 2026 research archive, kept outside the repository)
   enters only as an owner-authorised, sanitised derivative with its own provenance, after checks for
@@ -37,6 +37,21 @@ delivery states, the generated roadmap index, append-only records, and relative 
   never add to or rewrite them.
 - `archive/` is not edited.
 - Retrospectives are `docs/operations/retrospectives/YYYY-MM-DD-<slug>.md` with a `## Watch-outs` section.
+
+## Front matter
+
+- Every `CONTEXT.md` and hand-written `docs/reference/` file starts with `owner` (a role, never a person),
+  `sources` and `verified` (the commit it was last checked against); `tests/unit/test_filesystem_contract.py`
+  enforces the shape and `uv run python scripts/fs.py stale` lists documents whose sources changed since.
+- `sources` lists only files whose change can make the document wrong: the code, scripts, templates,
+  schemas and configuration whose behaviour it states. It never lists data the document tells the reader to
+  open or edit (`docs/roadmap/capabilities.toml`, `docs/roadmap/wip-limit.json`, backlog items, plans,
+  generated pages): those change with routine work, and a document that names their fields is covered by
+  the script that reads them (`scripts/capabilities.py`, `scripts/status.py`, `scripts/roadmap_index.py`).
+- Never copy a value from a data file (a count, a cap, a list of names) into a document; name the field
+  and link the file or the generated page that shows it.
+- After re-reading a stale document against its changed sources, fix it and set `verified` to that commit,
+  even when nothing needed fixing.
 
 ## Decision records
 

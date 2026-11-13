@@ -95,6 +95,7 @@ The full triage sheet, with what each item does and why: [docs/roadmap/triage-20
 
 Ideas not yet planned (no order recorded, so alphabetical):
 
+- A route for new daily-bar research ideas — large (L)
 - Autonomous research agent programme — very large (XL)
 - Catalyst, expectations and fundamentals research (W15) — large (L)
 - ControlStore-owned durable acquisition journal — large (L)
@@ -116,7 +117,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 
 - Live plans: 41
 - Archived plans: 115
-- Backlog items: 16
+- Backlog items: 17
 - Staged refactors: 7
 
 ## Where things are

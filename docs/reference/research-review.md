@@ -3,38 +3,28 @@ owner: research review
 sources:
   - docs/adr/0019-governed-research-cases-before-strategy-development.md
   - docs/records/specs/2026-08-06-research-scientist-program-design.md
-  - apps/alpha-cli/src/alpha_cli/research_cmds.py
-verified: 1724a5befe5d
+  - apps/alpha-cli/src/alpha_cli/research_gate_packet.py
+verified: f89aa1bb78af
 ---
 
 # Adversarial review of research artefacts
 
 How to attack a research thesis, source pack, protocol, empirical result, chart bundle or Research
-Gate Packet before a research gate advances. The `reviewer` agent follows it for research
-artefacts; anyone may. Moved here from the `alpha-adversarial-reviewer` skill on 2026-11-14 with
-its review order and finding format unchanged.
+Gate Packet before the owner decides. It is used at [stage 05 — validate](../../research/stages/05-validate/CONTEXT.md)
+of the research pipeline (and on any artefact the owner asks about); that stage names what to read
+and which commands produce the records reviewed here. The `reviewer` agent follows it; anyone may.
+Moved here from the `alpha-adversarial-reviewer` skill on 2026-11-14 with its review order and
+finding format unchanged.
 
 Attack the research case independently. Your purpose is to falsify or narrow the claim, not to help
 it pass.
 
-## Read first
+## What a review can rely on
 
-1. [Research integrity](invariants/research-integrity.md).
-2. [Research Scientist program design](../records/specs/2026-08-06-research-scientist-program-design.md).
-3. [ADR-0019](../adr/0019-governed-research-cases-before-strategy-development.md), and the
-   relevant data, holdout, evidence and intraday ADRs (for example
-   [ADR-0020](../adr/0020-intraday-event-research-is-not-daily-validation-evidence.md)).
-
-## What the platform can and cannot prove
-
-The R1-R6 research-first program provides an isolated literature worker, registered daily research
-datasets, a preregistered D1 runner, one-shot D2 confirmation, and connected read projections. These
-capabilities do not prove any thesis. Review only actual records and verified artifacts; missing
-evidence is a finding, not permission to infer it. The Workstation and MCP still have no owner
-approval/decision, D2-authorization, D3, paper, or order authority.
-Production confirmation exists only behind the trusted-local owner CLI and an exact approved child
-contract. The CLI's owner label is trusted-operator provenance, not cryptographic proof of human
-presence; treat any claim of verified owner identity as unsupported.
+Review only actual records and verified artefacts; missing evidence is a finding, not permission to
+infer it. No surface or label carries approval authority
+([research integrity § Owner authority](invariants/research-integrity.md#owner-authority)), so treat
+any claim of verified owner identity as unsupported.
 Treat a terminal ResearchGatePacket as a deterministic summary of recorded inputs, not an
 independent replication. Verify its selected evidence, immutable hashes, and `NOT_TESTED` fallbacks.
 For D0, require the exact hashed `ResearchD0AcceptanceV1` raw measurements and mechanical

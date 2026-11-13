@@ -3,7 +3,7 @@
 **Last reviewed:** 2026-10-08
 **Status:** Living (terminal-style Workstation and governed D0/D1/D2 research flow implemented;
 private single-owner local-device scope; no production or distribution target)
-**Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual) · [`docs/records/specs/2026-06-14-project-alpha-v1-design.md`](records/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](records/specs/2026-08-06-research-scientist-program-design.md) · [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) (research synthesis) · [`adr/`](adr/) (decision records)
+**Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual) · [`docs/records/specs/2026-06-14-project-alpha-v1-design.md`](records/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](records/specs/2026-08-06-research-scientist-program-design.md) · [`archive/2026-06-research-notes/00-SYNTHESIS.md`](archive/2026-06-research-notes/00-SYNTHESIS.md) (June 2026 research synthesis, historical) · [`adr/`](adr/) (decision records)
 
 ---
 
@@ -501,8 +501,8 @@ Options and screener functionality are CLI modules, not separate workspace packa
 
 - [`CLAUDE.md`](../CLAUDE.md) — agent operating manual and invariants; path-scoped rules retain module maps.
 - [`docs/records/specs/2026-06-14-project-alpha-v1-design.md`](records/specs/2026-06-14-project-alpha-v1-design.md) — the original v1 design spec (pre-build).
-- [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) — consolidated research synthesis + decision table.
-- [`research/07-architecture-ai-workflow.md`](../research/07-architecture-ai-workflow.md) — repo layout, tooling, and AI build-workflow rationale.
+- [`archive/2026-06-research-notes/00-SYNTHESIS.md`](archive/2026-06-research-notes/00-SYNTHESIS.md) — June 2026 research synthesis + decision table (historical, archived).
+- [`archive/2026-06-research-notes/07-architecture-ai-workflow.md`](archive/2026-06-research-notes/07-architecture-ai-workflow.md) — June 2026 repo layout, tooling, and AI build-workflow rationale (historical, archived).
 - [`audit/2026-07-19-post-v2-architecture-audit.md`](records/audits/2026-07-19-post-v2-architecture-audit.md) — post-v2 capability/gap audit and track decision.
 - [`records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md`](records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md) — approved Recommended-track implementation contract.
 - [`records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md`](records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md) — implemented Tiingo qualification, scheduler, and IBKR Paper safety boundary.

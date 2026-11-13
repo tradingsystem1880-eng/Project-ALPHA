@@ -67,7 +67,7 @@ work may be open.
 | [2026-11-08-bound-http-retained-resume](../work/2026-11-08-bound-http-retained-resume/02-plan.md) | Versioned accounted retained completed-window resume | Blocked | 2026-11 |
 | [2026-11-08-complete-http-response-evidence](../work/2026-11-08-complete-http-response-evidence/02-plan.md) | Strict complete-response evidence before replay | Blocked | 2026-11 |
 
-## Backlog (16)
+## Backlog (17)
 
 | Item | Status | Rough size |
 | --- | --- | --- |
@@ -75,6 +75,7 @@ work may be open.
 | [Catalyst, expectations and fundamentals research (W15)](backlog/catalyst-research.md) | Scoped | L |
 | [ControlStore-owned durable acquisition journal](backlog/controlstore-durable-acquisition.md) | Idea | L |
 | [Generalise D0 screening to every registered producer (Phase E)](backlog/d0-generalisation.md) | Idea | M |
+| [A route for new daily-bar research ideas](backlog/daily-research-operators.md) | Idea | L |
 | [Data-directory naming migration](backlog/data-directory-naming-migration.md) | Idea | M |
 | [Gate coverage for workers/rdagent](backlog/gate-coverage-rdagent.md) | Scoped | S |
 | [Governed storage restore and query for real-data native studies (W19)](backlog/governed-storage-restore-and-query.md) | Scoped | L |
