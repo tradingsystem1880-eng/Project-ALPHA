@@ -43,6 +43,7 @@ import signal
 import subprocess
 import sys
 import time
+import tomllib
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -563,8 +564,40 @@ def codex_env() -> dict[str, str]:
     return env
 
 
+# Tools a confined builder does not get: the owner's apps, plugins, browser and computer use, image
+# generation, sub-agents and web search. Each name is in `codex features list` (0.167.0); a name a
+# later CLI drops makes the run fail visibly (codex_failed), never silently widen.
+CODEX_DISABLED_FEATURES = (
+    "apps",
+    "plugins",
+    "remote_plugin",
+    "browser_use",
+    "browser_use_external",
+    "computer_use",
+    "image_generation",
+    "multi_agent",
+)
+
+
+def project_mcp_servers(worktree: Path) -> list[str]:
+    """MCP server names a trusted project layer (``.codex/config.toml``) would start."""
+    try:
+        data = tomllib.loads((worktree / ".codex" / "config.toml").read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return []
+    servers = data.get("mcp_servers")
+    return sorted(str(k) for k in servers) if isinstance(servers, dict) else []
+
+
 def codex_args(profile: Profile, worktree: Path, last: Path, resume: str | None) -> list[str]:
+    confine: list[str] = ["-c", 'web_search="disabled"']
+    for feature in CODEX_DISABLED_FEATURES:
+        confine += ["--disable", feature]
+    for name in project_mcp_servers(worktree):
+        # MCP servers run outside the sandbox; neutralise each (a bare enabled=false is invalid).
+        confine += ["-c", f'mcp_servers.{name}={{command="true", enabled=false}}']
     common = [
+        *confine,
         "--ignore-user-config",
         "--json",
         "-m",

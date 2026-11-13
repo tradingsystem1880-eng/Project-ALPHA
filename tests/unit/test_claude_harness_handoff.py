@@ -137,6 +137,8 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Path]:
     (repo / "src").mkdir(parents=True)
     (repo / "src" / "mod.py").write_text("x = 1\n")
     (repo / "src" / "CONTEXT.md").write_text("# src\n")
+    (repo / ".codex").mkdir()
+    (repo / ".codex" / "config.toml").write_text('[mcp_servers.alpha]\ncommand = "uv"\n')
     task = repo / "docs" / "work" / "2026-11-14-demo"
     task.mkdir(parents=True)
     plan = _PLAN.replace("{PLAN_JSON}", _plan_json(["src/mod.py", "tests/test_mod.py"], ["none"]))
@@ -197,7 +199,11 @@ def test_happy_path_builds_verifies_and_records(
     in_tree = Path(rec["worktree"]) / "docs/work/2026-11-14-demo" / handoff.RECORD_NAME
     assert json.loads(in_tree.read_text())["run_id"] == rec["run_id"]
     argv = _calls(env)[0]["argv"]
-    assert argv[:2] == ["exec", "--ignore-user-config"]
+    assert argv[0] == "exec" and "--ignore-user-config" in argv
+    for feature in ("plugins", "apps", "browser_use", "computer_use", "multi_agent"):
+        assert argv[argv.index(feature) - 1] == "--disable"
+    assert 'web_search="disabled"' in argv
+    assert 'mcp_servers.alpha={command="true", enabled=false}' in argv
     assert argv[argv.index("-s") + 1] == "workspace-write"
     assert 'approval_policy="never"' in argv and "--json" in argv
     assert not any("danger" in a or "bypass" in a for a in argv)
@@ -296,7 +302,7 @@ def test_failed_check_gets_a_fix_round_through_resume(env: dict[str, Path]) -> N
     assert rec["fix_rounds"] == 1 and rec["verdict"] == "passed"
     assert [c["passed"] for c in rec["checks"] if c["name"] == "check 1"] == [False, True]
     fix = _calls(env)[1]
-    assert fix["argv"][:3] == ["exec", "resume", "--ignore-user-config"]
+    assert fix["argv"][:2] == ["exec", "resume"] and "--ignore-user-config" in fix["argv"]
     assert "thread-1" in fix["argv"] and 'sandbox_mode="workspace-write"' in fix["argv"]
     assert "! grep -q BAD src/mod.py" in fix["prompt"] and "Output tail" in fix["prompt"]
     assert rec["tokens"]["input_tokens"] == 2000
