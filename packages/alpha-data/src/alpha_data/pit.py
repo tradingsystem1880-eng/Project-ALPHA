@@ -63,5 +63,7 @@ class PointInTimeReader:
         the UTC session date, matching the bar/knowledge gate), regardless of whether it has
         gone ex yet, and the engine schedules the cash credit for its ``pay_date``.
         """
+        if when.tzinfo is None or when.utcoffset() is None:
+            raise DataError("PIT cutoff must be timezone-aware")
         known = known_actions(self._actions.get(symbol, []), when.astimezone(UTC).date())
         return cash_dividends(known)
