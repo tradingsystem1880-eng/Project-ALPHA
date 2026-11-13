@@ -241,9 +241,12 @@ def test_unknown_free_form_command_is_refused_without_a_run_context(
     """Every served root is classified, so ``unknown`` is never a real command: refuse it before
     a subprocess starts or a job is recorded, instead of spawning ``alpha`` to fail."""
     launched: list[list[str]] = []
-    monkeypatch.setattr(
-        _invoke, "_command", lambda argv: launched.append(argv) or ["python", "-c", "pass"]
-    )
+
+    def record(argv: list[str]) -> list[str]:
+        launched.append(argv)
+        return ["python", "-c", "pass"]
+
+    monkeypatch.setattr(_invoke, "_command", record)
     client = TestClient(create_app())
     before = client.get("/api/jobs").json()
     response = client.post("/api/jobs", json={"args": args})
