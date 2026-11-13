@@ -35,7 +35,7 @@ request only when its paths (or the workflow and gate files) change, and always 
 | `static`: harness lint and doctor | a removed deny rule, unwired hook, lowered coverage floor or `-x` in CI | PR | TBD |
 | `static`: semgrep over the whole repo, plus its rule contracts | wall-clock reads, unseeded random numbers, negative shifts, silent excepts | PR | TBD |
 | `static`: OpenAPI freshness and authority | a web route changed without regenerating `openapi.json`, or an unsafe operation | PR | TBD |
-| `static`: wheel build and wheel smoke | a package that no longer builds or imports when installed | PR | TBD |
+| `static`: wheel build and wheel smoke | a package that no longer builds or imports, or a web wheel without its SPA | PR | TBD |
 | `tests` job, four shards: every root test except `network` and `slow_oracle` | any unit, integration, smoke or acceptance failure | PR | TBD |
 | `bias_guard` marker (inside `tests`) | look-ahead: output before the cutoff changes when later data is poisoned | PR | in `tests` |
 | `oracle` marker (inside `tests`) | wrong statistics: metamorphic and differential checks fail | PR | in `tests` |
@@ -50,7 +50,6 @@ request only when its paths (or the workflow and gate files) change, and always 
 | `frontend` job: lint, build with types, unit tests with coverage | TypeScript, lint and component failures | PR | TBD |
 | `frontend`: API client freshness | `src/api/generated.ts` out of date with `openapi.json` | PR | in `frontend` |
 | `frontend`: browser journeys at the reference viewport (plus reference-only ones) | broken Workstation screens and flows, real backend | PR | TBD |
-| `frontend`: built bundle freshness | the committed web bundle differs from a fresh build | PR | in `frontend` |
 | `qlib-worker` job | the isolated Qlib worker's lint, types or tests | PR (paths) | TBD |
 | `literature-worker` job | the literature worker's lint, types or tests | PR (paths) | TBD |
 | `eval` job | the agent benchmark's lint, types or tests | PR (paths) | TBD |

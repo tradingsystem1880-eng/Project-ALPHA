@@ -107,7 +107,9 @@ def test_frontend_build_checks_types_once_before_browser_and_freshness() -> None
     assert {k: v for k, v in full.items() if k != "browser"} == {
         k: v for k, v in by_name.items() if k != "browser"
     }
-    assert names.index("build + types") < names.index("browser") < names.index("SPA freshness")
+    assert names.index("build + types") < names.index("browser")
+    # The built bundle is not committed, so there is no committed copy to compare against.
+    assert "SPA freshness" not in names
     assert sum("tsc" in arg for _, _, command in commands for arg in command) == 0
     assert by_name["coverage"] == ["npm", "run", "test:coverage"]
     assert by_name["API generation"] == ["npm", "run", "generate:api"]

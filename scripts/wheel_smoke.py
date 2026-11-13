@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+import zipfile
 from pathlib import Path
 
 IMPORT_PROBE = """
@@ -34,6 +35,17 @@ def workspace_modules(root: Path) -> list[str]:
     return sorted(modules)
 
 
+SPA_ENTRY = "alpha_web/static/app/index.html"
+BUILD_HINT = "run `npm ci && npm run build` in apps/alpha-web/frontend before `uv build`"
+
+
+def require_spa(wheel: Path) -> None:
+    """The alpha-web wheel must carry the built SPA, or the installed app serves a 503."""
+    with zipfile.ZipFile(wheel) as archive:
+        if SPA_ENTRY not in archive.namelist():
+            raise RuntimeError(f"{wheel.name} lacks the built SPA ({SPA_ENTRY}); {BUILD_HINT}")
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     modules = workspace_modules(root)
@@ -43,6 +55,8 @@ def main() -> int:
         if len(matches) != 1:
             raise RuntimeError(f"Expected exactly one built wheel for {module}: {matches}")
         wheels.append(str(matches[0]))
+        if module == "alpha_web":
+            require_spa(matches[0])
     with tempfile.TemporaryDirectory(prefix="alpha-wheel-smoke-") as temporary:
         target = Path(temporary) / "installed"
         subprocess.run(
