@@ -111,6 +111,31 @@ def _calls(fake: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in log.read_text().splitlines()] if log.is_file() else []
 
 
+def _assert_confined(argv: list[str], *, web_search: str, root: Path) -> None:
+    """No user config, the named features off, shell tool still on, repo MCP servers stubbed."""
+    assert "--ignore-user-config" in argv
+    assert f'web_search="{web_search}"' in argv
+    assert 'web_search="live"' not in argv or web_search == "live"
+    disabled = [argv[i + 1] for i, a in enumerate(argv) if a == "--disable"]
+    assert disabled == list(codex_bridge.REVIEW_DISABLED_FEATURES)
+    assert {
+        "apps",
+        "plugins",
+        "remote_plugin",
+        "browser_use",
+        "browser_use_external",
+        "computer_use",
+        "image_generation",
+        "multi_agent",
+        "memories",
+        "hooks",
+    } == set(disabled)
+    assert "shell_tool" not in disabled
+    for name in codex_bridge.project_mcp_servers(root):
+        assert f'mcp_servers.{name}={{command="true", enabled=false}}' in argv
+    assert argv[argv.index("-s") + 1] == "read-only"
+
+
 class TestProbeAndModel:
     def test_model_resolution_order(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(codex_bridge.MODEL_ENV, raising=False)
@@ -164,6 +189,7 @@ class TestReview:
         assert 'model_reasoning_effort="xhigh"' in argv and 'approval_policy="never"' in argv
         assert argv[argv.index("--output-schema") + 1].endswith("schemas/codex_review.json")
         assert "+x = 1" in call["stdin"] and "look-ahead" in call["stdin"]
+        _assert_confined(argv, web_search="disabled", root=repo)
 
     def test_empty_diff_and_oversize_diff(self, fake_codex: Path, repo: Path) -> None:
         empty = codex_bridge.review(
@@ -218,7 +244,7 @@ class TestResearch:
         assert result["claims"][0]["confidence"] == "high"
         assert result["claims"][0]["source"] == "Bailey & LdP 2014"
         argv = _calls(fake_codex)[-1]["argv"]
-        assert 'web_search="live"' in argv
+        _assert_confined(argv, web_search="live", root=repo)
         assert argv[argv.index("--output-schema") + 1].endswith("schemas/codex_research.json")
 
     def test_judge_runs_read_only_wraps_and_sanitizes(self, fake_codex: Path, repo: Path) -> None:
@@ -236,6 +262,13 @@ class TestResearch:
         assert "shell_tool" in argv and "plugins" in argv
         assert argv[argv.index("-C") + 1] != str(repo)
         assert argv[argv.index("--output-schema") + 1].endswith("schemas/codex_judge.json")
+
+    def test_project_mcp_servers_are_stubbed(self, tmp_path: Path) -> None:
+        (tmp_path / ".codex").mkdir()
+        (tmp_path / ".codex" / "config.toml").write_text('[mcp_servers.alpha]\ncommand = "uv"\n')
+        args = codex_bridge.confinement_args(tmp_path, web_search=False)
+        assert 'mcp_servers.alpha={command="true", enabled=false}' in args
+        assert codex_bridge.project_mcp_servers(tmp_path / "missing") == []
 
     def test_judge_rejects_wrong_shape_and_empty_prompt(
         self, fake_codex: Path, repo: Path, monkeypatch: pytest.MonkeyPatch
