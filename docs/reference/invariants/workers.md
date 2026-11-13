@@ -9,7 +9,7 @@ sources:
   - tests/unit/test_literature_worker_pin.py
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
   - apps/alpha-cli/src/alpha_cli/_native_rule_environment.py
-verified: 00f70c232ea5
+verified: 87c5d970c974
 ---
 
 # Worker invariants
@@ -58,12 +58,16 @@ acquisition worker and the RD-Agent native-loop probe. The general rule is
 - ALPHA's canonical replay (`alpha ml replay`, through `run_weight_replay`) is authoritative for the metrics
   it computes; Qlib's own Recorder and backtest reports are advisory. The replay keeps the label
   `OOS replay validated — model not recomputed under counterfactual`: not a full gauntlet, not promotion-eligible.
-- Feature recipe version 1 is the default. Version 2 is an opt-in 40-column correction, not full native
-  Alpha158 parity. The recipe is part of `config_hash`, which prediction readers enforce: never reuse a
-  model just because feature names match.
-- Version-1 features are computed locally (`features.py`); `real.py::_official_feature_names` checks only
-  that the names match the installed Qlib Alpha158, not the values. `VWAP0` is a typical-price proxy, never
-  exchange VWAP. Retiring the local formulas for native Qlib handlers needs a value-level comparison first.
+- Feature recipe version 1 is the default. Version 3 (opt-in) computes all 158 Alpha158 columns and the fold
+  normalisation with upstream Qlib (`upstream_alpha158.py`); the parity test against Qlib's own provider and
+  handler must stay exact. Version 2 is a legacy 40-column correction. The recipe is part of `config_hash`,
+  which prediction readers enforce: never reuse a model just because feature names match.
+- Versions 1 and 2 (`features.py`, `native_feature_corrections.py`, the v1 normalisation in `real.py`) exist
+  only to reproduce stored results: never change their formulas. Their golden values are compared by value
+  (1e-9), not by byte digest: recomputation is bit-identical on one machine only.
+- `VWAP0` is a typical-price proxy in every recipe, never exchange VWAP, and every v3 result names it.
+- Version 3 does not become the default until its per-model processor choice is measured on real data
+  ([ADR-0042](../../adr/0042-qlib-worker-delegates-data-layer-to-upstream.md) § Open before v3 is the default).
 - W09/W11 planning contracts, invocation observations, checkpoints and refit plans grant no admission,
   accounting, fit allowance or promotion; readiness stays blocked when the worker is absent.
 

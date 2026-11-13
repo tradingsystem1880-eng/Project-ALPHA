@@ -25,8 +25,10 @@ uv sync --project workers/qlib --locked
 uv run alpha ml train EXCHANGE --mode real --no-sync --json
 ```
 
-The worker builds a causal 158-column Alpha158-style matrix from the verified in-memory panel and
-fits preprocessing statistics on each training fold only. Contract v1 retains the original Qlib
+The worker builds a causal 158-column Alpha158 matrix from the verified in-memory panel and fits
+preprocessing statistics on each training fold only. With feature recipe v3 (opt-in) the features
+and fold normalisation are computed by upstream Qlib; the default v1 and the opt-in v2 are legacy
+hand-written recipes kept to reproduce stored results (see the recipe sections below). Contract v1 retains the original Qlib
 `LGBModel` recipe unchanged. Additive contract v2 selects `rank_ensemble_v1`: the same LightGBM
 member and a Qlib ridge `LinearModel` (`alpha=1.0`, fixed) are combined by an equal-weight
 cross-sectional percentile-rank average. Ensemble weights and ridge regularization are not tuned.
@@ -213,7 +215,77 @@ uv run pytest -q
 Removal is bounded: delete `workers/qlib`, remove the root `alpha ml` projections, and delete
 worker exchanges/control links. No root package dependency or run artifact needs migration.
 
-## Opt-in partial Alpha158 feature correction
+## Feature recipe v3: upstream Alpha158 (opt-in)
+
+Feature recipe versions are independent of request schema versions 1/2/3 (model families).
+Set `stage_config.ml.feature_recipe_version` to `3`, or use
+`{"name":"alpha158","version":3,"parameters":{}}` in a new exchange request. Version 1 stays the
+default until the owner switches it ([ADR-0042](../../docs/adr/0042-qlib-worker-delegates-data-layer-to-upstream.md)).
+All 158 feature columns are computed by the installed pyqlib 0.9.7 code
+([`upstream_alpha158.py`](src/alpha_qlib_worker/upstream_alpha158.py)); the worker only feeds the
+panel in and collects the matrix out:
+
+- names, order and expression strings come from `qlib.contrib.data.handler.Alpha158`'s own
+  `get_feature_config` (which calls `Alpha158DL.get_feature_config`);
+- each string is parsed by `qlib.utils.parse_field` and evaluated by upstream `qlib.data.ops`
+  (a private `OpsWrapper` registered with upstream `OpsList`), with values cast to float32 as
+  `LocalExpressionProvider` does;
+- the raw fields are in-memory `Expression` leaves laid out like a Qlib file provider: float32,
+  the panel's own session calendar (so 24/7 crypto calendars work), each instrument dense from its
+  first to last session. No provider, calendar file, `qlib.init` or global registration is used;
+  upstream's expression cache is keyed by a digest of each instrument's exact values.
+- fold normalisation runs upstream `DataHandlerLP` over a `StaticDataLoader`
+  (`process_type="append"`): `RobustZScoreNorm(fields_group="feature", clip_outlier=True)` and
+  `Fillna(fields_group="feature")` as infer processors, Alpha158's default learn processors
+  `DropnaLabel` and `CSZScoreNorm(fields_group="label")`. Upstream `check_transform_proc` binds
+  the fit window to the first and last training row of each fold; validation and test rows are
+  transformed with the training statistics. Non-finite processed features or labels (a label
+  cross-section with fewer than two names or zero dispersion) fail the run.
+- `$vwap`: ALPHA's panel has no vendor VWAP. The `vwap` leaf is the causal typical-price proxy
+  `(high + low + close) / 3`, recorded as `vwap_source` and in `upstream_alpha158.vwap`; it affects
+  only `VWAP0`. No silent substitution: the substitution is named in every result.
+
+Upstream Alpha158's own default infer list is empty (NaN features reach the model); v3 adds the
+feature processors of Qlib 0.9.7's published Linear Alpha158 benchmark so that the ridge member
+of the rank ensemble receives complete inputs. This is not what upstream's tree-model benchmarks
+(LightGBM, XGBoost, CatBoost, DoubleEnsemble) use: they keep raw, unclipped, unfilled features,
+and the Linear benchmark ranks the label where v3 keeps the handler's z-score. Because one matrix
+feeds both ensemble members, the LightGBM member sees clipped, zero-filled inputs. Whether to
+split the inputs per member is open in ADR-0042 and is settled, by measurement on real data,
+before v3 becomes the default. Source pins for the eleven upstream files involved fail closed if
+the installed Qlib differs.
+
+The proof is [`tests/test_upstream_alpha158.py`](tests/test_upstream_alpha158.py): a panel with an
+irregular calendar, staggered starts, a three-session instrument gap, zero volumes and a
+zero-range bar is dumped into a temporary Qlib file provider in a separate process
+([`upstream_alpha158_reference.py`](tests/upstream_alpha158_reference.py), no worker code), loaded
+through upstream `Alpha158` + `qlib.data.D`, and compared with v3: all 158 columns are equal,
+NaN positions included (maximum absolute difference 0 in every family). `VWAP0` matches as a
+formula; its input is the proxy on both sides. Separate tests check the processors' training-only
+fit, causality under future poisoning, content-keyed caching and the end-to-end worker run.
+
+V3 results record `feature_recipe.upstream_alpha158` (scope, processors, VWAP proxy, upstream
+versions and source hashes) and fold `normalization.method = "qlib_processors_v3"`. The full recipe
+is in `config_hash`; switching the default would change the bytes and hash of new default
+requests only.
+
+## Demo: upstream qrun on fabricated data — not a research path
+
+[`apps/alpha-cli/src/alpha_cli/native_qlib_pipeline.py`](../../apps/alpha-cli/src/alpha_cli/native_qlib_pipeline.py)
+runs upstream `qrun` with this environment on the fabricated fixture in
+[`examples/native-synthetic/`](examples/native-synthetic/) (six generated features and a planted
+target, not market data) and replays the scores once through Nautilus. It produces the
+recorded Workstation demo files under `apps/alpha-web/frontend/public/demos/native-qlib*`. It has
+no CLI command or web route, is not admitted research and is not ALPHA's Qlib integration; the
+worker above is. Re-running it on 2026-11-14 reproduced `native_predictions.csv` byte for byte.
+
+## Legacy recipes v1/v2 (kept to reproduce stored results)
+
+`features.py` (v1) and `native_feature_corrections.py` (v2) stay unchanged so stored exchanges
+remain reproducible; golden digests in `tests/test_feature_recipes.py` pin their feature and
+normalisation bytes. New work uses v3.
+
+### Opt-in partial Alpha158 feature correction
 
 Feature recipe version **1 remains the default**, with unchanged formulas and default request
 bytes. Set `stage_config.ml.feature_recipe_version` to `2` when preparing a new experiment, or
@@ -226,6 +298,8 @@ Qlib 0.9.7 operators compute MA, STD, VSTD, RANK, IMAX, IMIN, IMXD and WVMA at 5
 sessions, including upstream partial-window behavior. The other 118 columns retain legacy formulas
 and warm-up. VWAP0 remains the explicitly disclosed typical-price proxy; input has no vendor VWAP
 or pre-panel history. Undefined NaNs remain missing. Source/dependency mismatches fail closed.
+V1 is the hand-written Alpha158-*style* recipe: upstream names and order, not upstream
+definitions (measured differences in eight families; superseded by v3).
 No provider initialization is needed for this feature calculation.
 
 The full recipe is already in `config_hash`, which prediction readers enforce. Preserve request/

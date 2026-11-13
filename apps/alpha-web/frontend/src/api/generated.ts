@@ -7687,9 +7687,10 @@ export interface components {
              * Name
              * @enum {string}
              */
-            name: "Alpha158-style" | "Alpha158-style v2 (40 upstream columns; 118 legacy columns)";
+            name: "Alpha158-style" | "Alpha158-style v2 (40 upstream columns; 118 legacy columns)" | "Alpha158 v3 (upstream Qlib expressions and processors)";
             /** Names */
             names: string[];
+            upstream_alpha158?: components["schemas"]["MlUpstreamAlpha158"] | null;
             versioned_correction?: components["schemas"]["MlFeatureCorrection"] | null;
             /** Vwap Source */
             vwap_source: string;
@@ -8141,7 +8142,7 @@ export interface components {
              * Version
              * @enum {integer}
              */
-            version: 1 | 2;
+            version: 1 | 2 | 3;
             /** Versions */
             versions: {
                 [key: string]: string;
@@ -8208,7 +8209,7 @@ export interface components {
              * Version
              * @enum {integer}
              */
-            version: 1 | 2;
+            version: 1 | 2 | 3;
         };
         /** MlFold */
         MlFold: {
@@ -8288,9 +8289,9 @@ export interface components {
             all_missing_train_features: number;
             /**
              * Method
-             * @constant
+             * @enum {string}
              */
-            method: "train_only_median_then_zscore";
+            method: "train_only_median_then_zscore" | "qlib_processors_v3";
             /** Statistics Hash */
             statistics_hash: string;
         };
@@ -8792,6 +8793,60 @@ export interface components {
              * @default 7200
              */
             timeout_seconds: number;
+        };
+        /**
+         * MlUpstreamAlpha158
+         * @description Feature recipe v3: every column and the fold processors come from upstream Qlib.
+         */
+        MlUpstreamAlpha158: {
+            /** Calendar */
+            calendar: string;
+            /** Compatibility Key */
+            compatibility_key: string;
+            /** Expression Engine */
+            expression_engine: string;
+            /** Feature Config */
+            feature_config: string;
+            /** Input */
+            input: string;
+            /**
+             * Legacy Columns
+             * @constant
+             */
+            legacy_columns: 0;
+            /**
+             * Name
+             * @constant
+             */
+            name: "alpha158";
+            /** Nonfinite */
+            nonfinite: string;
+            /** Precision */
+            precision: string;
+            processors: components["schemas"]["JsonObject"];
+            /**
+             * Scope
+             * @constant
+             */
+            scope: "upstream_alpha158_all_158_columns";
+            /** Source Sha256 */
+            source_sha256: {
+                [key: string]: string;
+            };
+            upstream: components["schemas"]["JsonObject"];
+            /**
+             * Upstream Columns
+             * @constant
+             */
+            upstream_columns: 158;
+            /**
+             * Version
+             * @constant
+             */
+            version: 3;
+            vwap: components["schemas"]["JsonObject"];
+            /** Warmup */
+            warmup: string;
         };
         /** MlWorkerResult */
         MlWorkerResult: {

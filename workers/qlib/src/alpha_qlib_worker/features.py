@@ -1,8 +1,12 @@
-"""Causal in-memory implementation of Qlib's Alpha158-style feature recipe.
+"""Legacy recipes v1/v2 — kept to reproduce stored results; new work uses v3.
 
-The worker receives a verified ALPHA OHLCV panel rather than a Qlib binary provider.  These
-features therefore implement the official Alpha158 names and trailing-window definitions directly
-over that immutable panel.  No expression reads a row after its feature timestamp.
+Hand-written, causal pandas re-implementation of an Alpha158-*style* matrix (feature recipe
+v1, and the 118 inherited columns of v2). It uses upstream Alpha158's 158 names and column
+order but NOT its definitions: measured differences include sample-vs-population deviations,
+partial-window warm-up, tie handling and extrema indexing in eight families, and ``VWAP0`` is
+a typical-price proxy. It is not Qlib parity. Recipe v3 (``upstream_alpha158``) computes every
+column with upstream Qlib instead. Do not change these formulas: stored v1/v2 exchanges must
+stay reproducible byte for byte. No expression reads a row after its feature timestamp.
 """
 
 from __future__ import annotations

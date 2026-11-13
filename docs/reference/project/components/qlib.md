@@ -36,7 +36,9 @@ is the result. The intended next step is for [RD-Agent](rd-agent.md) to drive Ql
   at the close of each day. Both sides check the exchange.
 - Use Qlib's own recipes, providers and model zoo for breadth rather than rewriting them; any local
   copy (for example of the Alpha158 formulas) must be compared value by value before it is retired.
-- The decision record is [ADR-0016](../../../adr/0016-isolated-qlib-worker.md).
+  Feature recipe v3 computes the features with upstream Qlib itself; it is opt-in, and making it
+  the default is an owner decision ([ADR-0042](../../../adr/0042-qlib-worker-delegates-data-layer-to-upstream.md)).
+- The founding decision record is [ADR-0016](../../../adr/0016-isolated-qlib-worker.md).
 
 ## What is real today
 
@@ -46,7 +48,8 @@ stand-in on the Dell, where its install is not present.
 ## Where it lives
 
 - **Workspaces:** `workers/qlib`
-- **Capabilities:** `ml-lab`, `alpha158-v2`, `qlib-refit`, `qlib-in-research-cases`, `native-engine-demos`
+- **Capabilities:** `ml-lab`, `alpha158-v2`, `alpha158-v3`, `qlib-refit`, `qlib-in-research-cases`,
+  `native-engine-demos`
 - Code: [`workers/qlib/`](../../../../workers/qlib/README.md); the exchange and replay in
   `apps/alpha-cli/src/alpha_cli/` (`ml_*.py`, `_ml_replay.py`).
 - Tests: `workers/qlib/tests/`, `tests/unit/test_qlib_isolation.py`, `tests/unit/test_ml_contract.py`.
@@ -54,6 +57,7 @@ stand-in on the Dell, where its install is not present.
 - Plans: the `plans` of each capability above in `docs/roadmap/capabilities.toml`.
 - Backlog: [full model zoo and fold retraining](../../../roadmap/backlog/qlib-model-zoo-and-fold-retraining.md).
 - Decision records: [ADR-0016](../../../adr/0016-isolated-qlib-worker.md),
+  [ADR-0042](../../../adr/0042-qlib-worker-delegates-data-layer-to-upstream.md),
   [ADR-0028](../../../adr/0028-governed-market-state-and-model-candidates.md).
 
 ## Decisions and open questions
