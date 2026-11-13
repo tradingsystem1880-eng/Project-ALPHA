@@ -144,26 +144,10 @@ that launches an agent. **Verify:** `uv run alpha info system --json`.
 
 ## Deliberately deferred
 
-**Owner token — deliberately left unset; the logbook is the chosen control.**
-Configuring `ALPHA_OWNER_TOKEN` would gate `gate.py override|ack|baseline` behind a secret you
-would have to manage, and it carries a trap: **the hooks read the environment of the shell that
-launched Claude Code**, so exporting it in that terminal hands the *agent* owner authority —
-hidden-holdout reads, ack-free protected edits, config-change bypass — which is strictly worse
-than leaving it unset.
-
-With it unset, every escape is agent self-serve and every one is recorded in the hash-chained
-journal at `.claude/state/harness-audit.jsonl` as
-`authorized_by: agent (owner token not configured)`. Read it with:
-
-```bash
-uv run python scripts/gate.py audit --digest
-```
-
-One screen: escapes rolled up by the file they touched, what the harness blocked, config changes,
-Codex calls, and a chain-integrity line. `--since ISO` widens or narrows the window (default 7
-days). The session brief prints the escape count with the same command as the pointer, and
-`gate.py audit --verify` re-hashes the whole chain. Counts and paths only — the journal never
-records file contents.
+**Owner token, overrides and audit journal — removed (2026-11-13).** With
+[ADR-0039](../adr/0039-ci-is-the-merge-gate.md) there is no local gate to escape, so the harness
+owner token, `gate.py override|ack|audit` and the hash-chained journal are gone. CI on the pull
+request and your merge are the controls. Application owner confirmation (ADR-0038) is unchanged.
 
 **Branch push / PR.** `claude/blissful-edison-00b74b` has no upstream and has never been pushed.
 That is intentional; push and open the PR from the main session, not from a fork.
@@ -191,11 +175,6 @@ observations below retain their original inspection date.
   anything" but is the opposite: it is the harness being missing, not present. Merging this
   branch to `main` is what makes the expanded permissions apply everywhere. Until then, work from
   a worktree on this branch, and check with `ls .claude/settings.json scripts/claude_hooks.py`.
-- **Check for a live escape token before trusting a commit gate.** `gate.py audit --digest`
-  prints a `LIVE` block when a one-shot `override`/`ack` is armed but unused; an override armed
-  for a commit that never happened fires silently on the next one. Drop a stale one with
-  `uv run python scripts/gate.py ack --clear` (or `override --clear`), which records the drop
-  in the journal — deleting the state file by hand leaves the journal implying it is still armed.
 - **`/usr/bin/python3` is 3.9** and has no `tomllib`. Stdlib-only harness scripts must run under
   `.venv/bin/python -S`.
 - **`mutate` no longer leaks its staging** (the leak that produced the leftover directory is

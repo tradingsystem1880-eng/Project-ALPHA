@@ -1,8 +1,8 @@
 """Tests for the Claude Code harness gate runner (scripts/gate.py).
 
-The gate runner is the single source of truth for tree-hash stamps, path
-tiers, attestation artifacts, one-shot overrides/acks, the audit journal,
-and the harness doctor. Everything here runs against throwaway git repos.
+Covers quant-tier path selection, the harness doctor and weakening scanner, the
+legacy brief/index, plan checks and the quant-rigor sweeps. Everything here runs
+against throwaway git repos.
 """
 
 from __future__ import annotations
@@ -20,111 +20,7 @@ import harness_quant
 import pytest
 import semgrep_runner
 
-from tests.unit._harness_support import REPO_ROOT
 from tests.unit._harness_support import git as _git
-
-
-class TestTreeHash:
-    def test_status_preserves_spaces_and_both_rename_paths(self, repo: Path) -> None:
-        _git(repo, "mv", "tracked.py", "renamed file.py")
-        assert set(gate._status_entries(repo)) == {
-            ("tracked.py", False),
-            ("renamed file.py", False),
-        }
-
-    def test_tracked_ignored_content_is_still_hashed(self, repo: Path) -> None:
-        (repo / ".git" / "info" / "exclude").write_text("tracked.py\n")
-        before = gate.compute_tree_hash(repo)
-        (repo / "tracked.py").write_text("x = 99\n")
-        assert gate.compute_tree_hash(repo) != before
-
-    def test_force_added_ignored_content_is_hashed(self, repo: Path) -> None:
-        (repo / ".git" / "info" / "exclude").write_text("ignored.py\n")
-        before = gate.compute_tree_hash(repo)
-        (repo / "ignored.py").write_text("x = 1\n")
-        _git(repo, "add", "-f", "ignored.py")
-        assert gate.compute_tree_hash(repo) != before
-
-    def test_deterministic(self, repo: Path) -> None:
-        assert gate.compute_tree_hash(repo) == gate.compute_tree_hash(repo)
-
-    def test_changes_on_tracked_edit(self, repo: Path) -> None:
-        before = gate.compute_tree_hash(repo)
-        (repo / "tracked.py").write_text("x = 2\n")
-        assert gate.compute_tree_hash(repo) != before
-
-    def test_changes_on_untracked_file(self, repo: Path) -> None:
-        before = gate.compute_tree_hash(repo)
-        (repo / "new.py").write_text("y = 1\n")
-        assert gate.compute_tree_hash(repo) != before
-
-    def test_changes_on_untracked_content_edit(self, repo: Path) -> None:
-        (repo / "new.py").write_text("y = 1\n")
-        before = gate.compute_tree_hash(repo)
-        (repo / "new.py").write_text("y = 2\n")
-        assert gate.compute_tree_hash(repo) != before
-
-    def test_insensitive_to_gitignored_state(self, repo: Path) -> None:
-        before = gate.compute_tree_hash(repo)
-        state = repo / ".claude" / "state"
-        state.mkdir(parents=True)
-        (state / "gate-stamp.json").write_text("{}")
-        assert gate.compute_tree_hash(repo) == before
-
-    def test_changes_on_staged_change(self, repo: Path) -> None:
-        before = gate.compute_tree_hash(repo)
-        (repo / "tracked.py").write_text("x = 3\n")
-        _git(repo, "add", "tracked.py")
-        assert gate.compute_tree_hash(repo) != before
-
-    def test_invariant_across_pure_commit(self, repo: Path) -> None:
-        """A commit changes no file content, so it must not invalidate the hash.
-
-        Without this, every commit in an atomic sequence forces a full gate
-        re-run even though the certified content is byte-identical.
-        """
-        (repo / "tracked.py").write_text("x = 2\n")
-        _git(repo, "add", "-A")
-        before = gate.compute_tree_hash(repo)
-        _git(repo, "commit", "--quiet", "-m", "feat: change")
-        assert gate.compute_tree_hash(repo) == before
-
-    def test_stamp_survives_pure_commit(self, repo: Path) -> None:
-        (repo / "tracked.py").write_text("x = 2\n")
-        _git(repo, "add", "-A")
-        gate.write_stamp(repo, "full", steps=[("all", 1.0, True)], duration=1.0)
-        assert gate.stamp_is_valid(repo, "full")
-        _git(repo, "commit", "--quiet", "-m", "feat: change")
-        assert gate.stamp_is_valid(repo, "full")
-
-
-class TestScopedDiffHash:
-    def test_stable_when_out_of_scope_changes(self, repo: Path) -> None:
-        quant = repo / "packages" / "alpha-validation" / "src" / "alpha_validation"
-        quant.mkdir(parents=True)
-        (quant / "dsr.py").write_text("a = 1\n")
-        _git(repo, "add", "-A")
-        _git(repo, "commit", "--quiet", "-m", "chore: quant")
-        before = gate.scoped_diff_hash(repo, gate.matches_quant)
-        (repo / "tracked.py").write_text("x = 99\n")
-        assert gate.scoped_diff_hash(repo, gate.matches_quant) == before
-
-    def test_changes_on_in_scope_edit(self, repo: Path) -> None:
-        quant = repo / "packages" / "alpha-validation" / "src" / "alpha_validation"
-        quant.mkdir(parents=True)
-        (quant / "dsr.py").write_text("a = 1\n")
-        _git(repo, "add", "-A")
-        _git(repo, "commit", "--quiet", "-m", "chore: quant")
-        before = gate.scoped_diff_hash(repo, gate.matches_quant)
-        (quant / "dsr.py").write_text("a = 2\n")
-        assert gate.scoped_diff_hash(repo, gate.matches_quant) != before
-
-    def test_changes_on_untracked_in_scope_file(self, repo: Path) -> None:
-        before = gate.scoped_diff_hash(repo, gate.matches_quant)
-        quant = repo / "packages" / "alpha-research" / "src" / "alpha_research"
-        quant.mkdir(parents=True)
-        (quant / "power.py").write_text("b = 1\n")
-        assert gate.scoped_diff_hash(repo, gate.matches_quant) != before
 
 
 class TestPathTiers:
@@ -153,371 +49,6 @@ class TestPathTiers:
     )
     def test_quant_rejects(self, path: str) -> None:
         assert not gate.matches_quant(path)
-
-    @pytest.mark.parametrize(
-        "path",
-        [
-            "packages/alpha-validation/src/alpha_validation/metrics.py",
-            "packages/alpha-backtest/src/alpha_backtest/engine.py",
-            "apps/alpha-cli/src/alpha_cli/_gauntlet.py",
-            "apps/alpha-cli/src/alpha_cli/_seeds.py",
-            "apps/alpha-cli/src/alpha_cli/_runner.py",
-        ],
-    )
-    def test_risk_matches(self, path: str) -> None:
-        assert gate.matches_risk(path)
-
-    @pytest.mark.parametrize(
-        "path",
-        [
-            "apps/alpha-cli/src/alpha_cli/main.py",
-            "apps/alpha-web/src/alpha_web/app.py",
-            "docs/notes.md",
-        ],
-    )
-    def test_risk_rejects(self, path: str) -> None:
-        assert not gate.matches_risk(path)
-
-
-class TestProtectedControlPlane:
-    @pytest.mark.parametrize(
-        "path",
-        [
-            "scripts/gate.py",
-            "scripts/claude_hooks.py",
-            "scripts/harness_models.py",
-            ".claude/settings.json",
-            ".claude/skills/karpathy-guidelines/SKILL.md",
-            "tests/bias_guards/test_pit_poison.py",
-            ".github/workflows/ci.yml",
-            "CLAUDE.md",
-        ],
-    )
-    def test_protected_paths(self, path: str) -> None:
-        assert gate.protected_reason(path, "") is not None
-
-    def test_pyproject_protected_only_for_guarded_content(self) -> None:
-        assert gate.protected_reason("pyproject.toml", "[tool.importlinter]") is not None
-        assert gate.protected_reason("pyproject.toml", "fail_under = 80") is not None
-        assert gate.protected_reason("pyproject.toml", "strict = false") is not None
-        assert gate.protected_reason("pyproject.toml", "line-length = 100") is None
-
-    @pytest.mark.parametrize(
-        "path",
-        [
-            "packages/alpha-validation/src/alpha_validation/metrics.py",
-            "docs/notes.md",
-            "tests/unit/test_bootstrap.py",
-        ],
-    )
-    def test_unprotected_paths(self, path: str) -> None:
-        assert gate.protected_reason(path, "") is None
-
-
-class TestStamp:
-    def test_write_and_check_tiers(self, repo: Path) -> None:
-        gate.write_stamp(repo, "fast", steps=[("ruff", 1.0, True)], duration=1.0)
-        assert gate.stamp_is_valid(repo, "fast")
-        assert not gate.stamp_is_valid(repo, "full")
-        gate.write_stamp(repo, "full", steps=[("all", 2.0, True)], duration=2.0)
-        assert gate.stamp_is_valid(repo, "fast")
-        assert gate.stamp_is_valid(repo, "full")
-
-    def test_stamp_invalidated_by_edit(self, repo: Path) -> None:
-        gate.write_stamp(repo, "full", steps=[("all", 1.0, True)], duration=1.0)
-        (repo / "tracked.py").write_text("x = 4\n")
-        assert not gate.stamp_is_valid(repo, "fast")
-
-    def test_missing_stamp_invalid(self, repo: Path) -> None:
-        assert not gate.stamp_is_valid(repo, "fast")
-
-    def test_run_gate_failure_leaves_no_stamp(self, repo: Path) -> None:
-        def runner(cmd: list[str]) -> tuple[bool, float, str]:
-            return (False, 0.1, "boom")
-
-        code = gate.run_gate(repo, "fast", runner=runner)
-        assert code != 0
-        assert not gate.stamp_is_valid(repo, "fast")
-
-    def test_run_gate_success_writes_stamp(self, repo: Path) -> None:
-        def runner(cmd: list[str]) -> tuple[bool, float, str]:
-            return (True, 0.1, "")
-
-        code = gate.run_gate(repo, "fast", runner=runner)
-        assert code == 0
-        assert gate.stamp_is_valid(repo, "fast")
-
-    def test_run_gate_clears_prior_stamp_first(self, repo: Path) -> None:
-        gate.write_stamp(repo, "full", steps=[("all", 1.0, True)], duration=1.0)
-
-        def runner(cmd: list[str]) -> tuple[bool, float, str]:
-            return (False, 0.1, "boom")
-
-        gate.run_gate(repo, "fast", runner=runner)
-        assert not gate.stamp_is_valid(repo, "fast")
-        assert not gate.stamp_is_valid(repo, "full")
-
-    def test_run_gate_rejects_tree_changed_during_checks(self, repo: Path) -> None:
-        def runner(cmd: list[str]) -> tuple[bool, float, str]:
-            (repo / "tracked.py").write_text("x = 99\n")
-            return (True, 0.1, "")
-
-        assert gate.run_gate(repo, "fast", runner=runner) != 0
-        assert not (repo / gate.STATE_DIR / gate.STAMP_FILE).exists()
-
-
-class TestAttest:
-    def _quant_report(self, **overrides: Any) -> dict[str, Any]:
-        report: dict[str, Any] = {
-            "claims": [
-                {
-                    "claim": "DSR deflates by trial-Sharpe variance",
-                    "source": "Bailey & Lopez de Prado (2014)",
-                    "location": "packages/alpha-validation/src/alpha_validation/dsr.py:10",
-                    "verdict": "VERIFIED",
-                }
-            ],
-            "docstring_citations": {"ok": True, "missing": []},
-            "overall": "PASS",
-        }
-        report.update(overrides)
-        return report
-
-    def test_quant_attest_pass_writes_bound_artifact(self, repo: Path) -> None:
-        code = gate.attest(repo, "quant", json.dumps(self._quant_report()))
-        assert code == 0
-        assert gate.quant_attestation_valid(repo)
-
-    def test_quant_attest_invalidated_by_quant_edit(self, repo: Path) -> None:
-        gate.attest(repo, "quant", json.dumps(self._quant_report()))
-        quant = repo / "packages" / "alpha-validation" / "src" / "alpha_validation"
-        quant.mkdir(parents=True)
-        (quant / "dsr.py").write_text("a = 1\n")
-        assert not gate.quant_attestation_valid(repo)
-
-    def test_quant_attest_survives_out_of_scope_edit(self, repo: Path) -> None:
-        gate.attest(repo, "quant", json.dumps(self._quant_report()))
-        (repo / "tracked.py").write_text("x = 5\n")
-        assert gate.quant_attestation_valid(repo)
-
-    def test_quant_attest_rejects_fail_overall(self, repo: Path) -> None:
-        report = self._quant_report(overall="FAIL")
-        assert gate.attest(repo, "quant", json.dumps(report)) != 0
-        assert not gate.quant_attestation_valid(repo)
-
-    def test_quant_attest_rejects_pass_with_discrepancy(self, repo: Path) -> None:
-        report = self._quant_report()
-        report["claims"][0]["verdict"] = "DISCREPANCY"
-        assert gate.attest(repo, "quant", json.dumps(report)) != 0
-
-    def test_quant_attest_rejects_pass_with_missing_citation(self, repo: Path) -> None:
-        report = self._quant_report(docstring_citations={"ok": False, "missing": ["dsr.py:f"]})
-        assert gate.attest(repo, "quant", json.dumps(report)) != 0
-
-    def test_attest_rejects_malformed_json(self, repo: Path) -> None:
-        assert gate.attest(repo, "quant", "{not json") != 0
-        assert gate.attest(repo, "quant", json.dumps({"unexpected": 1})) != 0
-
-    def _review(self, repo: Path, **overrides: Any) -> dict[str, Any]:
-        verdict: dict[str, Any] = {
-            "verdict": "APPROVE",
-            "findings": [],
-            "reviewed_diff_hash": gate.scoped_diff_hash(repo, gate.matches_risk),
-            "files_reviewed": gate.scoped_changed_paths(repo, gate.matches_risk),
-            "reviewed_tree_hash": gate.compute_tree_hash(repo),
-        }
-        verdict.update(overrides)
-        return verdict
-
-    def test_review_attest_approve_binds_risk_diff(self, repo: Path) -> None:
-        assert gate.attest(repo, "review", json.dumps(self._review(repo))) == 0
-        assert gate.review_verdict_valid(repo)
-        (repo / "tracked.py").write_text("x = 6\n")
-        assert gate.review_verdict_valid(repo), "out-of-scope edit must not invalidate"
-        risky = repo / "packages" / "alpha-backtest" / "src" / "alpha_backtest"
-        risky.mkdir(parents=True)
-        (risky / "engine.py").write_text("e = 1\n")
-        assert not gate.review_verdict_valid(repo), "risk-tier edit after review invalidates"
-
-    def test_review_attest_rejects_unlisted_risk_file(self, repo: Path) -> None:
-        risky = repo / "packages" / "alpha-backtest" / "src" / "alpha_backtest"
-        risky.mkdir(parents=True)
-        (risky / "engine.py").write_text("e = 1\n")
-        verdict = self._review(repo, files_reviewed=[])
-        assert gate.attest(repo, "review", json.dumps(verdict)) != 0
-        verdict = self._review(repo)
-        assert "packages/alpha-backtest/src/alpha_backtest/engine.py" in verdict["files_reviewed"]
-        assert gate.attest(repo, "review", json.dumps(verdict)) == 0
-
-    def test_review_attest_rejects_block(self, repo: Path) -> None:
-        verdict = self._review(
-            repo,
-            verdict="BLOCK",
-            findings=[
-                {
-                    "severity": "high",
-                    "file": "a.py",
-                    "line": 1,
-                    "summary": "bug",
-                }
-            ],
-        )
-        assert gate.attest(repo, "review", json.dumps(verdict)) != 0
-        assert not gate.review_verdict_valid(repo)
-
-    def test_review_attest_requires_the_current_reviewed_tree(self, repo: Path) -> None:
-        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
-        verdict = self._review(repo, files_reviewed=["CLAUDE.md"])
-        missing = {key: value for key, value in verdict.items() if key != "reviewed_tree_hash"}
-        assert gate.attest(repo, "review", json.dumps(missing)) != 0
-        (repo / "tracked.py").write_text("x = 9\n")
-        assert gate.attest(repo, "review", json.dumps(verdict)) != 0, "out-of-scope edit"
-        verdict = self._review(repo, files_reviewed=["CLAUDE.md"])
-        (repo / "CLAUDE.md").write_text("Edited after review\n")
-        assert gate.attest(repo, "review", json.dumps(verdict)) != 0, "protected edit"
-        assert not gate.review_verdict_valid(repo)
-
-    def test_protected_scope_change_after_attest_invalidates_review(self, repo: Path) -> None:
-        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
-        verdict = self._review(repo, files_reviewed=["CLAUDE.md"])
-        assert gate.attest(repo, "review", json.dumps(verdict)) == 0
-        assert gate.review_verdict_valid(repo)
-        (repo / "CLAUDE.md").write_text("Edited after review\n")
-        assert not gate.review_verdict_valid(repo), "protected content changed"
-        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
-        assert gate.review_verdict_valid(repo)
-        rules = repo / ".claude" / "rules"
-        rules.mkdir(parents=True)
-        (rules / "new.md").write_text("new rule\n")
-        assert not gate.review_verdict_valid(repo), "review scope gained a protected path"
-
-    def test_legacy_review_attestation_fails_closed(self, repo: Path) -> None:
-        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
-        verdict = self._review(repo, files_reviewed=["CLAUDE.md"])
-        assert gate.attest(repo, "review", json.dumps(verdict)) == 0
-        path = repo / gate.STATE_DIR / gate.REVIEW_VERDICT_FILE
-        artifact = gate.read_json(path)
-        assert artifact is not None and artifact["schema_version"] == 3
-        legacy = {"schema_version": 2, "created_at": artifact["created_at"], "verdict": verdict}
-        gate.write_json_atomic(path, legacy)
-        assert not gate.review_verdict_valid(repo)
-
-    def test_review_attest_rejects_stale_diff_hash(self, repo: Path) -> None:
-        verdict = self._review(repo, reviewed_diff_hash="0" * 64)
-        assert gate.attest(repo, "review", json.dumps(verdict)) != 0
-
-    def test_review_attest_requires_protected_paths_in_review_scope(self, repo: Path) -> None:
-        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
-        assert gate.scoped_changed_paths(repo, gate.matches_risk) == []
-        verdict = self._review(repo, files_reviewed=[])
-        assert gate.attest(repo, "review", json.dumps(verdict)) != 0
-        assert not gate.review_verdict_valid(repo)
-        verdict = self._review(repo, files_reviewed=["CLAUDE.md"])
-        assert gate.attest(repo, "review", json.dumps(verdict)) == 0
-
-    @pytest.mark.parametrize(
-        ("path", "expected"),
-        [
-            ("packages/alpha-backtest/src/alpha_backtest/engine.py", True),
-            ("packages/alpha-validation/src/alpha_validation/dsr.py", True),
-            ("CLAUDE.md", True),
-            (".claude/rules/alpha-cli.md", True),
-            (".githooks/pre-commit", True),
-            (".githooks\\pre-commit", True),
-            ("pyproject.toml", True),
-            ("scripts/gate_components.py", True),
-            ("tracked.py", False),
-            ("docs/notes.md", False),
-        ],
-    )
-    def test_review_scope_matches_the_git_guard(self, path: str, expected: bool) -> None:
-        assert gate.matches_review(path) is expected
-
-    def test_literal_reviewer_template_attests_a_supplied_protected_scope(self, repo: Path) -> None:
-        reviewer = (REPO_ROOT / ".claude" / "agents" / "independent-reviewer.md").read_text()
-        command = (REPO_ROOT / ".claude" / "commands" / "review-gate.md").read_text()
-        template = '"files_reviewed": [every path in the review scope supplied as path list]'
-        assert template in reviewer and "every risk-tier path" not in reviewer
-        assert "scoped_changed_paths(r, gate.matches_review)" in command
-        (repo / "CLAUDE.md").write_text("Changed engineering policy\n")
-        supplied = gate.scoped_changed_paths(repo, gate.matches_review)
-        assert supplied == ["CLAUDE.md"]
-        verdict = self._review(repo, files_reviewed=supplied)
-        assert gate.attest(repo, "review", json.dumps(verdict)) == 0
-
-    def test_quant_attest_rejects_unlisted_quant_file(self, repo: Path) -> None:
-        quant = repo / "packages" / "alpha-validation" / "src" / "alpha_validation"
-        quant.mkdir(parents=True)
-        (quant / "dsr.py").write_text("a = 1\n")
-        assert gate.attest(repo, "quant", json.dumps(self._quant_report())) != 0
-        listed = self._quant_report(
-            files_reviewed=["packages/alpha-validation/src/alpha_validation/dsr.py"]
-        )
-        assert gate.attest(repo, "quant", json.dumps(listed)) == 0
-
-    def test_quant_attest_rejects_pass_with_failed_spot_check(self, repo: Path) -> None:
-        report = self._quant_report(
-            numeric_spot_checks=[
-                {
-                    "description": "PSR(0)",
-                    "expected": 0.5,
-                    "observed": 0.7,
-                    "tolerance": 1e-9,
-                    "ok": False,
-                }
-            ]
-        )
-        assert gate.attest(repo, "quant", json.dumps(report)) != 0
-        assert (
-            gate.attest(repo, "quant", json.dumps(self._quant_report(oracles_present=False))) != 0
-        )
-
-
-class TestOnceTokens:
-    def test_override_consumed_once(self, repo: Path) -> None:
-        gate.write_override(repo, reason="emergency")
-        assert gate.consume_override(repo) is not None
-        assert gate.consume_override(repo) is None
-
-    def test_ack_consumed_once(self, repo: Path) -> None:
-        gate.write_ack(repo, reason="editing gate itself")
-        assert gate.consume_ack(repo) is not None
-        assert gate.consume_ack(repo) is None
-
-    def test_disarming_records_a_drop_not_a_use(self, repo: Path) -> None:
-        """The digest stays honest only if a dropped token differs from a spent one."""
-        gate.write_ack(repo, reason="never needed after all")
-        assert gate.disarm_token(repo, "ack") is not None
-        assert gate.consume_ack(repo) is None  # gone, so it cannot fire later
-
-        kinds = [e["event"] for e in gate.read_audit(repo)]
-        assert "ack_disarmed" in kinds
-        assert "ack_consumed" not in kinds
-
-    def test_disarming_nothing_is_not_an_error(self, repo: Path) -> None:
-        assert gate.disarm_token(repo, "ack") is None
-        assert gate.disarm_token(repo, "override") is None
-
-    def test_a_disarmed_token_is_no_longer_live(self, repo: Path) -> None:
-        gate.write_override(repo, reason="armed then abandoned")
-        assert "LIVE" in gate.audit_digest(repo)
-        gate.disarm_token(repo, "override")
-        assert "LIVE" not in gate.audit_digest(repo)
-
-
-class TestAudit:
-    def test_events_appended(self, repo: Path) -> None:
-        gate.write_stamp(repo, "fast", steps=[("ruff", 1.0, True)], duration=1.0)
-        gate.write_override(repo, reason="r1")
-        gate.consume_override(repo)
-        journal = repo / gate.STATE_DIR / "harness-audit.jsonl"
-        lines = [json.loads(line) for line in journal.read_text().splitlines()]
-        events = [line["event"] for line in lines]
-        assert "stamp_written" in events
-        assert "override_written" in events
-        assert "override_consumed" in events
-        for line in lines:
-            assert set(line) >= {"ts", "session_id", "event", "detail", "tree_hash"}
 
 
 class TestDoctor:
@@ -582,149 +113,7 @@ def _wire_minimal_harness(repo: Path) -> None:
         script = repo / rel
         script.parent.mkdir(parents=True, exist_ok=True)
         script.write_text("# stub\n")
-    gate.write_baseline(repo, reason="test", authorized_by="test")
-
-
-class TestOwnerToken:
-    def test_unconfigured_is_self_serve_but_labelled(self, repo: Path) -> None:
-        allowed, who = gate.authorize_escape(repo, kind="override")
-        assert allowed and "not configured" in who
-
-    def test_configured_requires_matching_env_token(
-        self, repo: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        gate.owner_init(repo, "correct-horse-battery")
-        monkeypatch.delenv(gate.OWNER_TOKEN_ENV, raising=False)
-        allowed, who = gate.authorize_escape(repo, kind="override")
-        assert not allowed and "owner" in who
-        monkeypatch.setenv(gate.OWNER_TOKEN_ENV, "wrong-token-value")
-        assert not gate.owner_present(repo)
-        monkeypatch.setenv(gate.OWNER_TOKEN_ENV, "correct-horse-battery")
-        assert gate.owner_present(repo)
-        allowed, who = gate.authorize_escape(repo, kind="override")
-        assert allowed and who == "owner"
-
-    def test_owner_file_stores_hash_not_token(self, repo: Path) -> None:
-        gate.owner_init(repo, "correct-horse-battery")
-        raw = (repo / gate.OWNER_FILE).read_text()
-        assert "correct-horse-battery" not in raw
-        assert "ownerTokenHash" in raw
-
-    def test_short_token_refused(self, repo: Path) -> None:
-        with pytest.raises(ValueError):
-            gate.owner_init(repo, "short")
-
-    def test_agent_low_risk_ack_budget(self, repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        gate.owner_init(repo, "correct-horse-battery")
-        monkeypatch.delenv(gate.OWNER_TOKEN_ENV, raising=False)
-        monkeypatch.setenv("CLAUDE_SESSION_ID", "s1")
-        for _ in range(gate.AGENT_ACK_LIMIT):
-            allowed, _who = gate.authorize_escape(
-                repo, kind="ack", path=".claude/agents/navigator.md"
-            )
-            assert allowed
-        allowed, who = gate.authorize_escape(repo, kind="ack", path=".claude/agents/navigator.md")
-        assert not allowed and "budget" in who
-        allowed, _ = gate.authorize_escape(repo, kind="ack", path="scripts/gate.py")
-        assert not allowed, "gate.py is never agent-ackable once the owner token exists"
-
-
-class TestAckPathBinding:
-    def test_path_bound_ack_only_clears_that_path(self, repo: Path) -> None:
-        gate.write_ack(repo, reason="r", path="scripts/gate.py")
-        assert gate.consume_ack(repo, path="scripts/claude_hooks.py") is None
-        assert gate.consume_ack(repo, path="scripts/gate.py") is not None
-        assert gate.consume_ack(repo, path="scripts/gate.py") is None
-
-    def test_unbound_ack_clears_any_path(self, repo: Path) -> None:
-        gate.write_ack(repo, reason="r")
-        assert gate.consume_ack(repo, path="scripts/gate.py") is not None
-
-
-class TestAuditChain:
-    def test_chain_links_and_detects_tampering(self, repo: Path) -> None:
-        gate.append_audit(repo, "a", "1")
-        gate.append_audit(repo, "b", "2")
-        gate.append_audit(repo, "c", "3")
-        ok, detail = gate.verify_audit_chain(repo)
-        assert ok, detail
-        events = gate.read_audit(repo)
-        assert [e["event"] for e in events] == ["a", "b", "c"]
-        assert events[0]["prev_hash"] == "" and events[1]["prev_hash"] and events[2]["prev_hash"]
-        journal = repo / gate.STATE_DIR / gate.AUDIT_FILE
-        lines = journal.read_text().splitlines()
-        del lines[1]
-        journal.write_text("\n".join(lines) + "\n")
-        ok, detail = gate.verify_audit_chain(repo)
-        assert not ok and "mismatch" in detail
-
-    def test_read_audit_filters(self, repo: Path) -> None:
-        gate.append_audit(repo, "x", "1")
-        gate.append_audit(repo, "y", "2")
-        assert [e["event"] for e in gate.read_audit(repo, kind="y")] == ["y"]
-        assert gate.read_audit(repo, since="9999-01-01") == []
-
-    def test_concurrent_append_fork_is_reported_not_failed(self, repo: Path) -> None:
-        gate.append_audit(repo, "a", "1")
-        gate.append_audit(repo, "b", "2")
-        journal = repo / gate.STATE_DIR / gate.AUDIT_FILE
-        lines = journal.read_text().splitlines()
-        # Simulate the pre-lock race: a sibling of line 2 bound to the same parent.
-        sibling = json.loads(lines[1])
-        sibling["event"] = "b_sibling"
-        lines.append(json.dumps(sibling, sort_keys=True))
-        journal.write_text("\n".join(lines) + "\n")
-        ok, detail = gate.verify_audit_chain(repo)
-        assert ok, detail
-        assert "1 concurrent-append fork" in detail
-        # A sibling far apart in time is not a fork — it is a rewrite.
-        sibling["ts"] = "2000-01-01T00:00:00+00:00"
-        lines[-1] = json.dumps(sibling, sort_keys=True)
-        journal.write_text("\n".join(lines) + "\n")
-        ok, detail = gate.verify_audit_chain(repo)
-        assert not ok and "mismatch" in detail
-
-    def test_parallel_appends_keep_one_chain(self, repo: Path) -> None:
-        from concurrent.futures import ThreadPoolExecutor
-
-        with ThreadPoolExecutor(max_workers=8) as pool:
-            list(pool.map(lambda i: gate.append_audit(repo, "par", str(i)), range(24)))
-        ok, detail = gate.verify_audit_chain(repo)
-        assert ok, detail
-        assert "fork" not in detail, detail
-        assert len(gate.read_audit(repo, kind="par")) == 24
-
-
-class TestProtectedPathsV2:
-    @pytest.mark.parametrize(
-        "path",
-        [
-            ".claude/agents/navigator.md",
-            ".claude/commands/gate.md",
-            ".claude/rules/quant.md",
-            ".claude/statusline.py",
-            ".mcp.json",
-            ".codex/config.toml",
-            "scripts/codex_bridge.py",
-            "tests/unit/test_claude_harness_gate.py",
-            "tests/oracles/test_metamorphic_dsr.py",
-            "tests/holdout/test_gauntlet.py",
-            ".github/workflows/nightly.yml",
-            "AGENTS.md",
-        ],
-    )
-    def test_control_plane_extended(self, path: str) -> None:
-        assert gate.protected_reason(path) is not None
-
-    def test_hidden_holdout_predicate(self) -> None:
-        assert gate.is_hidden_holdout("tests/holdout/test_x.py")
-        assert not gate.is_hidden_holdout("tests/unit/test_x.py")
-
-    def test_agent_ackable_only_low_risk_text(self) -> None:
-        assert gate.agent_ackable(".claude/agents/x.md")
-        assert gate.agent_ackable(".claude/rules/x.md")
-        assert not gate.agent_ackable("scripts/gate.py")
-        assert not gate.agent_ackable(".claude/settings.json")
+    gate.write_baseline(repo)
 
 
 class TestLintHarness:
@@ -738,7 +127,7 @@ class TestLintHarness:
         (repo / "pyproject.toml").write_text(
             "[tool.pytest.ini_options]\naddopts = '-q'\n[tool.coverage.report]\nfail_under = 93\n"
         )
-        gate.write_baseline(repo, reason="t", authorized_by="t")
+        gate.write_baseline(repo)
         (repo / "pyproject.toml").write_text(
             "[tool.pytest.ini_options]\naddopts = '-q'\n[tool.coverage.report]\nfail_under = 80\n"
         )
@@ -760,6 +149,13 @@ class TestLintHarness:
 
 
 class TestScopedPaths:
+    def test_status_preserves_spaces_and_both_rename_paths(self, repo: Path) -> None:
+        _git(repo, "mv", "tracked.py", "renamed file.py")
+        assert set(gate._status_entries(repo)) == {
+            ("tracked.py", False),
+            ("renamed file.py", False),
+        }
+
     def test_scoped_changed_paths_tracked_and_untracked(self, repo: Path) -> None:
         quant = repo / "packages" / "alpha-validation" / "src" / "alpha_validation"
         quant.mkdir(parents=True)
@@ -804,47 +200,6 @@ class TestBrief:
         assert "newest watch" in text and "second" in text and "old one" not in text
         assert "ADRs: 2 (latest 0002-second.md)" in text
         assert "ADR-0002" in text and "not referenced" in text  # drift alert
-
-    def test_brief_cached_by_tree_hash(self, repo: Path) -> None:
-        _brief_repo(repo)
-        first = harness_awareness.repo_brief(repo)
-        cache = repo / gate.STATE_DIR / harness_awareness.BRIEF_FILE
-        assert cache.exists()
-        (repo / "CLAUDE.md").write_text("see ADR-0001 and ADR-0002\n")
-        second = harness_awareness.repo_brief(repo)
-        assert first != second
-        assert "not referenced" not in second
-        assert harness_awareness.repo_brief(repo) == second  # cache hit is byte-identical
-
-    def test_brief_cache_is_invalidated_by_a_commit(self, repo: Path) -> None:
-        """A commit changes no byte on disk, so a content-only cache key would go stale.
-
-        The brief reports HEAD and the dirty count. Both change on commit while the tree
-        hash — which covers file bytes only, so that committing cannot invalidate a gate
-        stamp — stays put. Keyed on content alone the brief would keep claiming
-        uncommitted files and omitting the commit just made.
-        """
-        _brief_repo(repo)
-        (repo / "note.md").write_text("scratch\n")
-        before = harness_awareness.repo_brief(repo)
-        assert "1 dirty file(s)" in before
-        assert "chore: commit the note" not in before
-
-        tree_before = gate.compute_tree_hash(repo)
-        _git(repo, "add", "-A")
-        _git(repo, "commit", "--quiet", "-m", "chore: commit the note")
-
-        assert gate.compute_tree_hash(repo) == tree_before  # the byte content is unchanged
-        after = harness_awareness.repo_brief(repo)
-        assert "0 dirty file(s)" in after
-        assert "chore: commit the note" in after
-
-    def test_brief_cache_key_tracks_the_branch(self, repo: Path) -> None:
-        _brief_repo(repo)
-        key = harness_awareness._brief_cache_key(repo)
-        _git(repo, "checkout", "--quiet", "-b", "some-other-branch")
-        assert harness_awareness._brief_cache_key(repo) != key
-        assert "some-other-branch" in harness_awareness.repo_brief(repo)
 
     def test_adr_mentions_understand_ranges(self) -> None:
         text = "ADR-0013 and ADRs 0019-0020 plus ADR-0021..0026 (ADRs 0013-0016)"
@@ -898,7 +253,7 @@ class TestIndex:
         assert index["cli_commands"] == {"unavailable": "cli=False"}
         path = harness_awareness.write_index(repo, cli=False)
         assert path == repo / gate.STATE_DIR / harness_awareness.INDEX_FILE
-        assert json.loads(path.read_text())["tree_hash"] == gate.compute_tree_hash(repo)
+        assert json.loads(path.read_text())["head"] == _git(repo, "rev-parse", "HEAD")
 
 
 _VALID_PLAN: dict[str, Any] = {
@@ -1363,29 +718,13 @@ class TestQuantRigorTooling:
             check_semgrep_contracts.main()
         assert len(calls) == 1 and calls[0][-1] == "--version"
 
-    def test_semgrep_failure_cannot_write_gate_stamp(
-        self, repo: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        (repo / ".semgrep").mkdir()
-        (repo / ".semgrep" / "alpha.yml").write_text("rules: []\n")
-
-        def runner(command: list[str]) -> tuple[bool, float, str]:
-            if command[-2:] == ["semgrep", "--changed"]:
-                return False, 0.1, "Semgrep version mismatch"
-            return True, 0.1, ""
-
-        assert gate.run_gate(repo, "fast", runner=runner) != 0
-        assert not gate.stamp_is_valid(repo, "fast")
-        assert not (repo / gate.STATE_DIR / gate.STAMP_FILE).exists()
-        assert "no stamp written" in capsys.readouterr().err
-
     @pytest.mark.parametrize(
         ("output", "expected"),
         [
             # Real findings whose matched source mentions OSError / a missing file must FAIL.
             ("3 Code Findings\n  340┆ except OSError:\n  341┆     pass\n", 1),
             ("finding: raise DataError('No such file')\n", 1),
-            # Missing scanner and launch failures are blocking; they cannot produce a stamp.
+            # Missing scanner and launch failures are blocking; they fail the step.
             ("FileNotFoundError: [Errno 2] No such file or directory: 'uvx'", 1),
             ("zsh: command not found: uvx", 1),
         ],
@@ -1455,127 +794,6 @@ class TestQuantRigorTooling:
 
         ok, detail = harness_quant.determinism(repo, runner=runner)
         assert not ok and "pass 2" in detail
-
-    def test_full_gate_adds_on_touch_steps_only_when_quant_source_changed(self, repo: Path) -> None:
-        names = [name for name, _ in gate.gate_steps("full", repo)]
-        assert "slow oracles" not in names and "mutation gate" not in names
-        self._quant_module(repo)
-        names = [name for name, _ in gate.gate_steps("full", repo)]
-        assert "slow oracles" in names and "mutation gate" in names
-        assert "semgrep" not in [name for name, _ in gate.gate_steps("fast", repo)]
-        (repo / ".semgrep").mkdir()
-        (repo / ".semgrep" / "alpha.yml").write_text("rules: []\n")
-        assert "semgrep" in [name for name, _ in gate.gate_steps("fast", repo)]
-
-    def test_full_gate_pytest_runs_in_parallel_with_coverage(self, repo: Path) -> None:
-        """Phase A S1: the sequential pytest step was 609 s of a 616 s gate; xdist runs the
-        same selection in parallel and coverage is still combined across workers."""
-        argv = dict(gate.gate_steps("full", repo))["pytest + coverage"]
-        assert "-n" in argv and argv[argv.index("-n") + 1] == "auto"
-        assert "--cov" in argv
-        assert argv[argv.index("-m") + 1] == "not network and not slow_oracle"
-
-    def test_fast_gate_runs_the_alpha_tier_without_platform_tests(self, repo: Path) -> None:
-        """Phase A S2: a Stop stamp must prove the alpha-relevant tests pass, so the fast tier
-        runs everything not marked ``platform`` in parallel and without coverage."""
-        argv = dict(gate.gate_steps("fast", repo))["pytest fast"]
-        assert "-n" in argv and argv[argv.index("-n") + 1] == "auto"
-        assert argv[argv.index("-m") + 1] == "not platform and not network and not slow_oracle"
-        assert "--cov" not in argv
-        assert "no:cacheprovider" in argv
-
-
-class TestAuditDigest:
-    """`gate.py audit --digest` is the escape logbook: counts and paths, never contents."""
-
-    def test_rolls_acks_up_by_path(self, repo: Path) -> None:
-        gate.write_ack(repo, reason="one", authorized_by="agent", path="CLAUDE.md")
-        gate.consume_ack(repo, path="CLAUDE.md")
-        gate.write_ack(repo, reason="two", authorized_by="agent", path="CLAUDE.md")
-        gate.consume_ack(repo, path="CLAUDE.md")
-        gate.write_ack(repo, reason="three", authorized_by="agent", path=".claude/settings.json")
-        digest = gate.audit_digest(repo)
-        assert "self-authorized escapes     3" in digest.replace("  ", " ").replace("   ", " ") or (
-            "ack_written" in digest
-        )
-        # one line per path, carrying its own count — not one line per ack
-        assert "CLAUDE.md" in digest and ".claude/settings.json" in digest
-        assert digest.count("CLAUDE.md") == 1
-
-    def test_counts_overrides_blocks_and_chain(self, repo: Path) -> None:
-        gate.write_override(repo, reason="merge commit", authorized_by="agent")
-        gate.append_audit(repo, "blocked_pre-bash-guard", "nope")
-        gate.append_audit(repo, "blocked_post-edit", "nope")
-        gate.append_audit(repo, "codex_call", "probe")
-        digest = gate.audit_digest(repo)
-        assert "override_written" in digest
-        assert "blocks the harness enforced" in digest
-        assert "blocked_pre-bash-guard" in digest
-        assert "chain: ok" in digest
-
-    def test_reports_owner_token_state(self, repo: Path) -> None:
-        gate.write_ack(repo, reason="x", authorized_by="agent", path="CLAUDE.md")
-        assert "owner token: NOT configured" in gate.audit_digest(repo)
-
-    def test_window_excludes_older_events(self, repo: Path) -> None:
-        gate.write_ack(repo, reason="x", authorized_by="agent", path="CLAUDE.md")
-        assert "(none)" in gate.audit_digest(repo, since="9999-01-01")
-
-    def test_empty_journal_is_honest_not_a_crash(self, repo: Path) -> None:
-        digest = gate.audit_digest(repo)
-        assert "(none)" in digest
-
-    def test_ack_path_is_recorded_on_the_journal_line(self, repo: Path) -> None:
-        gate.write_ack(repo, reason="x", authorized_by="agent", path="CLAUDE.md")
-        written = [e for e in gate.read_audit(repo) if e["event"] == "ack_written"]
-        assert written and written[-1]["path"] == "CLAUDE.md"
-        gate.consume_ack(repo, path="CLAUDE.md")
-        consumed = [e for e in gate.read_audit(repo) if e["event"] == "ack_consumed"]
-        assert consumed and consumed[-1]["path"] == "CLAUDE.md"
-        ok, _ = gate.verify_audit_chain(repo)
-        assert ok, "adding a field must not break the hash chain"
-
-    def test_reports_a_token_that_is_still_armed(self, repo: Path) -> None:
-        gate.write_override(repo, reason="merge commit", authorized_by="agent")
-        digest = gate.audit_digest(repo)
-        assert "LIVE — armed, not yet used" in digest
-        assert "commit override" in digest and "merge commit" in digest
-
-    def test_a_consumed_token_is_no_longer_live(self, repo: Path) -> None:
-        gate.write_override(repo, reason="merge commit", authorized_by="agent")
-        gate.consume_override(repo)
-        assert "LIVE — armed, not yet used" not in gate.audit_digest(repo)
-
-    def test_a_live_ack_names_the_file_it_unlocks(self, repo: Path) -> None:
-        gate.write_ack(repo, reason="why", authorized_by="agent", path="scripts/gate.py")
-        digest = gate.audit_digest(repo)
-        assert "governance ack" in digest
-        assert digest.count("scripts/gate.py") == 2, "once in the rollup, once as still-armed"
-
-
-def test_stamp_tier_reports_highest_fresh_tier(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    assert gate.stamp_tier(repo) == "none"
-    gate.write_stamp(repo, "fast", steps=[], duration=0.1)
-    assert gate.stamp_tier(repo) == "fast"
-    gate.write_stamp(repo, "full", steps=[], duration=0.1)
-    assert gate.stamp_tier(repo) == "full"
-    (repo / "poke.txt").write_text("x")  # tree changed → stale
-    assert gate.stamp_tier(repo) == "none"
-
-
-def test_stamp_is_valid_hashes_the_tree_once(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    gate.write_stamp(repo, "full", steps=[], duration=0.1)
-    calls = 0
-    real = gate.compute_tree_hash
-
-    def counted(root: Path) -> str:
-        nonlocal calls
-        calls += 1
-        return real(root)
-
-    monkeypatch.setattr(gate, "compute_tree_hash", counted)
-    assert gate.stamp_is_valid(repo, "fast") is True
-    assert calls == 1
 
 
 @pytest.mark.parametrize(

@@ -31,27 +31,6 @@ def build_harness_repo(root: Path) -> Path:
     return root
 
 
-def pass_full_gate(repo: Path, monkeypatch: Any, *, with_readme: bool = True) -> None:
-    """Stamp ``repo`` through the real full-gate path with every command succeeding."""
-    import gate
-    import gate_components
-
-    monkeypatch.setattr(gate, "_env_runner", lambda *args, **kwargs: (True, 0.0, ""))
-    assert gate_components.run_full(repo) == 0
-    if with_readme:
-        import json
-
-        import readme_review
-
-        scope = readme_review.context(repo)
-        payload = {
-            "reviewed_tree_hash": gate.compute_tree_hash(repo),
-            "disposition": "updated" if "README.md" in scope["paths"] else "no_change",
-            "rationale": "Synthetic fixture review: no new reader impact beyond test setup.",
-        }
-        assert gate.attest(repo, "readme", json.dumps(payload)) == 0
-
-
 def git(cwd: Path, *args: str, check: bool = True) -> str:
     result = subprocess.run(
         ["git", "-C", str(cwd), *args],

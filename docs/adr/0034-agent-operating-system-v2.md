@@ -6,6 +6,8 @@
 
 > **Note (2026-11-13):** [ADR-0037](0037-agent-neutral-research-engineering.md) supersedes the engineering ceremony in this record; the decision text below is unchanged.
 
+> **Note (2026-11-13):** [ADR-0039](0039-ci-is-the-merge-gate.md) makes CI on the pull request the merge gate and supersedes this record's local gate-stamp, attestation, owner-token and audit-journal parts; the decision text below is unchanged.
+
 ## Context
 
 Harness v1 (2026-08-18) made the load-bearing CLAUDE.md rules mechanical: a tree-hash gate

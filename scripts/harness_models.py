@@ -1,12 +1,9 @@
-"""Pydantic schemas for Claude Code harness artifacts.
+"""Pydantic schemas for harness JSON: doctor reports, the harness baseline, feature plans,
+review and quant-verification reports, and Codex second opinions.
 
-Every artifact the harness persists (gate stamps, attestations, review
-verdicts, doctor reports, feature plans, Codex second opinions) is validated
-by one of these models at write time; the append-only audit journal and the
-per-session state file are unvalidated plain-JSON records. Hooks never import this
-module — they are stdlib-only readers of already-validated JSON; only
-``gate.py`` write paths import it lazily so the hooks keep working before
-``uv sync`` has run.
+Review and quant reports are advisory output shapes for the reviewer agents; nothing records
+or enforces them locally. Hooks never import this module; ``gate.py`` imports it lazily so the
+stdlib-only commands keep working before ``uv sync`` has run.
 """
 
 from __future__ import annotations
@@ -18,23 +15,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
-
-class GateStep(_Strict):
-    name: str
-    seconds: float
-    ok: bool
-
-
-class GateStamp(_Strict):
-    schema_version: Literal[1] = 1
-    tier: Literal["fast", "full"]
-    created_at: str
-    head: str
-    tree_hash: str
-    duration_seconds: float
-    steps: list[GateStep]
-    comparison: dict[str, str | None] | None = None
 
 
 class QuantClaim(_Strict):
@@ -82,14 +62,6 @@ class QuantVerificationReport(_Strict):
         return self
 
 
-class QuantAttestation(_Strict):
-    schema_version: Literal[2] = 2
-    created_at: str
-    bound_quant_diff_hash: str
-    authorized_by: str = "agent"
-    report: QuantVerificationReport
-
-
 class ReviewFinding(_Strict):
     severity: Literal["high", "medium", "low"]
     file: str
@@ -113,27 +85,6 @@ class ReviewVerdict(_Strict):
     tests_run: list[str] = []
     second_opinion: list[SecondOpinionDisposition] = []
     codex_unavailable: bool = False
-
-
-class ReviewAttestation(_Strict):
-    schema_version: Literal[3] = 3
-    created_at: str
-    verdict: ReviewVerdict
-    bound_review_paths: list[str]
-    bound_review_diff_hash: str
-
-
-class ReadmeReview(_Strict):
-    reviewed_tree_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
-    disposition: Literal["updated", "no_change"]
-    rationale: str = Field(min_length=20, max_length=2000)
-
-
-class OnceToken(_Strict):
-    created_at: str
-    reason: str
-    authorized_by: str = "agent"
-    path: str | None = None
 
 
 class DoctorCheck(_Strict):

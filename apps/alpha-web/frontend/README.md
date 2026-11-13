@@ -179,8 +179,8 @@ remain useful for deterministic owner-auth, failure, latency and artifact cases;
 live provider or physical Touch ID acceptance. Real-backend tests exercise persisted research,
 workspace, rule, scan, chart and job workflows separately.
 
-Screenshots and accessibility checks cover 1280×720, 1440×900 and 1920×1080. The aggregate gate is
-`uv run python scripts/gate.py full` from the repository root. Record blocked external dependencies
+Screenshots and accessibility checks cover 1280×720, 1440×900 and 1920×1080. CI on the pull request
+runs the frontend component; `uv run python scripts/gate.py component frontend` reproduces it. Record blocked external dependencies
 and unverified owner actions explicitly.
 
 [Reference workstation delivery report](../../../docs/records/2026-10-03-reference-quant-workstation.md).

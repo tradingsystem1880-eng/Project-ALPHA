@@ -72,7 +72,6 @@ class TestNewCanonicalSkills:
         body = (CANONICAL_DIR / "quant-source-verification" / "SKILL.md").read_text()
         for anchor in ("Bailey", "White", "Hansen", "Politis", "Efron", "Holm"):
             assert anchor in body, f"quant-source-verification lost its {anchor} citation"
-        assert "attest --kind quant" in body
 
     def test_feature_workflow_names_the_pipeline(self) -> None:
         body = (CANONICAL_DIR / "alpha-feature-workflow" / "SKILL.md").read_text()

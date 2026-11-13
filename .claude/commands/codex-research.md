@@ -10,7 +10,7 @@ research trail, attests, or decides.
 
 1. Dispatch the `codex-liaison` subagent with `research --question "$ARGUMENTS"`.
    It runs `python3 scripts/codex_bridge.py research …` (read-only, ephemeral,
-   `web_search="live"`, output-schema, capped, audited) and returns a
+   `web_search="live"`, output-schema, capped) and returns a
    `CodexResearch` JSON: `claims[{claim, source, quote, confidence}]`.
 2. If `available` is false: one line — "codex unavailable — <reason>" — and
    stop.

@@ -11,9 +11,9 @@ State which plan you are executing before touching code. Existing authorization
 covers routine implementation and necessary fixes; ask only for missing scope or authority.
 
 Goal contract for this session (state it up front, verify it at the end):
-"every slice `done` AND `gate.py full` stamp valid AND independent review
-is complete". Do not claim completion until each part is re-checked on the
-tree, not remembered from the transcript.
+"every slice `done` AND `gate.py check` green AND a draft pull request open
+with CI green AND independent review complete". Do not claim completion until
+each part is re-checked, not remembered from the transcript.
 
 0. Run `uv run python scripts/gate.py plan-check <plan doc>`. If it fails,
    STOP: the plan lacks assumptions / alternatives / pre-mortem / slice verify
@@ -32,9 +32,9 @@ Per slice, in order:
      verified?
    - What would `independent-reviewer` / `red-team-code` flag (a failing
      input, a look-ahead, a NaN, a seed)? Add that test now if it is cheap.
-4. Run focused checks that cover the slice, including platform tests when relevant.
-   Use `gate.py fast` for broader backend feedback when useful. Continue dependent
-   slices without mandatory intermediate commits; follow the canonical feature skill.
+4. Run focused checks that cover the slice, including platform tests when relevant,
+   then `uv run python scripts/gate.py check`. Commit each verified slice; small
+   commits are fine. Follow the canonical feature skill.
 5. Update the slice's status (`pending` → `in_progress` → `done`) against its
    stated acceptance criteria. Report blocked/deviated work honestly and continue
    independent work. A locally verified slice is not aggregate acceptance.
@@ -45,14 +45,12 @@ use existing context maps and generated indexes rather than another module inven
 Keep the plan's `**Delivery state:**` line true; archive it when Completed (`.claude/rules/docs.md`).
 Do not hand implementation defects back to the user as planning questions.
 
-Before every actual commit, finish and stage a coherent candidate, then run
-`uv run python scripts/gate.py full`. Obtain the independent `/review-gate`
-APPROVE for review-scope paths and `/verify-quant` for quant paths on that tree.
-The reviewer receives the diff and hashes, not the author's reasoning. Fix BLOCK
-findings and refresh affected evidence; never self-approve or bypass Git guards.
-Related verified slices may share a conventional commit referencing the plan.
-Preserve failed-run evidence before retries. Follow the development loop's final-tree
-requirements; a later edit requires fresh full verification and review binding.
+Push the branch and open a **draft** pull request; CI is the merge gate. Before
+marking it ready, obtain the independent `/review-gate` APPROVE for risk-tier and
+protected paths and `/verify-quant` for quant paths, and post their reports on the
+pull request. The reviewer receives the diff, not the author's reasoning. Fix BLOCK
+findings and re-review; never self-approve. Preserve failed-run evidence before
+retries ([development loop](../../docs/operations/development-loop.md)).
 
 Continue through delivery within existing authorization. If publication or a
 private-suite exception is missing, prepare the exact qualified payload, report the

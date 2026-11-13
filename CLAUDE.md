@@ -39,9 +39,9 @@ Obey [DAG](docs/ARCHITECTURE.md#2-the-layered-dag)/[contracts](pyproject.toml); 
 
 ## Commands
 
-- Full: `uv run python scripts/gate.py full`.
-- Components: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
-  `literature`, `qlib`, `atlas`, `eval`); empty steps fail; full needs all.
+- Loop: edit → `uv run python scripts/gate.py check` → commit → push → draft PR → CI → owner merges.
+- One CI job: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
+  `literature`, `qlib`, `atlas`, `eval`).
 - Discover: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;
   `alpha info procedures --json`. [Map](docs/context/README.md).
 - Setup: `uv sync --locked`; backend CI: gate. [Run](README.md).
@@ -49,9 +49,9 @@ Obey [DAG](docs/ARCHITECTURE.md#2-the-layered-dag)/[contracts](pyproject.toml); 
   Gate owns Linux pytest; build before all browser lanes.
 - `scripts/semgrep_runner.py`: fail-closed Semgrep, pinned/checked 1.181.0.
 
-[ADR-0037](docs/adr/0037-agent-neutral-research-engineering.md): agent-neutral checks; application
-authority unchanged. Install Git guards; require fresh full stamp; no bypass.
-[Harness](docs/operations/claude-code-harness.md); [README](docs/operations/readme-maintenance.md).
+[ADR-0039](docs/adr/0039-ci-is-the-merge-gate.md): CI on the pull request is the merge gate; a commit
+needs only a `type(scope): summary` message. Application authority unchanged.
+[Harness](docs/operations/claude-code-harness.md).
 Advisory: [Benchmark](tools/alpha-eval/README.md), research [workflow](docs/operations/bounded-research-workflow.md), [Codex investigations](docs/operations/codex-investigations.md).
 
 ## Evidence

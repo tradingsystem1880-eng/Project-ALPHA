@@ -41,10 +41,13 @@
       "Bash(mount)",
       "Bash(diskutil info*)",
       "Bash(diskutil list*)",
+      "Bash(lsblk*)",
+      "Bash(findmnt*)",
       "Bash(env)",
       "Bash(date*)",
       "Bash(uname*)",
       "Bash(sw_vers*)",
+      "Bash(lsb_release*)",
       "Bash(git branch*)",
       "Bash(git remote*)",
       "Bash(git rev-parse*)",
@@ -88,7 +91,10 @@
       "Bash(npx playwright*)",
       "Bash(mkdir -p /private/tmp/claude-501/*)",
       "Write(/private/tmp/claude-501/**)",
-      "Edit(/private/tmp/claude-501/**)"
+      "Edit(/private/tmp/claude-501/**)",
+      "Bash(mkdir -p /tmp/claude-*)",
+      "Write(//tmp/claude-*/**)",
+      "Edit(//tmp/claude-*/**)"
     ],
     "deny": [
       "Read(.env)",

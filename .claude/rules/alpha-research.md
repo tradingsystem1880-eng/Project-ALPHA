@@ -6,7 +6,7 @@ paths:
 
 Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 
-QUANT TIER: edits here require a PASS `QuantVerificationReport` (`/verify-quant`) before Stop and an APPROVE `ReviewVerdict` before commit. See also `quant.md`.
+QUANT TIER: edits here require a PASS `QuantVerificationReport` (`/verify-quant`) and an APPROVE `ReviewVerdict` before the pull request is marked ready. See also `quant.md`.
 ### `alpha_research` (`packages/alpha-research/src/alpha_research/`) — pure deterministic Gate 1/D0 and D1 analysis-family primitives. core only; no network, persistence, credentials, broker, scheduler, or dynamic-code surface. The D2 confirmation primitives are consumed by the CLI's one-shot sealed executor (R6d, ADR-0026).
 | Module | Responsibility | Key public symbols |
 |---|---|---|

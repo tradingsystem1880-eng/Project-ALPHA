@@ -1,6 +1,6 @@
 ---
 name: alpha-feature-workflow
-description: The mandatory Project ALPHA development pipeline for any multi-file feature or change - explore via the navigator subagent, plan as a dated plan doc, implement with TDD in small slices, pass the tiered gate, then independent review (plus quant verification for statistical code). States when to skip so trivial work never bloats.
+description: The mandatory Project ALPHA development pipeline for any multi-file feature or change - explore via the navigator subagent, plan as a dated plan doc, implement with TDD in small slices, run the fast local check, open a draft pull request for CI, then independent review (plus quant verification for statistical code). States when to skip so trivial work never bloats.
 ---
 
 # ALPHA Feature Workflow
@@ -8,13 +8,13 @@ description: The mandatory Project ALPHA development pipeline for any multi-file
 The pipeline that turns "make a change" into verified, reviewed, committed work.
 It composes the repo's existing skills — `karpathy-guidelines` (always),
 `incremental-implementation`, `code-review-and-quality`,
-`verification-before-completion` — with the harness's mechanical gates.
+`verification-before-completion` — with the local check and CI.
 
 ## When to skip
 
-- Single-file fix with an obvious test → skip straight to TDD + `/gate fast`.
-  No plan doc; the harness still enforces stamps and reviews at commit time.
-- Docs-only change → omit a feature plan; commit checks still apply to the tested tree.
+- Single-file fix with an obvious test → skip straight to TDD + `/gate`.
+  No plan doc; CI on the pull request still runs everything.
+- Docs-only change → omit a feature plan; CI still checks links and docs.
 - Never skip for: anything touching quant paths, `alpha_backtest`, the seven
   risk-tier `alpha_cli` modules, cross-package work, or new public seams.
 
@@ -32,29 +32,17 @@ It composes the repo's existing skills — `karpathy-guidelines` (always),
    implementation choices; ask only when a real scope or authority gap remains.
 3. **TDD implement** — per slice: failing test → minimal code → green →
    focused covering checks → self-review → continue the next dependent slice.
-   Use `/gate fast` when broader backend feedback is useful; it excludes platform
-   tests and does not replace their covering checks. Data/strategy changes require a
+   Run `/gate` (`gate.py check`) for broader feedback; it runs the research guards and the
+   tests mapped from your changes, not the whole suite. Commit verified slices as you go. Data/strategy changes require a
    `@pytest.mark.bias_guard` future-poison test (see `tests/bias_guards/`).
    Load `incremental-implementation` for the slicing discipline.
-4. **README review, then gate** — the existing Codex implementation session reviews
-   README against the final branch, including earlier commits, current architecture and tracked
-   plans. Explain the project in plain English; keep setup/technical information accurate and useful;
-   distinguish implemented/planned work and limits. Verify changed claims and links; tests do not
-   establish empirical or live readiness. Update README when readers need it. Otherwise record a
-   substantive `no_change` rationale without cosmetic churn. Use the native
-   [README evidence workflow](../../../docs/operations/readme-maintenance.md): fetch main, finish
-   source/docs/generated outputs, then `gate.py attest --kind readme` for the exact final tree.
-   This uses the current coding session; do not add an API job or separate model invocation.
-   Finish code, docs and generated outputs, then stage the coherent
-   candidate and run `uv run python scripts/gate.py full` before every actual commit.
-   Related verified slices may share one commit; unrelated work remains separate.
-   No intermediate commit is required merely to advance to the next slice. Installed Git
-   hooks bind the staged tree to verification; CI checks the shared component commands.
-   Never soften or summarize away a failing step. See `docs/operations/claude-code-harness.md`.
-5. **Review** — review-scope paths (risk-tier, protected control plane, hooks and guarded
-   config) need `/review-gate` (independent APPROVE bound to the current tree); quant
-   paths need `/verify-quant` (PASS attestation bound to
-   the quant diff). BLOCK findings are fixed and re-reviewed, never argued away.
+4. **Pull request** — push the branch and open a **draft** pull request; CI is the merge
+   gate. Review README against the branch where readers need a different explanation and
+   say so in the pull request; no local evidence file is needed. Mark the pull request ready
+   when CI is green; the owner merges. Never soften or summarize away a failing step.
+5. **Review** — risk-tier paths, the protected control plane, hooks and guarded config need
+   `/review-gate` (independent APPROVE); quant paths need `/verify-quant` (PASS). Post both on
+   the pull request. BLOCK findings are fixed and re-reviewed, never argued away.
 6. **Docs honesty** — CLAUDE.md / spec / plan-doc status updates land in the same
    change as the code they describe (repo rule). Run
    `verification-before-completion` before claiming done.
@@ -64,11 +52,10 @@ documentation/context upkeep and authorized delivery. Use the existing `navigato
 `test-architect`, `independent-reviewer` and, when useful, `retrospective` roles;
 development roles are separate from product research agents. Handoffs identify the
 candidate, owned paths, remaining work, exact commands/results and missing authority.
-Delegate read-only review with the diff and binding hashes, without author justifications;
+Delegate read-only review with the diff, without author justifications;
 never manufacture the verdict or treat an advisory second opinion as approval.
-Preserve failed-run evidence before retries. Changed contents invalidate prior evidence;
-reuse unchanged focused results only within their scope. Follow the
-[development loop](../../../docs/operations/development-loop.md) for final qualification.
+Preserve failed-run evidence before retries. Follow the
+[development loop](../../../docs/operations/development-loop.md).
 
 ## Non-negotiables inherited from CLAUDE.md
 

@@ -1,12 +1,11 @@
 ---
-description: Write a dated retrospective from the audit journal, session failures and the plan doc - what the harness caught, missed, and which rule to add
+description: Write a dated retrospective from git history, CI results, session failures and the plan doc - what the checks caught, missed, and which rule to add
 argument-hint: <slug> [--since ISO-timestamp] [plan doc path]
 ---
 
 Write a retrospective for: $ARGUMENTS
 
-Run this after a feature lands, or whenever `gate.py audit` shows ≥ 2 blocks /
-overrides / acks for one piece of work.
+Run this after a feature lands, or whenever CI failed twice or more for one piece of work.
 
 Dispatch the `retrospective` subagent with the arguments above (slug, optional
 `--since` timestamp, optional plan doc path); it gathers the evidence and

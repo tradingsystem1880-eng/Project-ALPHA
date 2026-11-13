@@ -1,11 +1,11 @@
 ---
-description: Run the gate (full tier by default; `fast` = ruff, format, imports, mypy) and stamp on success
-argument-hint: [full | fast]
+description: Run the fast local check (lint, imports, types, mapped tests); CI on the pull request is the merge gate
+argument-hint: [--all] [--base REF]
 ---
 
-Tier is `$ARGUMENTS` if given, else `full`. Run `uv run python scripts/gate.py <tier>`.
-`full` aggregates shared CI components and is required to commit; `fast` is local feedback only.
+Run `uv run python scripts/gate.py check $ARGUMENTS` (`--all` runs the whole fast test tier).
+To reproduce one CI job, run `uv run python scripts/gate.py component NAME` instead.
 
 Report every step's PASS/FAIL verbatim. On failure: show the failing output exactly as printed,
-diagnose, fix, and re-run — never soften, summarize away, or work around a failing step. On
-success confirm the stamp with `uv run python scripts/gate.py check --tier <tier>`.
+diagnose, fix, and re-run — never soften, summarize away, or work around a failing step. A green
+local check is feedback, not acceptance: CI on the pull request decides.

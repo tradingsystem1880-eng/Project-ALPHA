@@ -2,12 +2,12 @@
 
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
 import zipfile
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -96,12 +96,14 @@ def setup_repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def launch(root: Path, *, success: bool) -> dict[str, Any]:
+def launch(root: Path, *, success: bool) -> list[tuple[str, bool]]:
+    """Run the CI backend entrypoint; return the (step, passed) lines it printed."""
     result = run(root, *backend_command())
     assert (result.returncode == 0) is success, result.stdout + result.stderr
-    receipt: dict[str, Any] = json.loads((root / ".alpha/state/component-backend.json").read_text())
-    assert receipt["ok"] is success
-    return receipt
+    return [
+        (match.group(1), match.group(2) == "PASS")
+        for match in re.finditer(r"^\[gate:backend\] (.+): (PASS|FAIL) \(", result.stdout, re.M)
+    ]
 
 
 def test_backend_workflow_has_one_locked_setup_owner() -> None:
@@ -109,11 +111,11 @@ def test_backend_workflow_has_one_locked_setup_owner() -> None:
 
 
 def test_cold_warm_and_missing_dependency(setup_repo: Path) -> None:
-    receipt = launch(setup_repo, success=True)
+    steps = launch(setup_repo, success=True)
     state = setup_repo / ".alpha/state/bootstrap.json"
     assert json.loads(state.read_text())["venv_exists"] is False
     assert json.loads(state.read_text())["pydantic_available"] is False
-    assert [step["name"] for step in receipt["steps"]] == ["uv lock", "uv sync", "dependency probe"]
+    assert [name for name, _ in steps] == ["uv lock", "uv sync", "dependency probe"]
     launch(setup_repo, success=True)
     assert json.loads(state.read_text())["venv_exists"] is True
     site = next((setup_repo / ".venv/lib").glob("python*/site-packages"))
@@ -127,8 +129,8 @@ def test_cold_warm_and_missing_dependency(setup_repo: Path) -> None:
 def test_changed_config_requires_updated_lock(setup_repo: Path) -> None:
     launch(setup_repo, success=True)
     project(setup_repo, "2.0")
-    receipt = launch(setup_repo, success=False)
-    assert [step["name"] for step in receipt["steps"]] == ["uv lock"]
+    steps = launch(setup_repo, success=False)
+    assert steps == [("uv lock", False)]
     result = run(setup_repo, "uv", "lock", "--python", "3.12")
     assert result.returncode == 0, result.stderr
     launch(setup_repo, success=True)
@@ -143,8 +145,8 @@ def test_changed_config_requires_updated_lock(setup_repo: Path) -> None:
 
 def test_invalid_lock_stops_before_install(setup_repo: Path) -> None:
     (setup_repo / "uv.lock").write_text("invalid = [\n")
-    receipt = launch(setup_repo, success=False)
-    assert [step["name"] for step in receipt["steps"]] == ["uv lock"]
+    steps = launch(setup_repo, success=False)
+    assert steps == [("uv lock", False)]
     assert not (setup_repo / ".venv").exists()
 
 
@@ -152,6 +154,5 @@ def test_failed_sync_stops_before_checks(setup_repo: Path) -> None:
     state = setup_repo / ".alpha/state"
     state.mkdir(parents=True, exist_ok=True)
     (state / "lose-wheel").touch()
-    receipt = launch(setup_repo, success=False)
-    assert [step["name"] for step in receipt["steps"]] == ["uv lock", "uv sync"]
-    assert receipt["steps"][-1]["ok"] is False
+    steps = launch(setup_repo, success=False)
+    assert steps == [("uv lock", True), ("uv sync", False)]

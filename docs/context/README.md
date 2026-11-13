@@ -53,7 +53,7 @@ Representative checks identify bounded verification locations, not complete capa
 | D2 authority | [Quant Platform: Governed research and study composition](alpha-quant-platform.md#capability-routes) | D2 decision, confirmation plan, store/executor and mechanical-classification checks; owner approval remains required. |
 | Randomized-price null | [Quant Platform: Backtesting and statistical validation](alpha-quant-platform.md#capability-routes) | Null ADR, composition and selection/tier checks; dedicated null plan/spec not identified. Four-family path risk remains separate. |
 | Cloud readiness | [Software Team: Verification and process ownership](software-team.md#capability-routes) | Setup/process plans, entrypoint and mocked checks; dedicated cloud ADR not identified. No environment-readiness claim. |
-| Current full-gate rule | [Software Team: Verification and process ownership](software-team.md#capability-routes) | Manual, component runner and frozen-receipt checks; the delivered engineering plan is historical context, not a current passing receipt. |
+| Current merge-gate rule | [Software Team: Verification and process ownership](software-team.md#capability-routes) | CI on the pull request ([ADR-0039](../adr/0039-ci-is-the-merge-gate.md)); local `gate.py check` and the component runner give feedback only. |
 
 ## Source inspection and executed evidence
 
@@ -106,7 +106,7 @@ adequate, a provider is ready or a check passed. Review public source against ex
 and record semantic gaps separately. Reuse Atlas's documented `generate --check` through the
 existing authorized gate for its own inputs; do not edit generated outputs or ingest these maps
 into a second graph. Keep scoped check scripts/results with the task's private recovery evidence;
-full acceptance still requires the unchanged canonical gate on the exact candidate tree.
+acceptance is CI on the pull request.
 
 ## Retrieve narrowly
 

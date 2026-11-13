@@ -95,7 +95,7 @@ sample size and costs. Refusing an untested null is workflow incompletion, not e
 ## Verification and limitations
 
 `uv run python scripts/gate.py component eval` from the repository root runs lock, install, lint,
-format, types and evaluator tests. The canonical aggregate remains `gate.py full`.
+format, types and evaluator tests, as the CI `eval` job does.
 
 Tests cover known-bad scorers, grounded claims, objective citations, preservation, revision collisions,
 resume identity, Codex-only execution, normalization, partial traces, failed turns and descendant cleanup.

@@ -2,7 +2,7 @@
 
 A fake `codex` executable on PATH plays every role (probe/login/models, review, research,
 quota failure, garbage output, hang) so the graceful `unavailable:` contract, schema
-wrapping, injection stripping and audit trail are pinned without network. One `network`
+wrapping and injection stripping are pinned without network. One `network`
 marked smoke calls the real default model.
 """
 
@@ -267,7 +267,7 @@ class TestCli:
         data: dict[str, Any] = json.loads(proc.stdout)
         return data
 
-    def test_cli_review_uncommitted_audits_call(self, fake_codex: Path, repo: Path) -> None:
+    def test_cli_review_uncommitted_sends_the_diff(self, fake_codex: Path, repo: Path) -> None:
         (repo / "a.py").write_text("x = 1\n")
         subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
         subprocess.run(
@@ -279,11 +279,6 @@ class TestCli:
         out = self._run(repo, "review", "--uncommitted", "--timeout", "30")
         assert out["available"] is True and out["model"] == codex_bridge.DEFAULT_MODEL
         assert "-x = 1" in _calls(fake_codex)[-1]["stdin"]
-        events = gate.read_audit(repo, kind="codex_call")
-        assert (
-            events
-            and f"review model={codex_bridge.DEFAULT_MODEL} available=True" in events[-1]["detail"]
-        )
 
     def test_cli_unavailable_is_exit_zero(
         self, fake_codex: Path, repo: Path, monkeypatch: pytest.MonkeyPatch
@@ -293,7 +288,6 @@ class TestCli:
         assert out["available"] is False and out["claims"] == []
         assert out["unavailable_reason"].startswith("unavailable:")
         assert _calls(fake_codex) == []
-        assert "available=False" in gate.read_audit(repo, kind="codex_call")[-1]["detail"]
 
     @pytest.mark.parametrize(
         ("name", "list_key", "item_model", "level_field"),

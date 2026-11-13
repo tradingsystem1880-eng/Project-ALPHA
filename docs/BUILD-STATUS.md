@@ -2228,7 +2228,7 @@ no application authority or trading behavior changes. Technical setup content re
 
 Focused fixture tests and qualification results are recorded in the
 [feature plan](superpowers/plans/archive/2026-10/2026-10-31-readme-maintenance.md); activation and recovery are in the
-[runbook](operations/readme-maintenance.md). The workflow is not active, and no live inference,
+[runbook](archive/readme-maintenance.md). The workflow is not active, and no live inference,
 hosted trigger or README PR has been demonstrated. No Actions inference credential is available
 in this task environment; repository secret availability is unverified. The private review suite is
 absent and prior delivery exceptions do not cover this new protected workflow. Full/public checks
@@ -2250,7 +2250,7 @@ same-purpose implementation; the existing publication approval and scoped privat
 exception cover necessary corrections. Private coverage is UNVERIFIED. Revised focused tests,
 exact-tree full qualification and independent review are required before its next guarded commit.
 See the [existing plan](superpowers/plans/archive/2026-10/2026-10-31-readme-maintenance.md) and
-[worked delivery workflow](operations/readme-maintenance.md).
+[worked delivery workflow](archive/readme-maintenance.md).
 
 ## 2026-10-31 — Combined foundation follow-on preparation
 

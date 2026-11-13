@@ -3,14 +3,14 @@ description: Optional second-opinion code review by Codex (gpt-6-astra via the C
 argument-hint: [--uncommitted (default) | --diff <file>] [--effort low|medium|high]
 ---
 
-OPTIONAL extra check — the mandatory pipeline (/gate, /review-gate,
-/verify-quant) never depends on this. Codex never attests, writes, or approves.
+OPTIONAL extra check — the pipeline (/gate, /review-gate, /verify-quant, CI)
+never depends on this. Codex never writes or approves.
 
 1. Dispatch the `codex-liaison` subagent with `review $ARGUMENTS` (default
    `--uncommitted`; for a specific scope write the diff to the scratchpad and
    pass `--diff <file>`). It runs `python3 scripts/codex_bridge.py review …`
-   — read-only sandbox, ephemeral, output-schema, wall-clock capped, audited
-   as `codex_call` — and returns a `CodexReview` JSON.
+   — read-only sandbox, ephemeral, output-schema, wall-clock capped — and
+   returns a `CodexReview` JSON.
    For a quick findings-only pass over one file, write `git diff HEAD -- <file>`
    (or the whole file as a `+`-prefixed diff) to the scratchpad and pass
    `--diff <scratch> --effort medium`.
