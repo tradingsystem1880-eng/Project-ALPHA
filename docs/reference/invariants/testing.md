@@ -5,7 +5,7 @@ sources:
   - tests/conftest.py
   - tests/bias_guards/test_future_poison_pattern.py
   - tests/bias_guards/test_poison_variants.py
-  - tests/holdout_seed/**
+  - tests/acceptance/**
   - tests/unit/test_gate_process_supervisor.py
   - scripts/gate.py
   - scripts/gate_select.py
@@ -28,8 +28,8 @@ this file holds the mechanics.
 
 - `tests/unit/` pure units; `tests/integration/` CLI and engine; `tests/bias_guards/` future-poison
   guards; `tests/oracles/` metamorphic, calibration and differential oracles (shared reference code and
-  named tolerances in `tests/oracles/_reference/`); `tests/fixtures/` goldens; `tests/holdout_seed/`
-  staged holdout proposals.
+  named tolerances in `tests/oracles/_reference/`); `tests/fixtures/` goldens; `tests/acceptance/`
+  17 visible behaviour tests of the gauntlet, threshold and execution contracts.
 - Statistical goldens carry named tolerances (`tests/oracles/_reference/tolerances.py`), never exact float
   equality. Semgrep rule `alpha-float-literal-equality` flags literal float equality.
 - Warnings are errors (`filterwarnings = ["error", ...]` in `pyproject.toml`): a new warning fails the test.
@@ -38,7 +38,7 @@ this file holds the mechanics.
 
 ## Markers and tiers
 
-- Markers are strict (`--strict-markers`): `bias_guard`, `network`, `oracle`, `slow_oracle`, `holdout`,
+- Markers are strict (`--strict-markers`): `bias_guard`, `network`, `oracle`, `slow_oracle`,
   `platform`. An unregistered marker fails collection, and `gate.py lint-harness` fails if strict markers
   are turned off.
 - Never add `platform` by hand. `tests/conftest.py` applies it at collection from
@@ -53,7 +53,7 @@ this file holds the mechanics.
     with coverage `fail_under = 93`; it adds `-m slow_oracle` and the mutation gate only when a quant
     source module changed.
   - `network` tests never run in CI.
-- `gate_select.py` always runs `tests/bias_guards`, `tests/oracles` and `tests/holdout_seed`, plus changed
+- `gate_select.py` always runs `tests/bias_guards`, `tests/oracles` and `tests/acceptance`, plus changed
   test files, test files whose text imports a changed module (a text search, not an import graph), and
   last failures. Over 400 mapped tests it keeps only files named after the changed modules; a changed
   `conftest.py` is left to CI. CI still runs everything on the pull request.
@@ -82,12 +82,12 @@ this file holds the mechanics.
 - `tests/unit/test_claude_harness_*.py`, `tests/bias_guards/**` and `tests/oracles/**` are protected control
   plane: change them only in a reviewed pull request (`.claude/rules/tests.md`). No hook blocks these edits;
   review does.
-- The hidden suite `tests/holdout/` does not exist on this branch. Its guards remain: `.claude/settings.json`
+- The path `tests/holdout/` does not exist. Its guards remain: `.claude/settings.json`
   denies Read, Edit and Write on `tests/holdout/**`, and `scripts/claude_hooks.py` blocks file tools on any
   path containing `tests/holdout`. Never create, read or shell-write that path.
-- The `holdout` marker stays registered and the three `tests/holdout_seed/` files carry it; they run as
-  ordinary tests. To propose a holdout test, add it under `tests/holdout_seed/` and tell the owner
-  (`tests/holdout_seed/README.md`).
+- There is no hidden test suite ([ADR-0041](../../adr/0041-no-hidden-test-suite.md)). The 17 tests in
+  `tests/acceptance/` (`test_acceptance_*.py`, no marker) are ordinary visible tests in the fast tier and in
+  every `gate.py check`; anyone may read and extend them (`tests/acceptance/README.md`).
 - The research final holdout (`alpha project reveal-holdout`, `tests/integration/test_backtest_holdout_cli.py`)
   is a different thing: an owner-authority research control that agents are denied.
 

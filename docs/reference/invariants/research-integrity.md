@@ -134,8 +134,9 @@ an ADR, never a quiet code change.
 
 ## Protected and hidden tests
 
-- Never read, edit or write `tests/holdout/`. On this branch it does not exist, but the rule and
-  its guards stay in force; acceptance tests are proposed in `tests/holdout_seed/`.
+- There is no hidden test suite ([ADR-0041](../../adr/0041-no-hidden-test-suite.md)); acceptance
+  tests are visible in `tests/acceptance/`. The path `tests/holdout/` stays guarded: never read,
+  edit or write it.
 - `tests/bias_guards/`, `tests/oracles/` and the harness tests are protected: change them only in
   a reviewed pull request, and never to make a failing change pass.
 - Owner data, credentials and hidden tests are never inputs to search or discovery indexes.

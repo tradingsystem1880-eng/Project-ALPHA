@@ -1,3 +1,12 @@
+---
+owner: status page and roadmap
+sources:
+  - docs/context/feature-readiness-checklist-2026-10-27.md
+  - docs/roadmap/capabilities.toml
+  - scripts/status.py
+verified: cff64b466e7e
+---
+
 # Glossary
 
 This page explains the short codes and technical words you may see on an ALPHA status page.

@@ -53,9 +53,9 @@ links the others it depends on.
 | Rules that must not break | [docs/reference/invariants/](docs/reference/invariants/research-integrity.md) |
 | Decisions and their reasons | [docs/adr/](docs/adr/README.md) |
 | Package layers and data folders | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| Current status | `STATUS.md` (coming, generated) |
+| Current status | [STATUS.md](STATUS.md) (generated) |
 | History | git log and pull requests |
-| Glossary | `docs/reference/glossary.md` (coming) |
+| Codes and terms | [docs/reference/glossary.md](docs/reference/glossary.md) |
 
 When a fact changes, update its one home and link to it from elsewhere; never copy it.
 
