@@ -48,7 +48,8 @@ See the capabilities below on [STATUS.md](../../../../STATUS.md).
 ## Decisions and open questions
 
 - No owner decision about this part is in the [owner decisions log](../owner-decisions.md) yet.
-- Triage, 2026-11-14 under the owner's delegation ([triage sheet](../../../roadmap/triage-2026-11.md)): card 6 KEEP; card E DELETE (the worker now holds the only
+- Triage, 2026-11-14 under the owner's delegation
+  ([triage sheet](../../../roadmap/triage-2026-11.md)): card 6 KEEP; card E DELETE (the worker now holds the only
   copy of the acquisition code).
 - Decided: use RD-Agent's own paper ingestion where it is enough; the literature worker adds paper
   discovery, exact citations and limitations, and conflicting evidence, and feeds RD-Agent's proposal

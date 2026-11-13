@@ -61,7 +61,8 @@ stand-in on the Dell, where its install is not present.
 
 ## Decisions and open questions
 
-- Triage, 2026-11-14 under the owner's delegation ([triage sheet](../../../roadmap/triage-2026-11.md)): card 11 KEEP; cards 10, A and F SHELVE, code kept
+- Triage, 2026-11-14 under the owner's delegation
+  ([triage sheet](../../../roadmap/triage-2026-11.md)): card 11 KEEP; cards 10, A and F SHELVE, code kept
   and labelled.
 - Decided: Qlib and Nautilus are engines ALPHA installs and calls, like RD-Agent; their unfinished
   parts are kept or shelved, not deleted. Not every experiment needs Qlib

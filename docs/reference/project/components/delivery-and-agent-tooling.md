@@ -62,7 +62,8 @@ the local check. This part has no owner-facing capability on [STATUS.md](../../.
 ## Decisions and open questions
 - Decided: triage card G is replaced by Codex builds, Claude plans
   ([log](../owner-decisions.md#2026-11-14-agents-merge-and-decide-routine-matters)).
-- Triage, 2026-11-14 under the owner's delegation ([triage sheet](../../../roadmap/triage-2026-11.md)): card 12 KEEP; card 14 DELETE (both old clean-up plans
+- Triage, 2026-11-14 under the owner's delegation
+  ([triage sheet](../../../roadmap/triage-2026-11.md)): card 12 KEEP; card 14 DELETE (both old clean-up plans
   archived; the failing weekly mutation sweep moved to the backlog).
 
 ## Never

@@ -59,7 +59,8 @@ See the capabilities below on [STATUS.md](../../../../STATUS.md).
 - The owner no longer uses QuantPad ([log](../owner-decisions.md#2026-11-14-quantpad-no-longer-used)).
 Decided: the unused QuantPad code is removed and old records stay readable
   ([log](../owner-decisions.md#2026-11-14-agents-merge-and-decide-routine-matters)).
-- Triage, 2026-11-14 under the owner's delegation ([triage sheet](../../../roadmap/triage-2026-11.md)): cards 1, 3 and 4 KEEP; cards 2 (download bookkeeping) and B
+- Triage, 2026-11-14 under the owner's delegation
+  ([triage sheet](../../../roadmap/triage-2026-11.md)): cards 1, 3 and 4 KEEP; cards 2 (download bookkeeping) and B
   (funding modules) SHELVE, kept for a future download-budget policy and funding research.
 
 ## Never
