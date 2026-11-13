@@ -3,6 +3,7 @@
 Where each kind of document lives, and how long it stays current. Start with
 [`AGENTS.md`](../AGENTS.md) and [`CLAUDE.md`](../CLAUDE.md); the [context index](context/README.md)
 maps capabilities to their owning documents.
+The file system starts at the root [`CONTEXT.md`](../CONTEXT.md); rules and the command list live in [`reference/`](reference/commands.md).
 
 ## Lifecycle
 
