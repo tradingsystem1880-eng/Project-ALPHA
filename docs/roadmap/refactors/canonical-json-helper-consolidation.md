@@ -15,7 +15,7 @@ Private helpers are re-defined per module. Measured on 2026-11-13 with `git grep
 | `_sha` | 10 | 62 |
 | `_sha256` | 8 | 39 |
 | `_hash` | 10 | 118 |
-| `_digest` | 10 | 59 |
+| `_digest` | 9 | 55 |
 | `sha256_file` | 4 | 104 |
 | `_text` | 13 | 220 |
 | `_number` | 11 | 116 |
@@ -25,12 +25,12 @@ Private helpers are re-defined per module. Measured on 2026-11-13 with `git grep
 | `_utc` | 5 | 20 |
 | `_reject_constant` | 4 | 4 references (passed as `parse_constant=`) |
 
-124 definitions across 83 files: 46 in `apps/alpha-cli`, 8 each in `packages/alpha-data` and
+123 definitions across 82 files: 46 in `apps/alpha-cli`, 8 each in `packages/alpha-data` and
 `packages/alpha-research`, 6 in `apps/alpha-web`, 2 each in `alpha-strategies`, `alpha-study` and
-`tests/unit`, 1 each in `alpha-mcp`, `alpha-backtest`, `alpha-validation`, `tools/alpha-atlas`,
+`tests/unit`, 1 each in `alpha-mcp`, `alpha-backtest`, `alpha-validation`,
 `scripts/rdagent_foundation_contract.py` and `workers/literature`, and 3 in `workers/qlib`. A further
-152 lines call `json.dumps(..., separators=(",", ":"))` inline (117 of them with `sort_keys=True`, in
-98 files). Same-named helpers are not all equivalent (some sort keys, some reject NaN, some allow
+150 lines call `json.dumps(..., separators=(",", ":"))` inline (115 of them with `sort_keys=True`, in
+96 files). Counts were adjusted on 2026-11-13 for the files removed with ADR-0040. Same-named helpers are not all equivalent (some sort keys, some reject NaN, some allow
 floats); each must be classified before merging.
 
 ## Why
@@ -61,7 +61,7 @@ ordering) does not reach the others, and reviewers cannot tell which variant a h
 
 ## Suggested slicing
 
-1. Inventory and classify all 124 definitions; add golden tests (no production change).
+1. Inventory and classify all 123 definitions; add golden tests (no production change).
 2. Introduce one shared module per layer (`alpha_core` for pure encoders) with the variants found.
 3. Migrate one package at a time, starting where no identity hash covers the file.
 4. Leave worker copies and identity-bound files for last, each with an explicit owner decision.

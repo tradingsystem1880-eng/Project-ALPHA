@@ -126,7 +126,7 @@
     },
     {
       "title": "C6 regenerate, review, publish, and post-merge smoke",
-      "verify": "Run the canonical full gate, bias guards, frontend gate, literature and Qlib worker gates, live scoped acceptance, harness doctor, Atlas check, secret scan, Git integrity/diff checks, independent review, exact-SHA GitHub checks, and post-merge CLI/Workstation/workspace/storage/provider smokes.",
+      "verify": "Run the canonical full gate, bias guards, frontend gate, literature and Qlib worker gates, live scoped acceptance, harness doctor, secret scan, Git integrity/diff checks, independent review, exact-SHA GitHub checks, and post-merge CLI/Workstation/workspace/storage/provider smokes.",
       "expected": "All generated surfaces and current-state documents are fresh, zero release blockers remain, the reviewed branch is merged to main, and main has a fresh exact-tree full-gate stamp while paper/broker remain disabled.",
       "rollback": "Do not merge on a failed gate or review; if post-merge smoke fails, record the exact blocker and use a forward fix rather than rewriting owner data.",
       "files": [
@@ -151,7 +151,6 @@
     "docs/governance/2026-07-19-post-v2-risk-register.md",
     "docs/ARCHITECTURE.md",
     "docs/BUILD-STATUS.md",
-    "docs/atlas/**",
     "CLAUDE.md"
   ],
   "out_of_scope": [

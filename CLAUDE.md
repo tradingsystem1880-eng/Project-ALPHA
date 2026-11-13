@@ -41,7 +41,7 @@ Obey [DAG](docs/ARCHITECTURE.md#2-the-layered-dag)/[contracts](pyproject.toml); 
 
 - Loop: edit → `uv run python scripts/gate.py check` → commit → push → draft PR → CI → owner merges.
 - One CI job: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
-  `literature`, `qlib`, `atlas`, `eval`).
+  `literature`, `qlib`, `eval`).
 - Discover: `uv run python scripts/gate.py orient`; `alpha info commands --all --json`;
   `alpha info procedures --json`. [Map](docs/context/README.md).
 - Setup: `uv sync --locked`; backend CI: gate. [Run](README.md).

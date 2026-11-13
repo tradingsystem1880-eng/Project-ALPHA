@@ -77,18 +77,16 @@ These are finished but referenced by path from files that cannot be rewritten; s
 | [2026-10-26-native-rule-authority.md](../superpowers/plans/2026-10-26-native-rule-authority.md) | Frozen rule native authority | Completed |
 | [2026-10-31-clean-rdagent-bootstrap.md](../superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md) | Clean RD-Agent cloud bootstrap | Completed |
 
-## Backlog (17)
+## Backlog (15)
 
 | Item | Status | Rough size |
 | --- | --- | --- |
-| [Atlas runtime layer (traced execution view)](backlog/atlas-runtime-layer.md) | Idea | L |
-| [Atlas frontend scanning with the TypeScript compiler (ts-morph)](backlog/atlas-ts-morph-frontend-scanning.md) | Idea | S |
 | [Catalyst, expectations and fundamentals research (W15)](backlog/catalyst-research.md) | Scoped | L |
 | [ControlStore-owned durable acquisition journal](backlog/controlstore-durable-acquisition.md) | Idea | L |
 | [Generalise D0 screening to every registered producer (Phase E)](backlog/d0-generalisation.md) | Idea | M |
 | [Data-directory naming migration](backlog/data-directory-naming-migration.md) | Idea | M |
 | [Delivery-task system (durable task ownership and two-model handoff)](backlog/delivery-task-system.md) | Scoped | L |
-| [Gate coverage for the Atlas frontend and workers/rdagent](backlog/gate-coverage-atlas-frontend-and-rdagent.md) | Scoped | S |
+| [Gate coverage for workers/rdagent](backlog/gate-coverage-rdagent.md) | Scoped | S |
 | [Governed storage restore and query for real-data native studies (W19)](backlog/governed-storage-restore-and-query.md) | Scoped | L |
 | [Intraday (1h) equity timeframe](backlog/intraday-equity-timeframe.md) | Idea | M |
 | [Live trading phase (private, single owner)](backlog/live-trading-phase.md) | Scoped | XL |

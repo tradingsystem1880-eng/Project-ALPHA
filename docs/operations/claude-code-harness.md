@@ -8,12 +8,15 @@ authorization, scientific verification and sandbox boundaries are unchanged.
 ## Verification and discovery
 
 `uv run python scripts/gate.py check` is the fast local check; `gate.py component NAME` runs one
-CI job's steps (`backend`, `frontend`, `literature`, `qlib`, `atlas`, `eval`) exactly as CI does.
+CI job's steps (`backend`, `frontend`, `literature`, `qlib`, `eval`) exactly as CI does.
 The [development loop](development-loop.md) describes both. Nothing local records that a tree
 passed: there are no stamps, receipts, attestations, override tokens or audit journal.
 
-`uv run python scripts/gate.py orient [--json] [--component NAME]` reads the shared computed
-source index. It neither launches the Atlas viewer nor reads owner data or hidden tests.
+`uv run python scripts/fs.py orient [--json] [--component NAME]` (also `gate.py orient`) lists
+components, module counts and the routing documents, computed from directory listings.
+`uv run python scripts/fs.py search "QUERY" [--kind KIND] [--limit N] [--format json]` returns
+ranked excerpts of tracked documentation, live documents ahead of archived history. Neither reads
+owner data, untracked files or hidden tests ([ADR-0040](../adr/0040-one-file-system-atlas-retired.md)).
 `alpha info commands --all --json` lists every command leaf; `alpha info procedures --json`
 describes registered analysis families, verified protocols and scan commands. These are descriptive,
 not executable authority registries.

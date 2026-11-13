@@ -78,11 +78,8 @@ paths; their final execution/review status is recorded in the dated packet, neve
 
 ## Trace the workflow without granting authority
 
-Use the existing [research flow](../atlas/research-flow.md),
-[curated lifecycle definitions](../../architecture/atlas/definitions/research-lifecycle.json)
-and [data-lineage definitions](../../architecture/atlas/definitions/data-lineage.json).
-Those definitions already carry `last_verified_commit` and provenance; this map does not
-refresh their verification metadata or certify generated Atlas freshness.
+Use the [architecture](../ARCHITECTURE.md) for the package boundaries and runtime flow;
+this map does not certify that any linked description is current.
 
 The [research contracts](../operations/research-platform-contracts.md) and
 [bounded workflow](../operations/bounded-research-workflow.md) explain operational constraints.

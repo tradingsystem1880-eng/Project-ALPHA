@@ -9,7 +9,7 @@ This is an engineering navigation map, not a new team structure or operating pol
 | Capability | Research rationale | Decisions | Plan | Code and representative checks |
 |---|---|---|---|---|
 | Architecture and change workflow | [Engineering research](../../research/07-architecture-ai-workflow.md), historical rationale | [Layered DAG](../adr/0001-strict-layered-dag.md); [sole composer](../adr/0002-cli-sole-composer-subprocess-surfaces.md); [agent-neutral engineering](../adr/0037-agent-neutral-research-engineering.md) | [Reproducible research delivery](../superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md) | [Import contracts](../../pyproject.toml); [component gate](../../scripts/gate_components.py); [engineering awareness checks](../../tests/unit/test_repo_awareness_drift.py); [CLI rules/module map](../../.claude/rules/alpha-cli.md); [engine composition](../../apps/alpha-cli/src/alpha_cli/_runner.py); [gauntlet composition](../../apps/alpha-cli/src/alpha_cli/_gauntlet.py); [lightweight public seam checks](../../tests/unit/test_public_seams.py), not complete DAG enforcement. Dedicated current CLI-boundary spec: not identified |
-| Context discovery and change impact | Dedicated research report: none identified; use the linked design | [Agent-neutral engineering](../adr/0037-agent-neutral-research-engineering.md); dedicated Atlas ADR: none identified | [Atlas design](../superpowers/plans/archive/2026-08/2026-08-20-project-alpha-atlas-design.md) | [Orientation adapter](../../scripts/repo_orientation.py); [shared source index](../../tools/alpha-atlas/src/alpha_atlas/developer_index.py); [Atlas consistency](../../tests/unit/test_atlas_consistency.py) |
+| Context discovery and change impact | Dedicated research report: none identified | [One file system](../adr/0040-one-file-system-atlas-retired.md); [agent-neutral engineering](../adr/0037-agent-neutral-research-engineering.md) | None (follow-up file-system restructure planned) | [File-system command](../../scripts/fs.py); [orientation](../../scripts/fs_orient.py); [document search](../../scripts/fs_search.py); [orientation checks](../../tests/unit/test_fs_orient.py); [search checks](../../tests/unit/test_fs_search.py) |
 | Verification and process ownership | Dedicated research report: none identified | [Engineering authority](../adr/0037-agent-neutral-research-engineering.md); dedicated cloud ADR: none identified | [Cloud setup](../superpowers/plans/archive/2026-10/2026-10-15-cloud-setup.md); [owned processes](../superpowers/plans/archive/2026-10/2026-10-15-cloud-readiness-owned-processes.md); [engineering delivery](../superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md), historical full-gate context | [Gate](../../scripts/gate.py); [test-process owner](../../scripts/run_owned_test.py); [setup entrypoint](../../scripts/cloud_setup.sh); [mocked setup checks](../../tests/unit/test_cloud_setup.py); [component runner](../../scripts/gate_components.py); [component checks](../../tests/unit/test_gate_components.py). Current rule: [CI is the merge gate](../adr/0039-ci-is-the-merge-gate.md) |
 
 ## Working boundaries
@@ -22,7 +22,7 @@ Follow the task's authorized scope; a navigation command does not authorize inst
 publication, owner actions or broad test execution.
 
 CI on the pull request runs the [component definitions](../../scripts/gate_components.py)
-(backend, frontend, literature, Qlib, Atlas, eval) and is the merge gate. Local checks are
+(backend, frontend, literature, Qlib, eval) and is the merge gate. Local checks are
 feedback; they do not substitute for CI.
 Read [cloud lifecycle guidance](../../README.md) before relying on prepared dependencies.
 A configured cache path or saved installation recipe does not prove assets exist in a fresh task.
@@ -30,11 +30,9 @@ Provisioning failures remain failures until verified after an authorized environ
 
 ## Reuse the existing index
 
-[Atlas definitions](../../architecture/atlas/definitions/) retain curated purposes,
-limits, safe-change notes and provenance. [Generated maps](../atlas/system-map.md)
-remain generated, and [Atlas's README](../../tools/alpha-atlas/README.md) explains freshness.
-Use the shared source index for package/module discovery; do not maintain another module list.
-The context index links research and plans that the current ADR/spec extractor does not ingest.
+Use `uv run python scripts/fs.py orient` (optionally `--component NAME`) for package and module
+discovery; it is computed from the tree, so do not maintain another module list. Use
+`uv run python scripts/fs.py search "QUERY"` to find the owning document for a topic.
 
 ## Verification status and gaps
 

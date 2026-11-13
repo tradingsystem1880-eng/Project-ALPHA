@@ -2,7 +2,7 @@
 
 > **Status (2026-11-13): Historical.** Kept as the original design record. The tool count in the
 > 2026-08-06 pointer below is itself out of date; the current MCP surface is described by
-> [`docs/ARCHITECTURE.md`](../../ARCHITECTURE.md) and the generated [Atlas](../../atlas/).
+> [`docs/ARCHITECTURE.md`](../../ARCHITECTURE.md).
 
 > **Current-state pointer (2026-08-06):** This historical plan predates forecast and Workstation v3
 > tools. The shipped MCP surface now contains 48 tools (12 retained legacy + 30 typed v3 + six

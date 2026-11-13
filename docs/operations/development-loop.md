@@ -35,7 +35,6 @@ The `ci-ok` job passes only when every job below succeeded; branch protection re
 | `harness` | Harness doctor, weakening scanner, strict mypy of the harness scripts, hook and selector tests. |
 | `frontend` | npm lint, build and types, unit coverage, API freshness, browser lanes, SPA freshness. |
 | `qlib-worker`, `literature-worker` | Each worker's own lock, lint, format, types and tests. |
-| `atlas` | Atlas tool checks and generated-graph freshness. |
 | `eval` | The benchmark tool's own lock, lint, format, types and tests. |
 
 Nightly runs Semgrep on the whole tree, determinism and raise coverage; a weekly job runs the
@@ -44,7 +43,7 @@ full mutation sweep.
 ## Running one CI job locally
 
 ```sh
-uv run python scripts/gate.py component backend   # also: frontend, literature, qlib, atlas, eval
+uv run python scripts/gate.py component backend   # also: frontend, literature, qlib, eval
 ```
 
 It runs exactly the steps CI runs for that job and stops at the first failure. `backend` takes

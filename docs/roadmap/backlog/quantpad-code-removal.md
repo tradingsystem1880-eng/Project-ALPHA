@@ -16,7 +16,7 @@ and the `quantpad_receipt` research dataset kind, ADR-0018/ADR-0023 and SPA mode
 
 Code, CLI registration and tests removed; historical receipts and attribution remain readable
 (the dataset kind stays readable for existing rows or is migrated); ADR-0018/0023 get a
-superseding note; generated OpenAPI/TypeScript and Atlas regenerated.
+superseding note; generated OpenAPI/TypeScript regenerated.
 
 ## Dependencies
 

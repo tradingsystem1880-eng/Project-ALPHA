@@ -4,6 +4,8 @@
 
 > **Note (2026-11-13):** [ADR-0039](0039-ci-is-the-merge-gate.md) makes CI on the pull request the merge gate and supersedes this record's local gate-stamp, receipt and commit-guard parts; the decision text below is unchanged.
 
+> **Note (2026-11-13):** [ADR-0040](0040-one-file-system-atlas-retired.md) retires the Atlas graph, viewer and gate component; orientation and document search continue as `scripts/fs.py`.
+
 ## Context
 
 The owner approved the [agent-neutral refactor plan](../superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md):
