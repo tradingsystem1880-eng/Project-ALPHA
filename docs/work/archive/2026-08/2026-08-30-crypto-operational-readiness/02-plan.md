@@ -1,6 +1,6 @@
 # Crypto Operational-Readiness Closure — Implementation Plan
 
-**Delivery state:** Blocked — C4–C6 pending; build-status 2026-08-31 records release blocked by provider
+**Delivery state:** Superseded by [2026-10-26-mac-portability-qualification](../../../2026-10-26-mac-portability-qualification/02-plan.md) — merged 2026-11-14 (triage card 13, owner's delegation): C0–C3 done; C4–C6 moved there. Earlier state: Blocked — C4–C6 pending; build-status 2026-08-31 records release blocked by provider
 
 ```json
 {

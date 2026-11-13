@@ -10,9 +10,9 @@ content-addressed page text; encrypted, malformed, image-only, and truncated doc
 honest non-evidence states, and document text never carries instruction authority.
 
 Deliberately not a root workspace member (ADR-0016 isolation pattern): own lockfile, no
-credential or shell context, no alpha-* imports. `src/literature_worker/_acquisition.py` is a
-pinned copy of `apps/alpha-cli/src/alpha_cli/research_acquisition.py`; a repository test fails
-loud if the two drift.
+credential or shell context, no alpha-* imports. `src/literature_worker/_acquisition.py` holds
+the only copy of the acquisition primitives. The CLI runs the worker's `fetch`, `discover` and
+`extract` commands.
 
 Gate: `cd workers/literature && uv lock --check && uv sync --locked && uv run ruff check . &&
 uv run ruff format --check . && uv run mypy && uv run pytest -q -m "not network"`.

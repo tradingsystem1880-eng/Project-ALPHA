@@ -1,5 +1,8 @@
 """Opt-in synthetic WINDOW dispatch accounting over a supplied disposable connection.
 
+Shelved (2026-11-14, triage card 2): not wired in, kept for a future download-budget
+policy and durable acquisition journal (backlog: controlstore-durable-acquisition).
+
 No database opener, DDL, live ControlStore, provider route or send permit exists here.
 This adapter is the transaction caller of the existing inactive fragment. Ledger ownership
 must precede SQLite; callback/artifact I/O never runs inside a SQLite transaction.

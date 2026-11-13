@@ -1,4 +1,8 @@
-"""Read-only engineering provenance contracts; no fit dispatch or admission."""
+"""Read-only engineering provenance contracts; no fit dispatch or admission.
+
+Shelved (2026-11-14, triage card 10): not wired into any fit, kept for Qlib fold
+retraining once the reviewed statistics modules exist.
+"""
 
 from __future__ import annotations
 

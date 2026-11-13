@@ -1,6 +1,6 @@
 # Opt-in synthetic per-HTTP accounting integration
 
-**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+**Delivery state:** Blocked — shelved 2026-11-14 (triage card 2, owner's delegation): code merged but not wired into any command; kept for a future download-budget policy and durable acquisition journal. Earlier state: Implemented – qualification pending
 
 Canonical requirement: v9 W05/W02 market-data slice C, persisted budget use across
 retry/resume without exposure reset. This is an inactive disposable-store engineering

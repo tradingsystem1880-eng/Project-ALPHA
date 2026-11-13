@@ -1,5 +1,8 @@
 """Demo: upstream qrun on fabricated data — not a research path.
 
+Shelved (2026-11-14, triage card F): not wired in, kept as a reproducible made-up-data
+demonstration that real Qlib and NautilusTrader connect to ALPHA.
+
 Bounded synthetic qrun -> native Nautilus -> inert Results artifacts; no admission. It runs
 upstream ``qlib.cli.run`` with the worker's environment on the fixture in
 ``workers/qlib/examples/native-synthetic/`` (six fabricated features, a planted target) and

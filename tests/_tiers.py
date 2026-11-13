@@ -46,7 +46,6 @@ PLATFORM_PREFIXES: dict[str, tuple[str, ...]] = {
         "test_provider_",
         "test_public_seams",
         "test_qlib_",
-        "test_quantpad_",
         "test_repo_awareness",
         "test_research_",
         "test_run_context_authority",

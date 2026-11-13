@@ -3,7 +3,7 @@ owner: project layer
 sources:
   - workers/literature/CONTEXT.md
   - docs/adr/0024-literature-acquisition-worker-and-claim-model.md
-verified: a79d832d
+verified: 00c406280779
 ---
 
 # Literature worker
@@ -48,8 +48,9 @@ See the capabilities below on [STATUS.md](../../../../STATUS.md).
 ## Decisions and open questions
 
 - No owner decision about this part is in the [owner decisions log](../owner-decisions.md) yet.
-- Triage cards 6 (link claims to experiments, recommended KEEP) and E (remove the duplicate copy of
-  the download code, recommended DELETE) wait for the owner ([triage sheet](../../../roadmap/triage-2026-11.md)).
+- Triage, 2026-11-14 under the owner's delegation
+  ([triage sheet](../../../roadmap/triage-2026-11.md)): card 6 KEEP; card E DELETE (the worker now holds the only
+  copy of the acquisition code).
 - Decided: use RD-Agent's own paper ingestion where it is enough; the literature worker adds paper
   discovery, exact citations and limitations, and conflicting evidence, and feeds RD-Agent's proposal
   step rather than forming a second research system. The hand-off is not yet shown working

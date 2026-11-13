@@ -19,7 +19,6 @@ GROUPS: tuple[tuple[str, str, str], ...] = (
     ("paper", "alpha_cli.paper_cmds", "paper_app"),
     ("propfirm", "alpha_cli.propfirm_cmds", "propfirm_app"),
     ("provider", "alpha_cli.provider_cmds", "provider_app"),
-    ("quantpad-data", "alpha_cli.quantpad_data_cmds", "quantpad_data_app"),
     ("info", "alpha_cli.info_cmds", "info_app"),
     ("owner-auth", "alpha_cli.owner_auth_cmds", "owner_auth_app"),
     ("risk", "alpha_cli.risk_cmds", "risk_app"),

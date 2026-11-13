@@ -1,5 +1,8 @@
 """Bounded diagnostic journal in existing records, never Qlib admission/accounting.
 
+Shelved (2026-11-14, triage card A): not wired in, kept because it is the groundwork for
+running Qlib models through RD-Agent research cases (W09), after the daily rule study.
+
 Checkpoint writers are trusted local engineering callers. Hashes and declared
 scopes detect drift/replay; they do not authenticate execution or fitted state.
 No operation here creates an attempt, settles a reservation or dispatches a worker.

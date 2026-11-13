@@ -1,6 +1,6 @@
 # Finish outstanding work and establish a documented clean baseline
 
-**Delivery state:** In progress — named slices shipped via PRs #55/#58/#99; broad programme open
+**Delivery state:** Superseded by [weekly-mutation-sweep.md](../../../../roadmap/backlog/weekly-mutation-sweep.md) — closed 2026-11-14 (triage card 14, owner's delegation): every code slice is on main (PRs #54, #55, #57, #58, #99); the failing weekly mutation sweep is the one unfinished item and moved to the backlog. Earlier state: In progress — named slices shipped via PRs #55/#58/#99; broad programme open
 
 **Current cloud reconciliation (2026-10-30):** The [cloud-visible ledger](#cloud-visible-ledger-reconciliation-2026-10-30) accounts for this executor and observed GitHub refs/PRs. The saved Mac path/branch/operation ledger remains unavailable and unverified; its preservation and owner-disposition obligations are still open. Earlier dated inventories below describe their own machines and checkpoints.
 
@@ -209,7 +209,7 @@ The prior final candidate `f7d6ae8c` passed all six canonical components with a 
 tracked tree and accompanying worktree. Only public path metadata was checked.
 The dated claim above is preserved as history; the unavailable contents were not
 opened, recovered or verified and supply no current policy authority. Consult the
-current [operating manual](../../../CLAUDE.md) and [commit guard](../../../scripts/git_guard.py)
+current [operating manual](../../../../../CLAUDE.md) and [commit guard](../../../../../scripts/git_guard.py)
 for current requirements.
 
 
@@ -266,7 +266,7 @@ uninspected until the Mac and its original ledger are available.
 
 ### Cloud retention and disposition follow-on (2026-10-31)
 
-The earlier remote checkpoint above is historical. The [verified PR99 delivery receipt](../../BUILD-STATUS.md#2026-10-30--verified-combined-delivery-on-main)
+The earlier remote checkpoint above is historical. The [verified PR99 delivery receipt](../../../../BUILD-STATUS.md#2026-10-30--verified-combined-delivery-on-main)
 records the saved snapshot-query slice delivered and PR80/91/92/93 closed as superseded.
 The old pending/open language is not the current disposition. Native protections remain in
 PR96's control store; the old recovery branch's earlier whole tree must not replace it.
@@ -290,6 +290,6 @@ Restore a preserved branch into a new local name with
 `git fetch /absolute/path/remote-heads.bundle refs/archive/cleanup-20261031/BRANCH:refs/heads/recovered/BRANCH`,
 then compare its commit and Git tree with the private manifest. Never overwrite active work.
 Checkpoint dry-run, archive and restoration commands are in the
-[harness guide](../../operations/claude-code-harness.md#checkpoint-retention-without-evidence-loss).
+[harness guide](../../../../operations/claude-code-harness.md#checkpoint-retention-without-evidence-loss).
 The archive route verifies copies while retaining every original; deletion is a separate action.
 Mac-local branches, stashes, saved paths and physical storage remain unverified until accessible.

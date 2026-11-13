@@ -1,6 +1,6 @@
 # Disposable acquisition transactions
 
-**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+**Delivery state:** Blocked — shelved 2026-11-14 (triage card 2, owner's delegation): code merged but not wired into any command; kept for a future download-budget policy and durable acquisition journal. Earlier state: Implemented – qualification pending
 
 This candidate is independent of preserved resume tree a20c88091c9951ea98b5202e6b1dfc999e8a79d0
 and verification-I/O tree 7953dcde1759b3a3094dd4325d1dcde9a55c12f9. It shares their base

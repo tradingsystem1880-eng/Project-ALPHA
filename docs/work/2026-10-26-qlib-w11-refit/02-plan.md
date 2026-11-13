@@ -1,6 +1,6 @@
 # Qlib W11: bounded whole-pipeline refit evidence
 
-**Delivery state:** Blocked — engineering merged via PR #95; governed execution and statistics blocked
+**Delivery state:** Blocked — shelved 2026-11-14 (triage card 10, owner's delegation): not wired into any fit, kept for Qlib fold retraining; engineering merged via PR #95; governed execution and statistics blocked
 
 > Evidence navigation: `.alpha/state/` paths below name ignored, machine-local receipts.
 > These are handoff locations, not repository links.

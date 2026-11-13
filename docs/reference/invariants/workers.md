@@ -6,10 +6,9 @@ sources:
   - workers/rdagent/**
   - scripts/gate_components.py
   - tests/unit/test_qlib_isolation.py
-  - tests/unit/test_literature_worker_pin.py
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
   - apps/alpha-cli/src/alpha_cli/_native_rule_environment.py
-verified: 87c5d970c974
+verified: 20bad1beb225
 ---
 
 # Worker invariants
@@ -81,9 +80,9 @@ acquisition worker and the RD-Agent native-loop probe. The general rule is
 - Stored objects are content-addressed with a `SourceReceipt` labelled `UNTRUSTED_SOURCE`. Document text never
   carries instruction authority. Encrypted, malformed, image-only and truncated documents stay honest
   non-evidence states.
-- No `alpha_*` imports. `src/literature_worker/_acquisition.py` is a copy of
-  `apps/alpha-cli/src/alpha_cli/research_acquisition.py`, byte-identical except the `DataError` import: edit the
-  original, then regenerate the copy. Enforced by `tests/unit/test_literature_worker_pin.py`.
+- No `alpha_*` imports. `src/literature_worker/_acquisition.py` is the only copy of the acquisition primitives
+  (the CLI duplicate was removed 2026-11-14); their tests are `workers/literature/tests/test_acquisition.py`.
+- The worker's commands are `fetch`, `discover` and `extract`, the three the CLI launches.
 - Launch (`apps/alpha-cli/src/alpha_cli/research_cmds.py::_run_literature_worker`): a closed argument vector
   and a minimal environment (`LANG`, `LC_ALL`, `PATH=os.defpath`, `PYTHONPATH`, `UV_NO_CONFIG=1`,
   `UV_OFFLINE=1`), so no credentials, shell state or host override is inherited. It runs

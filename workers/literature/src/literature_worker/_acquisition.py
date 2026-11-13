@@ -1,9 +1,7 @@
-"""Fail-closed primitives for the future untrusted research acquisition worker.
+"""The literature worker's fail-closed URL and response validation primitives.
 
-This module deliberately does not perform network I/O.  A worker must validate every initial and
+This module performs no network I/O of its own. The worker must validate every initial and
 redirect URL immediately before connecting, then pass the bounded response through this module.
-Keeping transport outside this seam prevents a validation helper from being mistaken for a secure
-fetcher when DNS pinning and operating-system isolation are not yet active.
 """
 
 from __future__ import annotations

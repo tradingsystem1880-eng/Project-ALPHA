@@ -1,5 +1,8 @@
 """Inactive acquisition transaction fragment, for explicitly disposable fixtures only.
 
+Shelved (2026-11-14, triage card 2): not wired in, kept for a future download-budget
+policy and durable acquisition journal (backlog: controlstore-durable-acquisition).
+
 The caller supplies an active transaction and guarantees BEGIN IMMEDIATE for writes.
 This module never opens/commits/closes a connection or grants an effect capability.
 FIXTURE_DDL is not registered with ControlStore or any production migration. Local

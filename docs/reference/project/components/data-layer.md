@@ -42,15 +42,14 @@ See the capabilities below on [STATUS.md](../../../../STATUS.md).
 
 - **Workspaces:** `packages/alpha-data`
 - **Capabilities:** `stock-data`, `crypto-data`, `crypto-backfill`, `download-bookkeeping`,
-  `funding-download`, `retained-coverage`, `crypto-snapshots`, `providers-and-jobs`, `quantpad-archive`
+  `funding-download`, `retained-coverage`, `crypto-snapshots`, `providers-and-jobs`
 - Code: `packages/alpha-data/src/alpha_data/`; the `alpha data` and `alpha crypto-data` commands in
   `apps/alpha-cli/`.
 - Tests: `tests/smoke/test_data_smoke.py`, and the data tests under `tests/unit/` and `tests/bias_guards/`.
 - How to change it: [packages/alpha-data/CONTEXT.md](../../../../packages/alpha-data/CONTEXT.md).
 - Plans: the `plans` of each capability above in `docs/roadmap/capabilities.toml`.
 - Backlog: [offline price import](../../../roadmap/backlog/offline-data-import.md),
-  [durable acquisition journal](../../../roadmap/backlog/controlstore-durable-acquisition.md),
-  [QuantPad code removal](../../../roadmap/backlog/quantpad-code-removal.md).
+  [durable acquisition journal](../../../roadmap/backlog/controlstore-durable-acquisition.md).
 - Decision records: [ADR-0004](../../../adr/0004-two-clock-corporate-actions.md),
   [ADR-0005](../../../adr/0005-point-in-time-firewall.md), [ADR-0017](../../../adr/0017-authoritative-daily-data-and-broker-paper-boundary.md),
   [ADR-0032](../../../adr/0032-governed-crypto-data-house.md).
@@ -60,8 +59,9 @@ See the capabilities below on [STATUS.md](../../../../STATUS.md).
 - The owner no longer uses QuantPad ([log](../owner-decisions.md#2026-11-14-quantpad-no-longer-used)).
 Decided: the unused QuantPad code is removed and old records stay readable
   ([log](../owner-decisions.md#2026-11-14-agents-merge-and-decide-routine-matters)).
-- Triage cards 1, 2, 3, 4 and B are waiting for the owner ([triage sheet](../../../roadmap/triage-2026-11.md)).
-  Card 2 and B depend on whether the owner wants download budgets at all (question 2 on that sheet).
+- Triage, 2026-11-14 under the owner's delegation
+  ([triage sheet](../../../roadmap/triage-2026-11.md)): cards 1, 3 and 4 KEEP; cards 2 (download bookkeeping) and B
+  (funding modules) SHELVE, kept for a future download-budget policy and funding research.
 
 ## Never
 

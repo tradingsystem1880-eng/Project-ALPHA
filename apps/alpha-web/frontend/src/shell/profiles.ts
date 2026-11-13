@@ -89,7 +89,7 @@ export const PROFILES: Readonly<Record<Profile, ProfileManifest>> = freeze({
     label: 'Equities',
     windows: [...MARKET_NEUTRAL_WINDOWS, 'corporate-actions'],
     docks: DOCKS,
-    providers: ['tiingo', 'yfinance', 'stooq', 'quantpad'],
+    providers: ['tiingo', 'yfinance', 'stooq'],
     defaultSource: 'tiingo',
     defaultVenue: null,
     defaultSymbol: 'AAPL',

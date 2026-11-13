@@ -30,7 +30,6 @@ ROOT = Path(__file__).resolve().parents[2]
         "tests/unit/test_owner_auth.py",
         "tests/unit/test_forecast_kronos.py",
         "tests/unit/test_figure_catalog.py",
-        "tests/unit/test_quantpad_adapter.py",
         # real-process and lifecycle families, and files of about ten seconds or more
         "tests/unit/test_native_fixture_lifecycle.py",
         "tests/unit/test_daily_rule_recovery_contracts.py",

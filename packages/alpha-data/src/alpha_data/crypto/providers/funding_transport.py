@@ -1,4 +1,8 @@
-"""Internal injected response reader; no live opener, retry or acquisition route."""
+"""Internal injected response reader; no live opener, retry or acquisition route.
+
+Shelved (2026-11-14, triage card B): not wired in, kept for funding-event research; real
+downloads wait on the durable acquisition journal.
+"""
 
 from __future__ import annotations
 

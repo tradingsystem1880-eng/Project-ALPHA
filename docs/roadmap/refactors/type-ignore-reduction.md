@@ -6,7 +6,7 @@
 
 308 `# type: ignore` comments in tracked Python (measured 2026-11-13): 239 under `tests/` (202 in
 73 files of `tests/unit`; most in `test_research_control_store.py` 25, `test_figure_builders_synthetic.py`
-18) and 69 elsewhere. Source hot-spots: `alpha_data/quantpad_archive.py` 6, `scripts/mutation_fragment.py` 5,
+18) and 69 elsewhere. Source hot-spots (`alpha_data/quantpad_archive.py`, 6, was removed 2026-11-14): `scripts/mutation_fragment.py` 5,
 `alpha_data/adapters/yfinance_adapter.py` 5, `alpha_cli/research_data_audit.py` 5,
 `alpha_cli/ibkr_what_if.py` 5, `alpha_cli/figures/_builders.py` 5. By code: `arg-type` 170,
 `attr-defined` 32, `misc` 28, `index` 26, `import-untyped` 15.
@@ -21,7 +21,7 @@ deliberately malformed values.
 - Tests that intentionally pass wrong types (to prove validation) must keep doing so; use `cast` or
   typed helpers rather than weakening assertions.
 - `alpha_data/pipeline.py` and other identity-bound files (see the canonical-JSON refactor) change
-  runtime identities if edited; `quantpad_archive.py` may be removed instead (backlog).
+  runtime identities if edited.
 
 ## Proof required before/after
 
