@@ -113,6 +113,11 @@ def _real_run(cap: Capability) -> str:
     return "" if cap.real_data.startswith("not yet") else " (a real run is recorded)"
 
 
+def _docs(cap: Capability) -> str:
+    """Links to the capability's plain-English documents, if any."""
+    return "".join(f" More: [{doc}]({doc})." for doc in cap.docs)
+
+
 def _tested_without_smoke(cap: Capability) -> bool:
     """Partial only because nothing runs it end to end yet; it needs nothing else."""
     return cap.missing.endswith(capabilities.NO_SMOKE_YET) and not cap.needs
@@ -176,7 +181,7 @@ def render(root: Path = ROOT) -> str:
         "",
     ]
     for cap in by_state["Working"]:
-        out.append(f"- **{cap.label}** — {_how_to_see(cap)}{_real_run(cap)}")
+        out.append(f"- **{cap.label}** — {_how_to_see(cap)}{_real_run(cap)}{_docs(cap)}")
     if not by_state["Working"]:
         out.append("- None.")
     out += ["", "## Partly working", ""]
@@ -185,7 +190,7 @@ def render(root: Path = ROOT) -> str:
         if cap in untried:
             continue
         needs = f" Needs: {'; '.join(cap.needs)}." if cap.needs else ""
-        out.append(f"- **{cap.label}** — {cap.missing}.{needs}")
+        out.append(f"- **{cap.label}** — {cap.missing}.{needs}{_docs(cap)}")
     if untried:
         if len(untried) < len(by_state["Partial"]):
             out.append("")
@@ -196,7 +201,7 @@ def render(root: Path = ROOT) -> str:
         ]
         for cap in untried:
             how = cap.missing.removesuffix(capabilities.NO_SMOKE_YET).rstrip("; ")
-            out.append(f"- **{cap.label}** — {how}{_real_run(cap)}.")
+            out.append(f"- **{cap.label}** — {how}{_real_run(cap)}.{_docs(cap)}")
     if not by_state["Partial"]:
         out.append("- None.")
     out += [

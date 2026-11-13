@@ -168,6 +168,7 @@ def test_minimal_valid_map_loads(tmp_path: Path) -> None:
         (_cap(entries='["script: alpha-nothing"]') + _SUMMARY, "console script"),
         (_cap(plans='["2026-01-01-gone"]') + _SUMMARY, "not a live task"),
         (_cap(plans="[]") + _SUMMARY, "assigned to no capability"),
+        (_cap(extra='docs = ["docs/nowhere.md"]') + _SUMMARY, "not a Markdown file"),
         (_cap(), "plan_summary"),
         (
             _cap(extra='triage = {card = "1", recommendation = "MAYBE", owner_decision = "no"}')
