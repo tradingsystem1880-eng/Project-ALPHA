@@ -411,8 +411,9 @@ def run_backtest(
         type(accounting_trace) is not list or account_type != AccountType.CASH or accounting_trace
     ):
         raise DataError("accounting observations require an empty output and a CASH account")
-    if fee_bps < 0.0:
-        raise DataError(f"fee_bps must be >= 0 (a negative fee pays you to trade), got {fee_bps}")
+    if not math.isfinite(fee_bps) or fee_bps < 0.0:
+        # NaN passes both `< 0` and `> 0`, which would silently mean "no fee model"
+        raise DataError(f"fee_bps must be finite and >= 0, got {fee_bps}")
     # The account is denominated in the instrument's quote currency (USD for equities, USDT for a
     # USDT pair): PnL settles in that currency, so no exchange rate is ever needed. A USD account
     # holding a USDT pair would need a USDT→USD rate no feed provides, and nautilus fails the
