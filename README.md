@@ -281,6 +281,9 @@ failed partial acquisitions are preserved and acquired source is validated befor
 Foundation-only setup stays non-fetching.
 See the [clean-bootstrap record](docs/superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md)
 for fresh-workspace/container evidence and its limits. Provisioning does not grant execution authority.
+On a local development checkout, `bash scripts/setup_rdagent.sh` does only the RD-Agent part
+(no Git hooks, npm or browser download); see [workers/rdagent/README.md](workers/rdagent/README.md#install-on-a-development-machine)
+and the owner's overview [RD-Agent in ALPHA](docs/roadmap/rd-agent-in-alpha.md).
 
 The daily research route additionally uses an explicitly qualified, immutable local Docker image
 for its hard physical-memory boundary. Follow the [daily runtime and storage instructions](docs/superpowers/plans/2026-10-31-packet3-daily-rule.md#runtime-and-storage-setup).
@@ -370,8 +373,10 @@ Engineering processes are separate from quant research approval and paper author
 [Software Team map](docs/context/software-team.md), and the
 [development loop](docs/operations/development-loop.md). For UI development, startup fixtures,
 and browser checks, use the [frontend guide](apps/alpha-web/frontend/README.md).
-The mandatory browser command runs four fixture-specific lanes and requires explicitly selected,
-already-installed native source/runtime assets. Missing inputs fail the command, never skip that lane.
+The mandatory browser command runs four fixture-specific lanes. The native lane needs explicitly
+selected, already-installed native source/runtime assets (`ALPHA_RDAGENT_SOURCE` and
+`ALPHA_STOCK_PYTHON`). When neither is set (as in CI) the other three lanes still run and the native
+lane is reported as skipped, which is not native qualification; setting only one fails the command.
 
 CI on the pull request is the merge gate: it runs the backend, frontend, literature, Qlib and
 eval components, and the owner merges once it is green. Locally, run the fast check:
