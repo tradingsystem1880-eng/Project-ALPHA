@@ -30,7 +30,7 @@ function ProviderCard({
   onCheck: (providerId: string) => void
 }) {
   const missing = missingCredentialNames(provider)
-  const canCheck = ['tiingo', 'quantpad', 'ibkr'].includes(provider.id) && provider.configured
+  const canCheck = ['tiingo', 'ibkr'].includes(provider.id) && provider.configured
   return (
     <article className="provider-card">
       <div className="provider-card-head">
@@ -75,7 +75,7 @@ function ProviderCard({
         {provider.granted_capabilities.length ? (
           <span className="mono muted">granted: {provider.granted_capabilities.join(' · ')}</span>
         ) : null}
-        {['tiingo', 'quantpad', 'ibkr'].includes(provider.id) ? (
+        {['tiingo', 'ibkr'].includes(provider.id) ? (
           <button className="btn" disabled={!canCheck || checking} onClick={() => onCheck(provider.id)}>
             {checking ? 'checking…' : 'run explicit check'}
           </button>

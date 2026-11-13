@@ -83,48 +83,27 @@ def test_unsupported_catalog_action_fails_before_keychain_lookup(tmp_path: Path)
     assert not marker.exists()
 
 
-def test_quantpad_archive_launcher_passes_only_explicit_archive_arguments(tmp_path: Path) -> None:
+def test_removed_quantpad_check_fails_before_keychain_lookup(tmp_path: Path) -> None:
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
-    capture = tmp_path / "capture"
-    _executable(fake_bin / "security", "#!/bin/sh\nset -eu\nprintf '%s\\n' 'sentinel-secret'\n")
+    marker = tmp_path / "security-called"
     _executable(
-        fake_bin / "uv",
-        "#!/bin/sh\nset -eu\n"
-        'printf \'%s\\n\' "$QUANTPAD_API_KEY" "$@" > "$ALPHA_LAUNCHER_CAPTURE"\n',
+        fake_bin / "security",
+        f"#!/bin/sh\nset -eu\ntouch '{marker}'\nexit 1\n",
     )
     repository = Path(__file__).resolve().parents[2]
     result = subprocess.run(
-        [
-            str(repository / "scripts" / "alpha-with-keychain-provider"),
-            "quantpad",
-            "archive",
-            "coverage",
-            "AAPL",
-            "--json",
-        ],
+        [str(repository / "scripts" / "alpha-with-keychain-provider"), "quantpad", "check"],
         cwd=repository,
-        env={
-            **os.environ,
-            "PATH": f"{fake_bin}:{os.environ['PATH']}",
-            "ALPHA_LAUNCHER_CAPTURE": str(capture),
-        },
+        env={**os.environ, "PATH": f"{fake_bin}:{os.environ['PATH']}"},
         check=False,
         capture_output=True,
         text=True,
     )
-    assert result.returncode == 0, result.stderr
-    assert "sentinel-secret" not in result.stdout + result.stderr
-    assert capture.read_text().splitlines() == [
-        "sentinel-secret",
-        "run",
-        "alpha",
-        "quantpad-data",
-        "archive",
-        "coverage",
-        "AAPL",
-        "--json",
-    ]
+
+    assert result.returncode == 64
+    assert "unsupported provider action" in result.stderr
+    assert not marker.exists()
 
 
 def test_coingecko_reference_launcher_uses_fixed_full_market_command(tmp_path: Path) -> None:

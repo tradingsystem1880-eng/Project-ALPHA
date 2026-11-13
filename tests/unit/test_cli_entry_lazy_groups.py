@@ -139,7 +139,6 @@ def test_full_app_keeps_every_command_group() -> None:
             "project",
             "propfirm",
             "provider",
-            "quantpad-data",
             "report",
             "research",
             "risk",

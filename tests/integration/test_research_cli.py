@@ -2142,34 +2142,11 @@ def test_research_dataset_registration_fails_closed_without_receipts(
     assert "provenance" in no_provenance.output.casefold()
 
 
-def test_quantpad_receipt_registration_and_corrupt_snapshot_manifest(
+def test_unsupported_dataset_kind_and_corrupt_snapshot_manifest(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
-    receipt_path = tmp_path / "receipt.json"
-    receipt_path.write_text(
-        json.dumps({"receipt_id": "a" * 32, "response_sha256": "b" * 64}), encoding="utf-8"
-    )
-    registered = _invoke(
-        "data",
-        "register",
-        "AAPL",
-        "--kind",
-        "quantpad",
-        "--receipt",
-        str(receipt_path),
-        "--start",
-        "2026-01-01",
-        "--end",
-        "2026-02-01",
-        "--bar-minutes",
-        "60",
-    )
-    assert registered["dataset_kind"] == "quantpad_receipt"
-    assert registered["provider"] == "quantpad"
-    assert registered["bar_duration_minutes"] == 60
-
-    missing_receipt = runner.invoke(
+    unsupported = runner.invoke(
         app,
         [
             "research",
@@ -2185,28 +2162,8 @@ def test_quantpad_receipt_registration_and_corrupt_snapshot_manifest(
             "--json",
         ],
     )
-    assert missing_receipt.exit_code != 0
-    malformed = tmp_path / "bad-receipt.json"
-    malformed.write_text("[]", encoding="utf-8")
-    bad_receipt = runner.invoke(
-        app,
-        [
-            "research",
-            "data",
-            "register",
-            "AAPL",
-            "--kind",
-            "quantpad",
-            "--receipt",
-            str(malformed),
-            "--start",
-            "2026-01-01",
-            "--end",
-            "2026-02-01",
-            "--json",
-        ],
-    )
-    assert bad_receipt.exit_code != 0
+    assert unsupported.exit_code != 0
+    assert "unsupported research dataset kind" in unsupported.output
 
     corrupt = tmp_path / "snapshots" / "broken"
     corrupt.mkdir(parents=True)

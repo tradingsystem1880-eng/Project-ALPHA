@@ -44,7 +44,6 @@ _DATA_ENV_NAMES = frozenset({"ALPHA_BULK_DATA_DIR", "ALPHA_BULK_VOLUME_UUID"})
 _PROVIDER_ENV_NAMES = {
     "coingecko": frozenset({"ALPHA_COINGECKO_API_KEY"}),
     "ibkr": frozenset({"ALPHA_IBKR_GATEWAY_IMAGE", "ALPHA_IBKR_PAPER_ACCOUNT"}),
-    "quantpad": frozenset({"QUANTPAD_API_KEY"}),
     "tiingo": frozenset({"ALPHA_TIINGO_API_KEY"}),
 }
 
