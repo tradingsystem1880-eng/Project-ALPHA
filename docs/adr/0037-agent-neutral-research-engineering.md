@@ -10,7 +10,7 @@
 
 ## Context
 
-The owner approved the [agent-neutral refactor plan](../superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md):
+The owner approved the [agent-neutral refactor plan](../work/archive/2026-09/2026-09-16-agent-neutral-reproducible-research.md):
 thin local engineering guards, supported historical reads and migrations, and screening plus
 reproducibility without application-authority expansion. The former Claude-specific per-edit
 ceremony and duplicated local/CI steps create maintenance work unrelated to scientific validity.

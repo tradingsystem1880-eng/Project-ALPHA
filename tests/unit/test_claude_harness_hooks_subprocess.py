@@ -97,7 +97,7 @@ def test_owner_action_guard_blocks_through_the_adapter_process(tmp_path: Path) -
 def test_session_orientation_is_bounded_and_side_effect_free(tmp_path: Path) -> None:
     result = _run("session-start", {"cwd": str(tmp_path)}, tmp_path)
     assert result.returncode == 0
-    assert "gate.py orient" in result.stdout
+    assert "fs.py orient" in result.stdout
     assert "CLAUDE.md" in result.stdout
     assert not result.stderr
     assert list(tmp_path.iterdir()) == []

@@ -49,7 +49,7 @@ class MlBackendCapability(StrictModel):
 
 class MlFeatureCapability(StrictModel):
     name: Literal["alpha158"]
-    version: Literal[1, 2]
+    version: Literal[1, 2, 3]
     status: Literal["available", "missing_dependency", "incompatible_dependency"]
     reason: str | None
     scope: str
@@ -118,7 +118,7 @@ class MlInputBundlePage(StrictModel):
 
 class MlFeatureRecipe(StrictModel):
     name: Literal["alpha158"]
-    version: Literal[1, 2]
+    version: Literal[1, 2, 3]
     parameters: dict[str, JsonValue]
 
 
@@ -337,12 +337,41 @@ class MlFeatureCorrection(StrictModel):
     compatibility_key: str
 
 
+class MlUpstreamAlpha158(StrictModel):
+    """Feature recipe v3: every column and the fold processors come from upstream Qlib."""
+
+    name: Literal["alpha158"]
+    version: Literal[3]
+    scope: Literal["upstream_alpha158_all_158_columns"]
+    upstream_columns: Literal[158]
+    legacy_columns: Literal[0]
+    feature_config: str
+    expression_engine: str
+    precision: str
+    calendar: str
+    vwap: JsonObject
+    processors: JsonObject
+    warmup: str
+    nonfinite: str
+    input: str
+    upstream: JsonObject
+    source_sha256: dict[str, str]
+    compatibility_key: str
+
+
 class MlDiagnosticFeatureRecipe(StrictModel):
-    name: Literal["Alpha158-style", "Alpha158-style v2 (40 upstream columns; 118 legacy columns)"]
+    name: Literal[
+        "Alpha158-style",
+        "Alpha158-style v2 (40 upstream columns; 118 legacy columns)",
+        "Alpha158 v3 (upstream Qlib expressions and processors)",
+    ]
     feature_count: int
     names: list[str]
     vwap_source: str
     versioned_correction: MlFeatureCorrection | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    upstream_alpha158: MlUpstreamAlpha158 | None = Field(
         default=None, exclude_if=lambda value: value is None
     )
 
@@ -412,7 +441,7 @@ class MlFeatureImportance(StrictModel):
 
 
 class MlFoldNormalization(StrictModel):
-    method: Literal["train_only_median_then_zscore"]
+    method: Literal["train_only_median_then_zscore", "qlib_processors_v3"]
     statistics_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     all_missing_train_features: int = Field(ge=0)
 

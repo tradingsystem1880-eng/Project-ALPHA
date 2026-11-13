@@ -13,7 +13,7 @@ backtest.
 Read these files completely before taking research action:
 
 1. `CLAUDE.md`
-2. `docs/superpowers/specs/2026-08-06-research-scientist-program-design.md`
+2. `docs/records/specs/2026-08-06-research-scientist-program-design.md`
 3. `docs/adr/0019-governed-research-cases-before-strategy-development.md`
 4. `docs/adr/0020-intraday-event-research-is-not-daily-validation-evidence.md` for any intraday idea
 5. Relevant provider/data ADRs, especially ADR-0018 when QuantPad is involved

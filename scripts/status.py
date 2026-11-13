@@ -2,7 +2,7 @@
 waits for the owner and what is next.
 
 Sources (read-only, all tracked): ``docs/roadmap/capabilities.toml`` (via scripts/capabilities.py),
-``docs/roadmap/wip-limit.json``, live and archived plans in ``docs/superpowers/plans/``, and
+``docs/roadmap/wip-limit.json``, live and archived plans in ``docs/work/``, and
 ``docs/roadmap/backlog`` and ``docs/roadmap/refactors``. Nothing else: no git history, network or
 clock, so the page is identical on every machine.
 
@@ -97,7 +97,7 @@ def _backlog(root: Path) -> list[BacklogItem]:
 
 
 def _archived(root: Path) -> int:
-    return sum(1 for _ in (root / roadmap_index.PLANS / "archive").glob("*/*.md"))
+    return len(roadmap_index.archived_plans(root))
 
 
 def _card_order(card: str) -> tuple[int, int, str]:

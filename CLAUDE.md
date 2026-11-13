@@ -36,7 +36,7 @@ decisions. Python 3.12 with uv; there is no hosting, no distribution and no live
 ## Check and land
 
 - One check: `uv run python scripts/gate.py check`.
-- Loop: branch → check → commit (`type(scope): summary`) → pull request → CI → the owner merges.
+- Loop: branch → check → commit (`type(scope): summary`) → pull request → CI green → merge commit.
   CI on the pull request is the merge gate ([ADR-0039](docs/adr/0039-ci-is-the-merge-gate.md)).
 
 ## Start here

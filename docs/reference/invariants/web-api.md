@@ -12,7 +12,7 @@ sources:
   - tests/unit/test_owner_auth_api.py
   - tests/unit/test_owner_local_confirmation.py
   - tests/unit/test_run_context_authority.py
-verified: a7e687ae729f
+verified: d0fffa796f8e
 ---
 
 # Web API invariants
@@ -129,6 +129,7 @@ as JSON and SSE (server-sent events, a one-way live stream) and serves the built
   permission. Enforced by `tests/unit/test_web_contracts.py::test_profile_is_never_an_api_parameter_or_field`.
 - Every error body is `ApiErrorV1` with a request id. `api/errors.safe_message` strips terminal codes, tracebacks, paths,
   secret environment values and broker account ids; unexpected exceptions return a generic 500 message.
+  An in-band `error` string relayed from the CLI (as in `POST /api/rules/evaluate`) passes through `safe_message` too.
   Enforced by `tests/integration/test_web_api_errors.py`.
 - The `/api/research` router may not gain mutation verbs; the allowed POSTs are pinned.
   [ADR-0021](../../adr/0021-research-workstation-read-plane-and-command-center.md)

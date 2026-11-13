@@ -62,7 +62,7 @@ export function NativeQlibDemo() {
       </Section>
       <Section title="Recorded command, config and files">
         <CopyCommand command={result.command} why="Recorded upstream command; copying does not execute or admit research." />
-        <details><summary>Exact native workflow YAML</summary><pre className="repro">{result.config}</pre></details>
+        <details><summary>Native workflow YAML (machine paths shown as $OUTPUT; config_sha256 is of the executed original)</summary><pre className="repro">{result.config}</pre></details>
         <p><a className="btn" href={`${ARTIFACTS}native_predictions.csv`} download>All 128 scores CSV</a>{' '}<a className="btn" href={`${ARTIFACTS}daily_signal_diagnostics.csv`} download>Daily diagnostics CSV</a>{' '}<button className="btn" type="button" onClick={downloadConfig}>Native workflow YAML</button></p>
         <details><summary>Artifact provenance</summary><pre className="repro">{JSON.stringify({ run_id: result.run_id, input_sha256: result.input_sha256, config_sha256: result.config_sha256, qrun_source_sha256: result.qrun_source_sha256, artifact_sha256: result.artifact_sha256 }, null, 2)}</pre></details>
         <p className="muted">Fixed packaged demo files only. Native model/dataset pickles stay outside this UI. Canonical exchange admission, research history and promotion state are unchanged.</p>

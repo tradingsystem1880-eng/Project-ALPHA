@@ -8,7 +8,7 @@ sources:
   - scripts/fs*.py
   - scripts/commands_reference.py
   - scripts/roadmap_index.py
-verified: ed121b80e439
+verified: d0fffa796f8e
 ---
 
 # scripts workspace
@@ -37,10 +37,11 @@ read owner data, credentials or hidden tests.
 ## How to change it
 
 - Protected files (change only in a reviewed pull request that lists them): `scripts/gate*.py`,
-  `scripts/git_guard.py`, `scripts/harness_*.py`.
+  `scripts/git_guard.py`, `scripts/harness_*.py`, `scripts/handoff.py`, `scripts/codex_bridge.py`.
 - Where things are: `gate.py` + `gate_components.py` (CI job steps) + `gate_select.py` (tests mapped
   from changed files); `fs.py` with `fs_orient.py`, `fs_search.py`, `fs_stale.py`; generators
-  `roadmap_index.py`, `commands_reference.py`, `generate_web_openapi.py`, `check_openapi_operations.py`.
+  `roadmap_index.py`, `commands_reference.py`, `generate_web_openapi.py`, `check_openapi_operations.py`;
+  Codex: `handoff.py` (builds; rules in `docs/reference/model-routing.md`), `codex_bridge.py` (reviews).
 - Tests: `tests/unit/test_gate_*.py`, `test_git_guard.py`, `test_fs_*.py`, `test_roadmap_index.py`,
   `test_commands_reference.py`, `test_claude_harness_*.py`, `test_mutation_*.py` (all in `tests/unit/`).
 - Check: `uv run python scripts/gate.py check` (its mypy step covers the harness scripts listed in

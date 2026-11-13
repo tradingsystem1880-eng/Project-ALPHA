@@ -3,7 +3,7 @@
 **Last reviewed:** 2026-10-08
 **Status:** Living (terminal-style Workstation and governed D0/D1/D2 research flow implemented;
 private single-owner local-device scope; no production or distribution target)
-**Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual) · [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](superpowers/specs/2026-08-06-research-scientist-program-design.md) · [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) (research synthesis) · [`adr/`](adr/) (decision records)
+**Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual) · [`docs/records/specs/2026-06-14-project-alpha-v1-design.md`](records/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](records/specs/2026-08-06-research-scientist-program-design.md) · [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) (research synthesis) · [`adr/`](adr/) (decision records)
 
 ---
 
@@ -11,7 +11,7 @@ private single-owner local-device scope; no production or distribution target)
 
 Project ALPHA is a **private, local, Python** quantitative research platform — point-in-time data, event-driven backtesting, and a heavy-tailed statistical **validation gauntlet**. The platform's value is not a strategy; it is **machinery you can audit**: a backtest is only believable once it survives walk-forward out-of-sample testing, a randomized-price null, bootstrap confidence intervals, the Deflated Sharpe Ratio, and CPCV.
 
-This document is the **current-state architecture reference**: the enforced dependency DAG, each layer's charter, the end-to-end data flow, and the cross-cutting invariants. It is the stable map; the **"why" behind the load-bearing decisions** lives in the linked [ADRs](adr/). It is deliberately *not* a build history — the dated specs and plans under [`docs/superpowers/`](superpowers/) remain the point-in-time record of how the platform was constructed. Audience: an engineer (human or agent) who needs to place a change correctly and not violate the architecture.
+This document is the **current-state architecture reference**: the enforced dependency DAG, each layer's charter, the end-to-end data flow, and the cross-cutting invariants. It is the stable map; the **"why" behind the load-bearing decisions** lives in the linked [ADRs](adr/). It is deliberately *not* a build history — the dated specs and plans under [`docs/work/`](work/) and [`docs/records/specs/`](records/specs/) remain the point-in-time record of how the platform was constructed. Audience: an engineer (human or agent) who needs to place a change correctly and not violate the architecture.
 
 ## 2. The Layered DAG
 
@@ -503,18 +503,18 @@ Options and screener functionality are CLI modules, not separate workspace packa
 ## 7. References
 
 - [`CLAUDE.md`](../CLAUDE.md) — agent operating manual and invariants; path-scoped rules retain module maps.
-- [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) — the original v1 design spec (pre-build).
+- [`docs/records/specs/2026-06-14-project-alpha-v1-design.md`](records/specs/2026-06-14-project-alpha-v1-design.md) — the original v1 design spec (pre-build).
 - [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) — consolidated research synthesis + decision table.
 - [`research/07-architecture-ai-workflow.md`](../research/07-architecture-ai-workflow.md) — repo layout, tooling, and AI build-workflow rationale.
 - [`audit/2026-07-19-post-v2-architecture-audit.md`](records/audits/2026-07-19-post-v2-architecture-audit.md) — post-v2 capability/gap audit and track decision.
-- [`superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md`](superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md) — approved Recommended-track implementation contract.
-- [`superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md`](superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md) — implemented Tiingo qualification, scheduler, and IBKR Paper safety boundary.
-- [`superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md`](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) — professional workstation, causal chart, and native analytics contract.
-- [`superpowers/specs/2026-07-19-workstation-v3-development-control-plane-design.md`](superpowers/specs/2026-07-19-workstation-v3-development-control-plane-design.md) — durable lifecycle, suites, jobs, and sealed-holdout contract.
-- [`superpowers/specs/2026-07-19-workstation-v3-evidence-agent-design.md`](superpowers/specs/2026-07-19-workstation-v3-evidence-agent-design.md) — cited evidence ledger and bounded agent interface contract.
-- [`superpowers/specs/2026-07-19-workstation-v3-qlib-worker-design.md`](superpowers/specs/2026-07-19-workstation-v3-qlib-worker-design.md) — isolated Qlib exchange and replay contract.
-- [`superpowers/specs/2026-08-06-research-scientist-program-design.md`](superpowers/specs/2026-08-06-research-scientist-program-design.md) — finite Research Case, evidence-firewall, and owner-workflow contract.
-- [`superpowers/specs/2026-08-12-four-family-monte-carlo-validation.md`](superpowers/specs/2026-08-12-four-family-monte-carlo-validation.md) — required four-family path-risk stage, immutable evidence, and owner-review contract.
+- [`records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md`](records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md) — approved Recommended-track implementation contract.
+- [`records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md`](records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md) — implemented Tiingo qualification, scheduler, and IBKR Paper safety boundary.
+- [`records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md`](records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) — professional workstation, causal chart, and native analytics contract.
+- [`records/specs/2026-07-19-workstation-v3-development-control-plane-design.md`](records/specs/2026-07-19-workstation-v3-development-control-plane-design.md) — durable lifecycle, suites, jobs, and sealed-holdout contract.
+- [`records/specs/2026-07-19-workstation-v3-evidence-agent-design.md`](records/specs/2026-07-19-workstation-v3-evidence-agent-design.md) — cited evidence ledger and bounded agent interface contract.
+- [`records/specs/2026-07-19-workstation-v3-qlib-worker-design.md`](records/specs/2026-07-19-workstation-v3-qlib-worker-design.md) — isolated Qlib exchange and replay contract.
+- [`records/specs/2026-08-06-research-scientist-program-design.md`](records/specs/2026-08-06-research-scientist-program-design.md) — finite Research Case, evidence-firewall, and owner-workflow contract.
+- [`records/specs/2026-08-12-four-family-monte-carlo-validation.md`](records/specs/2026-08-12-four-family-monte-carlo-validation.md) — required four-family path-risk stage, immutable evidence, and owner-review contract.
 - [`governance/2026-07-19-dependency-license-matrix.md`](governance/2026-07-19-dependency-license-matrix.md) — direct dependency and upstream-candidate license disposition.
 - [`governance/2026-07-19-post-v2-risk-register.md`](governance/2026-07-19-post-v2-risk-register.md) — live risk ownership and acceptance evidence.
 
