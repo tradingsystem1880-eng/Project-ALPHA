@@ -6,7 +6,7 @@ scenario/path risk. None establishes an edge, repairs selection bias, or grants 
 
 The authoritative stage and review policy is
 [ADR-0029](../../adr/0029-four-family-monte-carlo-validation.md); the
-[four-family specification](../../superpowers/specs/2026-08-12-four-family-monte-carlo-validation.md)
+[four-family specification](../../records/specs/2026-08-12-four-family-monte-carlo-validation.md)
 defines the implementation contract. These pages explain the current single-symbol daily lane;
 they do not extend it to intraday, Qlib promotion, or joint multi-asset scenarios.
 

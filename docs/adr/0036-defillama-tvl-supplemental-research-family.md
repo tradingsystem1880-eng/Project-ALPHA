@@ -6,7 +6,7 @@
 
 ## Context
 
-The neurotrader888 port (`docs/superpowers/plans/archive/2026-09/2026-09-12-neurotrader888-port.md`, stream D)
+The neurotrader888 port (`docs/work/archive/2026-09/2026-09-12-neurotrader888-port.md`, stream D)
 carries one indicator whose input is not a market price: the TVL indicator regresses a chain's
 log total value locked (TVL) on log price over a trailing window and reports the residual in ATR
 units. Its data comes from DefiLlama, a keyless public API that no existing family covers.

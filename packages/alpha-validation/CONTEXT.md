@@ -20,7 +20,8 @@ plus numpy and scipy (import-linter contract "alpha_validation depends only on c
 
 | Read | Section | When |
 |---|---|---|
-| [validation invariants](../../docs/reference/invariants/validation.md) | — | always |
+| [validation invariants](../../docs/reference/invariants/validation.md) | Splits and resampling | walk-forward, CPCV, purging, embargo or bootstrap |
+| [validation invariants](../../docs/reference/invariants/validation.md) | — | a gate, null model, selection statistic, report or verdict |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Statistical evidence | always |
 | [engineering rules](../../docs/reference/invariants/engineering.md) | Quant tier | always |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Point-in-time reads | changing splits, embargo or out-of-sample stitching |

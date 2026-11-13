@@ -20,5 +20,5 @@ ADR under ADR-0035; W13 composition work.
 
 ## Sources
 
-- [Edge-first Phase C plan, out of scope](../../superpowers/plans/2026-09-11-edge-first-phase-c-screening-lane.md)
+- [Edge-first Phase C plan, out of scope](../../work/archive/2026-09/2026-09-11-edge-first-phase-c-screening-lane.md)
 - [ADR-0035](../../adr/0035-generic-study-composition-and-external-capability-adapters.md)

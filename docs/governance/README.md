@@ -27,10 +27,10 @@ Related architecture decisions:
 Related approved scope:
 
 - [Post-v2 architecture audit](../records/audits/2026-07-19-post-v2-architecture-audit.md)
-- [Provider control plane + crypto paper design](../superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md)
-- [Daily data + IBKR Paper hardening](../superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md)
-- [Workstation v3 shell and causal chart artifacts](../superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md)
-- [Workstation v3 development control plane](../superpowers/specs/2026-07-19-workstation-v3-development-control-plane-design.md)
-- [Workstation v3 evidence and agent interface](../superpowers/specs/2026-07-19-workstation-v3-evidence-agent-design.md)
-- [Workstation v3 isolated Qlib worker](../superpowers/specs/2026-07-19-workstation-v3-qlib-worker-design.md)
-- [Research Scientist program](../superpowers/specs/2026-08-06-research-scientist-program-design.md)
+- [Provider control plane + crypto paper design](../records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md)
+- [Daily data + IBKR Paper hardening](../records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md)
+- [Workstation v3 shell and causal chart artifacts](../records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md)
+- [Workstation v3 development control plane](../records/specs/2026-07-19-workstation-v3-development-control-plane-design.md)
+- [Workstation v3 evidence and agent interface](../records/specs/2026-07-19-workstation-v3-evidence-agent-design.md)
+- [Workstation v3 isolated Qlib worker](../records/specs/2026-07-19-workstation-v3-qlib-worker-design.md)
+- [Research Scientist program](../records/specs/2026-08-06-research-scientist-program-design.md)

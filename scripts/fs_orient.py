@@ -18,6 +18,7 @@ ROUTING_DOCUMENTS = (
     "CONTEXT.md",
     "STATUS.md",
     "docs/roadmap/README.md",
+    "workflow/CONTEXT.md",
 )
 DEFAULT_SIZE_CAP = 6_000
 
