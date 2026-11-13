@@ -349,13 +349,10 @@ def test_workflow_bounds_isolation_and_failure_artifacts() -> None:
     assert text.index("> /dev/null") < text.index("uv run --with mutmut==3.8.0")
 
 
-def test_concurrent_same_module_has_independent_staging(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_concurrent_same_module_has_independent_staging(tmp_path: Path) -> None:
     root = repo(tmp_path)
     paths: list[Path] = []
     barrier = Barrier(2)
-    monkeypatch.setattr(gate, "append_audit", lambda *args, **kwargs: None)
 
     def runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
         if "pytest" in cmd:

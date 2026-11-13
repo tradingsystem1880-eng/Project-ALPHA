@@ -249,7 +249,7 @@ def mutate(
     """Mutation-test each quant module in isolation; block on a kill-rate below its floor.
 
     Tooling absence (no ``uvx``/network for mutmut, staged clean-run failure) is reported as
-    ``unavailable:<reason>`` and never blocks — but it is printed and audited, never silent.
+    ``unavailable:<reason>`` and never blocks — but it is always printed, never silent.
     """
     run = runner or _mutation_runner
     targets = (
@@ -398,13 +398,12 @@ def mutate(
                 else:
                     entry["status"] = "pass"
             report["modules"][rel] = entry
-            gate.append_audit(root, "mutation_gate", f"module={rel} status={entry['status']}")
         finally:
             shutil.rmtree(staging)
     return (1 if blocking else 0), report
 
 
-def write_mutation_baseline(root: Path, report: dict[str, Any], *, reason: str, by: str) -> None:
+def write_mutation_baseline(root: Path, report: dict[str, Any]) -> None:
     current = gate.read_json(root / MUTATION_BASELINE_FILE) or {}
     rates = dict(current.get("kill_rates", {}))
     for rel, entry in report.get("modules", {}).items():
@@ -414,7 +413,6 @@ def write_mutation_baseline(root: Path, report: dict[str, Any], *, reason: str, 
         root / MUTATION_BASELINE_FILE,
         {"schema_version": 1, "kill_rates": dict(sorted(rates.items()))},
     )
-    gate.append_audit(root, "mutation_baseline_written", f"by={by} reason={reason!r}")
 
 
 _SEMGREP_OPTIONS = (
@@ -479,7 +477,6 @@ def semgrep(root: Path, *, changed_only: bool) -> int:
         return 0
     if _scanner_failed_to_launch(output):
         print(f"[semgrep] unavailable: {output[-200:]}", file=sys.stderr)
-        gate.append_audit(root, "semgrep_unavailable", output[-200:])
     print(output[-4000:], file=sys.stderr)
     return 1
 

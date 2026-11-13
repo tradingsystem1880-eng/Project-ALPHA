@@ -92,15 +92,6 @@ def _backend_mutation_targets(root: Path, base: object = _DEFAULT_BASE) -> list[
 
 
 class TestGatePreflight(unittest.TestCase):
-    def test_manual_size_check_uses_the_shared_limit_at_boundary(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            (root / "CLAUDE.md").write_bytes(b"x" * 3_000)
-            (root / "AGENTS.md").write_bytes(b"x" * 3_000)
-            self.assertEqual(gate_preflight.manual_size_check(root), (True, 6_000))
-            (root / "AGENTS.md").write_bytes(b"x" * 3_001)
-            self.assertEqual(gate_preflight.manual_size_check(root), (False, 6_001))
-
     def test_git_metadata_timeout_returns_a_blocker_instead_of_raising(self) -> None:
         with patch(
             "gate_preflight.subprocess.run",
@@ -180,7 +171,12 @@ class TestGatePreflight(unittest.TestCase):
     def test_full_gate_mypy_scope_includes_tests(self) -> None:
         self.assertTrue(gate_preflight.mypy_covers_tests(gate.FULL_GATE_MYPY_COMMAND))
         self.assertFalse(gate_preflight.mypy_covers_tests(("uv", "run", "mypy", "packages")))
-        commands = dict(gate.gate_steps("full"))
+        commands = {
+            name: command
+            for name, _, command in gate_components.component_steps(
+                Path(__file__).resolve().parents[2], "backend"
+            )
+        }
         self.assertEqual(commands["mypy"], list(gate.FULL_GATE_MYPY_COMMAND))
 
     def test_candidate_venv_check_reports_missing_and_local_environment(self) -> None:

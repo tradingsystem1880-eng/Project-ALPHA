@@ -1,4 +1,4 @@
-"""Optional legacy brief/index and plan checks, imported lazily by gate.py."""
+"""Optional legacy brief/index, ADR drift and plan checks, imported lazily by gate.py."""
 
 from __future__ import annotations
 
@@ -7,13 +7,11 @@ import json
 import re
 import subprocess
 import tomllib
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import gate
 
-BRIEF_FILE = "brief.json"
 INDEX_FILE = "repo-index.json"
 _PLAN_DONE_RE = re.compile(r"delivery state:\*{0,2}\s*(completed|delivered|done)", re.I)
 _ADR_ID_RE = re.compile(r"^(\d{4})-")
@@ -92,13 +90,9 @@ def build_brief(root: Path) -> str:
     """Compute the awareness brief from the tree (uncached)."""
     branch = gate._git(root, "branch", "--show-current", check=False).strip() or "?"
     dirty = len(gate._git_lines(root, "status", "--porcelain"))
-    stamp = {
-        "full": "full (valid)",
-        "fast": "fast (valid; full needed to commit)",
-    }.get(gate.stamp_tier(root), "none/stale")
     lines = [
         "REPO BRIEF (generated from the tree by gate.py brief):",
-        f"- branch {branch}, {dirty} dirty file(s), gate stamp {stamp}",
+        f"- branch {branch}, {dirty} dirty file(s)",
     ]
     commits = gate._git_lines(root, "log", "--oneline", "-5")
     if commits:
@@ -112,61 +106,12 @@ def build_brief(root: Path) -> str:
     adrs = adr_files(root)
     latest = f" (latest {adrs[-1]})" if adrs else ""
     lines.append(f"- ADRs: {len(adrs)}{latest}")
-    escapes = [
-        e
-        for e in gate.read_audit(
-            root, since=(datetime.now(UTC) - timedelta(days=gate.DIGEST_DEFAULT_DAYS)).isoformat()
-        )
-        if str(e.get("event")) in gate.ESCAPE_EVENTS
-    ]
-    if escapes:
-        note = (
-            " (owner token unset — all self-serve)" if not gate.owner_token_configured(root) else ""
-        )
-        lines.append(
-            f"- escapes: {len(escapes)} self-authorized in the last "
-            f"{gate.DIGEST_DEFAULT_DAYS}d{note} — gate.py audit --digest"
-        )
-    else:
-        lines.append(f"- escapes: none in the last {gate.DIGEST_DEFAULT_DAYS}d")
     drift = adr_drift(root)
     if drift:
         lines.append(
             f"- DRIFT: {', '.join(drift)} not referenced in CLAUDE.md/.claude/rules — fix the docs"
         )
     return "\n".join(lines)
-
-
-def _brief_cache_key(root: Path) -> str:
-    """Tree content plus the git facts the brief reports that the tree hash cannot see.
-
-    ``gate.compute_tree_hash`` covers file bytes only — deliberately, so that committing does not
-    invalidate a gate stamp. But the brief also reports HEAD and the dirty count, and a plain
-    commit changes both while touching no byte on disk. Keyed on content alone the cache would
-    keep serving a brief that claims uncommitted files and omits the commit just made.
-    """
-    head = gate._git(root, "rev-parse", "HEAD", check=False).strip() or "?"
-    branch = gate._git(root, "branch", "--show-current", check=False).strip() or "?"
-    return f"{gate.compute_tree_hash(root)}:{head}:{branch}"
-
-
-def repo_brief(root: Path, *, refresh: bool = False) -> str:
-    """The brief, cached at .claude/state/brief.json keyed by tree content and git position."""
-    key = _brief_cache_key(root)
-    cache_path = gate._state_dir(root) / BRIEF_FILE
-    cached = gate.read_json(cache_path)
-    if (
-        not refresh
-        and cached
-        and cached.get("cache_key") == key
-        and isinstance(cached.get("text"), str)
-    ):
-        return str(cached["text"])
-    text = build_brief(root)
-    gate.write_json_atomic(
-        cache_path, {"cache_key": key, "generated_at": gate._now(), "text": text}
-    )
-    return text
 
 
 def _public_symbols(path: Path) -> list[str]:
@@ -239,7 +184,7 @@ def build_index(root: Path, *, cli: bool = True) -> dict[str, Any]:
         if not cli_commands:
             cli_commands = {"unavailable": (proc.stderr or "alpha info commands failed")[-300:]}
     return {
-        "tree_hash": gate.compute_tree_hash(root),
+        "head": gate._git(root, "rev-parse", "HEAD", check=False).strip() or None,
         "generated_at": gate._now(),
         "packages": packages,
         "import_linter_contracts": contracts,

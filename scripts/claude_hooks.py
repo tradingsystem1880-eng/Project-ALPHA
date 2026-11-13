@@ -1,6 +1,6 @@
 """Thin Claude adapter: orientation and native tool-boundary safety only.
 
-Engineering verification lives in the agent-neutral gate and real Git hooks. This adapter never
+Engineering verification lives in the local check and in CI on the pull request. This adapter never
 writes telemetry, consumes acknowledgments or evaluates task completion. Its one inspection of
 tool input text is a fail-closed substring guard that keeps agent tools away from the owner-action
 endpoints (ADR-0038); it is not a shell parser. Native permissions and process sandboxing remain
@@ -107,7 +107,8 @@ def hook_session_start(payload: dict[str, Any], root: Path) -> HookResult:
         "Project ALPHA: read CLAUDE.md and applicable .claude/rules before work. "
         "Load .agents/skills/karpathy-guidelines for code work. "
         "Source orientation: uv run python scripts/gate.py orient. "
-        "Canonical verification: uv run python scripts/gate.py full. "
+        "Fast local check: uv run python scripts/gate.py check; CI on the pull request "
+        "is the merge gate. "
         "Engineering checks grant no application owner authority.",
     )
 

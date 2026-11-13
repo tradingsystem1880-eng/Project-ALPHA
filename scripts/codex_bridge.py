@@ -14,9 +14,9 @@ models cache, quota/rate limit, timeout, malformed output) yields ``available: f
 ``unavailable:<reason>`` and exit code 0 — a gate must never depend on this script.
 
 Model resolution: ``--model`` > ``ALPHA_CODEX_MODEL`` > ``gpt-6-astra``; the model must
-be present in ``$CODEX_HOME/models_cache.json``. Effort defaults to ``medium``. Every call is
-audited as ``codex_call``. Stdlib only (runs from any agent's sandbox); output fields are
-coerced to the schema here and re-validated by the SubagentStop hook.
+be present in ``$CODEX_HOME/models_cache.json``. Effort defaults to ``medium``. Stdlib only
+(runs from any agent's sandbox); output fields are coerced to the schema here and
+re-validated by the SubagentStop hook.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import gate  # noqa: E402  (sibling module: repo_root, append_audit, codex_probe)
+import gate  # noqa: E402  (sibling module: repo_root, codex_probe)
 
 DEFAULT_MODEL = "gpt-6-astra"
 MODEL_ENV = "ALPHA_CODEX_MODEL"
@@ -364,16 +364,6 @@ def judge(
     return {**base, "available": True, "unavailable_reason": None, "judgement": raw}
 
 
-def _audit(root: Path, kind: str, model: str, result: dict[str, Any]) -> None:
-    detail = f"{kind} model={model} available={result.get('available')}"
-    if not result.get("available"):
-        detail += f" reason={str(result.get('unavailable_reason'))[:120]}"
-    try:
-        gate.append_audit(root, "codex_call", detail)
-    except Exception as exc:  # noqa: BLE001 - the audit never breaks the optional seam
-        print(f"[codex-bridge] audit append failed: {exc!r}", file=sys.stderr)
-
-
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="codex_bridge.py")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -431,7 +421,6 @@ def main(argv: list[str]) -> int:
         result = research(
             root, question=args.question, model=model, effort=args.effort, timeout=args.timeout
         )
-    _audit(root, args.cmd, model, result)
     print(json.dumps(result, indent=2))
     return 0
 

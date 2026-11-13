@@ -28,7 +28,7 @@ jobs:
         run: uv run --no-project --python 3.12 python scripts/gate.py component backend
 
   harness:
-    # Real Git guards and thin optional agent adapters verify themselves.
+    # The commit-message hook, the local check and thin optional agent adapters verify themselves.
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -47,8 +47,8 @@ jobs:
         run: uv run python scripts/gate.py lint-harness
       - name: Harness types
         run: uv run mypy --strict $(uv run python -c "import sys; sys.path.insert(0, 'scripts'); import gate; print(' '.join(gate.HARNESS_SCRIPTS))")
-      - name: Git guard and adapter acceptance (disposable repositories)
-        run: uv run pytest -q tests/unit/test_git_guard.py tests/unit/test_gate_components.py tests/unit/test_claude_harness_hooks_subprocess.py
+      - name: Git hooks, component definitions, local check selection and adapter (disposable repositories)
+        run: uv run pytest -q tests/unit/test_git_guard.py tests/unit/test_gate_components.py tests/unit/test_gate_select.py tests/unit/test_claude_harness_hooks_subprocess.py
 
   frontend:
     runs-on: ubuntu-latest

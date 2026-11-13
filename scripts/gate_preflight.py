@@ -13,14 +13,11 @@ from typing import Any
 import gate
 import gate_components
 
-MANUAL_SIZE_LIMIT = 6_000
-MANUAL_FILES = ("CLAUDE.md", "AGENTS.md")
 PUBLIC_TRACKED_ROOTS = (".semgrep", ".githooks", ".github/workflows", "tools/alpha-eval")
 EXPECTED_PUBLIC_FILES = (
     ".semgrep/alpha.yml",
     ".semgrep/fixtures/float_contract.py.txt",
     ".githooks/commit-msg",
-    ".githooks/pre-commit",
     ".github/workflows/ci.yml",
     ".github/workflows/nightly.yml",
     ".github/workflows/mutation-weekly.yml",
@@ -37,15 +34,6 @@ EXPECTED_PUBLIC_FILES = (
 )
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
-
-
-def manual_size_check(root: Path) -> tuple[bool, int]:
-    """Shared predicate used by the existing manual-size unit test and this preflight."""
-    paths = [root / name for name in MANUAL_FILES]
-    if any(path.is_symlink() for path in paths):
-        raise OSError("manual files must be regular files")
-    total = sum(path.lstat().st_size for path in paths)
-    return total <= MANUAL_SIZE_LIMIT, total
 
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -701,25 +689,6 @@ def _resources(root: Path) -> dict[str, int | None]:
 def run_preflight(root: Path) -> tuple[int, dict[str, Any]]:
     root = root.resolve()
     checks: list[dict[str, Any]] = []
-    try:
-        valid_size, total = manual_size_check(root)
-        checks.append(
-            {
-                "name": "manual_size",
-                "mode": "metadata",
-                "status": "passed" if valid_size else "blocked",
-                "detail": f"CLAUDE.md + AGENTS.md: {total}/{MANUAL_SIZE_LIMIT} bytes",
-            }
-        )
-    except OSError:
-        checks.append(
-            {
-                "name": "manual_size",
-                "mode": "metadata",
-                "status": "blocked",
-                "detail": "manual files are missing or not regular files",
-            }
-        )
     checks.append(public_prerequisites(root))
     checks.append(git_object_storage(root))
     checks.append(local_venv(root))
