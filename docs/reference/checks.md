@@ -46,7 +46,7 @@ request only when its paths (or the workflow and gate files) change, and always 
 | `coverage` job: changed product lines (`packages/*/src`, `apps/*/src`) | new or changed code shipped without tests (below 85% of changed lines) | PR | 30 s |
 | `coverage`: whole-suite line coverage | nothing (reported in the job summary, never gated) | PR | in `coverage` |
 | `quant` job: `slow_oracle` marker | a statistic that no longer recovers known truth | PR (quant) | not measured here |
-| `quant` job: mutation gate on the touched modules | tests too weak to notice a changed statistic (kill rate < 0.90) | PR (quant) | ~21 min per module |
+| `quant` job: mutation gate on the touched modules | tests too weak to notice a changed statistic (kill rate < 0.90), or a gate that could not measure a module | PR (quant) | ~21 min per module |
 | `frontend` job: lint, build with types, unit tests with coverage | TypeScript, lint and component failures | PR | 22 s (job 9.6 min) |
 | `frontend`: API client freshness | `src/api/generated.ts` out of date with `openapi.json` | PR | in `frontend` |
 | `frontend`: browser journeys at the reference viewport (plus reference-only ones) | broken Workstation screens and flows, real backend | PR | 8.6 min |

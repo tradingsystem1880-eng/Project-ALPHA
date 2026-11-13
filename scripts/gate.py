@@ -19,7 +19,7 @@ CLI:
     python3 scripts/gate.py baseline           # rewrite that baseline (reviewed in the PR)
     python3 scripts/gate.py plan-check PLAN.md # validate a plan's ```json FeaturePlan front block
     python3 scripts/gate.py doctor [--json]    # verify the harness wiring itself
-    python3 scripts/gate.py mutate [MODULES|--all] [--json --write-baseline]  # mutmut gate
+    python3 scripts/gate.py mutate [MODULES|--all] [--json --write-baseline --require-measured]
     python3 scripts/gate.py semgrep [--changed] # .semgrep/alpha.yml banned constructs
     python3 scripts/gate.py determinism        # byte-stability tests twice under perturbed env
     python3 scripts/gate.py raise-cov [--fail] # `raise` lines in quant modules no test reached
@@ -673,6 +673,11 @@ def build_parser() -> argparse.ArgumentParser:
     mutate_p.add_argument("--json", action="store_true")
     mutate_p.add_argument("--write-baseline", action="store_true", help="record measured rates")
     mutate_p.add_argument("--timeout", type=float, default=1800.0, help="seconds per module")
+    mutate_p.add_argument(
+        "--require-measured",
+        action="store_true",
+        help="fail when a module cannot be measured (the pull-request gate)",
+    )
     semgrep_p = sub.add_parser("semgrep")
     semgrep_p.add_argument("--changed", action="store_true", help="only changed .py files")
     sub.add_parser("determinism")
@@ -765,7 +770,9 @@ def main(argv: list[str] | None = None) -> int:
         from harness_quant import MUTATION_BASELINE_FILE, mutate, write_mutation_baseline
 
         modules = all_quant_source_modules(root) if args.all else (args.modules or None)
-        code, report = mutate(root, modules, timeout=args.timeout)
+        code, report = mutate(
+            root, modules, timeout=args.timeout, require_measured=args.require_measured
+        )
         if args.json:
             print(json.dumps(report, indent=2, sort_keys=True))
         else:
@@ -773,6 +780,15 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[mutate] {entry['status']:<8} {rel} {entry}")
             if not report["modules"]:
                 print("[mutate] no quant-tier source modules to mutate")
+        for rel, entry in report["modules"].items():
+            status = str(entry.get("status", ""))
+            if args.require_measured and status.startswith("unavailable:"):
+                cause = status.removeprefix("unavailable:").strip() or "no output"
+                print(
+                    f"[mutate] FAIL {rel}: the mutation gate could not measure this module, so "
+                    f"it cannot pass. Cause: {cause}",
+                    file=sys.stderr,
+                )
         if args.write_baseline:
             write_mutation_baseline(root, report)
             print(f"mutation baseline written at {MUTATION_BASELINE_FILE}; commit it for review.")

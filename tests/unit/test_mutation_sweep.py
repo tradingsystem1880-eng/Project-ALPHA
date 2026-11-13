@@ -238,6 +238,34 @@ def test_local_unavailable_unchanged_hosted_unavailable_fails(tmp_path: Path) ->
         sweep.aggregate(plan, tmp_path / "output")
 
 
+def test_pull_request_gate_fails_when_a_module_cannot_be_measured(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A broken guard must block: ``--require-measured`` turns "unavailable" into a failure."""
+    root = repo(tmp_path)
+
+    def staging_fault(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+        return False, 0, "staging fault: tests/conftest.py missing"
+
+    code, report = harness_quant.mutate(root, [MODULE], runner=staging_fault, require_measured=True)
+    assert code == 1
+    assert report["modules"][MODULE]["status"].startswith("unavailable:")
+    assert "staging fault" in report["modules"][MODULE]["status"]
+
+    seen: dict[str, Any] = {}
+
+    def recorded(*args: Any, **kwargs: Any) -> tuple[int, dict[str, Any]]:
+        seen.update(kwargs)
+        return code, report
+
+    monkeypatch.setattr(gate, "repo_root", lambda **_: root)
+    monkeypatch.setattr(harness_quant, "mutate", recorded)
+    assert gate.main(["mutate", "--require-measured", MODULE]) == 1
+    assert seen["require_measured"] is True
+    err = capsys.readouterr().err
+    assert f"[mutate] FAIL {MODULE}" in err and "staging fault" in err
+
+
 def test_staging_is_unique_even_for_same_module(tmp_path: Path) -> None:
     root = repo(tmp_path)
     paths: list[Path] = []

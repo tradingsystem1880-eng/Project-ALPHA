@@ -250,11 +250,14 @@ def mutate(
     workers: int | None = None,
     mutant_inventory: list[str] | None = None,
     mutant_names: list[str] | None = None,
+    require_measured: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     """Mutation-test each quant module in isolation; block on a kill-rate below its floor.
 
     Tooling absence (no ``uvx``/network for mutmut, staged clean-run failure) is reported as
-    ``unavailable:<reason>`` and never blocks — but it is always printed, never silent.
+    ``unavailable:<reason>`` and is always printed, never silent. It blocks when
+    ``require_measured`` is set (the pull-request gate: a guard that cannot run must not pass);
+    otherwise (local and report-only runs) it does not.
     """
     run = runner or _mutation_runner
     targets = (
@@ -364,6 +367,7 @@ def mutate(
             stats = gate.read_json(stats_path) if ok else None
             if stats is None:
                 entry["status"] = f"unavailable:{output[-300:] or 'mutmut produced no stats'}"
+                blocking = blocking or require_measured
             else:
                 rate = mutation_kill_rate(stats)
                 required = mutation_required(rel, baseline)
