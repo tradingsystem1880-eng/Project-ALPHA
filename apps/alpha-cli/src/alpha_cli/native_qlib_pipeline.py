@@ -1,4 +1,14 @@
-"""Bounded synthetic qrun -> native Nautilus -> inert Results artifacts; no admission."""
+"""Demo: upstream qrun on fabricated data — not a research path.
+
+Bounded synthetic qrun -> native Nautilus -> inert Results artifacts; no admission. It runs
+upstream ``qlib.cli.run`` with the worker's environment on the fixture in
+``workers/qlib/examples/native-synthetic/`` (six fabricated features, a planted target) and
+replays the scores once through Nautilus to produce the recorded Workstation demo files.
+
+It is not ALPHA's Qlib integration and has no CLI command or web route. Research ML goes
+through ``alpha ml prepare/train/import/replay`` and the isolated ``workers/qlib`` worker,
+whose feature recipe v3 computes Alpha158 with upstream Qlib (ADR-0042).
+"""
 
 from __future__ import annotations
 
