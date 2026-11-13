@@ -1,7 +1,7 @@
 """Feature plans keep a machine-readable state and the flat folder holds only live work.
 
 * Every plan, archived or not, has exactly one ``**Delivery state:**`` line in its first 12
-  lines (the window ``harness_awareness.open_plan()`` reads) using the fixed vocabulary.
+  lines using the fixed vocabulary.
 * Every plan in the flat ``docs/superpowers/plans/`` folder passes ``plan_check``
   (``scripts/harness_models.py::FeaturePlan``), except the legacy allowlist below.
 * Completed and superseded plans live in ``archive/YYYY-MM/`` (month of the filename date),
@@ -69,10 +69,7 @@ def test_plan_folders_are_populated() -> None:
 
 @pytest.mark.parametrize("path", _flat() + _archived(), ids=lambda p: p.name)
 def test_every_plan_has_one_vocabulary_state_line(path: Path) -> None:
-    state = _state(path)
-    head = "\n".join(path.read_text(encoding="utf-8").splitlines()[:12])
-    done = harness_awareness._PLAN_DONE_RE.search(head) is not None
-    assert done == (state == "Completed"), f"{path.name}: open_plan() would misread {state!r}"
+    _state(path)
 
 
 @pytest.mark.parametrize("path", _flat(), ids=lambda p: p.name)

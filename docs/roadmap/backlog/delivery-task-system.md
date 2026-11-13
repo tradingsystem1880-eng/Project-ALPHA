@@ -15,7 +15,7 @@ per-incident retries; 67 tests) and the newest model-evidence correction (2026-1
 evidence required before any focused run; 77 tests passed, 8-call CLI demonstration). None is
 integrated, reviewed afresh by Claude, or run through the canonical gate. A successor design (the
 "task operating system" build map, milestones M0–M5) extends the pilot inside the existing Software
-Team roles and Atlas context tools; its milestone M0 (a verified, permitted Codex execution path) is
+Team roles and the file system's orientation and search; its milestone M0 (a verified, permitted Codex execution path) is
 blocked.
 
 ## What "done" looks like

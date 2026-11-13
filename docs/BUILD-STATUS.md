@@ -2106,7 +2106,7 @@ The empty PID-marker readiness correction, history projection refactor and scope
 preconditions retain their original lifecycle assertions and budgets. Queryable context remains
 engineering navigation, separate from product research agents and scientific admission.
 
-The [single reviewer-policy record](../.claude/agents/independent-reviewer.md#four-workstream-through-delivery-absence-exception--2026-10-30)
+The [single reviewer-policy record](records/2026-11-hidden-suite-exceptions.md#four-workstream-through-delivery-absence-exception--2026-10-30)
 records the approved through-delivery absence exception. Private coverage stays UNVERIFIED;
 actual checks, exact-tree review and installed Git guards remain mandatory. The owner's repository
 delivery instruction authorizes coordinated commits/pushes; this candidate has not merged to main.

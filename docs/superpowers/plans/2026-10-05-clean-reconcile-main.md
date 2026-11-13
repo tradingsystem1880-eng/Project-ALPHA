@@ -25,7 +25,7 @@ Earlier dated status and incident entries are preserved as historical records.
     "Browser timing budgets (scientific/market p99) flake on CI runners by 1-2 ms; one retry, then an explicit owner decision, never a silent relaxation.",
     "The two DefiLlama modules have incompatible defillama_url signatures; both test suites must pass after the union.",
     "An untracked file appears between gate and commit and the guard rejects the commit; check git status before every gate.",
-    "Generated artifacts (OpenAPI, TS client, SPA bundle, Atlas) are hand-merged and drift; always regenerate instead."
+    "Generated artifacts (OpenAPI, TS client, SPA bundle) are hand-merged and drift; always regenerate instead."
   ],
   "slices": [
     {"title": "Finalize and commit the crypto-terminal working tree", "verify": "uv run python scripts/gate.py full", "expected": "6/6 components pass; review verdict APPROVE; one commit on feat/crypto-terminal-ui with an empty working tree", "rollback": "git tag pre-clean-2026-10-05 marks the prior HEAD; scratch archived at ~/Desktop/alpha-scratch-2026-10-05", "status": "done"},

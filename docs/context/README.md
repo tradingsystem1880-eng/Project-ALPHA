@@ -8,6 +8,8 @@ These maps introduce no product scope, permissions, or new source of authority.
 - [Native upstream first](alpha-quant-platform.md#native-upstream-first--2026-11-06): source-bound reuse/duplication crosswalk and amendments to existing Qlib, RD-Agent and Nautilus plans; full W01–W19 scope retained, new acceptance proposals NOT RUN.
 - [Validation dependencies and open acceptance](alpha-quant-platform.md#validation-dependencies-and-open-acceptance): lean Master v1 §12 W06/W09–W12/W14/W17 tasks; full Qlib/native RD-Agent and wider W01–W19 scope retained.
 - [Canonical feature readiness checklist (2026-10-27 reconciled)](feature-readiness-checklist-2026-10-27.md): sole full-scope owner; repository mirror of the source DOCX with SHA/version provenance. Plans link here rather than copy it; it marks no feature done.
+  Its items H26 (queryable context filesystem) and H60 (AI context / prompt packs) are
+  superseded by [ADR-0040](../adr/0040-one-file-system-atlas-retired.md).
 - [Retail research refinement (2026-11-02)](feature-readiness-checklist-2026-10-27.md#retail-research-refinements-2-november-2026): requirements and proposed NOT RUN acceptance evidence within existing owners; canonical v3 authored amendment reconciled; full local DOCX parity remains unverified and completion statuses are preserved.
 - [Build readiness handoff (2026-10-27, v1)](../records/build-readiness-handoff-2026-10-27.md): supporting historical-as-of intake evidence, not a roadmap or acceptance denominator.
 - [Current synthetic native workflow](../superpowers/plans/2026-10-26-native-rule-authority.md): code, scoped test/failure receipts, blocked real input, rollback and resume.
@@ -38,7 +40,7 @@ Neither a research recommendation nor a dated completed plan proves current beha
 
 Use the existing [artifact ownership roles](../superpowers/plans/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md#scope-and-ownership).
 The operating manual/rules and authority matrix retain permissions; ADRs retain decisions;
-dated specs/plans and build history retain intent and delivery. Atlas retains generated discovery.
+dated specs/plans and build history retain intent and delivery; `scripts/fs.py` computes discovery on demand.
 When changing a capability, its source/document steward checks the corresponding map row and
 records missing relationships. Navigation stewardship maintains these links and inspection evidence;
 it cannot approve the capability, change domain authority or promote a dated plan into evidence.
@@ -75,12 +77,8 @@ The Qlib model-candidate row has an additional bounded inspection on delivery ba
 Its linked plan records fresh checks and exact remaining gates; this does not update the
 inspection or acceptance status of unrelated rows.
 
-[Atlas](../../tools/alpha-atlas/README.md) supplies the existing provenance model:
-`owner`, `created_from`, `last_verified_commit`, source anchors and computed evidence levels.
-Its `tested` level is not a fresh aggregate-gate pass. Preserve generated outputs;
-changed anchors require re-verification rather than an updated date alone.
-Atlas's documentation extractor currently covers ADRs and specs; these maps link research
-and plans directly without claiming they have been added to the generated graph.
+Each row's inspection evidence is its commit and date; changed anchors require
+re-verification rather than an updated date alone. These maps link research and plans directly.
 
 ## Recheck a changed context row
 
@@ -103,27 +101,25 @@ checks only; never open their contents or add fragments that require a content r
 These are scoped navigation checks, not a new persistent gate. Valid links and unchanged bytes
 establish syntactic freshness only: they cannot establish that a claim is correct, a test is
 adequate, a provider is ready or a check passed. Review public source against existing decisions
-and record semantic gaps separately. Reuse Atlas's documented `generate --check` through the
-existing authorized gate for its own inputs; do not edit generated outputs or ingest these maps
-into a second graph. Keep scoped check scripts/results with the task's private recovery evidence;
+and record semantic gaps separately; do not ingest these maps into a generated index.
+Keep scoped check scripts/results with the task's private recovery evidence;
 acceptance is CI on the pull request.
 
 ## Retrieve narrowly
 
-For project intent, feature scope, active/historical tasks and decisions, use Atlas's
-[source-bound context queries](../../tools/alpha-atlas/README.md#query-project-intent-features-tasks-and-decisions).
-For example, from `tools/alpha-atlas/`:
+For project intent, feature scope, active/historical tasks and decisions, search the tracked
+documentation from the repository root:
 
 ```sh
-uv run python -m alpha_atlas.context query H26 --kind feature --format markdown
-uv run python -m alpha_atlas.context query 'stage contract' --kind task --limit 4
+uv run python scripts/fs.py search H26 --kind feature
+uv run python scripts/fs.py search 'stage contract' --kind task --limit 4
 ```
 
-This computes a view of existing tracked sources with cited excerpts and explicit omissions.
-It does not add these maps to the generated graph or replace source-anchor semantic review.
-JSON handoffs expire and must pass `alpha_atlas.context check RECEIPT.json` before reuse;
-changed corpus bytes or retrieval policy invalidate them. See the
-[implementation and research mapping](../superpowers/plans/archive/2026-10/2026-10-30-queryable-context-filesystem.md).
+Each result is an excerpt with its path, heading, line range, kind and lifecycle (`live`, or
+`archived` for build history, records, archives and archived plans); live documents rank first
+and matches that were not shown are named. A match is a pointer to read, not evidence and not a
+replacement for source-anchor semantic review. See
+[ADR-0040](../adr/0040-one-file-system-atlas-retired.md).
 Context retrieval is separate from bulk document storage and backups; the unavailable Mac's
 local backup remains a separate owner task.
 

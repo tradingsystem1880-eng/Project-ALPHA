@@ -19,7 +19,16 @@ ROOT = Path(__file__).parents[2]
 
 # Links that cannot be made to resolve without rewriting a dated record's meaning.
 # Key: (source path, raw link target). Keep this list short and explain each entry.
-ALLOWLIST: dict[tuple[str, str], str] = {}
+ALLOWLIST: dict[tuple[str, str], str] = {
+    (
+        "docs/BUILD-STATUS.md",
+        "atlas/system-map.md",
+    ): "frozen delivery history; target removed by ADR-0040",
+    (
+        "docs/superpowers/plans/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md",
+        "../../../../../tools/alpha-atlas/README.md",
+    ): "archived plan; target removed by ADR-0040",
+}
 
 _FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
 _INLINE_CODE = re.compile(r"(`+)(?:(?!\1).)+?\1")

@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-ALWAYS = ("tests/bias_guards", "tests/oracles", "tests/holdout_seed")
+ALWAYS = ("tests/bias_guards", "tests/oracles", "tests/acceptance")
 MAX_MAPPED_TESTS = 400
 LAST_FAILED = Path(".pytest_cache") / "v" / "cache" / "lastfailed"
 _TEST_DEF = re.compile(r"^\s*(?:async\s+)?def test_", re.MULTILINE)

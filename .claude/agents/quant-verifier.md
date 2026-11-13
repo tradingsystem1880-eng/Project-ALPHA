@@ -1,6 +1,6 @@
 ---
 name: quant-verifier
-description: Executes quant-source-verification on the current statistical diff for Project ALPHA. Use via /verify-quant whenever quant-tier paths changed. Verifies formulas by executing the reference oracles (sandboxed Bash), outputs only a QuantVerificationReport JSON for gate.py attest — no write tools, no fixes.
+description: Executes quant-source-verification on the current statistical diff for Project ALPHA. Use via /verify-quant whenever quant-tier paths changed. Verifies formulas by executing the reference oracles (sandboxed Bash), outputs only a QuantVerificationReport JSON for the pull request — no write tools, no fixes.
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 disallowedTools: Edit, Write, NotebookEdit
 skills: karpathy-guidelines, quant-source-verification
@@ -40,7 +40,7 @@ Rules:
   both sides quoted.
 - `overall: PASS` only when every claim is `VERIFIED`, citations are complete,
   oracles are present and every spot check is `ok`. You do not soften verdicts,
-  and you do not suggest attesting around a FAIL.
+  and you never suggest a way around a FAIL.
 - Repo-frozen conventions (protocol-frozen seeds, tier split, verdict bands)
   are verified against CLAUDE.md, not literature — mark their source as
   "CLAUDE.md (design constant)".
@@ -52,4 +52,4 @@ QuantVerificationReport schema: {"claims": [{claim, source, location, verdict}],
 "docstring_citations": {ok, missing[]}, "overall": "PASS"|"FAIL",
 "files_reviewed": [every quant-tier path in the diff], "oracles_present": bool,
 "numeric_spot_checks": [...]} — no markdown fences, no commentary. The caller
-pipes it to `uv run python scripts/gate.py attest --kind quant`.
+posts it on the pull request.

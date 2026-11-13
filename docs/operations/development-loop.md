@@ -20,7 +20,7 @@ edit → gate.py check → commit → push → draft pull request → CI → own
 
    It runs `ruff check`, `ruff format --check`, `lint-imports`, one strict `mypy` over
    `packages apps tests` and the harness scripts, then pytest on: the bias guards, the quick
-   oracles, `tests/holdout_seed`, tests mapped from the files changed since the merge base with
+   oracles, `tests/acceptance`, tests mapped from the files changed since the merge base with
    `origin/main`, and last run's failures. It writes nothing except pytest and tool caches.
 3. Push and open a **draft** pull request. CI runs every component. Mark it ready when CI is
    green; the owner merges. Model review is advisory and belongs on the pull request.
@@ -35,7 +35,6 @@ The `ci-ok` job passes only when every job below succeeded; branch protection re
 | `harness` | Harness doctor, weakening scanner, strict mypy of the harness scripts, hook and selector tests. |
 | `frontend` | npm lint, build and types, unit coverage, API freshness, browser lanes, SPA freshness. |
 | `qlib-worker`, `literature-worker` | Each worker's own lock, lint, format, types and tests. |
-| `atlas` | Atlas tool checks and generated-graph freshness. |
 | `eval` | The benchmark tool's own lock, lint, format, types and tests. |
 
 Nightly runs Semgrep on the whole tree, determinism and raise coverage; a weekly job runs the
@@ -44,7 +43,7 @@ full mutation sweep.
 ## Running one CI job locally
 
 ```sh
-uv run python scripts/gate.py component backend   # also: frontend, literature, qlib, atlas, eval
+uv run python scripts/gate.py component backend   # also: frontend, literature, qlib, eval
 ```
 
 It runs exactly the steps CI runs for that job and stops at the first failure. `backend` takes
@@ -88,6 +87,16 @@ For one focused browser test, `scripts/playwright_evidence.py prepare --output-p
 --project NAME --file e2e/x.spec.ts --grep TITLE --expect-id ID` allocates fresh output paths and
 prints the owner-wrapped command to run; `export` copies one stopped run's files with hashes.
 A focused result never replaces the lane sequence in CI.
+
+## Prove a workflow end to end
+
+`tests/smoke/` runs each user workflow (data, backtest, validation, research case, web app)
+through the installed `alpha` and `alpha-web` programs in a fresh temporary home, offline, in
+about two minutes. CI's `check` job runs them; the fast local tier leaves them out.
+
+```sh
+uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0
+```
 
 ## Process environment facts
 

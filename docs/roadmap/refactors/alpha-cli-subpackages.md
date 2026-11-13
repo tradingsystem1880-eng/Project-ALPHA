@@ -21,17 +21,17 @@ implicit.
   the label, so relocating any module changes every new run's execution fingerprint.
 - The literature worker's `_acquisition.py` is a byte-pinned copy of
   `alpha_cli/research_acquisition.py` (`tests/unit/test_literature_worker_pin.py`).
-- The Atlas graph (module/CLI extractors) and import-linter contracts reference module paths.
+- Import-linter contracts reference module paths.
 
 ## Proof required before/after
 
 - Before: an ADR deciding the package layout and accepting the fingerprint change; a test that
   imports every string-registered sub-app and `-m` target.
-- After: that test passes; CLI help output (`alpha --help` tree) is unchanged; Atlas regenerates
-  with only path changes; import-linter passes; full gate passes.
+- After: that test passes; CLI help output (`alpha --help` tree) is unchanged; `scripts/fs.py orient
+  --component alpha-cli` shows only path changes; import-linter passes; CI passes.
 
 ## Suggested slicing
 
 1. Write the ADR and the registration test.
 2. Move one domain (for example `crypto_*`) into a subpackage with re-export shims.
-3. Repeat per domain, regenerating Atlas each time; drop shims last.
+3. Repeat per domain; drop shims last.

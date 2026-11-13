@@ -38,10 +38,12 @@ def launch_job(req: JobLaunchRequest) -> dict[str, Any]:
                 "use the bounded research API or trusted-local CLI"
             ),
         )
-    if req.run_context is not None and command_class == "unknown":
+    if command_class == "unknown":
+        # Every served `alpha` root is classified (tests/unit/test_generic_command_catalog.py),
+        # so this is never a real command: refuse before a subprocess or job record exists.
         raise HTTPException(
             status_code=422,
-            detail="unknown command cannot be launched in a governed or standalone run context",
+            detail=f"unknown command {argv[0]!r}: not an alpha command the Workstation can launch",
         )
     if command_class == "empirical" and req.run_context is None:
         raise HTTPException(

@@ -26,7 +26,7 @@ EXCLUDED_FROM_WORKSPACE = (
     "tools/alpha-eval",
     "docs/records/audits",
     "docs/superpowers/plans",
-    "tests/holdout_seed",
+    "tests/acceptance",
     "tests/holdout",
     ".codex",
     ".claude",

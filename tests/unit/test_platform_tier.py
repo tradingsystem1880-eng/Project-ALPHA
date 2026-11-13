@@ -42,6 +42,7 @@ ROOT = Path(__file__).resolve().parents[2]
         "tests/integration/test_accounted_backfill_process.py",
         "tests/integration/test_validate_determinism.py",
         "tests/unit/test_cli_entry_lazy_groups.py",
+        "tests/smoke/test_web_smoke.py",
     ],
 )
 def test_platform_shaped_paths_are_platform(path: str) -> None:
@@ -53,7 +54,7 @@ def test_platform_shaped_paths_are_platform(path: str) -> None:
     [
         "tests/bias_guards/test_pit_reader.py",
         "tests/oracles/test_calibration_known_truth.py",
-        "tests/holdout_seed/test_anything.py",
+        "tests/acceptance/test_anything.py",
         "tests/unit/test_pit_reader.py",
         "tests/unit/test_cpcv.py",
         "tests/unit/test_ts_momentum_signal.py",
@@ -85,8 +86,8 @@ def test_ci_does_not_select_by_tier() -> None:
             assert not any("platform" in arg for arg in command), (name, command)
 
 
-def test_bias_guards_oracles_and_holdout_are_never_platform() -> None:
-    for sub in ("bias_guards", "oracles", "holdout_seed"):
+def test_bias_guards_oracles_and_acceptance_are_never_platform() -> None:
+    for sub in ("bias_guards", "oracles", "acceptance"):
         for file in (ROOT / "tests" / sub).rglob("test_*.py"):
             rel = file.relative_to(ROOT).as_posix()
             assert classify_platform(rel) is False, rel

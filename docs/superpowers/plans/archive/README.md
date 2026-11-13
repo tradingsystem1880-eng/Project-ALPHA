@@ -8,9 +8,7 @@ paths inside an archived front block may still name the plan's original flat loc
 
 The flat folder [`docs/superpowers/plans/`](../) holds only live work: plans that are
 `Implemented – qualification pending`, `In progress`, `Blocked` or `Planned`, plus the pinned
-exceptions below. `scripts/harness_awareness.py::open_plan()` reads only that flat folder (newest
-file by name, first 12 lines), so a finished plan left there would hide or misreport the open
-plan. The [roadmap index](../../../roadmap/README.md) lists the live plans and the archive counts
+exceptions below, so a finished plan left there would misreport what is open. The [roadmap index](../../../roadmap/README.md) lists the live plans and the archive counts
 per month.
 
 ## Lifecycle

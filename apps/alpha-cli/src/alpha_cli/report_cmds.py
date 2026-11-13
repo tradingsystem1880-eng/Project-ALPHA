@@ -4,6 +4,11 @@ Searches every run-type directory (``runs/`` gauntlet + backtest runs, ``portfol
 ``cross_sectional/``, ``optim/``) for ``<run_id>/manifest.json`` and prints a summary appropriate to
 whatever the manifest contains. The manifest is self-sufficient, so this never loads data or touches
 the backtest engine.
+
+``--json`` prints the same run as JSON: the stored manifest, artifact-verified and verbatim, or for
+a daily-rule study run its bounded ``DailyRuleEvidenceV1`` report. ``--daily-rule-evidence``
+always prints ``DailyRuleEvidenceV1`` (``available: false`` for any other run); the web
+daily-study endpoint uses it.
 """
 
 from __future__ import annotations
@@ -14,8 +19,13 @@ from typing import Annotated, Any
 
 import typer
 
+from alpha_cli.artifact_contract import verify_manifest_artifacts
 from alpha_cli.run_store import RUN_DIRS, find_run_dir, read_manifest
 from alpha_core.config import AlphaSettings
+
+_DAILY_RULE_COMMANDS = frozenset(
+    {"research_daily_rule_native_v1", "research_daily_rule_projection_v1"}
+)
 
 
 def _fmt(x: Any) -> str:
@@ -32,25 +42,33 @@ def _find_manifest(data_dir: Path, run_id: str) -> dict[str, Any] | None:
     return result
 
 
+def _echo_json(value: Any) -> None:
+    typer.echo(json.dumps(value, sort_keys=True, allow_nan=False))
+
+
 def report(
     run_id: str,
     json_out: Annotated[bool, typer.Option("--json")] = False,
+    daily_rule_evidence_out: Annotated[
+        bool,
+        typer.Option(
+            "--daily-rule-evidence",
+            help="Print the daily-rule evidence report (DailyRuleEvidenceV1) as JSON; "
+            "unavailable for any other run.",
+        ),
+    ] = False,
     role: str = "baseline",
     limit: int = 100,
     offset: int = 0,
 ) -> None:
     """Print the stored result for RUN_ID (any run type: gauntlet, backtest, portfolio, etc.)."""
     settings = AlphaSettings()
-    if json_out:
+    if daily_rule_evidence_out:
         from alpha_cli.daily_rule_report import daily_rule_evidence
 
-        typer.echo(
-            json.dumps(
-                daily_rule_evidence(
-                    run_id, data_dir=settings.data_dir, role=role, limit=limit, offset=offset
-                ),
-                sort_keys=True,
-                allow_nan=False,
+        _echo_json(
+            daily_rule_evidence(
+                run_id, data_dir=settings.data_dir, role=role, limit=limit, offset=offset
             )
         )
         return
@@ -59,6 +77,20 @@ def report(
         raise typer.BadParameter(
             f"no run {run_id!r} under {settings.data_dir} ({'/'.join(RUN_DIRS)})"
         )
+    if json_out:
+        if manifest.get("command") in _DAILY_RULE_COMMANDS:
+            from alpha_cli.daily_rule_report import daily_rule_evidence
+
+            _echo_json(
+                daily_rule_evidence(
+                    run_id, data_dir=settings.data_dir, role=role, limit=limit, offset=offset
+                )
+            )
+            return
+        rdir = Path(manifest.pop("__dir"))
+        verify_manifest_artifacts(rdir, manifest)
+        _echo_json(manifest)
+        return
 
     metadata = manifest.get("metadata", {})
     symbol = metadata.get("symbol") or manifest.get("symbol")
@@ -75,10 +107,7 @@ def report(
         # permanently watermarked EXPLORATORY / RESEARCH GATE NOT COMPLETED.
         typer.secho(str(research_gate["watermark"]), fg=typer.colors.YELLOW, bold=True)
 
-    if manifest.get("command") in {
-        "research_daily_rule_native_v1",
-        "research_daily_rule_projection_v1",
-    }:
+    if manifest.get("command") in _DAILY_RULE_COMMANDS:
         from alpha_cli.daily_rule_report import daily_rule_evidence
 
         evidence = daily_rule_evidence(run_id, data_dir=settings.data_dir)

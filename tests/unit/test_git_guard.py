@@ -29,7 +29,7 @@ def test_install_is_idempotent(repo: Path) -> None:
     [
         ("feat(cli): add a flag", 0),
         ("fix!: break loudly", 0),
-        ("chore(atlas): regenerate", 0),
+        ("chore(docs): regenerate", 0),
         ("wip", 1),
         ("Feat: capitalised type", 1),
         ("feat(cli) missing colon", 1),

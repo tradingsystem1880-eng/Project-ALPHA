@@ -10,7 +10,7 @@ from typing import Any
 
 import gate
 
-COMPONENTS = ("backend", "frontend", "literature", "qlib", "atlas", "eval")
+COMPONENTS = ("backend", "frontend", "literature", "qlib", "eval")
 Step = tuple[str, Path, list[str]]
 GitOutputRunner = Callable[..., str]
 
@@ -139,10 +139,9 @@ def component_steps(
                 ["git", "diff", "--exit-code", "--", "apps/alpha-web/src/alpha_web/static/app"],
             ),
         ]
-    if component in {"literature", "qlib", "atlas", "eval"}:
-        tools = {"atlas": "tools/alpha-atlas", "eval": "tools/alpha-eval"}
-        cwd = root / tools.get(component, f"workers/{component}")
-        steps: list[Step] = [
+    if component in {"literature", "qlib", "eval"}:
+        cwd = root / ("tools/alpha-eval" if component == "eval" else f"workers/{component}")
+        return [
             ("lock", cwd, ["uv", "lock", "--check"]),
             ("install", cwd, ["uv", "sync", "--locked"]),
             ("lint", cwd, ["uv", "run", "ruff", "check", "."]),
@@ -150,11 +149,6 @@ def component_steps(
             ("types", cwd, ["uv", "run", "mypy"]),
             ("tests", cwd, ["uv", "run", "pytest", "-q", "-m", "not network"]),
         ]
-        if component == "atlas":
-            steps.append(
-                ("freshness", cwd, ["uv", "run", "python", "-m", "alpha_atlas.generate", "--check"])
-            )
-        return steps
     raise ValueError(f"Unknown gate component: {component}")
 
 

@@ -1,5 +1,7 @@
 # Project ALPHA
 
+**Status:** [what works today](STATUS.md) · [what the codes mean](docs/reference/glossary.md)
+
 > **Generated-output successor, 2026-11-09 (unqualified):** Two clean local OpenAPI/client/SPA generations are byte-identical. Atlas, installed-worker/runtime acceptance, required exact-tree review and full qualification remain pending. Historical owner/UI results do not qualify this sparse successor. See [build status](docs/BUILD-STATUS.md#2026-11-09--sparse-generated-output-successor-unqualified).
 
 **ALPHA Quant Platform** is a private, local quantitative research workstation for turning a
@@ -46,8 +48,9 @@ The parts work together like this:
   worker runtime from its lock with
   `uv sync --project workers/literature --locked --no-dev --no-install-project`; its CLI launcher
   runs the checked-out module with syncing disabled, network access off, and Python safe-path mode.
-- **Codex helps explain and investigate.** Its answers are advisory. Atlas helps find source-bound
-  project context; neither generated prose nor a context query grants research authority. See the
+- **Codex helps explain and investigate.** Its answers are advisory. The file system's search
+  (`uv run python scripts/fs.py search "QUERY"`) finds tracked project documents, live ones
+  first; neither generated prose nor a search result grants research authority. See the
   [context index](docs/context/README.md).
 - **The Software Team maintains the machinery.** It changes code, checks the result, and records
   what was delivered. Those engineering checks are separate from approval of market evidence or
@@ -370,8 +373,8 @@ and browser checks, use the [frontend guide](apps/alpha-web/frontend/README.md).
 The mandatory browser command runs four fixture-specific lanes and requires explicitly selected,
 already-installed native source/runtime assets. Missing inputs fail the command, never skip that lane.
 
-CI on the pull request is the merge gate: it runs the backend, frontend, literature, Qlib, Atlas
-and eval components, and the owner merges once it is green. Locally, run the fast check:
+CI on the pull request is the merge gate: it runs the backend, frontend, literature, Qlib and
+eval components, and the owner merges once it is green. Locally, run the fast check:
 
 ```bash
 uv run python scripts/gate.py check

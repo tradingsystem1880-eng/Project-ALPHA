@@ -553,83 +553,6 @@ def freshness_index_alignment(root: Path) -> dict[str, Any]:
     }
 
 
-def atlas_freshness(
-    root: Path,
-    *,
-    python_executable: str = sys.executable,
-    python_version: tuple[int, int] = sys.version_info[:2],
-    runner: Runner = subprocess.run,
-) -> dict[str, Any]:
-    step = next(
-        (step for step in gate_components.component_steps(root, "atlas") if step[0] == "freshness"),
-        None,
-    )
-    if step is None:
-        return {
-            "name": "atlas_freshness",
-            "mode": "executed",
-            "status": "blocked",
-            "issue_type": "freshness_step_missing",
-            "detail": "Atlas freshness step is not configured",
-        }
-    _, cwd, canonical = step
-    if python_version != (3, 12):
-        return {
-            "name": "atlas_freshness",
-            "mode": "executed",
-            "status": "unverified",
-            "issue_type": "environment_unavailable",
-            "detail": "Atlas freshness needs an already available Python 3.12 interpreter",
-        }
-    command = [python_executable, "-B", *canonical[3:]]
-    env = {
-        "PATH": os.environ.get("PATH", os.defpath),
-        "PYTHONPATH": str(cwd / "src"),
-        "PYTHONDONTWRITEBYTECODE": "1",
-        "PYTHONNOUSERSITE": "1",
-    }
-    try:
-        result = runner(
-            command,
-            cwd=cwd,
-            env=env,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=120,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        return {
-            "name": "atlas_freshness",
-            "mode": "executed",
-            "status": "unverified",
-            "issue_type": "freshness_execution_unknown",
-            "detail": f"Atlas freshness could not run ({type(exc).__name__})",
-        }
-    if result.returncode == 0:
-        return {
-            "name": "atlas_freshness",
-            "mode": "executed",
-            "status": "passed",
-            "issue_type": None,
-            "detail": "generated Atlas outputs are fresh",
-        }
-    output = result.stdout + result.stderr
-    stale = "stale generated atlas output" in output
-    detail = (
-        "generated Atlas outputs are stale"
-        if stale
-        else f"Atlas freshness failed (exit {result.returncode})"
-    )
-    return {
-        "name": "atlas_freshness",
-        "mode": "executed",
-        "status": "blocked",
-        "issue_type": "generated_drift" if stale else "freshness_execution",
-        "detail": detail,
-    }
-
-
 def _candidate_identity(root: Path) -> dict[str, Any]:
     head = _git(root, "rev-parse", "--verify", "HEAD")
     branch = _git(root, "symbolic-ref", "--quiet", "--short", "HEAD")
@@ -751,7 +674,6 @@ def run_preflight(root: Path) -> tuple[int, dict[str, Any]]:
     )
     checks.append(mutation_selection(root))
     checks.append(freshness_index_alignment(root))
-    checks.append(atlas_freshness(root))
     blockers = [
         check["name"]
         for check in checks
