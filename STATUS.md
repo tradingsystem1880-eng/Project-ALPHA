@@ -117,14 +117,12 @@ The full triage sheet, with what each item does and why: [docs/roadmap/triage-20
 
 Ideas not yet planned (no order recorded, so alphabetical):
 
-- Atlas frontend scanning with the TypeScript compiler (ts-morph) — small (S)
-- Atlas runtime layer (traced execution view) — large (L)
 - Catalyst, expectations and fundamentals research (W15) — large (L)
 - ControlStore-owned durable acquisition journal — large (L)
 - Data-directory naming migration — medium (M)
 - Delivery-task system (durable task ownership and two-model handoff) — large (L)
 - Full Qlib model zoo and fold-by-fold counterfactual retraining (W11/W12) — very large (XL)
-- Gate coverage for the Atlas frontend and workers/rdagent — small (S)
+- Gate coverage for workers/rdagent — small (S)
 - Generalise D0 screening to every registered producer (Phase E) — medium (M)
 - Governed storage restore and query for real-data native studies (W19) — large (L)
 - Intraday (1h) equity timeframe — medium (M)
@@ -139,7 +137,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 
 - Live plans: 45
 - Archived plans: 104
-- Backlog items: 17
+- Backlog items: 15
 - Staged refactors: 7
 
 ## Where things are

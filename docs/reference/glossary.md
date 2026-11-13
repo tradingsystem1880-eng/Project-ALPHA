@@ -53,8 +53,8 @@ The stages of one governed research case. Data is split by date groups, 60/20/20
 ## Delivery items
 
 - **C04** — Risk numbers that state what they are based on (the "metric basis" shown with risk figures).
-- **H26** — Checklist feature: a lean, queryable store of project context.
-- **H60** — Checklist feature: generate AI context and prompt packs.
+- **H26** — Checklist feature: a lean, queryable store of project context. Superseded by ADR-0040 (Atlas was retired).
+- **H60** — Checklist feature: generate AI context and prompt packs. Superseded by ADR-0040 (Atlas was retired).
 - **Phase A–E (edge-first)** — Steps of the September 2026 "edge-first" programme. Phase B: get real
   crypto history in (resumable backfill). Phase C: a fast screening lane (`alpha scan hypotheses`).
   Phase E: widen that screening to every registered method (a backlog idea).
@@ -89,7 +89,7 @@ The stages of one governed research case. Data is split by date groups, 60/20/20
 ## Tools and parts
 
 - **Component (gate)** — One named group of checks run by `scripts/gate.py component NAME`. The names
-  are backend, frontend, literature, qlib, atlas and eval.
+  are backend, frontend, literature, qlib and eval.
 - **ControlStore** — The program part that keeps the project's control database and its append-only ledger.
 - **Gate** — `scripts/gate.py`: the local check tool. The real merge gate is CI on the pull request.
 - **Codex** — OpenAI's coding assistant, used inside ALPHA as an advisory research assistant. Its answers
