@@ -70,7 +70,9 @@ def test_installed_hooks_commit_partial_staging_without_any_gate_evidence(repo: 
     git(repo, "add", "tracked.py")
     result = _commit(repo, "test: commit only what is staged")
     assert result.returncode == 0, result.stderr
-    assert git(repo, "status", "--porcelain") == "?? unstaged.py"
+    # Only the two files under test: the hook's interpreter may leave a bytecode
+    # cache beside the copied scripts, which is not what this test is about.
+    assert git(repo, "status", "--porcelain", "--", "tracked.py", "unstaged.py") == "?? unstaged.py"
     assert not (repo / ".alpha").exists()
 
 
