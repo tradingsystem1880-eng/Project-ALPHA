@@ -733,7 +733,7 @@ plans = ["2026-11-09-alpha158-versioned-correction.md"]
 [[capability]]
 id = "alpha158-v3"
 name = "Upstream Alpha158 price features"
-what = "Opt in to Alpha158 features and fold normalisation computed entirely by upstream Qlib, proven equal to Qlib's own Alpha158 handler; version 1 stays the default until you switch it."
+what = "Opt in to Alpha158 features and fold normalisation computed entirely by upstream Qlib, proven equal to Qlib's own Alpha158 handler; version 1 stays the default until the normalisation settings are measured on real data and you switch it."
 see_it = ["set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec"]
 entry_points = [
   "cli: alpha ml prepare",

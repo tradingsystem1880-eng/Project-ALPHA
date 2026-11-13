@@ -52,9 +52,13 @@ LEARN_PROCESSORS: tuple[dict[str, Any], ...] = (
     {"class": "DropnaLabel"},
     {"class": "CSZScoreNorm", "kwargs": {"fields_group": "label"}},
 )
-# Upstream Alpha158's default infer list is empty, which leaves NaN features that linear models
-# cannot take. These upstream processors are the configuration Qlib's published Alpha158
-# benchmarks use for models that need normalised, complete inputs.
+# Upstream Alpha158's default infer list is empty, which leaves NaN features that the ridge
+# member of the rank ensemble cannot take. These are the feature processors of Qlib 0.9.7's
+# published Linear Alpha158 benchmark (checked against the v0.9.7 tag). They are NOT what its
+# LightGBM, XGBoost, CatBoost and DoubleEnsemble benchmarks use: those keep the handler defaults
+# (raw features, no clipping, no fill), and the Linear benchmark ranks the label (CSRankNorm)
+# where this keeps the handler default. One matrix feeds both ensemble members here, so the tree
+# member sees clipped, zero-filled inputs. ADR-0042 holds this as open before v3 becomes default.
 INFER_PROCESSORS: tuple[dict[str, Any], ...] = (
     {"class": "RobustZScoreNorm", "kwargs": {"fields_group": "feature", "clip_outlier": True}},
     {"class": "Fillna", "kwargs": {"fields_group": "feature", "fill_value": 0}},

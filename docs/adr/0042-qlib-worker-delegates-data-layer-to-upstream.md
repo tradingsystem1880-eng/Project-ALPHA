@@ -51,8 +51,14 @@ before ALPHA writes its own.
      `Fillna` on features, fitted on each fold's training rows only via upstream
      `check_transform_proc`; Alpha158's default learn processors `DropnaLabel` and
      `CSZScoreNorm` on the label. Upstream Alpha158's default infer list is empty; the feature
-     processors are the normalised-input configuration Qlib's Alpha158 benchmarks use, needed
-     because linear and ensemble models cannot take NaN inputs.
+     processors are those of Qlib 0.9.7's published Linear Alpha158 benchmark, needed because
+     the ridge member of the rank ensemble cannot take NaN inputs. Checked against the v0.9.7
+     tag (`examples/benchmarks/*/workflow_config_*_Alpha158.yaml`): the LightGBM, XGBoost,
+     CatBoost and DoubleEnsemble benchmarks keep the handler defaults (raw features, no
+     clipping, no fill), and the Linear benchmark uses `CSRankNorm` on the label. v3 therefore
+     matches upstream's features exactly but neither published processor set exactly: one
+     matrix feeds both ensemble members, so the LightGBM member sees inputs clipped at three
+     robust deviations with missing values set to zero. See "Open before v3 is the default".
    - Model fitting is unchanged (upstream model classes, the worker's in-memory dataset adapter).
 3. **Mechanism: in-memory expression engine, not a temporary provider.** Considered:
 
@@ -94,6 +100,18 @@ before ALPHA writes its own.
    zero fill and the label z-score with pandas' sample deviation, make a label cross-section
    with fewer than two names or zero dispersion fail the run, and change the trained models and
    their scores. It needs no contract change.
+
+## Open before v3 is the default
+
+Processor choice per ensemble member. Upstream feeds tree models raw Alpha158 features and
+linear models robust-normalised, clipped, filled ones with a ranked label. v3 gives both members
+the linear feature set and the handler's default label z-score. Clipping and zero fill are not
+neutral for trees: order inside the clipped tails is lost and "missing" becomes "typical". The
+alternative is two inputs per fold (raw for LightGBM, processed for ridge), which changes the
+fitting path and its provenance trace. This is decided by a side-by-side run on real data
+(rank IC and its stability per fold, both ways), not by argument, and no result meant for an
+owner decision uses v3 until it is. If the measurement changes the processors, v3 is amended in
+place before it is declared the default rather than adding a fourth recipe.
 
 ## Consequences
 

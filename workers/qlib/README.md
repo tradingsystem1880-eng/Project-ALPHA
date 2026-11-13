@@ -246,9 +246,14 @@ panel in and collects the matrix out:
   only `VWAP0`. No silent substitution: the substitution is named in every result.
 
 Upstream Alpha158's own default infer list is empty (NaN features reach the model); v3 adds the
-normalised-input configuration Qlib's published Alpha158 benchmarks use so that linear and
-ensemble models receive complete inputs. Source pins for the eleven upstream files involved fail
-closed if the installed Qlib differs.
+feature processors of Qlib 0.9.7's published Linear Alpha158 benchmark so that the ridge member
+of the rank ensemble receives complete inputs. This is not what upstream's tree-model benchmarks
+(LightGBM, XGBoost, CatBoost, DoubleEnsemble) use: they keep raw, unclipped, unfilled features,
+and the Linear benchmark ranks the label where v3 keeps the handler's z-score. Because one matrix
+feeds both ensemble members, the LightGBM member sees clipped, zero-filled inputs. Whether to
+split the inputs per member is open in ADR-0042 and is settled, by measurement on real data,
+before v3 becomes the default. Source pins for the eleven upstream files involved fail closed if
+the installed Qlib differs.
 
 The proof is [`tests/test_upstream_alpha158.py`](tests/test_upstream_alpha158.py): a panel with an
 irregular calendar, staggered starts, a three-session instrument gap, zero volumes and a
