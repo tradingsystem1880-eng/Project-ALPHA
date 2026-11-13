@@ -4,7 +4,7 @@ sources:
   - docs/context/feature-readiness-checklist-2026-10-27.md
   - docs/roadmap/capabilities.toml
   - scripts/status.py
-verified: cff64b466e7e
+verified: a7e687ae729f
 ---
 
 # Glossary
