@@ -11,11 +11,9 @@ CLI:
     python3 scripts/gate.py check [--all] [--base REF]  # fast local check (~3 min)
     python3 scripts/gate.py component NAME     # one CI job's steps, exactly as CI runs them
     python3 scripts/gate.py preflight [--json] # read-only environment readiness report
-    python3 scripts/gate.py orient [--json]    # generated source orientation
+    python3 scripts/gate.py orient [--json]    # source orientation (same as scripts/fs.py orient)
     python3 scripts/gate.py lint-harness       # weakening scanner vs .claude/harness-baseline.json
     python3 scripts/gate.py baseline           # rewrite that baseline (reviewed in the PR)
-    python3 scripts/gate.py brief              # generated repo brief
-    python3 scripts/gate.py index [--no-cli]   # regenerate .alpha/state/repo-index.json
     python3 scripts/gate.py plan-check PLAN.md # validate a plan's ```json FeaturePlan front block
     python3 scripts/gate.py doctor [--json]    # verify the harness wiring itself
     python3 scripts/gate.py mutate [MODULES|--all] [--json --write-baseline]  # mutmut gate
@@ -75,10 +73,6 @@ def _git(root: Path, *args: str, check: bool = True) -> str:
     if check and result.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {result.stderr.strip()}")
     return result.stdout
-
-
-def _git_lines(root: Path, *args: str) -> list[str]:
-    return [line for line in _git(root, *args, check=False).splitlines() if line.strip()]
 
 
 def repo_root(start: Path | None = None, *, timeout: float | None = None) -> Path:
@@ -277,7 +271,9 @@ HARNESS_SCRIPTS = (
     "scripts/git_guard.py",
     "scripts/wheel_smoke.py",
     "scripts/check_semgrep_contracts.py",
-    "scripts/repo_orientation.py",
+    "scripts/fs.py",
+    "scripts/fs_orient.py",
+    "scripts/fs_search.py",
     "scripts/claude_hooks.py",
     "scripts/harness_awareness.py",
     "scripts/harness_models.py",
@@ -557,19 +553,14 @@ def build_parser() -> argparse.ArgumentParser:
     preflight_p = sub.add_parser("preflight", help="read-only environment readiness report")
     preflight_p.add_argument("--json", action="store_true")
     component_p = sub.add_parser("component", help="one CI job's steps, as CI runs them")
-    component_p.add_argument(
-        "name", choices=("backend", "frontend", "literature", "qlib", "eval")
-    )
+    component_p.add_argument("name", choices=("backend", "frontend", "literature", "qlib", "eval"))
     orient_p = sub.add_parser("orient")
     orient_p.add_argument("--component")
     orient_p.add_argument("--json", action="store_true")
     sub.add_parser("lint-harness")
     sub.add_parser("baseline", help="rewrite .claude/harness-baseline.json from the tree")
-    sub.add_parser("brief")
     plan_p = sub.add_parser("plan-check")
     plan_p.add_argument("plan", help="docs/superpowers/plans/<doc>.md with a ```json front block")
-    index_p = sub.add_parser("index")
-    index_p.add_argument("--no-cli", action="store_true")
     doctor_p = sub.add_parser("doctor")
     doctor_p.add_argument("--json", action="store_true")
     mutate_p = sub.add_parser("mutate")
@@ -611,7 +602,7 @@ def main(argv: list[str] | None = None) -> int:
 
         return run_component(root, args.name)
     if args.command == "orient":
-        from repo_orientation import orientation, render_orientation
+        from fs_orient import orientation, render_orientation
 
         payload = orientation(root, component=args.component)
         print(json.dumps(payload, sort_keys=True) if args.json else render_orientation(payload))
@@ -627,23 +618,12 @@ def main(argv: list[str] | None = None) -> int:
         write_baseline(root)
         print(f"harness baseline rewritten at {BASELINE_FILE}; commit it for review.")
         return 0
-    if args.command == "brief":
-        from harness_awareness import build_brief
-
-        print(build_brief(root))
-        return 0
     if args.command == "plan-check":
         from harness_awareness import plan_check
 
         ok, message = plan_check(Path(args.plan))
         print(message, file=sys.stdout if ok else sys.stderr)
         return 0 if ok else 1
-    if args.command == "index":
-        from harness_awareness import write_index
-
-        path = write_index(root, cli=not args.no_cli)
-        print(f"repo index written to {path.relative_to(root)}")
-        return 0
     if args.command == "doctor":
         code, report = doctor(root)
         if args.json:

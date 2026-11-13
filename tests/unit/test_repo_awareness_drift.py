@@ -12,7 +12,7 @@ from pathlib import Path
 
 import harness_awareness
 import pytest
-from repo_orientation import orientation
+from fs_orient import orientation
 
 from tests.unit._harness_support import REPO_ROOT as ROOT
 
