@@ -210,32 +210,6 @@ class TestGatePreflight(unittest.TestCase):
         self.assertEqual(args.command, "preflight")
         self.assertTrue(args.json)
 
-    def test_atlas_freshness_reuses_component_check_without_uv(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            seen: dict[str, Any] = {}
-
-            def runner(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
-                seen["command"] = command
-                seen["cwd"] = kwargs["cwd"]
-                seen["timeout"] = kwargs["timeout"]
-                return subprocess.CompletedProcess(command, 1, "", "stale generated atlas output")
-
-            result = gate_preflight.atlas_freshness(
-                root,
-                python_executable="/python312",
-                python_version=(3, 12),
-                runner=runner,
-            )
-            command = seen["command"]
-            self.assertEqual(result["status"], "blocked")
-            self.assertEqual(result["mode"], "executed")
-            self.assertEqual(command[0:2], ["/python312", "-B"])
-            self.assertNotIn("uv", command)
-            self.assertTrue(command[-1] == "--check")
-            self.assertEqual(seen["timeout"], 120)
-            self.assertEqual(result["issue_type"], "generated_drift")
-
     def test_explicit_valid_base_reports_exact_changed_targets(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = _synthetic_repo(Path(temporary) / "repo")
@@ -398,60 +372,11 @@ class TestGatePreflight(unittest.TestCase):
             self.assertEqual(result["issue_type"], "freshness_scope_unknown")
             self.assertEqual(result["missing_steps"], ["SPA freshness"])
 
-    def test_actual_atlas_staleness_is_generated_drift_not_index_setup(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = _synthetic_repo(Path(temporary) / "repo")
-
-            def stale_runner(
-                command: list[str], **kwargs: object
-            ) -> subprocess.CompletedProcess[str]:
-                return subprocess.CompletedProcess(command, 1, "", "stale generated atlas output")
-
-            alignment = gate_preflight.freshness_index_alignment(root)
-            stale = gate_preflight.atlas_freshness(
-                root,
-                python_executable="/python312",
-                python_version=(3, 12),
-                runner=stale_runner,
-            )
-            self.assertEqual(alignment["status"], "passed")
-            self.assertEqual(stale["status"], "blocked")
-            self.assertEqual(stale["issue_type"], "generated_drift")
-            self.assertNotEqual(stale["issue_type"], alignment.get("issue_type"))
-
-    def test_atlas_missing_interpreter_is_unverified(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-
-            def missing_runner(
-                command: list[str], **kwargs: object
-            ) -> subprocess.CompletedProcess[str]:
-                raise FileNotFoundError(command[0])
-
-            result = gate_preflight.atlas_freshness(
-                root,
-                python_executable="/missing/python312",
-                python_version=(3, 12),
-                runner=missing_runner,
-            )
-            self.assertEqual(result["status"], "unverified")
-            self.assertEqual(result["mode"], "executed")
-
     def test_preflight_reports_scope_without_claiming_mypy_passed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = _synthetic_repo(Path(temporary) / "repo")
             with (
                 patch.object(gate, "lint_harness", return_value=[]),
-                patch.object(
-                    gate_preflight,
-                    "atlas_freshness",
-                    return_value={
-                        "name": "atlas_freshness",
-                        "mode": "executed",
-                        "status": "passed",
-                        "detail": "fresh",
-                    },
-                ),
                 patch("shutil.which", return_value="/usr/bin/uv"),
                 patch.object(gate_preflight, "python_312_available", return_value=True),
             ):
@@ -488,16 +413,6 @@ class TestGatePreflight(unittest.TestCase):
             with (
                 patch.dict(os.environ),
                 patch.object(gate, "lint_harness", return_value=[]),
-                patch.object(
-                    gate_preflight,
-                    "atlas_freshness",
-                    return_value={
-                        "name": "atlas_freshness",
-                        "mode": "executed",
-                        "status": "passed",
-                        "detail": "fresh",
-                    },
-                ),
                 patch("shutil.which", return_value="/usr/bin/uv"),
                 patch.object(gate_preflight, "python_312_available", return_value=True),
             ):
@@ -529,11 +444,6 @@ class TestGatePreflight(unittest.TestCase):
             )
             with (
                 patch.object(gate, "lint_harness", return_value=[]),
-                patch.object(
-                    gate_preflight,
-                    "atlas_freshness",
-                    return_value={"name": "atlas_freshness", "status": "passed", "detail": "fresh"},
-                ),
                 patch("shutil.which", return_value="/usr/bin/uv"),
                 patch.object(gate_preflight, "python_312_available", return_value=True),
             ):
@@ -555,16 +465,6 @@ class TestGatePreflight(unittest.TestCase):
             root = Path(temporary) / "missing"
             with (
                 patch.object(gate, "lint_harness", return_value=["baseline missing"]),
-                patch.object(
-                    gate_preflight,
-                    "atlas_freshness",
-                    return_value={
-                        "name": "atlas_freshness",
-                        "mode": "executed",
-                        "status": "unverified",
-                        "detail": "Python unavailable",
-                    },
-                ),
                 patch("shutil.which", return_value=None),
                 patch.object(gate_preflight, "python_312_available", return_value=False),
             ):
@@ -573,7 +473,6 @@ class TestGatePreflight(unittest.TestCase):
             self.assertIn("uv", report["blockers"])
             self.assertIn("candidate_mypy", report["blockers"])
             self.assertIn("frontend_tools", report["blockers"])
-            self.assertIn("atlas_freshness", report["blockers"])
             self.assertIsNone(report["resources"]["disk_free_bytes"])
             parsed = json.loads(json.dumps(report))
             self.assertEqual(parsed["candidate"]["root"], str(root.resolve()))

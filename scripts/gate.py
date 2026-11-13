@@ -558,7 +558,7 @@ def build_parser() -> argparse.ArgumentParser:
     preflight_p.add_argument("--json", action="store_true")
     component_p = sub.add_parser("component", help="one CI job's steps, as CI runs them")
     component_p.add_argument(
-        "name", choices=("backend", "frontend", "literature", "qlib", "atlas", "eval")
+        "name", choices=("backend", "frontend", "literature", "qlib", "eval")
     )
     orient_p = sub.add_parser("orient")
     orient_p.add_argument("--component")

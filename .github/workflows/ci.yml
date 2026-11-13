@@ -114,19 +114,6 @@ jobs:
       - name: Shared literature gate
         run: uv run python scripts/gate.py component literature
 
-  atlas:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6.0.3
-      - uses: astral-sh/setup-uv@v8.2.0
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - run: uv sync --locked
-      - name: Shared Atlas gate
-        run: uv run python scripts/gate.py component atlas
-
   eval:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -144,7 +131,7 @@ jobs:
     # The one check branch protection requires. Add every new job to `needs`; then
     # jobs can be added, removed or renamed without touching repository settings.
     if: always()
-    needs: [check, harness, frontend, qlib-worker, literature-worker, atlas, eval]
+    needs: [check, harness, frontend, qlib-worker, literature-worker, eval]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
