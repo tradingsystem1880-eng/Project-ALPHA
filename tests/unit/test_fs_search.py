@@ -81,6 +81,8 @@ def test_kind_filter_and_query_bounds(docs_repo: Path) -> None:
         ("docs/context/feature-readiness-checklist-2026-10-27.md", "feature", "live"),
         (".claude/rules/docs.md", "reference", "live"),
         ("CONTEXT.md", "project", "live"),
+        ("STATUS.md", "project", "live"),
+        ("docs/archive/2026-11-context-maps/software-team.md", "history", "archived"),
         ("packages/alpha-data/CONTEXT.md", "project", "live"),
         ("apps/alpha-web/CONTEXT.md", "project", "live"),
         ("tests/CONTEXT.md", "project", "live"),

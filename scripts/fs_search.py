@@ -21,6 +21,7 @@ _ROOT_FILES = {
     "AGENTS.md",
     "CLAUDE.md",
     "CONTEXT.md",
+    "STATUS.md",
     "docs/ARCHITECTURE.md",
     "docs/BUILD-STATUS.md",
 }
