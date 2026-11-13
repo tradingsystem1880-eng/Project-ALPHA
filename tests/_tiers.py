@@ -6,7 +6,7 @@ serving surfaces, vendor wire parsers, rendering or the harness itself, or when 
 processes and lifecycles (native fixtures, daily rules, leases, supervisors) or takes about ten
 seconds or more as a file (``SLOW_FILES``, measured on the Linux dev box). Everything else (data
 PIT, backtest, validation, strategies, patterns, research statistics, bias guards, oracles,
-acceptance seeds) stays fast. The classifier defaults to fast and opts out by directory-scoped
+acceptance tests) stays fast. The classifier defaults to fast and opts out by directory-scoped
 filename prefix or exact path. ``tests/conftest.py`` applies the marker.
 """
 
