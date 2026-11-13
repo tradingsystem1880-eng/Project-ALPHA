@@ -11,7 +11,7 @@ Every `alpha` command, generated from the CLI's own command tree (the catalogue 
 `alpha info commands --all --json` plus each command's help text). Do not edit by hand;
 run `uv run python scripts/commands_reference.py`. Full options: `alpha <group> <command> --help`.
 
-236 commands in 26 groups. Options marked (required) are
+234 commands in 25 groups. Options marked (required) are
 mandatory; `<ARG>` is a positional argument.
 
 ## alpha assistant
@@ -243,13 +243,6 @@ Explicit, receipted provider readiness checks.
 
 - `alpha provider check <PROVIDER_ID>` — Run one bounded check. Options: `--json`
 
-## alpha quantpad-data
-
-Archive exact QuantPad research data on pinned bulk storage.
-
-- `alpha quantpad-data archive <ENDPOINT> <SYMBOL>` — Archive one explicit provider response; it remains research-only. Options: `--start`, `--end`, +9 more
-- `alpha quantpad-data verify <MANIFEST_ID>` — Re-hash one internal manifest and its external provider bytes. Options: `--json`
-
 ## alpha report
 
 - `alpha report <RUN_ID>` — Print the stored result for RUN_ID (any run type: gauntlet, backtest, portfolio, etc.). Options: `--json`, +4 more
@@ -268,7 +261,7 @@ Governed research cases, contracts, sources, and bounded runs.
 - `alpha research context show <PACKET_ID>` — Return one recorded packet byte-identically. Options: `--json`
 - `alpha research data audit <PROJECT_ID> <REF_ID>` — Run a bounded descriptive audit and record it against the dataset… Options: `--json`
 - `alpha research data list` — List registered research datasets with their latest audit. Options: `--symbol`, `--limit`, `--offset`, `--json`
-- `alpha research data register <SYMBOL>` — Register a research dataset against its exact receipt/provenance bytes. Options: `--kind (required)`, +7 more
+- `alpha research data register <SYMBOL>` — Register a research dataset against its exact receipt/provenance bytes. Options: `--kind (required)`, +6 more
 - `alpha research data register-crypto <SNAPSHOT_ID>` — Register an eligible CryptoSnapshotV1 after re-verifying every… Options: `--symbol (required)`, +2 more
 - `alpha research decide <PROJECT_ID>` — Record the owner-only research outcome/disposition and close the case. Options: `--outcome (required)`, +4 more
 - `alpha research decision-view <PROJECT_ID>` — Assemble the owner decision view: checklist, full scorecard, packet, an… Options: `--json`

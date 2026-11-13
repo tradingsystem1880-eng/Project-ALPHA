@@ -4,14 +4,14 @@
 
 ## Scope
 
-`apps/alpha-cli/src/alpha_cli/` has 174 top-level modules (84,548 lines) and one subpackage
-(`figures/`, 3 modules). `main.py` registers 26 sub-apps by module-path strings
+`apps/alpha-cli/src/alpha_cli/` has 172 top-level modules (84,205 lines, 2026-11-14) and one subpackage
+(`figures/`, 3 modules). `main.py` registers 25 sub-apps by module-path strings
 (`("crypto-data", "alpha_cli.crypto_data_cmds", ...)`); `-m` entry points include
 `alpha_cli.main`, `alpha_cli.comparison_acquisition_worker` and `alpha_cli.native_qlib_pipeline`.
 
 ## Why
 
-A flat package of 174 modules has no visible structure; ownership and layering inside the CLI are
+A flat package of 172 modules has no visible structure; ownership and layering inside the CLI are
 implicit.
 
 ## Invariants at risk

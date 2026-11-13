@@ -67,7 +67,7 @@ work may be open.
 | [2026-11-08-bound-http-retained-resume](../work/2026-11-08-bound-http-retained-resume/02-plan.md) | Versioned accounted retained completed-window resume | Blocked | 2026-11 |
 | [2026-11-08-complete-http-response-evidence](../work/2026-11-08-complete-http-response-evidence/02-plan.md) | Strict complete-response evidence before replay | Blocked | 2026-11 |
 
-## Backlog (17)
+## Backlog (16)
 
 | Item | Status | Rough size |
 | --- | --- | --- |
@@ -85,7 +85,6 @@ work may be open.
 | [Offline price import from a local file](backlog/offline-data-import.md) | Scoped | M |
 | [Options expression research (W16)](backlog/options-research.md) | Scoped | L |
 | [Full Qlib model zoo and fold-by-fold counterfactual retraining (W11/W12)](backlog/qlib-model-zoo-and-fold-retraining.md) | Scoped | XL |
-| [Remove the remaining QuantPad code](backlog/quantpad-code-removal.md) | Scoped | S |
 | [RD-Agent autonomous native research and restart continuation (W08/W13, T07)](backlog/rdagent-autonomous-research.md) | Scoped | XL |
 | [Make the weekly mutation sweep pass on main](backlog/weekly-mutation-sweep.md) | Scoped | S |
 

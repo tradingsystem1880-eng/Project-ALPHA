@@ -110,13 +110,12 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Offline price import from a local file — medium (M)
 - Options expression research (W16) — large (L)
 - RD-Agent autonomous native research and restart continuation (W08/W13, T07) — very large (XL)
-- Remove the remaining QuantPad code — small (S)
 
 ## Housekeeping
 
 - Live plans: 41
 - Archived plans: 115
-- Backlog items: 17
+- Backlog items: 16
 - Staged refactors: 7
 
 ## Where things are
