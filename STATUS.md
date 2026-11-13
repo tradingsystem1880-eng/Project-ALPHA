@@ -11,7 +11,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
   - Not counted: 3 blocked, 1 planned, not started.
   - Allowed for now: 41. This number only goes down, until it reaches 3.
 - **Known defects:** 0.
-- **Decisions waiting for you:** 22.
+- **Decisions waiting for you:** 18.
 
 "Working" means the workflow was run from start to finish through the installed program
 on made-up (synthetic) data.
@@ -38,9 +38,9 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Machine-learning experiments with Qlib** — proved only with a stand-in worker. Needs: the Qlib worker setup (not installed on this computer).
 - **Corrected Alpha158 price features** — no ML run with version 2; final review pending. Needs: the Qlib worker setup (not installed on this computer).
 - **Qlib model refit evidence (W11)** — blocked on missing statistics modules. Needs: the Qlib worker setup (not installed on this computer); reviewed statistics modules that do not exist yet.
-- **AI stock research loop (RD-Agent, W02)** — made-up data only; restart after a crash not solved. Needs: the RD-Agent setup, which no machine has yet.
-- **"Native job result" screen (W04, W18)** — empty until the AI stock research loop produces a job. Needs: the RD-Agent setup, for its browser test.
-- **AI-run daily trading-rule study (Packet 3, W08)** — only the report is proven; the study itself needs RD-Agent. Needs: the RD-Agent setup, which no machine has yet; a permanent place to host the runs.
+- **AI stock research loop (RD-Agent, W02)** — RD-Agent's general loop now runs here end to end with stand-in steps on made-up data, but the stock loop itself cannot run yet (no installable runtime; its smoke check skips), no alpha command starts a run, and restart after a crash is not solved. Needs: a pinned runtime for RD-Agent's full stock loop (ALPHA_STOCK_PYTHON; no lock in the repository); an AI model connection for RD-Agent. More: [docs/roadmap/rd-agent-in-alpha.md](docs/roadmap/rd-agent-in-alpha.md).
+- **"Native job result" screen (W04, W18)** — the screen and its API answer here but say unavailable until a stock job exists; its smoke check and browser lane skip without the stock runtime. Needs: a finished stock RD-Agent job, which needs the stock runtime (ALPHA_STOCK_PYTHON). More: [docs/roadmap/rd-agent-in-alpha.md](docs/roadmap/rd-agent-in-alpha.md).
+- **AI-run daily trading-rule study (Packet 3, W08)** — RD-Agent's loop runs the rule and its costed backtest in-process on made-up bars; the full daily study fails here without its Docker image and has no end-to-end smoke check. Needs: the qualified daily Docker image (not on this machine); a permanent place to host the runs (retained storage with a 100 GB reserve); real Binance daily bars admitted into that storage. More: [docs/roadmap/rd-agent-in-alpha.md](docs/roadmap/rd-agent-in-alpha.md).
 - **Running ALPHA on your Mac with real data providers** — one final review and a run on your Mac. Needs: your Mac; access to a real data provider (blocked since 31 August).
 
 Tested piece by piece inside the test suite, but not yet run from start to finish through the installed program:
@@ -104,12 +104,8 @@ The full triage sheet, with what each item does and why: [docs/roadmap/triage-20
 **Recommended: Shelve (keep the code, put it aside)**
 
 - Card 2: Download bookkeeping: receipts and quota
-- Card 7: AI stock research loop (RD-Agent, W02) (your call)
-- Card 8: "Native job result" screen (W04, W18)
-- Card 9: AI-run daily trading-rule study (Packet 3, W08) (your call)
 - Card 10: Qlib model refit evidence (W11)
 - Card B: Bybit funding-rate download
-- Card C: The RD-Agent runtime as a whole (covers cards 7, 8 and 9) (your call)
 - Card F: Qlib and Nautilus demonstration views
 
 **Recommended: Delete**

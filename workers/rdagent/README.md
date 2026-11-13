@@ -44,6 +44,20 @@ the public tests skip and confer no native qualification. The isolated `uv.lock`
 import dependency subset, **not** upstream's full application dependency environment. Root
 dependencies and lock are unchanged.
 
+## Install on a development machine
+
+`bash scripts/setup_rdagent.sh` (idempotent; about 1.1 GB, under a minute with a warm uv cache)
+fetches the pinned commit into `.alpha/state/runtime/rdagent-pristine` when absent, derives
+`.alpha/state/runtime/rdagent-source`, verifies the source-tree digest, syncs `.venv` and builds
+and validates `.venv-rule-qualified` and `.venv-economics-qualified`. It is the RD-Agent part of
+`ALPHA_CLOUD_FOUNDATION=1 ALPHA_CLOUD_RDAGENT=1 scripts/cloud_setup.sh` without Git hooks, npm,
+browser download or fontconfig. All of it is gitignored (`.alpha/state/`, `.venv-*/`). It prints
+`export ALPHA_RDAGENT_SOURCE=…`, which runs the conformance, W04, rule and daily tests. The daily
+tests also need the qualified Docker image below. `ALPHA_STOCK_PYTHON` (stock `RDLoop`) is NOT
+provisioned: that runtime needs upstream packages (`docker`, `litellm`, `openai`, `tiktoken`, …)
+that no committed lock pins. Smoke check: `uv run python scripts/run_owned_test.py -- uv run pytest
+-m smoke tests/smoke/test_rdagent_smoke.py`.
+
 ## Contracts exercised
 
 - `direct_exp_gen` returns native `Hypothesis` and `Experiment` under `propose`/`exp_gen`.
@@ -133,9 +147,10 @@ uv pip install --python workers/rdagent/.venv-economics-qualified/bin/python --r
 .venv/bin/python -B workers/rdagent/install_rule_profile.py --economics
 ```
 
-`.gitignore` covers only `.venv/`, so list `/workers/rdagent/.venv-rule-qualified/` and
-`/workers/rdagent/.venv-economics-qualified/` in the clone-local `.git/info/exclude`. Otherwise the
-generated environments are hashed into the gate tree and scanned by ruff and semgrep as source.
+`.gitignore` now covers both through its `.venv-*/` entry (checked 2026-11-14 with
+`git check-ignore`); `cloud_setup.sh` still also lists `/workers/rdagent/.venv-rule-qualified/` and
+`/workers/rdagent/.venv-economics-qualified/` in the clone-local `.git/info/exclude`. Unignored, the
+generated environments would be hashed into the gate tree and scanned by ruff and semgrep as source.
 These are generated-environment excludes, not test or coverage exclusions.
 
 Do not run these commands over preserved environments. The installer copies complete noncache
