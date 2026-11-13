@@ -10,7 +10,6 @@
 the owner's delegated triage ([card E](../roadmap/triage-2026-11.md#e-duplicate-copy-of-the-literature-download-code)).
 The decision is unchanged.
 
-
 ## Context
 
 The research-first redesign requires papers and external evidence to be structured research

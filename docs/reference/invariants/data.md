@@ -139,7 +139,8 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
   earlier than requested. It stores nothing.
 - QuantPad is no longer a provider: its adapter and archive code were removed on 2026-11-14
   ([ADR-0018 note](../../adr/0018-quantpad-external-research-data-boundary.md#owner-supersession--2026-11-14)).
-  Datasets registered earlier from a QuantPad receipt stay readable and research-only.
+  Datasets registered earlier from a QuantPad receipt stay readable and research-only, and the web app
+  still files old QuantPad runs under equities (`alpha_web._runs._EQUITY_SOURCES`).
 
 ## Crypto storage
 

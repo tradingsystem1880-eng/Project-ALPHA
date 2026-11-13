@@ -15,7 +15,6 @@ receipt (dataset kind `quantpad_receipt`) stay readable; no new ones can be regi
 authority and the IBKR Paper boundary are unchanged. Nothing here changes credentials, cancels a
 subscription or authorises acquisition.
 
-
 ## Context
 
 The owner has an active QuantPad subscription whose external-data interfaces expose broad

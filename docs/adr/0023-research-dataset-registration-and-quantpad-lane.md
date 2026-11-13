@@ -14,7 +14,6 @@ the QuantPad archive and adapter code are gone. Rows already registered with dat
 kind are unchanged). General research dataset registration, provenance and qualification
 (snapshot and store-slice kinds) remain as decided here.
 
-
 ## Context
 
 Research-first work needs to know what data exists, whether it is trustworthy, and which exact

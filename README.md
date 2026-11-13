@@ -367,7 +367,7 @@ rule, use the system configuration unchanged.
   Synthetic checks do not establish complete history or live provider access. Production
   acquisition retains its command surface and full-page refusal. The download bookkeeping
   modules (receipts and quota) are shelved (2026-11-14, triage card 2): not wired in, kept for a
-  future download-budget policy. QuantPad's command, adapter and archive code were removed on
+  future download-budget policy and durable acquisition journal. QuantPad's command, adapter and archive code were removed on
   2026-11-14 (owner decision); research datasets already registered from QuantPad stay readable.
 - **Use and licensing:** Private, local, single-owner use is the approved scope. The repository has
   no declared root project license; dependency licenses do not license ALPHA's original code.

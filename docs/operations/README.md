@@ -13,8 +13,8 @@ credentials, account identifiers, Docker secrets, generated journals, or copied 
 
 The supplied Tiingo token, CoinGecko Demo key, and IBKR Paper account identifier are stored in the
 macOS keychain services `project-alpha-tiingo`, `project-alpha-coingecko`, and
-`project-alpha-ibkr-paper-account` (the former QuantPad item, `project-alpha-quantpad`, is unused). Repository files contain only
-those service names. The local `.env` is git-ignored and mode `0600`; it must not receive vendor or
+`project-alpha-ibkr-paper-account` (the former QuantPad item, `project-alpha-quantpad`, is unused).
+Repository files contain only those service names. The local `.env` is git-ignored and mode `0600`; it must not receive vendor or
 broker secrets.
 
 For CoinGecko, run exactly one bounded authenticated readiness check with:
