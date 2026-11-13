@@ -1,11 +1,13 @@
-"""Alpha/platform test tiers as a pure function of the test path (Phase A S2).
+"""Which tests are in the fast local tier, as a pure function of the test path.
 
-The fast gate runs ``pytest -m "not platform"``. A test is *platform* when it exercises the
-control plane, the serving surfaces, vendor wire parsers, rendering, or the harness itself;
-everything else (data PIT, backtest, validation, strategies, patterns, research statistics,
-bias guards, oracles, holdout) is the *alpha* tier and stays in the fast selection. The
-classifier defaults to alpha and opts out by directory-scoped filename prefix, so a new test is
-in the fast tier unless it is explicitly platform-shaped. ``tests/conftest.py`` applies the marker.
+``gate.py check --all`` runs ``pytest -m "not platform"``; CI runs every test regardless of this
+marker. A test is *platform* (outside the fast tier) when it exercises the control plane, the
+serving surfaces, vendor wire parsers, rendering or the harness itself, or when it drives real
+processes and lifecycles (native fixtures, daily rules, leases, supervisors) or takes about ten
+seconds or more as a file (``SLOW_FILES``, measured on the Linux dev box). Everything else (data
+PIT, backtest, validation, strategies, patterns, research statistics, bias guards, oracles,
+acceptance seeds) stays fast. The classifier defaults to fast and opts out by directory-scoped
+filename prefix or exact path. ``tests/conftest.py`` applies the marker.
 """
 
 from __future__ import annotations
@@ -15,23 +17,32 @@ from pathlib import PurePosixPath
 PLATFORM_PREFIXES: dict[str, tuple[str, ...]] = {
     "tests/unit": (
         "test_atlas_",
+        "test_ci_backend_bootstrap",
         "test_claude_",
+        "test_cloud_setup",
         "test_control_",
         "test_crypto_",
-        "test_daily_scheduler",
+        "test_daily_",
         "test_documentation_truth",
         "test_durable_job",
         "test_figure",
         "test_forecast_",
+        "test_frontend_browser_lanes",
+        "test_gate_",
         "test_generic_command",
+        "test_git_guard",
+        "test_harness_repo_fixture",
         "test_ibkr_",
         "test_job_capacity",
         "test_keychain_",
         "test_literature_",
         "test_mcp",
         "test_ml_",
+        "test_mutation_",
+        "test_native_",
         "test_owner_",
         "test_paper_",
+        "test_playwright_",
         "test_project_",
         "test_provider_",
         "test_public_seams",
@@ -49,12 +60,17 @@ PLATFORM_PREFIXES: dict[str, tuple[str, ...]] = {
     ),
     "tests/unit/study": ("test_",),
     "tests/integration": (
+        "test_accounted_backfill_process",
+        "test_accounted_http_process",
+        "test_bound_http_replay_process",
         "test_chart_cmds",
         "test_cli_rules",
         "test_cli_scan",
         "test_cli_walking_skeleton",
         "test_control_cli",
         "test_crypto_",
+        "test_daily_",
+        "test_figure_determinism",
         "test_figures_cli",
         "test_forecast_",
         "test_info_catalog",
@@ -73,6 +89,16 @@ PLATFORM_PREFIXES: dict[str, tuple[str, ...]] = {
         "test_web_",
     ),
 }
+
+# Files of about ten seconds or more that no prefix above covers (per-file sums, 2026-11-13).
+SLOW_FILES: frozenset[str] = frozenset(
+    {
+        "tests/integration/test_monte_carlo_cli.py",
+        "tests/integration/test_validate_determinism.py",
+        "tests/unit/test_cli_entry_lazy_groups.py",
+        "tests/unit/test_investigation_lifecycle.py",
+    }
+)
 
 # Statistical modules that share a platform prefix but belong to the alpha tier.
 ALPHA_ALLOWLIST: frozenset[str] = frozenset(
@@ -100,6 +126,8 @@ def classify_platform(path: str) -> bool:
     rel = posix.as_posix()
     if rel in ALPHA_ALLOWLIST:
         return False
+    if rel in SLOW_FILES:
+        return True
     parent = posix.parent.as_posix()
     prefixes = PLATFORM_PREFIXES.get(parent)
     if prefixes is None:

@@ -1,8 +1,7 @@
-"""Phase A S2: the alpha/platform test tiers are a pure function of the test path.
+"""The fast local tier is a pure function of the test path.
 
-The fast gate runs ``-m "not platform"``; ``tests/conftest.py`` applies the marker from
-``classify_platform``. The classifier defaults to the alpha tier and opts OUT by directory-scoped
-filename prefix, so a new test lands in the fast tier unless it is platform-shaped.
+``gate.py check --all`` runs ``-m "not platform"``; ``tests/conftest.py`` applies the marker from
+``classify_platform``. CI runs every test whatever its tier.
 """
 
 from __future__ import annotations
@@ -32,6 +31,17 @@ ROOT = Path(__file__).resolve().parents[2]
         "tests/unit/test_forecast_kronos.py",
         "tests/unit/test_figure_catalog.py",
         "tests/unit/test_quantpad_adapter.py",
+        # real-process and lifecycle families, and files of about ten seconds or more
+        "tests/unit/test_native_fixture_lifecycle.py",
+        "tests/unit/test_daily_rule_recovery_contracts.py",
+        "tests/unit/test_durable_job_lease.py",
+        "tests/unit/test_gate_process_supervisor.py",
+        "tests/unit/test_git_guard.py",
+        "tests/integration/test_daily_rule_report.py",
+        "tests/integration/test_figure_determinism.py",
+        "tests/integration/test_accounted_backfill_process.py",
+        "tests/integration/test_validate_determinism.py",
+        "tests/unit/test_cli_entry_lazy_groups.py",
     ],
 )
 def test_platform_shaped_paths_are_platform(path: str) -> None:
@@ -51,13 +61,28 @@ def test_platform_shaped_paths_are_platform(path: str) -> None:
         "tests/unit/test_pattern_double_bottom.py",
         "tests/unit/test_research_event_study.py",
         "tests/integration/test_backtest_cli.py",
-        "tests/integration/test_validate_determinism.py",
-        # prefixes are scoped per directory: a figure integration test is alpha-relevant
-        "tests/integration/test_figure_determinism.py",
+        # prefixes are scoped per directory: a non-process sibling stays fast
+        "tests/integration/test_accounted_backfill.py",
+        "tests/unit/test_investigation_lifecycle_unit.py",
     ],
 )
 def test_alpha_paths_stay_in_the_fast_tier(path: str) -> None:
     assert classify_platform(path) is False
+
+
+def test_slow_files_exist() -> None:
+    from tests._tiers import SLOW_FILES
+
+    assert all((ROOT / rel).is_file() for rel in SLOW_FILES)
+
+
+def test_ci_does_not_select_by_tier() -> None:
+    """Moving a test out of the fast tier must never stop CI from running it."""
+    import gate_components
+
+    for name in gate_components.COMPONENTS:
+        for _, _, command in gate_components.component_steps(ROOT, name):
+            assert not any("platform" in arg for arg in command), (name, command)
 
 
 def test_bias_guards_oracles_and_holdout_are_never_platform() -> None:
