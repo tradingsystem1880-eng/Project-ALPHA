@@ -1,0 +1,61 @@
+---
+paths:
+  - "packages/alpha-data/**"
+---
+# alpha_data rules
+
+Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
+### `alpha_data` (`packages/alpha-data/src/alpha_data/`) — ingestion, PIT storage, snapshots.
+| Module | Responsibility | Key public symbols |
+|---|---|---|
+| `store.py` | Raw unadjusted Parquet store + fail-closed promotion markers and v1/v2 per-symbol provenance | `ParquetStore(root)`: bars/actions methods + provenance/promotion methods |
+| `pit.py` | **Look-ahead firewall** (frame-level) | `PointInTimeReader.as_of` (split-adjusted, future-excluded), `.dividends_as_of` |
+| `universe.py` + `store.py` universe seam (Phase B, 2026-09-10) | Point-in-time universe membership: `alpha_core.UniverseMembership` intervals (`effective_from` inclusive, `effective_to` exclusive, optional `delisting_return`), stored wholesale as `universe/<name>.json`; the only sanctioned read is `alpha_core.members_as_of(memberships, when)` (keeps later-removed names, hides future additions; guarded by `tests/bias_guards/test_universe_survivorship.py` with a survivors-only leaky twin) | `parse_universe_csv`, `ParquetStore.write_universe/read_universe/list_universes` |
+| `source.py` | Typed PIT `DataSource` seam | `PointInTimeSource.as_of` → `list[Bar]`, `.dividends_as_of` |
+| `corporate.py` | Two-clock split/div math | `known_actions`, `cash_dividends`, `split_factor` |
+| `snapshot.py` | Immutable hashed snapshots + manifest; copies/hashes legacy or v2 provenance sidecars and rejects source relabelling | `create_snapshot`, `verify_snapshot` |
+| `ingest.py` | Persist a `FetchResult` | `store_fetch_result` |
+| `adapters/base.py` | Adapter seam + versioned source identity/receipt | `DatasetIdentity`, `FetchReceipt`, `FetchResult`, `DataAdapter` protocol |
+| `adapters/tiingo_adapter.py` | Authoritative stock/ETF EOD: raw OHLCV, explicit split/dividend actions, adjusted-field consistency check, redacted receipt; transport failures expose only exception type with suppressed context, while bounded reads retain their byte ceiling | `TiingoAdapter`, `parse_tiingo_eod` (pure) |
+| `pipeline.py` | Immutable receipt/candidate/quarantine, calendar/correction/cross-source quality gate, merged promotion backup/recovery | `stage_and_promote`, `promote_quarantined`, `rollback_interrupted_promotion` |
+| `adapters/yfinance_adapter.py` | Equities (splits+divs); reconstructs RAW prices from Yahoo's split-adjusted series, fail-loud discontinuity check | `YFinanceAdapter`, `parse_yfinance_history` (pure) |
+| `adapters/ccxt_adapter.py` | Crypto 1m/5m/1h/1d OHLCV (UTC; validated `coinbase|binance`; **paginated** past per-call caps; completed intervals only; venue-qualified provenance). The historical `fetch(date,date)` daily contract is preserved and delegates to the additive timeframe seam | `SUPPORTED_CCXT_EXCHANGES`, `CCXTAdapter.fetch`, `CCXTAdapter.fetch_timeframe`, `parse_ccxt_ohlcv` (pure) |
+| `adapters/ccxt_adapter.py` (`first_bar`) | A pair's earliest daily bar for the `alpha data first-bar` projection and the `data pull` pre-listing refusal: `load_markets` membership check, then a forward 300-bar window scan from 2009-01-03 (`since=0` is never sent — Coinbase answers it with the latest bars); fails loud on an unknown market, empty history, or a bar before the requested start; 1d only, downloads no history into the store | `CCXTAdapter.first_bar` |
+| `crypto/asset_master.py` | Point-in-time crypto identity resolution without ticker joins. Builtin reviewed native masters are label-frozen (ADR-0032): `reviewed-native-v1` (BTC, ETH; the default every existing caller keeps) and `reviewed-native-v2` (adds XRP `ripple`/`xrp`, SOL `solana`); digests pinned in `tests/fixtures/crypto/reviewed_native_asset_masters.json`; an unknown label fails loud, never falls back; `build_cross_provider_asset_master` seeds from v2 | `REVIEWED_NATIVE_V1`, `REVIEWED_NATIVE_V2`, `REVIEWED_NATIVE_LABELS`, `AssetMaster.with_reviewed_native_assets(label)`, `AssetMaster.resolve_native`, `build_cross_provider_asset_master` |
+| `adapters/stooq_adapter.py` | Comparison-only EOD OHLCV (FX/commodity/index/ETF; provider-adjusted, no actions). **Anti-bot gated:** browser-UA + SHA-256 PoW solve, then **fails loud** (`_csv_or_raise`) on Stooq's per-IP "Access denied"; never replaces authoritative Tiingo stock/ETF history | `StooqAdapter`, `parse_stooq_csv` (pure) |
+| `adapters/quantpad_adapter.py` + `quantpad_archive.py` | **Research-only** QuantPad boundary (ADR-0018/0023): current official REST contract, content-bound daily receipts, and exact-byte UUID-pinned external archives with internal manifests. Never in `data pull`/`_ADAPTERS`; archive bytes remain unqualified and `research_authority: false` | `QuantPadAdapter`, `QuantPadArchiveRequestV1`, `QuantPadArchiveStore` |
+| `crypto/contracts.py` | Additive family/venue/unit-aware crypto identities, case-bound event-capture scopes, receipts, qualification reports, capabilities, and ordered frozen snapshots; V1 daily contracts are untouched | `CryptoAssetIdentityV1`, `CryptoDatasetIdentityV1`, `CryptoAcquisitionScopeV1`, `CryptoRawReceiptV1`, `CryptoQualityReportV1`, `CryptoSnapshotV1`, `ProviderDatasetCapabilityV1` |
+| `crypto/storage.py` | Expansion-volume UUID/capacity/writability gate, bounded resumable staging, external-first atomic publication, internal-last logical manifests, integrity inventory, and safe cache cleanup | `CryptoBulkStore`, `Capacity`, `StagingHandle`, `macos_volume_uuid` |
+| `crypto/providers/binance.py` | Native Binance spot/USD-M/COIN-M active membership and archive identity, checksum-first exact HTTP Range resumption into checksum-keyed disposable cache, millisecond/microsecond kline parsing with all native fields retained, exact REST-tail overlap reconciliation, Unicode provider-symbol preservation, and causal prior-day liquidity membership | `fetch_binance_archive`, `parse_binance_exchange_info`, `parse_binance_klines`, `verify_archive_checksum`, `archive_url`, `reconcile_archive_tail`, `point_in_time_liquid_universe` |
+| `crypto/providers/bybit.py` | Closed credential-free Bybit V5 public requests plus complete spot/linear/inverse/option catalogs; funding, OI, holder-ratio, trade/mark/index/premium bars; recent derivative executions; exact order-book snapshots; hourly volatility; and option IV/Greek parsing. Option families require the truthful `option` market at CLI and UI boundaries; linear/inverse units, lifecycle clocks, execution IDs, crossed books, mark/index/premium discrepancy, and stale snapshots stay explicit | `fetch_bybit_public`, `parse_instruments`, `parse_funding_history`, `parse_open_interest`, `parse_long_short_ratio`, `parse_price_klines`, `parse_recent_trades`, `parse_orderbook_snapshot`, `price_bundle_diagnostics`, `parse_historical_volatility`, `parse_option_tickers` |
+| `crypto/providers/coingecko.py` · `crypto/providers/geckoterminal.py` | CoinGecko identity/reference and GeckoTerminal DEX parsing stay provider-native. `market_reference all` freezes each ordered 250-row CoinGecko page to the bounded terminal page; `asset_metadata all` is the exact contract catalog, while one explicitly requested CoinGecko ID creates a separate point-in-time detail artifact that excludes untrusted prose and links and can never satisfy asset-master catalog input. Every GeckoTerminal top-pool catalog freezes exactly five 20-row pages for the declared network. Empty, incomplete, duplicate, or over-100-page catalogs fail before qualification | `parse_market_universe`, `parse_asset_catalog`, `parse_asset_detail`, `parse_top_pools`, `parse_pool_ohlcv`, `parse_pool_trades` |
+| `crypto/providers/defillama.py` | One keyless DefiLlama module for five families. Chain TVL (`defi_tvl`, ADR-0036; ported from neurotrader888/TVLIndicator's data need, provenance `docs/governance/2026-09-12-neurotrader888-provenance.md`): one closed endpoint per chain, host-prefix and byte-capped fetch, fail-loud parser emitting `chain, observed_at, tvl_usd, available_at` with `available_at` = the next UTC day boundary; `crypto/features.py` adds `defi_tvl_residual_features` (day-joined TVL lagged one day, trailing log-log OLS prediction of close, residual over a simple-mean ATR) with a numpy OLS pinned equal to `alpha_patterns.vsa.rolling_ols_residual` because the data layer may not import patterns. Allowlisted public endpoints for protocol TVL, stablecoin supply, bounded current yield-pool catalog, and exact-pool yield history: catalog snapshots and historical observations are distinct; all include retrieval availability, remain provider-native USD reference data, and fail closed on malformed/empty payloads or invalid numeric values | `defillama_url`, `fetch_defillama`, `fetch_defillama_public`, `parse_chain_tvl`, `check_chain_tvl`, `parse_protocol_tvl`, `parse_stablecoin_supply`, `parse_yield_pools`, `parse_yield_history`, `ATTRIBUTION_NOTE`, `RETENTION_NOTE`; `features.defi_tvl_residual_features` |
+| `crypto/profiles.py` | Content-addressed `CryptoCoverageProfileV1` task membership derived point-in-time from exact qualified Bybit catalog/option-OI and Binance spot/USD-M/COIN-M membership manifests. It separates daily, hourly, five-minute, and native funding cadences; excludes dated/future contracts; caps the fast option tier at the top three aggregate-OI underlyings; and grants no execution authority | `CryptoCoverageProfileV1`, `CryptoCoverageTaskV1`, `active_binance_markets`, `build_default_coverage_tasks` |
+
+
+Archive visualization (ADR-0038): metadata inventory is discovery only. `verify_readable()` checks
+mount/UUID without a write probe; selected chart reads must call full manifest/raw-lineage
+verification, then validate dataset identity, units and completed-bar cutoff. Reconstructed archive
+history does not establish point-in-time research availability or admission.
+Keep every native interval, venue, market type, and quote currency as a separate immutable identity.
+Chart groups may join archive segments only for identical identity and verified identical boundary
+bars; report conflicting overlaps. A listed venue pair is not proof that historical bars are stored.
+
+Crypto archive retirement: `scripts/crypto_data_hygiene.py --report PATH` audits references;
+`--apply` repeats that audit under the snapshot/derived admission lock and appends hash-bound
+retirement receipts for unreferenced quarantines or the known DefiLlama v1 supply-unit error.
+Canonical manifests, raw lineage, payloads and historical verification remain intact. Active
+inventories and new explicit-ID admission exclude retired inputs; full storage audits include
+them. Warning data and referenced artifacts remain. Malformed receipts fail closed.
+
+`PointInTimeReader.as_of` normalizes named-zone cutoffs to UTC before comparing bar timestamps, preserving the
+inclusive instant across DST. This does not establish provider publication or revision availability.
+That bar-read path rejects naive cutoffs before reading data; host-local timezone supplies no offset.
+Opt-in Binance spot daily REST budgets span pages and HTTP attempts; strict mode refuses redirects.
+Body-byte accounting includes returned chunks and overflow probes. Unknown interrupted reads abort
+budget reuse. Socket/TLS traffic and hidden transport buffering are outside this accounting boundary.
+Typed PIT reads validate bars only after cutoff filtering. `PointInTimeSource.as_of` translates
+Pydantic bar-validation failures to chained `DataError` with symbol, timestamp and reason;
+invalid visible rows are never skipped or coerced. CLI callers retain their typed usage-error
+boundary and publish no run on malformed inputs. Future-invalid and in-window-invalid controls
+live in `tests/bias_guards/test_source_future_poison.py`.

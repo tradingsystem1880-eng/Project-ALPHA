@@ -2,11 +2,17 @@
 
 The file system (ADR-0040) follows the Interpretable Context Methodology adapted to a codebase:
 
+* Layer 0: ``CLAUDE.md`` (identity and the non-negotiable rules) and ``AGENTS.md`` (a pointer for
+  other agents) are small and send the reader to the root ``CONTEXT.md``.
 * Layer 1: the root ``CONTEXT.md`` routes every kind of task to a workspace.
 * Layer 2: every workspace (each project under ``packages/``, ``apps/``, ``workers/``, ``tools/``,
   plus ``scripts/``, ``tests/`` and ``docs/``) has a ``CONTEXT.md`` with the sections Purpose,
   Read first, How to change it, Outputs. Its Read first table names exact files and sections.
 * Layer 3: reference documents under ``docs/reference/``.
+* Loading: each workspace has a one-line ``CLAUDE.md`` that imports its ``CONTEXT.md``; Claude
+  Code loads a subdirectory's ``CLAUDE.md`` when it opens a file there. ``.claude/rules/*.md`` are
+  thin path-scoped pointers (an ``@`` import inside a path-scoped rule loads at launch, so the
+  rules link instead of importing).
 
 Every routing and reference document declares who owns it, which files it describes and the
 commit it was verified against (``scripts/fs.py stale`` uses these). The "always read" set of a
@@ -43,6 +49,14 @@ _OWNER = re.compile(r"^[a-z][a-z0-9 ,/&()-]{2,40}$")
 _LINK = re.compile(r"^\[[^\]]+\]\(([^)\s]+)\)$")
 _COMING = "(coming)"
 NONE_MARK = "—"
+IDENTITY = "CLAUDE.md"
+AGENT_POINTER = "AGENTS.md"
+IDENTITY_MAX_LINES = 80
+AGENT_POINTER_MAX_LINES = 12
+RULES_DIR = ".claude/rules"
+RULE_MAX_LINES = 12
+UNSCOPED_RULES = ("00-karpathy.md",)
+WORKSPACE_LOADER = "@CONTEXT.md\n"
 
 
 @dataclass(frozen=True)
@@ -433,3 +447,97 @@ def test_section_bytes_stops_at_the_next_heading_of_same_or_higher_level(tmp_pat
 )
 def test_owner_is_a_role_phrase(owner: str, ok: bool) -> None:
     assert bool(_OWNER.match(owner)) is ok
+
+
+# ---------------------------------------------------------------------------------------------
+# Layer 0: CLAUDE.md and AGENTS.md
+
+
+def _links(rel: str) -> list[str]:
+    return re.findall(r"\]\(([^)\s]+)\)", _text(rel))
+
+
+@pytest.mark.parametrize(
+    ("rel", "max_lines"), [(IDENTITY, IDENTITY_MAX_LINES), (AGENT_POINTER, AGENT_POINTER_MAX_LINES)]
+)
+def test_identity_files_are_small_and_their_links_resolve(rel: str, max_lines: int) -> None:
+    problems = _shape_problems(rel, max_lines) + broken_links(rel)
+    assert not problems, "\n".join(problems)
+
+
+@pytest.mark.parametrize("rel", [IDENTITY, AGENT_POINTER])
+def test_identity_files_send_the_reader_to_the_root_context(rel: str) -> None:
+    targets = {target.split("#", 1)[0] for target in _links(rel)}
+    assert CONTEXT in targets, f"{rel} must link to the root {CONTEXT} (the routing table)"
+
+
+def test_research_integrity_rules_stay_stated_in_their_home() -> None:
+    """The rules CLAUDE.md summarises must not silently disappear from their one home."""
+    home = "docs/reference/invariants/research-integrity.md"
+    text = _text(home)
+    sections = {github_slug(title) for _, _, title in headings(text)}
+    for slug in (
+        "point-in-time-reads",
+        "decide-at-close-fill-at-next-open",
+        "invalid-data-fails-loud",
+        "immutable-hash-bound-artefacts",
+        "deterministic-seeds-and-identity",
+        "research-before-strategy",
+        "owner-authority",
+        "no-live-capital",
+        "protected-and-hidden-tests",
+    ):
+        assert slug in sections, f"{home}: section #{slug} is gone; CLAUDE.md links to it"
+    for phrase in (
+        "as_of",
+        "future-poison",
+        "t+1",
+        "not proof of an edge",
+        "explicit local confirmation",
+    ):
+        assert phrase in text, f"{home}: the rule stated with {phrase!r} is gone"
+
+
+# ---------------------------------------------------------------------------------------------
+# Loading: workspace CLAUDE.md imports and thin rule pointers
+
+
+def test_every_workspace_loads_its_context_through_a_one_line_claude_md() -> None:
+    problems = []
+    for ws in workspaces():
+        loader = ROOT / ws / IDENTITY
+        if not loader.is_file() or loader.read_text(encoding="utf-8") != WORKSPACE_LOADER:
+            problems.append(f"{ws}/{IDENTITY} must contain exactly {WORKSPACE_LOADER!r}")
+    assert not problems, "\n".join(problems)
+
+
+def _rule_globs(text: str) -> list[str] | None:
+    if not text.startswith("---\n"):
+        return None
+    head = text.split("---\n", 2)[1]
+    return [m.group(1) for m in re.finditer(r'^\s*-\s*"([^"]+)"\s*$', head, re.M)]
+
+
+def rule_files() -> list[str]:
+    return sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / RULES_DIR).glob("*.md"))
+
+
+@pytest.mark.parametrize("rel", rule_files(), ids=lambda rel: Path(rel).name)
+def test_rule_files_are_thin_pointers_with_live_globs(rel: str) -> None:
+    text = _text(rel)
+    problems = _shape_problems(rel, RULE_MAX_LINES) + broken_links(rel)
+    globs = _rule_globs(text)
+    if Path(rel).name in UNSCOPED_RULES:
+        assert globs is None, f"{rel} is the always-loaded rule and has no paths: front matter"
+    else:
+        if not globs:
+            problems.append(f"{rel}: a scoped rule declares paths: globs")
+        problems += [
+            f"{rel}: glob {pattern!r} matches no tracked file"
+            for pattern in globs or []
+            if not fs_stale.tracked_matches(ROOT, pattern)
+        ]
+        targets = [target.split("#", 1)[0] for target in _links(rel)]
+        if not any(t.endswith(CONTEXT) or "/reference/invariants/" in t for t in targets):
+            problems.append(f"{rel}: must link to a workspace CONTEXT.md or an invariants file")
+    assert not problems, "\n".join(problems)

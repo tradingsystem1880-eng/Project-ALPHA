@@ -46,10 +46,8 @@ delivery states, the generated roadmap index, append-only records, and relative 
   link to its replacement.
 - Status is one of `Proposed`, `Accepted`, `Superseded`. Keep the Status/Date/Deciders header and the
   `Context`, `Decision` and `Consequences` sections, and cite precise `file:symbol` or test anchors.
-- Every ADR id must be mentioned in `CLAUDE.md` or a `.claude/rules/*.md` file (forms like `ADR-0013`,
-  `ADRs 0013-0016`). Enforced by `tests/unit/test_repo_awareness_drift.py` through
-  `scripts/harness_awareness.py::adr_drift`; mentions elsewhere do not count. `.claude/rules/docs.md`
-  keeps the full id list for this check.
+- Every ADR file is linked from the index table in `docs/adr/README.md`, its one listing. Enforced by
+  `tests/unit/test_repo_awareness_drift.py` through `scripts/harness_awareness.py::adr_drift`.
 
 ## Feature plans
 
