@@ -37,7 +37,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0029](0029-four-family-monte-carlo-validation.md) | Require four-family Monte Carlo path-risk validation | Accepted | 2026-08-12 |
 | [0030](0030-touch-id-owner-presence-for-research-actions.md) | Require fresh Touch ID for Workstation research authority | Partially superseded by 0038 | 2026-08-13 |
 | [0031](0031-provider-readiness-and-paper-acceptance-v2.md) | Separate provider checks, paper acceptance, and IBKR what-if previews | Accepted | 2026-08-13 |
-| [0032](0032-governed-crypto-data-house.md) | Govern crypto data by dataset family | Accepted | 2026-08-14 |
+| [0032](0032-governed-crypto-data-house.md) | Govern crypto data by dataset family | Accepted; storage reserve made owner-settable by 0043 | 2026-08-14 |
 | [0033](0033-governed-crypto-crowding-research-and-sandbox-basis.md) | Govern crypto crowding research separately from sandbox basis development | Accepted | 2026-08-15 |
 | [0034](0034-agent-operating-system-v2.md) | Agent operating system v2 — owner-token authorization, oracle test tiers, second-model review seam | Accepted; engineering ceremony superseded by 0037, local stamps by 0039, hidden suite by 0041 | 2026-08-19 |
 | [0035](0035-generic-study-composition-and-external-capability-adapters.md) | Govern generic study composition as a projection layer | Accepted | 2026-08-21 |
@@ -47,6 +47,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0039](0039-ci-is-the-merge-gate.md) | CI on the pull request is the merge gate; local commits need only a well-formed message | Accepted | 2026-11-13 |
 | [0040](0040-one-file-system-atlas-retired.md) | One file system; the Atlas graph, viewer and gate component are retired | Accepted | 2026-11-13 |
 | [0041](0041-no-hidden-test-suite.md) | No hidden test suite; the seed tests are visible acceptance tests | Accepted | 2026-11-13 |
+| [0043](0043-storage-reserve-is-owner-set.md) | Storage reserve is an owner-set value; the default stays 100 GB / 15% | Accepted (0042 is taken by another open branch) | 2026-11-14 |
 
 ## Conventions
 

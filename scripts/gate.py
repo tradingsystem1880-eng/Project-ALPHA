@@ -399,6 +399,61 @@ def codex_probe() -> tuple[bool, str]:
     return (False, f"codex present but not logged in: {text[:80]}")
 
 
+# ADR-0032 default reserve and ADR-0043 owner-set override; mirrors alpha_cli.crypto_bulk_store
+# with the standard library only, because doctor must run before `uv sync`.
+_DEFAULT_RESERVE_FRACTION = 0.15
+_DEFAULT_MINIMUM_FREE_BYTES = 100_000_000_000
+_GB = 1_000_000_000
+
+
+def storage_advisory(
+    root: Path,
+    environ: dict[str, str] | None = None,
+    usage: Callable[[Path], Any] = shutil.disk_usage,
+) -> tuple[bool, str]:
+    """Machine-state disk report for the data root. Advisory only: never fails the doctor.
+
+    Reads only ``ALPHA_DATA_DIR`` from the environment (never ``.env``) and the retained
+    ``<data>/crypto/storage-config.json``. Refusals stay in the storage code itself.
+    """
+    env = os.environ if environ is None else environ
+    data = Path(env.get("ALPHA_DATA_DIR") or (root / "data"))
+    if not data.is_absolute():
+        data = root / data
+    config_path = data / "crypto" / "storage-config.json"
+    config: dict[str, Any] = {}
+    if config_path.is_file() and not config_path.is_symlink():
+        try:
+            loaded = json.loads(config_path.read_bytes()[:8192])
+            config = loaded if isinstance(loaded, dict) else {}
+        except (OSError, ValueError):
+            return (True, f"storage settings unreadable at {config_path}; storage commands refuse")
+    probe = Path(str(config.get("bulk_root") or data))
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    disk = usage(probe)
+    free, total = int(disk.free), int(disk.total)
+    owner = config.get("free_space_reserve")
+    if isinstance(owner, dict) and isinstance(owner.get("minimum_free_bytes"), int):
+        reserve = int(owner["minimum_free_bytes"])
+        advisory = owner.get("advisory_free_bytes")
+        threshold = int(advisory) if isinstance(advisory, int) else reserve
+        source = f"owner-set ({owner.get('decided_by')}, {owner.get('decided_on')})"
+    else:
+        reserve = max(int(total * _DEFAULT_RESERVE_FRACTION), _DEFAULT_MINIMUM_FREE_BYTES)
+        threshold = reserve
+        source = "default 15%/100 GB" + ("" if config else "; no storage settings yet")
+    detail = (
+        f"{free / _GB:.1f} GB free at {probe}; reserve {reserve / _GB:.1f} GB ({source}); "
+        f"advisory below {threshold / _GB:.1f} GB"
+    )
+    if free < reserve:
+        detail = "LOW DISK SPACE: below the reserve; data-storage writes refuse. " + detail
+    elif free < threshold:
+        detail = "LOW DISK SPACE: below the owner's advisory threshold. " + detail
+    return (True, detail)
+
+
 def doctor(root: Path) -> tuple[int, dict[str, Any]]:
     checks: list[tuple[str, bool, str]] = []
 
@@ -473,6 +528,8 @@ def doctor(root: Path) -> tuple[int, dict[str, Any]]:
         checks.append(
             ("harness not weakened", not problems, "; ".join(problems) or "no regressions")
         )
+
+    checks.append(("storage free-space advisory", *storage_advisory(root)))
 
     codex_ok, codex_detail = codex_probe()
     checks.append(("codex second model", True, ("available: " if codex_ok else "") + codex_detail))
