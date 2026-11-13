@@ -7,10 +7,30 @@
 # digest, syncs the locked worker launcher and builds/validates the two closed rule profiles from
 # their hash-pinned locks. Nothing is downloaded except that commit and locked packages. It makes
 # no model call, reads no .env and grants no execution authority. It prints the exports to use.
+#
+# Optional, off by default so the default install stays small:
+#   --with-daily-container  pull the one Docker base image pinned by digest for the daily study
+#                           (python:3.12-slim, ~120 MB) and run qualify_daily_container.py, which
+#                           writes .alpha/state/runtime/daily-container.json.
+#   --with-stock-runtime    build the closed Python 3.11 stock RDLoop runtime bundle from
+#                           workers/rdagent/stock-requirements.lock (60 hash-pinned packages,
+#                           ~230 MB) and record it with workers/rdagent/install_stock_profile.py.
 set -Eeuo pipefail
 trap 'status=$?; printf "setup-rdagent: FAILED at line %s: %s (exit %s)\n" "$LINENO" "$BASH_COMMAND" "$status" >&2; exit "$status"' ERR
 
 pin=484776c211e4fbbeef03e0ec00d6bbee7362a4f4
+# Daily study base image: the repository digest and the image ID it must produce (packet3 plan).
+daily_digest=sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159
+daily_image=sha256:ae4e8b7c575fabea88a029b6cae757f342ca2525e07f7c22272d5105c346b35e
+with_daily=0
+with_stock=0
+for argument in "$@"; do
+    case "$argument" in
+        --with-daily-container) with_daily=1 ;;
+        --with-stock-runtime) with_stock=1 ;;
+        *) echo "setup-rdagent: unknown option $argument" >&2; exit 2 ;;
+    esac
+done
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 runtime="$root/.alpha/state/runtime"
 pristine="${ALPHA_RDAGENT_PRISTINE:-$runtime/rdagent-pristine}"
@@ -88,13 +108,50 @@ for profile in rule economics; do
     echo "setup-rdagent: qualified $profile environment $(measure "$profile")"
 done
 
+if [ "$with_daily" = 1 ]; then
+    command -v docker >/dev/null
+    image_id() { docker image inspect --format '{{.Id}}' "python@$daily_digest" 2>/dev/null; }
+    if ! image_id >/dev/null; then
+        echo "setup-rdagent: pulling python@$daily_digest (the only image this downloads)"
+        docker pull --quiet "python@$daily_digest" >/dev/null
+    fi
+    if [ "$(image_id)" != "$daily_image" ]; then
+        echo "setup-rdagent: python@$daily_digest is not image $daily_image; not qualified" >&2
+        exit 1
+    fi
+    echo "setup-rdagent: qualifying daily container image $daily_image (offline import smoke)"
+    uv run --locked python -B workers/rdagent/qualify_daily_container.py --image-id "$daily_image"
+fi
+
 stock="${ALPHA_STOCK_PYTHON:-}"
+if [ "$with_stock" = 1 ]; then
+    bundle="$runtime/rdagent-stock-py311"
+    marker="$runtime/rdagent-stock-py311.incomplete"
+    if [ -e "$marker" ]; then
+        echo "setup-rdagent: $bundle build was interrupted ($marker); remove both to rebuild." >&2
+        exit 1
+    fi
+    if [ ! -e "$bundle" ]; then
+        stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+        printf 'build started %s\n' "$stamp" >"$marker"
+        # Python 3.11: upstream RD-Agent declares and tests 3.10/3.11 only. Never download one.
+        uv venv --quiet --no-python-downloads --python 3.11 "$bundle/venv"
+        uv pip install --quiet --python "$bundle/venv/bin/python" --require-hashes --no-deps \
+            -r workers/rdagent/stock-requirements.lock
+        identity="$(.venv/bin/python -B workers/rdagent/install_stock_profile.py "$bundle")"
+        printf 'validated %s identity %s\n' "$stamp" "$identity" >>"$marker"
+        mv "$marker" "$runtime/rdagent-stock-py311.built-$stamp"
+    fi
+    echo "setup-rdagent: stock runtime $(.venv/bin/python -B workers/rdagent/install_stock_profile.py --verify "$bundle")"
+    stock="$bundle/venv/bin/python"
+fi
+
 echo 'setup-rdagent: done; provisioning only, no execution authority or research admission'
 printf 'export ALPHA_RDAGENT_SOURCE=%q\n' "$derived"
 if [ -n "$stock" ] && [ -x "$stock" ]; then
     printf 'export ALPHA_STOCK_PYTHON=%q\n' "$stock"
+    # The stock tests write receipts into a fresh existing directory of your choice.
+    echo 'export ALPHA_STOCK_RECEIPTS="$(mktemp -d)"'
 else
-    # Stock RDLoop needs upstream's full dependency set (docker, litellm, openai, tiktoken, ...);
-    # the repository has no lock for it, so it is not installed here.
-    echo '# ALPHA_STOCK_PYTHON: not provisioned (no committed lock for the stock runtime bundle)'
+    echo '# ALPHA_STOCK_PYTHON: not provisioned (rerun with --with-stock-runtime)'
 fi

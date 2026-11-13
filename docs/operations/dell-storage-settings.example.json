@@ -1,0 +1,20 @@
+{
+  "backend": "cloud_root_identity",
+  "bulk_root": "/home/hunta/alpha-data/bulk",
+  "control_root": "/home/hunta/alpha-data",
+  "device_id": 0,
+  "durable_hosting_reference": "Dell internal disk /dev/sda2 (ext4); owner decision 2026-11-14; not backed up",
+  "filesystem_type": "ext4",
+  "free_space_reserve": {
+    "advisory_free_bytes": 20000000000,
+    "decided_by": "owner",
+    "decided_on": "2026-11-14",
+    "decision_record": "ADR-0043; owner chat 2026-11-14: use the Dell's available disk for now",
+    "minimum_free_bytes": 10000000000,
+    "schema": "OwnerStorageReserveV1"
+  },
+  "mount_point": "/",
+  "mount_source": "/dev/sda2",
+  "owner_uid": 1000,
+  "schema": "CryptoBulkStorageConfigV1"
+}
