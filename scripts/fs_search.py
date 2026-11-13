@@ -37,23 +37,24 @@ _FAMILIES = {
     "docs/records": "history",
     "docs/records/audits": "history",
     "docs/records/investigations": "history",
-    "docs/superpowers/plans": "task",
-    "docs/superpowers/specs": "feature",
+    "docs/records/specs": "feature",
     "docs/roadmap/backlog": "feature",
     "docs/roadmap/refactors": "feature",
     "docs/governance": "reference",
     "docs/operations": "reference",
     ".claude/rules": "reference",
 }
-# Completed/superseded plans move to one month folder each (docs/superpowers/plans/archive/YYYY-MM).
-_PLAN_ARCHIVE_MONTH = re.compile(r"docs/superpowers/plans/archive/\d{4}-\d{2}")
+# Task folders (docs/work/<task>/) hold stage outputs; finished ones move to
+# docs/work/archive/YYYY-MM/ as a folder, or as a single plan file for plans archived before 2026-11-14.
+_TASK_FOLDER = re.compile(r"docs/work/(?!archive$)[^/]+")
+_TASK_ARCHIVE = re.compile(r"docs/work/archive/\d{4}-\d{2}(/[^/]+)?")
 # Retired documents: prose only (the folder also holds scripts, images and captured JSON).
 _DOCS_ARCHIVE = "docs/archive/"
 ARCHIVED_PREFIXES = (
     _DOCS_ARCHIVE,
     "docs/records/",
     "docs/build-status/",
-    "docs/superpowers/plans/archive/",
+    "docs/work/archive/",
 )
 ARCHIVED_FILES = frozenset({"docs/BUILD-STATUS.md"})
 _TOKENS = re.compile(r"[a-z0-9]+")
@@ -118,8 +119,8 @@ def family(rel: str) -> str | None:
     ):
         return "feature"
     parent = path.parent.as_posix()
-    if _PLAN_ARCHIVE_MONTH.fullmatch(parent):
-        return "task"
+    if _TASK_FOLDER.fullmatch(parent) or _TASK_ARCHIVE.fullmatch(parent):
+        return "task" if path.suffix == ".md" else None
     return _FAMILIES.get(parent)
 
 

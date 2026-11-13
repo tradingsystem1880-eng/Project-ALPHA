@@ -59,7 +59,7 @@ plans = {plans}
 
 _SUMMARY = """
 [[plan_summary]]
-plan = "2026-11-01-live.md"
+plan = "2026-11-01-live"
 title = "Live work"
 line = "One line."
 """
@@ -67,7 +67,7 @@ line = "One line."
 
 def _tree(tmp_path: Path, toml: str) -> Path:
     files = {
-        "docs/superpowers/plans/2026-11-01-live.md": _PLAN,
+        "docs/work/2026-11-01-live/02-plan.md": _PLAN,
         "tests/integration/test_x.py": _TEST,
         "apps/alpha-cli/src/alpha_cli/main.py": _MAIN,
         "apps/alpha-web/src/alpha_web/api/runs.py": _API,
@@ -78,7 +78,7 @@ def _tree(tmp_path: Path, toml: str) -> Path:
         target = tmp_path / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding="utf-8")
-    (tmp_path / "docs/superpowers/plans/archive").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "docs/work/archive").mkdir(parents=True, exist_ok=True)
     return tmp_path
 
 
@@ -90,7 +90,7 @@ def _cap(**overrides: str) -> str:
         "needs": "[]",
         "state": "Working",
         "extra": "",
-        "plans": '["2026-11-01-live.md"]',
+        "plans": '["2026-11-01-live"]',
     }
     fields.update(overrides)
     return _CAP.format(**fields)
@@ -99,7 +99,7 @@ def _cap(**overrides: str) -> str:
 def test_minimal_valid_map_loads(tmp_path: Path) -> None:
     cmap = capabilities.load(_tree(tmp_path, _cap() + _SUMMARY))
     assert [c.id for c in cmap.capabilities] == ["data-download"]
-    assert cmap.plan_summaries["2026-11-01-live.md"].title == "Live work"
+    assert cmap.plan_summaries["2026-11-01-live"].title == "Live work"
 
 
 @pytest.mark.parametrize(
@@ -117,7 +117,7 @@ def test_minimal_valid_map_loads(tmp_path: Path) -> None:
         (_cap(entries='["api: GET /api/nowhere"]') + _SUMMARY, "not a route"),
         (_cap(entries='["panel: apps/x/Missing.tsx"]') + _SUMMARY, "does not exist"),
         (_cap(entries='["script: alpha-nothing"]') + _SUMMARY, "console script"),
-        (_cap(plans='["2026-01-01-gone.md"]') + _SUMMARY, "not a live plan"),
+        (_cap(plans='["2026-01-01-gone"]') + _SUMMARY, "not a live task"),
         (_cap(plans="[]") + _SUMMARY, "assigned to no capability"),
         (_cap(), "plan_summary"),
         (
@@ -142,10 +142,10 @@ def test_unassigned_plan_counts_as_assigned(tmp_path: Path) -> None:
     toml = (
         _cap(plans="[]")
         + _SUMMARY
-        + '\n[[unassigned_plan]]\nplan = "2026-11-01-live.md"\nreason = "Clean-up only."\n'
+        + '\n[[unassigned_plan]]\nplan = "2026-11-01-live"\nreason = "Clean-up only."\n'
     )
     cmap = capabilities.load(_tree(tmp_path, toml))
-    assert cmap.unassigned_plans == {"2026-11-01-live.md": "Clean-up only."}
+    assert cmap.unassigned_plans == {"2026-11-01-live": "Clean-up only."}
 
 
 def test_hidden_tests_cannot_be_named_as_proof(tmp_path: Path) -> None:

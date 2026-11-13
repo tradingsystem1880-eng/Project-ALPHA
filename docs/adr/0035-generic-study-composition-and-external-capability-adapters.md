@@ -309,7 +309,7 @@ the receipt rebuild twice.
 ## Staged implementation
 
 The dated FeaturePlan at
-`docs/superpowers/plans/archive/2026-08/2026-08-21-generic-study-composition.md` is normative for
+`docs/work/archive/2026-08/2026-08-21-generic-study-composition.md` is normative for
 execution order, verification, rollback, and scope. Its slices are:
 
 1. S0: plan and ADR only.

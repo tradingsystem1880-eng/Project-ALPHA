@@ -26,4 +26,4 @@ W01–W04 for design; W05 qualified fixtures for numerical acceptance.
 - [Checklist W19](../../context/feature-readiness-checklist-2026-10-27.md#w19-qualify-data-storage-and-governed-queries)
 - [Checklist: Governed storage subpackets](../../context/feature-readiness-checklist-2026-10-27.md#governed-storage-subpackets)
 - [Checklist Packet 3](../../context/feature-readiness-checklist-2026-10-27.md#packet-3-complete-one-real-native-rule-and-control-study)
-- [Packet 3 daily rule plan](../../superpowers/plans/2026-10-31-packet3-daily-rule.md)
+- [Packet 3 daily rule plan](../../work/2026-10-31-packet3-daily-rule/02-plan.md)

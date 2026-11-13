@@ -114,7 +114,7 @@ approval, promotion, sealed-data or trading authority.
 
 For interactive inspection, project the large JSON response with `jq` while preserving
 the CLI exit status (`set -o pipefail`); full per-date data remains in the immutable
-attempt artifacts. The [closure record](../superpowers/plans/archive/2026-09/2026-09-19-research-walkthrough-closure.md)
+attempt artifacts. The [closure record](../work/archive/2026-09/2026-09-19-research-walkthrough-closure.md)
 tracks acceptance checks and limitations.
 
 ### Missing-suite exceptions (2026-09-17 to 2026-11-04)

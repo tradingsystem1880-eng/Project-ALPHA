@@ -564,7 +564,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("lint-harness")
     sub.add_parser("baseline", help="rewrite .claude/harness-baseline.json from the tree")
     plan_p = sub.add_parser("plan-check")
-    plan_p.add_argument("plan", help="docs/superpowers/plans/<doc>.md with a ```json front block")
+    plan_p.add_argument("plan", help="docs/work/<task>/02-plan.md with a ```json front block")
     doctor_p = sub.add_parser("doctor")
     doctor_p.add_argument("--json", action="store_true")
     mutate_p = sub.add_parser("mutate")

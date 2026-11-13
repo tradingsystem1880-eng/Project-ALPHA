@@ -24,7 +24,7 @@ It composes the repo's existing skills — `karpathy-guidelines` (always),
    ("where does X live, what invariants apply, where do I add Y"). Keep the main
    context clean; you want file:line maps and applicable invariants, not file dumps.
    For risky areas also dispatch `invariants-auditor` in parallel.
-2. **Plan** — `/plan-feature`: a dated plan doc in `docs/superpowers/plans/`
+2. **Plan** — `/plan-feature`: a dated plan doc in `docs/work/`
    (`YYYY-MM-DD-<slug>.md`, repo convention) with context, small coherent slices,
    a focused per-slice verify command, and explicit DAG / look-ahead / determinism
    impact. Slice by behavior and risk, not a line quota. Never a 1-step plan;

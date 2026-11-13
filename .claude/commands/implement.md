@@ -1,12 +1,12 @@
 ---
 description: Own the approved plan through focused TDD, independent review and authorized delivery
-argument-hint: [plan doc path, defaults to the newest in docs/superpowers/plans/]
+argument-hint: [plan doc path, defaults to the newest in docs/work/]
 ---
 
 Implement the approved plan: $ARGUMENTS
 
 Use the task's approved plan. If no path was given, identify the plan that matches
-the task from `docs/superpowers/plans/`; recency alone does not establish scope.
+the task from `docs/work/`; recency alone does not establish scope.
 State which plan you are executing before touching code. Existing authorization
 covers routine implementation and necessary fixes; ask only for missing scope or authority.
 

@@ -136,7 +136,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 ## Housekeeping
 
 - Live plans: 45
-- Archived plans: 104
+- Archived plans: 111
 - Backlog items: 15
 - Staged refactors: 7
 

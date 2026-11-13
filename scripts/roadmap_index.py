@@ -2,8 +2,9 @@
 
 Sources (read-only):
 
-* ``docs/superpowers/plans/*.md`` — live plans plus pinned finished plans (flat folder);
-* ``docs/superpowers/plans/archive/YYYY-MM/*.md`` — completed and superseded plans;
+* ``docs/work/<task>/02-plan.md`` — the plan of each live task folder;
+* ``docs/work/archive/YYYY-MM/`` — finished work: single plan files (before 2026-11-14) and
+  task folders with a ``02-plan.md``;
 * ``docs/roadmap/backlog/*.md`` and ``docs/roadmap/refactors/*.md``.
 
 Run ``uv run python scripts/roadmap_index.py`` after adding, moving or changing any of them;
@@ -21,7 +22,9 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
-PLANS = Path("docs/superpowers/plans")
+WORK = Path("docs/work")
+ARCHIVE = WORK / "archive"
+PLAN_FILE = "02-plan.md"
 ROADMAP = Path("docs/roadmap")
 INDEX = ROADMAP / "README.md"
 COMMAND = "uv run python scripts/roadmap_index.py"
@@ -37,9 +40,6 @@ _LIVE_ORDER = ("In progress", "Implemented – qualification pending", "Blocked"
 _FIELD = re.compile(r"^\*\*(?P<key>[^*]+):\*\* (?P<value>.+)$")
 _JSON_BLOCK = re.compile(r"^```json[ \t]*\n(.*?)\n```", re.S | re.M)
 _MONTH = re.compile(r"\d{4}-\d{2}")
-_PINNED_ANCHOR = (
-    "../superpowers/plans/archive/README.md#pinned-exceptions-finished-but-kept-in-the-flat-folder"
-)
 _BACKLOG_STATUS = ("Idea", "Scoped")
 _SIZES = ("S", "M", "L", "XL")
 _RISKS = ("L", "M", "H")
@@ -104,29 +104,49 @@ def _docs(root: Path, folder: Path) -> list[Path]:
     )
 
 
-def render(root: Path = ROOT) -> str:
-    """The full expected text of docs/roadmap/README.md."""
-    live: list[tuple[int, str, str, str, str]] = []
-    pinned: list[tuple[str, str, str]] = []
-    for rel in _docs(root, PLANS):
-        text = _read(root, rel)
-        state = _plan_state(rel, text)
-        link = f"[{rel.name}](../superpowers/plans/{rel.name})"
-        title = _cell(_title(rel, text))
-        if state.startswith(_FINISHED):
-            pinned.append((link, title, state))
-        else:
-            live.append((_LIVE_ORDER.index(state), rel.name, link, title, state))
-    months: Counter[str] = Counter()
-    for month_dir in sorted((root / PLANS / "archive").iterdir()):
+def live_plans(root: Path) -> list[Path]:
+    """``docs/work/<task>/02-plan.md`` for every task folder outside the archive."""
+    return sorted(
+        p.relative_to(root)
+        for p in (root / WORK).glob(f"*/{PLAN_FILE}")
+        if p.parent.name != ARCHIVE.name
+    )
+
+
+def task_name(rel: Path) -> str:
+    """The task folder name (``YYYY-MM-DD-<slug>``) of a plan path."""
+    return rel.parent.name
+
+
+def archived_plans(root: Path) -> list[Path]:
+    """Archived plans: legacy single files and the plan of each archived task folder."""
+    found: list[Path] = []
+    for month_dir in sorted((root / ARCHIVE).iterdir()):
         if not month_dir.is_dir():
             continue
         if not _MONTH.fullmatch(month_dir.name):
             raise RoadmapError(f"{month_dir.relative_to(root)}: archive folders must be YYYY-MM")
-        for rel in _docs(root, month_dir.relative_to(root)):
-            if not _plan_state(rel, _read(root, rel)).startswith(_FINISHED):
-                raise RoadmapError(f"{rel}: archived plan is not Completed or Superseded")
-            months[month_dir.name] += 1
+        found += _docs(root, month_dir.relative_to(root))
+        found += sorted(p.relative_to(root) for p in month_dir.glob(f"*/{PLAN_FILE}"))
+    return found
+
+
+def render(root: Path = ROOT) -> str:
+    """The full expected text of docs/roadmap/README.md."""
+    live: list[tuple[int, str, str, str, str]] = []
+    for rel in live_plans(root):
+        text = _read(root, rel)
+        state = _plan_state(rel, text)
+        name = task_name(rel)
+        if state.startswith(_FINISHED):
+            raise RoadmapError(f"{rel}: finished task; move it to {ARCHIVE}/YYYY-MM/ (stage 05)")
+        link = f"[{name}](../work/{name}/{PLAN_FILE})"
+        live.append((_LIVE_ORDER.index(state), name, link, _cell(_title(rel, text)), state))
+    months: Counter[str] = Counter()
+    for rel in archived_plans(root):
+        if not _plan_state(rel, _read(root, rel)).startswith(_FINISHED):
+            raise RoadmapError(f"{rel}: archived plan is not Completed or Superseded")
+        months[rel.relative_to(ARCHIVE).parts[0]] += 1
     backlog: list[tuple[str, str, str]] = []
     for rel in _docs(root, ROADMAP / "backlog"):
         text = _read(root, rel)
@@ -148,9 +168,10 @@ def render(root: Path = ROOT) -> str:
         f"source documents and run `{COMMAND}` (`--check` reports a stale index).",
         "",
         "Lifecycle: an unplanned feature starts as a [backlog item](backlog/); when planned it",
-        "becomes a dated plan in [`docs/superpowers/plans/`](../superpowers/plans/) with a",
-        "`**Delivery state:**` line; when it is Completed or Superseded the plan moves to",
-        "[`archive/YYYY-MM/`](../superpowers/plans/archive/). Structural refactors are staged in",
+        "becomes a task folder in [`docs/work/`](../work/) whose `02-plan.md`",
+        "has a `**Delivery state:**` line; when it is Completed or Superseded the folder moves",
+        "to [`archive/YYYY-MM/`](../work/archive/). The steps are the",
+        "[delivery pipeline](../../workflow/CONTEXT.md). Structural refactors are staged in",
         "[refactors/](refactors/). Scope for the W01-W19 work packages is owned by the",
         "[feature readiness checklist](../context/feature-readiness-checklist-2026-10-27.md).",
         "",
@@ -169,17 +190,6 @@ def render(root: Path = ROOT) -> str:
     ]
     for _, name, link, title, state in sorted(live):
         out.append(f"| {link} | {title} | {state} | {name[:7]} |")
-    out += [
-        "",
-        f"## Finished plans pinned in the flat folder ({len(pinned)})",
-        "",
-        "These are finished but referenced by path from files that cannot be rewritten; see the",
-        f"[archive README]({_PINNED_ANCHOR}).",
-        "",
-        "| Plan | Title | Delivery state |",
-        "| --- | --- | --- |",
-    ]
-    out += [f"| {link} | {title} | {state} |" for link, title, state in pinned]
     out += [
         "",
         f"## Backlog ({len(backlog)})",
@@ -204,7 +214,7 @@ def render(root: Path = ROOT) -> str:
         "| --- | --- |",
     ]
     out += [
-        f"| [{month}](../superpowers/plans/archive/{month}/) | {count} |"
+        f"| [{month}](../work/archive/{month}/) | {count} |"
         for month, count in sorted(months.items())
     ]
     return "\n".join(out) + "\n"
