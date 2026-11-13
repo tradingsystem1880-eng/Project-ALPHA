@@ -26,6 +26,7 @@ here reaches the whole repository.
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Corporate actions: two clocks | changing corporate-action types |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Deterministic seeds and identity | changing settings or seeds |
 | [engineering rules](../../docs/reference/invariants/engineering.md) | Hash-bound source bytes | any source edit (run ids fingerprint core bytes) |
+| [what this part is for](../../docs/reference/project/components/command-line.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

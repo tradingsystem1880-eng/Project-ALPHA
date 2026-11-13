@@ -25,6 +25,7 @@ resource limits; its output is advisory evidence, never research authority.
 | [worker invariants](../../docs/reference/invariants/workers.md) | Literature worker | always |
 | [command line research](../../docs/reference/invariants/cli-research.md) | Process boundaries | changing how the CLI starts the worker |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Owner authority | changing what a claim can be used for |
+| [what this part is for](../../docs/reference/project/components/literature-worker.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

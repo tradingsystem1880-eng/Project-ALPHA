@@ -29,6 +29,7 @@ isolated workers and `tools/alpha-eval` keep their own suites. Tests must never 
 | [checks](../docs/reference/checks.md) | — | adding a marker or moving tests between CI tiers |
 | [testing invariants](../docs/reference/invariants/testing.md) | Owned test processes | a test spawns processes that may outlive it |
 | [research integrity](../docs/reference/invariants/research-integrity.md) | Statistical evidence | writing tolerances for statistics |
+| [what this part is for](../docs/reference/project/components/delivery-and-agent-tooling.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

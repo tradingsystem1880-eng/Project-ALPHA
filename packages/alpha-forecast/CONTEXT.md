@@ -25,6 +25,7 @@ inside. [ADR-0008](../../docs/adr/0008-vendored-kronos-and-alpha-forecast-layer.
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Point-in-time reads | always |
 | [command line machine learning](../../docs/reference/invariants/cli-ml.md) | Kronos forecasts | changing how the CLI runs or caches forecasts |
 | [engineering rules](../../docs/reference/invariants/engineering.md) | Polars by default | touching the pandas edge in `kronos.py` |
+| [what this part is for](../../docs/reference/project/components/forecasting.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 
