@@ -139,3 +139,24 @@ jobs:
       - run: uv sync --locked
       - name: Shared benchmark (alpha-eval) gate
         run: uv run python scripts/gate.py component eval
+
+  ci-ok:
+    # The one check branch protection requires. Add every new job to `needs`; then
+    # jobs can be added, removed or renamed without touching repository settings.
+    if: always()
+    needs: [check, harness, frontend, qlib-worker, literature-worker, atlas, eval]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every job to succeed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        # No job is conditional today, so "skipped" counts as a failure too.
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          failed=$(echo "$RESULTS" | jq -r '[to_entries[] | select(.value.result != "success") | .key] | join(" ")')
+          if [ -n "$failed" ]; then
+            echo "ci-ok: FAILED, these jobs did not succeed: $failed"
+            exit 1
+          fi
+          echo "ci-ok: every job succeeded"
