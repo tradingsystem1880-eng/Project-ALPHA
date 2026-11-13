@@ -67,6 +67,16 @@ Calibration, 2026-11-14, both small route, `gpt-6.1-sol` `medium`, no fix round 
 | A: redact paths in the rules-evaluate relay error (3 files) | 3m57s | 496,656 (468,736) | 3,749 | correct; one unrequested doc re-wrap, caused by the brief |
 | B: aggregate the per-plan tests in `test_plan_schema.py` (1 file) | 2m57s | 188,778 (150,656) | 2,822 | correct, strictness kept; 314 cases to 6 |
 
+First standard and hard builds, 2026-11-14, small-route briefs, triage clean-up (review by Claude):
+
+| Task | Class, model, effort | Wall time | Input tokens (cached) | Output | Fix rounds | Result |
+|---|---|---|---|---|---|---|
+| C: make the literature worker's acquisition module the only copy (7 files) | `standard`, `gpt-6.1-sol`, `high` | 7m30s | 1,328,298 (1,244,160) | 19,234 | 2, both empty | correct and approved; the build round alone was 401,809 in, 6,010 out. Both fix rounds were spent on a brief check that also searched documents the brief forbade it to touch (brief error); one test docstring re-worded by hand |
+| D: remove the QuantPad command, adapter and archive code (28 files) | `hard`, `gpt-6-astra`, `high` | 20m51s | 2,796,814 (2,715,648) | 9,859 | 0 | correct first time and approved unchanged; the orchestrator rebuilt the SPA bundle (needs the network) |
+
+A fix round resumes the whole thread, so even an empty round costs about the full context again
+(about 40k more input each in task C). A brief's checks must only cover files the builder may change.
+
 Most of Codex's allowance goes on context: a turn's input count adds up what is sent with each
 model call (inferred: 497k input for one turn of 32 commands, 94% cached), so every file read
 early costs again on each later step; a short read list saves more than a lower effort. Re-calibrate
