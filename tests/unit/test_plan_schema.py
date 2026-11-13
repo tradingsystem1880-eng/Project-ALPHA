@@ -14,7 +14,6 @@ import re
 from pathlib import Path
 
 import harness_awareness
-import pytest
 
 ROOT = Path(__file__).parents[2]
 WORK = ROOT / "docs" / "work"
@@ -43,13 +42,28 @@ def _task(path: Path) -> str:
     return path.parent.name if path.name == PLAN else path.stem
 
 
-def _state(path: Path) -> str:
+def _state(path: Path) -> tuple[str | None, str | None]:
     head = path.read_text(encoding="utf-8").splitlines()[:12]
     lines = [line for line in head if line.startswith("**Delivery state:**")]
-    assert len(lines) == 1, f"{_task(path)}: expected one Delivery state line in lines 1-12"
+    if len(lines) != 1:
+        return None, f"{_task(path)}: expected one Delivery state line in lines 1-12"
     match = STATE.match(lines[0])
-    assert match, f"{_task(path)}: state outside the vocabulary: {lines[0]!r}"
-    return match.group("state")
+    if match is None:
+        return None, f"{_task(path)}: state outside the vocabulary: {lines[0]!r}"
+    return match.group("state"), None
+
+
+def _archive_problems(path: Path) -> list[str]:
+    month = path.parent.parent.name if path.name == PLAN else path.parent.name
+    state, _ = _state(path)
+    problems = []
+    if state is None or not state.startswith(FINISHED):
+        problems.append(f"{_task(path)}: is not finished")
+    if not re.fullmatch(r"\d{4}-\d{2}", month):
+        problems.append(f"{_task(path)}: invalid archive month: {month}")
+    if not _task(path).startswith(month + "-"):
+        problems.append(f"{_task(path)}: is in the wrong month")
+    return problems
 
 
 def test_plan_folders_are_populated() -> None:
@@ -57,25 +71,61 @@ def test_plan_folders_are_populated() -> None:
     assert _archived(), "no archived plans found"
 
 
-@pytest.mark.parametrize("path", _live() + _archived(), ids=_task)
-def test_every_plan_has_one_vocabulary_state_line(path: Path) -> None:
-    _state(path)
+def test_every_plan_has_one_vocabulary_state_line() -> None:
+    problems = []
+    for path in _live() + _archived():
+        _, problem = _state(path)
+        if problem is not None:
+            problems.append(problem)
+    assert not problems, "\n".join(problems)
 
 
-@pytest.mark.parametrize("path", _live(), ids=_task)
-def test_live_plans_pass_plan_check(path: Path) -> None:
-    ok, message = harness_awareness.plan_check(path)
-    assert ok, message
+def test_live_plans_pass_plan_check() -> None:
+    problems = []
+    for path in _live():
+        ok, message = harness_awareness.plan_check(path)
+        if not ok:
+            problems.append(f"{_task(path)}: {message}")
+    assert not problems, "\n".join(problems)
 
 
 def test_finished_plans_are_archived() -> None:
-    misplaced = [_task(p) for p in _live() if _state(p).startswith(FINISHED)]
+    misplaced = [_task(p) for p in _live() if (_state(p)[0] or "").startswith(FINISHED)]
     assert misplaced == [], f"move these task folders under docs/work/archive/YYYY-MM/: {misplaced}"
 
 
-@pytest.mark.parametrize("path", _archived(), ids=_task)
-def test_archived_plans_are_finished_and_filed_by_month(path: Path) -> None:
-    month = path.relative_to(ARCHIVE).parts[0]
-    assert _state(path).startswith(FINISHED), f"{_task(path)} is not finished"
-    assert re.fullmatch(r"\d{4}-\d{2}", month), month
-    assert _task(path).startswith(month + "-"), f"{_task(path)} is in the wrong month"
+def test_archived_plans_are_finished_and_filed_by_month() -> None:
+    problems = []
+    for path in _archived():
+        problems.extend(_archive_problems(path))
+    assert not problems, "\n".join(problems)
+
+
+def test_plan_problems_include_every_bad_file(tmp_path: Path) -> None:
+    month = tmp_path / "2026-11"
+    month.mkdir()
+    good = month / "2026-11-01-good.md"
+    duplicate = month / "2026-11-02-duplicate.md"
+    unknown = month / "2026-11-03-unknown.md"
+    wrong_month = month / "2026-10-04-wrong-month" / PLAN
+    wrong_month.parent.mkdir()
+    good.write_text("**Delivery state:** Completed\n", encoding="utf-8")
+    duplicate.write_text("**Delivery state:** Completed\n" * 2, encoding="utf-8")
+    unknown.write_text("**Delivery state:** Unknown\n", encoding="utf-8")
+    wrong_month.write_text("**Delivery state:** In progress\n", encoding="utf-8")
+
+    assert _state(good) == ("Completed", None)
+    problems = []
+    for path in (good, duplicate, unknown, wrong_month):
+        _, problem = _state(path)
+        if problem is not None:
+            problems.append(problem)
+    problems.extend(_archive_problems(good))
+    problems.extend(_archive_problems(wrong_month))
+
+    assert problems == [
+        f"{_task(duplicate)}: expected one Delivery state line in lines 1-12",
+        f"{_task(unknown)}: state outside the vocabulary: '**Delivery state:** Unknown'",
+        f"{_task(wrong_month)}: is not finished",
+        f"{_task(wrong_month)}: is in the wrong month",
+    ]
