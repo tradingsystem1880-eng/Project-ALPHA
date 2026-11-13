@@ -47,8 +47,8 @@ def child_env(home: Path, **extra: str) -> dict[str, str]:
         COLUMNS="200",  # keep error panels on one line so a stable token can be matched
         ALPHA_DATA_DIR=str(home / "data"),
         ALPHA_BULK_DATA_DIR=str(home / "data" / "bulk"),
-        **extra,
     )
+    env.update(extra)  # a check may point a default (e.g. ALPHA_DATA_DIR) elsewhere
     return env
 
 
@@ -113,8 +113,11 @@ def _free_port() -> int:
 
 
 @contextmanager
-def web_server(home: Path, ready_timeout: float = 90) -> Iterator[str]:
-    """Start the installed ``alpha-web`` on a free loopback port; always stop it afterwards."""
+def web_server(home: Path, ready_timeout: float = 90, **extra: str) -> Iterator[str]:
+    """Start the installed ``alpha-web`` on a free loopback port; always stop it afterwards.
+
+    ``extra`` settings are added to, or override, the throwaway-home environment.
+    """
     port = _free_port()
     base = f"http://127.0.0.1:{port}"
     log = home / "alpha-web.log"
@@ -122,7 +125,7 @@ def web_server(home: Path, ready_timeout: float = 90) -> Iterator[str]:
         proc = subprocess.Popen(
             [str(program("alpha-web"))],
             cwd=home,
-            env=child_env(home, ALPHA_WEB_PORT=str(port)),
+            env=child_env(home, ALPHA_WEB_PORT=str(port), **extra),
             stdout=sink,
             stderr=subprocess.STDOUT,
         )

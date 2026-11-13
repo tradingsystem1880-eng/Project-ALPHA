@@ -32,6 +32,7 @@
 #   triage           {card, recommendation, owner_decision} for items on the triage sheet;
 #                    owner_decision is "undecided" until the owner answers (TOML has no null)
 #   plans            live plans (docs/superpowers/plans/*.md file names) that belong to it
+#   docs             plain-English documents for the owner (repo-relative .md paths; optional)
 #
 # [[decision]] holds triage cards that are not a workflow of their own; [[unassigned_plan]] holds
 # live plans that belong to no workflow; [[plan_summary]] gives every "In progress" plan a plain
@@ -818,11 +819,20 @@ entry_points = [
   "code: apps/alpha-cli/src/alpha_cli/native_supervisor.py",
 ]
 proof_synthetic = []
+proof_smoke = [
+  "tests/smoke/test_rdagent_smoke.py::test_native_fixture_loop_runs_and_alpha_shows_its_job",
+  "tests/smoke/test_rdagent_smoke.py::test_stock_rdloop_result_is_read_by_alpha_and_the_web_app",
+]
 real_data = "not yet confirmed (to check on the Mac later)"
-needs = ["the RD-Agent setup, which no machine has yet"]
+needs = [
+  "a pinned runtime for RD-Agent's full stock loop (ALPHA_STOCK_PYTHON; no lock in the repository)",
+  "an AI model connection for RD-Agent",
+]
 state = "Partial"
-missing = "made-up data only; restart after a crash not solved"
-triage = { card = "7", recommendation = "SHELVE (your call)", owner_decision = "undecided" }
+missing = "RD-Agent's general loop now runs here end to end with stand-in steps on made-up data, but the stock loop itself cannot run yet (no installable runtime; its smoke check skips), no alpha command starts a run, and restart after a crash is not solved"
+# owner, 2026-11-14: RD-Agent is a key component of how the project works
+triage = { card = "7", recommendation = "KEEP", owner_decision = "KEEP" }
+docs = ["docs/roadmap/rd-agent-in-alpha.md"]
 plans = [
   "2026-11-07-stock-rdloop-continuation.md",
   "2026-11-07-stock-retained-dispatch.md",
@@ -849,10 +859,15 @@ proof_synthetic = [
   "apps/alpha-web/frontend/e2e/native-result-real.spec.ts::Research native UUID lookup reads real owner evidence and clears stale state",
 ]
 real_data = "not yet confirmed (to check on the Mac later)"
-needs = ["the RD-Agent setup, for its browser test"]
+proof_smoke = [
+  "tests/smoke/test_rdagent_smoke.py::test_stock_rdloop_result_is_read_by_alpha_and_the_web_app",
+]
+needs = ["a finished stock RD-Agent job, which needs the stock runtime (ALPHA_STOCK_PYTHON)"]
 state = "Partial"
-missing = "empty until the AI stock research loop produces a job"
-triage = { card = "8", recommendation = "SHELVE", owner_decision = "undecided" }
+missing = "the screen and its API answer here but say unavailable until a stock job exists; its smoke check and browser lane skip without the stock runtime"
+# owner, 2026-11-14: RD-Agent is a key component of how the project works
+triage = { card = "8", recommendation = "SHELVE", owner_decision = "KEEP" }
+docs = ["docs/roadmap/rd-agent-in-alpha.md"]
 plans = [
   "2026-11-08-native-job-result-api.md",
   "2026-11-08-native-job-result-view.md",
@@ -874,15 +889,19 @@ entry_points = [
 ]
 proof_synthetic = [
   "tests/integration/test_daily_rule_report.py::test_parent_and_role_selector_reports_agree_with_actual_recorded_results",
+  "tests/unit/test_native_rule_authority.py::test_one_actual_native_rule_execution",
 ]
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = [
-  "the RD-Agent setup, which no machine has yet",
-  "a permanent place to host the runs",
+  "the qualified daily Docker image (not on this machine)",
+  "a permanent place to host the runs (retained storage with a 100 GB reserve)",
+  "real Binance daily bars admitted into that storage",
 ]
 state = "Partial"
-missing = "only the report is proven; the study itself needs RD-Agent"
-triage = { card = "9", recommendation = "SHELVE (your call)", owner_decision = "undecided" }
+missing = "RD-Agent's loop runs the rule and its costed backtest in-process on made-up bars; the full daily study fails here without its Docker image and has no end-to-end smoke check"
+# owner, 2026-11-14: RD-Agent is a key component of how the project works
+triage = { card = "9", recommendation = "KEEP", owner_decision = "KEEP" }
+docs = ["docs/roadmap/rd-agent-in-alpha.md"]
 plans = [
   "2026-10-31-packet3-daily-rule.md",
   "2026-10-26-native-rule-study-boundary.md",
@@ -937,8 +956,9 @@ plans = []
 [[decision]]
 card = "C"
 name = "The RD-Agent runtime as a whole (covers cards 7, 8 and 9)"
-recommendation = "SHELVE (your call)"
-owner_decision = "undecided"
+recommendation = "KEEP"
+# owner, 2026-11-14: RD-Agent is a key component of how the project works
+owner_decision = "KEEP"
 
 [[decision]]
 card = "12"

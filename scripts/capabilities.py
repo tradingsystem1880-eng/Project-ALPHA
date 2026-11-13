@@ -64,6 +64,7 @@ _OPTIONAL_KEYS = {
     "real_data_needs": str,
     "missing": str,
     "triage": dict,
+    "docs": list,
 }
 _DESIGNED_MARKS = frozenset({"skip", "skipif", "xfail"})
 
@@ -100,6 +101,7 @@ class Capability:
     missing: str
     triage: Triage | None
     plans: tuple[str, ...]
+    docs: tuple[str, ...] = ()
 
     @property
     def label(self) -> str:
@@ -225,6 +227,7 @@ def _capability(index: int, raw: object) -> Capability:
         missing=str(table.get("missing", "")),
         triage=_triage(f"{where} triage", table["triage"]) if "triage" in table else None,
         plans=_strings(where, "plans", table["plans"]),
+        docs=_strings(where, "docs", table.get("docs", [])),
     )
     if _ID.fullmatch(cap.id) is None:
         raise CapabilityError(f"{where}: id must be kebab-case")
@@ -491,6 +494,9 @@ def load(root: Path = ROOT) -> CapabilityMap:
         for node in cap.proof_synthetic:
             _check_proof(root, where, node)
         _check_smoke(root, cap)
+        for doc in cap.docs:
+            if not doc.endswith(".md") or not (root / doc).is_file():
+                raise CapabilityError(f"{where}: doc {doc!r} is not a Markdown file in the repo")
     defects = _known_defects(root, data.get("known_defect", []))
 
     try:
