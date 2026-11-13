@@ -48,3 +48,36 @@ def test_unpinned_supplied_checkout_is_refused_before_any_install(tmp_path: Path
     assert not log.exists()  # no uv sync, venv or package install ran
     assert not (tmp_path / "derived").exists()
     assert not (root / ".alpha").exists()
+
+
+def test_unknown_option_is_refused_before_any_install(tmp_path: Path) -> None:
+    completed = subprocess.run(
+        ["bash", str(SCRIPT), "--with-everything"],
+        cwd=tmp_path,
+        env={key: value for key, value in os.environ.items() if not key.startswith("ALPHA_")},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 2
+    assert "unknown option --with-everything" in completed.stderr
+
+
+def test_stock_lock_is_exact_hashed_and_follows_upstream_constraints() -> None:
+    import importlib.util
+
+    worker = SCRIPT.parents[1] / "workers/rdagent"
+    spec = importlib.util.spec_from_file_location(
+        "install_stock_profile", worker / "install_stock_profile.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    lock = (worker / "stock-requirements.lock").read_text()
+    pins = module.locked_pins(lock)
+    assert len(pins) == 60
+    for name, version in {"litellm": "1.97.0", "dill": "0.3.9", "psutil": "6.1.0"}.items():
+        assert pins[name] == version
+    upstream_imports = {"docker", "rich", "numpy", "openai", "tiktoken", "pydantic-settings"}
+    assert upstream_imports <= set(pins)
+    assert not {"pandas", "scikit-learn", "torch"} & set(pins)

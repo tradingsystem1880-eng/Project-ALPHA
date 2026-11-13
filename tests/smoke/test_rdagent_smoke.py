@@ -10,7 +10,8 @@ synthetic and ``not_admitted``; no model, provider or market data is involved.
 
 Prerequisites, provisioned by ``scripts/setup_rdagent.sh``: ``ALPHA_RDAGENT_SOURCE`` (the derived,
 digest-verified pinned source) for the native fixture loop, plus ``ALPHA_STOCK_PYTHON`` (a stock
-runtime bundle's ``venv/bin/python``) for the stock ``RDLoop`` check. Without them they skip.
+runtime bundle's ``venv/bin/python``, built by ``--with-stock-runtime``) for the stock ``RDLoop``
+check. Without them they skip.
 """
 
 from __future__ import annotations
@@ -33,7 +34,7 @@ SOURCE_TREE_SHA256 = "0266b2d63328f88fcaf6f239bf6d67f29c896b8161566f794ef69465b7
 NO_SOURCE = "RD-Agent not provisioned: run scripts/setup_rdagent.sh and export ALPHA_RDAGENT_SOURCE"
 NO_STOCK = (
     "stock RD-Agent runtime not provisioned: ALPHA_STOCK_PYTHON (a runtime bundle's "
-    "venv/bin/python) is unset; the repository has no lock to build one"
+    "venv/bin/python) is unset; run scripts/setup_rdagent.sh --with-stock-runtime"
 )
 
 
