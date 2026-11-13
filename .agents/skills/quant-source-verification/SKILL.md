@@ -6,16 +6,16 @@ description: Verify statistical and quantitative-finance code against primary ac
 # Quant Source Verification
 
 SR 11-7 conceptual soundness, mechanized. A statistical formula that "looks right" is
-not evidence; the primary source is. This skill produces the `QuantVerificationReport`
-that `scripts/gate.py attest --kind quant` validates and binds to the current
-quant-scope diff. Installed Git guards require this evidence for quant changes;
-there is no Stop guard. Evidence never grants application owner authority.
+not evidence; the primary source is. This skill produces a `QuantVerificationReport`
+for the quant-scope diff; it goes on the pull request with the change. CI separately runs
+slow oracles and mutation on touched quant modules. Evidence never grants application
+owner authority.
 
 ## Protocol
 
 1. **Scope the diff.** `git diff HEAD -- packages/alpha-validation/src packages/alpha-research/src`
    plus any quant-named module (`dsr|psr|pbo|deflated|bootstrap|reality_check|spa|montecarlo|walkforward|cpcv|multiple_testing|overfitting`)
-   under `packages/*/src`. Empty diff ⇒ say so and stop; never attest an empty scope.
+   under `packages/*/src`. Empty diff ⇒ say so and stop; never report on an empty scope.
 2. **Extract every mathematical claim** the diff introduces or alters: formulas,
    estimator choices, distributional assumptions, default parameters, sign/direction
    conventions, degrees-of-freedom corrections, small-sample adjustments.
@@ -27,7 +27,7 @@ there is no Stop guard. Evidence never grants application owner authority.
    primary source in the docstring. Missing citation ⇒ report it in
    `docstring_citations.missing`.
 5. **Verdict.** `overall: PASS` requires every claim `VERIFIED` and citations complete.
-   Anything else is `FAIL`. Never attest around a FAIL — fix the code or the citation,
+   Anything else is `FAIL`. Never report around a FAIL — fix the code or the citation,
    then re-verify.
 
 ## Bibliography (module → primary source)
@@ -62,7 +62,8 @@ split and `tier1_divergence_tol` demotion, and the A–F verdict bands.
 
 ## Output
 
-Emit exactly one JSON object and pipe it to the gate:
+Emit exactly one JSON object (the `QuantVerificationReport` schema in
+`scripts/harness_models.py`) and post it on the pull request:
 
 ```json
 {
@@ -74,10 +75,5 @@ Emit exactly one JSON object and pipe it to the gate:
 }
 ```
 
-```bash
-uv run python scripts/gate.py attest --kind quant < report.json
-```
-
-The gate rejects malformed reports, FAIL verdicts, and PASS verdicts containing
-non-VERIFIED claims; a successful attest binds to the current quant-diff hash and
-is invalidated by any further in-scope edit.
+A PASS containing any non-VERIFIED claim is invalid; any further in-scope edit needs a
+fresh report.
