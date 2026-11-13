@@ -3,10 +3,11 @@ owner: delivery pipeline
 sources:
   - scripts/gate.py
   - scripts/harness_models.py
-  - docs/roadmap/capabilities.toml
-  - .claude/agents/*.md
+  - scripts/capabilities.py
   - scripts/handoff.py
-verified: d0fffa796f8e
+  - .claude/agents/reviewer.md
+  - .claude/agents/quant-verifier.md
+verified: f89aa1bb78af
 ---
 
 # Stage 04 — verify: prove it works

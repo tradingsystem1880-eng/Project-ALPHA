@@ -71,13 +71,14 @@ work may be open.
 | [2026-10-26-qlib-w11-refit](../work/2026-10-26-qlib-w11-refit/02-plan.md) | Qlib W11: bounded whole-pipeline refit evidence | Blocked | 2026-10 |
 | [2026-10-02-agentic-research-capability-program](../work/2026-10-02-agentic-research-capability-program/02-plan.md) | Agentic research capability program | Planned | 2026-10 |
 
-## Backlog (16)
+## Backlog (17)
 
 | Item | Status | Rough size |
 | --- | --- | --- |
 | [Catalyst, expectations and fundamentals research (W15)](backlog/catalyst-research.md) | Scoped | L |
 | [ControlStore-owned durable acquisition journal](backlog/controlstore-durable-acquisition.md) | Idea | L |
 | [Generalise D0 screening to every registered producer (Phase E)](backlog/d0-generalisation.md) | Idea | M |
+| [A route for new daily-bar research ideas](backlog/daily-research-operators.md) | Idea | L |
 | [Data-directory naming migration](backlog/data-directory-naming-migration.md) | Idea | M |
 | [Delivery-task system (durable task ownership and two-model handoff)](backlog/delivery-task-system.md) | Scoped | L |
 | [Gate coverage for workers/rdagent](backlog/gate-coverage-rdagent.md) | Scoped | S |

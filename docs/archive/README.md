@@ -48,3 +48,19 @@ History only, not a live source: how a change is made now lives in
 | --- | --- | --- |
 | `2026-11-claude-agents-commands-skills/claude/` | `.claude/agents/`, `.claude/commands/`, `.claude/skills/` | All nine agent prompts, ten commands and nine skill stubs as of commit `8fd5e6dc`, before the pipeline replaced them. The leading dot is dropped from the folder names. Bytes unchanged except two relative links, rewritten to resolve from here. |
 | `2026-11-claude-agents-commands-skills/agents/` | `.agents/skills/*`, `.agents/references/` | The seven deleted skills, `UPSTREAM.md` and `definition-of-done.md`, same commit. Bytes unchanged except one relative link. |
+
+## Moved on 2026-11-14 (research pipeline, M3)
+
+History only, not a live source: these are the June 2026 pre-build research reports and the vendor
+blueprint they answered. Their recommendations are dated; current decisions are the ADRs and
+[`docs/ARCHITECTURE.md`](../ARCHITECTURE.md), and running a research case now lives in
+[`research/CONTEXT.md`](../../research/CONTEXT.md) and its six stage files.
+
+| Archive path | Original path | Notes |
+| --- | --- | --- |
+| `2026-06-research-notes/00-SYNTHESIS.md` | `research/00-SYNTHESIS.md` | June synthesis of reports 01–07. Bytes unchanged except two relative links, rewritten to resolve from here. |
+| `2026-06-research-notes/01-*.md` … `07-*.md` (7 files) | `research/01-*.md` … `research/07-*.md` | Research briefs on data, storage, engine, validation, paper feeds, strategy encoding and architecture. Bytes unchanged. |
+| `2026-06-research-notes/2026-06-vendor-blueprint-building-elite-ai-trading-software.md` | `research/` (same name) | The vendor blueprint the reports answered. Bytes unchanged. |
+
+Links to these files from `ARCHITECTURE.md`, `records/specs/2026-06-14-project-alpha-v1-design.md` and the
+archived context maps were rewritten (path only).
