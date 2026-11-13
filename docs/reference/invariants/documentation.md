@@ -10,7 +10,7 @@ sources:
   - tests/unit/test_docs_links.py
   - tests/unit/test_repo_awareness_drift.py
   - tests/unit/test_roadmap_index.py
-verified: 00f70c232ea5
+verified: d0fffa796f8e
 ---
 
 # Documentation invariants
@@ -61,6 +61,9 @@ delivery states, the generated roadmap index, append-only records, and relative 
 - Every plan, live or archived, has exactly one `**Delivery state:** <state>` line within its first 12 lines.
   States: `Completed`, `Implemented – qualification pending` (en dash), `In progress`, `Blocked`, `Planned`,
   `Superseded by <relative path>`. Text may follow after ` — `, `(`, `.`, `;`, `,` or a date.
+- A plan written from 2026-11-14 also states `**Build class:** small|standard|hard — <reason>` in its first
+  12 lines and lists every file in scope in the front block's `files`
+  ([model routing](../model-routing.md#task-classes)); `scripts/handoff.py` builds and checks from them.
 - Use `Completed` only for merged work (older plans may cite an acceptance recorded in `BUILD-STATUS.md`).
 - By convention the state line sits under the title, or on line 1 when a JSON block leads the file, and
   reads `**Delivery state:** <state> — <evidence>` (the test checks only the first 12 lines).

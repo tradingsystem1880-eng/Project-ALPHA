@@ -6,7 +6,7 @@ sources:
   - docs/roadmap/capabilities.toml
   - .claude/agents/*.md
   - scripts/handoff.py
-verified: 40d916b11519
+verified: d0fffa796f8e
 ---
 
 # Stage 04 — verify: prove it works

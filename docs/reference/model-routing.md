@@ -6,7 +6,7 @@ sources:
   - .claude/agents/*.md
   - .codex/config.toml
   - AGENTS.md
-verified: c4a47968e14d
+verified: d0fffa796f8e
 ---
 
 # Model routing: who builds, who reviews, what happens at a limit
@@ -51,16 +51,26 @@ Why, one line each:
 
 - `gpt-6.1-sol` is the newest workhorse coding model on this login; `gpt-6-astra` is listed as the
   frontier model "for the most demanding work" (`~/.codex/models_cache.json`, 2026-11-14).
-- `medium` for small tasks: calibration (below) showed `high` reading and re-checking far more than a
-  one-module fix needs; quality stayed equal on both small tasks.
+- `medium` for small tasks: both calibration tasks (below) came out correct and clean first time
+  at `medium`; the earlier hand-run trial at `high` took 8 minutes for a task of similar size.
+- `high` for standard and `gpt-6-astra` for hard: not yet measured; the conservative choice until
+  builds of those classes say otherwise.
 - Lighter models (`gpt-6-luna`, "fast and affordable") are not used for building: a quiet quality
   loss costs more than the allowance saved. No evidence yet says otherwise.
 - Higher efforts (`xhigh`, `max`, `ultra`) are not used by default: unmeasured, and they spend the
   weekly allowance fastest.
 
-Calibration, 2026-11-14 (two real small-route tasks, numbers in each task's build record):
-see the commit messages of the two calibration commits on `m3/model-routing` and the report kept
-with this change. Re-calibrate when a model is added or a class looks wrong in three builds running.
+Calibration, 2026-11-14, both small route, `gpt-6.1-sol` `medium`, no fix round needed:
+
+| Task | Wall time | Input tokens (cached) | Output | Result |
+|---|---|---|---|---|
+| A: redact paths in the rules-evaluate relay error (3 files) | 3m57s | 496,656 (468,736) | 3,749 | correct; one unrequested doc re-wrap, caused by the brief |
+| B: aggregate the per-plan tests in `test_plan_schema.py` (1 file) | 2m57s | 188,778 (150,656) | 2,822 | correct, strictness kept; 314 cases to 6 |
+
+Most of Codex's allowance goes on context: a turn's input count adds up what is sent with each
+model call (inferred: 497k input for one turn of 32 commands, 94% cached), so every file read
+early costs again on each later step; a short read list saves more than a lower effort. Re-calibrate
+when a model is added, or when a class looks wrong in three builds running.
 
 ## What stays with Claude or the machine
 
@@ -132,6 +142,8 @@ and `fallback`, and the pull request's "Who built and who reviewed".
 - Sub-agent models are set in each agent's front matter (`model:`); override per call only as the
   review table says.
 - One small route task per brief; batch unrelated small fixes into separate parallel builds.
+- A brief says what to change and where; a style remark about a whole file reads as an order to
+  rewrite it (calibration task A re-wrapped a whole reference file that way).
 
 ## Records
 
@@ -140,4 +152,6 @@ and `fallback`, and the pull request's "Who built and who reviewed".
 it also writes `docs/work/<task>/03-build.json`, committed with the build. On the small route the
 record stays outside the tree and its numbers go into the pull request under "Who built and who
 reviewed". Worktrees are `<home>/wt/<name>` on branch `build/<name>`; `handoff.py status` lists
-them and `handoff.py clean` removes merged ones (only those it created).
+them and `handoff.py clean` removes merged ones (only those it created). A later run on the same
+worktree (a fix by hand, or the Claude fallback through `handoff.py verify`) keeps the earlier
+attempts under `previous_attempts`, so the fallback stays visible.

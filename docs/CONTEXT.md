@@ -7,7 +7,7 @@ sources:
   - scripts/fs_stale.py
   - tests/unit/test_docs_links.py
   - tests/unit/test_plan_schema.py
-verified: 00f70c232ea5
+verified: d0fffa796f8e
 ---
 
 # docs workspace
