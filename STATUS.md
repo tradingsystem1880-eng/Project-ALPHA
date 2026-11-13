@@ -10,7 +10,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
   - 36 built but not yet checked end to end
   - Not counted: 3 blocked, 1 planned, not started.
   - Allowed for now: 41. This number only goes down, until it reaches 3.
-- **Known defects:** 1 (listed below).
+- **Known defects:** 0.
 - **Decisions waiting for you:** 22.
 
 "Working" means the workflow was run from start to finish through the installed program
@@ -28,7 +28,7 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Download and freeze stock and ETF prices** — no offline way to get prices in; snapshot, verify and as-of read are proven end to end.
 - **Download bookkeeping: receipts and quota** — not connected to any command; tests only.
 - **Bybit funding-rate download** — not connected to any command; real downloads refused on purpose.
-- **Reports, figures and run comparison** — the text report is proven end to end; the JSON report (--json) is a known defect, and figures and run comparison are tested in-process only.
+- **Reports, figures and run comparison** — the text and JSON (--json) reports are proven end to end; figures and run comparison are tested in-process only.
 - **Price forecasts with the Kronos model** — proved only with a stand-in model. Needs: the Kronos model files (downloaded on first use; not on this computer).
 - **Research cases from idea to decision (D0, D1, D2)** — proven up to the owner-approval boundary; a full case needs provider data and your approval.
 - **Find papers and screen their claims (R4)** — paper download tested only with a stand-in worker. Needs: the literature worker setup (not installed on this computer).
@@ -63,7 +63,7 @@ Tested piece by piece inside the test suite, but not yet run from start to finis
 
 Found by running the installed program; each has a check that will fail once it is fixed.
 
-- **The JSON report of a backtest run is empty: `alpha report <run-id> --json` prints a daily-rule evidence report with no run data, while the text report shows the run.** To see it: run `uv run alpha backtest run SPY --snapshot <name>`, then `uv run alpha report <run-id> --json`.
+- None known.
 
 ## Demo only
 

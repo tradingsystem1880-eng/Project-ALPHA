@@ -329,7 +329,7 @@ proof_smoke = [
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
-missing = "the text report is proven end to end; the JSON report (--json) is a known defect, and figures and run comparison are tested in-process only"
+missing = "the text and JSON (--json) reports are proven end to end; figures and run comparison are tested in-process only"
 plans = []
 
 [[capability]]
@@ -989,8 +989,3 @@ line = "Five of six steps done; one final independent review is left."
 plan = "2026-10-31-packet3-daily-rule.md"
 title = "AI-run daily trading-rule study (Packet 3)"
 line = "Works on made-up data; the real-market run has not begun and needs RD-Agent and permanent hosting."
-
-[[known_defect]]
-title = "The JSON report of a backtest run is empty: `alpha report <run-id> --json` prints a daily-rule evidence report with no run data, while the text report shows the run"
-node = "tests/smoke/test_backtest_smoke.py::test_backtest_report_json_describes_the_run"
-how_to_reproduce = "run `uv run alpha backtest run SPY --snapshot <name>`, then `uv run alpha report <run-id> --json`"

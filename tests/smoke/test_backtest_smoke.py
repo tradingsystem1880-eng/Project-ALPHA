@@ -26,12 +26,11 @@ def test_backtest_run_is_stored_and_reported(backtest_home: BacktestHome) -> Non
     assert f"final_equity={backtest_home.final_equity:.4f}" in report
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="`alpha report RUN --json` always answers with the daily-rule evidence schema: for a "
-    "backtest run it prints DailyRuleEvidenceV1 with available=false and no run data, although "
-    "the text form of the same command reports the run",
-)
 def test_backtest_report_json_describes_the_run(backtest_home: BacktestHome) -> None:
+    run_dir = backtest_home.home / "data" / "runs" / backtest_home.run_id
     payload = alpha(backtest_home.home, "report", backtest_home.run_id, "--json").json()
-    assert payload["available"] is True
+    assert payload == json.loads((run_dir / "manifest.json").read_text())
+    assert payload["run_id"] == backtest_home.run_id
+    assert payload["command"] == "backtest_run"
+    assert payload["snapshot_id"] == SNAPSHOT
+    assert payload["final_equity"] == backtest_home.final_equity
