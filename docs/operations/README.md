@@ -11,9 +11,9 @@ For purposes, assumptions and interpretation of all four required path-risk fami
 This runbook is for the single-operator local deployment. Do not commit `.env`, Tiingo/IBKR
 credentials, account identifiers, Docker secrets, generated journals, or copied market data.
 
-The supplied Tiingo token, QuantPad token, CoinGecko Demo key, and IBKR Paper account identifier are
-stored in the macOS keychain services `project-alpha-tiingo`, `project-alpha-quantpad`,
-`project-alpha-coingecko`, and `project-alpha-ibkr-paper-account`. Repository files contain only
+The supplied Tiingo token, CoinGecko Demo key, and IBKR Paper account identifier are stored in the
+macOS keychain services `project-alpha-tiingo`, `project-alpha-coingecko`, and
+`project-alpha-ibkr-paper-account` (the former QuantPad item, `project-alpha-quantpad`, is unused). Repository files contain only
 those service names. The local `.env` is git-ignored and mode `0600`; it must not receive vendor or
 broker secrets.
 
@@ -46,46 +46,14 @@ absent from request receipts, manifests, logs, and command arguments. The refere
 supplemental research context and cannot satisfy venue-price, validation-price, or execution-price
 requirements.
 
-## 1. QuantPad (retained historical code; not an active data source)
+## 1. QuantPad (removed 2026-11-14)
 
-QuantPad is excluded from active and future data-source plans (see the root
-[README](../../README.md)). The project-scoped Codex MCP registration for QuantPad has been removed
-from `.codex/config.toml`. The launcher action and `alpha quantpad-data` commands below remain only
-as historical code for existing records; removing that code is a separate backlog decision. Do not
-start new research with them. If an existing record must be rechecked, load the API key into only
-the process that needs it. The checked launcher retrieves one named item and replaces itself with
-the exact check or Workstation process:
-
-```bash
-scripts/alpha-with-keychain-provider quantpad check
-```
-
-After the explicit check succeeds, archive only a closed symbol/family/time contract. Exact bytes
-go to the sibling `quantpad-data` directory on the UUID-pinned bulk volume; manifests remain under
-the internal ALPHA data root:
-
-```bash
-scripts/alpha-with-keychain-provider quantpad archive coverage AAPL --json
-scripts/alpha-with-keychain-provider quantpad archive bars AAPL \
-  --start 2018-01-01 --end 2026-08-18 --timeframe 1d --json
-scripts/alpha-with-keychain-provider quantpad archive universe a \
-  --asset-class futures --json
-uv run alpha quantpad-data verify MANIFEST_ID --json
-```
-
-The API is symbol-scoped and exposes ranked search pages of at most 50 records—not a universal
-export. A catalog can be mechanically complete only when every query is archived and none reaches
-that cap; otherwise maintain an explicit coverage backlog. Never describe a set of guessed symbols
-as a complete provider dump.
-Large tick requests must be partitioned into bounded intervals. Archive receipts remain
-`research_only` and do not qualify or promote data automatically.
-
-Use `get_coverage` before every bulk request and project only required order-book columns. Store
-bulk results outside tracked repository paths. They remain research scratch data until ALPHA has a
-tested receipt/candidate/quality adapter; they must not be relabeled as canonical data or paper
-evidence. Website scraping, nonpublic endpoints, redistribution, public display, and model training
-are prohibited. Written QuantPad permission is required before permanent bulk archiving or retention
-after a subscription ends. See ADR-0018.
+The owner no longer uses QuantPad. Its command (`alpha quantpad-data`), adapter, archive code and
+launcher action were removed on 2026-11-14
+([ADR-0018 note](../adr/0018-quantpad-external-research-data-boundary.md#owner-supersession--2026-11-14)).
+Research datasets already registered from a QuantPad receipt stay readable. Archived QuantPad bytes
+and manifests already on disk are plain files; nothing in ALPHA reads or rewrites them any more.
+The `project-alpha-quantpad` keychain item is no longer used; deleting it is the owner's choice.
 
 ## 2. Configure daily Tiingo work
 

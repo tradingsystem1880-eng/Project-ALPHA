@@ -610,6 +610,6 @@ based on `b1b7510`. It has the same UNVERIFIED disclosure and preserves all othe
 checks; it does not automatically extend the earlier exception to future work.
 
 A third explicit owner resolution on 2026-10-05 covers only the commits made under the
-[clean-and-reconcile plan](../work/2026-10-05-clean-reconcile-main/02-plan.md). Hidden
+[clean-and-reconcile plan](../work/archive/2026-10/2026-10-05-clean-reconcile-main/02-plan.md). Hidden
 tests remain UNVERIFIED; every other check stays mandatory; no extension to later work.
 

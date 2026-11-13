@@ -5,7 +5,6 @@ sources:
   - apps/alpha-cli/src/alpha_cli/_crypto_*.py
   - apps/alpha-cli/src/alpha_cli/_chart_data.py
   - apps/alpha-cli/src/alpha_cli/data_cmds.py
-  - apps/alpha-cli/src/alpha_cli/quantpad_data_cmds.py
   - tests/unit/test_crypto_*.py
   - tests/integration/test_crypto_*.py
   - tests/integration/test_data_*.py
@@ -14,7 +13,7 @@ verified: 1ac86fc02443
 
 # Command line data invariants
 
-What must not break when changing `alpha data`, `alpha quantpad-data` and the governed crypto data house
+What must not break when changing `alpha data` and the governed crypto data house
 (`alpha crypto-data`, `crypto_*` and `_crypto_*` modules), on top of the provider parsing, quality and snapshot contracts
 that `alpha_data` owns. Project-wide rules: [research integrity § Point-in-time reads](research-integrity.md#point-in-time-reads)
 and [research integrity § Invalid data fails loud](research-integrity.md#invalid-data-fails-loud).
@@ -30,8 +29,6 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
 - `data candles` and `data symbols` read through the same point-in-time loader a backtest uses (`_runner.load_bars`).
 - `data universe` and `--with-actions` are read projections with no authority; the plain `--json` picker output stays
   unchanged.
-- QuantPad archives are owner-invoked, research-only provider responses. They never feed strategies, snapshots, charts
-  or paper intents without the receipt and quality path. [ADR-0018](../../adr/0018-quantpad-external-research-data-boundary.md)
 - Binance spot daily REST reads take an opt-in `RequestBudget` (attempts and body bytes; see
   [crypto providers § Shared fetch boundary](crypto-providers.md#shared-fetch-boundary)).
 - On malformed provider bars, CLI callers raise their typed usage error and publish no run.

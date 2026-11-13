@@ -1,6 +1,6 @@
-# Combined Mac portability qualification
+# Running ALPHA on the owner's Mac with real data providers
 
-**Delivery state:** In progress — checkpoint merged via PR #95; final successor qualification slice pending
+**Delivery state:** In progress — checkpoint merged via PR #95; final successor qualification slice pending; absorbs crypto operational readiness C4–C6, blocked by provider (merged 2026-11-14, triage card 13)
 
 > Evidence navigation: `.alpha/state/` paths below name ignored, machine-local receipts.
 > These are handoff locations, not repository links.
@@ -14,7 +14,7 @@
 ```json
 {
   "schema_version": 1,
-  "title": "Combined Mac portability qualification",
+  "title": "Combined Mac portability qualification; owner storage, BTC/ETH providers and owner journeys (merged 2026-11-14)",
   "context": "Reconcile verified native repair into frozen Qlib/W11/PR92/W05 b0b9c8ea and qualify actual Mac without lowering coverage or enabling native execution.",
   "assumptions": [
     {
@@ -72,6 +72,40 @@
       "verify": "Exact-tree canonical gate plus separate remaining components if floor blocks full",
       "expected": "No inherited approval; actual counts, scope and residual limits",
       "rollback": "No publication; retain failed checkpoint",
+      "status": "pending"
+    },
+    {
+      "title": "Merged from crypto operational readiness: C4 qualify owner storage and BTC/ETH core providers",
+      "verify": "Run storage, storage-inventory, full storage-verify, bounded profile run/resume, qualification, asset-master, snapshot, feature, comparison, redacted provider checks, and scoped network tests with exact command outputs captured.",
+      "expected": "The reviewed Expansion UUID, reserve, external/internal boundary, immutable rehash, and exact Binance/Bybit/CoinGecko/Coin Metrics/GeckoTerminal BTC/ETH identities plus Coinbase comparison pass freshly; any missing access, credential, rate limit, family, or byte remains a release blocker.",
+      "rollback": "Do not delete or rewrite immutable data; failed acquisitions remain honest non-evidence and resumable batches retain their checkpoints.",
+      "files": [
+        "data/crypto/**",
+        "docs/records/audits/**"
+      ],
+      "status": "pending"
+    },
+    {
+      "title": "Merged from crypto operational readiness: C5 execute isolated deterministic and provider-backed owner journeys",
+      "verify": "Run the golden research-to-workspace lifecycle in an isolated data directory, a provider-backed BTC/ETH case only to its mechanically supported state, standalone crypto sandbox separation tests, and a visible six-area Workstation walkthrough; owner performs fresh Touch ID ceremonies.",
+      "expected": "Lifecycle evidence is complete and honest, unsupported/inconclusive outcomes are preserved, sandbox creates no broker/order authority, and all owner-facing recovery guidance is usable.",
+      "rollback": "Remove only isolated acceptance data; never alter the two owner projects or manufacture decision/promotion evidence.",
+      "files": [
+        "tests/integration/**",
+        "docs/records/audits/**"
+      ],
+      "status": "pending"
+    },
+    {
+      "title": "Merged from crypto operational readiness: C6 regenerate, review, publish, and post-merge smoke",
+      "verify": "Run the canonical full gate, bias guards, frontend gate, literature and Qlib worker gates, live scoped acceptance, harness doctor, secret scan, Git integrity/diff checks, independent review, exact-SHA GitHub checks, and post-merge CLI/Workstation/workspace/storage/provider smokes.",
+      "expected": "All generated surfaces and current-state documents are fresh, zero release blockers remain, the reviewed branch is merged to main, and main has a fresh exact-tree full-gate stamp while paper/broker remain disabled.",
+      "rollback": "Do not merge on a failed gate or review; if post-merge smoke fails, record the exact blocker and use a forward fix rather than rewriting owner data.",
+      "files": [
+        "docs/**",
+        "apps/alpha-web/frontend/**",
+        "CLAUDE.md"
+      ],
       "status": "pending"
     }
   ],
@@ -290,3 +324,12 @@ comparison artifacts and the `ml compare` command; and explicit-UTC refit cutoff
 fixture-store claim/status and retained-child paths still need a Linux host; native launch and
 rule-environment measurement need the pinned RD-Agent source and qualified worker environments.
 This adds no qualification.
+
+## Merged plan (2026-11-14)
+
+On the owner's delegated triage (card 13, KEEP: merge the two plans into one), this plan also
+carries the three unfinished slices of the
+[crypto operational-readiness plan](../archive/2026-08/2026-08-30-crypto-operational-readiness/02-plan.md):
+C4 owner storage and BTC/ETH providers, C5 provider-backed owner journeys and C6 publish. They have
+been blocked by provider access since 31 August and stay pending here. That plan's finished slices
+C0–C3 and its history stay in the archive.

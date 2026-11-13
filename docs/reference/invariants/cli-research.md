@@ -134,8 +134,9 @@ this file holds the command-line specifics.
 
 ## Research data and crypto research
 
-- `data register` binds a `research_only` `rd_<sha256>` reference to exact snapshot-manifest, provenance or QuantPad
-  receipt bytes. `data audit` publishes an immutable EXPLORATORY `research_data_audit` run whose findings feed only the
+- `data register` binds a `research_only` `rd_<sha256>` reference to exact snapshot-manifest or provenance bytes
+  (`--kind snapshot | store-slice`; QuantPad registration was removed 2026-11-14, existing `quantpad_receipt` rows
+  stay readable). `data audit` publishes an immutable EXPLORATORY `research_data_audit` run whose findings feed only the
   data dimension. [ADR-0023](../../adr/0023-research-dataset-registration-and-quantpad-lane.md)
 - D1 and D2 load stock data only through `research_d1.load_registered_research_bars`: registered session-daily
   (1440-minute) bars, each available at its session end. Duplicates, disorder, incoherent OHLC or a non-daily
@@ -154,5 +155,4 @@ this file holds the command-line specifics.
   `uv run --locked --no-sync`, `UV_OFFLINE=1`, its own session and resource limits. It keeps a valid explicit
   `UV_CACHE_DIR`, else uses a temporary cache removed afterwards; an invalid explicit cache fails before start.
   [ADR-0024](../../adr/0024-literature-acquisition-worker-and-claim-model.md)
-- `research_acquisition.py` holds validation primitives only; it performs no request or download.
 - Worker isolation in general: [research integrity § Models and isolated workers](research-integrity.md#models-and-isolated-workers).

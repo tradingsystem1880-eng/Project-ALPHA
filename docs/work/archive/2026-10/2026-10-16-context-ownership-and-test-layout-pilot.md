@@ -144,7 +144,7 @@ remain unchanged. Existing authority roles above are reused rather than copied i
 ## One historical reference: bounded resolution
 
 Only the referring paragraph in
-[2026-10-08 repository hygiene](../../2026-10-08-repository-hygiene/02-plan.md) is in scope.
+[2026-10-08 repository hygiene](2026-10-08-repository-hygiene/02-plan.md) is in scope.
 It links to the unavailable filename `2026-10-09-engineering-holdout-policy.md`.
 Do not read hidden suites, private archives, deleted protected-policy contents or owner stores.
 Do not reconstruct the missing document or adopt its historical policy claim.

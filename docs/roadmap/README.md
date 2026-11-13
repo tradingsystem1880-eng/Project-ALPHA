@@ -21,30 +21,23 @@ exceed the `ceiling` in [wip-limit.json](wip-limit.json), and the ceiling must b
 lowered each time work closes. Once it reaches the `limit` of 3, at most 3 pieces of
 work may be open.
 
-## Live plans (45)
+## Live plans (41)
 
 | Plan | Title | Delivery state | Month |
 | --- | --- | --- | --- |
 | [2026-09-10-edge-first-phase-b-feed-the-machine](../work/2026-09-10-edge-first-phase-b-feed-the-machine/02-plan.md) | Edge-first Phase B — feed the machine: resumable crypto backfill, a real derivatives dataset, a point-in-time equity universe, and the knowledge-time flag | In progress | 2026-09 |
-| [2026-10-05-clean-reconcile-main](../work/2026-10-05-clean-reconcile-main/02-plan.md) | Clean, reconcile and protect main | In progress | 2026-10 |
-| [2026-10-08-repository-hygiene](../work/2026-10-08-repository-hygiene/02-plan.md) | Finish outstanding work and establish a documented clean baseline | In progress | 2026-10 |
-| [2026-10-26-mac-portability-qualification](../work/2026-10-26-mac-portability-qualification/02-plan.md) | Combined Mac portability qualification | In progress | 2026-10 |
+| [2026-10-26-mac-portability-qualification](../work/2026-10-26-mac-portability-qualification/02-plan.md) | Running ALPHA on the owner's Mac with real data providers | In progress | 2026-10 |
 | [2026-10-31-packet3-daily-rule](../work/2026-10-31-packet3-daily-rule/02-plan.md) | Packet 3 daily rule implementation | In progress | 2026-10 |
-| [2026-11-07-acquisition-disposable-transactions](../work/2026-11-07-acquisition-disposable-transactions/02-plan.md) | Disposable acquisition transactions | Implemented – qualification pending | 2026-11 |
 | [2026-11-07-backfill-ledger-exclusion](../work/2026-11-07-backfill-ledger-exclusion/02-plan.md) | Cooperative whole-file backfill progress exclusion | Implemented – qualification pending | 2026-11 |
 | [2026-11-07-backfill-resume-evidence](../work/2026-11-07-backfill-resume-evidence/02-plan.md) | Verify retained backfill work before resume | Implemented – qualification pending | 2026-11 |
 | [2026-11-07-backfill-verification-budget](../work/2026-11-07-backfill-verification-budget/02-plan.md) | Bound explicit resume artifact verification | Implemented – qualification pending | 2026-11 |
 | [2026-11-07-paper-to-experiment-provenance](../work/2026-11-07-paper-to-experiment-provenance/02-plan.md) | Paper-to-experiment provenance | Implemented – qualification pending | 2026-11 |
 | [2026-11-07-stock-rdloop-continuation](../work/2026-11-07-stock-rdloop-continuation/02-plan.md) | Stock RDLoop synthetic continuation | Implemented – qualification pending | 2026-11 |
 | [2026-11-07-stock-retained-dispatch](../work/2026-11-07-stock-retained-dispatch/02-plan.md) | Retained stock RDLoop dispatch | Implemented – qualification pending | 2026-11 |
-| [2026-11-08-accounted-backfill-dispatch](../work/2026-11-08-accounted-backfill-dispatch/02-plan.md) | Connect backfill to explicit disposable window-dispatch accounting | Implemented – qualification pending | 2026-11 |
-| [2026-11-08-accounted-http-attempts](../work/2026-11-08-accounted-http-attempts/02-plan.md) | Opt-in synthetic per-HTTP accounting integration | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-asset-master-source-provenance](../work/2026-11-08-asset-master-source-provenance/02-plan.md) | Reopen frozen asset-master source evidence at retained-data consumers | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-backfill-metadata-bounds](../work/2026-11-08-backfill-metadata-bounds/02-plan.md) | Bound status metadata before parsing | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-backfill-readonly-status](../work/2026-11-08-backfill-readonly-status/02-plan.md) | Read-only backfill status and safe recovery planning | Implemented – qualification pending | 2026-11 |
-| [2026-11-08-bound-http-retained-resume](../work/2026-11-08-bound-http-retained-resume/02-plan.md) | Versioned accounted retained completed-window resume | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-c04-risk-anchor-disclosure](../work/2026-11-08-c04-risk-anchor-disclosure/02-plan.md) | C04 risk metric-basis JSON, API and visible consumer integration | Implemented – qualification pending | 2026-11 |
-| [2026-11-08-complete-http-response-evidence](../work/2026-11-08-complete-http-response-evidence/02-plan.md) | Strict complete-response evidence before replay | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-native-cumulative-regression](../work/2026-11-08-native-cumulative-regression/02-plan.md) | Native RD cumulative qualification correction | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-native-job-result-api](../work/2026-11-08-native-job-result-api/02-plan.md) | Server-owned native-job result read contract | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-native-job-result-view](../work/2026-11-08-native-job-result-view/02-plan.md) | Native job result web consumer | Implemented – qualification pending | 2026-11 |
@@ -66,20 +59,23 @@ work may be open.
 | [2026-11-09-web-matplotlib-environment](../work/2026-11-09-web-matplotlib-environment/02-plan.md) | Forward configured Matplotlib configuration and cache placement to CLI children | Implemented – qualification pending | 2026-11 |
 | [2026-11-10-browser-lane-routing](../work/2026-11-10-browser-lane-routing/02-plan.md) | Route mandatory browser tests to their existing fixtures | Implemented – qualification pending | 2026-11 |
 | [2026-11-10-risk-basis-fixture-capture](../work/2026-11-10-risk-basis-fixture-capture/02-plan.md) | Complete deferred synthetic risk-basis fixture | Implemented – qualification pending | 2026-11 |
-| [2026-08-30-crypto-operational-readiness](../work/2026-08-30-crypto-operational-readiness/02-plan.md) | Crypto Operational-Readiness Closure — Implementation Plan | Blocked | 2026-08 |
 | [2026-10-26-native-rule-study-boundary](../work/2026-10-26-native-rule-study-boundary/02-plan.md) | Frozen-rule native study admission prerequisite | Blocked | 2026-10 |
 | [2026-10-26-qlib-w11-refit](../work/2026-10-26-qlib-w11-refit/02-plan.md) | Qlib W11: bounded whole-pipeline refit evidence | Blocked | 2026-10 |
-| [2026-10-02-agentic-research-capability-program](../work/2026-10-02-agentic-research-capability-program/02-plan.md) | Agentic research capability program | Planned | 2026-10 |
+| [2026-11-07-acquisition-disposable-transactions](../work/2026-11-07-acquisition-disposable-transactions/02-plan.md) | Disposable acquisition transactions | Blocked | 2026-11 |
+| [2026-11-08-accounted-backfill-dispatch](../work/2026-11-08-accounted-backfill-dispatch/02-plan.md) | Connect backfill to explicit disposable window-dispatch accounting | Blocked | 2026-11 |
+| [2026-11-08-accounted-http-attempts](../work/2026-11-08-accounted-http-attempts/02-plan.md) | Opt-in synthetic per-HTTP accounting integration | Blocked | 2026-11 |
+| [2026-11-08-bound-http-retained-resume](../work/2026-11-08-bound-http-retained-resume/02-plan.md) | Versioned accounted retained completed-window resume | Blocked | 2026-11 |
+| [2026-11-08-complete-http-response-evidence](../work/2026-11-08-complete-http-response-evidence/02-plan.md) | Strict complete-response evidence before replay | Blocked | 2026-11 |
 
-## Backlog (16)
+## Backlog (17)
 
 | Item | Status | Rough size |
 | --- | --- | --- |
+| [Autonomous research agent programme](backlog/agentic-research-programme.md) | Scoped | XL |
 | [Catalyst, expectations and fundamentals research (W15)](backlog/catalyst-research.md) | Scoped | L |
 | [ControlStore-owned durable acquisition journal](backlog/controlstore-durable-acquisition.md) | Idea | L |
 | [Generalise D0 screening to every registered producer (Phase E)](backlog/d0-generalisation.md) | Idea | M |
 | [Data-directory naming migration](backlog/data-directory-naming-migration.md) | Idea | M |
-| [Delivery-task system (durable task ownership and two-model handoff)](backlog/delivery-task-system.md) | Scoped | L |
 | [Gate coverage for workers/rdagent](backlog/gate-coverage-rdagent.md) | Scoped | S |
 | [Governed storage restore and query for real-data native studies (W19)](backlog/governed-storage-restore-and-query.md) | Scoped | L |
 | [Intraday (1h) equity timeframe](backlog/intraday-equity-timeframe.md) | Idea | M |
@@ -91,6 +87,7 @@ work may be open.
 | [Full Qlib model zoo and fold-by-fold counterfactual retraining (W11/W12)](backlog/qlib-model-zoo-and-fold-retraining.md) | Scoped | XL |
 | [Remove the remaining QuantPad code](backlog/quantpad-code-removal.md) | Scoped | S |
 | [RD-Agent autonomous native research and restart continuation (W08/W13, T07)](backlog/rdagent-autonomous-research.md) | Scoped | XL |
+| [Make the weekly mutation sweep pass on main](backlog/weekly-mutation-sweep.md) | Scoped | S |
 
 ## Staged refactors (7)
 
@@ -104,12 +101,12 @@ work may be open.
 | [Reduce `# type: ignore` suppressions](refactors/type-ignore-reduction.md) | L |
 | [Split alpha_web/api/models.py per router and unify StrictModel](refactors/web-api-models-split.md) | M |
 
-## Archived plans (111)
+## Archived plans (115)
 
 | Month | Plans |
 | --- | --- |
 | [2026-06](../work/archive/2026-06/) | 13 |
-| [2026-08](../work/archive/2026-08/) | 9 |
+| [2026-08](../work/archive/2026-08/) | 10 |
 | [2026-09](../work/archive/2026-09/) | 21 |
-| [2026-10](../work/archive/2026-10/) | 57 |
+| [2026-10](../work/archive/2026-10/) | 60 |
 | [2026-11](../work/archive/2026-11/) | 11 |

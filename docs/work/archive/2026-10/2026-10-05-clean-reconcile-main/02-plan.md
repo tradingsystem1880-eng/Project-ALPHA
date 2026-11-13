@@ -1,6 +1,6 @@
 # Clean, reconcile and protect main
 
-**Delivery state:** In progress — PRs #53/#55 merged; post-merge hardening slice still open
+**Delivery state:** Superseded by [ADR-0039](../../../../adr/0039-ci-is-the-merge-gate.md) — closed 2026-11-14 (triage card 14, owner's delegation): the open hardening slice is overtaken by CI as the merge gate and a green nightly run; branch protection stays with the owner. Earlier state: In progress — PRs #53/#55 merged; post-merge hardening slice still open
 
 **Current status — 2026-10-17:** The main integration in [PR #53](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/53) and the later preserved feature recovery in [PR #55](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/55) are merged; each has seven successful required checks. The historical canceled nightly mutation run is not a green run. Keep any workstation restart or nightly closeout separate until its own current receipt is recorded.
 

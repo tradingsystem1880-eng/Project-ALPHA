@@ -867,7 +867,7 @@ qualification and the deferred Mac successor retain their existing requirements.
 
 The [cleanup/refactor successor](2026-10-30-project-lineage-projection-refactor.md) removes the
 item-4 `changed_paths` wrapper and records cloud-visible ref/worktree dispositions through the
-[existing hygiene plan](../../2026-10-08-repository-hygiene/02-plan.md#cloud-visible-ledger-reconciliation-2026-10-30).
+[existing hygiene plan](2026-10-08-repository-hygiene/02-plan.md#cloud-visible-ledger-reconciliation-2026-10-30).
 Physical Mac reconciliation and the wider acceptance obligations above remain separately open.
 
 ## Native upstream first follow-on — 2026-11-06

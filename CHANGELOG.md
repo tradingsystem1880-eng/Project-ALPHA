@@ -12,7 +12,7 @@ package metadata remains at `1.0.0` until a release is explicitly cut.
   report validation, enforce the research import boundary, recover fee-aware CASH buy
   rejection evidence, and reconcile current documentation. Available engineering checks
   and absent hidden-suite acceptance are recorded separately in the
-  [cleanup plan](docs/work/2026-10-08-repository-hygiene/02-plan.md).
+  [cleanup plan](docs/work/archive/2026-10/2026-10-08-repository-hygiene/02-plan.md).
 
 - Add the Claude Code harness v2 agent operating system (ADR-0034): owner-token-gated
   `gate.py override|ack|baseline` (agent self-serve and hash-chain-audited while the token is

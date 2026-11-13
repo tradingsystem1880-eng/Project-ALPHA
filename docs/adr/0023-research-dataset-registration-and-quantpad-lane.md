@@ -1,8 +1,19 @@
 # ADR-0023: Research dataset registration and the QuantPad qualification lane
 
-**Status:** Accepted (implemented 2026-08-09/10; accepted 2026-08-10)
+**Status:** Accepted (implemented 2026-08-09/10; accepted 2026-08-10); QuantPad lane superseded 2026-11-14
 **Date:** 2026-08-07
 **Deciders:** Project ALPHA owner and AI build agents
+
+## Owner supersession — 2026-11-14
+
+The owner no longer uses QuantPad. On 2026-11-14, under the owner's delegated triage
+([card D](../roadmap/triage-2026-11.md#d-quantpad-code)), the QuantPad-specific lane below was
+removed: `alpha research data register` no longer accepts `--kind quantpad` or `--receipt`, and
+the QuantPad archive and adapter code are gone. Rows already registered with dataset kind
+`quantpad_receipt` stay readable (the ControlStore CHECK constraint and the D1 refusal for that
+kind are unchanged). General research dataset registration, provenance and qualification
+(snapshot and store-slice kinds) remain as decided here.
+
 
 ## Context
 

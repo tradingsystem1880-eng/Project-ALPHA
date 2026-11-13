@@ -1,4 +1,8 @@
-"""Bounded synthetic qrun -> native Nautilus -> inert Results artifacts; no admission."""
+"""Bounded synthetic qrun -> native Nautilus -> inert Results artifacts; no admission.
+
+Shelved (2026-11-14, triage card F): not wired in, kept as a reproducible made-up-data
+demonstration that real Qlib and NautilusTrader connect to ALPHA.
+"""
 
 from __future__ import annotations
 

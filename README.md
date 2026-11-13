@@ -157,6 +157,9 @@ Chronological reports, configuration, provenance and exact downloads remain avai
 
 ### Joined Qlib → Nautilus synthetic pipeline
 
+Shelved (2026-11-14, triage card F): not wired in, kept as a reproducible made-up-data
+demonstration that real Qlib and NautilusTrader connect to ALPHA.
+
 A third Results view, `/#page=results&pane=NativeQlibNautilusDemo`, now follows actual upstream
 Qlib predictions into ALPHA's existing native Nautilus strategy/harness. The frozen demonstration
 retains all 128 predictions, explicitly selects 16 SYN00 scores, models their availability at
@@ -358,11 +361,14 @@ rule, use the system configuration unchanged.
   data qualification, and paper readiness require their own receipts. No live-capital route ships.
 - **Data:** Tiingo is the canonical stock/ETF EOD path after qualification. Crypto authority is
   family- and venue-specific; comparison feeds never silently substitute. The internal
-  [offline funding API](docs/operations/2026-11-05-offline-funding-delivery.md) composes bounded
+  [offline funding API](docs/operations/2026-11-05-offline-funding-delivery.md) (shelved
+  2026-11-14, triage card B: not wired in, kept for funding-event research) composes bounded
   injected responses, exact-byte raw retention and validated backward Bybit funding collection.
   Synthetic checks do not establish complete history or live provider access. Production
-  acquisition retains its command surface and full-page refusal. QuantPad is excluded from active
-  and future data-source plans; historical code, attribution and retained records are preserved.
+  acquisition retains its command surface and full-page refusal. The download bookkeeping
+  modules (receipts and quota) are shelved (2026-11-14, triage card 2): not wired in, kept for a
+  future download-budget policy. QuantPad's command, adapter and archive code were removed on
+  2026-11-14 (owner decision); research datasets already registered from QuantPad stay readable.
 - **Use and licensing:** Private, local, single-owner use is the approved scope. The repository has
   no declared root project license; dependency licenses do not license ALPHA's original code.
   See the [dependency and license matrix](docs/governance/2026-07-19-dependency-license-matrix.md).
@@ -390,7 +396,9 @@ uv run python scripts/gate.py check
 validity or provider readiness. Review this README against the branch in each pull request and
 update it where readers need a different explanation.
 
-The existing Qlib recipes now have an [inert W09 planning API](workers/qlib/README.md#inert-w09-planning-contracts)
+Shelved (2026-11-14, triage card A): the W09 scaffolding below is not wired in; it is kept as
+the groundwork for running Qlib models through RD-Agent research cases after the daily rule study.
+The existing Qlib recipes have an [inert W09 planning API](workers/qlib/README.md#inert-w09-planning-contracts)
 for metadata identities, source fingerprints and prospective component graphs. It does not
 admit or dispatch fits, verify fitted state, or authorize reuse. Private, opt-in
 [worker observations](workers/qlib/README.md#w09-invocation-observations) describe calls within
