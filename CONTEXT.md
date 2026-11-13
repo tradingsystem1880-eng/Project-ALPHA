@@ -40,7 +40,7 @@ it points to, never here.
 | [tests/CONTEXT.md](tests/CONTEXT.md) | — | test layout, markers, bias guards, oracles |
 | [docs/CONTEXT.md](docs/CONTEXT.md) | — | documentation, ADRs, plans, this file system |
 | [workflow/CONTEXT.md](workflow/CONTEXT.md) | — | delivering a change stage by stage: shape, plan, build, verify, land |
-| `research/stages/` (coming) | — | running a research case stage by stage: idea to decision |
+| [research/CONTEXT.md](research/CONTEXT.md) | — | running a research case stage by stage: idea, data, screen, confirm, validate, decide |
 
 A task that spans areas: start at the area whose code you change first; its Read first table
 links the others it depends on. A change to anything follows `workflow/CONTEXT.md` for the steps;
@@ -56,6 +56,7 @@ the area's row says what to read.
 | Package layers and data folders | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Current status | [STATUS.md](STATUS.md) (generated) |
 | History | git log and pull requests |
+| How a research case is worked | [docs/reference/research-method.md](docs/reference/research-method.md) |
 | Codes and terms | [docs/reference/glossary.md](docs/reference/glossary.md) |
 | Who builds and reviews, which model, limits | [docs/reference/model-routing.md](docs/reference/model-routing.md) |
 

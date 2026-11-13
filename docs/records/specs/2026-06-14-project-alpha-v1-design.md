@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-14
 **Status:** Proposed (awaiting owner review)
-**Companion docs:** [`research/00-SYNTHESIS.md`](../../../research/00-SYNTHESIS.md) (architecture ADR + full roadmap) and reports `01`–`07`.
+**Companion docs:** [`research/00-SYNTHESIS.md`](../../archive/2026-06-research-notes/00-SYNTHESIS.md) (architecture ADR + full roadmap) and reports `01`–`07`.
 
 > **Historical status / errata (2026-07-18):** This is the original pre-build v1 proposal, not the
 > current implementation contract. The shipped architecture replaced its DuckDB query layer and
@@ -126,7 +126,7 @@ Fixed, pre-registered parameters (no optimization in v1 — that would overfit t
 - **Signal:** sign of the trailing `L`-bar return, skipping the most recent `S` bars (classic "12-1": `L ≈ 252` trading days, `S ≈ 21`). Long if positive, flat/short if negative.
 - **Direction:** equities ETFs **long-flat**; crypto & FX **long-short** (no borrow constraints to model in a backtest; flagged for paper later).
 - **Rebalance:** monthly (every ~21 trading days), on the close.
-- **Sizing:** volatility targeting — scale each position to a constant annualized target vol using rolling realized vol / ATR, with a per-position and portfolio notional cap. Formula vetted in [report 06](../../../research/06-strategy-encoding-ml.md).
+- **Sizing:** volatility targeting — scale each position to a constant annualized target vol using rolling realized vol / ATR, with a per-position and portfolio notional cap. Formula vetted in [report 06](../../archive/2026-06-research-notes/06-strategy-encoding-ml.md).
 - **Costs:** per-asset-class fee + a volatility-scaled slippage assumption (conservative).
 
 All parameters live in typed config; they are **constants for v1** and documented as the pre-registered hypothesis.

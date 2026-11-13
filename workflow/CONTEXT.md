@@ -3,11 +3,10 @@ owner: delivery pipeline
 sources:
   - workflow/stages/*/CONTEXT.md
   - scripts/roadmap_index.py
+  - scripts/handoff.py
   - tests/unit/test_plan_schema.py
   - tests/unit/test_filesystem_contract.py
-  - docs/roadmap/wip-limit.json
-  - scripts/handoff.py
-verified: d0fffa796f8e
+verified: f89aa1bb78af
 ---
 
 # Delivery pipeline — how a change gets made

@@ -6,10 +6,11 @@ The file system (ADR-0040) follows the Interpretable Context Methodology adapted
   other agents) are small and send the reader to the root ``CONTEXT.md``.
 * Layer 1: the root ``CONTEXT.md`` routes every kind of task to a workspace.
 * Layer 2: every workspace (each project under ``packages/``, ``apps/``, ``workers/``, ``tools/``,
-  plus ``scripts/``, ``tests/``, ``docs/`` and the delivery pipeline ``workflow/``) has a
-  ``CONTEXT.md`` with the sections Purpose, Read first, How to change it, Outputs. Its Read first
-  table names exact files and sections. Each pipeline stage, ``workflow/stages/NN-name/``, has a
-  ``CONTEXT.md`` with Purpose, Inputs, Read first, Process, Outputs, Checkpoint.
+  plus ``scripts/``, ``tests/``, ``docs/``, the delivery pipeline ``workflow/`` and the research
+  pipeline ``research/``) has a ``CONTEXT.md`` with the sections Purpose, Read first, How to
+  change it, Outputs. Its Read first table names exact files and sections. Each stage of either
+  pipeline, ``<pipeline>/stages/NN-name/``, has a ``CONTEXT.md`` with Purpose, Inputs, Read
+  first, Process, Outputs, Checkpoint, and the pipeline's ``CONTEXT.md`` links every stage.
 * Outputs: each task folder ``docs/work/<yyyy-mm-dd>-<slug>/`` holds only stage files and always
   its ``02-plan.md``.
 * Layer 3: reference documents under ``docs/reference/``.
@@ -40,10 +41,11 @@ from tests.unit.test_docs_links import _FENCE, _HEADING, anchors, broken_links, 
 ROOT = Path(__file__).parents[2]
 CONTEXT = "CONTEXT.md"
 WORKSPACE_PARENTS = ("packages", "apps", "workers", "tools")
-EXTRA_WORKSPACES = ("scripts", "tests", "docs", "workflow")
+EXTRA_WORKSPACES = ("scripts", "tests", "docs", "workflow", "research")
 REFERENCE_DIR = "docs/reference"
 REQUIRED_SECTIONS = ("Purpose", "Read first", "How to change it", "Outputs")
-STAGES_DIR = "workflow/stages"
+PIPELINES = ("workflow", "research")  # each has <pipeline>/stages/NN-name/CONTEXT.md
+STAGES = "stages"
 STAGE_SECTIONS = ("Purpose", "Inputs", "Read first", "Process", "Outputs", "Checkpoint")
 _STAGE_NAME = re.compile(r"^\d{2}-[a-z]+$")
 WORK_DIR = "docs/work"
@@ -91,13 +93,18 @@ def workspaces() -> list[str]:
     return [*found, *EXTRA_WORKSPACES]
 
 
-def stage_files() -> list[str]:
-    """``workflow/stages/NN-name/CONTEXT.md`` for every stage folder."""
+def stage_files(pipeline: str | None = None) -> list[str]:
+    """``<pipeline>/stages/NN-name/CONTEXT.md`` for every stage folder of one or all pipelines."""
     return [
-        f"{STAGES_DIR}/{path.name}/{CONTEXT}"
-        for path in sorted((ROOT / STAGES_DIR).iterdir())
+        f"{name}/{STAGES}/{path.name}/{CONTEXT}"
+        for name in ((pipeline,) if pipeline else PIPELINES)
+        for path in sorted((ROOT / name / STAGES).iterdir())
         if path.is_dir()
     ]
+
+
+def is_stage_file(rel: str) -> bool:
+    return any(rel.startswith(f"{name}/{STAGES}/") for name in PIPELINES)
 
 
 def context_files() -> list[str]:
@@ -314,7 +321,7 @@ def test_context_sections_appear_in_order() -> None:
     for rel in context_files():
         if not (ROOT / rel).is_file():
             continue
-        required = STAGE_SECTIONS if rel.startswith(STAGES_DIR + "/") else REQUIRED_SECTIONS
+        required = STAGE_SECTIONS if is_stage_file(rel) else REQUIRED_SECTIONS
         titles = [title for _, level, title in headings(_text(rel)) if level == 2]
         present = [title for title in titles if title in required]
         if present != list(required):
@@ -414,30 +421,40 @@ def test_root_routes_to_every_workspace() -> None:
 
 
 # ---------------------------------------------------------------------------------------------
-# The delivery pipeline: numbered stages, each routed from workflow/CONTEXT.md
+# The pipelines (delivery and research): numbered stages, each routed from <pipeline>/CONTEXT.md
 
 
-def test_stage_folders_are_numbered_and_each_has_a_context_file() -> None:
-    folders = sorted(p for p in (ROOT / STAGES_DIR).iterdir() if p.is_dir())
-    assert folders, f"{STAGES_DIR} has no stage folders"
+@pytest.mark.parametrize("pipeline", PIPELINES)
+def test_stage_folders_are_numbered_and_each_has_a_context_file(pipeline: str) -> None:
+    stages_dir = f"{pipeline}/{STAGES}"
+    folders = sorted(p for p in (ROOT / stages_dir).iterdir() if p.is_dir())
+    assert folders, f"{stages_dir} has no stage folders"
     problems = [
-        f"{STAGES_DIR}/{p.name}: name a stage NN-word (for example 03-build)"
+        f"{stages_dir}/{p.name}: name a stage NN-word (for example 03-build)"
         for p in folders
         if not _STAGE_NAME.match(p.name)
     ]
-    problems += [f"{rel} is missing" for rel in stage_files() if not (ROOT / rel).is_file()]
+    problems += [f"{rel} is missing" for rel in stage_files(pipeline) if not (ROOT / rel).is_file()]
     numbers = [int(p.name[:2]) for p in folders if _STAGE_NAME.match(p.name)]
     if numbers != list(range(1, len(numbers) + 1)):
         problems.append(
-            f"{STAGES_DIR}: stages must be numbered 01, 02, ... without gaps: {numbers}"
+            f"{stages_dir}: stages must be numbered 01, 02, ... without gaps: {numbers}"
         )
     assert not problems, "\n".join(problems)
 
 
-def test_pipeline_routing_links_every_stage() -> None:
-    text = _text(f"workflow/{CONTEXT}")
-    missing = [rel for rel in stage_files() if rel.removeprefix("workflow/") not in text]
-    assert not missing, f"workflow/{CONTEXT} must link every stage: {missing}"
+@pytest.mark.parametrize("pipeline", PIPELINES)
+def test_pipeline_routing_links_every_stage(pipeline: str) -> None:
+    text = _text(f"{pipeline}/{CONTEXT}")
+    missing = [rel for rel in stage_files(pipeline) if rel.removeprefix(f"{pipeline}/") not in text]
+    assert not missing, f"{pipeline}/{CONTEXT} must link every stage: {missing}"
+
+
+def test_every_pipeline_is_a_routed_workspace() -> None:
+    missing = [name for name in PIPELINES if name not in EXTRA_WORKSPACES]
+    assert not missing, (
+        f"add these pipelines to EXTRA_WORKSPACES so the root routes them: {missing}"
+    )
 
 
 # ---------------------------------------------------------------------------------------------
