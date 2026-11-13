@@ -20,6 +20,7 @@ it points to, never here.
 
 | Read | Section | When |
 |---|---|---|
+| [project layer](docs/reference/project/overview.md) | — | what is X for, why, where is X; should X be kept, changed, shelved or removed |
 | [packages/alpha-core/CONTEXT.md](packages/alpha-core/CONTEXT.md) | — | domain types, typed errors, settings, cost helpers |
 | [packages/alpha-data/CONTEXT.md](packages/alpha-data/CONTEXT.md) | — | point-in-time store, snapshots, crypto storage (commands, reports: alpha-cli) |
 | [packages/alpha-patterns/CONTEXT.md](packages/alpha-patterns/CONTEXT.md) | — | chart-pattern geometry and indicators |
@@ -51,6 +52,8 @@ the area's row says what to read.
 | Fact | Its one home |
 |---|---|
 | Commands and options | [docs/reference/commands.md](docs/reference/commands.md) (generated) |
+| What each part is for, and why | [docs/reference/project/](docs/reference/project/overview.md) (one file per part) |
+| The owner's direction-setting decisions | [owner decisions log](docs/reference/project/owner-decisions.md) |
 | Rules that must not break | [docs/reference/invariants/](docs/reference/invariants/research-integrity.md) |
 | Decisions and their reasons | [docs/adr/](docs/adr/README.md) |
 | Package layers and data folders | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |

@@ -12,7 +12,8 @@ The file system (ADR-0040) follows the Interpretable Context Methodology adapted
   ``CONTEXT.md`` with Purpose, Inputs, Read first, Process, Outputs, Checkpoint.
 * Outputs: each task folder ``docs/work/<yyyy-mm-dd>-<slug>/`` holds only stage files and always
   its ``02-plan.md``.
-* Layer 3: reference documents under ``docs/reference/``.
+* Layer 3: reference documents under ``docs/reference/``: the rules (``invariants/``) and the
+  project layer (``project/``: what each major part is for, and the owner's decisions).
 * Loading: each workspace has a one-line ``CLAUDE.md`` that imports its ``CONTEXT.md``; Claude
   Code loads a subdirectory's ``CLAUDE.md`` when it opens a file there. ``.claude/rules/*.md`` are
   thin path-scoped pointers (an ``@`` import inside a path-scoped rule loads at launch, so the
@@ -646,4 +647,197 @@ def test_model_routing_has_its_home_and_matches_the_handoff_tool() -> None:
         if not re.search(rf"`{name}`.*`{re.escape(p.model)}`, `{p.effort}`", text)
     ]
     assert handoff.RECORD_NAME == BUILD_RECORD, "scripts/handoff.py writes the task's build record"
+    assert not problems, "\n".join(problems)
+
+
+# ---------------------------------------------------------------------------------------------
+# The project layer: what each part is for, kept apart from how to change it
+#
+# ``docs/reference/project/`` is Layer 3 reference material about purpose (the paper's "configure
+# the factory": identity and decisions set once, stable across tasks). ``overview.md`` routes to
+# one component file per major part; each has fixed sections and claims, in its "Where it lives"
+# section, the workspaces and the capability ids (``docs/roadmap/capabilities.toml``) it owns.
+# Every capability and every workspace is claimed exactly once, every workspace's Read first table
+# links up to its component, and ``owner-decisions.md`` is the one home for the owner's intent.
+
+PROJECT_DIR = "docs/reference/project"
+COMPONENTS_DIR = f"{PROJECT_DIR}/components"
+OVERVIEW = f"{PROJECT_DIR}/overview.md"
+OWNER_DECISIONS = f"{PROJECT_DIR}/owner-decisions.md"
+CAPABILITY_MAP = "docs/roadmap/capabilities.toml"
+COMPONENT_SECTIONS = (
+    "Why it exists",
+    "Its job in the research loop",
+    "Intended design",
+    "What is real today",
+    "Where it lives",
+    "Decisions and open questions",
+    "Never",
+)
+_CLAIM = re.compile(r"^- \*\*(Workspaces|Capabilities):\*\*\s*(.*)$")
+_DATED = re.compile(r"^\d{4}-\d{2}-\d{2} \S")
+FIRST_STAGE = f"{STAGES_DIR}/01-shape/{CONTEXT}"
+
+
+def component_files() -> list[str]:
+    return sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / COMPONENTS_DIR).glob("*.md"))
+
+
+def _section_lines(rel: str, title: str) -> list[str]:
+    text = _text(rel)
+    lines = text.splitlines()
+    found = headings(text)
+    start = next((i for i, level, t in found if level == 2 and t == title), None)
+    if start is None:
+        return []
+    end = next((i for i, level, _ in found if i > start and level <= 2), len(lines))
+    return lines[start + 1 : end]
+
+
+def component_claims(rel: str) -> dict[str, list[str]]:
+    """``{"Workspaces": [...], "Capabilities": [...]}`` from the "Where it lives" bullets.
+
+    A bullet may wrap onto indented lines; a value starting with "none" claims nothing.
+    """
+    claims: dict[str, list[str]] = {}
+    key, parts = None, []
+    for line in [*_section_lines(rel, "Where it lives"), "- end"]:
+        if line.startswith("- ") or not line.strip():
+            if key is not None:
+                value = " ".join(parts).strip()
+                claims[key] = (
+                    [] if value.lower().startswith("none") else re.findall(r"`([^`]+)`", value)
+                )
+                key, parts = None, []
+            match = _CLAIM.match(line)
+            if match:
+                key, parts = match.group(1), [match.group(2)]
+        elif key is not None:
+            parts.append(line.strip())
+    return claims
+
+
+def _claim_owners(kind: str) -> dict[str, list[str]]:
+    owners: dict[str, list[str]] = defaultdict(list)
+    for rel in component_files():
+        for item in component_claims(rel).get(kind, []):
+            owners[item].append(rel)
+    return owners
+
+
+def test_component_files_have_the_fixed_sections_and_claim_lines() -> None:
+    files = component_files()
+    assert files, f"{COMPONENTS_DIR} has no component files"
+    problems = []
+    for rel in files:
+        titles = [title for _, level, title in headings(_text(rel)) if level == 2]
+        if titles != list(COMPONENT_SECTIONS):
+            problems.append(
+                f"{rel}: needs exactly the sections {', '.join(COMPONENT_SECTIONS)}, in that "
+                f"order; found {titles}"
+            )
+        claims = component_claims(rel)
+        problems += [
+            f"{rel}: 'Where it lives' needs a '- **{kind}:**' line (backticked ids, or 'none')"
+            for kind in ("Workspaces", "Capabilities")
+            if kind not in claims
+        ]
+        if OWNER_DECISIONS.rsplit("/", 1)[1] not in "".join(_links(rel)):
+            problems.append(f"{rel}: link the owner decisions log ({OWNER_DECISIONS})")
+    assert not problems, "\n".join(problems)
+
+
+def test_every_capability_is_claimed_by_exactly_one_component() -> None:
+    import tomllib
+
+    ids = [c["id"] for c in tomllib.loads(_text(CAPABILITY_MAP))["capability"]]
+    owners = _claim_owners("Capabilities")
+    problems = [
+        f"capability {cid!r} ({CAPABILITY_MAP}) is claimed by no component: add it to the "
+        f"'Capabilities' line of the file in {COMPONENTS_DIR}/ for the part it belongs to"
+        for cid in ids
+        if cid not in owners
+    ]
+    problems += [
+        f"capability {cid!r} is claimed by more than one component: {', '.join(files)}"
+        for cid, files in owners.items()
+        if len(files) > 1
+    ]
+    problems += [
+        f"{', '.join(files)}: claims {cid!r}, which is not a capability id in {CAPABILITY_MAP}"
+        for cid, files in owners.items()
+        if cid not in ids
+    ]
+    assert not problems, "\n".join(problems)
+
+
+def test_every_workspace_is_claimed_once_and_links_up_to_its_component() -> None:
+    owners = _claim_owners("Workspaces")
+    known = workspaces()
+    problems = [
+        f"{', '.join(files)}: claims {ws!r}, which is not a workspace"
+        for ws, files in owners.items()
+        if ws not in known
+    ]
+    for ws in known:
+        files = owners.get(ws, [])
+        if len(files) != 1:
+            problems.append(
+                f"workspace {ws} must be claimed by exactly one component file in "
+                f"{COMPONENTS_DIR}/ ('Workspaces' line); found {files or 'none'}"
+            )
+            continue
+        targets = {row.target for row in read_first_rows(f"{ws}/{CONTEXT}")}
+        if files[0] not in targets:
+            problems.append(
+                f"{ws}/{CONTEXT}: add a Read first row linking up to {files[0]} (what this part "
+                "is for, and whether to keep, change or remove it)"
+            )
+    assert not problems, "\n".join(problems)
+
+
+def test_the_project_layer_is_routed_from_the_root_and_the_shape_stage() -> None:
+    problems = []
+    overview_links = {
+        (ROOT / OVERVIEW).parent.joinpath(t.split("#", 1)[0]).resolve().relative_to(ROOT).as_posix()
+        for t in _links(OVERVIEW)
+    }
+    problems += [
+        f"{OVERVIEW}: list and link {rel}" for rel in component_files() if rel not in overview_links
+    ]
+    if OVERVIEW not in {row.target for row in read_first_rows(CONTEXT)}:
+        problems.append(f"root {CONTEXT}: add a Read first row for {OVERVIEW} (what a part is for)")
+    if not any(
+        (row.target or "").startswith(PROJECT_DIR + "/") for row in read_first_rows(FIRST_STAGE)
+    ):
+        problems.append(f"{FIRST_STAGE}: add a Read first row for the component file of the part")
+    if not any(OVERVIEW.rsplit("/", 1)[1] in t for t in _links(IDENTITY)):
+        problems.append(f"{IDENTITY}: name the project layer ({OVERVIEW})")
+    assert not problems, "\n".join(problems)
+
+
+def test_owner_decisions_are_dated_quoted_and_say_what_they_govern() -> None:
+    lines = _section_lines(OWNER_DECISIONS, "Entries")
+    entries: list[tuple[str, list[str]]] = []
+    for line in lines:
+        if line.startswith("### "):
+            entries.append((line[4:], []))
+        elif entries:
+            entries[-1][1].append(line)
+    assert entries, f"{OWNER_DECISIONS}: '## Entries' has no '### yyyy-mm-dd <title>' entries"
+    problems = []
+    for title, body in entries:
+        text = "\n".join(body)
+        if not _DATED.match(title):
+            problems.append(
+                f"{OWNER_DECISIONS}: entry {title!r} must start with its date yyyy-mm-dd"
+            )
+        quoted = '"' in text or "exact words not recorded" in text
+        if "**Said" not in text or not quoted:
+            problems.append(
+                f"{OWNER_DECISIONS}: entry {title!r} needs a '**Said' line quoting the owner, "
+                "or saying 'exact words not recorded'"
+            )
+        if "**Governs:**" not in text:
+            problems.append(f"{OWNER_DECISIONS}: entry {title!r} needs a '**Governs:**' line")
     assert not problems, "\n".join(problems)

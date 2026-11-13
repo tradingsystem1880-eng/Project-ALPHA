@@ -32,6 +32,7 @@ read owner data, credentials or hidden tests.
 | [research integrity](../docs/reference/invariants/research-integrity.md) | Owner authority | changing `claude_hooks.py` |
 | [agent harness](../docs/operations/claude-code-harness.md) | — | changing agent hooks, deny rules or harness settings |
 | [research integrity](../docs/reference/invariants/research-integrity.md) | Protected and hidden tests | changing search, hooks or test selection |
+| [what this part is for](../docs/reference/project/components/delivery-and-agent-tooling.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

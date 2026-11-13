@@ -26,6 +26,7 @@ sections to read first.
 |---|---|---|
 | [documentation invariants](../../../docs/reference/invariants/documentation.md) | Feature plans | always |
 | [root routing](../../../CONTEXT.md) | Read first | always: find the workspace each change lands in |
+| [component files](../../../docs/reference/project/overview.md) | Components | always: read the file of each part the plan changes |
 | [capability map](../../../docs/roadmap/capabilities.toml) | — | always: the plan joins one capability or `[[unassigned_plan]]` |
 | [engineering rules](../../../docs/reference/invariants/engineering.md) | Quant tier | a file in the quant tier changes |
 | [engineering rules](../../../docs/reference/invariants/engineering.md) | Hash-bound source bytes | `packages/alpha-research/src` would change |

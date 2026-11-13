@@ -25,6 +25,7 @@ it was knowable from the bars seen so far.
 | [architecture](../../docs/ARCHITECTURE.md) | 2. The Layered DAG | always |
 | [strategy invariants](../../docs/reference/invariants/strategies.md) | Rule specs | a strategy rule reads the changed indicator |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Statistical evidence | porting or changing a statistic |
+| [what this part is for](../../docs/reference/project/components/strategies-and-signals.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 
