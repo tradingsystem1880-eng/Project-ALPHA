@@ -73,7 +73,7 @@ private coverage and any required owner resolution remain separate acceptance ob
 
 The owner approved the bounded absence-only exception at 05:41 UTC for the four named
 workstreams through delivery, including necessary integration corrections. The single supported
-[policy record](../../../../../.claude/agents/independent-reviewer.md#four-workstream-through-delivery-absence-exception--2026-10-30)
+[policy record](../../../../records/2026-11-hidden-suite-exceptions.md#four-workstream-through-delivery-absence-exception--2026-10-30)
 preserves its scope and unchanged requirements; authorization provenance stays in private task
 evidence. Private coverage remains UNVERIFIED. Earlier absence-only BLOCKs remain correct
 history. Actual public failures still block, and final exact-tree checks and independent review

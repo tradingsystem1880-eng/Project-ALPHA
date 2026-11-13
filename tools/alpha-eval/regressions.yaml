@@ -3,7 +3,7 @@
 # `uv run alpha-eval regress --name <run> [--probes probes.json]` reports open / fixed.
 # Evidence refers to the run name and the scorecards under $ALPHA_EVAL_HOME/<run>/.
 
-# ---- Layer A (platform defects; also proposed as tests/holdout_seed/test_holdout_benchmark_defects.py)
+# ---- Layer A (platform defects; also covered by tests/acceptance/test_holdout_benchmark_defects.py)
 - id: REG-P02-denied-orders-silent
   probe: P02
   expect: {classification: as_expected}

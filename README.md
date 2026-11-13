@@ -1,5 +1,7 @@
 # Project ALPHA
 
+**Status:** [what works today](STATUS.md) · [what the codes mean](docs/reference/glossary.md)
+
 > **Generated-output successor, 2026-11-09 (unqualified):** Two clean local OpenAPI/client/SPA generations are byte-identical. Atlas, installed-worker/runtime acceptance, required exact-tree review and full qualification remain pending. Historical owner/UI results do not qualify this sparse successor. See [build status](docs/BUILD-STATUS.md#2026-11-09--sparse-generated-output-successor-unqualified).
 
 **ALPHA Quant Platform** is a private, local quantitative research workstation for turning a

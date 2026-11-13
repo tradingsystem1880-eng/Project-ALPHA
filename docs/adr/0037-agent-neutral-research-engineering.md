@@ -6,6 +6,8 @@
 
 > **Note (2026-11-13):** [ADR-0040](0040-one-file-system-atlas-retired.md) retires the Atlas graph, viewer and gate component; orientation and document search continue as `scripts/fs.py`.
 
+> **Note (2026-11-13):** [ADR-0041](0041-no-hidden-test-suite.md) removes the hidden `tests/holdout/` suite requirement; the seed tests are visible acceptance tests in `tests/acceptance/`.
+
 ## Context
 
 The owner approved the [agent-neutral refactor plan](../superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md):

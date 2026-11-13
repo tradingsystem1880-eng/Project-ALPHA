@@ -20,7 +20,7 @@ edit → gate.py check → commit → push → draft pull request → CI → own
 
    It runs `ruff check`, `ruff format --check`, `lint-imports`, one strict `mypy` over
    `packages apps tests` and the harness scripts, then pytest on: the bias guards, the quick
-   oracles, `tests/holdout_seed`, tests mapped from the files changed since the merge base with
+   oracles, `tests/acceptance`, tests mapped from the files changed since the merge base with
    `origin/main`, and last run's failures. It writes nothing except pytest and tool caches.
 3. Push and open a **draft** pull request. CI runs every component. Mark it ready when CI is
    green; the owner merges. Model review is advisory and belongs on the pull request.
