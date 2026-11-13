@@ -4,7 +4,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 3 working, 30 partly working, 1 demo only, 1 shelved, 2 not started.
+- **Capabilities:** 5 working, 29 partly working, 1 demo only, 1 shelved, 2 not started.
 - **Work in progress:** 41 in progress (limit 3).
   - 5 being worked on
   - 36 built but not yet checked end to end
@@ -22,6 +22,8 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Workstation web app** — uv run alpha-web, then open http://localhost:8801
 - **Run a backtest** — uv run alpha backtest run SPY
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
+- **Machine-learning experiments with Qlib** — uv run alpha ml capabilities
+- **Upstream Alpha158 price features** — set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec
 
 ## Partly working
 
@@ -35,9 +37,8 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Link paper claims to experiments and keep the original PDFs** — no test takes one paper all the way to an experiment.
 - **Check data providers and background jobs** — job list tested only with a stand-in command; provider checks need real providers.
 - **Paper trading: practice trading with no real money (IBKR Paper)** — no end-to-end test; parts tested with stand-ins. Needs: an opt-in setting, live Binance public data, and an IBKR practice account and gateway for stocks.
-- **Machine-learning experiments with Qlib** — proved only with a stand-in worker. Needs: the Qlib worker setup (not installed on this computer).
-- **Corrected Alpha158 price features** — no ML run with version 2; final review pending. Needs: the Qlib worker setup (not installed on this computer).
-- **Qlib model refit evidence (W11)** — blocked on missing statistics modules. Needs: the Qlib worker setup (not installed on this computer); reviewed statistics modules that do not exist yet.
+- **Corrected Alpha158 price features** — no ML run with version 2; superseded by version 3 (kept for stored results).
+- **Qlib model refit evidence (W11)** — blocked on missing statistics modules. Needs: reviewed statistics modules that do not exist yet.
 - **AI stock research loop (RD-Agent, W02)** — made-up data only; restart after a crash not solved. Needs: the RD-Agent setup, which no machine has yet.
 - **"Native job result" screen (W04, W18)** — empty until the AI stock research loop produces a job. Needs: the RD-Agent setup, for its browser test.
 - **AI-run daily trading-rule study (Packet 3, W08)** — only the report is proven; the study itself needs RD-Agent. Needs: the RD-Agent setup, which no machine has yet; a permanent place to host the runs.
@@ -67,7 +68,7 @@ Found by running the installed program; each has a check that will fail once it 
 
 ## Demo only
 
-- **Qlib and Nautilus demonstration views** — made-up prices only; not a production path.
+- **Qlib and Nautilus demonstration views** — made-up prices only; not a production path (the pipeline demo re-ran on this computer on 2026-11-14).
 
 ## Shelved
 

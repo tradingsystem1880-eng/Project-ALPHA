@@ -254,3 +254,11 @@ the native feature/provider/handler replacement or whole-Alpha158 parity. See th
 [scope and compatibility plan](../superpowers/plans/2026-11-09-alpha158-versioned-correction.md).
 Focused synthetic engineering checks do not establish model, provider, economic or scientific
 qualification. No historical output is reinterpreted.
+
+### Upstream Alpha158 recipe v3 (2026-11-14)
+
+Opt-in feature recipe v3 computes all 158 Alpha158 columns with upstream Qlib expressions and
+operators and normalises folds with upstream `DataHandlerLP` processors (training rows only). A
+parity test against upstream's own provider + `Alpha158` handler path shows exact equality for
+every column; `VWAP0` uses the disclosed typical-price proxy. V1 stays the default; v1/v2 are
+legacy readers. See [ADR-0042](../adr/0042-qlib-worker-delegates-data-layer-to-upstream.md).
