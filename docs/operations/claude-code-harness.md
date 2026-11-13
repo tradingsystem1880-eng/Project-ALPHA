@@ -50,8 +50,9 @@ a shell parser. CI on the pull request owns engineering verification.
 
 File/MCP checks fail closed on malformed inputs and when their script is unavailable. Session
 guidance is advisory and does not block startup. Agent role labels and the former
-`ALPHA_HARNESS_DISABLE` variable cannot bypass hidden-file safety. Proposed tests
-belong in `tests/holdout_seed/`; agents may run hidden tests without reading their source.
+`ALPHA_HARNESS_DISABLE` variable cannot bypass hidden-file safety. There is no hidden test
+suite ([ADR-0041](../adr/0041-no-hidden-test-suite.md)); acceptance tests are visible in
+`tests/acceptance/`, and the `tests/holdout/` guard is kept although that folder does not exist.
 
 All pre-existing native deny entries remain in `.claude/settings.json`, including secret access,
 destructive Git operations, owner research commands, owner-auth recovery/enrollment and protected
@@ -105,24 +106,11 @@ the CLI exit status (`set -o pipefail`); full per-date data remains in the immut
 attempt artifacts. The [closure record](../superpowers/plans/archive/2026-09/2026-09-19-research-walkthrough-closure.md)
 tracks acceptance checks and limitations.
 
-### Scoped missing-suite exception (2026-09-17)
+### Missing-suite exceptions (2026-09-17 to 2026-11-04)
 
-The owner explicitly authorized this refactor/cancellation commit to proceed without
-the unavailable private holdout suite, after unsuccessful restoration checks. The
-[exception record](../superpowers/plans/2026-09-17-cancellation-and-research-walkthrough.md)
-and independent-reviewer instructions define its one-time scope. Hidden tests remain
-UNVERIFIED. Other tests, independent review, quant attestation and Git guards remain
-mandatory; this is neither a hook bypass nor a waiver for future changes.
-
-A separate explicit owner resolution on 2026-09-19 covers only the
-[walkthrough closure change](../superpowers/plans/archive/2026-09/2026-09-19-research-walkthrough-closure.md)
-based on `b1b7510`. It has the same UNVERIFIED disclosure and preserves all other
-checks; it does not automatically extend the earlier exception to future work.
-
-A third explicit owner resolution on 2026-10-05 covers only the commits made under the
-[clean-and-reconcile plan](../superpowers/plans/2026-10-05-clean-reconcile-main.md). Hidden
-tests remain UNVERIFIED; every other check stays mandatory; no extension to later work.
-
+The per-delivery owner exceptions for the absent hidden suite are kept, verbatim, in
+[one historical record](../records/2026-11-hidden-suite-exceptions.md); ADR-0041 ended the
+requirement.
 
 ## Checkpointed weekly mutation execution (2026-10-10)
 
