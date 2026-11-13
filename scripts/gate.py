@@ -287,6 +287,7 @@ HARNESS_SCRIPTS = (
     "scripts/mutation_fragment.py",
     "scripts/check_mutation_report.py",
     "scripts/codex_bridge.py",
+    "scripts/handoff.py",
     ".claude/statusline.py",
 )
 
