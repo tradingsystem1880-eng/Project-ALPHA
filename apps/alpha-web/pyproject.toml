@@ -3,8 +3,9 @@ name = "alpha-web"
 version = "1.0.0"
 description = "ALPHA Workstation: an institutional research & trading terminal (JSON+SSE backend + SPA)."
 requires-python = ">=3.12"
-# The SPA (apps/alpha-web/frontend) is built with npm and its assets are committed under
-# src/alpha_web/static/app, so the Python install/CI never needs Node.
+# The SPA (apps/alpha-web/frontend) is built with npm into src/alpha_web/static/app, which is
+# not committed: run `npm ci && npm run build` in apps/alpha-web/frontend before serving it or
+# building the wheel (CI does both). scripts/wheel_smoke.py fails a wheel without it.
 dependencies = [
     "alpha-core",
     "alpha-cli",
@@ -27,6 +28,10 @@ alpha-cli = { workspace = true }
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build]
+# The built SPA is git-ignored; ship it anyway (hatch skips ignored files unless listed here).
+artifacts = ["src/alpha_web/static/app/**"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/alpha_web"]

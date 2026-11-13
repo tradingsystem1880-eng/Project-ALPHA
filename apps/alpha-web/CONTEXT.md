@@ -41,7 +41,7 @@ grants authority.
 - Backend code: `apps/alpha-web/src/alpha_web/` (routes in `api/`; copy a sibling such as
   `api/native_results.py` with its adapter `_native_results.py`). Frontend: `frontend/src/`
   (`panels/`, `shell/`, `components/`, `api/`). The built bundle `src/alpha_web/static/app` is
-  committed; never edit it by hand.
+  build output, not committed; `npm run build` writes it. Never edit it by hand.
 - Backend tests: `tests/unit/test_web_*.py`, `tests/integration/test_web_api_*.py`,
   `tests/integration/test_openapi_safe_routes.py`. Frontend unit tests sit next to the code as
   `frontend/src/**/*.test.ts` (vitest); browser tests in `frontend/e2e/` (Playwright).
@@ -51,11 +51,11 @@ grants authority.
      `docs/governance/capability-authority-matrix.md`);
   3. `uv run python scripts/gate.py check`.
 - Frontend loop, in `apps/alpha-web/frontend`: `npm ci`; `npm run generate:api`;
-  `npm run lint -- --deny-warnings`; `npm run build` (also rebuilds the committed bundle);
+  `npm run lint -- --deny-warnings`; `npm run build` (also rebuilds the served bundle);
   `npm run test:coverage`; browser lanes `npm run test:e2e:built`. Commit `src/api/generated.ts`
-  and the bundle with the source.
+  with the source.
 - CI runs the whole loop as `uv run python scripts/gate.py component frontend`; it fails if the
-  generated client or the bundle differs from what is committed.
+  generated client differs from what is committed.
 
 ## Outputs
 

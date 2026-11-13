@@ -60,12 +60,10 @@ the local check. This part has no owner-facing capability on [STATUS.md](../../.
   [ADR-0041](../../../adr/0041-no-hidden-test-suite.md).
 
 ## Decisions and open questions
-
-- Triage decisions, 2026-11-14 under the owner's delegation ([triage sheet](../../../roadmap/triage-2026-11.md)): card 12 KEEP; card 14
-  DELETE (both old clean-up plans archived, the failing weekly mutation sweep moved to the backlog);
-  card G DELETE (the delivery-task backlog item closed, replaced by
-  [model routing](../../model-routing.md) and `scripts/handoff.py`). Owner to confirm: archiving
-  the old hand-off pilot folder outside the repository is left to you.
+- Decided: triage card G is replaced by Codex builds, Claude plans
+  ([log](../owner-decisions.md#2026-11-14-agents-merge-and-decide-routine-matters)).
+- Triage, 2026-11-14 under the owner's delegation ([triage sheet](../../../roadmap/triage-2026-11.md)): card 12 KEEP; card 14 DELETE (both old clean-up plans
+  archived; the failing weekly mutation sweep moved to the backlog).
 
 ## Never
 

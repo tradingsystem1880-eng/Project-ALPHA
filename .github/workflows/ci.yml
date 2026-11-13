@@ -49,6 +49,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           sync: "false"
+          bundle: "true"
       - name: Shared static gate
         # The stdlib-only runner owns uv lock --check and uv sync --locked.
         run: uv run --no-project --python 3.12 python scripts/gate.py component backend-static
@@ -70,6 +71,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           sync: "false"
+          bundle: "true"
       - name: Shared test shard
         run: >-
           uv run --no-project --python 3.12 python scripts/gate.py component backend-tests

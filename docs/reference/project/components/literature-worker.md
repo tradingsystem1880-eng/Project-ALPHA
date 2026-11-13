@@ -3,7 +3,7 @@ owner: project layer
 sources:
   - workers/literature/CONTEXT.md
   - docs/adr/0024-literature-acquisition-worker-and-claim-model.md
-verified: ee38a97ab409
+verified: a79d832d
 ---
 
 # Literature worker
@@ -48,10 +48,13 @@ See the capabilities below on [STATUS.md](../../../../STATUS.md).
 ## Decisions and open questions
 
 - No owner decision about this part is in the [owner decisions log](../owner-decisions.md) yet.
-- Triage decisions, 2026-11-14 under the owner's delegation ([triage sheet](../../../roadmap/triage-2026-11.md)): card 6 KEEP; card E
-  DELETE (the CLI's duplicate of the acquisition code was removed; the worker holds the only copy).
-- Owner to confirm: should the literature worker feed RD-Agent's "propose" step directly (papers as
-  a source of hypotheses), or stay a tool you use by hand?
+- Triage, 2026-11-14 under the owner's delegation ([triage sheet](../../../roadmap/triage-2026-11.md)): card 6 KEEP; card E DELETE (the worker now holds the only
+  copy of the acquisition code).
+- Decided: use RD-Agent's own paper ingestion where it is enough; the literature worker adds paper
+  discovery, exact citations and limitations, and conflicting evidence, and feeds RD-Agent's proposal
+  step rather than forming a second research system. The hand-off is not yet shown working
+  ([log](../owner-decisions.md#2026-11-14-literature-strengthens-rd-agents-proposal-step)).
+
 
 ## Never
 

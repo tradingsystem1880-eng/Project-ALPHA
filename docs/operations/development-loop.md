@@ -3,6 +3,44 @@
 **CI on the pull request is the merge gate** ([ADR-0039](../adr/0039-ci-is-the-merge-gate.md)).
 Nothing local has to pass before a commit except the commit-message format.
 
+## Set up a fresh machine
+
+One command prepares a fresh Linux checkout, and one command says in plain English what is
+missing. Both are safe to repeat, never ask a question, never use `sudo`, and never read `.env`
+or any credential file.
+
+```sh
+bash scripts/setup.sh            # prepare everything below
+python3 scripts/gate.py doctor   # what is present, what is missing, and the command that fixes it
+```
+
+`setup.sh` runs, from the locked files only: `uv sync --locked` for the root environment; `npm ci`
+and `npm run build` for the web app (the built bundle is not stored in Git, so setup builds it);
+Playwright's Chromium into the standard per-user cache (`~/.cache/ms-playwright`) with the
+frontend's pinned Playwright, so the browser tests need no `PLAYWRIGHT_BROWSERS_PATH`;
+`uv sync --locked` in `workers/qlib` and `workers/literature`; and the commit-message hook.
+Options, all off by default:
+
+| Option | What it adds |
+|---|---|
+| `--with-rdagent` | runs [`setup_rdagent.sh`](../../scripts/setup_rdagent.sh): the pinned RD-Agent source and its two closed environments |
+| `--with-stock-runtime` | the same, plus the Python 3.11 stock runtime (implies `--with-rdagent`) |
+| `--with-daily-container` | the same, plus the pinned daily-study Docker image (implies `--with-rdagent`) |
+| `--data-dir DIR --storage-reserve-gb N` | records your free-space reserve for the data folder you name, with the [storage settings](storage-settings.md) command; existing settings are shown, never changed |
+| `--dry-run` | prints what would run and changes nothing |
+
+Setup never chooses a data folder: without `--data-dir` it does not touch storage. It ends with
+what it set up, what it skipped and why, and the next command.
+
+`gate.py doctor` keeps its harness checks and adds the section "Can this machine do
+synthetic-data development?" (also under `machine` in `--json`). Each item is `present` or
+`MISSING` with the exact fixing command. A missing *required* item (root environment, built web
+app, test browser, Qlib and literature worker environments) fails the doctor; a missing *optional*
+one (RD-Agent source and environments, stock runtime, Docker and the pinned daily-study image,
+Codex CLI signed in per `codex login status`, free disk space against the storage reserve) is
+listed but never fails it. On a hosted CI runner (`CI` set) the section is listed, not enforced.
+It uses only the standard library, so it also runs before `uv sync`.
+
 ```text
 edit → gate.py check → commit → push → draft pull request → CI → merge
 ```
@@ -34,7 +72,7 @@ The `ci-ok` job passes only when every job below succeeded; branch protection re
 | --- | --- |
 | `check` | Locked install, ruff, import contracts, strict mypy, harness lint, Semgrep, **every** pytest test (not `network`/`slow_oracle`) with coverage, OpenAPI freshness and authority, wheel build and smoke; slow oracles and mutation when quant source changed. |
 | `harness` | Harness doctor, weakening scanner, strict mypy of the harness scripts, hook and selector tests. |
-| `frontend` | npm lint, build and types, unit coverage, API freshness, browser lanes, SPA freshness. |
+| `frontend` | npm lint, build and types, unit coverage, API freshness, browser lanes. |
 | `qlib-worker`, `literature-worker` | Each worker's own lock, lint, format, types and tests. |
 | `eval` | The benchmark tool's own lock, lint, format, types and tests. |
 
@@ -80,8 +118,8 @@ The frontend component builds once (`npm run build`, including TypeScript) and t
 risk-live → native, fail-fast, with no test selection. The native lane needs
 `ALPHA_RDAGENT_SOURCE` and `ALPHA_STOCK_PYTHON`; when neither is set (hosted CI) it prints
 `native lane skipped: ALPHA_RDAGENT_SOURCE/ALPHA_STOCK_PYTHON not provisioned` and the other three
-lanes still run. Setting only one, or an invalid one, fails. Nothing is installed or downloaded;
-`PLAYWRIGHT_BROWSERS_PATH` is honoured. Each run keeps its reports and logs in a fresh
+lanes still run. Setting only one, or an invalid one, fails. Nothing is installed or downloaded
+(`scripts/setup.sh` installed the browser); `PLAYWRIGHT_BROWSERS_PATH` is honoured when set. Each run keeps its reports and logs in a fresh
 `alpha-browser-lanes-*` temporary directory (`--output-parent` chooses its parent).
 
 For one focused browser test, `scripts/playwright_evidence.py prepare --output-parent DIR

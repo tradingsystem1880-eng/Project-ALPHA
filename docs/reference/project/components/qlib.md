@@ -4,7 +4,7 @@ sources:
   - workers/qlib/CONTEXT.md
   - workers/qlib/README.md
   - docs/adr/0016-isolated-qlib-worker.md
-verified: ee38a97ab409
+verified: a79d832d
 ---
 
 # Qlib
@@ -61,12 +61,14 @@ stand-in on the Dell, where its install is not present.
 
 ## Decisions and open questions
 
-- Triage decisions, 2026-11-14 under the owner's delegation ([triage sheet](../../../roadmap/triage-2026-11.md)): card 11 KEEP; cards 10
-  (refit evidence), A (groundwork for RD-Agent driving Qlib) and F (Qlib-to-Nautilus demo) SHELVE,
-  with the code kept and labelled. Card A was recommended DELETE but is shelved because it routes
-  Qlib through RD-Agent.
-- Owner to confirm: are Qlib and Nautilus core engines like RD-Agent, so that their parts are
-  finished rather than shelved? Cards 10, A and F were recommended before the 2026-11-14 decision.
+- Triage, 2026-11-14 under the owner's delegation ([triage sheet](../../../roadmap/triage-2026-11.md)): card 11 KEEP; cards 10, A and F SHELVE, code kept
+  and labelled.
+- Decided: Qlib and Nautilus are engines ALPHA installs and calls, like RD-Agent; their unfinished
+  parts are kept or shelved, not deleted. Not every experiment needs Qlib
+  ([log](../owner-decisions.md#2026-11-14-the-architecture-in-one-line)).
+- Decided: the groundwork for RD-Agent driving Qlib is kept, shelved until it is wired in
+  ([log](../owner-decisions.md#2026-11-14-agents-merge-and-decide-routine-matters)).
+
 
 ## Never
 

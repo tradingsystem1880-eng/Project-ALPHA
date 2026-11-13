@@ -1143,6 +1143,8 @@ def market_catalog(
 
 
 def _storage_blocker(message: str) -> str:
+    if "free-space reserve" in message:
+        return "bulk_storage_reserve_blocked"
     if "disposable" in message:
         return "bulk_cloud_root_disposable"
     if "cloud bulk root" in message and ("identity" in message or "symlink" in message):
@@ -1168,6 +1170,8 @@ def storage(
     ),
 ) -> None:
     """Verify the configured bulk identity and inventory without probing providers."""
+    from alpha_cli.crypto_bulk_store import ConfiguredCryptoBulkStore
+
     settings = AlphaSettings()
     label = settings.bulk_data_dir.name or "bulk"
     backend = settings.bulk_storage_backend
@@ -1179,6 +1183,11 @@ def storage(
             store.verify_readable() if metadata_only else store.verify_ready(required_bytes=0)
         )
         inventory = store.metadata_inventory() if metadata_only else store.inventory()
+        advisory = (
+            store.low_space_advisory(capacity)
+            if isinstance(store, ConfiguredCryptoBulkStore)
+            else None
+        )
     except BulkVolumeUnconfigured:
         _emit(
             {
@@ -1196,15 +1205,20 @@ def storage(
     except DataError as exc:
         if "cloud control_root" in str(exc):
             backend = "cloud_root_identity"
+        blocker = _storage_blocker(str(exc))
         _emit(
             {
                 "state": "blocked",
-                "blocker": _storage_blocker(str(exc)),
+                "blocker": blocker,
                 "identity_backend": backend,
                 "bulk_root_label": label,
                 "manifest_count": 0,
                 "cache_bytes": 0,
-                "next_action": "Resolve the configured storage identity or capacity, then recheck.",
+                "next_action": (
+                    "REFUSED: free space is below the configured reserve. " + str(exc)
+                    if blocker == "bulk_storage_reserve_blocked"
+                    else "Resolve the configured storage identity or capacity, then recheck."
+                ),
             },
             json_out=json_out,
         )
@@ -1222,7 +1236,8 @@ def storage(
             "minimum_free_bytes": store.minimum_free_bytes,
             "manifest_count": len(inventory),
             "cache_bytes": store.cache_size(),
-            "next_action": (
+            "next_action": (advisory + " " if advisory else "")
+            + (
                 "Mounted identity and discovery metadata checked; "
                 "run storage-verify for an artifact audit."
                 if metadata_only

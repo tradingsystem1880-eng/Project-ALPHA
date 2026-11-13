@@ -395,7 +395,7 @@ def mutation_selection(root: Path) -> dict[str, Any]:
 
 def freshness_index_alignment(root: Path) -> dict[str, Any]:
     """Check only the index alignment of the canonical frontend freshness pathspecs."""
-    freshness_names = {"API freshness", "SPA freshness"}
+    freshness_names = {"API freshness"}
     try:
         steps = gate_components.component_steps(root, "frontend")
     except (OSError, RuntimeError, ValueError):

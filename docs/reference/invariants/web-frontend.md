@@ -126,16 +126,16 @@ Lightweight Charts). The backend it talks to is covered in [web-api.md](web-api.
 - The SPA owner-action union must match the server's closed action list minus `record_semantic_event`, which the
   browser never sends (`src/api/ownerActions.test.ts`, `tests/unit/test_web_owner_actions_drift.py`).
 
-## Committed static bundle
+## Built static bundle
 
-- `apps/alpha-web/src/alpha_web/static/app/` is build output, committed so the Python wheel can serve it. Never edit it
-  by hand.
+- `apps/alpha-web/src/alpha_web/static/app/` is build output and is not committed (git-ignored). Never edit it by hand.
+  After a pull that changes `frontend/`, run `npm ci && npm run build` in `apps/alpha-web/frontend` before `alpha-web`.
 - `npm run build` writes it (Vite `emptyOutDir`, base `/static/app/`) and `scripts/normalize-build.mjs` normalizes the
-  text assets. Any change under `frontend/src` needs a rebuild committed in the same change; the frontend gate fails on
-  a dirty `static/app` diff after its own build.
+  text assets. CI builds it in every job that needs it; the alpha-web wheel ships it (hatch `artifacts`) and
+  `scripts/wheel_smoke.py` fails a wheel built without it.
 - Verify UI changes in the integrated app (`uv run alpha-web`). `npm run dev` serves assets only, with no API proxy.
 - If `static/app/index.html` is missing the server answers 503 with a build hint
-  (`tests/unit/test_web_port_config.py`); `tests/integration/test_web_spa_assets.py` checks the bundle is committed and served.
+  (`tests/unit/test_web_port_config.py`); `tests/integration/test_web_spa_assets.py` checks the bundle is built and served.
 
 ## Tests
 
@@ -159,4 +159,4 @@ Lightweight Charts). The backend it talks to is covered in [web-api.md](web-api.
 3. Add it as a pane of a document in `shell/documents.ts`. A new `WindowId` also needs entries in `shell/profiles.ts`
    and `workflowModel.DOCUMENT_PAGE`.
 4. Give canvas output an accessible table and exact UTC export; bind async data to the selected identity.
-5. Run the frontend loop, rebuild, and commit `static/app` with the source.
+5. Run the frontend loop and rebuild; commit the source only (`static/app` is build output).

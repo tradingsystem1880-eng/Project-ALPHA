@@ -65,7 +65,7 @@ line-length = 100
 target-version = "py312"
 # vendored upstream Kronos model code is pinned verbatim (see alpha_forecast._vendor) — not ours to
 # style; the Workstation SPA source (apps/alpha-web/frontend) is TypeScript, linted by its own npm
-# toolchain, not ruff — its built assets are committed under src/alpha_web/static/app.
+# toolchain, not ruff — its built assets go to src/alpha_web/static/app (built, not committed).
 extend-exclude = [
     "packages/alpha-forecast/src/alpha_forecast/_vendor",
     "apps/alpha-web/frontend",

@@ -13,6 +13,8 @@ build/
 .ruff_cache/
 .coverage
 .coverage.*
+# The built Workstation SPA: `npm run build` in apps/alpha-web/frontend writes it; CI builds it.
+apps/alpha-web/src/alpha_web/static/app/
 # CI coverage and shard outputs (scripts/gate_components.py)
 coverage.xml
 diff-coverage.md

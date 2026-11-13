@@ -230,7 +230,17 @@ See the [architecture](docs/ARCHITECTURE.md), [decisions](docs/adr/README.md), a
 
 ## Quickstart
 
-Requires Python 3.12 and [`uv`](https://docs.astral.sh/uv/). From the repository root:
+Requires Python 3.12, [`uv`](https://docs.astral.sh/uv/) and, for the web app, Node.js. On a fresh
+Linux checkout, one command prepares everything (environments, the built web app, the test
+browser, both worker environments) and a second says in plain English what is still missing; both
+are safe to repeat ([details](docs/operations/development-loop.md#set-up-a-fresh-machine)):
+
+```bash
+bash scripts/setup.sh
+python3 scripts/gate.py doctor
+```
+
+To do only the Python part, from the repository root:
 
 ```bash
 uv sync --locked

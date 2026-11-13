@@ -1,8 +1,9 @@
 # RD-Agent in ALPHA: what is real today and what is still missing
 
 Written 2026-11-14 for the owner, after RD-Agent was installed and run on the Dell for the first
-time. Every statement below comes from the repository or from that run; anything not checked is
-marked "not verified".
+time, and updated the same day after the daily study's Docker image, the stock loop's runtime and
+your storage decision were added. Every statement below comes from the repository or from those
+runs; anything not checked is marked "not verified".
 
 ## What RD-Agent is and what it does in ALPHA
 
@@ -25,14 +26,16 @@ backtests, the statistics and your approvals.
 ## The parts that exist
 
 - **AI stock research loop** (card 7). Starts RD-Agent's own stock research loop on a task and
-  afterwards checks exactly what ran and recovers the result. Today it only runs on made-up inputs,
-  and it could not run on the Dell (see "What is still missing", item 1).
+  afterwards checks exactly what ran and recovers the result. It now runs on the Dell, but only
+  on made-up inputs with stand-in steps (no AI model).
 - **Daily trading-rule study, "Packet 3"** (card 9). One fixed study you already approved: a
   20-day momentum rule against a "do nothing" control on Binance BTC/USDT daily bars, 2020–2022.
   RD-Agent's loop runs the steps; no AI model is involved. Today it has run only on a 7-bar
-  made-up dataset; the real-data run has not started.
+  made-up dataset (now including its locked Docker container on the Dell); the real-data run has
+  not started.
 - **Native job result screen** (card 8). Workstation → View → Research → Native job result: type a
-  job number, read its result. It answers today, but says "unavailable" until a stock job exists.
+  job number, read its result. On the Dell it now reads made-up stock jobs end to end; no real job
+  exists yet.
 
 ## What is real today
 
@@ -45,9 +48,17 @@ Run on the Dell on 2026-11-14:
   cancellation, signed checkpoints, and refusal to resume twice.
 - For the daily rule: ALPHA's real rule code, its real backtest engine and Nautilus 1.228, on the
   made-up bars.
-- 50 of the 86 tests that had always been skipped now run and pass. The new smoke check (an
-  end-to-end check through the installed programs) passes: RD-Agent's loop runs, then `alpha` and
-  the web app both show the job.
+- For the daily study: its one locked Docker image (`python:3.12-slim`, fixed by its SHA-256
+  checksum) was downloaded and checked on the Dell. All 13 daily-study tests that used to fail
+  here now pass; on a machine without the image they are skipped with a clear reason instead.
+- For the stock loop: a fixed list of 60 exact package versions, each with its checksum, now
+  lives in the repository (`workers/rdagent/stock-requirements.lock`, Python 3.11, the version
+  RD-Agent itself is tested on). Built on the Dell, RD-Agent's own stock research loop runs; 22 of
+  its 23 tests pass. The 23rd drives a real browser and fails here only because the web front
+  end's test packages are not installed on the Dell (not verified beyond that).
+- 85 of the 86 tests that had always been skipped now run and pass here. Both smoke checks (end
+  to end through the installed programs) pass: RD-Agent's general loop and its stock loop run,
+  then `alpha` and the web app show the job and its result.
 
 ## What is still made-up
 
@@ -61,26 +72,28 @@ Run on the Dell on 2026-11-14:
 
 ## What stands between today and RD-Agent researching real ideas
 
-1. **A runtime for RD-Agent's full stock loop.** Its loop needs at least six more upstream packages
-   (Docker client, Rich, NumPy, OpenAI, tiktoken, LiteLLM) plus their dependencies; no file in the
-   repository pins them to exact versions for this runtime, so they were not installed. *From you:* approval to add one pinned package list.
+1. ~~A runtime for RD-Agent's full stock loop.~~ Done 2026-11-14: the pinned package list above,
+   installed with `bash scripts/setup_rdagent.sh --with-stock-runtime`.
 2. **An AI model connection.** Pinned RD-Agent reads its model from settings named `CHAT_MODEL`,
    `EMBEDDING_MODEL` and `BACKEND` (LiteLLM by default), with the provider address and key in
    `OPENAI_API_BASE`/`OPENAI_API_KEY` (or `CHAT_OPENAI_BASE_URL`/`CHAT_OPENAI_API_KEY`, Azure
    variants, and `LITELLM_`-prefixed copies); its own command line reads them from a `.env` file.
    ALPHA's workers deliberately clear these settings and block the network today, so connecting a
-   model is also engineering work. *From you:* which provider, a spending limit, and the key,
-   entered by you, never written into the repository.
-3. **A permanent place to run long studies.** Studies must live on retained, non-temporary storage
-   with a free-space reserve of at least 100 GB (or 15%, whichever is larger), recorded in a
-   storage settings file. The Dell has about 48 GB free, so as configured it does not qualify.
-   The daily study also needs one fixed Docker image (`python:3.12-slim`, pinned by its SHA-256
-   checksum) checked by `workers/rdagent/qualify_daily_container.py`; it is not on the Dell, so the
-   13 daily-study tests fail here. *From you:* which machine and disk, and permission to download
-   that one image.
+   model is also engineering work. The stock runtime already contains LiteLLM 1.97.0 (the version
+   RD-Agent's own test settings name), which a connection would use. *From you:* which provider, a
+   spending limit, and the key, entered by you, never written into the repository.
+3. **A place to keep the data — your decision is in, one command is left.** You decided on
+   2026-11-14 to use the Dell's disk for now. The free-space reserve is now a value you set per
+   data folder ([ADR-0043](../adr/0043-storage-reserve-is-owner-set.md)): the old rule (keep
+   100 GB or 15% free) stays the default, and for the Dell the setting is "keep 10 GB free, warn
+   below 20 GB". 10 GB is a hard minimum nobody can set lower. ALPHA still refuses to write data
+   that would take free space below the reserve, and `scripts/gate.py doctor` warns when space is
+   low. The Docker image is done (see above). *From you:* choose the data folder and run the one
+   command in [storage settings](../operations/storage-settings.md); nothing has been created
+   for you. Note: the daily study's start checks the storage identity, not free space.
 4. **Real market data admitted into the study.** The plans say the real run is "blocked on admitted
    retained storage": the Binance bars may only be downloaded into, and frozen from, storage that
-   item 3 approves. Separately, the map says a data provider for your Mac has been blocked since
+   item 3 sets up. Separately, the map says a data provider for your Mac has been blocked since
    31 August (which one: not verified). *From you:* item 3's decision, then your confirmation of
    the study at the start.
 5. **Restart after a crash ("T07").** If the owning process dies mid-study, a new process cannot
@@ -96,12 +109,15 @@ Run on the Dell on 2026-11-14:
 From the repository folder on the Dell:
 
 ```sh
-bash scripts/setup_rdagent.sh        # once; prints the export line below
+bash scripts/setup_rdagent.sh --with-daily-container --with-stock-runtime  # once; prints exports
 export ALPHA_RDAGENT_SOURCE="$PWD/.alpha/state/runtime/rdagent-source"
+export ALPHA_STOCK_PYTHON="$PWD/.alpha/state/runtime/rdagent-stock-py311/venv/bin/python"
+export ALPHA_STOCK_RECEIPTS="$(mktemp -d)"
 uv run python scripts/run_owned_test.py -- uv run pytest -q -m smoke -n 0 tests/smoke/test_rdagent_smoke.py
 ```
 
-The first check passes; the second (stock loop) is skipped until item 1 exists. To read a stock
+Both checks pass on the Dell. Without the two flags the install is about 1.1 GB; the image adds
+about 120 MB and the stock runtime about 230 MB. To read a stock
 job's result once one exists: `uv run alpha research diagnostic native-result --data-dir … --job-id …
 --profile-source … --profile-runtime … --profile-mode resume`, or the Native job result screen.
 Technical detail: [worker README](../../workers/rdagent/README.md).
