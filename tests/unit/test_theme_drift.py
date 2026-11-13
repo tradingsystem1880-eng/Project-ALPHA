@@ -12,8 +12,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 from alpha_cli.figures_cmds import CANVAS_ROLES, theme_css
 from alpha_research.figures import load_theme, theme_document
 
@@ -37,10 +35,19 @@ def test_generated_css_is_current() -> None:
     assert _GENERATED.read_text(encoding="utf-8") == theme_css(theme_document(load_theme()))
 
 
-@pytest.mark.parametrize("role", CANVAS_ROLES)
-def test_canvas_tokens_mirror_the_figure_theme(role: str) -> None:
+def test_canvas_tokens_mirror_the_figure_theme() -> None:
     css = _GENERATED.read_text(encoding="utf-8")
-    assert _token(css, f"canvas-{role.replace('_', '-')}") == getattr(load_theme(), role)
+    theme = load_theme()
+    problems: list[str] = []
+    assert CANVAS_ROLES
+    for role in CANVAS_ROLES:
+        token = f"--canvas-{role.replace('_', '-')}"
+        match = re.search(rf"{token}:\s*(#[0-9a-fA-F]{{6}})", css)
+        css_value = match.group(1).lower() if match else None
+        theme_value = getattr(theme, role)
+        if css_value != theme_value:
+            problems.append(f"{role}: {token} CSS={css_value}, theme={theme_value}")
+    assert not problems, "\n".join(problems)
 
 
 def test_the_terminal_geometry_is_generated() -> None:
@@ -60,13 +67,24 @@ def _contrast(foreground: str, background: str) -> float:
     return (max(first, second) + 0.05) / (min(first, second) + 0.05)
 
 
-@pytest.mark.parametrize("surface", _CHROME_SURFACES)
-@pytest.mark.parametrize("text", _CHROME_TEXT)
-def test_chrome_text_clears_wcag_aa_on_every_chrome_surface(text: str, surface: str) -> None:
+def test_chrome_text_clears_wcag_aa_on_every_chrome_surface() -> None:
     """The mockup's label/up/down values failed this by design: spec §4.6 says they are a
     starting point, not exempt. Tested against the darkest chrome surface too (title bars)."""
     css = _CSS.read_text(encoding="utf-8")
-    assert _contrast(_token(css, text), _token(css, surface)) >= 4.5
+    problems: list[str] = []
+    pair_count = 0
+    for text in _CHROME_TEXT:
+        for surface in _CHROME_SURFACES:
+            pair_count += 1
+            text_colour = _token(css, text)
+            surface_colour = _token(css, surface)
+            ratio = _contrast(text_colour, surface_colour)
+            if ratio < 4.5:
+                problems.append(
+                    f"--{text} {text_colour} on --{surface} {surface_colour}: {ratio:.2f}"
+                )
+    assert pair_count == len(_CHROME_TEXT) * len(_CHROME_SURFACES)
+    assert not problems, "\n".join(problems)
 
 
 def test_selection_ink_clears_aa_on_the_selection_colour() -> None:
