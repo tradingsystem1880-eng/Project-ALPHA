@@ -56,3 +56,12 @@ def test_every_served_subcommand_of_a_classified_root_is_not_unknown(root: str) 
     assert names, f"{root} serves no subcommands"
     for name in names:
         assert classify_generic_command([root, name]) != "unknown", f"{root} {name}"
+
+
+def test_every_served_root_is_classified() -> None:
+    """The web launcher refuses ``unknown``; a new root must be classified, not silently refused
+    (or, before that refusal, launched without the run context empirical commands need)."""
+    roots = sorted(get_group(app).commands)
+    assert roots
+    for root in roots:
+        assert classify_generic_command([root, "x"]) != "unknown", root

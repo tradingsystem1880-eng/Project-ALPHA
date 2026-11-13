@@ -234,6 +234,26 @@ def test_unknown_free_form_command_fails_closed_with_project_context(
     assert "unknown command" in response.json()["message"]
 
 
+@pytest.mark.parametrize("args", ["mystery empirical-command SPY", "sleep", "options price SPY"])
+def test_unknown_free_form_command_is_refused_without_a_run_context(
+    monkeypatch: pytest.MonkeyPatch, args: str
+) -> None:
+    """Every served root is classified, so ``unknown`` is never a real command: refuse it before
+    a subprocess starts or a job is recorded, instead of spawning ``alpha`` to fail."""
+    launched: list[list[str]] = []
+    monkeypatch.setattr(
+        _invoke, "_command", lambda argv: launched.append(argv) or ["python", "-c", "pass"]
+    )
+    client = TestClient(create_app())
+    before = client.get("/api/jobs").json()
+    response = client.post("/api/jobs", json={"args": args})
+
+    assert response.status_code == 422, response.text
+    assert "unknown command" in response.json()["message"]
+    assert launched == []
+    assert client.get("/api/jobs").json() == before
+
+
 def test_running_job_estimate_uses_only_comparable_successful_session_history(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -309,7 +329,7 @@ def test_stream_replays_from_last_event_id(monkeypatch: pytest.MonkeyPatch) -> N
 def test_cancel_running_job(monkeypatch: pytest.MonkeyPatch) -> None:
     _fake(monkeypatch, "import time; print('started', flush=True); time.sleep(10)")
     client = TestClient(create_app())
-    job_id = client.post("/api/jobs", json={"args": "sleep"}).json()["job_id"]
+    job_id = client.post("/api/jobs", json={"args": "info"}).json()["job_id"]
     _wait_line(client, job_id, "started")  # process is alive and in its own group
     assert client.delete(f"/api/jobs/{job_id}").status_code == 200
     assert _wait_status(client, job_id, "cancelled") == "cancelled"
