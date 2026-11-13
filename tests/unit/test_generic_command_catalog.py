@@ -22,8 +22,8 @@ def test_empty_generic_command_is_unknown() -> None:
         (["crypto-data", "acquire"], "owner_only"),
         (["crypto-data", "asset-master-create"], "owner_only"),
         (["crypto-data"], "owner_only"),
-        (["quantpad-data", "verify"], "safe"),
-        (["quantpad-data", "archive"], "owner_only"),
+        (["quantpad-data", "verify"], "unknown"),
+        (["quantpad-data", "archive"], "unknown"),
         (["provider", "check", "tiingo"], "owner_only"),
         (["strategy-candidate", "paper-preflight"], "safe"),
         (["strategy-candidate", "run"], "empirical"),
@@ -47,9 +47,7 @@ def _subcommands(root: str) -> list[str]:
     return sorted(sub.commands) if isinstance(sub, typer.core.TyperGroup) else []
 
 
-@pytest.mark.parametrize(
-    "root", ["crypto-data", "quantpad-data", "provider", "strategy-candidate", "data", "paper"]
-)
+@pytest.mark.parametrize("root", ["crypto-data", "provider", "strategy-candidate", "data", "paper"])
 def test_every_served_subcommand_of_a_classified_root_is_not_unknown(root: str) -> None:
     """An unlisted verb must fail this test rather than silently classify ``unknown``."""
     names = _subcommands(root)

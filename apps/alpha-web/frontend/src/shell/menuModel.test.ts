@@ -20,7 +20,6 @@ const CATALOG_GROUPS = [
   'project',
   'propfirm',
   'provider',
-  'quantpad-data',
   'report',
   'research',
   'risk',

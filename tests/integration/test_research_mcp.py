@@ -343,7 +343,8 @@ def test_data_inventory_tools_are_read_only_and_bounded(
 
     providers = server.get_provider_registry()
     provider_ids = {row["id"] for row in providers["providers"]}
-    assert "quantpad" in provider_ids and "tiingo" in provider_ids
+    assert "quantpad" not in provider_ids
+    assert "tiingo" in provider_ids
 
 
 def test_source_plane_tools_search_read_and_draft_but_never_screen(
