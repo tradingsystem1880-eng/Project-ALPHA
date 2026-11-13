@@ -25,7 +25,7 @@ plainly what was not checked. A claim without a command and its result is not ev
 | Read | Section | When |
 |---|---|---|
 | [development loop](../../../docs/operations/development-loop.md) | What CI checks | always |
-| [capability map](../../../docs/roadmap/capabilities.toml) | — | always: the `proof_synthetic` tests of this task's capability |
+| [capability map](../../../docs/roadmap/capabilities.toml) | — | finding `proof_synthetic`: read only the block naming the task or code |
 | [quant source verification](../../../.agents/skills/quant-source-verification/SKILL.md) | Protocol | `tier_impact` has `quant` |
 | [research integrity](../../../docs/reference/invariants/research-integrity.md) | Statistical evidence | the change computes or reports a statistic |
 
@@ -33,8 +33,8 @@ plainly what was not checked. A claim without a command and its result is not ev
 
 1. Run `uv run python scripts/gate.py check --base main` and every slice's `verify` again, now,
    on the last commit. Quote failures exactly; fix in stage 03 and come back.
-2. Prove the workflow end to end: run the `proof_synthetic` tests listed for the task's
-   capability in `docs/roadmap/capabilities.toml`. There is no `tests/smoke/` folder yet; if the
+2. Prove the workflow end to end: `grep -n "<task or module>" docs/roadmap/capabilities.toml`, then
+   run the `proof_synthetic` tests of that `[[capability]]` block. There is no `tests/smoke/` folder yet; if the
    capability lists none, or none exercises this change, write "no end-to-end check exists" and
    name the test that should (it becomes a slice or a backlog item).
 3. When CI would run something heavier for this change (a component, the browser lanes, the slow

@@ -24,17 +24,17 @@ Nothing is designed or built here; the job is to agree what "done" means before 
 
 | Read | Section | When |
 |---|---|---|
-| [STATUS.md](../../../STATUS.md) | — | always |
-| [roadmap index](../../../docs/roadmap/README.md) | — | always: is it already a backlog item or a live plan? |
+| [STATUS.md](../../../STATUS.md) | At a glance | always: the work-in-progress count and what is allowed |
+| [roadmap index](../../../docs/roadmap/README.md) | — | `fs.py search` finds a plan or backlog item that may cover it |
 | [documentation invariants](../../../docs/reference/invariants/documentation.md) | Roadmap index | writing a backlog file |
 | [research integrity](../../../docs/reference/invariants/research-integrity.md) | Research before strategy | the idea is a market idea or a strategy |
 
 ## Process
 
-1. Restate the request in one sentence and check it against the live plans and the backlog. If
-   a live plan already covers it, stop and say so; that task continues at its own stage.
-2. Decide the size. A one-file fix with an obvious test, or a documentation-only change, needs no
-   task folder: go to stage 03 on a branch.
+1. Restate the request in one sentence and search for it: `uv run python scripts/fs.py search
+   "<words>"` (live plans and backlog items rank first). If a live plan covers it, stop and say so.
+2. Decide the size: the small route in [the pipeline](../../CONTEXT.md#the-task-folder) needs no
+   task folder and is not counted against the cap. When unsure, ask the owner; say which you chose.
 3. Check the work-in-progress limit. Count = live plans `In progress` or
    `Implemented – qualification pending`; the cap is `ceiling` in `docs/roadmap/wip-limit.json`
    (it falls to `limit`, 3, as work closes). When the count is at the cap, a new task may not

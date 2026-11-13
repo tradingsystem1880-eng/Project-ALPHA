@@ -43,7 +43,8 @@ it points to, never here.
 | `research/stages/` (coming) | — | running a research case stage by stage: idea to decision |
 
 A task that spans areas: start at the area whose code you change first; its Read first table
-links the others it depends on.
+links the others it depends on. A change to anything follows `workflow/CONTEXT.md` for the steps;
+the area's row says what to read.
 
 ## One home per fact
 

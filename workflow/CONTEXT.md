@@ -48,9 +48,10 @@ all `done`: 03. Slices done but no `04-verify.md`: 04. Otherwise: 05.
   the agent's memory of it.
 - Finished folders move to `docs/work/archive/<yyyy-mm>/` (stage 05). Plans finished before
   2026-11-14 are single files there.
-- Small changes skip the folder: a one-file fix with an obvious test, or a documentation-only
-  change, goes straight from the idea to stages 03–05 on a branch, with the pull request
-  template as the only record.
+- The small route skips the folder: a fix confined to one module and its tests, with an obvious
+  test, or a documentation-only change. It runs stages 03–05 on a branch: 03 reads the code
+  area's `CONTEXT.md` in place of a plan, 04's results go under `## Checks run` in the pull
+  request, and 05 fills the template directly (no `05-handoff.md`, no close-out).
 
 ## How to change it
 

@@ -18,6 +18,8 @@ Make the plan true, one slice at a time, test first, in small commits on a branc
 
 - `docs/work/<task>/02-plan.md` as approved, with its `## Read first` table: read exactly those
   files and sections, plus the `CONTEXT.md` of each workspace you edit.
+- On the small route (`workflow/CONTEXT.md`), no plan: the code area's `CONTEXT.md` and its Read
+  first table stand in for it.
 
 ## Read first
 
