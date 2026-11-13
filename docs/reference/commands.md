@@ -252,7 +252,7 @@ Archive exact QuantPad research data on pinned bulk storage.
 
 ## alpha report
 
-- `alpha report <RUN_ID>` — Print the stored result for RUN_ID (any run type: gauntlet, backtest, portfolio, etc.). Options: `--json`, `--role`, +2 more
+- `alpha report <RUN_ID>` — Print the stored result for RUN_ID (any run type: gauntlet, backtest, portfolio, etc.). Options: `--json`, +4 more
 
 ## alpha research
 

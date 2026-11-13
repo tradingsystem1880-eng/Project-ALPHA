@@ -33,12 +33,14 @@ isolated workers and `tools/alpha-eval` keep their own suites. Tests must never 
 
 - Layout: `tests/unit/` (pure units; `tests/unit/study/` for alpha-study), `tests/integration/`
   (CLI and engine), `tests/bias_guards/`, `tests/oracles/` (tolerances in `_reference/`),
-  `tests/fixtures/` (goldens), `tests/acceptance/` (17 visible acceptance tests, always run).
+  `tests/fixtures/` (goldens), `tests/acceptance/` (17 visible acceptance tests, always run), `tests/smoke/` (end-to-end
+  workflows through the installed programs; marker `smoke`, not in the fast tier).
 - A new file's name decides its tier: `tests/_tiers.py` moves files with listed prefixes out of
   the fast local tier. Never add the `platform` marker by hand.
 - Run one file: `uv run pytest -q tests/unit/test_x.py`; the fast check:
   `uv run python scripts/gate.py check`; the fast tier: `uv run python scripts/gate.py check --all`;
-  bias guards: `uv run pytest -q -m bias_guard`.
+  bias guards: `uv run pytest -q -m bias_guard`; smoke:
+  `uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0`.
 - Protected (reviewed pull request only): `tests/bias_guards/`, `tests/oracles/`,
   `tests/unit/test_claude_harness_*.py`, `tests/_tiers.py`, `tests/acceptance/`.
 
