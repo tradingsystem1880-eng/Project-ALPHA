@@ -347,7 +347,7 @@ def test_brief_route_validates_headings_and_keeps_the_record_out_of_the_tree(
     _scenario(env, GOOD)
     assert handoff.main(argv) == 0
     rec = _record(env)
-    assert rec["work_order"] == {"kind": "brief", "name": "fix-it"}
+    assert rec["work_order"] == {"kind": "brief", "name": "fix"}
     assert not list(Path(rec["worktree"]).rglob(handoff.RECORD_NAME))
     assert ".venv/bin/pytest -q tests/test_mod.py" in _calls(env)[0]["prompt"]
 
@@ -389,7 +389,7 @@ def test_verify_records_a_claude_build(env: dict[str, Path]) -> None:
 def test_second_build_in_a_busy_worktree_is_refused(env: dict[str, Path]) -> None:
     wt = env["tmp"] / "busy-wt"
     _git(env["repo"], "worktree", "add", "-q", "-b", "busy", str(wt), "HEAD")
-    lock = env["home"] / "locks" / f"{handoff._slug(str(wt.resolve()))}.lock"
+    lock = handoff.worktree_lock(env["home"], wt.resolve())
     lock.parent.mkdir(parents=True)
     with lock.open("a+") as held:
         fcntl.flock(held.fileno(), fcntl.LOCK_EX)
@@ -426,3 +426,33 @@ def test_sandbox_command_rewrites_uv_run() -> None:
     assert handoff.sandbox_command("uv run pytest -q a") == ".venv/bin/pytest -q a"
     assert handoff.sandbox_command("uv run python -m x") == ".venv/bin/python -m x"
     assert handoff.sandbox_command("test -f a") == "test -f a"
+
+
+def test_ignored_credential_file_is_a_policy_violation(env: dict[str, Path]) -> None:
+    (env["repo"] / ".gitignore").write_text(".secrets/\n*.local\n")
+    _git(env["repo"], "add", ".gitignore")
+    _git(env["repo"], "commit", "-qm", "ignore")
+    _git(env["repo"], "update-ref", "refs/remotes/origin/main", "HEAD")
+    _scenario(env, {"write": {"src/mod.py": "x = 2\n", ".secrets/.env": "K=v\n"}})
+    assert _build(env) == handoff.EXIT["policy_violation"]
+    assert any("git-ignored" in p for p in _record(env)["policy_violations"])
+
+
+def test_exit_zero_without_a_completed_turn_is_not_success(env: dict[str, Path]) -> None:
+    limit = {"type": "error", "message": "You've hit your usage limit."}
+    _scenario(env, {"exit": 0, "events": [{"type": "thread.started", "thread_id": "t"}, limit]})
+    assert _build(env) == handoff.EXIT["codex_limit"]
+
+
+def test_fallback_verify_keeps_the_codex_attempt_in_the_record(env: dict[str, Path]) -> None:
+    (env["bin"] / "login").write_text("Not logged in")
+    wt = env["tmp"] / "fb-wt"
+    _git(env["repo"], "worktree", "add", "-q", "-b", "fb", str(wt), "HEAD")
+    assert _build(env, "--worktree", str(wt)) == handoff.EXIT["codex_unavailable"]
+    (wt / "src" / "mod.py").write_text("x = 3\n")
+    argv = ["--repo", str(env["repo"]), "verify", "--task", "docs/work/2026-11-14-demo"]
+    assert handoff.main([*argv, "--worktree", str(wt), "--built-by", "claude:sonnet"]) == 0
+    in_tree = json.loads((wt / "docs/work/2026-11-14-demo" / handoff.RECORD_NAME).read_text())
+    assert in_tree["built_by"]["tool"] == "claude"
+    assert in_tree["previous_attempts"][0]["verdict"] == "codex_unavailable"
+    assert in_tree["previous_attempts"][0]["fallback"]["model"] == "sonnet"

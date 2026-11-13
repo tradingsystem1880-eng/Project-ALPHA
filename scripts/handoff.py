@@ -139,6 +139,7 @@ GUARDED: tuple[tuple[str, str, str], ...] = (
     (".agents/", "protected", "protected file"),
     ("scripts/gate", "protected", "protected file (the gate)"),
     ("scripts/harness_", "protected", "protected file (harness)"),
+    ("scripts/git_guard.py", "protected", "protected file (git guard)"),
     ("scripts/handoff.py", "protected", "protected file (this tool)"),
     ("tests/unit/test_claude_harness_", "protected", "protected test (harness)"),
     ("tests/unit/test_filesystem_contract.py", "protected", "protected test (file system)"),
@@ -382,10 +383,9 @@ def load_brief(root: Path, brief: Path) -> WorkOrder:
     if not checks:
         raise InputError(f"brief {brief.name}: '## Checks' lists no `command` bullets")
     declared = _CLASS_LINE.search(text)
-    title = re.search(r"^#\s+(.+)$", text, re.M)
     return WorkOrder(
         kind="brief",
-        name=_slug(title.group(1) if title else brief.stem),
+        name=_slug(brief.name.removesuffix(".md").removesuffix(".brief")),
         source=str(brief.resolve()),
         text=text,
         files=files,
@@ -556,6 +556,7 @@ class CodexRun:
     last_message: str = ""
     file_changes: int = 0
     commands: int = 0
+    turns_completed: int = 0
 
 
 def codex_env() -> dict[str, str]:
@@ -642,8 +643,10 @@ def _parse_events(path: Path, run: CodexRun) -> None:
         kind = event.get("type")
         if kind == "thread.started" and isinstance(event.get("thread_id"), str):
             run.thread_id = event["thread_id"]
-        elif kind == "turn.completed" and isinstance(event.get("usage"), dict):
-            for key, value in event["usage"].items():
+        elif kind == "turn.completed":
+            run.turns_completed += 1
+            usage = event.get("usage")
+            for key, value in (usage if isinstance(usage, dict) else {}).items():
                 if isinstance(value, int):
                     run.usage[key] = run.usage.get(key, 0) + value
         elif kind == "error":
@@ -712,7 +715,7 @@ def run_codex(
     if timed_out:
         run.outcome = "codex_timeout"
         run.errors.append(f"exceeded the {int(timeout)}s cap")
-    elif proc.returncode == 0 and "turn.failed" not in run.errors:
+    elif proc.returncode == 0 and "turn.failed" not in run.errors and run.turns_completed:
         run.outcome = "ok"
     elif _LIMIT.search(signals):
         run.outcome = "codex_limit"
@@ -775,6 +778,33 @@ def changed_paths(worktree: Path, base_sha: str) -> list[tuple[str, str]]:
     for path in filter(None, others.split("\0")):
         found.setdefault(path, "A")
     return sorted((status, path) for path, status in found.items())
+
+
+_IGNORED_NOISE = (".venv/", "node_modules/", ".pytest_cache/", ".mypy_cache/", ".ruff_cache/")
+
+
+def ignored_paths(worktree: Path) -> set[str]:
+    """Git-ignored paths (directories collapsed): a builder's write there never shows in a diff."""
+    out = _git(worktree, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory")
+    return {p for p in out.splitlines() if p and not _noise(p)}
+
+
+def _noise(path: str) -> bool:
+    return path.startswith(_IGNORED_NOISE) or "__pycache__/" in path or path.endswith(".pyc")
+
+
+def new_ignored_files(worktree: Path, before: set[str]) -> list[str]:
+    """Ignored files created since ``before`` was taken, new directories expanded to files."""
+    found: list[str] = []
+    for entry in sorted(ignored_paths(worktree) - before):
+        if not entry.endswith("/"):
+            found.append(entry)
+            continue
+        listed = _git(worktree, "ls-files", "--others", "--ignored", "--exclude-standard", entry)
+        found += [p for p in listed.splitlines() if p and not p.startswith(_IGNORED_NOISE)] or [
+            entry
+        ]
+    return found
 
 
 def policy_problems(
@@ -846,6 +876,11 @@ def update_state(home: Path, run_id: str, **fields: Any) -> None:
         tmp.replace(_state_path(home))
 
 
+def worktree_lock(home: Path, worktree: Path) -> Path:
+    """The lock a build holds on its worktree for its whole run (clean takes it too)."""
+    return home / "locks" / f"{_slug(str(worktree))}.lock"
+
+
 def _pid_alive(pid: Any) -> bool:
     if not isinstance(pid, int) or pid <= 0:
         return False
@@ -883,6 +918,8 @@ class Build:
     fallback: dict[str, str] | None = None
     notes: list[str] = field(default_factory=list)
     start_head: str = ""
+    ignored_at_start: set[str] = field(default_factory=set)
+    previous: list[dict[str, Any]] = field(default_factory=list)
 
     def record_path_in_tree(self) -> Path | None:
         if self.order.task_dir is None:
@@ -946,6 +983,7 @@ class Build:
             "fallback": self.fallback,
             "notes": self.notes,
             "logs": str(self.log_dir),
+            "previous_attempts": self.previous,
         }
 
 
@@ -957,7 +995,30 @@ def unverified_items(report: str) -> list[str]:
     return [item[:200] for item in items]
 
 
+_ATTEMPT_KEYS = (
+    "run_id",
+    "built_by",
+    "verdict",
+    "fallback",
+    "tokens",
+    "wall_seconds",
+    "fix_rounds",
+)
+
+
+def earlier_attempts(home: Path, worktree: Path, run_id: str) -> list[dict[str, Any]]:
+    """The latest earlier record on this worktree, condensed, with its own earlier attempts."""
+    for path in sorted((home / "records").glob("*.json"), reverse=True):
+        data = gate.read_json(path) or {}
+        if data.get("worktree") == str(worktree) and data.get("run_id") != run_id:
+            prior = data.get("previous_attempts")
+            older = prior if isinstance(prior, list) else []
+            return [*older, {k: data.get(k) for k in _ATTEMPT_KEYS}]
+    return []
+
+
 def write_record(build: Build, home: Path) -> Path:
+    build.previous = earlier_attempts(home, build.worktree, build.run_id)
     record = build.record()
     records = home / "records"
     records.mkdir(parents=True, exist_ok=True)
@@ -1087,6 +1148,11 @@ def _verify_round(build: Build, args: argparse.Namespace, round_no: int, ignore:
     build.files = changed_paths(wt, build.base_sha)
     problems, build.extras = policy_problems(build.order, build.files, args.scope_tolerance, ignore)
     build.policy += problems
+    for path in new_ignored_files(wt, build.ignored_at_start):
+        # Ignored files never reach a commit; only the never rules (credentials, holdout) apply.
+        rule = never_rule(path)
+        if rule:
+            build.policy.append(f"{path} (git-ignored): {rule}")
     merge_base = _git(wt, "merge-base", build.base_sha, "HEAD").strip()
     build.diffstat = _git(wt, "diff", "--stat=120", merge_base, check=False)
     if build.policy:
@@ -1115,18 +1181,19 @@ def cmd_build(args: argparse.Namespace, root: Path, *, codex: bool) -> int:
     except InputError as exc:
         print(f"handoff: invalid input: {exc}", file=sys.stderr)
         return EXIT["invalid_input"]
-    cls, reason = effective_class(order, args.cls)
-    profile = PROFILES[cls]
-    stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%d-%H%M%S")
+    stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%d-%H%M%S-%f")
     run_id = f"{order.name}-{stamp}"
     try:
         base_sha = _git(root, "rev-parse", "--verify", f"{args.base}^{{commit}}").strip()
         wt, branch, created = prepare_worktree(root, home, order.name, base_sha, args.worktree)
+        if order.kind == "task" and created:
+            # Build, classify and check against the plan as the worktree has it.
+            order = load_task(wt, order.source.rsplit("/", 1)[0])
     except (InputError, RuntimeError) as exc:
         print(f"handoff: invalid input: {exc}", file=sys.stderr)
         return EXIT["invalid_input"]
-    if order.kind == "task" and created:
-        order = load_task(wt, order.source.rsplit("/", 1)[0])  # the plan as the worktree has it
+    cls, reason = effective_class(order, args.cls)
+    profile = PROFILES[cls]
     log_dir = home / "logs" / run_id
     log_dir.mkdir(parents=True, exist_ok=True)
     if codex:
@@ -1137,7 +1204,7 @@ def cmd_build(args: argparse.Namespace, root: Path, *, codex: bool) -> int:
     build = Build(
         run_id, order, cls, reason, profile, args.base, base_sha, wt, branch, log_dir, built_by
     )
-    lock = home / "locks" / f"{_slug(str(wt))}.lock"
+    lock = worktree_lock(home, wt)
     try:
         with _flock(lock, blocking=False):
             update_state(
@@ -1180,6 +1247,7 @@ def _run(build: Build, args: argparse.Namespace, root: Path, *, codex: bool) -> 
     in_tree = build.record_path_in_tree()
     ignore = [in_tree.relative_to(wt).as_posix()] if in_tree else []
     build.start_head = _git(wt, "rev-parse", "HEAD").strip()
+    build.ignored_at_start = ignored_paths(wt)
     if not codex:
         build.verdict = (
             "passed"
@@ -1428,11 +1496,16 @@ def cmd_clean(args: argparse.Namespace, root: Path) -> int:
         print(f"{action}: {run_id} {wt}")
         if args.dry_run:
             continue
-        if wt.exists():
-            force = ["--force"] if args.discard else []
-            _git(root, "worktree", "remove", *force, str(wt))
-        if _git(root, "branch", "--list", branch).strip():
-            _git(root, "branch", "-D" if args.discard else "-d", branch, check=False)
+        try:
+            with _flock(worktree_lock(home, wt), blocking=False):
+                if wt.exists():
+                    force = ["--force"] if args.discard else []
+                    _git(root, "worktree", "remove", *force, str(wt))
+                if _git(root, "branch", "--list", branch).strip():
+                    _git(root, "branch", "-D" if args.discard else "-d", branch, check=False)
+        except BlockingIOError:
+            print(f"keep   {run_id}: a build is running in {wt} now")
+            continue
         removed += 1
         with _flock(home / "state.lock"):
             state = read_state(home)
