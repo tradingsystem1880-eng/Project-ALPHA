@@ -4,6 +4,8 @@ Where each kind of document lives, and how long it stays current. Start with
 [`AGENTS.md`](../AGENTS.md) and [`CLAUDE.md`](../CLAUDE.md); the [context index](context/README.md)
 maps capabilities to their owning documents.
 
+**What works today:** [`STATUS.md`](../STATUS.md) (generated). **What the codes mean:** [glossary](reference/glossary.md).
+
 ## Lifecycle
 
 | State | Meaning | Edited how | Where |
@@ -43,6 +45,7 @@ Do not edit these by hand; rerun the command and commit the result.
 |---|---|
 | `docs/governance/capability-authority-matrix.md`, `docs/governance/openapi-operation-classification.json` | `uv run python scripts/check_openapi_operations.py --write` (without `--write` it checks) |
 | `docs/roadmap/README.md` | `uv run python scripts/roadmap_index.py` (`--check` verifies freshness) |
+| `STATUS.md` (from `docs/roadmap/capabilities.toml`) | `uv run python scripts/status.py` (`--check` verifies freshness) |
 
 To find a document, run `uv run python scripts/fs.py search "QUERY"` (`--kind`, `--limit`,
 `--format json`): it searches the tracked documentation folders above and ranks living
