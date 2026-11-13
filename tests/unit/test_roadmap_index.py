@@ -50,6 +50,8 @@ def test_render_lists_each_family(tmp_path: Path) -> None:
     assert "| [Idea](backlog/idea.md) | Idea | M |" in text
     assert "| [Split](refactors/split.md) | H |" in text
     assert "| [2026-10](../superpowers/plans/archive/2026-10/) | 1 |" in text
+    assert "[STATUS.md](../../STATUS.md)" in text
+    assert "[wip-limit.json](wip-limit.json)" in text
 
 
 @pytest.mark.parametrize(

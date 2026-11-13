@@ -1,0 +1,949 @@
+# Capability map: every user-facing workflow of ALPHA, in plain English.
+#
+# STATUS.md is generated from this file (uv run python scripts/status.py); the schema is
+# enforced by scripts/capabilities.py and tests/unit/test_capabilities.py.
+#
+# Fields per [[capability]]:
+#   id               kebab-case, unique
+#   name             plain English name (shown first on owner pages)
+#   codes            internal code names, shown in brackets after the name (optional)
+#   what             one sentence: what it lets the owner do
+#   see_it           exact command(s) or Workstation screen; "nothing to see yet — internal only"
+#   entry_points     verified entry points, each "<kind>: <value>":
+#                      cli: alpha <command>      (group must be registered in alpha_cli/main.py)
+#                      api: <METHOD> /api/...    (route must exist in alpha_web/api/*.py)
+#                      panel: <path to .tsx>     (file must exist)
+#                      script: <console script>  (must be declared in an apps/*/pyproject.toml)
+#                      code: <path>              (internal module; file must exist)
+#   proof_synthetic  node ids of end-to-end tests through the public entry point on synthetic
+#                    data ("path::test name"); [] means there is none
+#   real_data        whether a run on real market data is recorded
+#   real_data_needs  what a real-data run would need (credentials, network); optional
+#   needs            things this workflow needs that the development machine does not have
+#   state            Working | Partial | Demo only | Shelved | Not started
+#                    Working = has proof_synthetic and needs is empty
+#   missing          a few words on what stops it being Working (required unless Working)
+#   triage           {card, recommendation, owner_decision} for items on the triage sheet;
+#                    owner_decision is "undecided" until the owner answers (TOML has no null)
+#   plans            live plans (docs/superpowers/plans/*.md file names) that belong to it
+#
+# [[decision]] holds triage cards that are not a workflow of their own; [[unassigned_plan]] holds
+# live plans that belong to no workflow; [[plan_summary]] gives every "In progress" plan a plain
+# title and one line for STATUS.md.
+
+[[capability]]
+id = "workstation"
+name = "Workstation web app"
+what = "Open ALPHA in a browser on this computer and move between its charts, research and results screens."
+see_it = ["uv run alpha-web, then open http://localhost:8801"]
+entry_points = [
+  "script: alpha-web",
+  "api: GET /api/system",
+  "panel: apps/alpha-web/frontend/src/shell/MenuBar.tsx",
+]
+proof_synthetic = [
+  "apps/alpha-web/frontend/e2e/workflow.spec.ts::real workflow navigation, asset selection, chart and history",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "price-charts"
+name = "Price charts with indicators and patterns"
+what = "Look at stored price history as a chart, with indicators and chart patterns drawn from recorded calculations."
+see_it = [
+  "Workstation: View → Chart",
+  "uv run alpha chart overlays BTC/USDT --json",
+]
+entry_points = [
+  "cli: alpha chart overlays",
+  "cli: alpha data candles",
+  "api: GET /api/candles/{symbol:path}",
+  "api: GET /api/overlays/{symbol:path}",
+  "panel: apps/alpha-web/frontend/src/panels/PriceChart.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_chart_cmds.py::test_overlays_ported_indicators_and_patterns",
+  "apps/alpha-web/frontend/e2e/workflow.spec.ts::real workflow navigation, asset selection, chart and history",
+]
+real_data = "Recorded: on 2026-10-02 a live AAVEUSDT 1-hour chart opened 41,113 bars from verified downloads (docs/BUILD-STATUS.md, 2026-10-02 crypto archive entry)."
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "stock-data"
+name = "Download and freeze stock and ETF prices"
+what = "Download daily stock or ETF prices, freeze them into a checked snapshot, and verify it later."
+see_it = [
+  "uv run alpha data pull SPY --source tiingo --start 2020-01-01 --end 2020-12-31",
+  "uv run alpha data snapshot <name> SPY, then uv run alpha data verify <name>",
+  "Workstation: Data Manager (right-hand panel)",
+]
+entry_points = [
+  "cli: alpha data pull",
+  "cli: alpha data snapshot",
+  "cli: alpha data verify",
+  "api: GET /api/data/snapshots",
+  "panel: apps/alpha-web/frontend/src/panels/DataManager.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_data_cli.py::test_pull_then_snapshot_then_verify",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+real_data_needs = "A Tiingo API key (the main stock source)."
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "crypto-data"
+name = "Download crypto market data"
+codes = ["W05"]
+what = "Download crypto prices, trades, derivatives and on-chain data from named exchanges, each kept with its exact source."
+see_it = [
+  "uv run alpha crypto-data catalog",
+  "uv run alpha crypto-data acquire <provider> <family> <instrument> --base BTC --quote USDT",
+  "Workstation: View → Funding (opens the Crypto Data Center)",
+]
+entry_points = [
+  "cli: alpha crypto-data acquire",
+  "cli: alpha crypto-data catalog",
+  "cli: alpha crypto-data market-catalog",
+  "api: POST /api/crypto-data/acquisitions",
+  "panel: apps/alpha-web/frontend/src/panels/CryptoDataCenter.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_crypto_data_native_acquisition.py::test_binance_trade_archive_families_acquire_with_exact_native_identity",
+]
+real_data = "Recorded: on 2026-10-02 live DefiLlama downloads (Aave TVL, stablecoin supply, yield pools) passed their checks, and a Binance spot listing was downloaded on 2026-10-01 (docs/BUILD-STATUS.md, 2026-10-02 entries)."
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "crypto-backfill"
+name = "Crypto history download that resumes safely"
+codes = ["backfill", "Phase B"]
+what = "Download years of Bybit price history in chunks, pick up where it stopped, and ask what is done or missing without downloading."
+see_it = [
+  "uv run alpha crypto-data backfill bybit <family> --symbols BTCUSDT --quote USDT --start … --end … --ledger <name> --dry-run",
+  "uv run alpha crypto-data backfill-status bybit <family> … (read-only)",
+]
+entry_points = [
+  "cli: alpha crypto-data backfill",
+  "cli: alpha crypto-data backfill-status",
+]
+proof_synthetic = [
+  "tests/integration/test_crypto_backfill_resume_cli.py::test_cli_reopens_completed_bytes_and_retries_only_unfinished_instrument",
+  "tests/integration/test_crypto_backfill_status_cli.py::test_status_verifies_completion_and_pending_without_writes",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+real_data_needs = "Network access to Bybit and a storage volume for years of data."
+needs = []
+state = "Working"
+triage = { card = "1", recommendation = "KEEP", owner_decision = "undecided" }
+plans = [
+  "2026-09-10-edge-first-phase-b-feed-the-machine.md",
+  "2026-11-07-backfill-ledger-exclusion.md",
+  "2026-11-07-backfill-resume-evidence.md",
+  "2026-11-07-backfill-verification-budget.md",
+  "2026-11-08-backfill-metadata-bounds.md",
+  "2026-11-08-backfill-readonly-status.md",
+]
+
+[[capability]]
+id = "download-bookkeeping"
+name = "Download bookkeeping: receipts and quota"
+what = "Keep a receipt for every web request a download makes, so downloads can be audited, replayed and charged to a budget."
+see_it = ["nothing to see yet — internal only"]
+entry_points = [
+  "code: apps/alpha-cli/src/alpha_cli/_market_data_acquisition_accounting.py",
+  "code: apps/alpha-cli/src/alpha_cli/_crypto_backfill_accounting.py",
+  "code: apps/alpha-cli/src/alpha_cli/_crypto_http_accounting.py",
+  "code: apps/alpha-cli/src/alpha_cli/_crypto_http_replay.py",
+]
+proof_synthetic = []
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Partial"
+missing = "not connected to any command; tests only"
+triage = { card = "2", recommendation = "SHELVE", owner_decision = "undecided" }
+plans = [
+  "2026-11-07-acquisition-disposable-transactions.md",
+  "2026-11-08-accounted-backfill-dispatch.md",
+  "2026-11-08-accounted-http-attempts.md",
+  "2026-11-08-complete-http-response-evidence.md",
+  "2026-11-08-bound-http-retained-resume.md",
+]
+
+[[capability]]
+id = "funding-download"
+name = "Bybit funding-rate download"
+what = "Download Bybit funding rates (the regular payments between long and short traders) with the raw bytes kept."
+see_it = ["nothing to see yet — internal only"]
+entry_points = [
+  "code: packages/alpha-data/src/alpha_data/crypto/funding_ingestion.py",
+  "code: packages/alpha-data/src/alpha_data/crypto/providers/bybit_funding.py",
+  "code: packages/alpha-data/src/alpha_data/crypto/providers/funding_transport.py",
+]
+proof_synthetic = []
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Partial"
+missing = "not connected to any command; real downloads refused on purpose"
+triage = { card = "B", recommendation = "SHELVE", owner_decision = "undecided" }
+plans = []
+
+[[capability]]
+id = "retained-coverage"
+name = "\"Are my downloaded daily bars complete?\" check"
+what = "Check downloaded daily prices for missing, duplicated or out-of-place days against the calendar you expect."
+see_it = [
+  "uv run alpha crypto-data quality <manifest-id> --coverage-start … --coverage-end … --as-of …",
+  "Workstation: View → Funding → Coverage & Quality tab, then pick a dataset",
+]
+entry_points = [
+  "cli: alpha crypto-data quality",
+  "api: POST /api/crypto-data/quality/{manifest_id}/retained-coverage",
+  "panel: apps/alpha-web/frontend/src/panels/RetainedBarCoverage.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_crypto_bar_coverage_cli.py::test_quality_audit_finds_edge_gaps_hidden_by_stored_qualified_report",
+  "tests/integration/test_web_retained_coverage.py::test_real_api_preserves_inspected_exit_one_and_native_findings",
+  "apps/alpha-web/frontend/e2e/retained-bar-production.spec.ts::production-served bundle and real retained API show exact gaps without mutation or provider calls",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+triage = { card = "3", recommendation = "KEEP", owner_decision = "undecided" }
+plans = [
+  "2026-11-08-retained-daily-bar-grid.md",
+  "2026-11-08-retained-bar-quality-ui.md",
+  "2026-11-08-retained-bar-production-assembly.md",
+  "2026-11-08-retained-project-production-smoke.md",
+]
+
+[[capability]]
+id = "crypto-snapshots"
+name = "Freeze crypto data into exact snapshots and check them"
+codes = ["W05"]
+what = "Freeze chosen crypto datasets into one exact snapshot, and refuse to reuse it if its source files are missing, changed or ambiguous."
+see_it = [
+  "uv run alpha crypto-data snapshot-create …, then uv run alpha crypto-data snapshot-verify <snapshot-id>",
+  "uv run alpha crypto-data snapshot-query …",
+  "Workstation: View → Funding → Crypto Data Center",
+]
+entry_points = [
+  "cli: alpha crypto-data snapshot-create",
+  "cli: alpha crypto-data snapshot-verify",
+  "cli: alpha crypto-data snapshot-query",
+  "cli: alpha crypto-data asset-master-verify",
+  "api: POST /api/crypto-data/snapshots/{snapshot_id}/verify",
+]
+proof_synthetic = [
+  "tests/integration/test_crypto_snapshot_query_cli.py::test_snapshot_query_reopens_exact_id_and_preserves_frozen_files",
+  "tests/integration/test_asset_master_provenance.py::test_valid_sources_contract_and_snapshot_reopen_without_rebuilding_identity",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+triage = { card = "4", recommendation = "KEEP", owner_decision = "undecided" }
+plans = [
+  "2026-11-08-asset-master-source-provenance.md",
+  "2026-11-08-snapshot-capture-binding.md",
+]
+
+[[capability]]
+id = "backtest"
+name = "Run a backtest"
+what = "Simulate a strategy on stored prices with costs, then read its trades, equity curve and drawdown."
+see_it = [
+  "uv run alpha backtest run SPY",
+  "Workstation: View → Strategy Performance Report",
+]
+entry_points = [
+  "cli: alpha backtest run",
+  "cli: alpha backtest portfolio",
+  "cli: alpha backtest cross-sectional",
+  "api: GET /api/runs/{run_id}",
+  "panel: apps/alpha-web/frontend/src/panels/rundetail/index.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_backtest_cli.py::test_backtest_run_writes_trade_log_and_equity_curve",
+  "tests/integration/test_portfolio_cli.py::test_portfolio_writes_manifest",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "run-reports"
+name = "Reports, figures and run comparison"
+what = "Re-open any stored run, export its figures, and compare runs side by side without re-running them."
+see_it = [
+  "uv run alpha report <run-id>",
+  "uv run alpha figures list <run-id>",
+  "Workstation: View → Compare",
+]
+entry_points = [
+  "cli: alpha report",
+  "cli: alpha figures render",
+  "api: GET /api/runs",
+  "api: POST /api/v3/runs/compare",
+  "panel: apps/alpha-web/frontend/src/panels/CompareRuns.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_report_cli.py::test_report_prints_stored_run_without_re_running",
+  "tests/integration/test_figures_cli.py::test_rendering_never_mutates_the_immutable_run_directory",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "rules-and-scans"
+name = "Write trading rules and scan markets"
+what = "Write a rule such as \"buy when the close is above X\", save it, test it, and scan many markets for it."
+see_it = [
+  "uv run alpha rules save <name> …, then uv run alpha scan run <name>",
+  "Workstation: View → Strategy Builder, View → Scanner",
+]
+entry_points = [
+  "cli: alpha rules save",
+  "cli: alpha scan run",
+  "api: POST /api/rules/evaluate",
+  "api: POST /api/scans/{name}/run",
+  "panel: apps/alpha-web/frontend/src/panels/StrategyBuilder.tsx",
+  "panel: apps/alpha-web/frontend/src/panels/Scanner.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_cli_rules.py::test_rules_lifecycle",
+  "tests/integration/test_cli_scan.py::test_scan_lifecycle",
+  "apps/alpha-web/frontend/e2e/edge-real.spec.ts::real CLI conditions, scan drilldown and assistant context share recorded inputs",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "strategy-development"
+name = "Strategy development workspace"
+what = "Run fixed, approved strategy-development steps on a project and keep a full record of each run."
+see_it = [
+  "uv run alpha suite plan <project-id> <experiment-id> <action>",
+  "Workstation: View → Build (Development Center)",
+]
+entry_points = [
+  "cli: alpha suite plan",
+  "cli: alpha suite run",
+  "cli: alpha strategy-candidate run",
+  "api: POST /api/projects/{project_id}/experiments/{experiment_id}/suite/{action}/run",
+  "panel: apps/alpha-web/frontend/src/panels/V3Workbenches.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_suite_cli.py::test_suite_cli_previews_then_runs_the_exact_resolved_baseline",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "validation-gauntlet"
+name = "Statistical checks on a strategy"
+codes = ["gauntlet", "DSR", "PBO", "CPCV"]
+what = "Put a strategy through walk-forward tests, random-chance comparisons and overfitting checks before believing it."
+see_it = [
+  "uv run alpha validate SPY",
+  "uv run alpha optim grid SPY …",
+]
+entry_points = [
+  "cli: alpha validate",
+  "cli: alpha optim grid",
+  "cli: alpha optim mcpt",
+  "api: GET /api/runs/{run_id}/nulls",
+]
+proof_synthetic = [
+  "tests/integration/test_validate_cli.py::test_validate_writes_manifest_and_tearsheet",
+  "tests/integration/test_validate_determinism.py::test_fresh_process_cli_runs_are_byte_identical",
+  "tests/integration/test_optim_cli.py::test_optim_writes_manifest",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "monte-carlo"
+name = "Path-risk simulation (Monte Carlo)"
+what = "See how bad a strategy's path could get by re-sampling its recorded results many times."
+see_it = ["uv run alpha monte-carlo classical --from-run <run-id>"]
+entry_points = [
+  "cli: alpha monte-carlo classical",
+  "cli: alpha monte-carlo kronos",
+]
+proof_synthetic = [
+  "tests/integration/test_monte_carlo_cli.py::test_classical_monte_carlo_publishes_three_auditable_families",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "risk-numbers"
+name = "Risk numbers that state what they are based on"
+codes = ["C04"]
+what = "See VaR, CVaR and other risk figures for a backtest together with what they are measured against; bad dates or numbers are refused."
+see_it = [
+  "uv run alpha risk scenario --from-run <run-id> --json --include-metric-basis",
+  "Workstation: View → Machine learning → Risk tab, or a run's report → Stress test",
+]
+entry_points = [
+  "cli: alpha risk scenario",
+  "api: GET /api/risk/scenario",
+  "panel: apps/alpha-web/frontend/src/panels/RiskMonitor.tsx",
+  "panel: apps/alpha-web/frontend/src/panels/RiskMetricBasis.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_c04_risk_anchor_disclosure.py::test_opted_json_carries_versioned_basis_without_changing_legacy_contract",
+  "tests/integration/test_c04_web_metric_basis.py::test_real_http_cli_and_serialization_preserve_basis_and_legacy",
+  "apps/alpha-web/frontend/e2e/risk-live.spec.ts::compiled SPA and real backend preserve/display metric basis",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+triage = { card = "5", recommendation = "KEEP", owner_decision = "undecided" }
+plans = [
+  "2026-11-08-c04-risk-anchor-disclosure.md",
+  "2026-11-08-risk-equity-clocks.md",
+  "2026-11-08-risk-strict-json.md",
+  "2026-11-10-risk-basis-fixture-capture.md",
+]
+
+[[capability]]
+id = "prop-firm-check"
+name = "Prop-firm challenge check"
+what = "Score a strategy against a trading firm's challenge rules (drawdown limits, profit target)."
+see_it = ["uv run alpha propfirm run SPY …, or --from-run <run-id>"]
+entry_points = ["cli: alpha propfirm run", "api: GET /api/runs/{run_id}/propfirm-paths"]
+proof_synthetic = [
+  "tests/integration/test_propfirm_cli.py::test_propfirm_fresh_backtest_writes_manifest",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "price-forecasts"
+name = "Price forecasts with the Kronos model"
+what = "Ask a forecasting model for a range of likely future prices and check how good past forecasts were."
+see_it = [
+  "uv run alpha forecast run SPY",
+  "Workstation: View → Forecast",
+]
+entry_points = [
+  "cli: alpha forecast run",
+  "cli: alpha forecast eval",
+  "api: GET /api/runs/{run_id}/forecast",
+  "panel: apps/alpha-web/frontend/src/panels/KronosStudio.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_forecast_cli.py::test_forecast_run_writes_manifest_paths_quantiles",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = ["the Kronos model files (downloaded on first use; not on this computer)"]
+state = "Partial"
+missing = "proved only with a stand-in model"
+plans = []
+
+[[capability]]
+id = "research-cases"
+name = "Research cases from idea to decision"
+codes = ["D0", "D1", "D2"]
+what = "Turn one sentence of market idea into a tracked case, test it in fixed stages, and record your decision."
+see_it = [
+  "uv run alpha research capture \"<your idea>\" --json, then uv run alpha research status <project-id>",
+  "Workstation: View → Research → Research Case",
+]
+entry_points = [
+  "cli: alpha research capture",
+  "cli: alpha research run",
+  "cli: alpha research decide",
+  "api: POST /api/research/cases",
+  "panel: apps/alpha-web/frontend/src/panels/ResearchCockpit.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_research_program_acceptance.py::test_program_golden_path_reaches_the_strategy_brief_losslessly",
+  "apps/alpha-web/frontend/e2e/real-backend.spec.ts::real backend captures a case and renders all material questions without vendor network",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "quick-screening"
+name = "Quick idea screening"
+codes = ["Phase C"]
+what = "Run a fast, recorded first look at many ideas before any of them becomes a formal research case."
+see_it = ["uv run alpha scan hypotheses --as-of <date>"]
+entry_points = ["cli: alpha scan hypotheses", "cli: alpha scan replay"]
+proof_synthetic = [
+  "tests/integration/test_hypothesis_scan_cli.py::test_frozen_screen_cli_and_replay",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "literature"
+name = "Find papers and screen their claims"
+codes = ["R4"]
+what = "Search for research papers, fetch them, and record which claims in them you accept for testing."
+see_it = [
+  "uv run alpha research sources search \"<topic>\"",
+  "Workstation: View → Research → Literature",
+]
+entry_points = [
+  "cli: alpha research sources search",
+  "cli: alpha research sources fetch",
+  "cli: alpha research sources claim screen",
+  "api: POST /api/research/cases/{project_id}/literature/discover",
+  "panel: apps/alpha-web/frontend/src/panels/EvidenceHub.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_research_cli.py::test_claim_lifecycle_drafts_screens_and_feeds_the_literature_dimension",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = ["the literature worker setup (not installed on this computer)"]
+state = "Partial"
+missing = "paper download tested only with a stand-in worker"
+plans = []
+
+[[capability]]
+id = "paper-to-experiment"
+name = "Link paper claims to experiments and keep the original PDFs"
+what = "Tie a screened claim, with its page number, to the data and experiment that test it, and keep the original PDF to download again."
+see_it = [
+  "uv run alpha research import-pdf <project-id> --file <paper.pdf> --title \"…\"",
+  "uv run alpha research sources original-pdf …",
+  "Workstation: View → Research → Literature (PDF status and download button)",
+]
+entry_points = [
+  "cli: alpha research import-pdf",
+  "cli: alpha research sources original-pdf",
+  "api: GET /api/research/cases/{project_id}/sources/{source_id}/original-pdf",
+  "panel: apps/alpha-web/frontend/src/panels/EvidenceHub.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_research_cli.py::test_research_source_original_pdf_cli_verifies_before_returning_bytes",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Partial"
+missing = "no test takes one paper all the way to an experiment"
+triage = { card = "6", recommendation = "KEEP", owner_decision = "undecided" }
+plans = ["2026-11-07-paper-to-experiment-provenance.md"]
+
+[[capability]]
+id = "ai-investigations"
+name = "Ask the AI assistant about a recorded run"
+codes = ["Codex"]
+what = "Ask the built-in AI assistant to investigate a finished run; its answers are advice and cite the recorded evidence."
+see_it = [
+  "Workstation: open a run, then \"Investigate this run\"",
+  "Workstation: View → Research → Codex Research",
+]
+entry_points = [
+  "cli: alpha research investigations create",
+  "cli: alpha assistant turn",
+  "api: POST /api/investigations",
+  "panel: apps/alpha-web/frontend/src/panels/RunInvestigation.tsx",
+  "panel: apps/alpha-web/frontend/src/panels/CodexBench.tsx",
+]
+proof_synthetic = [
+  "apps/alpha-web/frontend/e2e/investigations-real.spec.ts::real persisted investigation supports followup, cancel, refresh and comparison handoff",
+]
+real_data = "Recorded: on 2026-10-04 live checks against the real Codex service passed for the command line and the web app (docs/BUILD-STATUS.md, 2026-10-04 managed investigations entry)."
+real_data_needs = "A signed-in Codex command-line tool."
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "ai-tools-connection"
+name = "Let an AI assistant use ALPHA's tools"
+codes = ["MCP"]
+what = "Connect an AI assistant so it can run ALPHA commands; it can suggest and run, but never approve."
+see_it = ["uv run alpha-mcp (started by an MCP-capable AI client)"]
+entry_points = ["script: alpha-mcp"]
+proof_synthetic = [
+  "tests/integration/test_mcp_server.py::test_backtest_run_tool_returns_a_manifest",
+  "tests/integration/test_research_mcp.py::test_research_mcp_capture_propose_status_and_report_round_trip",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
+
+[[capability]]
+id = "providers-and-jobs"
+name = "Check data providers and background jobs"
+what = "See which data providers are set up and working, and follow or cancel long-running jobs."
+see_it = [
+  "uv run alpha info providers --json, uv run alpha provider check <provider>",
+  "Workstation: View → Jobs & providers",
+]
+entry_points = [
+  "cli: alpha info providers",
+  "cli: alpha provider check",
+  "api: GET /api/providers",
+  "api: GET /api/jobs",
+  "panel: apps/alpha-web/frontend/src/panels/JobMonitor.tsx",
+  "panel: apps/alpha-web/frontend/src/panels/ProviderSystem.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_provider_cli.py::test_info_system_reports_local_readiness_only",
+  "tests/integration/test_web_api_jobs.py::test_launch_lists_and_gets",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+real_data_needs = "Provider credentials (for example a Tiingo key)."
+needs = []
+state = "Partial"
+missing = "job list tested only with a stand-in command; provider checks need real providers"
+plans = []
+
+[[capability]]
+id = "paper-trading"
+name = "Paper trading: practice trading with no real money"
+codes = ["IBKR Paper"]
+what = "Run a strategy against live public prices in a local practice account, or an IBKR practice account; nothing touches real money."
+see_it = [
+  "uv run alpha paper readiness",
+  "Workstation: View → Paper sessions",
+]
+entry_points = [
+  "cli: alpha paper run",
+  "cli: alpha paper readiness",
+  "cli: alpha paper ibkr-run",
+  "api: GET /api/paper/sessions",
+  "panel: apps/alpha-web/frontend/src/panels/PaperMonitor.tsx",
+]
+proof_synthetic = []
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = ["an opt-in setting, live Binance public data, and an IBKR practice account and gateway for stocks"]
+state = "Partial"
+missing = "no end-to-end test; parts tested with stand-ins"
+plans = []
+
+[[capability]]
+id = "ml-lab"
+name = "Machine-learning experiments with Qlib"
+what = "Prepare data, train Qlib models in a separate environment, and replay their predictions as a costed ALPHA backtest."
+see_it = [
+  "uv run alpha ml capabilities",
+  "Workstation: View → Machine learning → ML lab",
+]
+entry_points = [
+  "cli: alpha ml prepare",
+  "cli: alpha ml train",
+  "cli: alpha ml replay",
+  "api: POST /api/ml/prepare",
+  "panel: apps/alpha-web/frontend/src/panels/V3Workbenches.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_ml_cli.py::test_offline_ml_cli_round_trip",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = ["the Qlib worker setup (not installed on this computer)"]
+state = "Partial"
+missing = "proved only with a stand-in worker"
+plans = []
+
+[[capability]]
+id = "alpha158-v2"
+name = "Corrected Alpha158 price features"
+what = "Opt in to a corrected version of the standard Alpha158 feature set; 40 of its 158 columns now match upstream Qlib."
+see_it = ["set feature_recipe_version: 2 in an ML stage config used by alpha ml …"]
+entry_points = [
+  "cli: alpha ml prepare",
+  "code: workers/qlib/src/alpha_qlib_worker/feature_recipes.py",
+]
+proof_synthetic = []
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = ["the Qlib worker setup (not installed on this computer)"]
+state = "Partial"
+missing = "no ML run with version 2; final review pending"
+triage = { card = "11", recommendation = "KEEP", owner_decision = "undecided" }
+plans = ["2026-11-09-alpha158-versioned-correction.md"]
+
+[[capability]]
+id = "qlib-refit"
+name = "Qlib model refit evidence"
+codes = ["W11"]
+what = "Prove that retraining Qlib models fold by fold behaves correctly before trusting their predictions."
+see_it = ["uv run alpha ml refit-plan …, uv run alpha ml refit-status … (plan and audit reports only)"]
+entry_points = ["cli: alpha ml refit-plan", "cli: alpha ml refit-status"]
+proof_synthetic = []
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = [
+  "the Qlib worker setup (not installed on this computer)",
+  "reviewed statistics modules that do not exist yet",
+]
+state = "Partial"
+missing = "blocked on missing statistics modules"
+triage = { card = "10", recommendation = "SHELVE", owner_decision = "undecided" }
+plans = ["2026-10-26-qlib-w11-refit.md"]
+
+[[capability]]
+id = "qlib-in-research-cases"
+name = "Qlib models inside research cases"
+codes = ["W09"]
+what = "Run the existing Qlib models through the same staged research-case process as rule strategies."
+see_it = ["nothing to see yet — internal only"]
+entry_points = [
+  "code: apps/alpha-cli/src/alpha_cli/ml_native_plan.py",
+  "code: apps/alpha-cli/src/alpha_cli/_ml_observation_store.py",
+]
+proof_synthetic = []
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Not started"
+missing = "only unused groundwork exists; waits on the daily rule study"
+triage = { card = "A", recommendation = "DELETE", owner_decision = "undecided" }
+plans = []
+
+[[capability]]
+id = "native-engine-demos"
+name = "Qlib and Nautilus demonstration views"
+what = "Look at saved, made-up-data runs that show real Qlib and NautilusTrader connected to ALPHA."
+see_it = [
+  "Workstation: View → Machine learning → Native Qlib demo, Native Nautilus demo, Qlib → Nautilus pipeline",
+]
+entry_points = [
+  "panel: apps/alpha-web/frontend/src/panels/NativeQlibDemo.tsx",
+  "panel: apps/alpha-web/frontend/src/panels/NativeNautilusDemo.tsx",
+  "code: apps/alpha-cli/src/alpha_cli/native_qlib_pipeline.py",
+]
+proof_synthetic = []
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = ["the Qlib worker setup, to re-create the pipeline demo"]
+state = "Demo only"
+missing = "made-up prices only; not a production path"
+triage = { card = "F", recommendation = "SHELVE", owner_decision = "undecided" }
+plans = []
+
+[[capability]]
+id = "ai-stock-research"
+name = "AI stock research loop"
+codes = ["RD-Agent", "W02"]
+what = "Start RD-Agent on a stock research task, then check exactly what it ran and recover its results, even after a crash."
+see_it = [
+  "uv run alpha research diagnostic native-result --data-dir … --job-id … --profile-source … --profile-runtime … --profile-mode …",
+]
+entry_points = [
+  "cli: alpha research diagnostic native-result",
+  "code: apps/alpha-cli/src/alpha_cli/native_supervisor.py",
+]
+proof_synthetic = []
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = ["the RD-Agent setup, which no machine has yet"]
+state = "Partial"
+missing = "made-up data only; restart after a crash not solved"
+triage = { card = "7", recommendation = "SHELVE (your call)", owner_decision = "undecided" }
+plans = [
+  "2026-11-07-stock-rdloop-continuation.md",
+  "2026-11-07-stock-retained-dispatch.md",
+  "2026-11-08-native-stock-inspection.md",
+  "2026-11-08-native-stock-operator-command.md",
+  "2026-11-08-native-stock-profile-verification.md",
+  "2026-11-08-native-stock-result-recovery.md",
+  "2026-11-08-native-stock-snapshot-validation.md",
+  "2026-11-08-native-stock-worker-hardening.md",
+  "2026-11-08-native-cumulative-regression.md",
+]
+
+[[capability]]
+id = "native-job-result"
+name = "\"Native job result\" screen"
+codes = ["W04", "W18"]
+what = "Type an RD-Agent job number into the web app and read its result."
+see_it = ["Workstation: View → Research → Native job result"]
+entry_points = [
+  "api: GET /api/native-jobs/{job_id}/result",
+  "panel: apps/alpha-web/frontend/src/panels/NativeJobResult.tsx",
+]
+proof_synthetic = [
+  "apps/alpha-web/frontend/e2e/native-result-real.spec.ts::Research native UUID lookup reads real owner evidence and clears stale state",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = ["the RD-Agent setup, for its browser test"]
+state = "Partial"
+missing = "empty until the AI stock research loop produces a job"
+triage = { card = "8", recommendation = "SHELVE", owner_decision = "undecided" }
+plans = [
+  "2026-11-08-native-job-result-api.md",
+  "2026-11-08-native-job-result-view.md",
+]
+
+[[capability]]
+id = "daily-rule-study"
+name = "AI-run daily trading-rule study"
+codes = ["Packet 3", "W08"]
+what = "Run one complete, rule-governed study of a simple daily momentum rule against a \"do nothing\" control, with locked inputs and a final report."
+see_it = [
+  "uv run alpha research draft-daily <project-id> --source-pack-id … --snapshot-id … --normalized-manifest-id …",
+  "Workstation: the daily rule report on a study run",
+]
+entry_points = [
+  "cli: alpha research draft-daily",
+  "api: GET /api/runs/{run_id}/daily-rule-evidence",
+  "panel: apps/alpha-web/frontend/src/panels/DailyRuleReport.tsx",
+]
+proof_synthetic = [
+  "tests/integration/test_daily_rule_report.py::test_parent_and_role_selector_reports_agree_with_actual_recorded_results",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = [
+  "the RD-Agent setup, which no machine has yet",
+  "a permanent place to host the runs",
+]
+state = "Partial"
+missing = "only the report is proven; the study itself needs RD-Agent"
+triage = { card = "9", recommendation = "SHELVE (your call)", owner_decision = "undecided" }
+plans = [
+  "2026-10-31-packet3-daily-rule.md",
+  "2026-10-26-native-rule-study-boundary.md",
+]
+
+[[capability]]
+id = "ai-research-team"
+name = "Autonomous AI research team"
+what = "Ask a vague trading question and have a team of AI agents investigate it, critique itself and report back within a budget."
+see_it = ["nothing to see yet — internal only"]
+entry_points = []
+proof_synthetic = []
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Not started"
+missing = "only a plan; one advisory slice shipped"
+triage = { card = "15", recommendation = "YOUR CALL", owner_decision = "undecided" }
+plans = ["2026-10-02-agentic-research-capability-program.md"]
+
+[[capability]]
+id = "mac-real-data"
+name = "Running ALPHA on your Mac with real data providers"
+what = "Install and run ALPHA on your own Mac with real BTC/ETH data providers and your own storage."
+see_it = ["the whole app on your Mac"]
+entry_points = ["script: alpha", "script: alpha-web"]
+proof_synthetic = []
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = ["your Mac", "access to a real data provider (blocked since 31 August)"]
+state = "Partial"
+missing = "one final review and a run on your Mac"
+triage = { card = "13", recommendation = "KEEP", owner_decision = "undecided" }
+plans = [
+  "2026-08-30-crypto-operational-readiness.md",
+  "2026-10-26-mac-portability-qualification.md",
+]
+
+[[capability]]
+id = "quantpad-archive"
+name = "QuantPad data archive"
+what = "Archive and verify data from QuantPad, an old outside research-data source."
+see_it = ["uv run alpha quantpad-data archive …, uv run alpha quantpad-data verify …"]
+entry_points = ["cli: alpha quantpad-data archive", "cli: alpha quantpad-data verify"]
+proof_synthetic = []
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Shelved"
+missing = "dropped from all data-source plans by your earlier decision (recorded in the README)"
+triage = { card = "D", recommendation = "DELETE", owner_decision = "undecided" }
+plans = []
+
+# Triage cards that are not a user-facing workflow of their own.
+[[decision]]
+card = "C"
+name = "The RD-Agent runtime as a whole (covers cards 7, 8 and 9)"
+recommendation = "SHELVE (your call)"
+owner_decision = "undecided"
+
+[[decision]]
+card = "12"
+name = "Test and web plumbing fixes"
+recommendation = "KEEP"
+owner_decision = "undecided"
+
+[[decision]]
+card = "14"
+name = "Old clean-up programmes (close the plans)"
+recommendation = "DELETE"
+owner_decision = "undecided"
+
+[[decision]]
+card = "E"
+name = "Duplicate copy of the literature download code"
+recommendation = "DELETE"
+owner_decision = "undecided"
+
+[[decision]]
+card = "G"
+name = "Delivery-task pilot (Claude/Codex hand-off tool)"
+recommendation = "DELETE"
+owner_decision = "undecided"
+
+# Live plans that belong to no single workflow.
+[[unassigned_plan]]
+plan = "2026-10-05-clean-reconcile-main.md"
+reason = "Repository clean-up programme, no product feature (triage card 14)."
+
+[[unassigned_plan]]
+plan = "2026-10-08-repository-hygiene.md"
+reason = "Repository clean-up programme, no product feature (triage card 14)."
+
+[[unassigned_plan]]
+plan = "2026-11-09-selector-error-test-correction.md"
+reason = "Test correction only, no change for the owner (triage card 12)."
+
+[[unassigned_plan]]
+plan = "2026-11-09-web-matplotlib-environment.md"
+reason = "Web app plumbing for chart settings, nothing new to see (triage card 12)."
+
+[[unassigned_plan]]
+plan = "2026-11-10-browser-lane-routing.md"
+reason = "Browser test tooling, nothing new to see (triage card 12)."
+
+# Plain-English titles for plans that are "In progress", shown on STATUS.md.
+[[plan_summary]]
+plan = "2026-09-10-edge-first-phase-b-feed-the-machine.md"
+title = "Get real crypto history into ALPHA"
+line = "Resumable crypto history download is built; the real download of the top 50 Bybit contracts has not been done."
+
+[[plan_summary]]
+plan = "2026-10-05-clean-reconcile-main.md"
+title = "Clean up and protect the main branch"
+line = "Old programme from October; one hardening step left. The triage recommends closing it."
+
+[[plan_summary]]
+plan = "2026-10-08-repository-hygiene.md"
+title = "Repository tidy-up programme"
+line = "Old open-ended to-do list; several items shipped. The triage recommends closing it."
+
+[[plan_summary]]
+plan = "2026-10-26-mac-portability-qualification.md"
+title = "Make ALPHA run on your Mac"
+line = "Five of six steps done; one final independent review is left."
+
+[[plan_summary]]
+plan = "2026-10-31-packet3-daily-rule.md"
+title = "AI-run daily trading-rule study (Packet 3)"
+line = "Works on made-up data; the real-market run has not begun and needs RD-Agent and permanent hosting."
