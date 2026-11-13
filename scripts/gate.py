@@ -462,7 +462,317 @@ def storage_advisory(
     return (True, detail)
 
 
-def doctor(root: Path) -> tuple[int, dict[str, Any]]:
+# ---------------------------------------------------------------------------
+# machine readiness: "can this machine do synthetic-data development?" (plain English, stdlib only)
+
+MACHINE_QUESTION = "Can this machine do synthetic-data development?"
+SETUP_COMMAND = "bash scripts/setup.sh"
+RDAGENT_SETUP_SCRIPT = Path("scripts") / "setup_rdagent.sh"
+_FRONTEND = Path("apps") / "alpha-web" / "frontend"
+_WEB_BUNDLE = Path("apps") / "alpha-web" / "src" / "alpha_web" / "static" / "app" / "index.html"
+
+ProbeRunner = Callable[[list[str], Path], tuple[int, str]]
+
+
+def _run_probe(argv: list[str], cwd: Path) -> tuple[int, str]:
+    """Run one short read-only command; (exit code, output). Never raises."""
+    try:
+        done = subprocess.run(
+            argv, cwd=cwd, capture_output=True, text=True, timeout=30, check=False
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return (127, repr(exc))
+    return (done.returncode, (done.stdout + done.stderr).strip())
+
+
+def _item(name: str, required: bool, present: bool, detail: str, fix: str) -> dict[str, Any]:
+    return {
+        "name": name,
+        "required": required,
+        "status": "present" if present else "missing",
+        "detail": detail,
+        "fix": "" if present else fix,
+    }
+
+
+def _playwright_cache(root: Path, env: dict[str, str]) -> Path:
+    explicit = env.get("PLAYWRIGHT_BROWSERS_PATH")
+    if explicit == "0":  # Playwright's own spelling for "inside node_modules"
+        return root / _FRONTEND / "node_modules" / "playwright-core" / ".local-browsers"
+    if explicit:
+        return Path(explicit)
+    cache_home = env.get("XDG_CACHE_HOME") or str(Path(env.get("HOME") or Path.home()) / ".cache")
+    return Path(cache_home) / "ms-playwright"
+
+
+def _browser_item(root: Path, env: dict[str, str]) -> dict[str, Any]:
+    name = "Browser for the web app's tests (Playwright Chromium)"
+    fix = f"cd {_FRONTEND} && npm ci && npx --no-install playwright install chromium"
+    cache = _playwright_cache(root, env)
+    listing = read_json(root / _FRONTEND / "node_modules" / "playwright-core" / "browsers.json")
+    revisions = {
+        str(entry.get("name")): str(entry.get("revision"))
+        for entry in (listing or {}).get("browsers", [])
+        if isinstance(entry, dict)
+    }
+    if "chromium" not in revisions:
+        return _item(
+            name,
+            True,
+            False,
+            "the web app's packages are not installed, so the browser version it needs is unknown",
+            fix,
+        )
+    wanted = [f"chromium-{revisions['chromium']}"]
+    if "chromium-headless-shell" in revisions:
+        wanted.append(f"chromium_headless_shell-{revisions['chromium-headless-shell']}")
+    absent = [folder for folder in wanted if not (cache / folder).is_dir()]
+    if absent:
+        return _item(name, True, False, f"not found in {cache}: {', '.join(absent)}", fix)
+    return _item(name, True, True, f"{', '.join(wanted)} in {cache}", fix)
+
+
+def _python_in(venv: Path) -> Path:
+    return venv / "bin" / "python"
+
+
+def _daily_image_pin(root: Path) -> tuple[str, str] | None:
+    """The pinned daily-study image (repository digest, image id), read from its one home."""
+    try:
+        text = (root / RDAGENT_SETUP_SCRIPT).read_text()
+    except OSError:
+        return None
+    digest = re.search(r"^daily_digest=(sha256:[0-9a-f]{64})$", text, re.MULTILINE)
+    image = re.search(r"^daily_image=(sha256:[0-9a-f]{64})$", text, re.MULTILINE)
+    return (digest.group(1), image.group(1)) if digest and image else None
+
+
+def machine_readiness(
+    root: Path,
+    environ: dict[str, str] | None = None,
+    run: ProbeRunner = _run_probe,
+    which: Callable[[str], str | None] = shutil.which,
+    usage: Callable[[Path], Any] = shutil.disk_usage,
+    codex: Callable[[], tuple[bool, str]] | None = None,
+) -> list[dict[str, Any]]:
+    """Every item synthetic-data development needs, present or missing, with the fixing command.
+
+    Reads only the repository tree, a few non-secret environment variables, ``codex login
+    status`` and Docker's own status; never ``.env``, never ``~/.codex``. Standard library only.
+    """
+    env = dict(os.environ if environ is None else environ)
+    items: list[dict[str, Any]] = []
+
+    venv_python = _python_in(root / ".venv")
+    importable = False
+    if venv_python.is_file():
+        code, _ = run(
+            [
+                str(venv_python),
+                "-I",
+                "-c",
+                "import importlib.util, sys; "
+                "sys.exit(0 if importlib.util.find_spec('alpha_cli') else 1)",
+            ],
+            root,
+        )
+        importable = code == 0
+    items.append(
+        _item(
+            "Root Python environment",
+            True,
+            importable,
+            ".venv has the ALPHA packages installed" if importable else "no usable .venv here",
+            "uv sync --locked",
+        )
+    )
+
+    bundle = root / _WEB_BUNDLE
+    built = bundle.is_file() and bundle.stat().st_size > 0
+    items.append(
+        _item(
+            "Built web app",
+            True,
+            built,
+            f"{_WEB_BUNDLE} exists"
+            if built
+            else f"{_WEB_BUNDLE} is missing (the web app is not built)",
+            f"cd {_FRONTEND} && npm ci && npm run build",
+        )
+    )
+
+    items.append(_browser_item(root, env))
+
+    for worker, label in (("qlib", "Qlib"), ("literature", "Literature")):
+        python = _python_in(root / "workers" / worker / ".venv")
+        items.append(
+            _item(
+                f"{label} worker environment",
+                True,
+                python.is_file(),
+                f"workers/{worker}/.venv exists"
+                if python.is_file()
+                else f"workers/{worker}/.venv is missing",
+                f"cd workers/{worker} && uv sync --locked",
+            )
+        )
+
+    runtime = root / STATE_DIR / "runtime"
+    source = Path(env.get("ALPHA_RDAGENT_SOURCE") or runtime / "rdagent-source")
+    has_source = (source / "rdagent").is_dir()
+    items.append(
+        _item(
+            "RD-Agent source (pinned)",
+            False,
+            has_source,
+            f"found at {source}" if has_source else f"not found at {source}",
+            f"{SETUP_COMMAND} --with-rdagent",
+        )
+    )
+    profiles = [
+        root / "workers" / "rdagent" / ".venv-rule-qualified",
+        root / "workers" / "rdagent" / ".venv-economics-qualified",
+    ]
+    absent_profiles = [p.name for p in profiles if not _python_in(p).is_file()]
+    items.append(
+        _item(
+            "RD-Agent rule and economics environments",
+            False,
+            not absent_profiles,
+            "both built" if not absent_profiles else "not built: " + ", ".join(absent_profiles),
+            f"{SETUP_COMMAND} --with-rdagent",
+        )
+    )
+    stock = Path(
+        env.get("ALPHA_STOCK_PYTHON") or runtime / "rdagent-stock-py311" / "venv" / "bin" / "python"
+    )
+    items.append(
+        _item(
+            "RD-Agent stock runtime (Python 3.11)",
+            False,
+            stock.is_file(),
+            f"found at {stock}" if stock.is_file() else f"not found at {stock}",
+            f"{SETUP_COMMAND} --with-stock-runtime",
+        )
+    )
+
+    docker_fix = "install Docker (https://docs.docker.com/engine/install/) and start it"
+    if which("docker") is None:
+        docker_ok, docker_detail = False, "the docker command is not installed"
+    else:
+        code, out = run(["docker", "version", "--format", "{{.Server.Version}}"], root)
+        docker_ok = code == 0 and bool(out)
+        docker_detail = (
+            f"Docker engine {out.splitlines()[0]}"
+            if docker_ok
+            else "Docker is installed but not answering (not running, or no permission): "
+            + out[:80]
+        )
+    items.append(_item("Docker", False, docker_ok, docker_detail, docker_fix))
+
+    pin = _daily_image_pin(root)
+    image_fix = f"{SETUP_COMMAND} --with-daily-container"
+    if pin is None:
+        image_ok, image_detail = (
+            False,
+            f"the pinned image is not readable from {RDAGENT_SETUP_SCRIPT}",
+        )
+    elif not docker_ok:
+        image_ok, image_detail = False, "needs Docker first"
+    else:
+        code, out = run(
+            ["docker", "image", "inspect", "--format", "{{.Id}}", f"python@{pin[0]}"], root
+        )
+        image_ok = code == 0 and out.strip() == pin[1]
+        image_detail = (
+            f"python@{pin[0][:19]}... present, image {pin[1][:19]}..."
+            if image_ok
+            else f"python@{pin[0][:19]}... is not pulled (or is a different image)"
+        )
+    items.append(
+        _item("Daily-study Docker image (pinned)", False, image_ok, image_detail, image_fix)
+    )
+
+    codex_ok, codex_detail = (codex or codex_probe)()
+    items.append(
+        _item(
+            "Codex CLI, signed in",
+            False,
+            codex_ok,
+            codex_detail,
+            "install the Codex CLI (docs/operations/codex-second-model-runbook.md), "
+            "then run: codex login"
+            if "not on PATH" in codex_detail
+            else "codex login",
+        )
+    )
+
+    try:
+        _, disk_detail = storage_advisory(root, env, usage)
+        disk_ok = not disk_detail.startswith("LOW DISK SPACE")
+    except OSError as exc:
+        disk_ok, disk_detail = False, f"could not read free disk space: {exc}"
+    items.append(
+        _item(
+            "Free disk space above the storage reserve",
+            False,
+            disk_ok,
+            disk_detail,
+            "free some disk space, or record your own reserve: "
+            f"{SETUP_COMMAND} --data-dir /ABSOLUTE/DATA/FOLDER --storage-reserve-gb 10 "
+            "(docs/operations/storage-settings.md)",
+        )
+    )
+    return items
+
+
+def machine_summary(
+    items: list[dict[str, Any]], environ: dict[str, str] | None = None
+) -> dict[str, Any]:
+    """The machine section of the report; hosted CI (``CI`` set) lists items but enforces none."""
+    env = os.environ if environ is None else environ
+    enforced = not env.get("CI")
+    missing_required = [i["name"] for i in items if i["required"] and i["status"] == "missing"]
+    missing_optional = [i["name"] for i in items if not i["required"] and i["status"] == "missing"]
+    return {
+        "question": MACHINE_QUESTION,
+        "ready": not missing_required,
+        "enforced": enforced,
+        "missing_required": missing_required,
+        "missing_optional": missing_optional,
+        "fix_everything_required": SETUP_COMMAND,
+        "items": items,
+    }
+
+
+def format_machine_section(machine: dict[str, Any]) -> list[str]:
+    lines = ["", f"{machine['question']}"]
+    for item in machine["items"]:
+        mark = "present" if item["status"] == "present" else "MISSING"
+        need = "required" if item["required"] else "optional"
+        lines.append(f"  [{mark}] {item['name']} ({need}): {item['detail']}")
+        if item["fix"]:
+            lines.append(f"            fix: {item['fix']}")
+    if machine["ready"]:
+        verdict = "Yes: everything required is in place."
+    else:
+        verdict = (
+            "No: required items are missing ("
+            + ", ".join(machine["missing_required"])
+            + f"). One command fixes them all: {machine['fix_everything_required']}."
+        )
+    if machine["missing_optional"]:
+        verdict += " Optional items missing: " + ", ".join(machine["missing_optional"]) + "."
+    if not machine["enforced"]:
+        verdict += " (Hosted CI runner: listed for information, not enforced.)"
+    lines.append(verdict)
+    return lines
+
+
+def doctor(
+    root: Path,
+    readiness: Callable[[Path], list[dict[str, Any]]] | None = None,
+) -> tuple[int, dict[str, Any]]:
     checks: list[tuple[str, bool, str]] = []
 
     settings_path = root / ".claude" / "settings.json"
@@ -542,7 +852,7 @@ def doctor(root: Path) -> tuple[int, dict[str, Any]]:
     codex_ok, codex_detail = codex_probe()
     checks.append(("codex second model", True, ("available: " if codex_ok else "") + codex_detail))
 
-    report = {
+    report: dict[str, Any] = {
         "created_at": _now(),
         "checks": [{"name": name, "ok": ok, "detail": detail} for name, ok, detail in checks],
         "ok": all(ok for _, ok, _ in checks),
@@ -553,6 +863,10 @@ def doctor(root: Path) -> tuple[int, dict[str, Any]]:
         DoctorReport.model_validate(report)
     except ImportError:
         pass  # doctor must still run pre-`uv sync`; validation is best-effort here
+    machine = machine_summary((readiness or machine_readiness)(root))
+    report["machine"] = machine
+    if machine["enforced"] and not machine["ready"]:
+        report["ok"] = False
     return (0 if report["ok"] else 1, report)
 
 
@@ -765,6 +1079,8 @@ def main(argv: list[str] | None = None) -> int:
         for check_row in report["checks"]:
             marker = "ok " if check_row["ok"] else "FAIL"
             print(f"[doctor] {marker} {check_row['name']} — {check_row['detail']}")
+        for line in format_machine_section(report["machine"]):
+            print(line)
         return code
     if args.command == "mutate":
         from harness_quant import MUTATION_BASELINE_FILE, mutate, write_mutation_baseline
