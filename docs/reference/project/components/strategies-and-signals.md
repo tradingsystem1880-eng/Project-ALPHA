@@ -3,8 +3,7 @@ owner: project layer
 sources:
   - packages/alpha-strategies/CONTEXT.md
   - packages/alpha-patterns/CONTEXT.md
-  - docs/roadmap/capabilities.toml
-verified: f89aa1bb78af
+verified: a79d832d
 ---
 
 # Strategies and signals

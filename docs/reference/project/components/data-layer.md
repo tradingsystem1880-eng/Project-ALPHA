@@ -2,9 +2,7 @@
 owner: project layer
 sources:
   - packages/alpha-data/CONTEXT.md
-  - docs/roadmap/capabilities.toml
-  - docs/roadmap/triage-2026-11.md
-verified: f89aa1bb78af
+verified: a79d832d
 ---
 
 # Data layer

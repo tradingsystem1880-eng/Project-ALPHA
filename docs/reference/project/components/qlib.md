@@ -4,8 +4,7 @@ sources:
   - workers/qlib/CONTEXT.md
   - workers/qlib/README.md
   - docs/adr/0016-isolated-qlib-worker.md
-  - docs/roadmap/capabilities.toml
-verified: f89aa1bb78af
+verified: a79d832d
 ---
 
 # Qlib

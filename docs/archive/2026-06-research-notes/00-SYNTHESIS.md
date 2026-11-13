@@ -105,8 +105,8 @@ Built **interface-first** and **phase-gated** (each phase: define interfaces →
 
 ## Retail research source scope — 2 November 2026
 
-The [canonical checklist refinements](../docs/context/feature-readiness-checklist-2026-10-27.md#retail-research-refinements-2-november-2026)
-and [source record](../docs/context/feature-readiness-checklist-2026-10-27.md#retail-research-source-record-2-november-2026)
+The [canonical checklist refinements](../../context/feature-readiness-checklist-2026-10-27.md#retail-research-refinements-2-november-2026)
+and [source record](../../context/feature-readiness-checklist-2026-10-27.md#retail-research-source-record-2-november-2026)
 own this bounded intake. They retain source-specific limits and proposed NOT RUN acceptance
 criteria within existing W01–W19 owners. Original Instagram material was unavailable;
 research synthesis is not implementation or ALPHA performance evidence. The historical

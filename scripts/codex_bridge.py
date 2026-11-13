@@ -7,7 +7,8 @@
     python3 scripts/codex_bridge.py judge --prompt-file FILE [--model M] [--effort E]
 
 Runs the ChatGPT-authenticated ``codex`` CLI non-interactively (``codex exec`` with a
-read-only sandbox, ephemeral session, an output JSON schema and a wall-clock cap) and prints
+read-only sandbox, ephemeral session, no user config or extra tool servers, an output JSON
+schema and a wall-clock cap) and prints
 ONE JSON object shaped like ``harness_models.CodexReview`` / ``CodexResearch``. Codex is a
 second opinion only: every failure mode (no binary, not logged in, model missing from the
 models cache, quota/rate limit, timeout, malformed output) yields ``available: false`` with an
@@ -28,6 +29,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -147,6 +149,48 @@ def _level(value: Any) -> str:
     return level if level in _LEVELS else "low"
 
 
+# Features a reviewing model must not have: each name is in `codex features list` (0.167.0); a
+# name a later CLI drops makes the run fail visibly (unavailable), never silently widen.
+# The shell tool stays on: review and research read repository files through it (read-only sandbox).
+REVIEW_DISABLED_FEATURES = (
+    "apps",
+    "plugins",
+    "remote_plugin",
+    "browser_use",
+    "browser_use_external",
+    "computer_use",
+    "image_generation",
+    "multi_agent",
+    "memories",
+    "hooks",
+)
+
+
+def project_mcp_servers(root: Path) -> list[str]:
+    """MCP server names the repository's ``.codex/config.toml`` would start."""
+    try:
+        data = tomllib.loads((root / ".codex" / "config.toml").read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return []
+    servers = data.get("mcp_servers")
+    return sorted(str(k) for k in servers) if isinstance(servers, dict) else []
+
+
+def confinement_args(root: Path, *, web_search: bool) -> list[str]:
+    """Codex flags shared by probe-free review/research runs: no user config, no extra tools.
+
+    MCP servers run outside the sandbox, so the owner's global servers are dropped with
+    ``--ignore-user-config`` and the repository's own are replaced by disabled stubs (a bare
+    ``enabled=false`` is rejected by the CLI as an invalid transport).
+    """
+    args = ["--ignore-user-config", "-c", f'web_search="{"live" if web_search else "disabled"}"']
+    for feature in REVIEW_DISABLED_FEATURES:
+        args += ["--disable", feature]
+    for name in project_mcp_servers(root):
+        args += ["-c", f'mcp_servers.{name}={{command="true", enabled=false}}']
+    return args
+
+
 def _run_codex(
     root: Path, prompt: str, schema: Path, model: str, effort: str, timeout: float, extra: list[str]
 ) -> tuple[str | None, str]:
@@ -228,10 +272,10 @@ def _claim(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-# kind -> (schema file, list key, extra codex -c flags, item coercer)
-_KINDS: dict[str, tuple[str, str, list[str], Callable[[dict[str, Any]], dict[str, Any]]]] = {
-    "review": ("codex_review.json", "findings", [], _finding),
-    "research": ("codex_research.json", "claims", ["-c", 'web_search="live"'], _claim),
+# kind -> (schema file, list key, item coercer)
+_KINDS: dict[str, tuple[str, str, Callable[[dict[str, Any]], dict[str, Any]]]] = {
+    "review": ("codex_review.json", "findings", _finding),
+    "research": ("codex_research.json", "claims", _claim),
 }
 
 
@@ -258,7 +302,8 @@ def _call(
     timeout: float,
     question: str = "",
 ) -> dict[str, Any]:
-    schema_name, list_key, extra, coerce = _KINDS[kind]
+    schema_name, list_key, coerce = _KINDS[kind]
+    extra = confinement_args(root, web_search=kind == "research")
     text, error = _run_codex(root, prompt, SCHEMA_DIR / schema_name, model, effort, timeout, extra)
     if text is None:
         return _unavailable(kind, model, error, question)

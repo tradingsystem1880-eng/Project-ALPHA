@@ -1,9 +1,8 @@
 ---
 owner: project layer
 sources:
-  - docs/roadmap/triage-2026-11.md
   - docs/reference/model-routing.md
-verified: f89aa1bb78af
+verified: a79d832d
 ---
 
 # Owner decisions log

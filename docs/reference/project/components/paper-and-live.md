@@ -2,9 +2,7 @@
 owner: project layer
 sources:
   - docs/reference/invariants/cli-paper.md
-  - docs/roadmap/backlog/live-trading-phase.md
-  - docs/roadmap/capabilities.toml
-verified: f89aa1bb78af
+verified: a79d832d
 ---
 
 # Paper and live trading

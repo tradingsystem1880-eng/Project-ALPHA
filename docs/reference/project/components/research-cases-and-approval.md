@@ -3,9 +3,9 @@ owner: project layer
 sources:
   - packages/alpha-research/CONTEXT.md
   - packages/alpha-study/CONTEXT.md
+  - research/CONTEXT.md
   - docs/reference/invariants/cli-research.md
-  - docs/roadmap/capabilities.toml
-verified: f89aa1bb78af
+verified: a79d832d
 ---
 
 # Research cases and owner approval
@@ -43,11 +43,13 @@ See the capabilities below on [STATUS.md](../../../../STATUS.md).
 
 ## Where it lives
 
-- **Workspaces:** `packages/alpha-research`, `packages/alpha-study`
+- **Workspaces:** `packages/alpha-research`, `packages/alpha-study`, `research`
 - **Capabilities:** `research-cases`, `quick-screening`
 - Code: `packages/alpha-research/src/`, `packages/alpha-study/src/`; cases, decisions and the control
   store in `apps/alpha-cli/src/alpha_cli/` (`research_cmds.py`, `control_store.py`, `owner_auth.py`).
 - Tests: `tests/smoke/test_research_smoke.py`, and the research tests under `tests/unit/`.
+- How to run a case, stage by stage (idea, data, screen, confirm, validate, decide): the
+  [research pipeline](../../../../research/CONTEXT.md) and its [research method](../../research-method.md).
 - How to change it: [packages/alpha-research/CONTEXT.md](../../../../packages/alpha-research/CONTEXT.md),
   [packages/alpha-study/CONTEXT.md](../../../../packages/alpha-study/CONTEXT.md).
 - Backlog: [D0 generalisation](../../../roadmap/backlog/d0-generalisation.md).

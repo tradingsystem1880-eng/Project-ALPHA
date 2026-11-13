@@ -3,11 +3,10 @@ owner: delivery pipeline
 sources:
   - .github/pull_request_template.md
   - scripts/handoff.py
-  - docs/roadmap/wip-limit.json
-  - docs/roadmap/capabilities.toml
   - scripts/roadmap_index.py
   - scripts/status.py
-verified: d0fffa796f8e
+  - tests/unit/test_status_page.py
+verified: f89aa1bb78af
 ---
 
 # Stage 05 — land: pull request to merged and closed

@@ -2,10 +2,7 @@
 owner: project layer
 sources:
   - README.md
-  - docs/roadmap/capabilities.toml
-  - docs/roadmap/rd-agent-in-alpha.md
-  - docs/reference/project/owner-decisions.md
-verified: f89aa1bb78af
+verified: a79d832d
 ---
 
 # ALPHA: what it is for and how the parts fit
@@ -43,7 +40,10 @@ end to end, and only on made-up data; see [STATUS.md](../../../STATUS.md) for wh
 | 7. Decide | Only the owner admits evidence and promotes a strategy | [cases and approval](components/research-cases-and-approval.md) |
 | 8. Trade | Paper trading first; live capital only in a later phase the owner approves | [paper and live trading](components/paper-and-live.md) |
 
-RD-Agent (Microsoft's open-source AI research agent) runs steps 3 to 6 over and over. ALPHA keeps
+Today a human-run case walks these steps through the six stages of the
+[research pipeline](../../../research/CONTEXT.md); changing ALPHA itself walks the
+[delivery pipeline](../../../workflow/CONTEXT.md). RD-Agent (Microsoft's open-source AI research
+agent) is meant to run steps 3 to 6 over and over. ALPHA keeps
 the budget, the data, the backtests, the statistics and the owner's approvals. The fullest account
 of this split is [RD-Agent in ALPHA](../../roadmap/rd-agent-in-alpha.md).
 

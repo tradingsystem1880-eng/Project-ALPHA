@@ -1,11 +1,10 @@
 ---
 owner: delivery pipeline
 sources:
-  - docs/roadmap/backlog/*.md
-  - docs/roadmap/wip-limit.json
   - scripts/status.py
+  - scripts/roadmap_index.py
   - tests/unit/test_status_page.py
-verified: 40d916b11519
+verified: f89aa1bb78af
 ---
 
 # Stage 01 — shape: idea to brief
@@ -38,8 +37,9 @@ Nothing is designed or built here; the job is to agree what "done" means before 
    task folder and is not counted against the cap. When unsure, ask the owner; say which you chose.
 3. Check the work-in-progress limit. Count = live plans `In progress` or
    `Implemented – qualification pending`; the cap is `ceiling` in `docs/roadmap/wip-limit.json`
-   (it falls to `limit`, 3, as work closes). When the count is at the cap, a new task may not
-   start: write a backlog file instead and tell the owner which open work blocks it.
+   (it falls toward `limit` as work closes; the generated roadmap index states both). When the
+   count is at the cap, a new task may not start: write a backlog file instead and tell the
+   owner which open work blocks it.
 4. Ask at most three questions, and only ones that change what gets built; give your
    recommended answer with each. Record every other default in the brief.
 5. A request to shelve, delete or cut a part starts from its component file and the owner

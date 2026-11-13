@@ -3,8 +3,7 @@ owner: project layer
 sources:
   - packages/alpha-forecast/CONTEXT.md
   - docs/adr/0008-vendored-kronos-and-alpha-forecast-layer.md
-  - docs/roadmap/capabilities.toml
-verified: f89aa1bb78af
+verified: a79d832d
 ---
 
 # Forecasting

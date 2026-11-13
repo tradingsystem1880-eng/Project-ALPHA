@@ -2,8 +2,7 @@
 owner: project layer
 sources:
   - packages/alpha-validation/CONTEXT.md
-  - docs/roadmap/capabilities.toml
-verified: f89aa1bb78af
+verified: a79d832d
 ---
 
 # Validation and evidence
