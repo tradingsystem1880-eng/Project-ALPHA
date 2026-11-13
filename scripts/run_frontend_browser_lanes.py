@@ -77,7 +77,9 @@ def prerequisites(root: Path, inherited: dict[str, str]) -> dict[str, str]:
         root / "scripts/run_owned_test.py",
     ):
         if not path.is_file():
-            raise ValueError(f"Required installed input is absent: {path}")
+            built = "static" in path.parts
+            hint = " (run `npm run build` in apps/alpha-web/frontend)" if built else ""
+            raise ValueError(f"Required installed input is absent: {path}{hint}")
     if native and not os.access(native[0], os.X_OK):
         raise ValueError(f"Native interpreter is not executable: {native[0]}")
     # Direct Python and the existing configs' `python`, `alpha`, and `uv run python`

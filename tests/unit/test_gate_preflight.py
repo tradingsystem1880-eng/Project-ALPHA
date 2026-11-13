@@ -346,7 +346,7 @@ class TestGatePreflight(unittest.TestCase):
     def test_freshness_index_alignment_blocks_sparse_skip_worktree_targets(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
-            for name, rel in (("api", API_OUTPUT), ("spa", SPA_OUTPUT)):
+            for name, rel in (("api", API_OUTPUT),):
                 with self.subTest(name=name):
                     root = _synthetic_repo(base / name)
                     _git(root, "update-index", "--skip-worktree", "--", rel)
@@ -358,23 +358,15 @@ class TestGatePreflight(unittest.TestCase):
                     self.assertEqual(result["issue_type"], "missing_freshness_target")
                     self.assertEqual(result["missing_paths"], [rel])
 
-    def test_freshness_index_alignment_requires_both_canonical_steps(self) -> None:
+    def test_freshness_index_alignment_requires_the_canonical_step(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = _synthetic_repo(Path(temporary) / "repo")
-            api_cwd = root / "apps/alpha-web/frontend"
-            only_api = [
-                (
-                    "API freshness",
-                    api_cwd,
-                    ["git", "diff", "--exit-code", "--", "src/api/generated.ts"],
-                )
-            ]
-            with patch.object(gate_components, "component_steps", return_value=only_api):
+            with patch.object(gate_components, "component_steps", return_value=[]):
                 result = gate_preflight.freshness_index_alignment(root)
 
             self.assertEqual(result["status"], "unverified")
             self.assertEqual(result["issue_type"], "freshness_scope_unknown")
-            self.assertEqual(result["missing_steps"], ["SPA freshness"])
+            self.assertEqual(result["missing_steps"], ["API freshness"])
 
     def test_preflight_reports_scope_without_claiming_mypy_passed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

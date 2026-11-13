@@ -267,11 +267,6 @@ def component_steps(
             ("API generation", cwd, ["npm", "run", "generate:api"]),
             ("API freshness", cwd, ["git", "diff", "--exit-code", "--", "src/api/generated.ts"]),
             ("browser", cwd, ["npm", "run", "test:e2e:built", "--", "--viewports", viewports]),
-            (
-                "SPA freshness",
-                root,
-                ["git", "diff", "--exit-code", "--", "apps/alpha-web/src/alpha_web/static/app"],
-            ),
         ]
     if component in {"literature", "qlib", "eval"}:
         cwd = root / ("tools/alpha-eval" if component == "eval" else f"workers/{component}")

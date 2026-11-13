@@ -50,8 +50,11 @@ See the capabilities below on [STATUS.md](../../../../STATUS.md).
 - No owner decision about this part is in the [owner decisions log](../owner-decisions.md) yet.
 - Triage cards 6 (link claims to experiments, recommended KEEP) and E (remove the duplicate copy of
   the download code, recommended DELETE) wait for the owner ([triage sheet](../../../roadmap/triage-2026-11.md)).
-- Owner to confirm: should the literature worker feed RD-Agent's "propose" step directly (papers as
-  a source of hypotheses), or stay a tool you use by hand?
+- Decided: use RD-Agent's own paper ingestion where it is enough; the literature worker adds paper
+  discovery, exact citations and limitations, and conflicting evidence, and feeds RD-Agent's proposal
+  step rather than forming a second research system. The hand-off is not yet shown working
+  ([log](../owner-decisions.md#2026-11-14-literature-strengthens-rd-agents-proposal-step)).
+
 
 ## Never
 

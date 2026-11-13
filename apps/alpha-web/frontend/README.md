@@ -148,7 +148,7 @@ npm run build
 npm run test:e2e
 ```
 
-The build writes the committed production SPA to `../src/alpha_web/static/app`. Use the integrated
+The build writes the production SPA to `../src/alpha_web/static/app` (build output, not committed). Use the integrated
 FastAPI application for UI/backend verification. `npm run dev` is an assets-only Vite server;
 it has no API proxy and is not the integrated application.
 

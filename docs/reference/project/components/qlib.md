@@ -64,11 +64,12 @@ stand-in on the Dell, where its install is not present.
 - Triage cards 10 (refit evidence, recommended SHELVE), 11 (corrected features, KEEP), A (groundwork
   for RD-Agent driving Qlib, recommended DELETE) and F (Qlib-to-Nautilus demo, recommended SHELVE)
   await the owner ([triage sheet](../../../roadmap/triage-2026-11.md)).
-- Owner to confirm: are Qlib and Nautilus core engines like RD-Agent, so that their parts are
-  finished rather than shelved? Cards 10, A and F were recommended before the 2026-11-14 decision.
-- Owner to confirm: card A recommends deleting the groundwork for RD-Agent driving Qlib, yet that
-  is item 6 of [RD-Agent's next steps](../../../roadmap/rd-agent-in-alpha.md#what-stands-between-today-and-rd-agent-researching-real-ideas).
-  Keep it for that?
+- Decided: Qlib and Nautilus are engines ALPHA installs and calls, like RD-Agent; their unfinished
+  parts are kept or shelved, not deleted. Not every experiment needs Qlib
+  ([log](../owner-decisions.md#2026-11-14-the-architecture-in-one-line)).
+- Decided: the groundwork for RD-Agent driving Qlib is kept, shelved until it is wired in
+  ([log](../owner-decisions.md#2026-11-14-agents-merge-and-decide-routine-matters)).
+
 
 ## Never
 

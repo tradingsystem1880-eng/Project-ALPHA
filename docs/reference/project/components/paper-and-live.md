@@ -52,8 +52,10 @@ order today.
 
 - Dell now, Mac later ([log](../owner-decisions.md#2026-11-14-dell-now-mac-later)). Triage card 13
   (running ALPHA on the Mac with real data, recommended KEEP) waits for the owner.
-- Owner to confirm: for the live phase, which broker or exchange, which instruments, and what
-  limits on money at risk?
+- Decided: live trading is deferred until the whole system works and has shown it can find an edge.
+  Do not ask for a broker, instruments or risk limits yet
+  ([log](../owner-decisions.md#2026-11-14-live-trading-is-deferred)).
+
 
 ## Never
 

@@ -72,7 +72,7 @@ The `ci-ok` job passes only when every job below succeeded; branch protection re
 | --- | --- |
 | `check` | Locked install, ruff, import contracts, strict mypy, harness lint, Semgrep, **every** pytest test (not `network`/`slow_oracle`) with coverage, OpenAPI freshness and authority, wheel build and smoke; slow oracles and mutation when quant source changed. |
 | `harness` | Harness doctor, weakening scanner, strict mypy of the harness scripts, hook and selector tests. |
-| `frontend` | npm lint, build and types, unit coverage, API freshness, browser lanes, SPA freshness. |
+| `frontend` | npm lint, build and types, unit coverage, API freshness, browser lanes. |
 | `qlib-worker`, `literature-worker` | Each worker's own lock, lint, format, types and tests. |
 | `eval` | The benchmark tool's own lock, lint, format, types and tests. |
 

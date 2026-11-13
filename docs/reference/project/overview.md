@@ -47,11 +47,11 @@ agent) is meant to run steps 3 to 6 over and over. ALPHA keeps
 the budget, the data, the backtests, the statistics and the owner's approvals. The fullest account
 of this split is [RD-Agent in ALPHA](../../roadmap/rd-agent-in-alpha.md).
 
-Owner to confirm: is this the right one-line summary? "RD-Agent is the research loop itself; Qlib
-is the machine-learning toolkit it uses; Nautilus is the backtest engine; ALPHA is the governed
-shell around them (data, statistical checks, evidence, owner approval, screens)." It is the
-recorded understanding from [2026-11-14](owner-decisions.md#2026-11-14-rd-agent-is-a-key-component),
-not yet in the owner's own words.
+In the owner's words: "RD-Agent runs the research loop; Qlib supplies research tools and models;
+Nautilus runs execution-aware backtests; ALPHA connects and governs them." ALPHA is more than a
+shell: it owns budgets, data rules, experiment records, validation and approvals. Not every
+experiment needs Qlib. This is the intended architecture; the complete model-connected, real-data
+loop is not yet qualified ([log](owner-decisions.md#2026-11-14-the-architecture-in-one-line)).
 
 ## How the parts connect
 

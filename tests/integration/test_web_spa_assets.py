@@ -1,8 +1,7 @@
-"""The built SPA is committed and served (the offline-CI contract).
+"""The built SPA is present and served.
 
-If these fail, someone changed the frontend without running ``npm run build`` in
-``apps/alpha-web/frontend`` and committing ``static/app`` — the app would serve a blank page, so
-we fail loud instead.
+``static/app`` is build output and not committed. If these fail, the SPA was not built: run
+``npm ci && npm run build`` in ``apps/alpha-web/frontend`` (CI builds it before the tests).
 """
 
 from __future__ import annotations
@@ -15,8 +14,10 @@ from alpha_web.app import _APP_INDEX, create_app
 
 
 def test_spa_index_is_built_and_committed() -> None:
-    # the built SPA entry must be committed so the app serves it with zero Node
-    assert _APP_INDEX.exists(), "run `npm run build` in apps/alpha-web/frontend, commit static/app"
+    # the built SPA entry must exist for the app to serve it
+    assert _APP_INDEX.exists(), (
+        "SPA not built: run `npm ci && npm run build` in apps/alpha-web/frontend"
+    )
 
 
 def test_root_and_app_routes_serve_the_spa() -> None:

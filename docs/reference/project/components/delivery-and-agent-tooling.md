@@ -60,10 +60,8 @@ the local check. This part has no owner-facing capability on [STATUS.md](../../.
   [ADR-0041](../../../adr/0041-no-hidden-test-suite.md).
 
 ## Decisions and open questions
-
-- Owner to confirm: triage card G says you "decided to stop two-model coordination", but on
-  2026-11-14 you chose Codex to build and Claude to plan. Is card G's advice (delete the old
-  hand-off pilot outside the repository) still right?
+- Decided: triage card G is replaced by Codex builds, Claude plans
+  ([log](../owner-decisions.md#2026-11-14-agents-merge-and-decide-routine-matters)).
 - Triage cards 12 and 14 wait for the owner ([triage sheet](../../../roadmap/triage-2026-11.md)).
 
 ## Never
