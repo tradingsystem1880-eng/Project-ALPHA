@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -335,7 +336,9 @@ def run_coverage(root: Path, *, shards: int, base: str | None, summary: Path | N
             print(output)
             return 1
         if name == "global figure":
-            figures = [line for line in output.split() if line.replace(".", "", 1).isdigit()]
+            # The total prints with the configured precision (e.g. 93.16); other output, such as
+            # coverage's "Combined 4 files" note on stderr, may follow it.
+            figures = re.findall(r"^\d+\.\d+$", output, re.MULTILINE)
             if not figures:
                 print(f"[gate:coverage] no total in the coverage report output:\n{output}")
                 return 1
