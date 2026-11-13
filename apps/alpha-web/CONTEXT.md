@@ -34,6 +34,7 @@ grants authority.
 | [command line native](../../docs/reference/invariants/cli-native.md) | Results and inspection | showing a native job result (see `api/native_results.py`) |
 | [command line research](../../docs/reference/invariants/cli-research.md) | Projections and dossiers | showing research case state |
 | [command reference](../../docs/reference/commands.md) | — | finding the `alpha` command a route should call |
+| [what this part is for](../../docs/reference/project/components/web-workstation.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

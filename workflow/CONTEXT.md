@@ -36,6 +36,7 @@ all `done`: 03. Slices done but no `04-verify.md`: 04. Otherwise: 05.
 | [documentation invariants](../docs/reference/invariants/documentation.md) | Feature plans | always |
 | [engineering rules](../docs/reference/invariants/engineering.md) | Working style | always |
 | [research integrity](../docs/reference/invariants/research-integrity.md) | — | the change touches data, strategies, statistics or owner actions |
+| [what this part is for](../docs/reference/project/components/delivery-and-agent-tooling.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## The task folder
 

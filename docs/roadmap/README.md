@@ -105,7 +105,7 @@ work may be open.
 | [Reduce `# type: ignore` suppressions](refactors/type-ignore-reduction.md) | L |
 | [Split alpha_web/api/models.py per router and unify StrictModel](refactors/web-api-models-split.md) | M |
 
-## Archived plans (111)
+## Archived plans (112)
 
 | Month | Plans |
 | --- | --- |
@@ -113,4 +113,4 @@ work may be open.
 | [2026-08](../work/archive/2026-08/) | 9 |
 | [2026-09](../work/archive/2026-09/) | 21 |
 | [2026-10](../work/archive/2026-10/) | 57 |
-| [2026-11](../work/archive/2026-11/) | 11 |
+| [2026-11](../work/archive/2026-11/) | 12 |

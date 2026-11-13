@@ -43,6 +43,7 @@ decisions. Python 3.12 with uv; there is no hosting, no distribution and no live
 
 Start at [`CONTEXT.md`](CONTEXT.md): it routes your task to one workspace, whose `CONTEXT.md`
 names exactly what to read (Claude Code also loads it when you open a file in that workspace).
+Why each part exists and what the owner decided: the [project layer](docs/reference/project/overview.md).
 Each fact has one home, listed in `CONTEXT.md`: update that document, never copy the fact.
 `uv run python scripts/fs.py orient` lists the areas, `fs.py search "words"` finds documents
 (live ones first), `fs.py stale` lists documents whose sources changed since they were verified.

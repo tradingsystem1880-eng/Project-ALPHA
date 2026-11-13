@@ -70,6 +70,15 @@ def _case(
     from alpha_cli._native_daily_rule_container import daily_container_profile
 
     if study is None:
+        try:
+            daily_container_profile()
+        except DataError as error:
+            # Same gating as an absent ALPHA_RDAGENT_SOURCE: a machine without the qualified
+            # image cannot run these tests, which is reported as a skip, never a failure.
+            pytest.skip(
+                f"qualified daily container image required ({error}); see "
+                "workers/rdagent/README.md and scripts/setup_rdagent.sh --with-daily-container"
+            )
         bulk, snapshot, manifest_id = _full_discovery_fixture(root)
         config = root / "crypto" / "storage-config.json"
         config.parent.mkdir(parents=True, exist_ok=True)

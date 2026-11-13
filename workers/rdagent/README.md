@@ -52,11 +52,38 @@ fetches the pinned commit into `.alpha/state/runtime/rdagent-pristine` when abse
 and validates `.venv-rule-qualified` and `.venv-economics-qualified`. It is the RD-Agent part of
 `ALPHA_CLOUD_FOUNDATION=1 ALPHA_CLOUD_RDAGENT=1 scripts/cloud_setup.sh` without Git hooks, npm,
 browser download or fontconfig. All of it is gitignored (`.alpha/state/`, `.venv-*/`). It prints
-`export ALPHA_RDAGENT_SOURCE=…`, which runs the conformance, W04, rule and daily tests. The daily
-tests also need the qualified Docker image below. `ALPHA_STOCK_PYTHON` (stock `RDLoop`) is NOT
-provisioned: that runtime needs upstream packages (`docker`, `litellm`, `openai`, `tiktoken`, …)
-that no committed lock pins. Smoke check: `uv run python scripts/run_owned_test.py -- uv run pytest
--m smoke tests/smoke/test_rdagent_smoke.py`.
+`export ALPHA_RDAGENT_SOURCE=…`, which runs the conformance, W04 and rule tests. Two optional
+flags add the rest (both idempotent, both off by default so the default install stays small):
+
+- `--with-daily-container` pulls exactly one image, `python@sha256:aa943ce4…d159`
+  (`python:3.12-slim`, about 120 MB), checks that it is image
+  `sha256:ae4e8b7c575fabea88a029b6cae757f342ca2525e07f7c22272d5105c346b35e`, and runs
+  `qualify_daily_container.py` (an offline import smoke under the daily security policy; no
+  derived image is built), which writes `.alpha/state/runtime/daily-container.json`. Without it the
+  13 daily-study tests that need the image are skipped with that reason.
+- `--with-stock-runtime` builds the stock `RDLoop` runtime bundle
+  `.alpha/state/runtime/rdagent-stock-py311/` (`venv/`, `dependencies.lock.txt`,
+  `stock-profile.json`; about 230 MB) on CPython 3.11 from
+  [`stock-requirements.lock`](stock-requirements.lock) with `--require-hashes --no-deps`, then
+  `install_stock_profile.py` proves the installed distributions are exactly the 60 locked ones and
+  records an inventory digest (`--verify` rechecks it on every run). It prints
+  `export ALPHA_STOCK_PYTHON=…/venv/bin/python` and a fresh `ALPHA_STOCK_RECEIPTS` directory.
+
+**Why Python 3.11 for the stock runtime:** upstream RD-Agent at the pin declares and tests only
+3.10 and 3.11 (`pyproject.toml` classifiers; `constraints/3.10.txt`, `constraints/3.11.txt`), and
+the earlier hand-built stock runtime was 3.11. The stock bundle imports no ALPHA package, so the
+project's 3.12 requirement does not apply to it. The lock is the minimum closure for this fixture
+path (`stock_fixture_entry.py` → `rdagent.core.conf`, `rdagent.components.workflow.rd_loop` and the
+core records): `docker`, `rich`, `numpy`, `openai`, `tiktoken`, `litellm` plus the conformance
+imports and their declared dependencies; pandas and scikit-learn are not imported and not
+installed. It was resolved against upstream `constraints/3.11.txt` (so `dill==0.3.9` and
+`psutil==6.1.0`, not the conformance environment's newer pins) with package dates up to the pin's
+commit date. `litellm` is pinned to 1.97.0, the version upstream's own `constraints/3.10.txt`
+names; it is also the library a future model connection would go through, which this runtime does
+not make (the fixture clears all model settings and blocks the network).
+
+Smoke check: `uv run python scripts/run_owned_test.py -- uv run pytest -m smoke
+tests/smoke/test_rdagent_smoke.py`.
 
 ## Contracts exercised
 
@@ -204,7 +231,9 @@ their existing integrity/unknown-state behavior and are not newly qualified by t
 Linux execution may use the existing `cloud_root_identity` backend with control, manifests,
 runs and bulk on one explicitly retained mount/device/owner. A study with a temporary duration
 still needs retained storage: `/tmp`, tmpfs and overlay roots remain rejected, and the reserve
-is still the larger of 15% and 100 GB. Verify underlying capacity and retention too; free space
+is the larger of 15% and 100 GB unless the owner has set an attributed value of at least 10 GB
+for that root ([ADR-0043](../../docs/adr/0043-storage-reserve-is-owner-set.md),
+[storage settings](../../docs/operations/storage-settings.md)). Verify underlying capacity and retention too; free space
 reported by a thin virtual disk is not proof of available backing-disk space or a backup.
 
 This option does not change the native `macos_volume_uuid` backend. Keep existing Mac profiles,

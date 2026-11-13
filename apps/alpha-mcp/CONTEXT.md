@@ -24,6 +24,7 @@ D2 confirmation, reveal a holdout or place orders.
 | [engineering rules](../../docs/reference/invariants/engineering.md) | Subprocess boundary | always |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Owner authority | always |
 | [command reference](../../docs/reference/commands.md) | — | finding the command a tool wraps |
+| [what this part is for](../../docs/reference/project/components/ai-assistants.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

@@ -25,6 +25,7 @@ environments. It has no market, inference or evidence authority.
 | [worker invariants](../../docs/reference/invariants/workers.md) | RD-Agent worker | always |
 | [command line native](../../docs/reference/invariants/cli-native.md) | — | always |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Owner authority | changing what a native result may claim |
+| [what this part is for](../../docs/reference/project/components/rd-agent.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 
