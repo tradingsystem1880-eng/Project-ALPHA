@@ -27,6 +27,7 @@ Parquet with `alpha_cli`, and its results are advisory: ALPHA's own replay is th
 | [command line machine learning](../../docs/reference/invariants/cli-ml.md) | Exchange contract | changing what the worker reads or writes |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Point-in-time reads | changing features or fold boundaries |
 | [ADR-0042](../../docs/adr/0042-qlib-worker-delegates-data-layer-to-upstream.md) | Decision | changing a feature recipe or its normalisation |
+| [what this part is for](../../docs/reference/project/components/qlib.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

@@ -38,6 +38,7 @@ did not give, and never route live capital.
 | [bounded discovery workflow](../../docs/operations/bounded-research-workflow.md) | — | running a bounded discovery or frozen-rule study |
 | [Codex investigations runbook](../../docs/operations/codex-investigations.md) | — | running or changing a recorded-run investigation |
 | [local operations runbook](../../docs/operations/README.md) | — | daily Tiingo data, IBKR Paper setup or the acceptance steps |
+| [what this part is for](../../docs/reference/project/components/command-line.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

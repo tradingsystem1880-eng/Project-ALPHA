@@ -26,6 +26,7 @@ that triggered it.
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Corporate actions: two clocks | changing dividend credits |
 | [command line runs](../../docs/reference/invariants/cli-runs.md) | Artifacts and run directories | changing the result schema |
 | [validation invariants](../../docs/reference/invariants/validation.md) | Gauntlet gates | a change alters what the gauntlet measures |
+| [what this part is for](../../docs/reference/project/components/nautilus.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

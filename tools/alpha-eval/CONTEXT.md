@@ -22,6 +22,7 @@ never admit evidence, approve research or change the product.
 | [evaluation invariants](../../docs/reference/invariants/eval.md) | — | always |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Owner authority | always |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Protected and hidden tests | adding a scenario that touches tests |
+| [what this part is for](../../docs/reference/project/components/delivery-and-agent-tooling.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

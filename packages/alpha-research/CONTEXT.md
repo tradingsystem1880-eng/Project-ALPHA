@@ -30,6 +30,7 @@ network, persistence or authority; `alpha_cli` and `alpha_study` use it.
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Point-in-time reads | changing event studies, bars or phase boundaries |
 | [command line research](../../docs/reference/invariants/cli-research.md) | Projections and dossiers | a gate packet is assembled or shown differently |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Statistical evidence | changing a statistic |
+| [what this part is for](../../docs/reference/project/components/research-cases-and-approval.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

@@ -26,9 +26,8 @@ never from memory. Building or changing the research code itself is a delivery t
 | [05 validate](stages/05-validate/CONTEXT.md) | a finished D0, D1 or D2 | the dossier, evidence hub and adversarial review | none: reads the review |
 | [06 decide](stages/06-decide/CONTEXT.md) | the decision view | the owner's outcome and disposition, the gate packet | the decision itself |
 
-Today an idea moves past stage 01 only if it matches a registered operator (a double bottom on
-synthetic SPY 60-minute or Tiingo SPY daily bars, or the Bybit BTCUSDT crowding reversal); any
-other idea stops there ([stage 01, step 4](stages/01-idea/CONTEXT.md#process)).
+Today an idea moves past stage 01 only if it matches a registered operator (a double bottom on synthetic SPY 60-minute
+or Tiingo SPY daily bars, or the Bybit BTCUSDT crowding reversal); any other idea stops there ([stage 01, step 4](stages/01-idea/CONTEXT.md#process)).
 
 Which stage am I in? Run `uv run alpha research status <case> --json` and read `phase` and
 `next_action`: `captured` or `triage` without a frozen source pack is 01; `triage` with one, or
@@ -44,6 +43,7 @@ Which stage am I in? Run `uv run alpha research status <case> --json` and read `
 | [research method](../docs/reference/research-method.md) | — | before working any case: phases, questions, stop rules |
 | [command line research](../docs/reference/invariants/cli-research.md) | — | a command refuses and you need the rule behind it |
 | [command reference](../docs/reference/commands.md) | alpha research | finding a command; full options are `--help` |
+| [what this part is for](../docs/reference/project/components/research-cases-and-approval.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## Where a case's files live
 

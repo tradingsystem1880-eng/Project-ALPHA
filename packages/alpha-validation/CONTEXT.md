@@ -28,6 +28,7 @@ plus numpy and scipy (import-linter contract "alpha_validation depends only on c
 | [command line runs](../../docs/reference/invariants/cli-runs.md) | Validation and optimisation | changing how a gate is composed or reported |
 | [testing invariants](../../docs/reference/invariants/testing.md) | Quant sweeps | a mutation or semgrep check fails |
 | [four-family Monte Carlo guide](../../docs/operations/monte-carlo/README.md) | Read the outputs | changing or explaining a path-risk family |
+| [what this part is for](../../docs/reference/project/components/validation-and-evidence.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 
