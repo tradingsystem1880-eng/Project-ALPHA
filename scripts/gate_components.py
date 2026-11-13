@@ -231,7 +231,12 @@ def _backend_quant(root: Path, context: dict[str, Any] | None) -> list[Step]:
         return []
     return [
         ("slow oracles", root, ["uv", "run", "pytest", "-q", "-m", "slow_oracle"]),
-        ("mutation gate", root, ["uv", "run", "python", "scripts/gate.py", "mutate", *modules]),
+        # A pull request that touches quant source must not pass on a gate that could not run.
+        (
+            "mutation gate",
+            root,
+            ["uv", "run", "python", "scripts/gate.py", "mutate", "--require-measured", *modules],
+        ),
     ]
 
 

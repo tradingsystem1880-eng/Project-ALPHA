@@ -61,15 +61,34 @@ command=[sys.executable,sys.argv[2],sys.argv[3]]
 codex_environment.prepare=lambda path: (command,path,dict(os.environ))
 codex_environment.preflight=probe
 if sys.argv[4]=="deadline":
+ BOOT='''import sys
+from pathlib import Path
+from types import SimpleNamespace
+import alpha_cli.investigation_lifecycle as lifecycle
+argv=sys.argv
+release_path=Path(argv[1])
+lifecycle.time=SimpleNamespace(monotonic=lambda: float("inf") if release_path.exists() else 0.0)
+raise SystemExit(lifecycle._watch(int(argv[2]),float(argv[3]),argv[4:]))
+'''
  original=investigation_lifecycle.watched_argv
- def short(argv):
-  result=original(argv);result[4]="1.5";return result
- investigation_lifecycle.watched_argv=short
+ def barrier(argv):
+  result=original(argv)
+  return [sys.executable,"-c",BOOT,sys.argv[5],result[3],result[4],*result[5:]]
+ investigation_lifecycle.watched_argv=barrier
 investigation_lifecycle.run(case)
 """)
     pids_file = tmp_path / "pids.json"
+    release_path = tmp_path / "release-deadline"
     process = subprocess.Popen(
-        [sys.executable, str(host), str(case.path), str(peer), str(pids_file), ending],
+        [
+            sys.executable,
+            str(host),
+            str(case.path),
+            str(peer),
+            str(pids_file),
+            ending,
+            str(release_path),
+        ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -87,7 +106,10 @@ investigation_lifecycle.run(case)
         else:
             pytest.fail("host did not start bounded turn")
         pids = json.loads(pids_file.read_text())
-        if ending != "deadline":
+        if ending == "deadline":
+            # Release the deadline after the turn is running so start-up under load cannot race it.
+            release_path.touch()
+        else:
             os.kill(
                 process.pid,
                 {"term": signal.SIGTERM, "int": signal.SIGINT, "kill": signal.SIGKILL}[ending],

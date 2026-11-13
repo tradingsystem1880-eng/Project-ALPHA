@@ -6,7 +6,7 @@ sources:
   - .claude/agents/*.md
   - .codex/config.toml
   - AGENTS.md
-verified: 1724a5befe5d
+verified: 0d2cc970448a
 ---
 
 # Model routing: who builds, who reviews, what happens at a limit
@@ -53,7 +53,7 @@ Why, one line each:
   frontier model "for the most demanding work" (`~/.codex/models_cache.json`, 2026-11-14).
 - `medium` for small tasks: both calibration tasks (below) came out correct and clean first time
   at `medium`; the earlier hand-run trial at `high` took 8 minutes for a task of similar size.
-- `high` for standard and `gpt-6-astra` for hard: first measured 2026-11-14 (tasks C and D below),
+- `high` for standard and `gpt-6-astra` for hard: first measured 2026-11-14 (tasks F and G below),
   one build each, so still provisional.
 - Lighter models (`gpt-6-luna`, "fast and affordable") are not used for building: a quiet quality
   loss costs more than the allowance saved. No evidence yet says otherwise.
@@ -67,19 +67,32 @@ Calibration, 2026-11-14, both small route, `gpt-6.1-sol` `medium`, no fix round 
 | A: redact paths in the rules-evaluate relay error (3 files) | 3m57s | 496,656 (468,736) | 3,749 | correct; one unrequested doc re-wrap, caused by the brief |
 | B: aggregate the per-plan tests in `test_plan_schema.py` (1 file) | 2m57s | 188,778 (150,656) | 2,822 | correct, strictness kept; 314 cases to 6 |
 
+Test clean-up stream, 2026-11-14, all small route, `gpt-6.1-sol` `medium`, no fix round needed,
+reviewed by Claude (Opus) before merge:
+
+| Task | Wall time | Input tokens (cached) | Output | Result |
+|---|---|---|---|---|
+| C: run the v2 Qlib-isolation test in a fresh process (1 file) | 5m03s | 156,373 (126,336) | 1,777 | correct, every assertion kept |
+| D: aggregate the theme drift tests, drop a permanent skip (2 files) | 3m55s | 187,865 (164,864) | 3,199 | correct; 54 cases to 8 |
+| E: barrier for the investigation watchdog deadline test (1 file) | 2m52s | 351,724 (314,112) | 2,161 | correct, test-only, assertions kept |
+
+The mutation-gate change in the same stream touched guarded harness files (`scripts/gate*`,
+`scripts/harness_*`), which a brief cannot declare, so Claude built it and Codex reviewed it
+(`handoff.py review`: 0 findings) alongside an Opus reviewer (one medium finding, fixed).
+
 First standard and hard builds, 2026-11-14, standard and hard briefs, triage clean-up, reviewed by Claude:
 
 | Task | Class, model, effort | Wall time | Input tokens (cached) | Output | Fix rounds | Result |
 |---|---|---|---|---|---|---|
-| C: one copy of literature acquisition code (6 files) | standard, `gpt-6.1-sol`, `high` | 7m30s | 1,328,298 (1,244,160) | 19,234 | 2, empty | correct; note 1 |
-| D: remove QuantPad code (28 files) | hard, `gpt-6-astra`, `high` | 20m51s | 2,796,814 (2,715,648) | 9,859 | 0 | correct; note 2 |
+| F: one copy of literature acquisition code (6 files) | standard, `gpt-6.1-sol`, `high` | 7m30s | 1,328,298 (1,244,160) | 19,234 | 2, empty | correct; note 1 |
+| G: remove QuantPad code (28 files) | hard, `gpt-6-astra`, `high` | 20m51s | 2,796,814 (2,715,648) | 9,859 | 0 | correct; note 2 |
 
-1. Task C's build round alone was 401,809 in and 6,010 out. Both fix rounds were spent on a brief
+1. Task F's build round alone was 401,809 in and 6,010 out. Both fix rounds were spent on a brief
    check that also searched documents the builder was told not to touch (a brief error).
-2. Task D was approved unchanged; the orchestrator rebuilt the SPA bundle, which needs the network.
+2. Task G was approved unchanged; the orchestrator rebuilt the SPA bundle, which needs the network.
 
 A fix round resumes the whole thread, so even an empty round costs about the full context again
-(about 40k more input each in task C). A brief's checks must only cover files the builder may change.
+(about 40k more input each in task F). A brief's checks must only cover files the builder may change.
 
 Most of Codex's allowance goes on context: a turn's input count adds up what is sent with each
 model call (inferred: 497k input for one turn of 32 commands, 94% cached), so every file read

@@ -14,7 +14,7 @@ sources:
   - scripts/claude_hooks.py
   - pyproject.toml
   - .semgrep/alpha.yml
-verified: 1724a5befe5d
+verified: a9b265292d5a
 ---
 
 # Testing invariants
@@ -35,6 +35,10 @@ this file holds the mechanics.
 - Statistical goldens carry named tolerances (`tests/oracles/_reference/tolerances.py`), never exact float
   equality. Semgrep rule `alpha-float-literal-equality` flags literal float equality.
 - Warnings are errors (`filterwarnings = ["error", ...]` in `pyproject.toml`): a new warning fails the test.
+- An error test asserts the error type plus one stable token of its message (an identifier, a field name,
+  a code), for example `pytest.raises(DataError, match="non-finite")`, never the full message text: a
+  reworded message must not fail a test whose behaviour still holds. Existing full-text pins are fixed
+  when a change touches them for another reason, not rewritten in bulk.
 - `tests/conftest.py` sets `NO_COLOR` and removes `GITHUB_ACTIONS`, `FORCE_COLOR` and `PY_COLORS` before
   typer loads, so CLI output assertions match on every terminal.
 
@@ -114,6 +118,11 @@ this file holds the mechanics.
 - `gate.py mutate`: mutmut per module in a staged tree. Kill rate = killed / (total - skipped); a module
   passes when rate + 0.005 >= min(0.90, its floor in `.claude/mutation-baseline.json`). `--write-baseline`
   changes are reviewed in the pull request.
+- A module the gate cannot measure (mutmut missing, a staging fault, no stats, zero mutants, a requested
+  path that is not a quant module) is `unavailable:<cause>`. The `backend-quant` step (the pull-request
+  `quant` job, and local `gate.py component backend`) runs `gate.py mutate --require-measured`, so there
+  "unavailable" fails and prints the module and the cause: a guard that cannot run never passes. Without
+  the flag (a plain local `gate.py mutate`, the weekly sweep) it is only reported.
 - The weekly exhaustive sweep (`.github/workflows/mutation-weekly.yml`, owner-selected cadence) runs frozen,
   deterministic mutant fragments in at most eight isolated jobs of two mutmut workers each and aggregates
   them exactly; `timeout` and `no_tests` mutants are never counted as kills. Its scores are report-only, and the

@@ -56,6 +56,9 @@ def test_backend_runs_the_ci_steps_and_quant_checks_only_when_quant_source_chang
     assert sum(command[:3] == ["uv", "run", "mypy"] for command in by_name.values()) == 1
     quant_steps = gate_components.component_steps(ROOT, "backend-quant", context={"paths": paths})
     assert [n for n, _, _ in quant_steps] == ["uv sync", *(quant if quant_expected else [])]
+    mutation = [command for name, _, command in quant_steps if name == "mutation gate"]
+    # The pull-request gate fails when a module cannot be measured (a broken guard blocks).
+    assert all(command[4:6] == ["mutate", "--require-measured"] for command in mutation)
     static = gate_components.component_steps(ROOT, "backend-static")
     assert [name for name, _, _ in static] == STATIC
 

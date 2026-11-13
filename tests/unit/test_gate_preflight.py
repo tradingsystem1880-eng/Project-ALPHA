@@ -88,7 +88,7 @@ def _backend_mutation_targets(root: Path, base: object = _DEFAULT_BASE) -> list[
             ),
             None,
         )
-        return [] if step is None else step[5:]
+        return [] if step is None else [arg for arg in step[5:] if not arg.startswith("--")]
 
 
 class TestGatePreflight(unittest.TestCase):

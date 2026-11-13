@@ -250,11 +250,14 @@ def mutate(
     workers: int | None = None,
     mutant_inventory: list[str] | None = None,
     mutant_names: list[str] | None = None,
+    require_measured: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     """Mutation-test each quant module in isolation; block on a kill-rate below its floor.
 
     Tooling absence (no ``uvx``/network for mutmut, staged clean-run failure) is reported as
-    ``unavailable:<reason>`` and never blocks — but it is always printed, never silent.
+    ``unavailable:<reason>`` and is always printed, never silent. It blocks when
+    ``require_measured`` is set (the pull-request gate: a guard that cannot run must not pass);
+    otherwise (local and report-only runs) it does not.
     """
     run = runner or _mutation_runner
     targets = (
@@ -270,6 +273,11 @@ def mutate(
     baseline = {k: float(v) for k, v in baseline_raw.get("kill_rates", {}).items()}
     report: dict[str, Any] = {"modules": {}, "min_kill": MUTATION_MIN_KILL}
     blocking = False
+    if require_measured and modules is not None:
+        # A requested module the quant filter drops (typo, deleted, not quant) was never measured.
+        for rel in sorted(set(modules) - set(targets)):
+            report["modules"][rel] = {"status": "unavailable:not a quant-tier source module"}
+            blocking = True
     for rel in targets:
         staging = Path(tempfile.mkdtemp(prefix="alpha-mutation-"))
         try:
@@ -364,6 +372,13 @@ def mutate(
             stats = gate.read_json(stats_path) if ok else None
             if stats is None:
                 entry["status"] = f"unavailable:{output[-300:] or 'mutmut produced no stats'}"
+                blocking = blocking or require_measured
+            elif (
+                require_measured and int(stats.get("total", 0)) - int(stats.get("skipped", 0)) <= 0
+            ):
+                # Zero mutants is no measurement, even against a 0.0 floor.
+                entry["status"] = "unavailable:no mutants measured"
+                blocking = True
             else:
                 rate = mutation_kill_rate(stats)
                 required = mutation_required(rel, baseline)
