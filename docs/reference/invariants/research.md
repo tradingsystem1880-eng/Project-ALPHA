@@ -80,7 +80,14 @@ General rule: [research integrity § Point-in-time reads](research-integrity.md#
   `log_close[: train_end + 1]`; an undefined Martin ratio is `None` (`tests/unit/test_pip_miner_bias_guard.py`).
 - Panel primitives sort stably over the caller's canonical column order and use no randomness. Oracles:
   `tests/oracles/test_metamorphic_panel.py`, `tests/oracles/test_differential_panel_spearman.py` (scipy).
-- Screening and descriptive outputs confer no research-gate authority.
+- Screening and descriptive outputs confer no research-gate authority. The lead-lag leakage diagnostic is an
+  advisory screen for plan review, never admission.
+- Fama-MacBeth fails loud on a rank-deficient (collinear) date. Descriptive coverage summaries report gaps
+  instead of crashing on them.
+- The AR(1) effective sample size is conservative, capped at the observation count and versioned
+  (`AR1_EFFECTIVE_SAMPLE_SIZE_METHOD_VERSION`); change the version with the method.
+- Rolling PCA scores project onto eigenvector columns with each component's largest loading positive (upstream
+  projected onto rows). Retracement density fails loud on zero-height segments and degenerate samples.
 
 ## Confirmation and multiplicity
 

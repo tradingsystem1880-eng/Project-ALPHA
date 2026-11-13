@@ -26,6 +26,7 @@ import it. It must never let a read see data that was not knowable at the cutoff
 | [architecture](../../docs/ARCHITECTURE.md) | Runtime data-directory layout | changing where data is stored |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Corporate actions: two clocks | changing splits, dividends or symbol changes |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Immutable, hash-bound artefacts | changing snapshots or receipts |
+| [crypto provider invariants](../../docs/reference/invariants/crypto-providers.md) | — | changing `crypto/providers/` or coverage profiles |
 | [command line crypto data](../../docs/reference/invariants/cli-crypto-data.md) | — | the change is driven by an `alpha crypto-data` command |
 | [engineering rules](../../docs/reference/invariants/engineering.md) | Polars by default | touching an adapter or adding a dataframe library |
 
@@ -46,5 +47,5 @@ import it. It must never let a read see data that was not knowable at the cutoff
 ## Outputs
 
 - Tests: the bias guard for any read change; unit tests for new failure modes (typed `DataError`).
-- The owning document: `docs/reference/invariants/data.md` (crypto commands:
-  `docs/reference/invariants/cli-crypto-data.md`).
+- The owning document: `docs/reference/invariants/data.md` (crypto providers:
+  `docs/reference/invariants/crypto-providers.md`; crypto commands: `docs/reference/invariants/cli-crypto-data.md`).

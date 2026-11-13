@@ -30,6 +30,11 @@ project-wide rule is [research integrity § Models and isolated workers](researc
 - Synthetic position artifacts (`_native_rule_artifacts.py`) are distinct from statistical research evidence.
 - `native_qlib_pipeline.py`, `ml_native_plan.py` and `ml_refit.py` produce inert diagnostics or metadata with no
   admission, registration or fit authority.
+- A stock RDLoop invocation is consumed once, atomically, in the control store before spawn
+  (`_native_stock_launch.consume_before_spawn`); there is no refund or usage ledger, and a stopped, cancelled or
+  re-measured owner cannot consume.
+- The synthetic Qlib qrun → `SignalReplay` → Nautilus pipeline (`native_qlib_pipeline.py`) saves results marked
+  `admission: not_admitted`; they are never approved research.
 
 ## Launch identity
 

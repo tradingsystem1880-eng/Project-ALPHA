@@ -61,6 +61,9 @@ acquisition worker and the RD-Agent native-loop probe. The general rule is
 - Feature recipe version 1 is the default. Version 2 is an opt-in 40-column correction, not full native
   Alpha158 parity. The recipe is part of `config_hash`, which prediction readers enforce: never reuse a
   model just because feature names match.
+- Version-1 features are computed locally (`features.py`); `real.py::_official_feature_names` checks only
+  that the names match the installed Qlib Alpha158, not the values. `VWAP0` is a typical-price proxy, never
+  exchange VWAP. Retiring the local formulas for native Qlib handlers needs a value-level comparison first.
 - W09/W11 planning contracts, invocation observations, checkpoints and refit plans grant no admission,
   accounting, fit allowance or promotion; readiness stays blocked when the worker is absent.
 
@@ -104,6 +107,10 @@ acquisition worker and the RD-Agent native-loop probe. The general rule is
   requirement lock and the root `uv.lock`. Any byte change in those raises `DataError` until profiles are
   rebuilt and fingerprints re-approved; old approvals and history are not rewritten.
   [engineering § Hash-bound source bytes](engineering.md#hash-bound-source-bytes).
+- The native fixture loop (`native_fixture.py::NativeFixtureLoop`) is a `LoopMeta` subclass of upstream
+  `LoopBase` that never overrides `run`, `_run_step`, `dump` or `load`, so upstream's own loop drives it.
+  Every executed stage is charged to the fixture owner, and interrupted admitted work stays charged
+  (`conformance.py`).
 - There is no gate component or CI job (`scripts/gate_components.py` lists none). Its checks are root tests
   such as `tests/unit/test_native_loop_conformance.py`; the source-dependent ones skip without
   `ALPHA_RDAGENT_SOURCE`, and a skipped run confers no native qualification.

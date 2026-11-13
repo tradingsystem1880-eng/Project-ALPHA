@@ -68,6 +68,9 @@ Nautilus harness, its feed encoding, fee model and result schema, and the multi-
 - Shared-lifecycle CASH buy rejections land in `BacktestResult.execution_rejections`; the CLI persists them
   as `pretrade_rejections.parquet` and reconciles the count with venue denials. Strategies without the hook
   keep only the truncation check. `tests/integration/test_order_rejection.py`.
+- The run manifest records the `pretrade_rejections` count; the execution digest
+  (`alpha_cli/research_execution_digest.py`) fails loud when it disagrees with the sidecar rows, and counts
+  them in the total `rejected`.
 
 ## Dividends
 

@@ -80,8 +80,7 @@ this file holds the mechanics.
 ## Protected and hidden tests
 
 - `tests/unit/test_claude_harness_*.py`, `tests/bias_guards/**` and `tests/oracles/**` are protected control
-  plane: change them only in a reviewed pull request (`.claude/rules/tests.md`). No hook blocks these edits;
-  review does.
+  plane: change them only in a reviewed pull request. No hook blocks these edits; review does.
 - The path `tests/holdout/` does not exist. Its guards remain: `.claude/settings.json`
   denies Read, Edit and Write on `tests/holdout/**`, and `scripts/claude_hooks.py` blocks file tools on any
   path containing `tests/holdout`. Never create, read or shell-write that path.
@@ -110,8 +109,13 @@ this file holds the mechanics.
   [engineering § Quant tier](engineering.md#quant-tier).
 - `gate.py mutate`: mutmut per module in a staged tree. Kill rate = killed / (total - skipped); a module
   passes when rate + 0.005 >= min(0.90, its floor in `.claude/mutation-baseline.json`). `--write-baseline`
-  changes are reviewed in the pull request. The weekly full sweep is `.github/workflows/mutation-weekly.yml`.
-- `gate.py semgrep`: pinned, fail-closed Semgrep (`scripts/semgrep_runner.py`) with `.semgrep/alpha.yml` over
+  changes are reviewed in the pull request.
+- The weekly exhaustive sweep (`.github/workflows/mutation-weekly.yml`, owner-selected cadence) runs frozen,
+  deterministic mutant fragments in at most eight isolated jobs of two mutmut workers each and aggregates
+  them exactly; `timeout` and `no_tests` mutants are never counted as kills. Its scores are report-only, and the
+  0.90 minimum, 0.005 tolerance and baseline floors stay as above.
+- `gate.py semgrep`: fail-closed Semgrep through `scripts/semgrep_runner.py`, which pins `SEMGREP_VERSION` and
+  checks the installed version before every scan, with `.semgrep/alpha.yml` over
   `packages`, `apps`, `scripts` and `tests` (`--changed` for changed files). Rules ban silent `except: pass`,
   negative shifts, wall-clock reads in packages, unseeded RNG, pandas outside sanctioned edges, literal
   float equality, bare `# type: ignore` and reasonless skips.
@@ -120,6 +124,8 @@ this file holds the mechanics.
   Name a byte-stability test with one of those words or the sweep never sees it.
 - `gate.py raise-cov`: lists `raise` lines in quant modules that the unit, oracle and bias-guard tests never
   reach. Nightly runs it report-only (no `--fail`).
+- `.github/workflows/nightly.yml` runs the whole-repo Semgrep, determinism and raise-cov sweeps; CI's backend
+  job runs Semgrep on every pull request.
 - `gate.py lint-harness` fails when a deny rule is removed, a hook is unwired, coverage `fail_under` drops,
   strict markers are off, quant-module `# noqa` / `# type: ignore` counts grow, or CI pytest uses `-x` or
   `--maxfail`. [engineering § Checks and commits](engineering.md#checks-and-commits).

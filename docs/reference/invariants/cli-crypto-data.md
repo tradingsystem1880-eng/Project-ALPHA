@@ -32,6 +32,9 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
   unchanged.
 - QuantPad archives are owner-invoked, research-only provider responses. They never feed strategies, snapshots, charts
   or paper intents without the receipt and quality path. [ADR-0018](../../adr/0018-quantpad-external-research-data-boundary.md)
+- Binance spot daily REST reads take an opt-in `RequestBudget` (attempts and body bytes; see
+  [crypto providers § Shared fetch boundary](crypto-providers.md#shared-fetch-boundary)).
+- On malformed provider bars, CLI callers raise their typed usage error and publish no run.
 
 ## Provider-native datasets
 

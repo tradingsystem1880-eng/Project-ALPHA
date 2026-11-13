@@ -42,7 +42,12 @@ and how it names and publishes immutable runs. Project-wide rules:
   See [research integrity § Point-in-time reads](research-integrity.md#point-in-time-reads) and
   [research integrity § Decide at close, fill at next open](research-integrity.md#decide-at-close-fill-at-next-open).
 - `_gauntlet.py`, `_optim.py`, `_runner.py`, `_synth.py`, `_surrogate.py`, `_seeds.py` and `_identity.py` are
-  high-risk statistical or identity code; follow [engineering § Quant tier](engineering.md#quant-tier).
+  high-risk statistical or identity code; follow [engineering § Quant tier](engineering.md#quant-tier). They sit outside
+  `gate.py::matches_quant` (packages only), so CI runs no mutation gate on them: their tests and the oracles are the
+  binding check; ask for a `/review-gate` report on the pull request (advisory, ADR-0039).
+- `_schemas.py` is the one canonical home of strategy parameter definitions, bounds and defaults; `_strategies.py` and
+  `_runner.parse_strategy_params` read from it, and values are normalised to the stable floats stored in `RunSpec`.
+- Slash symbols (`BTC/USD`) are crypto pairs and need `--account-type MARGIN`; a CASH account fails loud (`_runner.py`).
 
 ## Run identity
 
@@ -56,7 +61,8 @@ and how it names and publishes immutable runs. Project-wide rules:
 - Seeds come from `_seeds.semantic_seed(master, namespace)`; adding or reordering namespaces must not shift any
   other seed. [ADR-0007](../../adr/0007-deterministic-run-id-and-seeds.md) is superseded for v3 by ADR-0013.
 - A rule strategy's canonical spec bytes go into `params.rules_spec`, so changing a saved rule makes a new run id and
-  overwriting a rule name never changes a past run.
+  overwriting a rule name never changes a past run. The `rules` strategy fingerprint covers `rules.py` and
+  `rule_strategy.py` (`_identity.py`).
 - An owner research-gate override and the Workstation run context both fork identity; see
   [command line research § Strategy promotion and overrides](cli-research.md#strategy-promotion-and-overrides).
   `run_context.py` accepts only a schema-1 `standalone_sandbox` or `governed_project` context and fails loud otherwise.
@@ -64,7 +70,8 @@ and how it names and publishes immutable runs. Project-wide rules:
 ## Artifacts and run directories
 
 - `run_store.RUN_DIRS` (`runs`, `portfolio`, `cross_sectional`, `optim`, `propfirm`, `forecast`) lists every run
-  directory; the package root re-exports it. Keep `run_store.py` free of Polars so web and MCP import it cheaply.
+  directory; the package root re-exports it. Keep `run_store.py` and `catalog.py` free of Polars and engine imports so
+  web and MCP import them cheaply (`tests/unit/test_public_seams.py`).
 - Publish each artifact once (`_artifacts.publish_artifact`): an identical rewrite is a no-op, different bytes fail,
   and nothing may be added after the manifest exists.
 - The manifest is the completion marker. `write_manifest` hashes every sidecar (schema, sha256, size, rows) and is
@@ -79,9 +86,18 @@ and how it names and publishes immutable runs. Project-wide rules:
 - An explicit `--allow-short` on a CASH account fails loud; the default is short-allowed on MARGIN and long-flat on CASH.
 - `train_size` below the strategy warm-up floor fails loud.
 - `--snapshot` verifies and reads the frozen snapshot, never the live store.
-- The headline null must be beaten in both tiers. [ADR-0006](../../adr/0006-two-tier-null-model.md);
+- The headline null must be beaten in every null tier that runs. [ADR-0006](../../adr/0006-two-tier-null-model.md);
   method rules in [research integrity § Statistical evidence](research-integrity.md#statistical-evidence).
 - `alpha optim mcpt` is an in-sample overfitting test only; its manifest carries a caveat that it is never OOS evidence.
+  It has no MCP tool. Seed namespace `validation.bar_permutation_is`; the walk-forward Tier 3 uses
+  `validation.bar_permutation_wf`, and `--tier3-paths` is a run-identity input.
+- Basket runs (`backtest portfolio`, `backtest cross-sectional`) sort symbols into canonical order before running, so
+  ranking ties and float sums do not depend on argument order. Inverse-volatility weights are causal: each date uses
+  only trailing OOS returns realised strictly before it, never full-sample volatility (`_portfolio.py`).
+- `alpha propfirm run` takes exactly one of SYMBOL or `--from-run`. Firm presets are illustrative, never authoritative
+  firm terms (`alpha_validation.propfirm.FIRM_PRESETS`).
+- Classical Monte Carlo resamples the run's OOS account returns (IID empirical, a two-state Markov regime chain with a
+  training-frozen causal volatility boundary, Student-t); Kronos replays its synthetic tails through the full engine.
 - Monte Carlo path risk (`monte_carlo_cmds.py`) answers a different question from the null tests and is not edge proof;
   a warning stage needs the CLI-only owner review. [ADR-0029](../../adr/0029-four-family-monte-carlo-validation.md)
 
@@ -102,15 +118,25 @@ and how it names and publishes immutable runs. Project-wide rules:
   fails because rendering must stay deterministic.
 - `figure_cache.py` must not import Polars, numpy, matplotlib or the renderer. Enforced by
   `tests/unit/test_figure_cache.py`.
+- `figures list --json` without `--run` publishes the key environment, so the web computes keys without the renderer.
 - Builders read declared artifacts only and report an honest unavailability reason instead of guessing.
 
 ## Rules, scans and chart overlays
 
 - `alpha_strategies.rules` is the only rule parser; the CLI stores canonical JSON and interprets nothing.
+- `resolve_rules_spec` pairs the flags fail-closed: `--strategy rules` needs `--rules NAME`, `--rules` with any other
+  strategy fails, and a frozen `--rules-file` needs a matching `--rules-sha256`, canonical bytes and at most 1,000,000
+  bytes.
+- `rules explain` reads canonical bars through `load_bars` cut at the end of `--as-of`, saves nothing and reports
+  `authority: none`. Missing history or an invalid operand is an unavailable signal, never a flat one.
+- `scan run` evaluates each symbol on bars cut at the end of `--as-of`, so a later bar never changes an as-of result.
+  Its universe is the symbols stored now (`universe_as_of` is wall-clock), so a scan is not survivorship-safe.
 - `scan run` writes nothing. `scan check` appends only changed signals to `scans/alerts.jsonl`. A scan is a screen,
   never evidence.
 - `alpha chart overlays` reads the same point-in-time window as `alpha data candles`, nulls warm-up values only at the
   head, filters patterns through their `*_known_by(last)` check, and fails loud on any other non-finite value.
+  Only the indicators in `_NAN_AFTER_WARMUP` may null a legitimately undefined later window. Each indicator refuses
+  a window shorter than its longest lookback, and each pattern names in `reason` the bar it became drawable.
   Enforced by `tests/unit/test_chart_overlays_bias_guard.py`.
 - `figures`, `chart` and `scan` produce no run and stay out of `alpha info commands`
   (`info_cmds._NON_RUN_COMMAND_PREFIXES`).

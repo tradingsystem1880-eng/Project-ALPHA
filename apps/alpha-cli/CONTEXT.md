@@ -33,6 +33,9 @@ did not give, and never route live capital.
 | [command line paper](../../docs/reference/invariants/cli-paper.md) | — | paper sessions, IBKR Paper, the crypto sandbox, providers |
 | [command line assistant](../../docs/reference/invariants/cli-assistant.md) | — | the assistant, Codex and investigation commands |
 | [architecture](../../docs/ARCHITECTURE.md) | Runtime data-directory layout | adding a folder under the data directory |
+| [bounded discovery workflow](../../docs/operations/bounded-research-workflow.md) | — | running a bounded discovery or frozen-rule study |
+| [Codex investigations runbook](../../docs/operations/codex-investigations.md) | — | running or changing a recorded-run investigation |
+| [local operations runbook](../../docs/operations/README.md) | — | daily Tiingo data, IBKR Paper setup or the acceptance steps |
 
 ## How to change it
 

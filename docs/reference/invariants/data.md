@@ -127,11 +127,16 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
   `parse_yfinance_history` reconstructs raw prices and fails loud if a split's ex-date jump is missing.
 - Tiingo parsing rejects naive or out-of-range dates, non-finite or non-positive prices, and adjusted/raw
   ratios that disagree within a row. Transport failures expose only the exception type, with context
-  suppressed; the API key travels only in a header. Enforced by `tests/unit/test_tiingo_adapter.py` and
-  `tests/unit/test_tiingo_bounded_fetch.py`.
-- Stooq fails loud on its per-IP "Access denied", challenge pages and HTML bodies.
+  suppressed; the API key travels only in a header. A bounded read keeps its byte ceiling (1 byte to 32 MiB).
+  Enforced by `tests/unit/test_tiingo_adapter.py` and `tests/unit/test_tiingo_bounded_fetch.py`.
+- Stooq fails loud on its per-IP "Access denied", challenge pages and HTML bodies; HTTP errors and interrupted
+  reads (`IncompleteRead`, timeouts, connection errors) become a typed `DataError`.
 - CCXT accepts only `coinbase` and `binance`, returns completed intervals only, never sends `since=0` (Coinbase
   answers it with the latest bars), and keeps venue-qualified `ccxt:<exchange>` provenance byte-compatible.
+  It paginates past per-call caps; the daily `fetch(date, date)` contract delegates to `fetch_timeframe`.
+- `CCXTAdapter.first_bar` is a daily-only listing-date probe, never a history read: it checks `load_markets`,
+  scans forward from 2009 in page-sized windows, and fails loud on an unknown market, no history, or a bar
+  earlier than requested. It stores nothing.
 - QuantPad is research-only ([ADR-0018](../../adr/0018-quantpad-external-research-data-boundary.md),
   [ADR-0023](../../adr/0023-research-dataset-registration-and-quantpad-lane.md)). It has no `historical_bars`
   capability, so it never appears in `data pull` (asserted in `tests/unit/test_provider_registry.py`). Its bytes
@@ -157,11 +162,16 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
   removed.
 - Retirement appends a hash-bound receipt under the admission lock and never deletes manifests, raw lineage or
   payloads. Only `inactive_quarantined` and `revoked_units_error` are valid reasons. Retired inputs are
-  excluded from new admission and active inventories; full audits include them.
+  excluded from new admission and active inventories; full audits include them. `scripts/crypto_data_hygiene.py`
+  audits references (`--report`) and repeats the audit under the lock before `--apply`; it fails closed on
+  unreadable evidence and never retires referenced artifacts.
 - Normalized reads are capped at 32 MiB and re-verify the artifact while reading.
 - Archive charts ([ADR-0038](../../adr/0038-local-confirmation-and-terminal-archive-charts.md)): inventory is
-  discovery only; a chart read runs full manifest and raw-lineage verification. Reconstructed archive history
-  does not establish point-in-time availability or research admission.
+  discovery only; a chart read runs full manifest and raw-lineage verification, then checks dataset identity,
+  units and the completed-bar cutoff. Reconstructed archive history does not establish point-in-time
+  availability or research admission. A listed venue pair is no proof that bars are stored.
+- A chart group joins archive segments only for one identical identity; overlapping bars must agree exactly or
+  the read fails loud (`alpha_cli/_chart_data.py`).
 
 ## Crypto identity and features
 
@@ -173,15 +183,9 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
   plus contract address; native assets resolve only through a reviewed mapping.
 - Reviewed native masters are label-frozen: `reviewed-native-v1` bytes never change; new assets go in a new
   label. An unknown label fails loud. Digests are pinned in `tests/fixtures/crypto/reviewed_native_asset_masters.json`
-  and checked by `tests/unit/test_crypto_asset_master.py`.
+  and checked by `tests/unit/test_crypto_asset_master.py`. `reviewed-native-v1` (BTC, ETH) stays the default;
+  `reviewed-native-v2` adds XRP and SOL and seeds `build_cross_provider_asset_master`.
 - A feature's availability may never precede an input observation or its source availability, and no
   feature reads a later observation. Enforced by `tests/bias_guards/test_crypto_features_future_poison.py`.
-- Universe selectors ignore catalog rows fetched after the cutoff (`tests/bias_guards/test_crypto_profiles_future_poison.py`).
-- DefiLlama TVL `available_at` is the next UTC day boundary, set by the parser. A current download cannot
-  qualify as historically known (`tests/bias_guards/test_defillama_availability.py`); the convention is not a
-  publication timestamp.
-- Bybit funding pages bind exact instrument and bounds, keep native signed rates, and never annualize or assume
-  an interval. Empty, duplicate, conflicting, foreign or future-settlement pages fail closed; a short page never
-  proves coverage ([platform contracts](../../operations/research-platform-contracts.md)).
-- Coverage profiles, liquidity memberships and research selections are scheduling provenance — no research-gate
-  or execution authority.
+- Per-provider fetch, parse, budget and availability rules (Binance, Bybit, CoinGecko, GeckoTerminal,
+  DefiLlama) and coverage profiles are in [crypto providers](crypto-providers.md).

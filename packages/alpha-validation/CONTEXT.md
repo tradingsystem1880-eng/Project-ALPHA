@@ -26,6 +26,7 @@ plus numpy and scipy (import-linter contract "alpha_validation depends only on c
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Point-in-time reads | changing splits, embargo or out-of-sample stitching |
 | [command line runs](../../docs/reference/invariants/cli-runs.md) | Validation and optimisation | changing how a gate is composed or reported |
 | [testing invariants](../../docs/reference/invariants/testing.md) | Quant sweeps | a mutation or semgrep check fails |
+| [four-family Monte Carlo guide](../../docs/operations/monte-carlo/README.md) | Read the outputs | changing or explaining a path-risk family |
 
 ## How to change it
 

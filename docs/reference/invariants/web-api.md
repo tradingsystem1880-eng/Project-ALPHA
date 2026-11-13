@@ -47,11 +47,20 @@ as JSON and SSE (server-sent events, a one-way live stream) and serves the built
   (`alpha_cli.durable_lease`). If start-up fails, reap the child before releasing capacity; never report a job done whose
   terminal journal update failed. Enforced by `tests/unit/test_web_invoke.py`, `tests/unit/test_web_cancellation_publication.py`.
 - The live job registry is in memory. The durable record of finished work is the run store; a restart loses job handles.
+- Cancelling a durable job first records it through `alpha project job-cancel` (actor and reason), then signals the
+  process group. Lease rules: [cli-control-store § Jobs, leases and capacity](cli-control-store.md#jobs-leases-and-capacity).
+- A timed-out terminal journal write may have committed. `_ml.py` reads the job back through `alpha project job-show`
+  before one bounded retry. If the outcome stays unverified it logs an operator error and keeps the capacity reserved;
+  never release capacity or report a terminal state that was not verified.
+- Job ETA is honest: the median duration of finished jobs with the same command path in this web process. With no such
+  sample progress is `indeterminate` (no ETA); an estimate never shows more than 95 % before the job ends.
 - The generic launcher `POST /api/jobs` classifies argv with `alpha_cli.catalog.classify_generic_command`:
   - `owner_only` commands are refused (for example `owner-auth`, `project`, `suite`, `provider`, `assistant`, most
     `research` and `paper` verbs). Enforced by `tests/unit/test_owner_auth_api.py`.
   - `empirical` commands need an explicit run context, resolved by `run_authority.resolve_run_context`. A missing or
     unverifiable context is a denial, never a default. Enforced by `tests/unit/test_run_context_authority.py`.
+- `MPLCONFIGDIR`, when set, passes to the CLI child verbatim (`_catalog._PROCESS_ENV_NAMES`), so Matplotlib
+  configuration and cache placement follow the parent process.
 
 ## Allowed alpha_cli imports
 
@@ -85,6 +94,18 @@ as JSON and SSE (server-sent events, a one-way live stream) and serves the built
 - The only file the web code writes itself is a named workspace, `data_dir/web/workspaces/<slug>.json` (atomic write,
   slugified name). It is presentation state with no research or execution authority.
 - Never reconstruct trading evidence or compute metrics in the backend; relay what the CLI and artifacts record.
+- Run labels are server-side: `_runs.display_name` builds `<strategy> D1 — <symbol> · <source> · <first → last> · run
+  <8 hex>` from the manifest and omits any part it does not record; `market_of` decides crypto/equities or `unknown`.
+
+## Chart data
+
+- `GET /api/candles/{symbol:path}` relays `alpha data candles`; `GET /api/overlays/{symbol:path}` relays
+  `alpha chart overlays` over the same point-in-time window. Overlays live outside `/candles` because the path
+  parameter swallows any suffix. A candles CLI failure is 404 and an overlay failure 400, both with the CLI's own text.
+- Canonical reads are cached on the argv plus the bar file's mtime; `tail` only trims the payload. Archive reads
+  (`manifest_id`) are never cached, so every archive chart open re-runs the CLI's manifest and raw-lineage
+  verification. See [data § Crypto storage](data.md#crypto-storage).
+- `GET /api/chart-datasets` (`alpha data chart-datasets`) is discovery only and returns 409 on a CLI failure.
 
 ## API contract
 

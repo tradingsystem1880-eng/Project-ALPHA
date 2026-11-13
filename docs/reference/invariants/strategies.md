@@ -63,6 +63,11 @@ vol-target sizing, owner-authored rule specs, and the shared Nautilus lifecycle 
 - `evaluate_rules` takes exactly `history` trailing bars and raises otherwise. The fixed window keeps the
   decision point-in-time and makes the engine, the Tier-1 surrogate and scans agree bar for bar.
 - A non-finite operand on the decision bar (warm-up or undefined statistic) is a `DataError`, never zero.
+- Indicator operands are exactly `rules.INDICATOR_ARITY`, the table `alpha chart overlays` accepts (every chart
+  indicator except `rsi_pc1`, whose PCA lives in `alpha_research`). `INDICATOR_FIELDS` names the multi-series
+  fields; `FLOAT_FIRST` marks `hawkes`, whose first parameter is a decay rate, not a window.
+- `RuleStrategy` sets `min_history = spec.history`, and its indicator snapshot records every operand's value on
+  the decision bar.
 - Sources are `high`, `low`, `close` only (the history the base keeps). A source `lag` is a non-negative
   integer; an omitted or zero lag keeps the original bytes. `tests/unit/test_rules_source_lag.py`.
 - `canonical_json` (sorted keys, compact separators, no NaN) is the run-identity byte string and

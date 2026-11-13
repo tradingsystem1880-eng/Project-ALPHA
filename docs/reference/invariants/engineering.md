@@ -15,6 +15,11 @@ Project-wide coding rules. Area files add their own detail and link here. The re
 (point-in-time, fills, immutability, owner authority) are in
 [research integrity](research-integrity.md).
 
+## Project scope
+
+- ALPHA is private, single-owner research software: Python 3.12, managed with uv (`uv sync --locked`). It is
+  never hosted or distributed; the web app binds loopback only. Running it: [README](../../../README.md).
+
 ## Import layers
 
 - The packages form a layered import graph (a DAG): a package may import only the layers below it.
@@ -57,8 +62,11 @@ Project-wide coding rules. Area files add their own detail and link here. The re
 
 - No bare `except`, no `except: pass`, no swallowed errors (semgrep rule `alpha-except-pass`).
   Raise or propagate typed `AlphaError` subclasses with context.
-- A test that cannot run is reported as not verified, with the reason; failing output is quoted
+- A test that cannot run is reported `UNVERIFIED:` with the reason; failing output is quoted
   exactly, never paraphrased into a pass.
+- Retry only inside a budget that already exists, then fail loud. Example: control-store WAL negotiation
+  retries `SQLITE_BUSY` only within the connection's `busy_timeout` (`control_store.py::_enable_wal`).
+  Never add a retry loop that hides a failure or extends a budget.
 
 ## Hash-bound source bytes
 
@@ -97,11 +105,18 @@ Project-wide coding rules. Area files add their own detail and link here. The re
 
 ## Working style
 
-- Think before coding: state assumptions, surface trade-offs, ask when unclear.
-- Simplicity first: the minimum code that solves the problem; nothing speculative.
-- Surgical changes: touch only what the task needs; do not reformat or "improve" nearby code.
-- Goal-driven: define how success is checked (usually a failing test first), then make it pass.
-- Long form: `.claude/rules/00-karpathy.md`.
+- Think before coding: state assumptions, surface trade-offs and competing readings, push back when a
+  simpler way exists, and stop to ask when unclear.
+- Simplicity first: the minimum code that solves the problem; no unrequested features, configurability,
+  single-use abstractions or handling for impossible cases.
+- Surgical changes: touch only what the task needs; match the existing style; do not reformat or "improve"
+  nearby code. Remove only the orphans your change created; mention other dead code, do not delete it.
+- Goal-driven: define how success is checked (usually a failing test first), then make it pass. For
+  multi-step work state a short plan with a check per step.
+- One agent mutates the working tree per slice; others read or review.
+- Skills live in `.agents/skills/`: always `karpathy-guidelines` (the long form of this section); multi-file
+  work `incremental-implementation`; refactors `code-simplification`; merging `code-review-and-quality`;
+  claims of done `verification-before-completion`; nontrivial features `alpha-feature-workflow`.
 
 ## Checks and commits
 
@@ -112,3 +127,9 @@ Project-wide coding rules. Area files add their own detail and link here. The re
   [ADR-0039](../../adr/0039-ci-is-the-merge-gate.md)
 - One CI job locally: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
   `literature`, `qlib`, `eval`).
+- Step by step, with focused checks and owned test processes: [development loop](../../operations/development-loop.md).
+- CI passing changes no application authority: owner actions, approvals and promotion are unchanged by it.
+- A check result holds only for the exact tree and environment it ran on, with its command, exit and scope.
+  A linked test, a result from another tree or one reported by someone else is not a pass here.
+- Retire local code that duplicates an upstream capability only after a recorded value-level comparison,
+  dependency and licence review, and a tested migration and backout; until then keep the old route.

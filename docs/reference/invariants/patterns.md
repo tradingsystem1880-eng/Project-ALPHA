@@ -74,6 +74,11 @@ General rule: [research integrity § Decide at close, fill at next open](researc
   parity is pinned in `tests/oracles/test_differential_runs_test.py`. Change both or neither.
 - `vsa.rolling_ols_residual` has a pinned copy in `alpha_data.crypto.features`
   (`tests/unit/test_crypto_defi_tvl_feature.py`). Changing its closed form breaks that parity.
+- Undefined values are documented, not invented: `runs_z` is NaN when every sign agrees (zero variance);
+  `vsa_indicator` is 0.0 when the fit gate rejects the window; visibility graphs cap the window at
+  `MAX_VG_LOOKBACK` (500).
+- A harmonic pattern completes on its D bar (`confirmed_index == d`) and its position holds until the next
+  extreme is confirmed.
 
 ## Ports and provenance
 

@@ -37,6 +37,8 @@ workspaces. [ADR-0014](../../adr/0014-cli-owned-development-control-plane.md)
   transaction so they see one snapshot.
 - `_control_json.py` is a pure codec and `_control_schema.py` is static historical SQL; transactions, migrations and
   authority stay in `control_store.py`.
+- WAL negotiation (`_enable_wal`) retries only `SQLITE_BUSY`, outside a transaction, within the connection's
+  existing `busy_timeout`, then restores it; any other error or an exhausted budget raises.
 
 ## Schema migrations
 
@@ -66,7 +68,12 @@ workspaces. [ADR-0014](../../adr/0014-cli-owned-development-control-plane.md)
   hashes, is recorded once, and stays CLI-only (absent from REST and MCP).
   [ADR-0029](../../adr/0029-four-family-monte-carlo-validation.md)
 - Evidence is cited, revisioned and time-aware; experiment and version links must match immutable lineage.
-  [ADR-0015](../../adr/0015-evidence-ledger-not-agent-memory.md)
+  Each revision records `knowledge_at` separately from `market_data_cutoff`, and `evidence list --as-of` returns only
+  what was knowable at that cutoff. [ADR-0015](../../adr/0015-evidence-ledger-not-agent-memory.md)
+- `AgentBrief` (`project agent-brief`) filters selection, stage and link events by timestamp inside one read snapshot,
+  so a later holdout run, reveal, contamination or strategy selection never enters an earlier brief.
+- `project experiment` on a research-governed version must pass the exact `--research-contract-id` already bound to
+  that version; a missing or different id fails before the experiment is created.
 
 ## Owner authority
 
@@ -83,6 +90,8 @@ workspaces. [ADR-0014](../../adr/0014-cli-owned-development-control-plane.md)
   [ADR-0030](../../adr/0030-touch-id-owner-presence-for-research-actions.md) is partly superseded by ADR-0038.
 - `alpha owner-auth enroll|recover` is a trusted local ceremony; never expose it to MCP or generic jobs.
 - Owner confirmation grants no broker, order, holdout, paper-entry, risk-override or research-gate-override capability.
+- Owner-auth enrollment is optional: ordinary owner actions need only local confirmation, and a legacy
+  biometric enrollment never turns it into verified presence.
 
 ## Semantic event ledger
 

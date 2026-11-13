@@ -24,6 +24,8 @@ this file holds the command-line specifics.
   data. D2 is the one-shot sealed confirmation. D3 is the final holdout share; research never reads it.
 - Gate 1 is the D0 gate. It runs only the contract-bound canonical `double_bottom` detector with
   `second_trough_confirmable` availability (`research_runtime.py`). Other contracts may be drafted but fail before execution.
+- A completed D0 routes to `deep_research` only when the contract carries an `analysis_plan`; a legacy contract without
+  one goes straight to `research_decision` (`research_cmds._post_d0_route`). `decide` may still close early from D1.
 - Never let a runner read outside its assigned share. `research_d1.py` executes strictly inside D1; `research_d2.py`
   inside D2, and never materialises D3 into its data view. The 60/20/20 group-atomic split itself is owned by
   `alpha_research` and pinned by `tests/unit/test_research_d2_boundary.py`.
@@ -37,6 +39,9 @@ this file holds the command-line specifics.
   [ADR-0025](../../adr/0025-empirical-d1-research-runner-admission.md)
 - `draft-confirmation` derives the D2 contract mechanically from admitted clearing D1 evidence (one-variant primary family,
   direction, minimum effect, frozen 0.05/0.90 multiplicity) and fails loud on degenerate discovery intervals.
+  The confirmation contract must keep the exploration parent's D2 boundary hash (`control_store.py`).
+- `approve confirmation` is the owner act that authorises the sealed D2 share and enters `sealed_confirmation`. D2 needs
+  an `empirical_dataset` boundary authority; a synthetic acceptance boundary can never authorise it.
   [ADR-0026](../../adr/0026-d2-confirmation-readiness-gate-promotion-override.md)
 - A `revise` before D2 may reuse a D2 boundary only as `unopened_sealed_reuse`, and only while no D2 share in the
   project was ever authorised. Otherwise it must use `non_overlapping_future` or `external_replication` data with a
@@ -64,6 +69,9 @@ this file holds the command-line specifics.
   re-verification would depend on the reader's configuration. Crash recovery is exact re-execution to the same run id.
 - D0 completion is not a manifest boolean: the control plane re-checks the canonical `ResearchD0AcceptanceV1` bytes
   before admission and on every recovery, status and packet read (`validate_d0_acceptance_bytes`).
+- D2 reads its sealed share exactly once. A successful run consumes D2 and routes to `research_decision`.
+- The D2 classifier cannot yield INVALID from measurements: an under-powered run is NOT_TESTED with an INCONCLUSIVE
+  classification. INVALID arises only from contamination.
 - D1 runs publish under an EXPLORATORY watermark; D2 runs under REGISTERED CONFIRMATORY. Research runs carry no orders,
   fills, sizing or costs.
 - Statistical method rules: [research integrity § Statistical evidence](research-integrity.md#statistical-evidence).
@@ -77,7 +85,12 @@ this file holds the command-line specifics.
   owner-host identity. Stale-job reconciliation skips `research:event-study` jobs (`ControlStore`), and
   `alpha project job-status` refuses to set a terminal status on them (`project_cmds.py`).
 - Recovery reuses a prior D1 publication only after full immutable-artifact and evidence re-verification.
-- Active `cancel` only requests cancellation; ownership stays bound until checkpoint handling.
+- `run deep` journals its content-derived run id before analysis. Recovery finds failed journals by project plus exact
+  contract, stage and attempt in one SQLite read snapshot (`list_failed_d1_recovery_journals`), so unrelated job volume
+  cannot hide a match.
+- `cancel` on a bound job only requests cancellation; ownership stays bound until checkpoint handling. With no bound
+  job it refuses while D1 is queued, running or paused, or while a launch is unfinalised; otherwise it returns the case
+  to idle under an expected-state guard.
 
 ## Owner decisions
 
@@ -90,7 +103,8 @@ this file holds the command-line specifics.
   `promotion_readiness == "ready"`. A contaminated D2 can only be recorded as INVALID with revise, park or reject.
 - An early decision (D2 still sealed) may only be INCONCLUSIVE or INVALID with revise, park or reject. CONTRADICTED is
   always refused on that path; no code path yet accepts the lineage-bound non-synthetic evidence it would need.
-- Implementation drift or sealed-dataset byte drift contaminates D2 before the read; the only exit is INVALID.
+- Implementation drift, sealed-dataset byte drift, or any integrity error while loading the sealed share (snapshot
+  payload files are fully re-hashed) contaminates D2 before the read; the only exit is INVALID.
 
 ## Strategy promotion and overrides
 
@@ -107,18 +121,25 @@ this file holds the command-line specifics.
 
 - Readiness, scorecard, checklist, evidence hub and decision view are Python-authoritative projections
   (`research_gate_packet.py`, `research_readiness.py`). The scorecard reports enumerated states, never a numeric total.
+  Open cases project from the newest store-verified typed D1 or D2 evidence; untested sections say NOT_TESTED.
   [ADR-0027](../../adr/0027-tiered-research-readiness-semantics.md)
 - `status --json` carries `hypothesis_card` and `scorecard` as additive keys; the dossier-embedded
   `research_case_summary` shape never gains keys (its bytes are hash-pinned in the dossier).
 - Dossiers under `data_dir/research/projects/<project_id>/` are deterministic, tamper-checked projections. Never parse
   them back into control state; SQLite is the only mutable authority.
 - `research_study_status.py` and `study_semantic.py` are read-only and grant no authority.
+- Research protocols are git-owned under `.agents/skills/alpha-research-protocols/`. `research_protocols.py` checks
+  every file against its indexed hash and fails loud on drift; context packets cite `protocol_content_hash`.
 - `research compare` is the legacy multi-strategy backtest ranking; it is not a Research Case runner and gives no evidence.
 
 ## Research data and crypto research
 
 - `data register` binds a `research_only` `rd_<sha256>` reference to exact snapshot-manifest, provenance or QuantPad
-  receipt bytes; `data audit` findings feed only the data dimension. [ADR-0023](../../adr/0023-research-dataset-registration-and-quantpad-lane.md)
+  receipt bytes. `data audit` publishes an immutable EXPLORATORY `research_data_audit` run whose findings feed only the
+  data dimension. [ADR-0023](../../adr/0023-research-dataset-registration-and-quantpad-lane.md)
+- D1 and D2 load stock data only through `research_d1.load_registered_research_bars`: registered session-daily
+  (1440-minute) bars, each available at its session end. Duplicates, disorder, incoherent OHLC or a non-daily
+  registration fail loud, and QuantPad intraday loading is refused until retention and licensing evidence exist.
 - The crypto crowding lane re-verifies the bound qualified snapshot before every use (`research_crypto_binding.py`)
   and keeps the same mechanical-classification discipline as D1/D2. [ADR-0033](../../adr/0033-governed-crypto-crowding-research-and-sandbox-basis.md)
 - The hedged-basis development candidate is sandbox-only: `hedged_basis_paper_preflight` always returns BLOCKED with

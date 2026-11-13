@@ -14,7 +14,8 @@ its agent through deterministic platform probes and agent trajectory scenarios.
 ## Authority
 
 - Scores are diagnostic engineering evidence, never authority to promote research, trade or use capital.
-  `CLAUDE.md` lists the benchmark as advisory. [research integrity § Owner authority](research-integrity.md#owner-authority).
+  The benchmark is advisory ([tools/alpha-eval README](../../../tools/alpha-eval/README.md)).
+  [research integrity § Owner authority](research-integrity.md#owner-authority).
 - A platform validation PASS in a trial is not proof that a planted positive control is commercially
   executable; inspect fills, concentration, sample size and costs.
 - Do not fix platform defects to improve a campaign's scores; they are follow-up work.

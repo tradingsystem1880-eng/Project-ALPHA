@@ -30,6 +30,7 @@ read owner data, credentials or hidden tests.
 | [testing invariants](../docs/reference/invariants/testing.md) | Quant sweeps | changing mutation, semgrep, determinism or raise-cov |
 | [documentation invariants](../docs/reference/invariants/documentation.md) | Generated files | changing a generator |
 | [research integrity](../docs/reference/invariants/research-integrity.md) | Owner authority | changing `claude_hooks.py` |
+| [agent harness](../docs/operations/claude-code-harness.md) | — | changing agent hooks, deny rules or harness settings |
 | [research integrity](../docs/reference/invariants/research-integrity.md) | Protected and hidden tests | changing search, hooks or test selection |
 
 ## How to change it

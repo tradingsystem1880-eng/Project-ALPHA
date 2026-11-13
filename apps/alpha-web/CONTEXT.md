@@ -29,6 +29,7 @@ grants authority.
 | [web frontend invariants](../../docs/reference/invariants/web-frontend.md) | No authority in the browser | changing the browser app |
 | [web API invariants](../../docs/reference/invariants/web-api.md) | — | changing the backend or adding a route |
 | [web frontend invariants](../../docs/reference/invariants/web-frontend.md) | — | changing a panel, chart or the browser app |
+| [web research surfaces](../../docs/reference/invariants/web-research.md) | — | changing the assistant, investigations, rules, scans or Study tab |
 | [command line native](../../docs/reference/invariants/cli-native.md) | Results and inspection | showing a native job result (see `api/native_results.py`) |
 | [command line research](../../docs/reference/invariants/cli-research.md) | Projections and dossiers | showing research case state |
 | [command reference](../../docs/reference/commands.md) | — | finding the `alpha` command a route should call |

@@ -46,6 +46,26 @@ Lightweight Charts). The backend it talks to is covered in [web-api.md](web-api.
 - `shell/menuModel.ts` `GROUP_MENU` must name every CLI command group the server's catalog serves, and no others. An
   unmapped group throws and blanks the menu bar. Enforced by `tests/unit/test_web_menu_groups.py`.
 - Archive-chart identity belongs to `App`. Run, project, profile and stored-market navigation clear it.
+- A control no capability backs renders disabled with the reason in its `title`; never a silent no-op.
+- The toolbar status chip (`shell/statusModel.statusChip`) shows the strongest state: the selected run's research-gate
+  watermark verbatim, else `Research gate open` for the linked project (reason in `title`), else `Paper only`.
+- The project selector allows `No project — browse data`. A failed project inventory is shown as an error with retry,
+  never as an empty list.
+
+## Market data views
+
+- Market Watch lists only profile-compatible symbols present in the stored inventory. Clicking one opens the canonical
+  price chart and clears the date window, snapshot, run and archive context (`actions.openStoredMarket`).
+- The venue comes from the stored `provenance.source`; a missing or `unknown` source shows `—`, never a guessed name.
+  USD, USDT and USDC pairs are never merged ([data § Crypto identity and features](data.md#crypto-identity-and-features)).
+- Every price is dated (Age column); rows older than two days are dimmed and a symbol without bars shows `—`. Daily %
+  is a display change between the last two stored closes, not a metric.
+- The opt-in live ticker polls only while the tab is visible. A failed, non-finite or mismatched quote leaves the stored
+  close and its date in place.
+- `components/AssetSelect.tsx` defaults to the canonical stored inventory; archive navigation is opt-in. A manually typed
+  symbol is labelled `availability not verified` and is never treated as verified provider inventory.
+- The Data Manager shows the Expansion SSD state honestly: not mounted is a named blocker, never a cached ready.
+  `controlPlane.buildDataPullArgs` throws the date problem the CLI would reject.
 
 ## Charts
 
@@ -58,6 +78,13 @@ Lightweight Charts). The backend it talks to is covered in [web-api.md](web-api.
 - In `ChartWorkspace` (at most four panels) only the primary panel follows canonical market navigation. Comparison
   panels stay pinned, and changing a panel's source never changes canonical research context.
 - Keep chart creation separate from option, evidence and selection updates; fit/reset happens only on request.
+- Analytical panels default to the `scientific` (BokehJS) renderer; Lightweight Charts (`market`) is opt-in. The default
+  `chartStyle` is `classic` (`components/technical/`).
+- The technical chart spaces bars by observation. Where the series' own calendar (weekday or continuous) has no
+  observation it draws a gap mark; it never interpolates a bar.
+- Volume colouring uses exact native-index viewport intersections, including partly visible edge bars, and classifies
+  up/down against the previous close (an unchanged close counts as up). Keep the full x/volume source.
+- Price annotations keep unit isolation: only `unit: 'price'` annotations draw on the price pane.
 - Bokeh views own standalone documents. Release the views and the document/model registries on cancel, failure and
   disposal.
 - A canvas is invisible to a screen reader. Every canvas chart needs a real-markup alternative: `panels/ChartDataAlternative.tsx`
@@ -85,6 +112,8 @@ Lightweight Charts). The backend it talks to is covered in [web-api.md](web-api.
   error stays distinct from a genuinely empty trades list.
   Enforced by `e2e/rundetail-trades-race.spec.ts`.
 - `reportModel.summaryRows` shows recorded manifest values only (`not recorded` otherwise) — no client arithmetic.
+- `reportModel.reportTree` keeps empty leaves visible with their reason. In the figure overlay a Copy the browser cannot
+  do is disabled with the reason, and question, uncertainty and caveat prose stays in the DOM in both explain modes.
 - The backtest result card is opt-in (`backtestResultCard` defaults to `false`). With malformed, legacy or failed evidence
   it renders as unavailable. Enforced by `e2e/backtest-result-card.spec.ts`.
 
@@ -94,8 +123,8 @@ Lightweight Charts). The backend it talks to is covered in [web-api.md](web-api.
   by hand. `src/api/types.ts` gives readable aliases over its `components`.
 - Change the backend first, regenerate `openapi.json` (see [web-api.md § API contract](web-api.md#api-contract)), then
   regenerate the client and commit both. The frontend gate fails if `generated.ts` differs after regeneration.
-- The SPA owner-action union must match the server's closed action list
-  (`src/api/ownerActions.test.ts`, `tests/unit/test_web_owner_actions_drift.py`).
+- The SPA owner-action union must match the server's closed action list minus `record_semantic_event`, which the
+  browser never sends (`src/api/ownerActions.test.ts`, `tests/unit/test_web_owner_actions_drift.py`).
 
 ## Committed static bundle
 
@@ -120,6 +149,7 @@ Lightweight Charts). The backend it talks to is covered in [web-api.md](web-api.
 - Three specs are excluded from default discovery and run only as their own lanes through
   `scripts/run_frontend_browser_lanes.py`: `risk-metric-basis`, `risk-live`, `native-result-real`. Do not run them under
   the default config or add filters to the lane command.
+- Browser lanes run against a fresh build: `npm run build` before `npm run test:e2e:built` (the frontend gate's order).
 
 ## Adding a panel
 

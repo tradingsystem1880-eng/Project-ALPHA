@@ -34,7 +34,11 @@ their workspaces, and the private comparison-acquisition worker, all of which ar
 - Model tools are disabled; the prompt states the model has no tools or execution authority (`assistant_runtime.py`).
 - One inference runs at a time and is bounded by cancellation and a five-minute limit (`TIMEOUT_SECONDS = 300`).
 - The session's context hash is re-checked before a draft is used (`assistant_service.py`); a changed context fails.
+- A model reply must be exactly `text`, `citations` and `rule_draft`. Every citation must name a reference in the
+  server-built context, and a `rule_draft` must parse through `alpha_strategies.rules`; it stays a draft.
 - The session journal is separate from admitted research evidence.
+- A session created with `rules_sha256` fails context resolution, at creation and on every `check`, when
+  `alpha rules explain` reports a different hash for the saved rule; rerun the scan or choose the current rule.
 
 ## Cleanup and the global lock
 
@@ -45,7 +49,7 @@ their workspaces, and the private comparison-acquisition worker, all of which ar
 - Never send a destructive group signal after the leader is reaped, and never reuse a PID already reaped by
   `communicate()` to authorise another group signal.
 - If the OS cannot reap a group, cleanup stays blocked. That is fail-closed, not a promise that shutdown ends in five
-  minutes. Detached processes are not contained. Enforced by `tests/unit/test_assistant_cleanup.py`.
+  minutes. Detached processes, and an external kill of the watchdog itself, are not contained. Enforced by `tests/unit/test_assistant_cleanup.py`.
 
 ## Codex investigations
 

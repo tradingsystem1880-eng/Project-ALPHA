@@ -22,9 +22,19 @@ delivery states, the generated roadmap index, append-only records, and relative 
 
 - Living documents (`ARCHITECTURE.md`, `context/`, `governance/` hand-written files, `operations/`) are
   updated in place when behaviour changes (`docs/README.md`).
-- Records stay true as of their date: `BUILD-STATUS.md`, `build-status/`, `records/` and
-  `operations/retrospectives/` are appended to or left as-is, with path-only link fix-ups allowed. New
-  delivery records go at the end of `docs/BUILD-STATUS.md`; never rewrite earlier entries.
+- Research reports (`research/`) and dated specs and plans are rationale and intent: neither a
+  recommendation nor a `Completed` plan proves current behaviour. Read the accepted ADR, the code and a
+  fresh check result. A `verified` commit or resolving links show a document was checked, not that it is right.
+- Private research material (such as the owner's October 2026 research archive, kept outside the repository)
+  enters only as an owner-authorised, sanitised derivative with its own provenance, after checks for
+  credentials, identifiers, private conversations, owner data, licences and redistribution rights. A right
+  to keep material privately is not a right to publish it, and private verification grants no authority.
+- One home per fact: when behaviour changes, update the one document that owns the fact (see the table in
+  the root `CONTEXT.md`) and link to it from elsewhere; never copy a fact into a second file. There is no
+  manual to update and no delivery log to append to — history is git log and pull requests.
+- Records stay true as of their date: `records/` and `operations/retrospectives/` are appended to or left
+  as-is, with path-only link fix-ups allowed. `docs/BUILD-STATUS.md` and `build-status/` are frozen history:
+  never add to or rewrite them.
 - `archive/` is not edited.
 - Retrospectives are `docs/operations/retrospectives/YYYY-MM-DD-<slug>.md` with a `## Watch-outs` section.
 
@@ -52,7 +62,9 @@ delivery states, the generated roadmap index, append-only records, and relative 
 - Every plan, live or archived, has exactly one `**Delivery state:** <state>` line within its first 12 lines.
   States: `Completed`, `Implemented – qualification pending` (en dash), `In progress`, `Blocked`, `Planned`,
   `Superseded by <relative path>`. Text may follow after ` — `, `(`, `.`, `;`, `,` or a date.
-- Use `Completed` only for merged or BUILD-STATUS-accepted work (`.claude/rules/docs.md`).
+- Use `Completed` only for merged work (older plans may cite an acceptance recorded in `BUILD-STATUS.md`).
+- By convention the state line sits under the title, or on line 1 when a JSON block leads the file, and
+  reads `**Delivery state:** <state> — <evidence>` (the test checks only the first 12 lines).
 - A `Completed` or `Superseded` plan moves with `git mv` to `docs/superpowers/plans/archive/YYYY-MM/`, the
   month of its filename date; fix links to it. Only plans in `PINNED_FLAT` (`tests/unit/test_plan_schema.py`,
   mirrored in `docs/superpowers/plans/archive/README.md`) stay flat, because a file that cannot change names

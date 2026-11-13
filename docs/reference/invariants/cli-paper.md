@@ -26,6 +26,8 @@ the daily scheduler, readiness) and provider status. Project-wide rule:
   state into `RUN_DIRS`, `RunSpec`, run hashing or validation evidence.
   [ADR-0012](../../adr/0012-operational-paper-sessions.md)
 - Paper shares strategy code with research but never research identity; a paper result is never strategy evidence.
+- The journal (`paper_store.py`) is schema v2 (`local_sandbox`, `ibkr_paper`) and must keep reading schema-v1 Binance
+  sessions; event records publish atomically and are immutable, and readers recover an event published just before a crash.
 
 ## Crypto sandbox
 
@@ -35,6 +37,9 @@ the daily scheduler, readiness) and provider status. Project-wide rule:
   `breakout`); `rules` and `kronos` are refused (`_strategies.py`).
 - Binance supplies public data only; execution is the local Nautilus sandbox. Never construct Binance execution or
   accept real-order credentials (the data config sets `api_key=None`, `api_secret=None`).
+
+- `alpha paper preflight` and `alpha paper ibkr-preflight` build their configuration offline; they never connect or
+  place an order.
 
 ## IBKR Paper boundary
 

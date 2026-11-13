@@ -29,6 +29,10 @@ an ADR, never a quiet code change.
 - Universe membership and survivorship are point-in-time too: a symbol is only in the universe on
   dates it was listed. `tests/bias_guards/test_survivorship.py`.
 - Never add a bias guard without its leaky control, and never delete or loosen an existing guard.
+- Provider, venue, market type, unit and quote currency are part of a dataset's identity. No fallback or
+  join may silently swap one for another ([data § Crypto identity and features](data.md#crypto-identity-and-features)).
+- The query-level contracts for these reads are in the
+  [research platform contracts](../../operations/research-platform-contracts.md).
 
 ## Decide at close, fill at next open
 
@@ -86,6 +90,9 @@ an ADR, never a quiet code change.
 - Promotion to strategy work needs verified evidence and an owner decision. Never infer either.
 - Intraday research cannot become daily validation evidence.
   [ADR-0020](../../adr/0020-intraday-event-research-is-not-daily-validation-evidence.md)
+- Automated research and self-repair keep every attempt. A same-specification mechanical repair
+  stays on the same attempt line; a changed hypothesis, parameter or data choice is new, metered
+  research with its own selection and exposure cost, never a clean retry. Neither gives trading authority.
 
 ## Statistical evidence
 
@@ -99,7 +106,16 @@ an ADR, never a quiet code change.
   (metamorphic relation, known-truth calibration, or differential check) and a primary-source
   citation in its docstring.
 - Never compare floats with `==` in tests; tolerances come from documented statistical bounds.
+- A null or permutation test asks whether any edge exists; it is not a feature-importance measure.
+  Complexity or a presumed market inefficiency is not evidence of an edge, and compute or job
+  capacity is not trading capacity.
+- Every tried variant counts: failed, rejected and pruned trials stay in the ordered trial ledger
+  (`apps/alpha-cli/src/alpha_cli/_optim.py`). Renaming or re-splitting periods that were already
+  inspected never makes them untouched.
 - Passing numerical checks gives no research authority by itself.
+- Quant work cites primary sources. Edition, licence and page anchors follow the
+  [finance-math evidence guide](../../operations/finance-math-evidence.md); book metadata is not book text,
+  not governed evidence and not an ingestion.
 
 ## Models and isolated workers
 
@@ -111,18 +127,25 @@ an ADR, never a quiet code change.
   [ADR-0016](../../adr/0016-isolated-qlib-worker.md)
 - External integrations must prove their value first.
   [ADR-0011](../../adr/0011-evidence-gated-external-integrations.md)
+- Prefer pinned upstream Qlib, RD-Agent and NautilusTrader capabilities to writing equivalents, but an
+  upstream example, demo, default (such as a default fill model) or diagnostic is never ALPHA acceptance.
+  ALPHA keeps its clocks, fills, costs, accounting, trial records, provenance and canonical replay.
 
 ## Owner authority
 
 - Only the owner approves, decides, promotes or reveals a holdout. Agents, the web app, the MCP
-  server, model output and passing checks never carry that authority, and approvals are never
-  inferred.
+  server, model output, broker or account state and passing checks never carry that authority, and
+  approvals are never inferred — not from silence, a past approval, or a green check.
+- Owner authority flows only through the existing bounded owner-auth actions
+  (`apps/alpha-cli/src/alpha_cli/owner_auth.py`); never add another path. Which surface may do what is
+  listed in the generated [capability authority matrix](../../governance/capability-authority-matrix.md).
 - Owner actions need explicit local confirmation: an expiring, one-use token bound to the action,
   project, artefact, case revision, consequence and reason. It records local intent, not proof of
   human presence. [ADR-0038](../../adr/0038-local-confirmation-and-terminal-archive-charts.md)
 - Agent tools must never call the owner-action routes or start owner credential ceremonies; the
   `pre-owner-action-guard` hook in `scripts/claude_hooks.py` blocks them. Do not weaken it.
-- Drafts and advisory output (Codex, assistants, evaluations) confer no authority.
+- Drafts and advisory output (Codex, assistants, evaluations) confer no authority. Drift or
+  monitoring alerts never trigger an automatic refit, promotion or trade.
 
 ## No live capital
 
