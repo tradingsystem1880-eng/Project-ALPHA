@@ -163,13 +163,14 @@ positively routed here; self-owned retained/selector suites remain in default.
 Besides installed frontend/controller dependencies, this command needs Linux and
 explicit `ALPHA_RDAGENT_SOURCE` and `ALPHA_STOCK_PYTHON` selecting the existing
 pinned native source and its installed `runtime/venv/bin/python`. Its original
-validator remains authoritative. Missing selectors/assets fail before browser work;
-no installation or successful skip fallback is performed. Set the existing
+validator remains authoritative. Missing assets, or only one selector set, fail before
+browser work; no installation is performed. With neither selector set (hosted CI) the
+three asset-free lanes run and the native lane is reported as explicitly skipped. Set the existing
 `PLAYWRIGHT_BROWSERS_PATH` when the browser cache is not the Linux default. Native
 fixture descriptors and evidence are created by the original driver, never supplied
 from a prior run. See [development loop](../../../docs/operations/development-loop.md)
-for evidence paths and focused commands. Hosted CI must provide these native inputs;
-root Python/Node/Chromium provisioning alone does not satisfy the native lane.
+for evidence paths and focused commands. Hosted CI does not provide these native inputs,
+so CI runs never cover the native lane.
 
 The ordinary Playwright lane launches its own real backend at localhost:8802 and refuses to reuse an unknown server.
 Set `ALPHA_PLAYWRIGHT_PORT=8803` (or another free port) when another checkout is testing concurrently. The app store, bulk store and working directory are temporary; bars for SPY and BTC/USDT are

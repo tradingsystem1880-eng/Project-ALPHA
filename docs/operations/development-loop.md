@@ -103,7 +103,10 @@ runtime qualification. An explicit installed `PLAYWRIGHT_BROWSERS_PATH` survives
 native's fresh HOME; otherwise the current Linux cache is made explicit. No install,
 resolution or browser download is performed. The npm uv launcher uses
 `--offline --no-python-downloads --no-sync`; child uv calls inherit equivalent
-controls. Missing inputs fail before any lane.
+controls. Missing inputs fail before any lane. When neither native selector is set
+(e.g. hosted CI), the other three lanes still run and the runner prints
+`native lane skipped: ALPHA_RDAGENT_SOURCE/ALPHA_STOCK_PYTHON not provisioned`;
+setting only one selector, or an invalid one, still fails.
 
 Fresh selection reports come from the original Playwright configs and retain every
 configured project repetition and existing performance opt-in. Execution must return

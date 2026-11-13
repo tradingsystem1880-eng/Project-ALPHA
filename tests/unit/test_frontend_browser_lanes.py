@@ -133,7 +133,7 @@ def installed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, di
 
 @pytest.mark.parametrize("key", ["ALPHA_RDAGENT_SOURCE", "ALPHA_STOCK_PYTHON"])
 @pytest.mark.parametrize("value", [None, "", " "])
-def test_empty_native_selector_fails_before_children(
+def test_one_missing_native_selector_fails_before_children(
     installed: tuple[Path, dict[str, str]],
     key: str,
     value: str | None,
@@ -377,6 +377,105 @@ def test_fixed_routes_fresh_paths_raw_build_and_honest_aggregation(
         assert native[2]["ALPHA_RDAGENT_SOURCE"] == env["ALPHA_RDAGENT_SOURCE"]
         assert native[2]["ALPHA_NATIVE_WEB_EVIDENCE"] == str(directory / "native/evidence")
         assert "ALPHA_STOCK_RECEIPTS" not in native[2]
+
+
+def test_provisioned_native_is_not_reported_skipped(
+    installed: tuple[Path, dict[str, str]],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    root, env = installed
+    stub_children(monkeypatch)
+    directory = lanes.run(root, env, tmp_path)
+    summary = json.loads((directory / "summary.json").read_text())
+    assert "skipped_lanes" not in summary
+    assert "native lane skipped" not in capsys.readouterr().out
+
+
+def unprovision(env: dict[str, str], value: str | None) -> dict[str, str]:
+    for key in lanes.NATIVE_SELECTORS:
+        if value is None:
+            env.pop(key)
+        else:
+            env[key] = value
+    return env
+
+
+@pytest.mark.parametrize("value", [None, "", " "])
+def test_unprovisioned_native_runs_asset_free_lanes_and_reports_skip(
+    installed: tuple[Path, dict[str, str]],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    value: str | None,
+) -> None:
+    root, env = installed
+    unprovision(env, value)
+    calls = stub_children(monkeypatch)
+    directory = lanes.run(root, env, tmp_path)
+    out = capsys.readouterr().out
+    assert out.count(lanes.NATIVE_SKIPPED) == 1
+    assert "native lane skipped: ALPHA_RDAGENT_SOURCE/ALPHA_STOCK_PYTHON not provisioned" in out
+    assert len(calls) == 8  # browser prereq, three listings, three browsers, risk-live build
+    assert not any("pytest" in cmd or "StockFixtureLaunch" in " ".join(cmd) for cmd, _, _ in calls)
+    run_commands = [cmd for cmd, _, _ in calls if "--output" in cmd]
+    assert [Path(cmd[cmd.index("--config") + 1]).name for cmd in run_commands] == [
+        "playwright.config.ts",
+        "playwright.risk-basis.config.ts",
+        "playwright.risk-live.config.ts",
+    ]
+    summary = json.loads((directory / "summary.json").read_text())
+    assert summary["status"] == "passed"
+    assert summary["completed_lanes"] == ["default", "risk-basis", "risk-live"]
+    assert summary["skipped_lanes"] == {"native": lanes.NATIVE_SKIPPED}
+    assert not (directory / "native").exists()
+
+
+def test_unprovisioned_native_skips_only_native_inputs(
+    installed: tuple[Path, dict[str, str]],
+) -> None:
+    root, env = installed
+    runtime = Path(env["ALPHA_STOCK_PYTHON"]).parents[2]
+    unprovision(env, None)
+    shutil.rmtree(runtime)
+    assert (
+        not {"ALPHA_RDAGENT_SOURCE", "ALPHA_STOCK_PYTHON"} & lanes.prerequisites(root, env).keys()
+    )
+    (root / "apps/alpha-web/frontend/node_modules/vite/bin/vite.js").unlink()
+    with pytest.raises(ValueError, match="Required installed input"):
+        lanes.prerequisites(root, env)
+
+
+@pytest.mark.parametrize("fail_at", range(1, 9))
+def test_unprovisioned_child_failure_prevents_aggregate_pass(
+    installed: tuple[Path, dict[str, str]],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fail_at: int,
+) -> None:
+    root, env = installed
+    unprovision(env, "")
+    calls = stub_children(monkeypatch, fail_at=fail_at)
+    with pytest.raises(RuntimeError, match="controlled child failure"):
+        lanes.run(root, env, tmp_path)
+    assert len(calls) == fail_at
+    summary = json.loads(next(tmp_path.glob("alpha-browser-lanes-*/summary.json")).read_text())
+    assert summary["status"] == "failed" and "risk-live" not in summary["completed_lanes"]
+
+
+@pytest.mark.parametrize("bad", ["relative/source", "/missing/source"])
+def test_set_but_invalid_native_selector_still_fails(
+    installed: tuple[Path, dict[str, str]],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    bad: str,
+) -> None:
+    root, env = installed
+    env["ALPHA_RDAGENT_SOURCE"] = bad
+    monkeypatch.setattr(lanes, "run_child", lambda *args: pytest.fail("must not start child"))
+    with pytest.raises(ValueError, match="ALPHA_RDAGENT_SOURCE must name"):
+        lanes.run(root, env, tmp_path)
 
 
 @pytest.mark.parametrize("fail_at", range(1, 11))

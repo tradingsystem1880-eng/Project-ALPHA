@@ -2,6 +2,8 @@
 
 Requires already installed assets. Every run retains fresh evidence outside source;
 failed prerequisites or a skipped native driver never count as aggregate success.
+When neither native selector is set (e.g. CI), the three asset-free lanes still run
+and the native lane is reported as explicitly skipped; a half-set selector fails.
 """
 
 from __future__ import annotations
@@ -23,6 +25,16 @@ HANDOFFS = ("risk-metric-basis.spec.ts", "risk-live.spec.ts", "native-result-rea
 NATIVE_CLASS = "tests.unit.test_native_result_web.NativeWebJourney"
 NATIVE_METHOD = "test_built_spa_reads_native_owner_receipt_without_interception"
 NATIVE_NODE = f"tests/unit/test_native_result_web.py::NativeWebJourney::{NATIVE_METHOD}"
+NATIVE_SELECTORS = ("ALPHA_RDAGENT_SOURCE", "ALPHA_STOCK_PYTHON")
+NATIVE_SKIPPED = "native lane skipped: ALPHA_RDAGENT_SOURCE/ALPHA_STOCK_PYTHON not provisioned"
+
+
+def native_provisioned(env: dict[str, str]) -> bool:
+    """Both selectors set: native runs. Neither: native is skipped. One: misconfiguration."""
+    missing = [name for name in NATIVE_SELECTORS if not env.get(name, "").strip()]
+    if len(missing) == 1:
+        raise ValueError(f"Required installed selector is missing or empty: {missing[0]}")
+    return not missing
 
 
 def prerequisites(root: Path, inherited: dict[str, str]) -> dict[str, str]:
@@ -30,21 +42,19 @@ def prerequisites(root: Path, inherited: dict[str, str]) -> dict[str, str]:
     if sys.platform != "linux":
         raise ValueError("Browser lanes require Linux retained-child ownership")
     env = dict(inherited)
-    for name in ("ALPHA_RDAGENT_SOURCE", "ALPHA_STOCK_PYTHON"):
-        if not env.get(name, "").strip():
-            raise ValueError(f"Required installed selector is missing or empty: {name}")
-    source = Path(env["ALPHA_RDAGENT_SOURCE"])
-    python = Path(env["ALPHA_STOCK_PYTHON"])
-    if not source.is_absolute() or not (source / "rdagent").is_dir():
-        raise ValueError("ALPHA_RDAGENT_SOURCE must name an existing absolute source root")
-    if not python.is_absolute() or python.parts[-3:] != ("venv", "bin", "python"):
-        raise ValueError("ALPHA_STOCK_PYTHON must name the installed runtime/venv/bin/python")
-    runtime = python.parents[2]
+    native: tuple[Path, ...] = ()
+    if native_provisioned(env):
+        source = Path(env["ALPHA_RDAGENT_SOURCE"])
+        python = Path(env["ALPHA_STOCK_PYTHON"])
+        if not source.is_absolute() or not (source / "rdagent").is_dir():
+            raise ValueError("ALPHA_RDAGENT_SOURCE must name an existing absolute source root")
+        if not python.is_absolute() or python.parts[-3:] != ("venv", "bin", "python"):
+            raise ValueError("ALPHA_STOCK_PYTHON must name the installed runtime/venv/bin/python")
+        runtime = python.parents[2]
+        native = (python, runtime / "dependencies.lock.txt", runtime / "venv/pyvenv.cfg")
     frontend = root / "apps/alpha-web/frontend"
     for path in (
-        python,
-        runtime / "dependencies.lock.txt",
-        runtime / "venv/pyvenv.cfg",
+        *native,
         frontend / "node_modules/@playwright/test/cli.js",
         frontend / "node_modules/vite/bin/vite.js",
         frontend / "e2e/fixtures/riskMetricBasis.json",
@@ -53,8 +63,8 @@ def prerequisites(root: Path, inherited: dict[str, str]) -> dict[str, str]:
     ):
         if not path.is_file():
             raise ValueError(f"Required installed input is absent: {path}")
-    if not os.access(python, os.X_OK):
-        raise ValueError(f"Native interpreter is not executable: {python}")
+    if native and not os.access(native[0], os.X_OK):
+        raise ValueError(f"Native interpreter is not executable: {native[0]}")
     # Direct Python and the existing configs' `python`, `alpha`, and `uv run python`
     # must resolve the current controller, never an older editable checkout.
     env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", os.defpath)
@@ -222,25 +232,30 @@ def run(root: Path, inherited: dict[str, str], output_parent: Path) -> Path:
     print(f"Browser lane evidence: {run_dir}", flush=True)
     try:
         env = prerequisites(root, inherited)
+        native = native_provisioned(env)
+        if not native:
+            summary["skipped_lanes"] = {"native": NATIVE_SKIPPED}
+            print(NATIVE_SKIPPED, flush=True)
         frontend = root / "apps/alpha-web/frontend"
         node = shutil.which("node", path=env["PATH"])
         assert node is not None
         # Validate the native pin with the existing implementation, without a
         # fixture, worker launch, owner store, model invocation or duplicate policy.
-        run_child(
-            [
-                sys.executable,
-                "-c",
-                "import os; from pathlib import Path; "
-                "from alpha_cli._native_stock_launch import StockFixtureLaunch; "
-                "StockFixtureLaunch(Path(os.environ['ALPHA_RDAGENT_SOURCE']), 'resume', "
-                "stock_runtime=Path(os.environ['ALPHA_STOCK_PYTHON']).parents[2])",
-            ],
-            root,
-            env,
-            run_dir / "native-prerequisites.log",
-            root,
-        )
+        if native:
+            run_child(
+                [
+                    sys.executable,
+                    "-c",
+                    "import os; from pathlib import Path; "
+                    "from alpha_cli._native_stock_launch import StockFixtureLaunch; "
+                    "StockFixtureLaunch(Path(os.environ['ALPHA_RDAGENT_SOURCE']), 'resume', "
+                    "stock_runtime=Path(os.environ['ALPHA_STOCK_PYTHON']).parents[2])",
+                ],
+                root,
+                env,
+                run_dir / "native-prerequisites.log",
+                root,
+            )
         run_child(
             [
                 node,
@@ -330,19 +345,20 @@ def run(root: Path, inherited: dict[str, str], output_parent: Path) -> Path:
             if validate_browser_report(report, frontend, config, file) != selections[lane]:
                 raise ValueError(f"Browser execution differs from its fresh selection: {lane}")
             summary["completed_lanes"].append(lane)
-        native = run_dir / "native"
-        native.mkdir()
-        native_env = {**env, "ALPHA_NATIVE_WEB_EVIDENCE": str(native / "evidence")}
-        report = native / "junit.xml"
-        run_child(
-            [sys.executable, "-m", "pytest", "-q", NATIVE_NODE, f"--junitxml={report}"],
-            root,
-            native_env,
-            native / "run.log",
-            root,
-        )
-        validate_native_report(report)
-        summary["completed_lanes"].append("native")
+        if native:
+            native_dir = run_dir / "native"
+            native_dir.mkdir()
+            native_env = {**env, "ALPHA_NATIVE_WEB_EVIDENCE": str(native_dir / "evidence")}
+            report = native_dir / "junit.xml"
+            run_child(
+                [sys.executable, "-m", "pytest", "-q", NATIVE_NODE, f"--junitxml={report}"],
+                root,
+                native_env,
+                native_dir / "run.log",
+                root,
+            )
+            validate_native_report(report)
+            summary["completed_lanes"].append("native")
         summary["status"] = "passed"
     except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
         summary["error"] = str(exc)
