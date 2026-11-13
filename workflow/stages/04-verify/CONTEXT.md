@@ -5,7 +5,7 @@ sources:
   - scripts/harness_models.py
   - docs/roadmap/capabilities.toml
   - .claude/agents/*.md
-verified: debb8136
+verified: 00f70c232ea5
 ---
 
 # Stage 04 — verify: prove it works

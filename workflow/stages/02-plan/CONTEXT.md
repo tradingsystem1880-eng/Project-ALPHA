@@ -5,7 +5,7 @@ sources:
   - scripts/harness_awareness.py
   - tests/unit/test_plan_schema.py
   - docs/roadmap/capabilities.toml
-verified: debb8136
+verified: 00f70c232ea5
 ---
 
 # Stage 02 — plan: brief to plan

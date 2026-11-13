@@ -6,7 +6,7 @@ sources:
   - tests/unit/test_plan_schema.py
   - tests/unit/test_filesystem_contract.py
   - docs/roadmap/wip-limit.json
-verified: debb8136
+verified: 00f70c232ea5
 ---
 
 # Delivery pipeline — how a change gets made

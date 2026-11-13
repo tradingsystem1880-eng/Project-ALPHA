@@ -6,7 +6,7 @@ sources:
   - docs/roadmap/capabilities.toml
   - scripts/roadmap_index.py
   - scripts/status.py
-verified: debb8136
+verified: 00f70c232ea5
 ---
 
 # Stage 05 — land: pull request to merged and closed
