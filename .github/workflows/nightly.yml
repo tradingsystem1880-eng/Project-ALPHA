@@ -1,9 +1,11 @@
 name: Nightly quant rigor
 
-# The whole-repo sweeps that are informational per commit: semgrep over every file, the
-# determinism double-run and raise-site coverage. The full mutation sweep moved to
+# The nightly tier: whole-repo sweeps that are informational per commit (semgrep over every file,
+# the determinism double-run, raise-site coverage), every slow oracle, and the browser journeys
+# at all four viewports (pull requests run one). The full mutation sweep moved to
 # `mutation-weekly.yml` (owner decision 2026-10-08): run serially it exceeded GitHub's 6-hour job
 # limit, and one job per module every night would exceed the private repository's Actions minutes.
+# docs/reference/checks.md lists every check and the tier it runs in.
 
 on:
   schedule:
@@ -27,12 +29,7 @@ jobs:
       - uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v8.2.0
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - name: Install (locked)
-        run: uv sync --locked
+      - uses: ./.github/actions/setup
       - name: Semgrep (whole repo)
         run: uv run python scripts/gate.py semgrep
       - name: Determinism double-run (perturbed PYTHONHASHSEED / TZ, fresh processes)
@@ -41,6 +38,29 @@ jobs:
       # paid down; switch to `raise-cov --fail` once the list is empty.
       - name: Raise-site coverage (lists unexercised raise sites in quant modules)
         run: uv run python scripts/gate.py raise-cov
+
+  slow-oracles:
+    # Every known-truth calibration and coverage oracle. Pull requests run them only when they
+    # touch quant-tier source (the `quant` job in ci.yml).
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: ./.github/actions/setup
+      - name: Slow oracles
+        run: uv run python scripts/run_owned_test.py -- uv run pytest -q -m slow_oracle
+
+  frontend-full:
+    # The browser journeys at all four viewports, plus everything the pull-request frontend job runs.
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: ./.github/actions/setup
+        with:
+          playwright: "true"
+      - name: Shared frontend gate, every viewport
+        run: uv run python scripts/gate.py component frontend-full
 
   # The existing default-branch dispatcher can exercise the new reusable sweep before merge.
   # Scheduled nightlies keep their ordinary checks and never opt into mutation.

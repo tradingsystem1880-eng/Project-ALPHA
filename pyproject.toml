@@ -57,6 +57,7 @@ dev = [
     "pytest-cov>=6",
     "pytest-xdist>=3.6",
     "httpx2>=0.1",
+    "diff-cover==11.0.1",
 ]
 
 [tool.ruff]
@@ -165,10 +166,17 @@ omit = [
 ]
 
 [tool.coverage.report]
-fail_under = 93
+# No global floor: CI reports the whole-suite figure and gates changed lines instead
+# ([tool.diff_cover] below, docs/reference/checks.md).
 precision = 2
 show_missing = true
 skip_covered = true
+
+[tool.diff_cover]
+# Changed lines of product source in a pull request must be at least this covered. The number
+# is guarded by `gate.py lint-harness` against .claude/harness-baseline.json.
+fail_under = 85
+include = ["packages/*/src/**/*.py", "apps/*/src/**/*.py"]
 
 [tool.importlinter]
 root_packages = [
