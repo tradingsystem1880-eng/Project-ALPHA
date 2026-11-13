@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -152,21 +154,30 @@ def test_v2_provenance_is_explicit_and_v1_diagnostics_remain_legacy() -> None:
     assert "proxy" in native["vwap_source"]
 
 
-def test_native_correction_does_not_register_providers_or_change_numpy_error_mode() -> None:
-    import qlib
-    from qlib.config import C
-    from qlib.data import data
-
-    assert qlib.__version__ == "0.9.7"
-    assert C.registered is False
-    before = np.geterr()
-    build_features(panel(), version=2)
-    assert np.geterr() == before
-    assert C.registered is False
-    assert all(
-        vars(getattr(data, key)).get("_provider") is None
-        for key in ("Cal", "Inst", "FeatureD", "PITD", "ExpressionD", "DatasetD", "D")
-    )
+def test_native_correction_does_not_register_providers_or_change_numpy_error_mode(
+    tmp_path: Path,
+) -> None:
+    # A fresh process: other worker tests legitimately initialise Qlib's recorder runtime.
+    source = tmp_path / "panel.parquet"
+    panel().write_parquet(source)
+    script = f"""
+import numpy as np, polars as pl
+import qlib
+from qlib.config import C
+from qlib.data import data
+from alpha_qlib_worker.feature_recipes import build_features
+assert qlib.__version__ == "0.9.7"
+assert C.registered is False
+before = np.geterr()
+build_features(pl.read_parquet({str(source)!r}), version=2)
+assert np.geterr() == before
+assert C.registered is False
+assert all(
+    vars(getattr(data, key)).get("_provider") is None
+    for key in ("Cal", "Inst", "FeatureD", "PITD", "ExpressionD", "DatasetD", "D")
+)
+"""
+    subprocess.run([sys.executable, "-c", script], check=True, timeout=300)
 
 
 # Legacy v1/v2 golden values. Recorded on the reference machine from code whose byte digests
