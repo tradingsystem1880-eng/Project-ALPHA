@@ -28,18 +28,28 @@ _WORKER_SOURCES = (
     "fit_provenance.py",
 )
 _FEATURE_CORRECTION_SOURCES = ("feature_recipes.py", "native_feature_corrections.py")
+# Feature recipe v3 (upstream Alpha158) adds one module on top of the nine-file inventory.
+_UPSTREAM_FEATURE_SOURCES = ("upstream_alpha158.py",)
 
 
 def _worker_source_names(worker: Path) -> tuple[str, ...]:
-    # A preserved pre-correction worker has neither new module. Never reinterpret its
-    # frozen seven-file inventory, or tolerate a partially missing new implementation.
-    present = [
-        os.path.lexists(worker / "src" / "alpha_qlib_worker" / name)
-        for name in _FEATURE_CORRECTION_SOURCES
-    ]
-    if any(present) and not all(present):
+    # Frozen inventories are never reinterpreted: 7 files (pre-correction worker), 9 files
+    # (feature v2 worker) or 10 files (feature v3 worker). Each tier strictly extends the
+    # previous one; a partially present tier is an incomplete implementation and fails.
+    def present(names: tuple[str, ...]) -> list[bool]:
+        return [os.path.lexists(worker / "src" / "alpha_qlib_worker" / name) for name in names]
+
+    correction = present(_FEATURE_CORRECTION_SOURCES)
+    if any(correction) and not all(correction):
         raise MLContractError("worker has an incomplete feature correction source inventory")
-    return _WORKER_SOURCES + (_FEATURE_CORRECTION_SOURCES if all(present) else ())
+    upstream = present(_UPSTREAM_FEATURE_SOURCES)
+    if all(upstream) and not all(correction):
+        raise MLContractError("worker has an incomplete upstream feature source inventory")
+    return (
+        _WORKER_SOURCES
+        + (_FEATURE_CORRECTION_SOURCES if all(correction) else ())
+        + (_UPSTREAM_FEATURE_SOURCES if all(upstream) else ())
+    )
 
 
 _GENERATOR_SOURCES = ("refit_harness.py", "test_fake_worker.py")
@@ -428,6 +438,10 @@ def plan_refit(
         request = validated.request
         if request["feature_recipe"]["version"] == 2 and source_names == _WORKER_SOURCES:
             raise MLContractError("feature recipe v2 requires the expanded worker source inventory")
+        if request["feature_recipe"]["version"] == 3 and not set(_UPSTREAM_FEATURE_SOURCES) <= set(
+            source_names
+        ):
+            raise MLContractError("feature recipe v3 requires the upstream worker source inventory")
         if request["schema_version"] != 3 or request["model"] != protocol["model"]:
             raise MLContractError("refit plan requires the frozen schema3 model recipe")
         if request["worker_lock_hash"] != protocol["worker_lock_sha256"]:

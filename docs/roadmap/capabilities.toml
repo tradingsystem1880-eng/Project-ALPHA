@@ -713,16 +713,18 @@ entry_points = [
 proof_synthetic = [
   "tests/integration/test_ml_cli.py::test_offline_ml_cli_round_trip",
 ]
+proof_smoke = [
+  "tests/smoke/test_ml_smoke.py::test_ml_upstream_alpha158_train_import_evaluate_replay",
+]
 real_data = "not yet confirmed (to check on the Mac later)"
-needs = ["the Qlib worker setup (not installed on this computer)"]
-state = "Partial"
-missing = "proved only with a stand-in worker"
+needs = []
+state = "Working"
 plans = []
 
 [[capability]]
 id = "alpha158-v2"
 name = "Corrected Alpha158 price features"
-what = "Opt in to a corrected version of the standard Alpha158 feature set; 40 of its 158 columns now match upstream Qlib."
+what = "Opt in to a corrected version of the standard Alpha158 feature set; 40 of its 158 columns now match upstream Qlib. Superseded by version 3 for new work; kept to reproduce stored results."
 see_it = ["set feature_recipe_version: 2 in an ML stage config used by alpha ml …"]
 entry_points = [
   "cli: alpha ml prepare",
@@ -730,12 +732,34 @@ entry_points = [
 ]
 proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
-needs = ["the Qlib worker setup (not installed on this computer)"]
+needs = []
 state = "Partial"
-missing = "no ML run with version 2; final review pending"
+missing = "no ML run with version 2; superseded by version 3 (kept for stored results)"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; opt-in correctness fix
 triage = { card = "11", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = ["2026-11-09-alpha158-versioned-correction"]
+
+[[capability]]
+id = "alpha158-v3"
+name = "Upstream Alpha158 price features"
+what = "Opt in to Alpha158 features and fold normalisation computed entirely by upstream Qlib, proven equal to Qlib's own Alpha158 handler; version 1 stays the default until the normalisation settings are measured on real data and you switch it."
+see_it = ["set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec"]
+entry_points = [
+  "cli: alpha ml prepare",
+  "cli: alpha ml train",
+  "code: workers/qlib/src/alpha_qlib_worker/upstream_alpha158.py",
+]
+proof_synthetic = [
+  "workers/qlib/tests/test_upstream_alpha158.py::test_v3_equals_upstream_provider_and_alpha158_handler_for_all_158_columns",
+  "workers/qlib/tests/test_upstream_alpha158.py::test_v3_processors_fit_on_training_rows_only",
+]
+proof_smoke = [
+  "tests/smoke/test_ml_smoke.py::test_ml_upstream_alpha158_train_import_evaluate_replay",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
 
 [[capability]]
 id = "qlib-refit"
@@ -746,10 +770,7 @@ see_it = ["uv run alpha ml refit-plan …, uv run alpha ml refit-status … (pla
 entry_points = ["cli: alpha ml refit-plan", "cli: alpha ml refit-status"]
 proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
-needs = [
-  "the Qlib worker setup (not installed on this computer)",
-  "reviewed statistics modules that do not exist yet",
-]
+needs = ["reviewed statistics modules that do not exist yet"]
 state = "Shelved"
 missing = "shelved 2026-11-14: not wired into any fit; kept for Qlib fold retraining once the reviewed statistics modules exist"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept for Qlib fold retraining
@@ -789,9 +810,9 @@ entry_points = [
 ]
 proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
-needs = ["the Qlib worker setup, to re-create the pipeline demo"]
+needs = []
 state = "Shelved"
-missing = "shelved 2026-11-14: made-up prices only, not a production path; kept as a demonstration that Qlib and Nautilus connect"
+missing = "shelved 2026-11-14: made-up prices only, not a production path; kept as a demonstration that Qlib and Nautilus connect (it re-ran on this computer on 2026-11-14)"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept as a made-up-data demonstration
 triage = { card = "F", recommendation = "SHELVE", owner_decision = "SHELVE" }
 plans = []
