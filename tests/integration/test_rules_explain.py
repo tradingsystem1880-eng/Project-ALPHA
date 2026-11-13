@@ -118,6 +118,49 @@ def test_unknown_saved_rule_never_becomes_flat(
     assert response.json()["error"]
 
 
+def test_unsaved_rule_error_redacts_private_store_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seed(tmp_path, monkeypatch)
+    response = TestClient(create_app()).post(
+        "/api/rules/evaluate", json={"rules_id": "absent", "symbol": "SPY"}
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["signal"] is None
+    assert "no saved rule" in payload["error"]
+    assert "[redacted-path]" in payload["error"]
+    assert str(tmp_path) not in payload["error"]
+
+
+def test_relay_passes_null_error_through(monkeypatch: pytest.MonkeyPatch) -> None:
+    from alpha_web.api import rules as routes
+
+    payload = {
+        "schema_version": 1,
+        "rules_id": "checklist",
+        "rules_sha256": None,
+        "symbol": "SPY",
+        "as_of": None,
+        "bar_ts": None,
+        "signal": None,
+        "conditions": [],
+        "error": None,
+        "authority": "none",
+    }
+
+    def succeeded(*args: object, **kwargs: object) -> dict[str, object]:
+        return payload
+
+    monkeypatch.setattr(routes, "_run_json", succeeded)
+    response = TestClient(create_app()).post(
+        "/api/rules/evaluate", json={"rules_id": "checklist", "symbol": "SPY"}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["error"] is None
+    assert response.json() == payload
+
+
 @pytest.mark.bias_guard
 def test_explanation_ignores_future_poison_with_leaky_control(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
