@@ -6,8 +6,9 @@ which it was last ``verified``. A generated document declares ``generated_by`` i
 ``owner``/``verified``; its freshness is checked by its generator, so it is skipped here.
 
 ``stale`` reports every document whose sources were changed by a commit after ``verified``
-(changes to the document itself do not count). It is a report: problems that make the check
-impossible (a glob matching no tracked file, an unknown commit) are listed separately.
+(changes to the file system's own documents do not count). It is a report: problems that
+make the check impossible (a glob matching no tracked file, an unknown commit)
+are listed separately.
 Read-only; standard library only.
 """
 
@@ -119,13 +120,15 @@ def living_documents(root: Path) -> dict[str, dict[str, str | list[str]]]:
         try:
             meta = front_matter(path.read_text(encoding="utf-8"))
         except FrontMatterError:
-            meta = {"owner": "", "sources": [], "verified": ""}
+            continue  # Not a file-system document (other tools' YAML); the contract test owns ours.
         if meta is not None and "owner" in meta and "verified" in meta:
             found[rel] = meta
     return found
 
 
-def check_document(root: Path, rel: str, meta: dict[str, str | list[str]]) -> Report:
+def check_document(
+    root: Path, rel: str, meta: dict[str, str | list[str]], documents: tuple[str, ...] = ()
+) -> Report:
     verified = meta.get("verified", "")
     sources = meta.get("sources", [])
     report = Report(rel, verified if isinstance(verified, str) else "")
@@ -140,7 +143,9 @@ def check_document(root: Path, rel: str, meta: dict[str, str | list[str]]) -> Re
         report.problems.append(f"'verified' is not a known commit: {report.verified or '(empty)'}")
     if report.problems:
         return report
-    specs = [*pathspecs(sources), f":(exclude){rel}"]
+    # Edits to file-system documents themselves (this one, or a routing file inside a source
+    # tree) do not make a document stale: they are prose, checked by the link and contract tests.
+    specs = [*pathspecs(sources), *(f":(exclude){doc}" for doc in sorted({rel, *documents}))]
     report.changed_files = [
         p
         for p in git(root, "diff", "--name-only", f"{commit}..HEAD", "--", *specs).splitlines()
@@ -154,7 +159,9 @@ def check_document(root: Path, rel: str, meta: dict[str, str | list[str]]) -> Re
 
 def stale(root: Path) -> list[Report]:
     """One report per living document, in path order."""
-    return [check_document(root, rel, meta) for rel, meta in sorted(living_documents(root).items())]
+    documents = living_documents(root)
+    names = tuple(documents)
+    return [check_document(root, rel, meta, names) for rel, meta in sorted(documents.items())]
 
 
 def render_text(reports: list[Report]) -> str:

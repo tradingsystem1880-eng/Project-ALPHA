@@ -109,3 +109,16 @@ def test_cli_exit_codes_and_json(repo: Path, capsys: pytest.CaptureFixture[str])
     assert row["path"] == "docs/a.md" and row["changed_files"] == 1
     _commit(repo, {"docs/b.md": _doc(base, "nothing/**")}, "broken doc")
     assert fs.main(["--root", str(repo), "stale"]) == 1
+
+
+def test_other_documents_and_foreign_front_matter_do_not_count(repo: Path) -> None:
+    base = _commit(
+        repo,
+        {"workers/a/src/x.py": "", ".claude/agents/r.md": "---\nname: r\n  bad: [\n---\n# R\n"},
+        "code",
+    )
+    _commit(repo, {"docs/w.md": _doc(base, "workers/**")}, "doc")
+    _commit(repo, {"workers/a/CONTEXT.md": _doc(base, "workers/a/src/**")}, "routing file")
+    reports = fs_stale.stale(repo)
+    assert [r.path for r in reports] == ["docs/w.md", "workers/a/CONTEXT.md"]
+    assert all(not r.changed_files and not r.problems for r in reports)
