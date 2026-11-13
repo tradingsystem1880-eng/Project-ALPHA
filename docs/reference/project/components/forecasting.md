@@ -49,8 +49,11 @@ See the capability below on [STATUS.md](../../../../STATUS.md).
 ## Decisions and open questions
 
 - No owner decision about this part is in the [owner decisions log](../owner-decisions.md) yet.
-- Owner to confirm: what is Kronos for in your research: a trading signal, a risk tool, or both?
-  The repository describes the tool but not its intended use.
+- Decided: Kronos is a flexible research and exploration tool. It generates market paths for one
+  Monte Carlo method and is open for forecast exploration; it is not tied to signals or risk yet,
+  and its output needs validation before any decision relies on it
+  ([log](../owner-decisions.md#2026-11-14-what-kronos-is-for)).
+
 
 ## Never
 
