@@ -1,4 +1,4 @@
-"""Fail-closed boundaries for future research-source acquisition workers."""
+"""Fail-closed URL and response checks of the literature worker's acquisition primitives."""
 
 from __future__ import annotations
 
@@ -6,13 +6,13 @@ from collections.abc import Iterable
 
 import pytest
 
-from alpha_cli.research_acquisition import (
+from literature_worker._acquisition import (
     AcquisitionPolicy,
     SourceResponse,
     validate_source_response,
     validate_source_url,
 )
-from alpha_core import DataError
+from literature_worker._errors import DataError
 
 
 def _resolve(*addresses: str) -> Iterable[str]:
