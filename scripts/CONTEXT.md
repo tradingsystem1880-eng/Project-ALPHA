@@ -8,6 +8,7 @@ sources:
   - scripts/fs*.py
   - scripts/commands_reference.py
   - scripts/roadmap_index.py
+  - scripts/setup.sh
 verified: d0fffa796f8e
 ---
 
@@ -42,8 +43,10 @@ read owner data, credentials or hidden tests.
 - Where things are: `gate.py` + `gate_components.py` (CI job steps) + `gate_select.py` (tests mapped
   from changed files); `fs.py` with `fs_orient.py`, `fs_search.py`, `fs_stale.py`; generators
   `roadmap_index.py`, `commands_reference.py`, `generate_web_openapi.py`, `check_openapi_operations.py`;
+  machine setup: `setup.sh` (one command; wraps `setup_rdagent.sh`) and the machine-readiness section
+  of `gate.py doctor` (steps and options: [development loop](../docs/operations/development-loop.md#set-up-a-fresh-machine));
   Codex: `handoff.py` (builds; rules in `docs/reference/model-routing.md`), `codex_bridge.py` (reviews).
-- Tests: `tests/unit/test_gate_*.py`, `test_git_guard.py`, `test_fs_*.py`, `test_roadmap_index.py`,
+- Tests: `tests/unit/test_gate_*.py` (doctor's machine section: `test_gate_machine_doctor.py`), `test_setup_script.py`, `test_git_guard.py`, `test_fs_*.py`, `test_roadmap_index.py`,
   `test_commands_reference.py`, `test_claude_harness_*.py`, `test_mutation_*.py` (all in `tests/unit/`).
 - Check: `uv run python scripts/gate.py check` (its mypy step covers the harness scripts listed in
   `gate.HARNESS_SCRIPTS`; a new script is type-checked through its test's import).

@@ -32,7 +32,7 @@ request only when its paths (or the workflow and gate files) change, and always 
 | `static`: ruff lint and format | style and simple bug patterns (unused names, bad comparisons) | PR | 1 s |
 | `static`: import contracts (`lint-imports`) | a package importing a layer it must not (the import DAG) | PR | 0.4 s |
 | `static`: mypy, one strict run over packages, apps, tests and harness scripts | type errors | PR | 45 s |
-| `static`: harness lint and doctor | a removed deny rule, unwired hook, lowered coverage floor or `-x` in CI | PR | 0.2 s |
+| `static`: harness lint and doctor | a removed deny rule, unwired hook, lowered coverage floor or `-x` in CI (the doctor's machine-readiness section is listed, not enforced, on CI) | PR | 0.2 s |
 | `static`: semgrep over the whole repo, plus its rule contracts | wall-clock reads, unseeded random numbers, negative shifts, silent excepts | PR | 13 s |
 | `static`: OpenAPI freshness and authority | a web route changed without regenerating `openapi.json`, or an unsafe operation | PR | 3 s |
 | `static`: wheel build and wheel smoke | a package that no longer builds or imports when installed | PR | 5 s |
