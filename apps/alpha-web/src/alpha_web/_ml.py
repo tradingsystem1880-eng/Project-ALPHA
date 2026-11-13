@@ -986,6 +986,8 @@ def list_experiments(
                     "feature_recipe": (
                         "alpha158 v2 (40-column correction)"
                         if feature.get("version") == 2
+                        else "alpha158 v3 (upstream Qlib)"
+                        if feature.get("version") == 3
                         else feature.get("name")
                     ),
                     "model": model.get("name"),

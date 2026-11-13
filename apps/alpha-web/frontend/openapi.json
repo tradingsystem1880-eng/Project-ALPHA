@@ -10113,7 +10113,8 @@
           "name": {
             "enum": [
               "Alpha158-style",
-              "Alpha158-style v2 (40 upstream columns; 118 legacy columns)"
+              "Alpha158-style v2 (40 upstream columns; 118 legacy columns)",
+              "Alpha158 v3 (upstream Qlib expressions and processors)"
             ],
             "title": "Name",
             "type": "string"
@@ -10124,6 +10125,16 @@
             },
             "title": "Names",
             "type": "array"
+          },
+          "upstream_alpha158": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MlUpstreamAlpha158"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "versioned_correction": {
             "anyOf": [
@@ -11560,7 +11571,8 @@
           "version": {
             "enum": [
               1,
-              2
+              2,
+              3
             ],
             "title": "Version",
             "type": "integer"
@@ -11706,7 +11718,8 @@
           "version": {
             "enum": [
               1,
-              2
+              2,
+              3
             ],
             "title": "Version",
             "type": "integer"
@@ -11938,7 +11951,10 @@
             "type": "integer"
           },
           "method": {
-            "const": "train_only_median_then_zscore",
+            "enum": [
+              "train_only_median_then_zscore",
+              "qlib_processors_v3"
+            ],
             "title": "Method",
             "type": "string"
           },
@@ -13365,6 +13381,106 @@
           }
         },
         "title": "MlTrainRequest",
+        "type": "object"
+      },
+      "MlUpstreamAlpha158": {
+        "additionalProperties": false,
+        "description": "Feature recipe v3: every column and the fold processors come from upstream Qlib.",
+        "properties": {
+          "calendar": {
+            "title": "Calendar",
+            "type": "string"
+          },
+          "compatibility_key": {
+            "title": "Compatibility Key",
+            "type": "string"
+          },
+          "expression_engine": {
+            "title": "Expression Engine",
+            "type": "string"
+          },
+          "feature_config": {
+            "title": "Feature Config",
+            "type": "string"
+          },
+          "input": {
+            "title": "Input",
+            "type": "string"
+          },
+          "legacy_columns": {
+            "const": 0,
+            "title": "Legacy Columns",
+            "type": "integer"
+          },
+          "name": {
+            "const": "alpha158",
+            "title": "Name",
+            "type": "string"
+          },
+          "nonfinite": {
+            "title": "Nonfinite",
+            "type": "string"
+          },
+          "precision": {
+            "title": "Precision",
+            "type": "string"
+          },
+          "processors": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "scope": {
+            "const": "upstream_alpha158_all_158_columns",
+            "title": "Scope",
+            "type": "string"
+          },
+          "source_sha256": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Source Sha256",
+            "type": "object"
+          },
+          "upstream": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "upstream_columns": {
+            "const": 158,
+            "title": "Upstream Columns",
+            "type": "integer"
+          },
+          "version": {
+            "const": 3,
+            "title": "Version",
+            "type": "integer"
+          },
+          "vwap": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "warmup": {
+            "title": "Warmup",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "scope",
+          "upstream_columns",
+          "legacy_columns",
+          "feature_config",
+          "expression_engine",
+          "precision",
+          "calendar",
+          "vwap",
+          "processors",
+          "warmup",
+          "nonfinite",
+          "input",
+          "upstream",
+          "source_sha256",
+          "compatibility_key"
+        ],
+        "title": "MlUpstreamAlpha158",
         "type": "object"
       },
       "MlWorkerResult": {
