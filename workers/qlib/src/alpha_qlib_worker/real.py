@@ -631,7 +631,8 @@ def _fold_model(
         if trace is not None and not schema3
         else {}
     )
-    upstream_v3 = request.payload["feature_recipe"]["version"] == 3
+    # Minimal synthetic payloads in diagnostic tests carry no recipe; that is legacy v1.
+    upstream_v3 = request.payload.get("feature_recipe", {}).get("version") == 3
     names = list(feature_names) if feature_names is not None else None
     train_x, train_y, train_meta = _select_split(
         samples,
@@ -1421,7 +1422,6 @@ def _run_real(
     request = validate_request(exchange_dir)
     adapter_hash = source_fingerprint() if request.payload["schema_version"] == 3 else None
     request_hash = value_digest(request.payload)
-    feature_version = int(request.payload["feature_recipe"]["version"])
 
     feature_binding: dict[str, Any] | None = None
 
@@ -1465,6 +1465,7 @@ def _run_real(
     observation.require_checkpoint_context()
     qlib_module, lightgbm_module = require_real_dependencies()
     _official_feature_names()
+    feature_version = int(request.payload["feature_recipe"]["version"])
     feature_binding = (
         feature_recipe_diagnostics(feature_version) if feature_version in (2, 3) else None
     )
