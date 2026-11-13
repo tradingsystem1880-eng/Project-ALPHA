@@ -8,7 +8,7 @@ sources:
   - scripts/gate.py
   - scripts/gate_components.py
   - pyproject.toml
-verified: b8823a6a6e3f
+verified: 4c867084552f
 ---
 
 # Checks
@@ -65,6 +65,7 @@ request only when its paths (or the workflow and gate files) change, and always 
 
 ## How to change it
 
+- On CI the doctor's machine-readiness section (setup state of a development machine) is listed, never enforced.
 - A new CI job or pytest marker needs a row here; the unit test names what is missing.
 - Re-measure times from `gh run view <id> --json jobs` and update the column in the same change.
 - Shard balance comes from `scripts/gate_test_durations.json`; refresh it from the `test-durations`

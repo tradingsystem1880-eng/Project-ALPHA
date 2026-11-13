@@ -52,6 +52,11 @@ class TestPathTiers:
 
 
 class TestDoctor:
+    @pytest.fixture(autouse=True)
+    def _no_machine_items(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """These tests cover the harness wiring; the machine section has its own tests."""
+        monkeypatch.setattr(gate, "machine_readiness", lambda root: [])
+
     def test_doctor_fails_on_missing_settings(self, repo: Path) -> None:
         code, report = gate.doctor(repo)
         assert code != 0
