@@ -413,3 +413,9 @@ Costs and limitations:
   universal row type.
 - Runtime changes will require current-state documentation updates in the same slice;
   S0 deliberately makes no such changes.
+
+## Forward pointer (2026-11-14)
+
+The Qlib row above still holds: no `alpha-study` adapter. Inside the worker, opt-in feature recipe
+v3 now delegates Alpha158 features and normalisation to upstream Qlib. See
+[ADR-0042](0042-qlib-worker-delegates-data-layer-to-upstream.md).

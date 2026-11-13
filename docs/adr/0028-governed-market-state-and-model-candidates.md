@@ -44,3 +44,9 @@ and selection are fold-local; CPU reruns are byte-identical; Kronos reports raw 
 proper scores and coverage; Qlib reports member/ensemble IC, rank-IC, disagreement, turnover, and
 net-cost replay. A real-case owner pilot remains required before an empirical model claim;
 production and distribution release gates are out of scope for the private local application.
+
+## Forward pointer (2026-11-14)
+
+The Qlib candidates' Alpha158 inputs and train-only normalisation are now available from upstream
+Qlib as opt-in feature recipe v3; `rank_ensemble_v1` is unchanged. See
+[ADR-0042](0042-qlib-worker-delegates-data-layer-to-upstream.md).

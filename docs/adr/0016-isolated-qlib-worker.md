@@ -49,3 +49,9 @@ permanently labeled until the ML model is fully recomputed fold-by-fold on each 
 - Harder: exchange-contract validation and separate worker maintenance.
 - Revisit: only after the dependency/license gate, deterministic worker acceptance, and a specific
   counterfactual retraining design.
+
+## Forward pointer (2026-11-14)
+
+The worker's fold-local preprocessing and Alpha158 features were hand-written here. Opt-in feature
+recipe v3 now computes all 158 columns and the fold normalisation with upstream Qlib; v1 (default)
+and v2 are kept as legacy readers. See [ADR-0042](0042-qlib-worker-delegates-data-layer-to-upstream.md).
