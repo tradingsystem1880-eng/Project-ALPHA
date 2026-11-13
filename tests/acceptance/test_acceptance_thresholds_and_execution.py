@@ -1,9 +1,9 @@
 """Acceptance: DSR/PBO pass semantics, split causality, and the t+1-open fill convention.
 
 Behavioural contracts (docs/reference/invariants/validation.md and research-integrity.md):
-DSR passes iff ``dsr >= threshold`` and a standalone run has ``N=1, DSR=PSR``; PBO passes iff ``pbo <= threshold``; walk-forward tests start strictly after
-train + embargo; decide on close of ``t``, fill at the OPEN of ``t+1`` (never the close of ``t``);
-fees are notional × bps / 1e4.
+DSR passes iff ``dsr >= threshold`` and a standalone run has ``N=1, DSR=PSR``; PBO passes iff
+``pbo <= threshold``; walk-forward tests start strictly after train + embargo; decide on close of
+``t``, fill at the OPEN of ``t+1`` (never the close of ``t``); fees are notional × bps / 1e4.
 """
 
 from __future__ import annotations
