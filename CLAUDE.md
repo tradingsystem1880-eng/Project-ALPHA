@@ -31,8 +31,8 @@ Obey [DAG](docs/ARCHITECTURE.md#2-the-layered-dag)/[contracts](pyproject.toml); 
 - Require explicit local owner confirmation (ADR-0038), paper opt-ins, provider/venue/unit boundaries,
   no-live-capital routing. UI/MCP output/account state/checks: no authority.
   Bounded owner-auth actions; infer no approvals.
-- Agents may run, never read/edit `tests/holdout/`; propose tests in `tests/holdout_seed/`.
-  Exclude owner data, credentials and hidden tests from discovery indexes.
+- Acceptance tests live in `tests/acceptance/`. Exclude owner data and credentials from
+  discovery indexes.
 - Research: CLI-first. [Edge workspace](docs/superpowers/plans/2026-09-30-edge-workspace.md) links
   charts, conditions and advisory Codex. Drafts confer no authority; terminal docks, verified charts
   and local confirmation follow ADR-0038.
