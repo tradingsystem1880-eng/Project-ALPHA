@@ -114,10 +114,11 @@ this file holds the mechanics.
 - `gate.py mutate`: mutmut per module in a staged tree. Kill rate = killed / (total - skipped); a module
   passes when rate + 0.005 >= min(0.90, its floor in `.claude/mutation-baseline.json`). `--write-baseline`
   changes are reviewed in the pull request.
-- A module the gate cannot measure (mutmut missing, a staging fault, no stats) is `unavailable:<cause>`.
-  The pull-request `quant` job runs `gate.py mutate --require-measured`, so there "unavailable" fails the
-  job and prints the module and the cause: a guard that cannot run never passes. Local runs without the
-  flag only report it.
+- A module the gate cannot measure (mutmut missing, a staging fault, no stats, zero mutants, a requested
+  path that is not a quant module) is `unavailable:<cause>`. The `backend-quant` step (the pull-request
+  `quant` job, and local `gate.py component backend`) runs `gate.py mutate --require-measured`, so there
+  "unavailable" fails and prints the module and the cause: a guard that cannot run never passes. Without
+  the flag (a plain local `gate.py mutate`, the weekly sweep) it is only reported.
 - The weekly exhaustive sweep (`.github/workflows/mutation-weekly.yml`, owner-selected cadence) runs frozen,
   deterministic mutant fragments in at most eight isolated jobs of two mutmut workers each and aggregates
   them exactly; `timeout` and `no_tests` mutants are never counted as kills. Its scores are report-only, and the

@@ -266,6 +266,33 @@ def test_pull_request_gate_fails_when_a_module_cannot_be_measured(
     assert f"[mutate] FAIL {MODULE}" in err and "staging fault" in err
 
 
+def test_pull_request_gate_fails_on_zero_mutants_and_on_dropped_modules(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+
+    def zero_mutants(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+        stats = Path(kwargs["cwd"]) / "mutants" / "mutmut-cicd-stats.json"
+        stats.parent.mkdir(exist_ok=True)
+        stats.write_text(json.dumps({"killed": 0, "survived": 0, "total": 0, "skipped": 0}))
+        return True, 0.1, "test log"
+
+    (root / harness_quant.MUTATION_BASELINE_FILE).parent.mkdir(parents=True, exist_ok=True)
+    gate.write_json_atomic(
+        root / harness_quant.MUTATION_BASELINE_FILE, {"kill_rates": {MODULE: 0.0}}
+    )
+    # Report-only runs still pass a 0.0 floor; the pull-request gate calls it unmeasured.
+    assert harness_quant.mutate(root, [MODULE], runner=zero_mutants)[0] == 0
+    code, report = harness_quant.mutate(root, [MODULE], runner=zero_mutants, require_measured=True)
+    assert code == 1
+    assert report["modules"][MODULE]["status"] == "unavailable:no mutants measured"
+
+    missing = "packages/alpha-validation/src/alpha_validation/dsr_typo.py"
+    code, report = harness_quant.mutate(
+        root, [MODULE, missing], runner=stats_runner, require_measured=True
+    )
+    assert code == 1
+    assert report["modules"][missing]["status"].startswith("unavailable:")
+
+
 def test_staging_is_unique_even_for_same_module(tmp_path: Path) -> None:
     root = repo(tmp_path)
     paths: list[Path] = []

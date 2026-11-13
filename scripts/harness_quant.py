@@ -273,6 +273,11 @@ def mutate(
     baseline = {k: float(v) for k, v in baseline_raw.get("kill_rates", {}).items()}
     report: dict[str, Any] = {"modules": {}, "min_kill": MUTATION_MIN_KILL}
     blocking = False
+    if require_measured and modules is not None:
+        # A requested module the quant filter drops (typo, deleted, not quant) was never measured.
+        for rel in sorted(set(modules) - set(targets)):
+            report["modules"][rel] = {"status": "unavailable:not a quant-tier source module"}
+            blocking = True
     for rel in targets:
         staging = Path(tempfile.mkdtemp(prefix="alpha-mutation-"))
         try:
@@ -368,6 +373,12 @@ def mutate(
             if stats is None:
                 entry["status"] = f"unavailable:{output[-300:] or 'mutmut produced no stats'}"
                 blocking = blocking or require_measured
+            elif (
+                require_measured and int(stats.get("total", 0)) - int(stats.get("skipped", 0)) <= 0
+            ):
+                # Zero mutants is no measurement, even against a 0.0 floor.
+                entry["status"] = "unavailable:no mutants measured"
+                blocking = True
             else:
                 rate = mutation_kill_rate(stats)
                 required = mutation_required(rel, baseline)
