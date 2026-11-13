@@ -8,7 +8,7 @@ sources:
   - scripts/fs*.py
   - scripts/commands_reference.py
   - scripts/roadmap_index.py
-verified: 0377681b
+verified: 1ac86fc02443
 ---
 
 # scripts workspace

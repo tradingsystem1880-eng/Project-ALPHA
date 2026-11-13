@@ -3,7 +3,7 @@ owner: forecasting model
 sources:
   - packages/alpha-forecast/src/**
   - packages/alpha-forecast/pyproject.toml
-verified: 0377681b
+verified: 1ac86fc02443
 ---
 
 # alpha-forecast workspace

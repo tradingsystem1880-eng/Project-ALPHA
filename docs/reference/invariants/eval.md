@@ -3,7 +3,7 @@ owner: agentic benchmark
 sources:
   - tools/alpha-eval/**
   - scripts/gate_components.py
-verified: 0377681b
+verified: 1ac86fc02443
 ---
 
 # Evaluation tool invariants

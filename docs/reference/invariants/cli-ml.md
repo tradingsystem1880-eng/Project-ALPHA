@@ -10,7 +10,7 @@ sources:
   - tests/unit/test_forecast_*.py
   - tests/integration/test_ml_cli.py
   - tests/integration/test_forecast_*.py
-verified: 0377681b
+verified: 1ac86fc02443
 ---
 
 # Command line model invariants

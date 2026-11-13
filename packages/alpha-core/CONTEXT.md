@@ -3,7 +3,7 @@ owner: domain core
 sources:
   - packages/alpha-core/src/**
   - packages/alpha-core/pyproject.toml
-verified: 0377681b
+verified: 1ac86fc02443
 ---
 
 # alpha-core workspace
