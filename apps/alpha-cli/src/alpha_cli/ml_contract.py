@@ -494,11 +494,15 @@ def _validate_recipe_objects(request: dict[str, Any]) -> None:
     feature = _require_exact_keys(
         request["feature_recipe"], {"name", "version", "parameters"}, "feature_recipe"
     )
-    if feature["name"] != "alpha158" or feature["version"] != 1:
-        raise MLContractError("starter feature_recipe must be alpha158 version 1")
+    if (
+        feature["name"] != "alpha158"
+        or type(feature["version"]) is not int
+        or feature["version"] not in (1, 2)
+    ):
+        raise MLContractError("feature_recipe must be alpha158 with integer version 1 or 2")
     if feature["parameters"] != {}:
         raise MLContractError(
-            "alpha158 version 1 has a fixed recipe; feature_recipe.parameters must be empty"
+            "alpha158 has a fixed versioned recipe; feature_recipe.parameters must be empty"
         )
 
     label = _require_exact_keys(

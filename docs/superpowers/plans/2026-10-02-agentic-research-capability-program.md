@@ -1,5 +1,7 @@
 # Agentic research capability program
 
+**Delivery state:** Planned — broad programme not started; advisory teammate slice shipped via PR #56
+
 ```json
 {
   "schema_version": 1,
@@ -126,7 +128,7 @@ Read-only inspection found two different baselines. The active root is `feat/age
 | Bounded controller, immutable rule inputs, execution digest and fee guard | Separate checkout `73fb2a9`: `research_execution.py`, `research_execution_digest.py`, `research_workflow_contract.py` and fee delivery | Integrate/reuse before extending; typed specialist envelopes do not themselves execute specialists |
 | Physical discovery-window isolation and full investigation team | Separate checkout audits explicitly list these as remaining work | Required new capability, not an existing guarantee |
 
-Retained evidence in separate checkout `docs/audit/2026-09-30-research-workflow-completion.md`: one selected five-pair panel improved artifact-backed reporting from **1/5 to 4/5**, with **+9.8% tool calls** and **+23.3% summed trial time**. These are diagnostic observations, not general performance estimates. Regime diagnosis remained untested; one trajectory encountered future data and spent its budget before final synthesis; a candidate report omitted four denied orders. The panel's inherited positive control was not a validated executable positive strategy. All of that must remain visible in future comparisons.
+Retained evidence in separate checkout `docs/records/audits/2026-09-30-research-workflow-completion.md`: one selected five-pair panel improved artifact-backed reporting from **1/5 to 4/5**, with **+9.8% tool calls** and **+23.3% summed trial time**. These are diagnostic observations, not general performance estimates. Regime diagnosis remained untested; one trajectory encountered future data and spent its budget before final synthesis; a candidate report omitted four denied orders. The panel's inherited positive control was not a validated executable positive strategy. All of that must remain visible in future comparisons.
 
 The first failure taxonomy is therefore: missing operator; poor tool discovery; weak investigation choice; invalid information access; incomplete execution; evidence omission; unsupported conclusion; excessive cost. Fix and measure each separately.
 
@@ -400,7 +402,7 @@ Implementation is isolated in `feat/research-teammate` on the delivered `73fb2a9
 
 ## Synthetic demo implementation — 2026-10-02
 
-[Closed investigation demo](2026-10-02-closed-investigation-demo.md) implements a restricted
+[Closed investigation demo](archive/2026-10/2026-10-02-closed-investigation-demo.md) implements a restricted
 four-action development path after the advisory slice. It uses designed synthetic panels, not
 real-data exports or engine backtests. The negative control is specifically a frozen-indicator
 null. Worker enforcement and tools-disabled Codex transport have distinct evidence; no broad
@@ -410,7 +412,7 @@ agent isolation, predictive confirmation, model-team uplift or program completio
 ## Efficiency comparison — 2026-10-02
 
 The closed demo passed review and the full gate in `d5f3cd4`. The next isolated slice is
-[the frozen efficiency comparison](2026-10-02-investigation-efficiency.md): legacy adaptive,
+[the frozen efficiency comparison](archive/2026-10/2026-10-02-investigation-efficiency.md): legacy adaptive,
 prechecked adaptive, and fixed-evidence advisory synthesis on the same three designed cases.
 It measures orchestration cost without changing models, actions or isolation. Automatic checks
 are controller behavior, not independent model initiative. Real-data reconciliation, richer
@@ -420,7 +422,7 @@ migration follows merely from completing this comparison.
 
 ## Judgment evidence and next handoff — 2026-10-02
 
-After the efficiency comparison (`77d6e94`), the [judgment slice](2026-10-02-research-judgment-cases.md)
+After the efficiency comparison (`77d6e94`), the [judgment slice](archive/2026-10/2026-10-02-research-judgment-cases.md)
 adds six designed cases covering misleading context, benchmark divergence, hindsight labels,
 missing evidence and source failure. Original and recovery cohorts remain separate; the
 [report](../../../tools/alpha-eval/results/research-judgment-20261002/report.md) records limitations.

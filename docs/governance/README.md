@@ -26,7 +26,7 @@ Related architecture decisions:
 
 Related approved scope:
 
-- [Post-v2 architecture audit](../audit/2026-07-19-post-v2-architecture-audit.md)
+- [Post-v2 architecture audit](../records/audits/2026-07-19-post-v2-architecture-audit.md)
 - [Provider control plane + crypto paper design](../superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md)
 - [Daily data + IBKR Paper hardening](../superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md)
 - [Workstation v3 shell and causal chart artifacts](../superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md)

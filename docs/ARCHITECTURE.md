@@ -41,6 +41,7 @@ graph TD
     cli --> research
     cli --> study
     cli --> fc
+    cli --> patterns
     cli --> core
     bt --> data
     bt --> core
@@ -64,18 +65,22 @@ graph TD
 alpha_mcp   alpha_web          surfaces: subprocess `alpha`; public metadata/read seams
      \       /
       alpha_cli               sole composer; may import every package below
-      /   |   \
-     /    |    +------------ alpha_backtest ---- alpha_data ----+
-alpha_strategies  alpha_validation  alpha_research  alpha_study  alpha_forecast
-    \             |                 |               |               |
-     +------------+-----------------+---------------+---------------+-------------+ -> alpha_core
-                                                               imports nothing internal
+          |
+          +--> alpha_backtest ----> alpha_data
+          +--> alpha_strategies --> alpha_patterns
+          +--> alpha_study -------> alpha_research, alpha_data, alpha_patterns
+          +--> alpha_validation
+          +--> alpha_research
+          +--> alpha_forecast
+          +--> alpha_data, alpha_patterns
+
+every package above --> alpha_core      (alpha_core imports nothing internal)
 ```
 </details>
 
 **The rule:** `alpha_core` ← `alpha_data` ← `alpha_backtest`; `alpha_patterns` depends on `alpha_core`; `alpha_strategies` depends on `alpha_core` and `alpha_patterns`; `alpha_validation`, `alpha_research` and `alpha_forecast` depend on `alpha_core` only (and only `alpha_cli` may import `alpha_forecast`); `alpha_study` is an additive projection/composition seam over `alpha_core`, `alpha_data`, `alpha_patterns`, and `alpha_research`; `alpha_cli` may import everything; `alpha_mcp` and `alpha_web` sit atop the DAG, depend only on `alpha_core` and supported public `alpha_cli` seams, and **nothing imports them**. Those surface seams cover catalog/run metadata, artifact contracts and bounded run projections, job capacity/durable leases, the paper journal, and governed research-case projections; bounded artifact projection may use Polars. Neither surface imports or executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process. `alpha_study` owns immutable content-hashed lineage/event/factor projections, one closed source-owned operator registry, and exact `not_checked` references to existing D0/control-plane records; it owns no persistence, empirical evidence, D1 reservation, launch authority, or command. `workers/qlib` is a separate project/process with its own lock; no root package imports it.
 
-**Enforcement:** thirteen `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode these boundaries, including outbound contracts that keep both surfaces free of internal data, strategy, validation, research, engine, and model-package imports and the bidirectional alpha-study seam. They run as the **`Architecture`** step (`uv run lint-imports`) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
+**Enforcement:** thirteen `[tool.importlinter]` *forbidden* contracts in the root [`pyproject.toml`](../pyproject.toml) encode these boundaries, including outbound contracts that keep both surfaces free of internal data, strategy, validation, research, engine, and model-package imports and the bidirectional alpha-study seam. They run as the `import contracts` step (`uv run lint-imports`) of the shared backend gate component (`scripts/gate.py component backend`), which the backend job in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) invokes. See **[ADR-0001](adr/0001-strict-layered-dag.md)**.
 
 ## 3. Layer Responsibilities
 
@@ -85,7 +90,7 @@ One charter per package; see the path-scoped module maps in [`.claude/rules/`](.
 |---|---|---|---|
 | `alpha_core` | 0 — domain | Frozen domain types, typed errors/settings, structural protocols including the low-volume operational `ExecutionEventSink`; paper opt-in defaults false. | *(nothing internal)* |
 | `alpha_data` | 1 — data | Receipt-backed Tiingo EOD plus family-scoped native crypto ingestion, raw Parquet store, external content-addressed public bulk storage, candidate quality/quarantine/promotion recovery, **point-in-time `as_of` firewall**, corporate-action clocks, and immutable hashed snapshots. CCXT provenance remains venue-qualified and byte-compatible. | `core` |
-| `alpha_strategies` | 1 — strategy | Pure trailing-window signals + vol-target sizing + shared Nautilus lifecycle; paper-only no-order history priming, exact intent release, account-state reconciliation, hard risk limits, and venue-increment quantity normalization preserve the SIM path. | `core` |
+| `alpha_strategies` | 1 — strategy | Pure trailing-window signals + vol-target sizing + shared Nautilus lifecycle; paper-only no-order history priming, exact intent release, account-state reconciliation, hard risk limits, and venue-increment quantity normalization preserve the SIM path. | `core`, `patterns` |
 | `alpha_validation` | 1 — stats | Engine-agnostic numpy/scipy statistics: walk-forward, CPCV, bootstrap CIs, Monte-Carlo nulls, four-family path-risk primitives, DSR/PSR, PBO, prop-firm, reality-check, forecast-skill scores (CRPS/pinball/coverage + baselines), tear sheet. | `core` |
 | `alpha_research` | 1 — research | Pure deterministic research primitives: fixed-duration research bars and identity, group-atomic chronological D1/D2/D3 allocation, causal pattern detection, prospective power and confirmation, point-in-time matched event studies, multiplicity control, lineage-bound charts, and terminal gate packets. D1/D2 are admitted only through governed contracts/phases; the package grants no strategy, validation, holdout, paper, or execution authority. | `core` |
 | `alpha_study` | 2 — research composition | Strict immutable feature/event/factor contracts, a closed Git-owned operator declaration, exact existing-authority references, derived finding/mechanism/advisor/workspace projections, one thin existing-double-bottom event-table adapter, and an S5a1 byte-bound blind semantic-read contract. The semantic contract emits only chart points available by its D0 acceptance-event reference and an aggregate masked count; its lineage remains unchecked until CLI composition. The package owns no persistence, commands, UI, approvals, empirical authority, D1/D2 transitions, promotion, paper, broker, or order authority. | `core`, `data`, `patterns`, `research` |
@@ -102,6 +107,43 @@ remain bounded; Polars is allowed only for artifact verification/projection. Pro
 control-plane, engine/gauntlet/paper-node, Qlib, and Kronos work happens **out-of-process** through
 `alpha`. Composition, Nautilus execution, validation, and model stacks therefore never enter a
 surface process. See **[ADR-0002](adr/0002-cli-sole-composer-subprocess-surfaces.md)**.
+
+### Runtime data-directory layout
+
+Everything below lives under `AlphaSettings.data_dir` (`ALPHA_DATA_DIR`, default `data/`). The
+external public crypto bulk store is the separate `bulk_data_dir` setting. This table records the
+subfolders as the code creates them today; the `forecast`/`forecasts` and
+`research`/`research_executions` name pairs are an inconsistency recorded for a later migration,
+not something to rename by hand. Module paths are under `apps/alpha-cli/src/alpha_cli/` unless
+another package is named.
+
+| Subfolder | Owning module | Purpose |
+|---|---|---|
+| `store/` | `data_cmds` over `alpha_data` `ParquetStore` | Raw point-in-time Parquet bars, receipts, candidates, quarantine and provenance sidecars. |
+| `snapshots/` | `data_cmds` over `alpha_data.snapshot` | Immutable content-hashed data snapshots that runs and studies bind to. |
+| `runs/` | `_artifacts` (backtest/validate runs; listed in `run_store.RUN_DIRS`) | Immutable single-strategy run directories with manifest-pinned artifacts. |
+| `portfolio/` | `backtest_cmds` (`RUN_DIRS`) | Portfolio backtest run directories. |
+| `cross_sectional/` | `backtest_cmds` (`RUN_DIRS`) | Cross-sectional backtest run directories. |
+| `optim/` | `optim_cmds` (`RUN_DIRS`) | Parameter-sweep runs with multi-trial selection-bias statistics. |
+| `propfirm/` | `propfirm_cmds` (`RUN_DIRS`) | Prop-firm rule evaluation runs. |
+| `forecast/` | `forecast_cmds` (`RUN_DIRS`) | Kronos forecast-evaluation run directories. |
+| `forecasts/` | `_forecast_cache` | Content-keyed Kronos signal cache reused across runs (not a run directory). |
+| `figures/` | `figure_cache` (`FIGURE_ROOT`) | Rendered figure cache keyed by run, figure and format. |
+| `control/` | `control_store`, `_suite` | `workstation.sqlite3` control plane (projects, jobs, evidence, owner receipts) and `control/ml` worker exchanges. |
+| `research/` | `research_cmds` | Research-case objects, literature worker extractions and per-project research files. |
+| `research_executions/` | `research_execution` | Per-execution directories for governed research runs, keyed by execution digest. |
+| `diagnostics/` | `research_diagnostic_cmds` | Digest-keyed research diagnostic outputs. |
+| `scans/` | `scan_cmds` | Pattern/hypothesis scan outputs. |
+| `rules/` | `rules_cmds` | Rule definitions and rule-run records. |
+| `strategy-workspaces/` | `project_workspace` | Disposable hash-only per-project workspace projections. |
+| `crypto/` | `crypto_data_cmds`, `_crypto_panel` | Crypto manifests, asset masters, coverage profiles/batches, backfill ledgers and `storage-config.json`. |
+| `quantpad/` | `quantpad_data_cmds` | QuantPad manifests. |
+| `paper/` | `paper_store` | Operational paper-session journal (outside deterministic run directories). |
+| `operations/` | `daily_scheduler` | Daily scheduler cycle records (`operations/daily-cycles/<symbol>`). |
+| `web/` | `alpha_web._workspaces` | Workstation UI workspace layouts (`web/workspaces`); no research authority. |
+
+Native fixture/rule jobs also use per-job `payload-<job_id>` directories directly under the
+control-store data root (`native_supervisor`, `_native_fixture_store`, `_native_rule_completion`).
 
 ## 4. Data Flow
 
@@ -464,7 +506,7 @@ Options and screener functionality are CLI modules, not separate workspace packa
 - [`docs/superpowers/specs/2026-06-14-project-alpha-v1-design.md`](superpowers/specs/2026-06-14-project-alpha-v1-design.md) — the original v1 design spec (pre-build).
 - [`research/00-SYNTHESIS.md`](../research/00-SYNTHESIS.md) — consolidated research synthesis + decision table.
 - [`research/07-architecture-ai-workflow.md`](../research/07-architecture-ai-workflow.md) — repo layout, tooling, and AI build-workflow rationale.
-- [`audit/2026-07-19-post-v2-architecture-audit.md`](audit/2026-07-19-post-v2-architecture-audit.md) — post-v2 capability/gap audit and track decision.
+- [`audit/2026-07-19-post-v2-architecture-audit.md`](records/audits/2026-07-19-post-v2-architecture-audit.md) — post-v2 capability/gap audit and track decision.
 - [`superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md`](superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md) — approved Recommended-track implementation contract.
 - [`superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md`](superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md) — implemented Tiingo qualification, scheduler, and IBKR Paper safety boundary.
 - [`superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md`](superpowers/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) — professional workstation, causal chart, and native analytics contract.
@@ -482,9 +524,9 @@ ChartWorkspace separates presentation state from research context and immutable 
 A workspace-local imperative registry links UTC ranges/cursors without cursor-driven workspace
 renders. PriceChartCanvas maintains its chart instance across composition/options/selection updates.
 RecordedSeries defaults to local BokehJS for backend points and gaps, with optional Lightweight mode. ScientificPlots uses Bokeh for backend histogram/QQ and SVG for calendar/correlation matrices, with exact tables. Bokeh documents are released on renderer disposal. FigureSurface preserves backend figure metadata/export contracts.
-No endpoint, statistical estimator or authority was added. See the [delivery report](operations/2026-10-03-reference-quant-workstation.md).
+No endpoint, statistical estimator or authority was added. See the [delivery report](records/2026-10-03-reference-quant-workstation.md).
 
-Owner correction: [scientific research renderer and project-free browsing](operations/2026-10-03-scientific-research-workstation.md). No backend or statistical changes.
+Owner correction: [scientific research renderer and project-free browsing](records/2026-10-03-scientific-research-workstation.md). No backend or statistical changes.
 
 ## Bounded CLI persistence seams
 

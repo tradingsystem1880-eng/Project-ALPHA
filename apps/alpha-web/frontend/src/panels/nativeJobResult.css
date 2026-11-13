@@ -1,0 +1,7 @@
+.native-job-result .native-job-input-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.native-job-result input { flex: 1 1 280px; min-width: 0; }
+.native-job-result dl { display: grid; gap: 8px; }
+.native-job-result dl > div { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(0, 3fr); gap: 8px; }
+.native-job-result dt { color: var(--text-muted); }
+.native-job-result dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .native-job-result dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }

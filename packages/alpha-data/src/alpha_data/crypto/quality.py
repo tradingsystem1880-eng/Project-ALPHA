@@ -425,3 +425,216 @@ __all__ = [
     "compare_market_observations",
     "qualify_crypto_frame",
 ]
+
+
+DAILY_BAR_AUDIT_COLUMNS: Final = (
+    "open_time",
+    "open",
+    "high",
+    "low",
+    "close",
+    "base_volume",
+    "close_time",
+    "quote_volume",
+    "trade_count",
+    "taker_buy_base_volume",
+    "taker_buy_quote_volume",
+)
+DAILY_BAR_AUDIT_NUMERIC_COLUMNS: Final = tuple(
+    name for name in DAILY_BAR_AUDIT_COLUMNS if name not in {"open_time", "close_time"}
+)
+
+
+def audit_daily_bar_grid(
+    dataset: CryptoDatasetIdentityV1,
+    frame: pl.DataFrame,
+    *,
+    artifact_sha256: str,
+    start: datetime,
+    end: datetime,
+    as_of: datetime,
+    cadence_seconds: int,
+    max_rows: int,
+    max_missing_ranges: int,
+) -> dict[str, object]:
+    """Inspect one explicit daily UTC grid; never repair or requalify retained bars.
+
+    Grid anchor is caller start, not inferred exchange/calendar/source availability.
+    Missing slots mean absent observations on that grid, not a provider-history claim.
+    Only in-window valid timestamps enter OHLCV/order checks; unplaceable timestamps
+    remain a blocking finding. Original order/duplicates are preserved for qualification.
+    """
+    if not (
+        dataset.provider == dataset.venue == "binance"
+        and dataset.market_type == "spot"
+        and dataset.family == "market_bars"
+        and dataset.frequency == "1d"
+        and dataset.timestamp_convention == "interval_start_utc"
+        and dataset.units == "provider_native_ohlcv"
+    ):
+        raise DataError("retained bar audit supports only Binance spot daily native OHLCV")
+    if type(cadence_seconds) is not int or cadence_seconds != 86400:
+        raise DataError("retained daily bar audit cadence must match native 1d identity")
+    if any(type(value) is not int or value < 1 for value in (max_rows, max_missing_ranges)):
+        raise DataError("retained bar audit limits must be positive")
+    if frame.height > max_rows:
+        raise DataError("retained bar audit row limit exceeded; no prefix audit")
+    if not set(DAILY_BAR_AUDIT_COLUMNS) <= set(frame.columns):
+        raise DataError("retained daily bar audit columns are missing")
+    for name in ("open_time", "close_time"):
+        dtype = frame.schema[name]
+        if isinstance(dtype, pl.Datetime) and dtype.time_unit == "ns":
+            raise DataError("retained daily bar audit timestamp precision unsupported")
+    first = require_utc(start, "audit start")
+    final = require_utc(end, "audit end")
+    cutoff = require_utc(as_of, "audit as_of")
+    step = cadence_seconds * 1_000_000
+
+    def micros(delta: timedelta) -> int:
+        return (delta.days * 86400 + delta.seconds) * 1_000_000 + delta.microseconds
+
+    duration = micros(final - first)
+    if duration <= 0 or duration % step or final > cutoff:
+        raise DataError("retained daily grid must have whole closed periods before as_of")
+    expected = duration // step
+    mask: list[bool] = []
+    invalid_time = invalid_close_time = outside = off_grid = invalid_numeric = 0
+    invalid_count = 0
+    slots: set[int] = set()
+    groups: dict[datetime, list[tuple[object, ...]]] = {}
+
+    def value_key(value: object) -> object:
+        if (
+            isinstance(value, datetime)
+            and value.tzinfo is not None
+            and value.utcoffset() is not None
+        ):
+            return value.astimezone(UTC)
+        if isinstance(value, bool) or not isinstance(value, int | float):
+            return (type(value).__name__, repr(value))
+        if isinstance(value, float) and not math.isfinite(value):
+            return ("nonfinite", repr(value))
+        return value
+
+    for row in frame.select(DAILY_BAR_AUDIT_COLUMNS).iter_rows(named=True):
+        timestamp = row["open_time"]
+        if (
+            not isinstance(timestamp, datetime)
+            or timestamp.tzinfo is None
+            or timestamp.utcoffset() is None
+        ):
+            invalid_time += 1
+            mask.append(False)
+            continue
+        timestamp = timestamp.astimezone(UTC)
+        inside = first <= timestamp < final
+        mask.append(inside)
+        if not inside:
+            outside += 1
+            continue
+        close_time = row["close_time"]
+        if (
+            not isinstance(close_time, datetime)
+            or close_time.tzinfo is None
+            or close_time.utcoffset() is None
+            or not timestamp
+            <= close_time.astimezone(UTC)
+            < timestamp + timedelta(seconds=cadence_seconds)
+        ):
+            invalid_close_time += 1
+        values = tuple(row[name] for name in DAILY_BAR_AUDIT_COLUMNS[1:])
+        if any(
+            isinstance(row[name], bool)
+            or not isinstance(row[name], int | float)
+            or not math.isfinite(row[name])
+            for name in DAILY_BAR_AUDIT_NUMERIC_COLUMNS
+        ):
+            invalid_numeric += 1
+        count = row["trade_count"]
+        if (
+            isinstance(count, bool)
+            or not isinstance(count, int | float)
+            or not math.isfinite(count)
+            or count < 0
+            or (isinstance(count, float) and not count.is_integer())
+        ):
+            invalid_count += 1
+        groups.setdefault(timestamp, []).append(tuple(value_key(value) for value in values))
+        offset = micros(timestamp - first)
+        if offset % step:
+            off_grid += 1
+        else:
+            slots.add(offset // step)
+    checked = frame.select(DAILY_BAR_AUDIT_COLUMNS).filter(pl.Series(mask, dtype=pl.Boolean))
+    mechanical = qualify_crypto_frame(
+        dataset,
+        checked,
+        artifact_sha256=artifact_sha256,
+        observed_column="open_time",
+        key_columns=("open_time",),
+        knowledge_time=cutoff,
+        as_of=cutoff,
+        expected_cadence=timedelta(seconds=cadence_seconds),
+        period_start_timestamps=True,
+    )
+    failures = set(mechanical.failures)
+    if invalid_time:
+        failures.add("invalid_or_unplaceable_timestamp")
+    if invalid_close_time:
+        failures.add("invalid_native_bar_close_time")
+    if invalid_numeric:
+        failures.add("invalid_required_ohlcv_numeric")
+    if invalid_count:
+        failures.add("invalid_native_trade_count")
+    if off_grid:
+        failures.add("off_declared_grid")
+    duplicates = [values for values in groups.values() if len(values) > 1]
+    conflicts = sum(len(set(values)) > 1 for values in duplicates)
+    ranges: list[dict[str, object]] = []
+    missing_ranges = 0
+    cursor = 0
+    # Work scales with observed rows, never the number of missing expected slots.
+    for position in [*sorted(slots), expected]:
+        if position > cursor:
+            missing_ranges += 1
+            if len(ranges) < max_missing_ranges:
+                ranges.append(
+                    {
+                        "start": (first + timedelta(microseconds=cursor * step)).isoformat(),
+                        "end": (first + timedelta(microseconds=position * step)).isoformat(),
+                        "slots": position - cursor,
+                    }
+                )
+        cursor = position + 1
+    missing = expected - len(slots)
+    return {
+        "grid_basis": "caller_declared_start_and_native_daily_cadence",
+        "start": first.isoformat(),
+        "end_exclusive": final.isoformat(),
+        "as_of": cutoff.isoformat(),
+        "cadence_seconds": cadence_seconds,
+        "expected_slots": expected,
+        "covered_slots": len(slots),
+        "missing_slots": missing,
+        "missing_ranges": ranges,
+        "missing_range_count": missing_ranges,
+        "missing_ranges_truncated": missing_ranges > len(ranges),
+        "row_count": frame.height,
+        "in_window_rows": checked.height,
+        "outside_window_rows": outside,
+        "invalid_timestamp_rows": invalid_time,
+        "invalid_close_timestamp_rows": invalid_close_time,
+        "off_grid_rows": off_grid,
+        "invalid_numeric_rows": invalid_numeric,
+        "duplicate_timestamp_groups": len(duplicates),
+        "duplicate_extra_rows": sum(len(values) - 1 for values in duplicates),
+        "conflicting_duplicate_groups": conflicts,
+        "identical_duplicate_groups": len(duplicates) - conflicts,
+        "failures": sorted(failures),
+        "warnings": list(mechanical.warnings),
+        "audited_columns": list(DAILY_BAR_AUDIT_COLUMNS),
+        "declared_grid_satisfied": not failures and missing == 0,
+        "provider_history_complete": False,
+        "point_in_time_eligibility": False,
+        "execution_authority": False,
+    }

@@ -5,7 +5,8 @@ paths:
 # Docs rules
 
 - Delivery narratives are appended to `docs/BUILD-STATUS.md`, never rewritten; ADRs are numbered `docs/adr/NNNN-*.md` and every ADR id must be referenced from `CLAUDE.md` or a rule file (`gate.py brief` reports drift).
-- Feature plans live at `docs/superpowers/plans/YYYY-MM-DD-<slug>.md` with a fenced JSON `FeaturePlan` block (`gate.py plan-check`); mark finished plans with a `**Delivery state:** Completed` header line.
+- Feature plans live at `docs/superpowers/plans/YYYY-MM-DD-<slug>.md` with a fenced JSON `FeaturePlan` block (`gate.py plan-check`) and exactly one `**Delivery state:** <state> — <evidence>` line in the first 12 lines (under the title, or line 1 above a leading JSON block). States: `Completed` (merged or BUILD-STATUS-accepted work only), `Implemented – qualification pending`, `In progress`, `Blocked`, `Planned`, `Superseded by <relative path>`.
+- On `Completed`/`Superseded`, `git mv` the plan to `docs/superpowers/plans/archive/YYYY-MM/` and fix links (pinned exceptions: `archive/README.md`). Unplanned features go in `docs/roadmap/backlog/<slug>.md`, staged refactors in `docs/roadmap/refactors/<slug>.md` (copy an existing file's template). Then run `uv run python scripts/roadmap_index.py`; `tests/unit/test_plan_schema.py` and `test_roadmap_index.py` enforce this.
 - Retrospectives live at `docs/operations/retrospectives/YYYY-MM-DD-<slug>.md` with a `## Watch-outs` section (surfaced by the generated session brief).
 
 The canonical ADR navigation is `docs/adr/README.md`; retain these reference IDs while the legacy

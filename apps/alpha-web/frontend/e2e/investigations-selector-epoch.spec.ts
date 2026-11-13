@@ -15,8 +15,10 @@ interface PanelRaceController {
   ready: boolean
   ids: {parent: string; child: string; created: string}
   holdNext(key: string): void
+  holdPolls(id: string): void
   pendingCount(key: string): number
   select(id: string): Promise<void>
+  resolve(key: string, outcome?: 'success' | 'error'): Promise<void>
   selectAndResolve(id: string, key: string, outcome?: 'success' | 'error'): Promise<void>
   startAndResolve(key: string, outcome?: 'success' | 'error'): Promise<void>
   unmountAndResolve(key: string): Promise<void>
@@ -80,10 +82,13 @@ test('@reference-only a stale parent poll error is ignored after selecting its c
   await mountPanel(page)
   await page.evaluate(async () => {
     const race = window.__panelRace
+    race.holdPolls(race.ids.child)
     await race.selectAndResolve(race.ids.child, race.ids.parent, 'error')
   })
   await expect(page.getByLabel('Saved investigations')).toHaveValue('child-investigation')
-  await expect(page.getByText('Status temporarily unavailable; retrying. stale parent poll failure')).toHaveCount(0)
+  await expect(page.locator('[role="status"]').filter({hasText: /^ready · cutoff/})).toBeVisible()
+  expect(await page.evaluate(() => window.__panelRace.pendingCount(window.__panelRace.ids.child))).toBeGreaterThan(0)
+  await expect(page.getByText('Status temporarily unavailable; retrying. Error: Investigation request failed (503): stale parent poll failure')).toHaveCount(0)
 })
 
 test('@reference-only a rapid select-back rejects an in-flight child poll', async ({page}) => {
@@ -120,10 +125,14 @@ test('@reference-only a stale parent poll error is ignored after starting a new 
   await page.evaluate(async () => {
     const race = window.__panelRace
     race.holdNext('create')
+    race.holdPolls(race.ids.parent)
+    race.holdPolls(race.ids.created)
     await race.startAndResolve(race.ids.parent, 'error')
   })
   await expect(page.getByLabel('Saved investigations')).toHaveValue('created-investigation')
-  await expect(page.getByText('Status temporarily unavailable; retrying. stale parent poll failure')).toHaveCount(0)
+  await expect(page.locator('[role="status"]').filter({hasText: /^ready · cutoff/})).toBeVisible()
+  expect(await page.evaluate(() => window.__panelRace.pendingCount(window.__panelRace.ids.created))).toBeGreaterThan(0)
+  await expect(page.getByText('Status temporarily unavailable; retrying. Error: Investigation request failed (503): stale parent poll failure')).toHaveCount(0)
 })
 
 test('@reference-only unmount invalidates an unresolved parent poll', async ({page}) => {
@@ -134,4 +143,15 @@ test('@reference-only unmount invalidates an unresolved parent poll', async ({pa
   })
   await expect(page.locator('section[aria-label="Run investigation"]')).toHaveCount(0)
   expect(pageErrors).toEqual([])
+})
+
+test('@reference-only a current parent poll error is displayed', async ({page}) => {
+  await mountPanel(page)
+  await page.evaluate(async () => {
+    const race = window.__panelRace
+    race.holdPolls(race.ids.parent)
+    await race.resolve(race.ids.parent, 'error')
+  })
+  await expect(page.getByLabel('Saved investigations')).toHaveValue('parent-investigation')
+  await expect(page.getByText('Status temporarily unavailable; retrying. Error: Investigation request failed (503): stale parent poll failure')).toBeVisible()
 })

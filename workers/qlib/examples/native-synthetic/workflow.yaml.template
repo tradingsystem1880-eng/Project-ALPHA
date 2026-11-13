@@ -1,0 +1,87 @@
+{
+  "qlib_init": {
+    "provider_uri": "$OUTPUT/empty_provider",
+    "region": "us",
+    "kernels": 1,
+    "expression_cache": null,
+    "dataset_cache": null,
+    "exp_manager": {
+      "class": "MLflowExpManager",
+      "module_path": "qlib.workflow.expm",
+      "kwargs": {
+        "uri": "sqlite:///$OUTPUT/mlflow.db",
+        "default_exp_name": "native-synthetic-demo"
+      }
+    }
+  },
+  "experiment_name": "native-synthetic-demo",
+  "task": {
+    "model": {
+      "class": "LGBModel",
+      "module_path": "qlib.contrib.model.gbdt",
+      "kwargs": {
+        "loss": "mse",
+        "num_boost_round": 32,
+        "early_stopping_rounds": 5,
+        "learning_rate": 0.1,
+        "num_leaves": 7,
+        "min_data_in_leaf": 10,
+        "num_threads": 1,
+        "deterministic": true,
+        "force_col_wise": true,
+        "seed": 20261106,
+        "bagging_seed": 20261106,
+        "feature_fraction_seed": 20261106,
+        "data_random_seed": 20261106
+      }
+    },
+    "dataset": {
+      "class": "DatasetH",
+      "module_path": "qlib.data.dataset",
+      "kwargs": {
+        "handler": {
+          "class": "DataHandlerLP",
+          "module_path": "qlib.data.dataset.handler",
+          "kwargs": {
+            "data_loader": {
+              "class": "StaticDataLoader",
+              "module_path": "qlib.data.dataset.loader",
+              "kwargs": {
+                "config": "$OUTPUT/synthetic_input.parquet"
+              }
+            },
+            "infer_processors": [],
+            "learn_processors": []
+          }
+        },
+        "segments": {
+          "train": [
+            "2024-01-02",
+            "2024-03-07"
+          ],
+          "valid": [
+            "2024-03-08",
+            "2024-03-29"
+          ],
+          "test": [
+            "2024-04-01",
+            "2024-04-22"
+          ]
+        }
+      }
+    },
+    "record": [
+      {
+        "class": "SignalRecord",
+        "module_path": "qlib.workflow.record_temp"
+      },
+      {
+        "class": "SigAnaRecord",
+        "module_path": "qlib.workflow.record_temp",
+        "kwargs": {
+          "ana_long_short": false
+        }
+      }
+    ]
+  }
+}

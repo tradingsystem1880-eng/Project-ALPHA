@@ -146,6 +146,20 @@ def evidence_hub(project_id: str, *, data_dir: Path) -> dict[str, Any]:
     )
 
 
+def source_original_pdf(
+    project_id: str,
+    source_id: str,
+    *,
+    data_dir: Path,
+    include_bytes: bool = False,
+) -> dict[str, Any]:
+    """Read verified owner-PDF status or bytes through the CLI-owned source store."""
+    args = ["research", "sources", "original-pdf", source_id, "--project-id", project_id]
+    if include_bytes:
+        args.append("--include-bytes")
+    return _object(_run_json([*args, "--json"], data_dir=data_dir), "original research-source PDF")
+
+
 def discover_literature(
     project_id: str,
     *,

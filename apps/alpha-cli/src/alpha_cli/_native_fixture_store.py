@@ -40,6 +40,7 @@ if sys.platform != "win32":
 
 _EVENTS = (
     "native_claim",
+    "native_invocation",
     "native_container_created",
     "native_started",
     "native_outcome",
@@ -90,9 +91,18 @@ def _events(connection: sqlite3.Connection, job_id: str) -> dict[str, dict[str, 
                 "scientific_acceptance",
             },
             "native_uncertain": {"reason"},
+            "native_invocation": {
+                "scope",
+                "profile_sha256",
+                "loop_steps",
+                "model_calls",
+                "tool_calls",
+            },
         }
         has_rule_result = kind == "native_outcome" and "rule_result" in payload
         rule_fields = {"rule_result"} if has_rule_result else set()
+        has_stock_result = kind == "native_outcome" and "stock_result" in payload
+        stock_result_fields = {"stock_result"} if has_stock_result else set()
         container_fields = (
             {"container_name", "image_id", "resource_fingerprint", "deadline_monotonic_ns"}
             if kind == "native_claim" and "container_name" in payload
@@ -101,7 +111,21 @@ def _events(connection: sqlite3.Connection, job_id: str) -> dict[str, dict[str, 
         started_fields = (
             {"container_id"} if kind == "native_started" and "container_id" in payload else set()
         )
-        if set(payload) != common | extra[kind] | rule_fields | container_fields | started_fields:
+        stock_fields = (
+            {"stock_profile_sha256"}
+            if kind == "native_claim" and "stock_profile_sha256" in payload
+            else set()
+        )
+        if (
+            set(payload)
+            != common
+            | extra[kind]
+            | rule_fields
+            | container_fields
+            | started_fields
+            | stock_fields
+            | stock_result_fields
+        ):
             raise DataError("native lifecycle event fields do not match its closed contract")
         claim = result.get("native_claim")
         if kind == "native_claim":
@@ -130,6 +154,36 @@ def _events(connection: sqlite3.Connection, job_id: str) -> dict[str, dict[str, 
             for key in ("job_id", "reservation_id", "spec_sha256", "owner_id")
         ):
             raise DataError("native lifecycle event changed its claim binding")
+        if kind == "native_claim" and stock_fields:
+            spec = json.loads(str(ControlStore._require_job(connection, job_id)["request_json"]))[
+                "native_invocation_spec"
+            ]
+            if (
+                payload["stock_profile_sha256"] != spec["native_manifest_sha256"]
+                or payload["fixture"] != "native_loop"
+                or container_fields
+            ):
+                raise DataError("stock claim differs from canonical invocation")
+        if kind == "native_invocation" and (
+            set(result) != {"native_claim"}
+            or claim is None
+            or "stock_profile_sha256" not in claim
+            or type(payload.get("profile_sha256")) is not str
+            or payload.get("profile_sha256") != claim.get("stock_profile_sha256")
+            or payload.get("scope") != "stock_rdloop_fixture_only"
+            or any(
+                type(payload[k]) is not int or payload[k] != v
+                for k, v in {"loop_steps": 5, "model_calls": 2, "tool_calls": 2}.items()
+            )
+        ):
+            raise DataError("stock consumption binding/order is invalid")
+        if (
+            kind == "native_started"
+            and claim is not None
+            and "stock_profile_sha256" in claim
+            and "native_invocation" not in result
+        ):
+            raise DataError("stock start requires prior durable invocation consumption")
         if kind == "native_container_created":
             if (
                 claim is None
@@ -184,6 +238,31 @@ def _events(connection: sqlite3.Connection, job_id: str) -> dict[str, dict[str, 
                 )
             ):
                 raise DataError("native lifecycle outcome contains invalid process evidence")
+        if has_stock_result:
+            observed_stock = payload["stock_result"]
+            stock_digest = (
+                observed_stock.get("receipt_sha256") if isinstance(observed_stock, dict) else None
+            )
+            if (
+                not isinstance(observed_stock, dict)
+                or set(observed_stock) != {"schema", "receipt_sha256"}
+                or observed_stock.get("schema") != "StockRDLoopObservationV1"
+                or type(stock_digest) is not str
+                or len(stock_digest) != 64
+                or any(ch not in "0123456789abcdef" for ch in stock_digest)
+                or has_rule_result
+                or "native_uncertain" in result
+                or claim is None
+                or "stock_profile_sha256" not in claim
+                or claim["fixture"] != "native_loop"
+                or "container_name" in claim
+                or "native_invocation" not in result
+                or "native_started" not in result
+                or payload["reason"] != "exit"
+                or payload["returncode"] != 0
+                or payload["cleanup_scope"] != "posix_process_group"
+            ):
+                raise DataError("native stock result observation binding is invalid")
         if has_rule_result:
             from alpha_cli._native_daily_rule_identity import contract_is_daily
             from alpha_cli._native_rule_protocol import is_rule_contract
@@ -350,6 +429,23 @@ def claim(store: ControlStore, job_id: str, owner: object) -> dict[str, object]:
             if request["native_invocation_spec"]["implementation_fingerprints"] != fingerprints:
                 raise DataError("native worker differs from approved implementation fingerprints")
             rule_extra: dict[str, object] = {}
+            from alpha_cli._native_stock_launch import StockFixtureLaunch
+
+            if type(owner.native) is StockFixtureLaunch:
+                if any(
+                    type(budget.get(k)) is not int or budget[k] < v
+                    for k, v in {
+                        "rdagent_native_v1_loop_steps": 5,
+                        "rdagent_native_v1_model_calls": 2,
+                        "rdagent_native_v1_tool_calls": 2,
+                    }.items()
+                ):
+                    raise DataError("stock fixture requires its complete reserved attempt envelope")
+                fields["stock_profile_sha256"] = owner.native.fingerprint
+                rule_extra["cpu_milliseconds"] = min(
+                    60_000, budget["rdagent_native_v1_cpu_milliseconds"]
+                )
+
             if owner.native.study is not None:
                 from alpha_cli._native_daily_rule_protocol import daily_worker_request
                 from alpha_cli._native_rule_economics import CostedRuleStudy
@@ -535,13 +631,15 @@ def record(store: ControlStore, job_id: str, value: object) -> dict[str, object]
             for key in ("schema", "job_id", "reservation_id", "spec_sha256", "owner_id")
         }
         payload.update(observation.fields)
-        if "rule_result" in payload:
-            binding = payload["rule_result"]
+        for result_field in ("rule_result", "stock_result"):
+            if result_field not in payload:
+                continue
+            binding = payload[result_field]
             if not isinstance(binding, Mapping):
-                raise DataError("native rule observation has no immutable binding mapping")
+                raise DataError("native result observation has no immutable binding mapping")
             # Journal JSON and the returned dictionary own a separate plain copy;
             # mutating either cannot alter the owner's issued observation.
-            payload["rule_result"] = dict(binding)
+            payload[result_field] = dict(binding)
         previous = events.get(observation.kind)
         if previous is not None:
             if previous != payload:
@@ -564,6 +662,9 @@ def record(store: ControlStore, job_id: str, value: object) -> dict[str, object]
                 {"actor": "synthetic_fixture", "reason": "live owner received a stop request"},
             )
         _append(connection, job_id, observation.kind, payload)
+        if "stock_result" in payload:
+            # Validate the new observation inside the same transaction before commit.
+            _events(connection, job_id)
         if observation.kind == "native_outcome":
             cancelled = store._active_job_cancellation(connection, job_id)
             if cancelled or payload["reason"] != "exit" or payload["returncode"] != 0:

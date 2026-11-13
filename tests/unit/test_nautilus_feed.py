@@ -63,7 +63,7 @@ def test_sub_daily_bars_fail_loud() -> None:
             low=9.0,
             close=10.0,
             volume=1.0,
-        )  # noqa: E501
+        )
         for i in range(3)
     ]
     with pytest.raises(DataError, match="24h"):
@@ -97,7 +97,7 @@ def test_negative_slippage_fails_loud() -> None:
             low=9.0,
             close=10.0,
             volume=1.0,
-        )  # noqa: E501
+        )
         for i in range(2)
     ]
     with pytest.raises(DataError, match="slippage"):

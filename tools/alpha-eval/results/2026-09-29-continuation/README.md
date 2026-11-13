@@ -13,7 +13,7 @@
 
 The gap cohort used 352 tool calls and 3,471.1 aggregate trial seconds. Cost is unknown.
 A rubric pass can reward an appropriate bounded design where the fixture cannot support execution;
-consult the [capability audit](../../../../docs/audit/2026-09-29-codex-capability-audit.md) for what was
+consult the [capability audit](../../../../docs/records/audits/2026-09-29-codex-capability-audit.md) for what was
 actually investigated, which workflow stopped, and which fixture defects were found.
 
 Raw trials and revision manifests stay under `$ALPHA_EVAL_HOME` (default `~/.alpha-bench`).

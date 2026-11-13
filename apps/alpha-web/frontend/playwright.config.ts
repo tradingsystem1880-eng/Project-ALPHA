@@ -11,6 +11,12 @@ const perfBudgets = process.env.ALPHA_PERF_BUDGETS === '1'
 
 export default defineConfig({
   testDir: './e2e',
+  // Mandatory positive routes live in scripts/run_frontend_browser_lanes.py.
+  testIgnore: [
+    '**/risk-metric-basis.spec.ts',
+    '**/risk-live.spec.ts',
+    '**/native-result-real.spec.ts',
+  ],
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

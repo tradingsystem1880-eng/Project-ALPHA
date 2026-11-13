@@ -4,6 +4,8 @@
 **Date:** 2026-08-19
 **Deciders:** Project ALPHA owner and AI build agents
 
+> **Note (2026-11-13):** [ADR-0037](0037-agent-neutral-research-engineering.md) supersedes the engineering ceremony in this record; the decision text below is unchanged.
+
 ## Context
 
 Harness v1 (2026-08-18) made the load-bearing CLAUDE.md rules mechanical: a tree-hash gate

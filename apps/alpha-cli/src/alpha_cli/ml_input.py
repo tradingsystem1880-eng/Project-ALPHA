@@ -235,13 +235,16 @@ def _draft_spec(
         raise DataError(
             "stage_config.ml.ridge_alpha is not configurable; rank_ensemble_v1 fixes it at 1.0"
         )
+    feature_version = ml.get("feature_recipe_version", 1)
+    if type(feature_version) is not int or feature_version not in (1, 2):
+        raise DataError("stage_config.ml.feature_recipe_version must be integer 1 or 2")
     return {
         "schema_version": 1 if recipe == "lightgbm" else 2,
         "snapshot_hash": snapshot_hash,
         "universe": universe,
         "universe_membership": membership,
         "survivorship_warning": warning,
-        "feature_recipe": {"name": "alpha158", "version": 1, "parameters": {}},
+        "feature_recipe": {"name": "alpha158", "version": feature_version, "parameters": {}},
         "label_recipe": {
             "name": "next_session_open_to_open",
             "decision": "close_t",

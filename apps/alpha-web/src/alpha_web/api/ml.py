@@ -47,10 +47,20 @@ class MlBackendCapability(StrictModel):
     versions: dict[str, str]
 
 
+class MlFeatureCapability(StrictModel):
+    name: Literal["alpha158"]
+    version: Literal[1, 2]
+    status: Literal["available", "missing_dependency", "incompatible_dependency"]
+    reason: str | None
+    scope: str
+    versions: dict[str, str]
+
+
 class MlCapabilities(StrictModel):
     schema_version: Literal[1]
     qlib_version: str | None
     backends: list[MlBackendCapability]
+    feature_recipes: list[MlFeatureCapability] = Field(default_factory=list)
 
 
 class MlServiceStatus(StrictModel):
@@ -108,7 +118,7 @@ class MlInputBundlePage(StrictModel):
 
 class MlFeatureRecipe(StrictModel):
     name: Literal["alpha158"]
-    version: Literal[1]
+    version: Literal[1, 2]
     parameters: dict[str, JsonValue]
 
 
@@ -312,11 +322,29 @@ class MlDiagnosticVersions(StrictModel):
     lightgbm: str
 
 
+class MlFeatureCorrection(StrictModel):
+    name: Literal["alpha158"]
+    version: Literal[2]
+    scope: str
+    full_alpha158_parity: Literal[False]
+    corrected_columns: list[str]
+    inherited_v1_columns: list[str]
+    warmup: str
+    nonfinite: str
+    input: str
+    upstream: JsonObject
+    source_sha256: dict[str, str]
+    compatibility_key: str
+
+
 class MlDiagnosticFeatureRecipe(StrictModel):
-    name: Literal["Alpha158-style"]
+    name: Literal["Alpha158-style", "Alpha158-style v2 (40 upstream columns; 118 legacy columns)"]
     feature_count: int
     names: list[str]
     vwap_source: str
+    versioned_correction: MlFeatureCorrection | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class MlDiagnosticLabelRecipe(StrictModel):
@@ -580,7 +608,7 @@ def get_readiness() -> dict[str, object]:
         raise _http_error(exc) from exc
 
 
-@router.get("/capabilities", response_model=MlCapabilities)
+@router.get("/capabilities", response_model=MlCapabilities, response_model_exclude_unset=True)
 def get_capabilities() -> dict[str, object]:
     """Relay installed backend capability evidence from the isolated worker through CLI."""
     try:

@@ -6,14 +6,15 @@ host prefixes, MIME sets, byte caps, timeouts and 429 policy stay owned by each 
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from email.message import Message
-from typing import Any, Final, cast
+from typing import Any, Final, Literal, Protocol, cast
 from urllib.request import HTTPRedirectHandler, Request
 
 from alpha_core import DataError
@@ -97,7 +98,7 @@ class _NoBudgetRedirect(HTTPRedirectHandler):
 
 
 def _read_budgeted(response: Any, budget: RequestBudget, max_bytes: int) -> bytes:
-    import http.client  # noqa: PLC0415
+    import http.client
 
     chunks: list[bytes] = []
     size = 0
@@ -119,6 +120,114 @@ def _read_budgeted(response: Any, budget: RequestBudget, max_bytes: int) -> byte
         chunks.append(chunk)
 
 
+@dataclass(frozen=True)
+class CompleteHttpResponse:
+    """Local transport evidence, NOT authentication, raw admission or replay authority.
+
+    Emitted only after a bounded identity-encoded Content-Length body, EOF probe and
+    context cleanup succeed. Construction alone cannot establish source provenance.
+    """
+
+    request_hash: str
+    status_code: Literal[200, 429]
+    content_length: int
+    body: bytes
+    basis: Literal["identity_content_length_and_eof"] = "identity_content_length_and_eof"
+    schema_version: Literal[1] = 1
+
+    @property
+    def actual_bytes(self) -> int:
+        return len(self.body)
+
+    @property
+    def body_sha256(self) -> str:
+        return hashlib.sha256(self.body).hexdigest()
+
+
+def _read_complete_identity(
+    response: Any, budget: RequestBudget | None, max_bytes: int, *, expected_status: int = 200
+) -> bytes:
+    """Strict supported framing subset; missing/chunked/encoded framing is refused."""
+    import http.client
+
+    # urllib already bounds HTTP headers; independently bound the accepted fixture metadata.
+    headers: dict[str, str] = {}
+    for index, (key, value) in enumerate(response.headers.items()):
+        if (
+            index >= 128
+            or type(key) is not str
+            or type(value) is not str
+            or len(key) > 1024
+            or len(value) > 8192
+        ):
+            raise DataError("complete response headers exceed bounds")
+        name = key.lower()
+        if name in headers:
+            raise DataError("complete response duplicate header")
+        headers[name] = value.strip()
+    declared = headers.get("content-length", "")
+    status = response.getcode()
+    if (
+        type(status) is not int
+        or status != expected_status
+        or not declared.isascii()
+        or not declared.isdecimal()
+        or len(declared) > 10
+        or headers.get("content-encoding", "identity").lower() != "identity"
+        or "transfer-encoding" in headers
+    ):
+        raise DataError("complete response requires status200 identity Content-Length framing")
+    length = int(declared)
+    if length > max_bytes:
+        raise DataError("complete response declared byte limit exceeded")
+    chunks: list[bytes] = []
+    size = 0
+    while True:
+        requested = min(65536, length - size + 1)
+        if budget is not None:
+            remaining = budget.max_bytes - budget.bytes_read
+            if remaining <= 0:
+                raise DataError("complete response byte budget exhausted before EOF")
+            requested = min(requested, remaining)
+        try:
+            chunk = response.read(requested)
+        except http.client.IncompleteRead as error:
+            if budget is not None:
+                budget.bytes_read += len(error.partial)
+            raise
+        if type(chunk) is not bytes or len(chunk) > requested:
+            raise DataError("complete response read contract invalid")
+        if budget is not None:
+            budget.bytes_read += len(chunk)
+        size += len(chunk)
+        if size > length:
+            raise DataError("complete response exceeds declared length")
+        if not chunk:
+            if size != length:
+                raise DataError("complete response truncated before declared length")
+            return b"".join(chunks)
+        chunks.append(chunk)
+
+
+class HttpAttemptHook(Protocol):
+    """Trusted injected boundary around ONE explicit open/read/close attempt.
+
+    Identity hashes method+exact URL; no headers or raw URL are passed to accounting.
+    The implementation must return the supplied operation's bytes or raise. It cannot
+    confer live admission. Redirects are refused whenever this hook is installed.
+    """
+
+    def __call__(
+        self, request_hash: str, retry_ordinal: int, send: Callable[[], bytes], /
+    ) -> bytes: ...
+
+
+def http_request_hash(request: Request) -> str:
+    return hashlib.sha256(
+        json.dumps([request.get_method(), request.full_url], separators=(",", ":")).encode()
+    ).hexdigest()
+
+
 def fetch_bounded(
     request_or_url: str | Request,
     *,
@@ -131,44 +240,157 @@ def fetch_bounded(
     report_http_code: bool = False,
     retry_429: bool = False,
     budget: RequestBudget | None = None,
+    attempt_hook: HttpAttemptHook | None = None,
+    response_evidence: Callable[[CompleteHttpResponse], None] | None = None,
+    error_response_evidence: Callable[[CompleteHttpResponse], None] | None = None,
 ) -> bytes:
     """Read one bounded response, revalidating the redirect host, the MIME and the byte cap."""
-    import urllib.error  # noqa: PLC0415
-    import urllib.request  # noqa: PLC0415
+    import urllib.error
+    import urllib.request
 
     request = (
         Request(request_or_url, headers=dict(_JSON_HEADERS))
         if isinstance(request_or_url, str)
         else request_or_url
     )
+    if error_response_evidence is not None and response_evidence is None:
+        raise DataError("error evidence requires complete response evidence")
+    strict = response_evidence is not None
+    expected_url, expected_method = request.full_url, request.get_method()
+    request_hash = http_request_hash(request) if attempt_hook is not None or strict else None
+    if (attempt_hook is not None or strict) and (
+        request.get_method() != "GET" or request.data is not None
+    ):
+        raise DataError("accounted HTTP transport requires a body-free GET")
     max_attempts = 4 if retry_429 else 1
-    if budget is not None and not request.full_url.startswith(host_prefix):
+    if (
+        budget is not None or attempt_hook is not None or strict
+    ) and not request.full_url.startswith(host_prefix):
         raise DataError(f"{provider} request host is invalid")
-    opener = urllib.request.build_opener(_NoBudgetRedirect()) if budget is not None else None
+    opener = (
+        urllib.request.build_opener(_NoBudgetRedirect())
+        if budget is not None or attempt_hook is not None or strict
+        else None
+    )
     payload: bytes | None = None
     for attempt in range(max_attempts):
-        if budget is not None:
+        called = False
+        if budget is not None and attempt_hook is None:
             budget.reserve_request()
-        try:
-            context = (
-                urllib.request.urlopen(request, timeout=timeout_seconds)  # noqa: S310
-                if opener is None
-                else opener.open(request, timeout=timeout_seconds)
-            )
-            with context as response:
-                if not str(response.geturl()).startswith(host_prefix):
-                    raise DataError(f"{provider} redirect host is invalid")
-                content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
-                if content_type not in content_types:
-                    raise DataError(f"{provider} {mime_message}")
-                payload = (
-                    bytes(response.read(max_bytes + 1))
-                    if budget is None
-                    else _read_budgeted(response, budget, max_bytes)
+
+        def send() -> bytes:
+            nonlocal called
+            if called:
+                raise DataError("HTTP attempt operation already called")
+            called = True
+            if budget is not None and attempt_hook is not None:
+                budget.reserve_request()
+            opened = False
+            try:
+                if strict and (
+                    request.full_url != expected_url
+                    or request.get_method() != expected_method
+                    or request.data is not None
+                ):
+                    raise DataError("complete response identity changed before open")
+                context = (
+                    urllib.request.urlopen(request, timeout=timeout_seconds)
+                    if opener is None
+                    else opener.open(request, timeout=timeout_seconds)
                 )
+                opened = True
+                with context as response:
+                    if strict and (
+                        response.geturl() != expected_url
+                        or request.full_url != expected_url
+                        or request.get_method() != expected_method
+                        or request.data is not None
+                    ):
+                        raise DataError("complete response exact request identity changed")
+                    if not str(response.geturl()).startswith(host_prefix):
+                        raise DataError(f"{provider} redirect host is invalid")
+                    content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0]
+                    if content_type not in content_types:
+                        raise DataError(f"{provider} {mime_message}")
+                    body = (
+                        _read_complete_identity(response, budget, max_bytes)
+                        if strict
+                        else bytes(response.read(max_bytes + 1))
+                        if budget is None
+                        else _read_budgeted(response, budget, max_bytes)
+                    )
+                    if attempt_hook is not None and len(body) > max_bytes:
+                        raise DataError(f"{provider} response exceeds the byte limit")
+                if response_evidence is not None:
+                    if (
+                        request.full_url != expected_url
+                        or request.get_method() != expected_method
+                        or request.data is not None
+                        or response.geturl() != expected_url
+                    ):
+                        raise DataError("complete response request identity changed during cleanup")
+                    assert request_hash is not None
+                    response_evidence(
+                        CompleteHttpResponse(
+                            request_hash=request_hash,
+                            status_code=200,
+                            content_length=len(body),
+                            body=body,
+                        )
+                    )
+                return body
+            except urllib.error.HTTPError as error:
+                if error_response_evidence is not None:
+                    try:
+                        if (
+                            opened
+                            or error.code != 429
+                            or error.geturl() != expected_url
+                            or request.full_url != expected_url
+                            or request.get_method() != expected_method
+                            or request.data is not None
+                        ):
+                            raise DataError("complete error response identity or status invalid")
+                        error_body = _read_complete_identity(
+                            error, budget, max_bytes, expected_status=429
+                        )
+                    finally:
+                        error.close()
+                    if (
+                        error.geturl() != expected_url
+                        or request.full_url != expected_url
+                        or request.get_method() != expected_method
+                        or request.data is not None
+                    ):
+                        raise DataError(
+                            "complete error response identity changed during cleanup"
+                        ) from None
+                    assert request_hash is not None
+                    error_response_evidence(
+                        CompleteHttpResponse(
+                            request_hash=request_hash,
+                            status_code=429,
+                            content_length=len(error_body),
+                            body=error_body,
+                        )
+                    )
+                elif attempt_hook is not None or strict:
+                    error.close()
+                    if opened:
+                        raise DataError("accounted HTTP response read or close failed") from None
+                raise
+
+        try:
+            if attempt_hook is None:
+                payload = send()
+            else:
+                assert request_hash is not None
+                payload = attempt_hook(request_hash, attempt, send)
+            if attempt_hook is not None and (not called or type(payload) is not bytes):
+                raise DataError("HTTP attempt hook did not execute the operation")
             break
         except urllib.error.HTTPError as exc:
-            if budget is not None:
+            if budget is not None and attempt_hook is None and not strict:
                 exc.close()
             if retry_429 and exc.code == 429 and attempt < max_attempts - 1:
                 if budget is not None and budget.requests_used >= budget.max_requests:

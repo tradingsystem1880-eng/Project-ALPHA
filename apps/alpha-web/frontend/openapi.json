@@ -10050,6 +10050,13 @@
             "title": "Backends",
             "type": "array"
           },
+          "feature_recipes": {
+            "items": {
+              "$ref": "#/components/schemas/MlFeatureCapability"
+            },
+            "title": "Feature Recipes",
+            "type": "array"
+          },
           "qlib_version": {
             "anyOf": [
               {
@@ -10104,7 +10111,10 @@
             "type": "integer"
           },
           "name": {
-            "const": "Alpha158-style",
+            "enum": [
+              "Alpha158-style",
+              "Alpha158-style v2 (40 upstream columns; 118 legacy columns)"
+            ],
             "title": "Name",
             "type": "string"
           },
@@ -10114,6 +10124,16 @@
             },
             "title": "Names",
             "type": "array"
+          },
+          "versioned_correction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MlFeatureCorrection"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "vwap_source": {
             "title": "Vwap Source",
@@ -11505,6 +11525,145 @@
         "title": "MlExperimentSummary",
         "type": "object"
       },
+      "MlFeatureCapability": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "const": "alpha158",
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "missing_dependency",
+              "incompatible_dependency"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "enum": [
+              1,
+              2
+            ],
+            "title": "Version",
+            "type": "integer"
+          },
+          "versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Versions",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "status",
+          "reason",
+          "scope",
+          "versions"
+        ],
+        "title": "MlFeatureCapability",
+        "type": "object"
+      },
+      "MlFeatureCorrection": {
+        "additionalProperties": false,
+        "properties": {
+          "compatibility_key": {
+            "title": "Compatibility Key",
+            "type": "string"
+          },
+          "corrected_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Corrected Columns",
+            "type": "array"
+          },
+          "full_alpha158_parity": {
+            "const": false,
+            "title": "Full Alpha158 Parity",
+            "type": "boolean"
+          },
+          "inherited_v1_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Inherited V1 Columns",
+            "type": "array"
+          },
+          "input": {
+            "title": "Input",
+            "type": "string"
+          },
+          "name": {
+            "const": "alpha158",
+            "title": "Name",
+            "type": "string"
+          },
+          "nonfinite": {
+            "title": "Nonfinite",
+            "type": "string"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "source_sha256": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Source Sha256",
+            "type": "object"
+          },
+          "upstream": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "version": {
+            "const": 2,
+            "title": "Version",
+            "type": "integer"
+          },
+          "warmup": {
+            "title": "Warmup",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "scope",
+          "full_alpha158_parity",
+          "corrected_columns",
+          "inherited_v1_columns",
+          "warmup",
+          "nonfinite",
+          "input",
+          "upstream",
+          "source_sha256",
+          "compatibility_key"
+        ],
+        "title": "MlFeatureCorrection",
+        "type": "object"
+      },
       "MlFeatureImportance": {
         "additionalProperties": false,
         "properties": {
@@ -11545,7 +11704,10 @@
             "type": "object"
           },
           "version": {
-            "const": 1,
+            "enum": [
+              1,
+              2
+            ],
             "title": "Version",
             "type": "integer"
           }
@@ -13465,6 +13627,47 @@
         "title": "NativeCalendarReturn",
         "type": "object"
       },
+      "NativeDispatch": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "owner_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "profile_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Profile Sha256",
+            "type": "string"
+          },
+          "reservation_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Reservation Id",
+            "type": "string"
+          },
+          "spec_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Spec Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "reservation_id",
+          "owner_id",
+          "spec_sha256",
+          "profile_sha256"
+        ],
+        "title": "NativeDispatch",
+        "type": "object"
+      },
       "NativeExposureTurnover": {
         "additionalProperties": false,
         "properties": {
@@ -13554,6 +13757,25 @@
         "title": "NativeExposureTurnover",
         "type": "object"
       },
+      "NativeFeedback": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptable": {
+            "title": "Acceptable",
+            "type": "boolean"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decision",
+          "acceptable"
+        ],
+        "title": "NativeFeedback",
+        "type": "object"
+      },
       "NativeHistogramBin": {
         "additionalProperties": false,
         "properties": {
@@ -13578,6 +13800,165 @@
         "title": "NativeHistogramBin",
         "type": "object"
       },
+      "NativeJobResultV1": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "const": "synthetic_only_unqualified",
+            "title": "Classification",
+            "type": "string"
+          },
+          "dispatch": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NativeDispatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NativeFeedback"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "operation": {
+            "const": "recover_native_stock_result",
+            "title": "Operation",
+            "type": "string"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NativeProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "maxLength": 256,
+            "title": "Reason",
+            "type": "string"
+          },
+          "receipt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NativeReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NativeResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resume_allowed": {
+            "title": "Resume Allowed",
+            "type": "boolean"
+          },
+          "schema": {
+            "const": "NativeStockOperatorResultV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "scientific_acceptance": {
+            "const": "not_admitted",
+            "title": "Scientific Acceptance",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "invalid",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema",
+          "operation",
+          "classification",
+          "status",
+          "reason",
+          "resume_allowed",
+          "scientific_acceptance"
+        ],
+        "title": "NativeJobResultV1",
+        "type": "object"
+      },
+      "NativeProvenance": {
+        "additionalProperties": false,
+        "properties": {
+          "checkpoint_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkpoint Sha256"
+          },
+          "owner_receipt_match": {
+            "enum": [
+              "verified",
+              "mismatch",
+              "unavailable"
+            ],
+            "title": "Owner Receipt Match",
+            "type": "string"
+          },
+          "receipt_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Sha256"
+          },
+          "trace_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Sha256"
+          }
+        },
+        "required": [
+          "owner_receipt_match"
+        ],
+        "title": "NativeProvenance",
+        "type": "object"
+      },
       "NativeQQPoint": {
         "additionalProperties": false,
         "properties": {
@@ -13600,6 +13981,220 @@
           "sample"
         ],
         "title": "NativeQQPoint",
+        "type": "object"
+      },
+      "NativeReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "actual_model_calls": {
+            "maximum": 0.0,
+            "minimum": 0.0,
+            "title": "Actual Model Calls",
+            "type": "integer"
+          },
+          "charged_stages": {
+            "maxItems": 5,
+            "minItems": 5,
+            "prefixItems": [
+              {
+                "const": "direct_exp_gen",
+                "type": "string"
+              },
+              {
+                "const": "coding",
+                "type": "string"
+              },
+              {
+                "const": "running",
+                "type": "string"
+              },
+              {
+                "const": "feedback",
+                "type": "string"
+              },
+              {
+                "const": "record",
+                "type": "string"
+              }
+            ],
+            "title": "Charged Stages",
+            "type": "array"
+          },
+          "checkpoint_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Checkpoint Sha256",
+            "type": "string"
+          },
+          "checkpoint_unchanged": {
+            "title": "Checkpoint Unchanged",
+            "type": "boolean"
+          },
+          "fake_model_attempts": {
+            "maximum": 2.0,
+            "minimum": 2.0,
+            "title": "Fake Model Attempts",
+            "type": "integer"
+          },
+          "fake_tool_attempts": {
+            "maximum": 2.0,
+            "minimum": 2.0,
+            "title": "Fake Tool Attempts",
+            "type": "integer"
+          },
+          "replay_rejected": {
+            "title": "Replay Rejected",
+            "type": "boolean"
+          },
+          "request": {
+            "$ref": "#/components/schemas/NativeRequest"
+          },
+          "resumed_without_repeating": {
+            "title": "Resumed Without Repeating",
+            "type": "boolean"
+          },
+          "routes_enabled": {
+            "title": "Routes Enabled",
+            "type": "boolean"
+          },
+          "schema": {
+            "const": "StockRDLoopReceiptV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "scientific_acceptance": {
+            "const": "not_admitted",
+            "title": "Scientific Acceptance",
+            "type": "string"
+          },
+          "source_sha256": {
+            "const": "0266b2d63328f88fcaf6f239bf6d67f29c896b8161566f794ef69465b7788707",
+            "title": "Source Sha256",
+            "type": "string"
+          },
+          "trace_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Trace Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema",
+          "request",
+          "source_sha256",
+          "trace_sha256",
+          "checkpoint_sha256",
+          "charged_stages",
+          "fake_model_attempts",
+          "fake_tool_attempts",
+          "actual_model_calls",
+          "resumed_without_repeating",
+          "checkpoint_unchanged",
+          "replay_rejected",
+          "routes_enabled",
+          "scientific_acceptance"
+        ],
+        "title": "NativeReceipt",
+        "type": "object"
+      },
+      "NativeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "cpu_milliseconds": {
+            "maximum": 60000.0,
+            "minimum": 1.0,
+            "title": "Cpu Milliseconds",
+            "type": "integer"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "loop_steps": {
+            "maximum": 5.0,
+            "minimum": 5.0,
+            "title": "Loop Steps",
+            "type": "integer"
+          },
+          "manifest_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Sha256",
+            "type": "string"
+          },
+          "mode": {
+            "const": "resume",
+            "title": "Mode",
+            "type": "string"
+          },
+          "model_calls": {
+            "maximum": 2.0,
+            "minimum": 2.0,
+            "title": "Model Calls",
+            "type": "integer"
+          },
+          "owner_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "reservation_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Reservation Id",
+            "type": "string"
+          },
+          "schema": {
+            "const": "StockRDLoopFixtureRequestV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "spec_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Spec Sha256",
+            "type": "string"
+          },
+          "tool_calls": {
+            "maximum": 2.0,
+            "minimum": 2.0,
+            "title": "Tool Calls",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema",
+          "job_id",
+          "reservation_id",
+          "owner_id",
+          "spec_sha256",
+          "manifest_sha256",
+          "loop_steps",
+          "model_calls",
+          "tool_calls",
+          "cpu_milliseconds",
+          "mode"
+        ],
+        "title": "NativeRequest",
+        "type": "object"
+      },
+      "NativeResult": {
+        "additionalProperties": false,
+        "properties": {
+          "synthetic_score": {
+            "title": "Synthetic Score",
+            "type": "number"
+          },
+          "unit": {
+            "const": "fixture_only",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "synthetic_score",
+          "unit"
+        ],
+        "title": "NativeResult",
         "type": "object"
       },
       "NativeRollingMetric": {
@@ -19978,6 +20573,562 @@
         "title": "ResearchStudyStatusV1",
         "type": "object"
       },
+      "RetainedCoverageLimits": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_hash_bytes": {
+            "title": "Artifact Hash Bytes",
+            "type": "integer"
+          },
+          "metadata_bytes": {
+            "title": "Metadata Bytes",
+            "type": "integer"
+          },
+          "missing_ranges": {
+            "title": "Missing Ranges",
+            "type": "integer"
+          },
+          "normalized_payload_bytes": {
+            "title": "Normalized Payload Bytes",
+            "type": "integer"
+          },
+          "payload_read_bytes": {
+            "title": "Payload Read Bytes",
+            "type": "integer"
+          },
+          "returned_rows": {
+            "title": "Returned Rows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "normalized_payload_bytes",
+          "payload_read_bytes",
+          "returned_rows",
+          "missing_ranges",
+          "artifact_hash_bytes",
+          "metadata_bytes"
+        ],
+        "title": "RetainedCoverageLimits",
+        "type": "object"
+      },
+      "RetainedCoverageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "coverage_end": {
+            "format": "date-time",
+            "title": "Coverage End",
+            "type": "string"
+          },
+          "coverage_start": {
+            "format": "date-time",
+            "title": "Coverage Start",
+            "type": "string"
+          },
+          "expected_cadence_seconds": {
+            "const": 86400,
+            "title": "Expected Cadence Seconds",
+            "type": "integer"
+          },
+          "max_input_bytes": {
+            "default": 33554432,
+            "maximum": 33554432.0,
+            "minimum": 1.0,
+            "title": "Max Input Bytes",
+            "type": "integer"
+          },
+          "max_missing_ranges": {
+            "default": 1000,
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Max Missing Ranges",
+            "type": "integer"
+          },
+          "max_rows": {
+            "default": 50000,
+            "maximum": 50000.0,
+            "minimum": 1.0,
+            "title": "Max Rows",
+            "type": "integer"
+          },
+          "max_verify_artifact_bytes": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
+            "title": "Max Verify Artifact Bytes",
+            "type": "integer"
+          },
+          "max_verify_metadata_bytes": {
+            "default": 33554432,
+            "maximum": 33554432.0,
+            "minimum": 1.0,
+            "title": "Max Verify Metadata Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "coverage_start",
+          "coverage_end",
+          "as_of",
+          "expected_cadence_seconds",
+          "max_verify_artifact_bytes"
+        ],
+        "title": "RetainedCoverageRequest",
+        "type": "object"
+      },
+      "RetainedCoverageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "audit_state": {
+            "enum": [
+              "inspected",
+              "unavailable"
+            ],
+            "title": "Audit State",
+            "type": "string"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "hash_bytes_read": {
+            "default": 0,
+            "title": "Hash Bytes Read",
+            "type": "integer"
+          },
+          "hash_bytes_reserved": {
+            "default": 0,
+            "title": "Hash Bytes Reserved",
+            "type": "integer"
+          },
+          "inspection_provider_calls": {
+            "const": 0,
+            "title": "Inspection Provider Calls",
+            "type": "integer"
+          },
+          "limits": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetainedCoverageLimits"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manifest_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Id",
+            "type": "string"
+          },
+          "metadata_bytes_read": {
+            "default": 0,
+            "title": "Metadata Bytes Read",
+            "type": "integer"
+          },
+          "metadata_bytes_reserved": {
+            "default": 0,
+            "title": "Metadata Bytes Reserved",
+            "type": "integer"
+          },
+          "point_in_time_eligibility": {
+            "const": false,
+            "title": "Point In Time Eligibility",
+            "type": "boolean"
+          },
+          "provider_history_complete": {
+            "const": false,
+            "title": "Provider History Complete",
+            "type": "boolean"
+          },
+          "reason": {
+            "enum": [
+              "RETAINED_GRID_INSPECTED",
+              "RETAINED_BAR_AUDIT_UNAVAILABLE"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "row_audit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetainedCoverageRows"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_retrieved_after_as_of": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Retrieved After As Of"
+          },
+          "stored_quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetainedStoredQuality"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "manifest_id",
+          "audit_state",
+          "reason",
+          "row_audit",
+          "stored_quality",
+          "limits",
+          "provider_history_complete",
+          "point_in_time_eligibility",
+          "execution_authority",
+          "inspection_provider_calls"
+        ],
+        "title": "RetainedCoverageResponse",
+        "type": "object"
+      },
+      "RetainedCoverageRows": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "audited_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Audited Columns",
+            "type": "array"
+          },
+          "cadence_seconds": {
+            "const": 86400,
+            "title": "Cadence Seconds",
+            "type": "integer"
+          },
+          "conflicting_duplicate_groups": {
+            "minimum": 0.0,
+            "title": "Conflicting Duplicate Groups",
+            "type": "integer"
+          },
+          "covered_slots": {
+            "minimum": 0.0,
+            "title": "Covered Slots",
+            "type": "integer"
+          },
+          "declared_grid_satisfied": {
+            "title": "Declared Grid Satisfied",
+            "type": "boolean"
+          },
+          "duplicate_extra_rows": {
+            "minimum": 0.0,
+            "title": "Duplicate Extra Rows",
+            "type": "integer"
+          },
+          "duplicate_timestamp_groups": {
+            "minimum": 0.0,
+            "title": "Duplicate Timestamp Groups",
+            "type": "integer"
+          },
+          "end_exclusive": {
+            "format": "date-time",
+            "title": "End Exclusive",
+            "type": "string"
+          },
+          "execution_authority": {
+            "const": false,
+            "title": "Execution Authority",
+            "type": "boolean"
+          },
+          "expected_slots": {
+            "minimum": 1.0,
+            "title": "Expected Slots",
+            "type": "integer"
+          },
+          "failures": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failures",
+            "type": "array"
+          },
+          "grid_basis": {
+            "const": "caller_declared_start_and_native_daily_cadence",
+            "title": "Grid Basis",
+            "type": "string"
+          },
+          "identical_duplicate_groups": {
+            "minimum": 0.0,
+            "title": "Identical Duplicate Groups",
+            "type": "integer"
+          },
+          "in_window_rows": {
+            "minimum": 0.0,
+            "title": "In Window Rows",
+            "type": "integer"
+          },
+          "invalid_close_timestamp_rows": {
+            "minimum": 0.0,
+            "title": "Invalid Close Timestamp Rows",
+            "type": "integer"
+          },
+          "invalid_numeric_rows": {
+            "minimum": 0.0,
+            "title": "Invalid Numeric Rows",
+            "type": "integer"
+          },
+          "invalid_timestamp_rows": {
+            "minimum": 0.0,
+            "title": "Invalid Timestamp Rows",
+            "type": "integer"
+          },
+          "missing_range_count": {
+            "minimum": 0.0,
+            "title": "Missing Range Count",
+            "type": "integer"
+          },
+          "missing_ranges": {
+            "items": {
+              "$ref": "#/components/schemas/RetainedMissingRange"
+            },
+            "maxItems": 1000,
+            "title": "Missing Ranges",
+            "type": "array"
+          },
+          "missing_ranges_truncated": {
+            "title": "Missing Ranges Truncated",
+            "type": "boolean"
+          },
+          "missing_slots": {
+            "minimum": 0.0,
+            "title": "Missing Slots",
+            "type": "integer"
+          },
+          "off_grid_rows": {
+            "minimum": 0.0,
+            "title": "Off Grid Rows",
+            "type": "integer"
+          },
+          "outside_window_rows": {
+            "minimum": 0.0,
+            "title": "Outside Window Rows",
+            "type": "integer"
+          },
+          "point_in_time_eligibility": {
+            "const": false,
+            "title": "Point In Time Eligibility",
+            "type": "boolean"
+          },
+          "provider_history_complete": {
+            "const": false,
+            "title": "Provider History Complete",
+            "type": "boolean"
+          },
+          "row_count": {
+            "minimum": 0.0,
+            "title": "Row Count",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "grid_basis",
+          "start",
+          "end_exclusive",
+          "as_of",
+          "cadence_seconds",
+          "expected_slots",
+          "covered_slots",
+          "missing_slots",
+          "missing_ranges",
+          "missing_range_count",
+          "missing_ranges_truncated",
+          "row_count",
+          "in_window_rows",
+          "outside_window_rows",
+          "invalid_timestamp_rows",
+          "invalid_close_timestamp_rows",
+          "off_grid_rows",
+          "invalid_numeric_rows",
+          "duplicate_timestamp_groups",
+          "duplicate_extra_rows",
+          "conflicting_duplicate_groups",
+          "identical_duplicate_groups",
+          "failures",
+          "warnings",
+          "audited_columns",
+          "declared_grid_satisfied",
+          "provider_history_complete",
+          "point_in_time_eligibility",
+          "execution_authority"
+        ],
+        "title": "RetainedCoverageRows",
+        "type": "object"
+      },
+      "RetainedMissingRange": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "slots": {
+            "minimum": 1.0,
+            "title": "Slots",
+            "type": "integer"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "slots"
+        ],
+        "title": "RetainedMissingRange",
+        "type": "object"
+      },
+      "RetainedStoredQuality": {
+        "additionalProperties": false,
+        "properties": {
+          "method_version": {
+            "title": "Method Version",
+            "type": "string"
+          },
+          "row_count": {
+            "title": "Row Count",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "qualified",
+              "warning",
+              "quarantined",
+              "unavailable"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": true,
+            "title": "Unchanged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "state",
+          "row_count",
+          "method_version",
+          "unchanged"
+        ],
+        "title": "RetainedStoredQuality",
+        "type": "object"
+      },
+      "RiskMetricBasis": {
+        "additionalProperties": false,
+        "description": "Versioned projection conventions; no claim of verified initial capital or flows.",
+        "properties": {
+          "anchor_kind": {
+            "const": "first_recorded_equity",
+            "title": "Anchor Kind",
+            "type": "string"
+          },
+          "anchor_ts": {
+            "minLength": 1,
+            "title": "Anchor Ts",
+            "type": "string"
+          },
+          "anchor_units": {
+            "const": "recorded_equity_units",
+            "title": "Anchor Units",
+            "type": "string"
+          },
+          "anchor_value": {
+            "exclusiveMinimum": 0.0,
+            "title": "Anchor Value",
+            "type": "number"
+          },
+          "benchmark_adjustment": {
+            "const": "none_by_projection",
+            "title": "Benchmark Adjustment",
+            "type": "string"
+          },
+          "drawdown_convention": {
+            "const": "non_positive_fraction_from_scenario_wealth_peaks",
+            "title": "Drawdown Convention",
+            "type": "string"
+          },
+          "external_cash_flow_status": {
+            "const": "unknown",
+            "title": "External Cash Flow Status",
+            "type": "string"
+          },
+          "initial_capital_status": {
+            "const": "unknown",
+            "title": "Initial Capital Status",
+            "type": "string"
+          },
+          "pre_anchor_losses": {
+            "const": "not_measured",
+            "title": "Pre Anchor Losses",
+            "type": "string"
+          },
+          "return_accumulation": {
+            "const": "compounded_simple_returns",
+            "title": "Return Accumulation",
+            "type": "string"
+          },
+          "schema_version": {
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "anchor_kind",
+          "anchor_ts",
+          "anchor_value",
+          "anchor_units",
+          "initial_capital_status",
+          "external_cash_flow_status",
+          "return_accumulation",
+          "drawdown_convention",
+          "benchmark_adjustment",
+          "pre_anchor_losses"
+        ],
+        "title": "RiskMetricBasis",
+        "type": "object"
+      },
       "RiskProvenance": {
         "additionalProperties": false,
         "properties": {
@@ -20000,6 +21151,16 @@
             "const": true,
             "title": "Derived Projection",
             "type": "boolean"
+          },
+          "metric_basis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskMetricBasis"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "metric_namespace": {
             "const": "alpha_validation.scenario",
@@ -24621,6 +25782,59 @@
         ]
       }
     },
+    "/api/crypto-data/quality/{manifest_id}/retained-coverage": {
+      "post": {
+        "description": "Manual read-only evaluation of an explicit native daily grid; no acquisition or mutation.",
+        "operationId": "retained_quality_api_crypto_data_quality__manifest_id__retained_coverage_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "manifest_id",
+            "required": true,
+            "schema": {
+              "title": "Manifest Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetainedCoverageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetainedCoverageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Retained Quality",
+        "tags": [
+          "crypto-data"
+        ]
+      }
+    },
     "/api/crypto-data/snapshots": {
       "post": {
         "operationId": "snapshot_create_api_crypto_data_snapshots_post",
@@ -27342,6 +28556,50 @@
         ]
       }
     },
+    "/api/native-jobs/{job_id}/result": {
+      "get": {
+        "description": "Read owner-observed synthetic result; no paths, launch or resume selectors.",
+        "operationId": "native_result_api_native_jobs__job_id__result_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeJobResultV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Native Result",
+        "tags": [
+          "native-results"
+        ]
+      }
+    },
     "/api/overlays/{symbol}": {
       "get": {
         "description": "Indicator series and pattern annotations computed by ``alpha chart overlays`` over the\nsame point-in-time window as ``/api/candles``; the browser draws, it never computes.\n\nLives under ``/api/overlays`` because ``/candles/{symbol:path}`` swallows any suffix.",
@@ -29846,6 +31104,116 @@
         ]
       }
     },
+    "/api/research/cases/{project_id}/sources/{source_id}/original-pdf": {
+      "get": {
+        "description": "Download exact retained bytes only after the CLI store verifies source and hash.",
+        "operationId": "research_source_original_pdf_download",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Hash-verified original PDF bytes"
+          },
+          "404": {
+            "description": "Source or original PDF is unavailable"
+          },
+          "409": {
+            "description": "Original PDF failed integrity verification"
+          },
+          "503": {
+            "description": "Original PDF access is unavailable"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Source Original Pdf Download",
+        "tags": [
+          "research"
+        ]
+      },
+      "head": {
+        "description": "Verify the source-bound original PDF without returning its bytes.",
+        "operationId": "research_source_original_pdf_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Verification metadata in X-Research-Original-Pdf-* headers"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Research Source Original Pdf Status",
+        "tags": [
+          "research"
+        ]
+      }
+    },
     "/api/research/cases/{project_id}/status": {
       "get": {
         "description": "Read current phase, execution state, next action, budget, and firewall state.",
@@ -30150,6 +31518,16 @@
               "exclusiveMinimum": 0.5,
               "title": "Confidence",
               "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_metric_basis",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Metric Basis",
+              "type": "boolean"
             }
           }
         ],

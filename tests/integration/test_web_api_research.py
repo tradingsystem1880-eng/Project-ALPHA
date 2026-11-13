@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import sqlite3
 from collections.abc import Callable
@@ -563,6 +565,137 @@ def test_literature_routes_are_explicit_bounded_and_non_authoritative(
     )
 
 
+def test_original_pdf_api_serves_only_verified_same_project_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    captured = client.post(
+        "/api/research/cases", json={"idea": "Synthetic source PDF read journey"}
+    )
+    assert captured.status_code == 200, captured.text
+    project_id = captured.json()["project"]["project_id"]
+    second_case = client.post("/api/research/cases", json={"idea": "Different synthetic project"})
+    assert second_case.status_code == 200, second_case.text
+    other_project_id = second_case.json()["project"]["project_id"]
+    store = ControlStore(AlphaSettings().data_dir)
+    raw = b"%PDF-1.7\nsynthetic API PDF\n%%EOF\n"
+    digest = hashlib.sha256(raw).hexdigest()
+
+    def owner_source(title: str, *, retain: bool) -> str:
+        source = store.create_research_source(
+            project_id,
+            title=title,
+            locator=f"owner-provided:sha256:{digest}",
+            provider="owner",
+            access_mode="owner_provided",
+            content_hash=digest,
+            metadata={
+                "origin_kind": "owner_provided_local_pdf",
+                "trust_label": "UNTRUSTED_SOURCE",
+            },
+        )
+        source_id = str(source["source_id"])
+        if retain:
+            store.retain_research_source_original_pdf(project_id, source_id, raw)
+        return source_id
+
+    available_id = owner_source("Available synthetic PDF", retain=True)
+    base = f"/api/research/cases/{project_id}/sources/{available_id}/original-pdf"
+    head = client.head(base)
+    assert head.status_code == 200
+    assert head.content == b""
+    assert head.headers["x-research-original-pdf-status"] == "available"
+    assert head.headers["x-research-original-pdf-verified-sha256"] == digest
+    assert head.headers["x-research-original-pdf-bytes"] == str(len(raw))
+    assert head.headers["cache-control"] == "no-store"
+
+    download = client.get(base)
+    assert download.status_code == 200
+    assert download.content == raw
+    assert hashlib.sha256(download.content).hexdigest() == digest
+    assert download.headers["content-type"] == "application/pdf"
+    assert download.headers["content-disposition"] == 'attachment; filename="research-source.pdf"'
+    assert download.headers["x-content-type-options"] == "nosniff"
+
+    assert (
+        client.get(
+            f"/api/research/cases/{other_project_id}/sources/{available_id}/original-pdf"
+        ).status_code
+        == 404
+    )
+    assert (
+        client.get(
+            f"/api/research/cases/unknown-project/sources/{available_id}/original-pdf"
+        ).status_code
+        == 404
+    )
+
+    missing_id = owner_source("Missing synthetic PDF", retain=False)
+    missing_url = f"/api/research/cases/{project_id}/sources/{missing_id}/original-pdf"
+    missing = client.head(missing_url)
+    assert missing.status_code == 200
+    assert missing.headers["x-research-original-pdf-status"] == "missing"
+    missing_download = client.get(missing_url)
+    assert missing_download.status_code == 404
+    assert missing_download.json()["status"] == "missing"
+
+    corrupt_id = owner_source("Corrupt synthetic PDF", retain=True)
+    corrupt_path = tmp_path / "research" / "literature" / "source-pdfs" / f"{corrupt_id}.pdf"
+    corrupt_path.write_bytes(b"%PDF-1.7\nchanged bytes\n%%EOF\n")
+    corrupt_url = f"/api/research/cases/{project_id}/sources/{corrupt_id}/original-pdf"
+    corrupt = client.head(corrupt_url)
+    assert corrupt.status_code == 200
+    assert corrupt.headers["x-research-original-pdf-status"] == "corrupt"
+    corrupt_download = client.get(corrupt_url)
+    assert corrupt_download.status_code == 409
+    assert corrupt_download.json()["status"] == "corrupt"
+    assert corrupt_download.content != b"%PDF-1.7\nchanged bytes\n%%EOF\n"
+
+    metadata = store.create_research_source(
+        project_id,
+        title="Metadata-only source",
+        locator="doi:10.0000/synthetic",
+        provider="crossref",
+        access_mode="metadata_only",
+    )
+    unavailable_url = (
+        f"/api/research/cases/{project_id}/sources/{metadata['source_id']}/original-pdf"
+    )
+    unavailable = client.head(unavailable_url)
+    assert unavailable.status_code == 200
+    assert unavailable.headers["x-research-original-pdf-status"] == "unavailable"
+    assert client.get(unavailable_url).status_code == 503
+
+
+def test_original_pdf_api_rejects_a_mismatched_cli_payload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    expected = b"%PDF-1.7\nexpected\n%%EOF\n"
+    substituted = b"%PDF-1.7\nsubstituted\n%%EOF\n"
+    digest = hashlib.sha256(expected).hexdigest()
+    source_id = "rs_synthetic"
+    monkeypatch.setattr(
+        _research,
+        "source_original_pdf",
+        lambda *_args, **_kwargs: {
+            "schema": "ResearchSourceOriginalPdfV1",
+            "source_id": source_id,
+            "status": "available",
+            "sha256": digest,
+            "verified_sha256": digest,
+            "byte_count": len(substituted),
+            "verification": "verified",
+            "trust_label": "UNTRUSTED_SOURCE",
+            "content_base64": base64.b64encode(substituted).decode("ascii"),
+        },
+    )
+
+    response = client.get(f"/api/research/cases/project/sources/{source_id}/original-pdf")
+    assert response.status_code == 502
+    assert response.json()["message"] == "alpha returned unverified original PDF bytes"
+
+
 def test_research_report_route_validates_terminal_gate_packet_union(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -732,6 +865,7 @@ def test_research_router_exposes_no_new_mutation_verbs() -> None:
         "/api/research/cases/{project_id}/scorecard",
         "/api/research/cases/{project_id}/decision-view",
         "/api/research/cases/{project_id}/semantic-projection",
+        "/api/research/cases/{project_id}/sources/{source_id}/original-pdf",
     }
     assert read_only_paths <= set(research_routes)
 

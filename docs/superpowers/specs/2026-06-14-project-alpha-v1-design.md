@@ -8,6 +8,10 @@
 > current implementation contract. The shipped architecture replaced its DuckDB query layer and
 > expanded well beyond this slice. Use [`CLAUDE.md`](../../../CLAUDE.md) and
 > [`docs/ARCHITECTURE.md`](../../ARCHITECTURE.md) for current behavior.
+>
+> **Delivery note (2026-11-13):** the phases this spec proposed (Phases 0–3 and 5) were
+> delivered in June 2026 — see the [2026 Q2 build history](../../build-status/2026-Q2.md). No record
+> of a formal owner approval of this spec was found, so the status line above is kept as written.
 
 ---
 

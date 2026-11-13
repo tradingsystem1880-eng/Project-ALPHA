@@ -103,6 +103,20 @@ def capabilities(
                 {
                     "schema_version": 1,
                     "qlib_version": None,
+                    "feature_recipes": [
+                        {
+                            "name": "alpha158",
+                            "version": version,
+                            "status": "missing_dependency",
+                            "versions": {},
+                            "reason": "isolated worker entrypoint is not installed",
+                            "scope": scope,
+                        }
+                        for version, scope in (
+                            (1, "historical_alpha158_style"),
+                            (2, "partial_alpha158_style_40_column_correction"),
+                        )
+                    ],
                     "backends": [
                         {
                             "name": name,

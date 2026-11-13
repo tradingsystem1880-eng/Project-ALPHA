@@ -4,7 +4,7 @@ paths:
 ---
 # alpha_validation rules
 
-Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `tests/fixtures/claude_md_v1.md`). The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
+Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 
 QUANT TIER: edits here require a PASS `QuantVerificationReport` (`/verify-quant`) before Stop and an APPROVE `ReviewVerdict` before commit. See also `quant.md`.
 ### `alpha_validation` (`packages/alpha-validation/src/alpha_validation/`) — engine-agnostic stats primitives + tear sheet. core only (+ numpy/scipy; pandas/quantstats at the tearsheet edge).

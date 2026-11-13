@@ -182,12 +182,12 @@ class QuantPadAdapter:
             }
         )
         url = f"{QUANTPAD_BASE_URL}/v1/bars?{params}"
-        request = urllib.request.Request(  # noqa: S310 - pinned https host per ADR-0018
+        request = urllib.request.Request(
             url,
             headers={"X-API-Key": api_key, "Accept": "text/csv"},
         )
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+            with urllib.request.urlopen(request, timeout=30) as response:
                 raw = response.read()
                 rate_limit = {
                     name.lower(): value

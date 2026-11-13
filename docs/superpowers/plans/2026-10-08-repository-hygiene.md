@@ -1,5 +1,7 @@
 # Finish outstanding work and establish a documented clean baseline
 
+**Delivery state:** In progress — named slices shipped via PRs #55/#58/#99; broad programme open
+
 **Current cloud reconciliation (2026-10-30):** The [cloud-visible ledger](#cloud-visible-ledger-reconciliation-2026-10-30) accounts for this executor and observed GitHub refs/PRs. The saved Mac path/branch/operation ledger remains unavailable and unverified; its preservation and owner-disposition obligations are still open. Earlier dated inventories below describe their own machines and checkpoints.
 
 **Current status — 2026-10-17:** The preserved chart/CASH recovery was accepted through [PR #55](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/55), and the bounded maintainability cleanup through [PR #58](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/58); both have seven successful required checks. This closes those named deliveries only, not every item in this broader historical hygiene plan. Preserve the dated incident record and keep private coverage UNVERIFIED.

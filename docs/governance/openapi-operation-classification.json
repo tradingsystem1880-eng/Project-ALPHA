@@ -241,6 +241,13 @@
     {
       "method": "POST",
       "mode": "fixture_backed",
+      "operation_id": "retained_quality_api_crypto_data_quality__manifest_id__retained_coverage_post",
+      "path": "/api/crypto-data/quality/{manifest_id}/retained-coverage",
+      "reason": "Read-only retained coverage evaluation uses bounded CLI and immutable synthetic artifacts; no acquisition, evidence mutation or admission authority."
+    },
+    {
+      "method": "POST",
+      "mode": "fixture_backed",
       "operation_id": "snapshot_create_api_crypto_data_snapshots_post",
       "path": "/api/crypto-data/snapshots",
       "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
@@ -626,6 +633,13 @@
     {
       "method": "GET",
       "mode": "fixture_backed",
+      "operation_id": "native_result_api_native_jobs__job_id__result_get",
+      "path": "/api/native-jobs/{job_id}/result",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
       "operation_id": "overlays_api_overlays__symbol__get",
       "path": "/api/overlays/{symbol}",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
@@ -951,6 +965,13 @@
       "operation_id": "research_source_add_api_research_cases__project_id__sources_post",
       "path": "/api/research/cases/{project_id}/sources",
       "reason": "Mutation is exercised with deterministic local fixtures and no vendor network."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "research_source_original_pdf_download",
+      "path": "/api/research/cases/{project_id}/sources/{source_id}/original-pdf",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
     },
     {
       "method": "GET",

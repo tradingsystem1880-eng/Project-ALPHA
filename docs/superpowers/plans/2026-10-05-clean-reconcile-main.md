@@ -1,5 +1,7 @@
 # Clean, reconcile and protect main
 
+**Delivery state:** In progress — PRs #53/#55 merged; post-merge hardening slice still open
+
 **Current status — 2026-10-17:** The main integration in [PR #53](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/53) and the later preserved feature recovery in [PR #55](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/55) are merged; each has seven successful required checks. The historical canceled nightly mutation run is not a green run. Keep any workstation restart or nightly closeout separate until its own current receipt is recorded.
 
 Earlier dated status and incident entries are preserved as historical records.
@@ -45,8 +47,10 @@ Earlier dated status and incident entries are preserved as historical records.
 
 ## Owner decisions
 
-- Restore the five deleted `research/*mizerxbt_eth*` files.
-- Commit `output/data-hygiene/*.json` (cited audit receipts). Archive `tmp/` and `output/pdf/` to
+- Restore the five deleted `research/*mizerxbt_eth*` files (archived 2026-11-13 to
+  `docs/archive/research-one-offs/mizerxbt-eth/`).
+- Commit `output/data-hygiene/*.json` (cited audit receipts; archived 2026-11-13 to
+  `docs/archive/data-hygiene-2026-10-02/`). Archive `tmp/` and `output/pdf/` to
   `~/Desktop/alpha-scratch-2026-10-05/` and ignore `tmp/`.
 - Reach main through one new PR that supersedes #51, merged only after every CI job passes.
 - Protect `main` with the seven CI contexts as required checks.

@@ -1,6 +1,6 @@
 # ADR-0038: Local action confirmation and terminal archive charts
 
-Status: Accepted by explicit owner direction, 2026-09-30.
+**Status:** Accepted by explicit owner direction, 2026-09-30.
 
 Supersedes ADR-0030's mandatory biometric ceremony for ordinary Workstation research actions. The owner requested simple click confirmation and restoration of the Windows-style terminal references.
 

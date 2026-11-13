@@ -288,8 +288,7 @@ def _cli_flow(payload: dict[str, Any]) -> str:
     for gid in group_ids:
         prefix = gid.removeprefix("cli:") + " "
         rows = [
-            f"| `{leaf['label']}` | "
-            f"{', '.join('`' + o + '`' for o in leaf['meta']['options'][:6]) or '—'} |"
+            f"| `{leaf['label']}` | {_format_cli_options(leaf['meta']['options'])} |"
             for leaf in sorted(leaves, key=lambda n: str(n["id"]))
             if leaf["label"].startswith(prefix)
         ]
@@ -315,6 +314,14 @@ def _cli_flow(payload: dict[str, Any]) -> str:
             "",
         ]
     )
+
+
+def _format_cli_options(options: list[str]) -> str:
+    visible = options[:6]
+    visible.extend(
+        option for option in options[6:] if option in {"--expected-case-revision", "--reason"}
+    )
+    return ", ".join(f"`{option}`" for option in visible) or "—"
 
 
 _BUILDERS = {

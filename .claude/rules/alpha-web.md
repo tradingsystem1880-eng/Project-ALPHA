@@ -36,7 +36,7 @@ stay mounted with captured context. Keep chart creation separate from options, e
 updates; fit/reset is explicit. Native timeframe selection requires compatible recorded sources.
 `RecordedPanel` defaults to local BokehJS for backend series; price charts retain an optional Lightweight renderer. No metric estimation or price substitution. Bokeh histogram/QQ and SVG calendar/correlation plots retain units and tables; static figures retain exports, metadata and noninteractive
 labels. The reference plan supersedes workflow bars and the historical window manager; retain routes
-and domain actions. See [delivery report](../../docs/operations/2026-10-03-reference-quant-workstation.md).
+and domain actions. See [delivery report](../../docs/records/2026-10-03-reference-quant-workstation.md).
 Preserve panel/API/CLI domain boundaries. `AssetSelect` defaults to canonical inventory; the
 context and Market Watch pickers opt into archive metadata, group alias pair labels and retain
 exact source/native interval choices. `App` owns the main chart archive identity; headers show
@@ -47,7 +47,7 @@ Manual download symbols are not verified provider inventory. Keep real-backend b
 separate from deterministic API-mocked scenarios. Ordinary owner actions use local confirmation;
 legacy biometric enrollment is optional and local confirmation is not verified physical presence.
 
-Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `tests/fixtures/claude_md_v1.md`). The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
+Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 ### `alpha_web` (`apps/alpha-web/src/alpha_web/`) — the **ALPHA Workstation**: a thin JSON+SSE backend serving a built SPA (top of DAG; subprocesses CLI actions and status projections, composes nothing). Launch: `uv run alpha-web` → http://localhost:8801 (the socket remains loopback-only; the loopback-IP URL redirects to the canonical WebAuthn origin). Its platform imports are `alpha_core.config` plus supported public CLI seams for catalog/run-store, artifact contracts/projections, job capacity/durable leases, owner-auth verification, and the paper journal; bounded artifact reads may use Polars. Provider/system, control-plane, engine-backed, Qlib, and Kronos work stays behind CLI/out-of-process boundaries. The web process never imports or executes the engine, gauntlet, Nautilus, Qlib, or Kronos in-process.
 | Module | Responsibility | Key public symbols |
 |---|---|---|
@@ -111,9 +111,9 @@ intervals without an observation (series' own calendar), dense right value axes,
 axis tags, no toolbar, x-only pan/zoom with visible-window autoscale. Study values come only from
 `alpha chart overlays`; a study the CLI refuses as too long for the window is dropped by name, never
 estimated. Classic is the default `chartStyle`; recorded series and histogram/QQ plots share the chrome.
-See the [plan](../../docs/superpowers/plans/2026-10-07-technical-chart-language.md).
+See the [plan](../../docs/superpowers/plans/archive/2026-10/2026-10-07-technical-chart-language.md).
 
-Owner correction 2026-10-03: scientific rendering is default; keep the approved classic top bar. Bokeh views own standalone documents and must release both views and document/model registries on cancellation, failure and disposal. Price annotations must retain unit isolation. The visible project selector permits no-project market/archive browsing; project inventory errors stay explicit. Native interval discovery offers exact sources without automatic venue/market substitution. See [correction report](../../docs/operations/2026-10-03-scientific-research-workstation.md).
+Owner correction 2026-10-03: scientific rendering is default; keep the approved classic top bar. Bokeh views own standalone documents and must release both views and document/model registries on cancellation, failure and disposal. Price annotations must retain unit isolation. The visible project selector permits no-project market/archive browsing; project inventory errors stay explicit. Native interval discovery offers exact sources without automatic venue/market substitution. See [correction report](../../docs/records/2026-10-03-scientific-research-workstation.md).
 
 ## Authorized investigation extension (2026-10-04)
 
@@ -121,7 +121,7 @@ The owner authorized the narrow managed advisory investigation controls inside R
 `research investigations` remains the CLI-owned public seam; typed web relays never import
 engines. Opaque IDs, immutable evidence, durable budgets and explicit comparison preview apply.
 This exception does not reopen research admission, D2, paper, broker or order authority.
-See `docs/superpowers/plans/2026-10-04-workstation-investigations.md`.
+See `docs/superpowers/plans/archive/2026-10/2026-10-04-workstation-investigations.md`.
 
 Volume painting uses exact native-index viewport intersections and complementary previous-close
 up/down views with scalar colors; retain the full x/volume source. Include partially intersecting

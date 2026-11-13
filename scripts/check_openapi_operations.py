@@ -42,6 +42,13 @@ def _classification(method: str, path: str, operation: dict[str, Any]) -> tuple[
             "legacy WebAuthn is an "
             "owner walkthrough checkpoint.",
         )
+    if method == "POST" and path == "/api/crypto-data/quality/{manifest_id}/retained-coverage":
+        return (
+            "fixture_backed",
+            "Read-only retained coverage evaluation uses bounded CLI and immutable "
+            "synthetic artifacts; "
+            "no acquisition, evidence mutation or admission authority.",
+        )
     if "/literature/" in path:
         return (
             "fixture_backed",

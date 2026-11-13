@@ -96,9 +96,7 @@ def _verified_root(data_dir: Path, ref: Mapping[str, object]) -> Path:
     if kind == "store_slice":
         root = data_dir / "store"
         store = ParquetStore(root)
-        provenance_path = store._provenance_path(  # noqa: SLF001 - CLI/store projection seam
-            str(ref.get("instrument"))
-        )
+        provenance_path = store._provenance_path(str(ref.get("instrument")))
         if not provenance_path.is_file():
             raise DataError("registered store slice has no provenance sidecar on disk")
         digest = hashlib.sha256(provenance_path.read_bytes()).hexdigest()
@@ -131,7 +129,7 @@ def load_registered_dataset_frame(data_dir: Path, *, ref: Mapping[str, object]) 
             raise DataError(f"registered crypto snapshot {snapshot_id!r} is missing its manifest")
         if hashlib.sha256(manifest_path.read_bytes()).hexdigest() != origin.get("manifest_sha256"):
             raise DataError("crypto snapshot no longer matches its registered manifest hash")
-        from alpha_cli.crypto_data_cmds import (  # noqa: PLC0415 - optional crypto audit lane
+        from alpha_cli.crypto_data_cmds import (
             crypto_crowding_observations,
         )
 

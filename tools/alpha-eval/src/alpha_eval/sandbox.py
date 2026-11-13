@@ -24,7 +24,7 @@ from alpha_eval.platform import repo_root
 
 EXCLUDED_FROM_WORKSPACE = (
     "tools/alpha-eval",
-    "docs/audit",
+    "docs/records/audits",
     "docs/superpowers/plans",
     "tests/holdout_seed",
     "tests/holdout",

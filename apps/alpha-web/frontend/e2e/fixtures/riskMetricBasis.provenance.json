@@ -1,0 +1,111 @@
+{
+  "cases": {
+    "later": {
+      "equity_sha256": "69812de66af245c29af18da03c2e9c374aa3ad5669867e611d7178820c848216",
+      "execution_fingerprint": "47410bc5f16195e2d193b3d16e46f1bae3d4212dbc508ac4a65f74258d255a42",
+      "run_id": "c29e64926c06ddaa",
+      "source_fingerprint": "6776ecbc5f3d14669c8b5f121a56b3f6fe04097b4955aa258a668ee88db91c65"
+    },
+    "loss": {
+      "equity_sha256": "66de01d55292aa3e7b4391f50ac4e4128fc9713eccb0edc074b4f2de5af9a5c2",
+      "execution_fingerprint": "47410bc5f16195e2d193b3d16e46f1bae3d4212dbc508ac4a65f74258d255a42",
+      "run_id": "9fcd8576b244b6d9",
+      "source_fingerprint": "22bf4355105ce12db571263cf884139d61a12fef52782eda25f900da13663a34"
+    }
+  },
+  "fixture_sha256": "9f0ba5d3d44537f2a919e9cf88afee922492a25eccd4eab293eb1eb3ff7f297e",
+  "independent_checks": {
+    "anchors": {
+      "later": 900.0,
+      "loss": 1000.0
+    },
+    "base_max_drawdown": {
+      "later": "0 (monotone path)",
+      "loss": "900/1000 - 1 = -1/10"
+    },
+    "base_total_return": {
+      "later": "1000/900 - 1 = 1/9",
+      "loss": "1000/1000 - 1 = 0"
+    },
+    "basis": {
+      "anchor_kind": "first_recorded_equity",
+      "anchor_ts": "2024-01-01T00:00:00+00:00",
+      "anchor_units": "recorded_equity_units",
+      "benchmark_adjustment": "none_by_projection",
+      "drawdown_convention": "non_positive_fraction_from_scenario_wealth_peaks",
+      "external_cash_flow_status": "unknown",
+      "initial_capital_status": "unknown",
+      "pre_anchor_losses": "not_measured",
+      "return_accumulation": "compounded_simple_returns",
+      "schema_version": 1
+    },
+    "legacy_parity": "all fields equal after removing only disclosed metric_basis",
+    "numeric_absolute_tolerance": 1e-12,
+    "sources": [
+      "docs/superpowers/plans/2026-11-08-c04-risk-anchor-disclosure.md",
+      "tests/integration/test_c04_risk_anchor_disclosure.py",
+      "tests/integration/test_c04_web_metric_basis.py"
+    ]
+  },
+  "inputs": {
+    "later": {
+      "declared_starting_cash": 1000.0,
+      "equity": [
+        900.0,
+        950.0,
+        1000.0
+      ],
+      "ts": [
+        "2024-01-01T00:00:00+00:00",
+        "2024-01-02T00:00:00+00:00",
+        "2024-01-03T00:00:00+00:00"
+      ]
+    },
+    "loss": {
+      "declared_starting_cash": 1000.0,
+      "equity": [
+        1000.0,
+        900.0,
+        1000.0
+      ],
+      "ts": [
+        "2024-01-01T00:00:00+00:00",
+        "2024-01-02T00:00:00+00:00",
+        "2024-01-03T00:00:00+00:00"
+      ]
+    }
+  },
+  "origin": "fresh_synthetic_http_cli_capture_not_historical_recovery",
+  "producer": "scripts/capture_c04_risk_basis_fixture.py",
+  "producer_sha256": "d3d5d8741df4abe0425d0f4d6981a155a07bc46bae94ff1c601795175e59d20f",
+  "producer_version": 1,
+  "random_seed": null,
+  "requests": {
+    "confidence": 0.95,
+    "include_metric_basis": [
+      false,
+      true
+    ],
+    "method": "GET",
+    "path": "/api/risk/scenario"
+  },
+  "runtime": {
+    "fastapi": "0.138.0",
+    "httpx": "0.28.1",
+    "numpy": "2.4.6",
+    "polars": "1.41.2",
+    "pydantic": "2.13.4",
+    "python": "3.12.14",
+    "scipy": "1.17.1"
+  },
+  "schema_version": 1,
+  "scope": "Actual HTTP/CLI payloads are UI test inputs. Other scenario metrics are not independent numerical oracles; no research, capital/flow verification or admission is established.",
+  "seed_reason": "fixed inputs; existing deterministic scenario projection uses no sampling",
+  "source_sha256": {
+    "apps/alpha-web/src/alpha_web/_catalog.py": "3f97024bca50cf20ff1e7dbf183f14dd5b99c7e44da0700c818c44a769f6c1e7",
+    "apps/alpha-web/src/alpha_web/_risk.py": "132a758a08f8b717f7cf1f3654326e88d2f162a34f6a80b0e788378888328b86",
+    "apps/alpha-web/src/alpha_web/api/models.py": "ee687890e5ae5f58aa962be3ee6ce649d057d58343b7e1e91645fc82520851d9",
+    "apps/alpha-web/src/alpha_web/api/risk.py": "017ccb0de9bd2f7c0378e738f05135a70f19c9a981a43d0f0d376332c4e26774",
+    "scripts/capture_c04_risk_basis_fixture.py": "d3d5d8741df4abe0425d0f4d6981a155a07bc46bae94ff1c601795175e59d20f"
+  }
+}

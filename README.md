@@ -1,5 +1,7 @@
 # Project ALPHA
 
+> **Generated-output successor, 2026-11-09 (unqualified):** Two clean local OpenAPI/client/SPA generations are byte-identical. Atlas, installed-worker/runtime acceptance, required exact-tree review and full qualification remain pending. Historical owner/UI results do not qualify this sparse successor. See [build status](docs/BUILD-STATUS.md#2026-11-09--sparse-generated-output-successor-unqualified).
+
 **ALPHA Quant Platform** is a private, local quantitative research workstation for turning a
 market idea into a reproducible test and an auditable decision. It brings point-in-time data,
 event-driven backtests, statistical validation, model experiments, and research records into one
@@ -40,7 +42,10 @@ The parts work together like this:
   receipts let you check which inputs produced a result. See the [architecture](docs/ARCHITECTURE.md).
 - **Workers are separate specialist rooms.** Qlib model experiments and literature tools run in
   their own environments. Their results still need qualification; an installed worker is not
-  approval to use a model. See the [Qlib guide](workers/qlib/README.md).
+  approval to use a model. See the [Qlib guide](workers/qlib/README.md). Prepare the literature
+  worker runtime from its lock with
+  `uv sync --project workers/literature --locked --no-dev --no-install-project`; its CLI launcher
+  runs the checked-out module with syncing disabled, network access off, and Python safe-path mode.
 - **Codex helps explain and investigate.** Its answers are advisory. Atlas helps find source-bound
   project context; neither generated prose nor a context query grants research authority. See the
   [context index](docs/context/README.md).
@@ -73,8 +78,24 @@ same study or replenish its allowance.
 
 ## Research workflow
 
+The existing literature-review protocol includes a [finance-math evidence guide](docs/operations/finance-math-evidence.md):
+source-status checks, 13 carousel book leads, verified access/edition metadata for three public
+sources, and an executable synthetic PCA example with original derivations/reference checks.
+Full book coverage and governed book anchors remain unverified; no ingestion, market result or
+approval follows from the existing-code examples.
+
 1. **Define the question.** Capture an idea as a Research Case; resolve the instrument, event
    timing, outcome, alternative explanations, and falsification criteria before strategy development.
+   For literature-informed ideas, anchor claims to verified pages and freeze reported dataset/code
+   references with the source pack. Only dataset references can be proposed against a registered
+   dataset and D1 analysis family, and the owner must approve that exact contract. Code references
+   remain provenance-only until a local code registry exists; they are not acquired or executed.
+   Unavailable inputs stay `blocked_data`; a link alone grants no access rights or reproduction claim.
+   Owner-selected local PDF imports retain the original bytes under their immutable source identity;
+   import and source-screen output report them available only after a hash-verified read, and
+   extracted pages stay `UNTRUSTED_SOURCE`. The Literature panel can check and download those
+   exact bytes through a project-bound read route; it displays missing, corrupt, and unavailable
+   states instead of substituting a different copy.
 2. **Fix the data and protocol.** Inspect provider provenance, qualify inputs, and freeze exact
    snapshot membership. Point-in-time reads respect when observations became available; venues,
    quote currencies, native intervals, and dataset families remain explicit.
@@ -115,8 +136,8 @@ retained; these numbers are a UI demonstration and carry no market-performance c
 
 The Results area now includes two read-only views of **separately executed synthetic native-engine
 demonstrations**. Open the Results area at `/#page=results&pane=NativeQlibDemo` and `/#page=results&pane=NativeNautilusDemo`.
-These screenshots show the delivery candidate on branch `codex/native-results-delivery`; they do not
-claim the change is merged or deployed. The views read saved artifacts without rerunning either engine.
+These independent previews shipped in PR #118. The captures show saved synthetic artifacts,
+not live trading or real market performance; the views never rerun either engine.
 
 ![Native Qlib Results view showing recorded predictions and synthetic target diagnostics](docs/assets/workstation/native-qlib-results.png)
 
@@ -130,8 +151,39 @@ and exact downloads. Correlation on a synthetic fixture demonstrates the plumbin
 identical timestamps. These are account balances, not mark-to-market equity or validated returns.
 Chronological reports, configuration, provenance and exact downloads remain available in the view.*
 
-*Both images are genuine browser captures from the built ALPHA UI and an isolated empty backend
-store. Neither demonstration creates admitted research, promotion approval or live-trading authority.*
+### Joined Qlib → Nautilus synthetic pipeline
+
+A third Results view, `/#page=results&pane=NativeQlibNautilusDemo`, now follows actual upstream
+Qlib predictions into ALPHA's existing native Nautilus strategy/harness. The frozen demonstration
+retains all 128 predictions, explicitly selects 16 SYN00 scores, models their availability at
+session +23 hours, and executes long/flat one-share targets at the next synthetic opening quote.
+Its recorded run produced 10 orders, 10 fills and five closed positions. The other two native
+views remain separate historical demonstrations.
+
+The view follows actual `qlib.cli.run` → fixed-unit `SignalReplay` → Nautilus `BacktestEngine`.
+Its plotted cash observations are not mark-to-market equity; exact equity, commissions, score
+links, inputs, configuration and provenance are downloadable. Source/export support hashes are
+retained. No screenshot of this view is committed.
+
+Reproduce from this checkout using an existing isolated Qlib environment and a **new** directory:
+
+```bash
+uv run python -m alpha_cli.native_qlib_pipeline --qlib-python workers/qlib/.venv/bin/python \
+  --output /tmp/alpha-native-pipeline-new --fee-bps 1 --slippage-bps 2
+```
+
+The costs are explicit engineering assumptions, not calibrated venue estimates. Prices and the
+regression target are independently fabricated; this is not a tested paper hypothesis or evidence
+of market edge. The command reads only its bundled synthetic fixture and writes an isolated output
+bundle, without adding a canonical run, research history, admission, promotion or live routing.
+FitPlan/resource/release decisions and real-data scientific acceptance remain separate.
+The [delivery record](docs/BUILD-STATUS.md#2026-11-07--joined-native-qlib-to-nautilus-synthetic-pipeline-candidate)
+records this bounded scope. This delivery candidate is not yet merged or deployed.
+
+
+*Both native Results images above are genuine browser captures from the built ALPHA UI and
+isolated empty backend stores. These demonstrations create no admitted research, promotion
+approval or live-trading authority.*
 
 See the [Quant Platform map](docs/context/alpha-quant-platform.md),
 [bounded research workflow](docs/operations/bounded-research-workflow.md),
@@ -258,6 +310,10 @@ SEMGREP_VERSION_CACHE_PATH=/tmp/project-alpha-semgrep/semgrep_version
 The setup script respects configured paths and creates the Semgrep file's parent directory.
 Web ML subprocesses preserve the configured `UV_CACHE_DIR` through the existing isolated-worker
 environment, so installed-worker capability checks use the same writable cache as CLI checks.
+Web-to-CLI children also receive `MPLCONFIGDIR` verbatim when set for Matplotlib configuration
+and cache placement; unset retains existing defaults. Use the
+[bounded verification guidance](docs/operations/development-loop.md) for fresh controlled paths
+and the limits of this setting.
 If temporary assets are not retained, rerun setup synchronously before browser work. Download or
 host-library failures require correcting the environment before claiming readiness.
 
@@ -315,6 +371,8 @@ Engineering processes are separate from quant research approval and paper author
 [Software Team map](docs/context/software-team.md), and the
 [development loop](docs/operations/development-loop.md). For UI development, startup fixtures,
 and browser checks, use the [frontend guide](apps/alpha-web/frontend/README.md).
+The mandatory browser command runs four fixture-specific lanes and requires explicitly selected,
+already-installed native source/runtime assets. Missing inputs fail the command, never skip that lane.
 
 Final engineering acceptance requires the canonical gate on one unchanged candidate tree:
 
@@ -343,3 +401,7 @@ Native Qlib parity remains open.
 
 The [context index](docs/context/README.md) links the deeper maps; the
 [build record](docs/BUILD-STATUS.md) preserves dated delivery evidence.
+
+The isolated worker also offers an explicit [partial Alpha158 feature-v2 correction](workers/qlib/README.md#opt-in-partial-alpha158-feature-correction):
+40 columns use pinned Qlib operators, while 118 retain the legacy recipe. Feature v1 stays the
+default. This does not establish native whole-recipe parity or qualify historical models.

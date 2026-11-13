@@ -86,7 +86,7 @@
     "CLAUDE.md",
     "docs/BUILD-STATUS.md",
     "tools/alpha-eval/README.md",
-    "docs/audit/2026-09-30-research-workflow-completion.md"
+    "docs/records/audits/2026-09-30-research-workflow-completion.md"
   ],
   "out_of_scope": [
     "Owner approval, D2, paper, broker or live capital authority",

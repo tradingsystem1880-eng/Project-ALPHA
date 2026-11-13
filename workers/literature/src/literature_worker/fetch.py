@@ -57,7 +57,7 @@ def default_resolver(host: str, port: int) -> list[str]:
 
 def urllib_transport(url: str) -> TransportResponse:
     opener = urllib.request.build_opener(_NoRedirect)
-    request = urllib.request.Request(  # noqa: S310 - callers validate every hop first
+    request = urllib.request.Request(
         url, headers={"User-Agent": "alpha-literature-worker/0.1 (research; contact: owner)"}
     )
     try:

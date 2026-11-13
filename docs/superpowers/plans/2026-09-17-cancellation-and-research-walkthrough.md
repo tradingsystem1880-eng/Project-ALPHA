@@ -1,6 +1,8 @@
-**Delivery state:** Completed with documented hidden-suite exception (2026-09-17).
+**Historical delivery state (as first recorded):** Completed with documented hidden-suite exception (2026-09-17).
 
 # Cancellation regression, commit, and research walkthrough
+
+**Delivery state:** Completed — merged via PR #53; documented hidden-suite exception
 
 ```json
 {
@@ -98,7 +100,7 @@ provenance verification, not a current-market signal or validated research thesi
 
 The full-inventory attempt was safely interrupted before resolution; a scoped view
 of ten original manifests completed. Its performance and generic-intake findings
-are tracked in the [closure plan](2026-09-19-research-walkthrough-closure.md).
+are tracked in the [closure plan](archive/2026-09/2026-09-19-research-walkthrough-closure.md).
 Local immutable receipts and the detailed report remain under
 `.alpha/state/walkthrough-2026-09-17-scoped/`; this record preserves the outcome
 without requiring that ignored report to be committed.

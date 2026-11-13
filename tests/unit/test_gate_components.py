@@ -162,8 +162,11 @@ def test_frontend_build_checks_types_once_before_browser_and_freshness() -> None
     ]
     assert by_name["build + types"] == ["npm", "run", "build"]
     assert scripts["build"].startswith("tsc -b && ")
-    assert scripts["test:e2e:built"] == "playwright test"
-    assert scripts["test:e2e"] == "npm run build && playwright test"
+    assert scripts["test:e2e:built"] == (
+        "uv run --offline --no-python-downloads --no-sync python "
+        "../../../scripts/run_frontend_browser_lanes.py"
+    )
+    assert scripts["test:e2e"] == "npm run build && npm run test:e2e:built"
     assert by_name["browser"] == ["npm", "run", "test:e2e:built"]
     assert names.index("build + types") < names.index("browser") < names.index("SPA freshness")
     assert sum("tsc" in arg for _, _, command in commands for arg in command) == 0

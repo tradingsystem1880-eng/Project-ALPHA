@@ -121,7 +121,7 @@ The fingerprint covers the supported first-party worker package, schemas, projec
 lock, including rank-ensemble code. Source reads are bounded and mutation-checked; this
 does not qualify installed binaries or the native runtime. Readiness remains `BLOCKED`,
 with execution/reuse/fitted-state verification false and observed work unknown. The
-[bounded plan](../../docs/superpowers/plans/2026-11-01-w09-planning-contracts.md)
+[bounded plan](../../docs/superpowers/plans/archive/2026-11/2026-11-01-w09-planning-contracts.md)
 records limits and qualification requirements. This does not extend the separate W11
 ridge/DoubleEnsemble reference protocol or change existing v1/v2 outputs/computations.
 
@@ -158,7 +158,7 @@ verification, durable accounting, execution, reuse and promotion false, with no 
 resource units or independent-trial count. ControlStore remains the durable authority;
 there is no native registration, resource-policy change, retry/refund/reuse authorization
 or research dispatch here. V3/W11 computation and reference graph classification stay
-unchanged. See the [bounded observation plan](../../docs/superpowers/plans/2026-11-02-w09-component-observations.md).
+unchanged. See the [bounded observation plan](../../docs/superpowers/plans/archive/2026-11/2026-11-02-w09-component-observations.md).
 
 ## Durable diagnostic associations
 
@@ -184,7 +184,7 @@ Qlib admission or proof that the reservation covers these fits. It creates no at
 changes no charge/refund/retry/reuse policy, and enables no native dispatch. The
 current slice has isolated synthetic engineering tests. Its bounded delivery has an
 absence-only private-suite exception: private coverage stays UNVERIFIED, while all
-public checks, the 93% floor and independent final-tree review remain mandatory. See the [durable diagnostic plan](../../docs/superpowers/plans/2026-11-02-w09-durable-observations.md).
+public checks, the 93% floor and independent final-tree review remain mandatory. See the [durable diagnostic plan](../../docs/superpowers/plans/archive/2026-11/2026-11-02-w09-durable-observations.md).
 
 ## Gate
 
@@ -212,3 +212,35 @@ uv run pytest -q
 
 Removal is bounded: delete `workers/qlib`, remove the root `alpha ml` projections, and delete
 worker exchanges/control links. No root package dependency or run artifact needs migration.
+
+## Opt-in partial Alpha158 feature correction
+
+Feature recipe version **1 remains the default**, with unchanged formulas and default request
+bytes. Set `stage_config.ml.feature_recipe_version` to `2` when preparing a new experiment, or
+use `{"name":"alpha158","version":2,"parameters":{}}` in a new exchange request. This is
+independent of request envelope versions 1/2/3, which select model families. Older readers reject
+v2 rather than downgrade it. Fake-worker output remains synthetic transport, not feature validation.
+
+V2 is an **Alpha158-style 40-column correction**, not full native Alpha158 equivalence. Actual pinned
+Qlib 0.9.7 operators compute MA, STD, VSTD, RANK, IMAX, IMIN, IMXD and WVMA at 5/10/20/30/60
+sessions, including upstream partial-window behavior. The other 118 columns retain legacy formulas
+and warm-up. VWAP0 remains the explicitly disclosed typical-price proxy; input has no vendor VWAP
+or pre-panel history. Undefined NaNs remain missing. Source/dependency mismatches fail closed.
+No provider initialization is needed for this feature calculation.
+
+The full recipe is already in `config_hash`, which prediction readers enforce. Preserve request/
+config and worker-lock identity alongside model hashes; do not reuse a model solely because its
+feature names match. New worker-code fingerprints are genuine new implementations, including for
+v1 executions, not changes to recipe-1 meaning. Historical results and frozen-source protocols are
+not rewritten. See the [scope and verification plan](../../docs/superpowers/plans/2026-11-09-alpha158-versioned-correction.md).
+
+Service compatibility is narrower than data compatibility: upgrade the worker and typed web API
+together for the new capability fields and v2 diagnostics. An old strict web service is not
+qualified to consume a new worker's capability response. Updated web projections accept old
+responses; the new correction field is omitted from legacy v1 tear-sheet JSON. Frozen
+legacy seven-file worker inventories remain plannable only for feature v1; v2 requires both new
+modules in the complete fingerprint-bound inventory. Current-worker code does not satisfy an old
+frozen-code hash merely because the recipe version is still 1.
+
+Operator checks compare the same supplied row-indexed series. They do not establish Qlib
+provider/calendar/corporate-action or full-handler parity. Existing input alignment is unchanged.

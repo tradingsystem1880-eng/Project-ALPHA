@@ -298,7 +298,11 @@ def test_protocol_rejects_missing_or_expanded_fixture_scope(tmp_path: Path, chan
 
 
 def _plan_inputs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, changed_seed: int | None = None
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    changed_seed: int | None = None,
+    feature_version: int = 1,
 ) -> tuple[Path, Path, Path, str, Path]:
     worker = tmp_path / "worker"
     source = worker / "src" / "alpha_qlib_worker"
@@ -308,6 +312,8 @@ def _plan_inputs(
     names = (
         "real.py",
         "features.py",
+        "feature_recipes.py",
+        "native_feature_corrections.py",
         "contract.py",
         "tabular.py",
         "tabular_contract.py",
@@ -341,6 +347,7 @@ def _plan_inputs(
         directory = tmp_path / role
         directory.mkdir()
         draft = _draft()
+        draft["feature_recipe"]["version"] = feature_version
         draft["worker_lock_hash"] = payload["worker_lock_sha256"]
         if role == "changed" and changed_seed is not None:
             draft["seed"] = changed_seed
@@ -581,3 +588,42 @@ def test_readonly_refit_cli_rejects_wrong_protocol_reference(
     assert result.exit_code != 0
     assert "hash" in result.output
     assert not (changed / "result.json").exists()
+
+
+def test_plan_accepts_legacy_source_inventory_and_rejects_partial_new_inventory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original, changed, protocol, _, worker = _plan_inputs(tmp_path, monkeypatch)
+    source = worker / "src" / "alpha_qlib_worker"
+    for name in ("feature_recipes.py", "native_feature_corrections.py"):
+        (source / name).unlink()
+    payload = json.loads(protocol.read_text())
+    hashes = {
+        name: hashlib.sha256((source / name).read_bytes()).hexdigest()
+        for name in ml_refit._WORKER_SOURCES
+    }
+    payload["worker_source_sha256"] = hashlib.sha256(canonical_json_bytes(hashes)).hexdigest()
+    digest = _write(protocol, payload)
+    report = plan_refit(original, changed, protocol_path=protocol, expected_protocol_sha256=digest)
+    assert report["worker_source_files"] == hashes and len(hashes) == 7
+    (source / "feature_recipes.py").write_text("# incomplete new source set\n")
+    with pytest.raises(MLContractError, match="incomplete.*inventory"):
+        plan_refit(original, changed, protocol_path=protocol, expected_protocol_sha256=digest)
+
+
+def test_legacy_inventory_cannot_plan_feature_v2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original, changed, protocol, _, worker = _plan_inputs(tmp_path, monkeypatch, feature_version=2)
+    source = worker / "src" / "alpha_qlib_worker"
+    for name in ("feature_recipes.py", "native_feature_corrections.py"):
+        (source / name).unlink()
+    payload = json.loads(protocol.read_text())
+    hashes = {
+        name: hashlib.sha256((source / name).read_bytes()).hexdigest()
+        for name in ml_refit._WORKER_SOURCES
+    }
+    payload["worker_source_sha256"] = hashlib.sha256(canonical_json_bytes(hashes)).hexdigest()
+    digest = _write(protocol, payload)
+    with pytest.raises(MLContractError, match="v2 requires the expanded"):
+        plan_refit(original, changed, protocol_path=protocol, expected_protocol_sha256=digest)

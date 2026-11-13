@@ -58,5 +58,16 @@ class TestDocs:
         assert positions == sorted(positions)
         assert "research_d1.py" in text
 
+    def test_cli_flow_keeps_required_options_visible_with_paper_mappings(
+        self, outputs: dict[str, str]
+    ) -> None:
+        rows = outputs["docs/atlas/cli-flow.md"].splitlines()
+        draft = next(row for row in rows if row.startswith("| `alpha research draft`"))
+        revise = next(row for row in rows if row.startswith("| `alpha research revise`"))
+        assert "--paper-resource-mapping-json" in draft
+        assert "--expected-case-revision" in draft
+        assert "--paper-resource-mapping-json" in revise
+        assert "--reason" in revise
+
     def test_unknowns_queue_is_surfaced(self, outputs: dict[str, str]) -> None:
         assert "Unknowns" in outputs["docs/atlas/system-map.md"]

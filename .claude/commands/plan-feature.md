@@ -19,7 +19,8 @@ Follow `.agents/skills/alpha-feature-workflow/SKILL.md`. Steps:
    `scripts/harness_models.py::FeaturePlan` exactly — this is Karpathy §1–§3
    made structural, and `/implement` refuses to start without it. Prose
    sections follow the block: context, slices, test plan, DAG / look-ahead /
-   determinism impact.
+   determinism impact. Line 1 above the block is `**Delivery state:** Planned — <note>`
+   (lifecycle in `.claude/rules/docs.md`); remove any backlog file it replaces.
 5. Run `uv run python scripts/gate.py plan-check <plan doc>` and paste its
    output; fix the block until it passes.
 6. Present the plan summary (assumptions, rejected alternative, pre-mortem,

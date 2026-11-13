@@ -58,7 +58,7 @@ def _candle_provenance(
     root = data_root / "snapshots" / snapshot_id if snapshot_id else data_root / "store"
     store = ParquetStore(root)
     provenance = store.read_provenance(symbol)
-    path = store._provenance_path(symbol)  # noqa: SLF001 -- CLI/store projection seam
+    path = store._provenance_path(symbol)
     provenance_hash = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
     source = provenance.get("source") if provenance is not None else "unknown"
     dataset = provenance.get("dataset") if provenance is not None else None

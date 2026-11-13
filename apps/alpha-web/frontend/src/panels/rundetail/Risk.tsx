@@ -10,6 +10,7 @@ import type { ValidateManifest } from '../../explain/types'
 import { fmtNum, fmtPct } from '../../util/format'
 import { Metric, Section } from './common'
 import { asObj } from './commonUtils'
+import { RiskMetricBasis } from '../RiskMetricBasis'
 
 export function Risk({ manifest, runId }: { manifest: ValidateManifest; runId: string }) {
   const oos = asObj(manifest.oos_metrics)
@@ -18,6 +19,8 @@ export function Risk({ manifest, runId }: { manifest: ValidateManifest; runId: s
 
   useEffect(() => {
     let live = true
+    setReport(null)
+    setError(null)
     api
       .riskScenario(runId)
       .then((r) => live && setReport(r))
@@ -46,9 +49,11 @@ export function Risk({ manifest, runId }: { manifest: ValidateManifest; runId: s
       >
         {error ? (
           <div className="muted">stress unavailable for this run ({error.slice(0, 120)})</div>
-        ) : !report ? (
+        ) : !report || report.run_id !== runId ? (
           <div className="skeleton" style={{ height: 120 }} />
         ) : (
+          <>
+          <RiskMetricBasis provenance={report.provenance} />
           <table className="blotter">
             <thead>
               <tr>
@@ -75,6 +80,7 @@ export function Risk({ manifest, runId }: { manifest: ValidateManifest; runId: s
               ))}
             </tbody>
           </table>
+          </>
         )}
       </Section>
     </>

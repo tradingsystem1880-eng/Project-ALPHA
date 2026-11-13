@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
+import hashlib
+import re
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 
 from alpha_web import _research
@@ -40,6 +45,109 @@ from alpha_web.api.models import (
 from alpha_web.run_authority import RunContextDenied, resolve_run_context
 
 router = APIRouter(prefix="/api", tags=["research"])
+
+_MAX_ORIGINAL_PDF_BYTES = 10 * 1024 * 1024
+_SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
+_ORIGINAL_PDF_STATES = frozenset({"available", "missing", "corrupt", "unavailable"})
+
+
+def _original_pdf_state(value: dict[str, Any], source_id: str) -> dict[str, Any]:
+    """Validate the subprocess receipt before exposing original PDF status or bytes."""
+    if (
+        value.get("schema") != "ResearchSourceOriginalPdfV1"
+        or value.get("source_id") != source_id
+        or value.get("trust_label") != "UNTRUSTED_SOURCE"
+        or value.get("status") not in _ORIGINAL_PDF_STATES
+    ):
+        raise HTTPException(status_code=502, detail="alpha returned invalid original PDF metadata")
+    expected = value.get("sha256")
+    verified = value.get("verified_sha256")
+    byte_count = value.get("byte_count")
+    if expected is not None and (
+        not isinstance(expected, str) or not _SHA256_RE.fullmatch(expected)
+    ):
+        raise HTTPException(status_code=502, detail="alpha returned invalid original PDF metadata")
+    if value["status"] == "available":
+        if (
+            expected is None
+            or verified != expected
+            or value.get("verification") != "verified"
+            or isinstance(byte_count, bool)
+            or not isinstance(byte_count, int)
+            or not 5 <= byte_count <= _MAX_ORIGINAL_PDF_BYTES
+        ):
+            raise HTTPException(
+                status_code=502, detail="alpha returned invalid original PDF metadata"
+            )
+    elif (
+        verified is not None or byte_count is not None or value.get("verification") != "unverified"
+    ):
+        raise HTTPException(status_code=502, detail="alpha returned invalid original PDF metadata")
+    observed = value.get("observed_sha256")
+    if observed is not None and (
+        not isinstance(observed, str) or not _SHA256_RE.fullmatch(observed)
+    ):
+        raise HTTPException(status_code=502, detail="alpha returned invalid original PDF metadata")
+    return value
+
+
+def _original_pdf_headers(state: dict[str, Any]) -> dict[str, str]:
+    headers = {
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "X-Research-Original-Pdf-Status": str(state["status"]),
+        "X-Research-Source-Id": str(state["source_id"]),
+    }
+    if isinstance(state.get("sha256"), str):
+        headers["X-Research-Original-Pdf-Sha256"] = str(state["sha256"])
+    if state["status"] == "available":
+        headers["X-Research-Original-Pdf-Verified-Sha256"] = str(state["verified_sha256"])
+        headers["X-Research-Original-Pdf-Bytes"] = str(state["byte_count"])
+    return headers
+
+
+def _research_original_pdf_response(
+    project_id: str, source_id: str, *, include_bytes: bool
+) -> Response:
+    try:
+        value = _research.source_original_pdf(
+            project_id,
+            source_id,
+            data_dir=data_dir(),
+            include_bytes=include_bytes,
+        )
+    except RuntimeError as exc:
+        # Missing and cross-project records are intentionally indistinguishable.
+        raise HTTPException(status_code=404, detail="research source unavailable") from exc
+    state = _original_pdf_state(value, source_id)
+    headers = _original_pdf_headers(state)
+    if not include_bytes:
+        if "content_base64" in state:
+            raise HTTPException(status_code=502, detail="alpha returned unexpected PDF bytes")
+        return Response(status_code=200, headers=headers)
+    if state["status"] != "available":
+        status_code = {"missing": 404, "corrupt": 409, "unavailable": 503}[str(state["status"])]
+        return JSONResponse(state, status_code=status_code, headers=headers)
+    encoded = state.get("content_base64")
+    if not isinstance(encoded, str) or len(encoded) > ((_MAX_ORIGINAL_PDF_BYTES + 2) // 3) * 4:
+        raise HTTPException(status_code=502, detail="alpha returned invalid original PDF bytes")
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(
+            status_code=502, detail="alpha returned invalid original PDF bytes"
+        ) from exc
+    if (
+        len(raw) != state["byte_count"]
+        or not raw.startswith(b"%PDF-")
+        or hashlib.sha256(raw).hexdigest() != state["sha256"]
+    ):
+        raise HTTPException(status_code=502, detail="alpha returned unverified original PDF bytes")
+    return Response(
+        content=raw,
+        media_type="application/pdf",
+        headers={**headers, "Content-Disposition": 'attachment; filename="research-source.pdf"'},
+    )
 
 
 @router.get("/research/compare", response_model=ResearchReport)
@@ -236,6 +344,35 @@ def research_source_add(project_id: str, body: ResearchSourceAddRequest) -> dict
         )
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.head(
+    "/research/cases/{project_id}/sources/{source_id}/original-pdf",
+    operation_id="research_source_original_pdf_status",
+    responses={200: {"description": "Verification metadata in X-Research-Original-Pdf-* headers"}},
+)
+def research_source_original_pdf_status(project_id: str, source_id: str) -> Response:
+    """Verify the source-bound original PDF without returning its bytes."""
+    return _research_original_pdf_response(project_id, source_id, include_bytes=False)
+
+
+@router.get(
+    "/research/cases/{project_id}/sources/{source_id}/original-pdf",
+    response_class=Response,
+    operation_id="research_source_original_pdf_download",
+    responses={
+        200: {
+            "description": "Hash-verified original PDF bytes",
+            "content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}},
+        },
+        404: {"description": "Source or original PDF is unavailable"},
+        409: {"description": "Original PDF failed integrity verification"},
+        503: {"description": "Original PDF access is unavailable"},
+    },
+)
+def research_source_original_pdf_download(project_id: str, source_id: str) -> Response:
+    """Download exact retained bytes only after the CLI store verifies source and hash."""
+    return _research_original_pdf_response(project_id, source_id, include_bytes=True)
 
 
 @router.post("/research/cases/{project_id}/claims")

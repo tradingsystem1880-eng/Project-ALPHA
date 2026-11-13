@@ -1,0 +1,296 @@
+{
+  "later": {
+    "disclosed": {
+      "confidence": 0.95,
+      "provenance": {
+        "as_of": "2024-01-03T00:00:00+00:00",
+        "confidence": 0.95,
+        "derived_projection": true,
+        "metric_basis": {
+          "anchor_kind": "first_recorded_equity",
+          "anchor_ts": "2024-01-01T00:00:00+00:00",
+          "anchor_units": "recorded_equity_units",
+          "anchor_value": 900.0,
+          "benchmark_adjustment": "none_by_projection",
+          "drawdown_convention": "non_positive_fraction_from_scenario_wealth_peaks",
+          "external_cash_flow_status": "unknown",
+          "initial_capital_status": "unknown",
+          "pre_anchor_losses": "not_measured",
+          "return_accumulation": "compounded_simple_returns",
+          "schema_version": 1
+        },
+        "metric_namespace": "alpha_validation.scenario",
+        "periods_per_year": 252,
+        "research_cutoff": null,
+        "snapshot_hash": null,
+        "snapshot_id": null,
+        "source_artifact": "equity_curve.parquet",
+        "source_artifact_sha256": "69812de66af245c29af18da03c2e9c374aa3ad5669867e611d7178820c848216",
+        "source_command": "SYNTHETIC_C04_UI_FIXTURE_V1",
+        "source_run_id": "c29e64926c06ddaa",
+        "timezone": "UTC"
+      },
+      "run_id": "c29e64926c06ddaa",
+      "scenarios": [
+        {
+          "annual_vol": 0.03282155602433376,
+          "expected_shortfall": 0.0,
+          "max_drawdown": 0.0,
+          "name": "base",
+          "sharpe": 415.32396993189553,
+          "total_return": 0.11111111111111116,
+          "value_at_risk": 0.0
+        },
+        {
+          "annual_vol": 0.04923233403650063,
+          "expected_shortfall": 0.0,
+          "max_drawdown": 0.0,
+          "name": "vol +50%",
+          "sharpe": 276.88264662126375,
+          "total_return": 0.1111084393488595,
+          "value_at_risk": 0.0
+        },
+        {
+          "annual_vol": 0.06564311204866752,
+          "expected_shortfall": 0.0,
+          "max_drawdown": 0.0,
+          "name": "vol +100%",
+          "sharpe": 207.66198496594777,
+          "total_return": 0.11110469888170726,
+          "value_at_risk": 0.0
+        },
+        {
+          "annual_vol": 0.5531114568287104,
+          "expected_shortfall": 0.006202691063040068,
+          "max_drawdown": -0.006202691063040056,
+          "name": "-3\u03c3 shock",
+          "sharpe": 15.488186229350173,
+          "total_return": 0.10421923215217777,
+          "value_at_risk": 0.00031926406199921965
+        },
+        {
+          "annual_vol": 0.5909792873450418,
+          "expected_shortfall": 0.010337818438400112,
+          "max_drawdown": -0.010337818438399982,
+          "name": "-5\u03c3 shock",
+          "sharpe": 13.908004435054185,
+          "total_return": 0.09962464617955558,
+          "value_at_risk": 0.00404087869982326
+        }
+      ]
+    },
+    "legacy": {
+      "confidence": 0.95,
+      "provenance": {
+        "as_of": "2024-01-03T00:00:00+00:00",
+        "confidence": 0.95,
+        "derived_projection": true,
+        "metric_namespace": "alpha_validation.scenario",
+        "periods_per_year": 252,
+        "research_cutoff": null,
+        "snapshot_hash": null,
+        "snapshot_id": null,
+        "source_artifact": "equity_curve.parquet",
+        "source_artifact_sha256": "69812de66af245c29af18da03c2e9c374aa3ad5669867e611d7178820c848216",
+        "source_command": "SYNTHETIC_C04_UI_FIXTURE_V1",
+        "source_run_id": "c29e64926c06ddaa",
+        "timezone": "UTC"
+      },
+      "run_id": "c29e64926c06ddaa",
+      "scenarios": [
+        {
+          "annual_vol": 0.03282155602433376,
+          "expected_shortfall": 0.0,
+          "max_drawdown": 0.0,
+          "name": "base",
+          "sharpe": 415.32396993189553,
+          "total_return": 0.11111111111111116,
+          "value_at_risk": 0.0
+        },
+        {
+          "annual_vol": 0.04923233403650063,
+          "expected_shortfall": 0.0,
+          "max_drawdown": 0.0,
+          "name": "vol +50%",
+          "sharpe": 276.88264662126375,
+          "total_return": 0.1111084393488595,
+          "value_at_risk": 0.0
+        },
+        {
+          "annual_vol": 0.06564311204866752,
+          "expected_shortfall": 0.0,
+          "max_drawdown": 0.0,
+          "name": "vol +100%",
+          "sharpe": 207.66198496594777,
+          "total_return": 0.11110469888170726,
+          "value_at_risk": 0.0
+        },
+        {
+          "annual_vol": 0.5531114568287104,
+          "expected_shortfall": 0.006202691063040068,
+          "max_drawdown": -0.006202691063040056,
+          "name": "-3\u03c3 shock",
+          "sharpe": 15.488186229350173,
+          "total_return": 0.10421923215217777,
+          "value_at_risk": 0.00031926406199921965
+        },
+        {
+          "annual_vol": 0.5909792873450418,
+          "expected_shortfall": 0.010337818438400112,
+          "max_drawdown": -0.010337818438399982,
+          "name": "-5\u03c3 shock",
+          "sharpe": 13.908004435054185,
+          "total_return": 0.09962464617955558,
+          "value_at_risk": 0.00404087869982326
+        }
+      ]
+    }
+  },
+  "loss": {
+    "disclosed": {
+      "confidence": 0.95,
+      "provenance": {
+        "as_of": "2024-01-03T00:00:00+00:00",
+        "confidence": 0.95,
+        "derived_projection": true,
+        "metric_basis": {
+          "anchor_kind": "first_recorded_equity",
+          "anchor_ts": "2024-01-01T00:00:00+00:00",
+          "anchor_units": "recorded_equity_units",
+          "anchor_value": 1000.0,
+          "benchmark_adjustment": "none_by_projection",
+          "drawdown_convention": "non_positive_fraction_from_scenario_wealth_peaks",
+          "external_cash_flow_status": "unknown",
+          "initial_capital_status": "unknown",
+          "pre_anchor_losses": "not_measured",
+          "return_accumulation": "compounded_simple_returns",
+          "schema_version": 1
+        },
+        "metric_namespace": "alpha_validation.scenario",
+        "periods_per_year": 252,
+        "research_cutoff": null,
+        "snapshot_hash": null,
+        "snapshot_id": null,
+        "source_artifact": "equity_curve.parquet",
+        "source_artifact_sha256": "66de01d55292aa3e7b4391f50ac4e4128fc9713eccb0edc074b4f2de5af9a5c2",
+        "source_command": "SYNTHETIC_C04_UI_FIXTURE_V1",
+        "source_run_id": "9fcd8576b244b6d9",
+        "timezone": "UTC"
+      },
+      "run_id": "9fcd8576b244b6d9",
+      "scenarios": [
+        {
+          "annual_vol": 2.3697163449568297,
+          "expected_shortfall": 0.09999999999999998,
+          "max_drawdown": -0.09999999999999998,
+          "name": "base",
+          "sharpe": 0.5907880084379946,
+          "total_return": 0.0,
+          "value_at_risk": 0.08944444444444441
+        },
+        {
+          "annual_vol": 3.5545745174352446,
+          "expected_shortfall": 0.15277777777777776,
+          "max_drawdown": -0.1527777777777778,
+          "name": "vol +50%",
+          "sharpe": 0.39385867229199634,
+          "total_return": -0.01392746913580245,
+          "value_at_risk": 0.13694444444444442
+        },
+        {
+          "annual_vol": 4.739432689913659,
+          "expected_shortfall": 0.20555555555555555,
+          "max_drawdown": -0.2055555555555555,
+          "name": "vol +100%",
+          "sharpe": 0.2953940042189973,
+          "total_return": -0.03342592592592575,
+          "value_at_risk": 0.1844444444444444
+        },
+        {
+          "annual_vol": 4.480515116829586,
+          "expected_shortfall": 0.4478342947514801,
+          "max_drawdown": -0.4478342947514802,
+          "name": "-3\u03c3 shock",
+          "sharpe": -8.187618269157662,
+          "total_return": -0.4478342947514802,
+          "value_at_risk": 0.41305086527633206
+        },
+        {
+          "annual_vol": 7.092481779450382,
+          "expected_shortfall": 0.7463904912524668,
+          "max_drawdown": -0.7463904912524668,
+          "name": "-5\u03c3 shock",
+          "sharpe": -8.708301248066107,
+          "total_return": -0.7463904912524668,
+          "value_at_risk": 0.68175144212722
+        }
+      ]
+    },
+    "legacy": {
+      "confidence": 0.95,
+      "provenance": {
+        "as_of": "2024-01-03T00:00:00+00:00",
+        "confidence": 0.95,
+        "derived_projection": true,
+        "metric_namespace": "alpha_validation.scenario",
+        "periods_per_year": 252,
+        "research_cutoff": null,
+        "snapshot_hash": null,
+        "snapshot_id": null,
+        "source_artifact": "equity_curve.parquet",
+        "source_artifact_sha256": "66de01d55292aa3e7b4391f50ac4e4128fc9713eccb0edc074b4f2de5af9a5c2",
+        "source_command": "SYNTHETIC_C04_UI_FIXTURE_V1",
+        "source_run_id": "9fcd8576b244b6d9",
+        "timezone": "UTC"
+      },
+      "run_id": "9fcd8576b244b6d9",
+      "scenarios": [
+        {
+          "annual_vol": 2.3697163449568297,
+          "expected_shortfall": 0.09999999999999998,
+          "max_drawdown": -0.09999999999999998,
+          "name": "base",
+          "sharpe": 0.5907880084379946,
+          "total_return": 0.0,
+          "value_at_risk": 0.08944444444444441
+        },
+        {
+          "annual_vol": 3.5545745174352446,
+          "expected_shortfall": 0.15277777777777776,
+          "max_drawdown": -0.1527777777777778,
+          "name": "vol +50%",
+          "sharpe": 0.39385867229199634,
+          "total_return": -0.01392746913580245,
+          "value_at_risk": 0.13694444444444442
+        },
+        {
+          "annual_vol": 4.739432689913659,
+          "expected_shortfall": 0.20555555555555555,
+          "max_drawdown": -0.2055555555555555,
+          "name": "vol +100%",
+          "sharpe": 0.2953940042189973,
+          "total_return": -0.03342592592592575,
+          "value_at_risk": 0.1844444444444444
+        },
+        {
+          "annual_vol": 4.480515116829586,
+          "expected_shortfall": 0.4478342947514801,
+          "max_drawdown": -0.4478342947514802,
+          "name": "-3\u03c3 shock",
+          "sharpe": -8.187618269157662,
+          "total_return": -0.4478342947514802,
+          "value_at_risk": 0.41305086527633206
+        },
+        {
+          "annual_vol": 7.092481779450382,
+          "expected_shortfall": 0.7463904912524668,
+          "max_drawdown": -0.7463904912524668,
+          "name": "-5\u03c3 shock",
+          "sharpe": -8.708301248066107,
+          "total_return": -0.7463904912524668,
+          "value_at_risk": 0.68175144212722
+        }
+      ]
+    }
+  }
+}

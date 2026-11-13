@@ -38,7 +38,7 @@ class Surrogate:
     as before. ``weights_and_costs(pr)`` exposes the underlying series so the gauntlet can score
     the SAME weights under the engine's t+1-open fill convention — the convention-divergence
     diagnostic that marks when the close-fill Tier-1 is structurally low-fidelity for a strategy
-    (see docs/investigations/2026-06-23-tier1-surrogate-crediting-bias.md).
+    (see docs/records/investigations/2026-06-23-tier1-surrogate-crediting-bias.md).
     """
 
     def __init__(

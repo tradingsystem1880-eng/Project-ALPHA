@@ -151,7 +151,7 @@ def _hedged_basis_experiment(tmp_path: Path) -> tuple[ControlStore, str, str, st
     contract_id = f"rc_{'c' * 64}"
     # This downstream planner fixture needs only the immutable post-promotion link.
     # Research transition semantics have their own exhaustive acceptance tests.
-    with sqlite3.connect(store._database_path()) as connection:  # noqa: SLF001
+    with sqlite3.connect(store._database_path()) as connection:
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute(
             "INSERT INTO research_contracts VALUES (?, ?, 'confirmation', NULL, ?, ?, ?, ?)",
@@ -1321,7 +1321,7 @@ def test_candidate_planner_reports_missing_authority_and_artifacts(
 
 def test_candidate_planner_hides_revealed_or_contaminated_windows(tmp_path: Path) -> None:
     store, project_id, experiment_id, _, _ = _hedged_basis_experiment(tmp_path)
-    database = store._database_path()  # noqa: SLF001
+    database = store._database_path()
     with sqlite3.connect(database) as connection:
         connection.execute(
             "UPDATE holdout_state SET revealed_at = ? WHERE project_id = ? AND experiment_id = ?",

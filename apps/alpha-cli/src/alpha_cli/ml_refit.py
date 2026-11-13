@@ -23,6 +23,21 @@ _WORKER_SOURCES = (
     "tabular_adapters.py",
     "fit_provenance.py",
 )
+_FEATURE_CORRECTION_SOURCES = ("feature_recipes.py", "native_feature_corrections.py")
+
+
+def _worker_source_names(worker: Path) -> tuple[str, ...]:
+    # A preserved pre-correction worker has neither new module. Never reinterpret its
+    # frozen seven-file inventory, or tolerate a partially missing new implementation.
+    present = [
+        os.path.lexists(worker / "src" / "alpha_qlib_worker" / name)
+        for name in _FEATURE_CORRECTION_SOURCES
+    ]
+    if any(present) and not all(present):
+        raise MLContractError("worker has an incomplete feature correction source inventory")
+    return _WORKER_SOURCES + (_FEATURE_CORRECTION_SOURCES if all(present) else ())
+
+
 _GENERATOR_SOURCES = ("refit_harness.py", "test_fake_worker.py")
 _DIMENSION_FIELDS = {
     "panel": frozenset({"panel", "snapshot_hash"}),
@@ -379,13 +394,11 @@ def plan_refit(
 ) -> dict[str, Any]:
     """Verify frozen engineering inputs; never dispatch or admit a fit."""
     worker = _worker_root()
+    source_names = _worker_source_names(worker)
     paths = {
         "protocol": Path(protocol_path),
         "worker_lock": worker / "uv.lock",
-        **{
-            f"source/{name}": worker / "src" / "alpha_qlib_worker" / name
-            for name in _WORKER_SOURCES
-        },
+        **{f"source/{name}": worker / "src" / "alpha_qlib_worker" / name for name in source_names},
         **{f"generator/{name}": worker / "tests" / name for name in _GENERATOR_SOURCES},
     }
     for role, exchange in (("original", Path(original)), ("changed", Path(changed))):
@@ -397,7 +410,7 @@ def plan_refit(
         )
     before = _snapshot(paths)
     protocol = read_engineering_protocol(protocol_path, expected_sha256=expected_protocol_sha256)
-    source_hashes = {name: before[f"source/{name}"][0] for name in _WORKER_SOURCES}
+    source_hashes = {name: before[f"source/{name}"][0] for name in source_names}
     generator_hashes = {name: before[f"generator/{name}"][0] for name in _GENERATOR_SOURCES}
     if _digest(source_hashes) != protocol["worker_source_sha256"]:
         raise MLContractError("current worker source differs from the frozen protocol")
@@ -409,6 +422,8 @@ def plan_refit(
     for role, exchange in (("original", Path(original)), ("changed", Path(changed))):
         validated = validate_request_bundle(exchange)
         request = validated.request
+        if request["feature_recipe"]["version"] == 2 and source_names == _WORKER_SOURCES:
+            raise MLContractError("feature recipe v2 requires the expanded worker source inventory")
         if request["schema_version"] != 3 or request["model"] != protocol["model"]:
             raise MLContractError("refit plan requires the frozen schema3 model recipe")
         if request["worker_lock_hash"] != protocol["worker_lock_sha256"]:
@@ -430,7 +445,7 @@ def plan_refit(
     if differences - covered or observed_dimensions != set(protocol["changed_dimensions"]):
         raise MLContractError("actual request changes differ from declared dimensions")
     after = _snapshot(paths)
-    if before != after:
+    if before != after or source_names != _worker_source_names(worker):
         raise MLContractError("refit inputs or sources changed during validation")
     summaries = {
         role: _request_summary(request, before, role) for role, request in requests.items()

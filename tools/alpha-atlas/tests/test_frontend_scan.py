@@ -14,6 +14,9 @@ class TestClientJoin:
         assert len(methods) >= 100
         assert methods["runs"] == ("GET", "/api/runs")
         assert methods["candles"] == ("GET", "/api/candles/{symbol}")
+        original_pdf_path = "/api/research/cases/{project_id}/sources/{source_id}/original-pdf"
+        assert methods["researchSourceOriginalPdfStatus"] == ("HEAD", original_pdf_path)
+        assert methods["researchSourceOriginalPdfDownload"] == ("GET", original_pdf_path)
 
     def test_orphan_client_paths_fail_loud(self, tmp_path: Path, repo_root: Path) -> None:
         client = repo_root / "apps/alpha-web/frontend/src/api/client.ts"

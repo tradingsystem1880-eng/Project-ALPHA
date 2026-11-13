@@ -49,6 +49,11 @@ def _group(name: str, module: str, attribute: str) -> typer.Typer:
 
         if not any(info.name == "import-pdf" for info in group.registered_commands):
             group.command(name="import-pdf")(import_pdf_command)
+        from alpha_cli.native_stock_cmds import native_result_command
+        from alpha_cli.research_diagnostic_cmds import diagnostic_app
+
+        if not any(info.name == "native-result" for info in diagnostic_app.registered_commands):
+            diagnostic_app.command(name="native-result")(native_result_command)
     return group
 
 

@@ -12,7 +12,7 @@ implemented < connected < tested` (`observed` is reserved for a future runtime
 layer and never emitted) — with file:line provenance. A file existing is never
 "the feature exists".
 
-Design doc: `docs/superpowers/plans/2026-08-20-project-alpha-atlas-design.md`.
+Design doc: `docs/superpowers/plans/archive/2026-08/2026-08-20-project-alpha-atlas-design.md`.
 
 ## Commands (from `tools/alpha-atlas/`)
 
@@ -115,6 +115,6 @@ filesystem over existing canonical documents, separate from bulk-document storag
 scientific context admission and Mac recovery. Ignored receipts remain local until separately
 preserved; Git-tracked and pushed sources supply durable history.
 
-The [delivery record](../../docs/superpowers/plans/2026-10-30-queryable-context-filesystem.md)
+The [delivery record](../../docs/superpowers/plans/archive/2026-10/2026-10-30-queryable-context-filesystem.md)
 maps the primary ICM paper's five roles to existing ALPHA paths. Receipt expiry and mechanical
 invalidation are ALPHA adaptations; no autonomous-quality or backup-performance claim is made.

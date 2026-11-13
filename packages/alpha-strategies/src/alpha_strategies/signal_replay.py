@@ -35,6 +35,7 @@ class SignalReplay(VolTargetStrategy):
         rebalance_every: int = 21,
         periods_per_year: int = 252,
         allow_short: bool = True,
+        fixed_quantity: float | None = None,
     ) -> None:
         super().__init__(
             instrument_id=instrument_id,
@@ -47,6 +48,7 @@ class SignalReplay(VolTargetStrategy):
             rebalance_every=rebalance_every,
             periods_per_year=periods_per_year,
             allow_short=allow_short,
+            fixed_quantity=fixed_quantity,
         )
         self._signals = list(signals)
 

@@ -1,7 +1,9 @@
-**Delivery state:** Completed locally; aggregate verified (2026-09-16).
+**Historical delivery state (as first recorded):** Completed locally; aggregate verified (2026-09-16).
 Final delivery is valid only with a fresh current-tree full stamp.
 
 # Agent-neutral engineering and reproducible research
+
+**Delivery state:** Completed — merged to main via PR #53 (2026-10-07)
 
 ```json
 {

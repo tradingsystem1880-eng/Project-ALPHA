@@ -4,7 +4,7 @@ paths:
 ---
 # alpha_backtest rules
 
-Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `tests/fixtures/claude_md_v1.md`). The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
+Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 
 RISK TIER: every edit under `packages/alpha-backtest/src` requires an APPROVE `ReviewVerdict` (`/review-gate`) before commit.
 ### `alpha_backtest` (`packages/alpha-backtest/src/alpha_backtest/`) — nautilus run harness. core + data only.

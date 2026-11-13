@@ -17,7 +17,7 @@ class TestApiRoutes:
             1
             for methods in spec["paths"].values()
             for m in methods
-            if m in ("get", "post", "put", "delete")
+            if m in ("get", "head", "post", "put", "delete")
         )
         assert len(routes) == operations >= 190
         assert "apps/alpha-web/frontend/openapi.json" in inputs
@@ -37,6 +37,25 @@ class TestApiRoutes:
         fragment, _ = extract(repo_root)
         route = next(n for n in fragment.nodes if n.id == "route:GET /api/candles/{symbol}")
         assert route.evidence.level == "implemented"
+
+    def test_head_route_is_anchored_and_serves_its_router(self, repo_root: Path) -> None:
+        fragment, _ = extract(repo_root)
+        route = next(
+            n
+            for n in fragment.nodes
+            if n.id
+            == "route:HEAD /api/research/cases/{project_id}/sources/{source_id}/original-pdf"
+        )
+        assert route.evidence.level == "implemented"
+        assert route.meta["verified_anchors"][0]["path"] == (
+            "apps/alpha-web/src/alpha_web/api/research.py"
+        )
+        assert any(
+            e.type == "serves"
+            and e.source == route.id
+            and e.target == "module:alpha_web.api.research"
+            for e in fragment.edges
+        )
 
     def test_routes_serve_their_router_module(self, repo_root: Path) -> None:
         fragment, _ = extract(repo_root)

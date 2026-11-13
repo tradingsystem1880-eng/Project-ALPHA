@@ -555,6 +555,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/crypto-data/quality/{manifest_id}/retained-coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retained Quality
+         * @description Manual read-only evaluation of an explicit native daily grid; no acquisition or mutation.
+         */
+        post: operations["retained_quality_api_crypto_data_quality__manifest_id__retained_coverage_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/crypto-data/snapshots": {
         parameters: {
             query?: never;
@@ -1474,6 +1494,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/native-jobs/{job_id}/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Native Result
+         * @description Read owner-observed synthetic result; no paths, launch or resume selectors.
+         */
+        get: operations["native_result_api_native_jobs__job_id__result_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/overlays/{symbol}": {
         parameters: {
             query?: never;
@@ -2357,6 +2397,30 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/research/cases/{project_id}/sources/{source_id}/original-pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Research Source Original Pdf Download
+         * @description Download exact retained bytes only after the CLI store verifies source and hash.
+         */
+        get: operations["research_source_original_pdf_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        /**
+         * Research Source Original Pdf Status
+         * @description Verify the source-bound original PDF without returning its bytes.
+         */
+        head: operations["research_source_original_pdf_status"];
         patch?: never;
         trace?: never;
     };
@@ -7598,6 +7662,8 @@ export interface components {
         MlCapabilities: {
             /** Backends */
             backends: components["schemas"]["MlBackendCapability"][];
+            /** Feature Recipes */
+            feature_recipes?: components["schemas"]["MlFeatureCapability"][];
             /** Qlib Version */
             qlib_version: string | null;
             /**
@@ -7619,11 +7685,12 @@ export interface components {
             feature_count: number;
             /**
              * Name
-             * @constant
+             * @enum {string}
              */
-            name: "Alpha158-style";
+            name: "Alpha158-style" | "Alpha158-style v2 (40 upstream columns; 118 legacy columns)";
             /** Names */
             names: string[];
+            versioned_correction?: components["schemas"]["MlFeatureCorrection"] | null;
             /** Vwap Source */
             vwap_source: string;
         };
@@ -8054,6 +8121,69 @@ export interface components {
             /** Universe Size */
             universe_size: number;
         };
+        /** MlFeatureCapability */
+        MlFeatureCapability: {
+            /**
+             * Name
+             * @constant
+             */
+            name: "alpha158";
+            /** Reason */
+            reason: string | null;
+            /** Scope */
+            scope: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "missing_dependency" | "incompatible_dependency";
+            /**
+             * Version
+             * @enum {integer}
+             */
+            version: 1 | 2;
+            /** Versions */
+            versions: {
+                [key: string]: string;
+            };
+        };
+        /** MlFeatureCorrection */
+        MlFeatureCorrection: {
+            /** Compatibility Key */
+            compatibility_key: string;
+            /** Corrected Columns */
+            corrected_columns: string[];
+            /**
+             * Full Alpha158 Parity
+             * @constant
+             */
+            full_alpha158_parity: false;
+            /** Inherited V1 Columns */
+            inherited_v1_columns: string[];
+            /** Input */
+            input: string;
+            /**
+             * Name
+             * @constant
+             */
+            name: "alpha158";
+            /** Nonfinite */
+            nonfinite: string;
+            /** Scope */
+            scope: string;
+            /** Source Sha256 */
+            source_sha256: {
+                [key: string]: string;
+            };
+            upstream: components["schemas"]["JsonObject"];
+            /**
+             * Version
+             * @constant
+             */
+            version: 2;
+            /** Warmup */
+            warmup: string;
+        };
         /** MlFeatureImportance */
         MlFeatureImportance: {
             /** Feature */
@@ -8076,9 +8206,9 @@ export interface components {
             };
             /**
              * Version
-             * @constant
+             * @enum {integer}
              */
-            version: 1;
+            version: 1 | 2;
         };
         /** MlFold */
         MlFold: {
@@ -8759,6 +8889,22 @@ export interface components {
             /** Year */
             year: number;
         };
+        /** NativeDispatch */
+        NativeDispatch: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Owner Id */
+            owner_id: string;
+            /** Profile Sha256 */
+            profile_sha256: string;
+            /** Reservation Id */
+            reservation_id: string;
+            /** Spec Sha256 */
+            spec_sha256: string;
+        };
         /** NativeExposureTurnover */
         NativeExposureTurnover: {
             /** End Ts */
@@ -8780,6 +8926,13 @@ export interface components {
             /** Turnover Unavailable Reason */
             turnover_unavailable_reason: string | null;
         };
+        /** NativeFeedback */
+        NativeFeedback: {
+            /** Acceptable */
+            acceptable: boolean;
+            /** Decision */
+            decision: boolean;
+        };
         /** NativeHistogramBin */
         NativeHistogramBin: {
             /** Count */
@@ -8789,6 +8942,57 @@ export interface components {
             /** Right */
             right: number;
         };
+        /** NativeJobResultV1 */
+        NativeJobResultV1: {
+            /**
+             * Classification
+             * @constant
+             */
+            classification: "synthetic_only_unqualified";
+            dispatch?: components["schemas"]["NativeDispatch"] | null;
+            feedback?: components["schemas"]["NativeFeedback"] | null;
+            /**
+             * Operation
+             * @constant
+             */
+            operation: "recover_native_stock_result";
+            provenance?: components["schemas"]["NativeProvenance"] | null;
+            /** Reason */
+            reason: string;
+            receipt?: components["schemas"]["NativeReceipt"] | null;
+            result?: components["schemas"]["NativeResult"] | null;
+            /** Resume Allowed */
+            resume_allowed: boolean;
+            /**
+             * Schema
+             * @constant
+             */
+            schema: "NativeStockOperatorResultV1";
+            /**
+             * Scientific Acceptance
+             * @constant
+             */
+            scientific_acceptance: "not_admitted";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "completed" | "invalid" | "unavailable";
+        };
+        /** NativeProvenance */
+        NativeProvenance: {
+            /** Checkpoint Sha256 */
+            checkpoint_sha256?: string | null;
+            /**
+             * Owner Receipt Match
+             * @enum {string}
+             */
+            owner_receipt_match: "verified" | "mismatch" | "unavailable";
+            /** Receipt Sha256 */
+            receipt_sha256?: string | null;
+            /** Trace Sha256 */
+            trace_sha256?: string | null;
+        };
         /** NativeQQPoint */
         NativeQQPoint: {
             /** Probability */
@@ -8797,6 +9001,95 @@ export interface components {
             sample: number;
             /** Theoretical */
             theoretical: number;
+        };
+        /** NativeReceipt */
+        NativeReceipt: {
+            /** Actual Model Calls */
+            actual_model_calls: number;
+            /** Charged Stages */
+            charged_stages: [
+                "direct_exp_gen",
+                "coding",
+                "running",
+                "feedback",
+                "record"
+            ];
+            /** Checkpoint Sha256 */
+            checkpoint_sha256: string;
+            /** Checkpoint Unchanged */
+            checkpoint_unchanged: boolean;
+            /** Fake Model Attempts */
+            fake_model_attempts: number;
+            /** Fake Tool Attempts */
+            fake_tool_attempts: number;
+            /** Replay Rejected */
+            replay_rejected: boolean;
+            request: components["schemas"]["NativeRequest"];
+            /** Resumed Without Repeating */
+            resumed_without_repeating: boolean;
+            /** Routes Enabled */
+            routes_enabled: boolean;
+            /**
+             * Schema
+             * @constant
+             */
+            schema: "StockRDLoopReceiptV1";
+            /**
+             * Scientific Acceptance
+             * @constant
+             */
+            scientific_acceptance: "not_admitted";
+            /**
+             * Source Sha256
+             * @constant
+             */
+            source_sha256: "0266b2d63328f88fcaf6f239bf6d67f29c896b8161566f794ef69465b7788707";
+            /** Trace Sha256 */
+            trace_sha256: string;
+        };
+        /** NativeRequest */
+        NativeRequest: {
+            /** Cpu Milliseconds */
+            cpu_milliseconds: number;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Loop Steps */
+            loop_steps: number;
+            /** Manifest Sha256 */
+            manifest_sha256: string;
+            /**
+             * Mode
+             * @constant
+             */
+            mode: "resume";
+            /** Model Calls */
+            model_calls: number;
+            /** Owner Id */
+            owner_id: string;
+            /** Reservation Id */
+            reservation_id: string;
+            /**
+             * Schema
+             * @constant
+             */
+            schema: "StockRDLoopFixtureRequestV1";
+            /** Spec Sha256 */
+            spec_sha256: string;
+            /** Tool Calls */
+            tool_calls: number;
+        };
+        /** NativeResult */
+        NativeResult: {
+            /** Synthetic Score */
+            synthetic_score: number;
+            /**
+             * Unit
+             * @constant
+             */
+            unit: "fixture_only";
         };
         /** NativeRollingMetric */
         NativeRollingMetric: {
@@ -10887,6 +11180,289 @@ export interface components {
             schema_version: 1;
             semantic: components["schemas"]["ResearchSemanticStateV1"];
         };
+        /** RetainedCoverageLimits */
+        RetainedCoverageLimits: {
+            /** Artifact Hash Bytes */
+            artifact_hash_bytes: number;
+            /** Metadata Bytes */
+            metadata_bytes: number;
+            /** Missing Ranges */
+            missing_ranges: number;
+            /** Normalized Payload Bytes */
+            normalized_payload_bytes: number;
+            /** Payload Read Bytes */
+            payload_read_bytes: number;
+            /** Returned Rows */
+            returned_rows: number;
+        };
+        /** RetainedCoverageRequest */
+        RetainedCoverageRequest: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Coverage End
+             * Format: date-time
+             */
+            coverage_end: string;
+            /**
+             * Coverage Start
+             * Format: date-time
+             */
+            coverage_start: string;
+            /**
+             * Expected Cadence Seconds
+             * @constant
+             */
+            expected_cadence_seconds: 86400;
+            /**
+             * Max Input Bytes
+             * @default 33554432
+             */
+            max_input_bytes: number;
+            /**
+             * Max Missing Ranges
+             * @default 1000
+             */
+            max_missing_ranges: number;
+            /**
+             * Max Rows
+             * @default 50000
+             */
+            max_rows: number;
+            /** Max Verify Artifact Bytes */
+            max_verify_artifact_bytes: number;
+            /**
+             * Max Verify Metadata Bytes
+             * @default 33554432
+             */
+            max_verify_metadata_bytes: number;
+        };
+        /** RetainedCoverageResponse */
+        RetainedCoverageResponse: {
+            /**
+             * Audit State
+             * @enum {string}
+             */
+            audit_state: "inspected" | "unavailable";
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /**
+             * Hash Bytes Read
+             * @default 0
+             */
+            hash_bytes_read: number;
+            /**
+             * Hash Bytes Reserved
+             * @default 0
+             */
+            hash_bytes_reserved: number;
+            /**
+             * Inspection Provider Calls
+             * @constant
+             */
+            inspection_provider_calls: 0;
+            limits: components["schemas"]["RetainedCoverageLimits"] | null;
+            /** Manifest Id */
+            manifest_id: string;
+            /**
+             * Metadata Bytes Read
+             * @default 0
+             */
+            metadata_bytes_read: number;
+            /**
+             * Metadata Bytes Reserved
+             * @default 0
+             */
+            metadata_bytes_reserved: number;
+            /**
+             * Point In Time Eligibility
+             * @constant
+             */
+            point_in_time_eligibility: false;
+            /**
+             * Provider History Complete
+             * @constant
+             */
+            provider_history_complete: false;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "RETAINED_GRID_INSPECTED" | "RETAINED_BAR_AUDIT_UNAVAILABLE";
+            row_audit: components["schemas"]["RetainedCoverageRows"] | null;
+            /** Source Retrieved After As Of */
+            source_retrieved_after_as_of?: boolean | null;
+            stored_quality: components["schemas"]["RetainedStoredQuality"] | null;
+        };
+        /** RetainedCoverageRows */
+        RetainedCoverageRows: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Audited Columns */
+            audited_columns: string[];
+            /**
+             * Cadence Seconds
+             * @constant
+             */
+            cadence_seconds: 86400;
+            /** Conflicting Duplicate Groups */
+            conflicting_duplicate_groups: number;
+            /** Covered Slots */
+            covered_slots: number;
+            /** Declared Grid Satisfied */
+            declared_grid_satisfied: boolean;
+            /** Duplicate Extra Rows */
+            duplicate_extra_rows: number;
+            /** Duplicate Timestamp Groups */
+            duplicate_timestamp_groups: number;
+            /**
+             * End Exclusive
+             * Format: date-time
+             */
+            end_exclusive: string;
+            /**
+             * Execution Authority
+             * @constant
+             */
+            execution_authority: false;
+            /** Expected Slots */
+            expected_slots: number;
+            /** Failures */
+            failures: string[];
+            /**
+             * Grid Basis
+             * @constant
+             */
+            grid_basis: "caller_declared_start_and_native_daily_cadence";
+            /** Identical Duplicate Groups */
+            identical_duplicate_groups: number;
+            /** In Window Rows */
+            in_window_rows: number;
+            /** Invalid Close Timestamp Rows */
+            invalid_close_timestamp_rows: number;
+            /** Invalid Numeric Rows */
+            invalid_numeric_rows: number;
+            /** Invalid Timestamp Rows */
+            invalid_timestamp_rows: number;
+            /** Missing Range Count */
+            missing_range_count: number;
+            /** Missing Ranges */
+            missing_ranges: components["schemas"]["RetainedMissingRange"][];
+            /** Missing Ranges Truncated */
+            missing_ranges_truncated: boolean;
+            /** Missing Slots */
+            missing_slots: number;
+            /** Off Grid Rows */
+            off_grid_rows: number;
+            /** Outside Window Rows */
+            outside_window_rows: number;
+            /**
+             * Point In Time Eligibility
+             * @constant
+             */
+            point_in_time_eligibility: false;
+            /**
+             * Provider History Complete
+             * @constant
+             */
+            provider_history_complete: false;
+            /** Row Count */
+            row_count: number;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** RetainedMissingRange */
+        RetainedMissingRange: {
+            /** End */
+            end: string;
+            /** Slots */
+            slots: number;
+            /** Start */
+            start: string;
+        };
+        /** RetainedStoredQuality */
+        RetainedStoredQuality: {
+            /** Method Version */
+            method_version: string;
+            /** Row Count */
+            row_count: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "qualified" | "warning" | "quarantined" | "unavailable";
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: true;
+        };
+        /**
+         * RiskMetricBasis
+         * @description Versioned projection conventions; no claim of verified initial capital or flows.
+         */
+        RiskMetricBasis: {
+            /**
+             * Anchor Kind
+             * @constant
+             */
+            anchor_kind: "first_recorded_equity";
+            /** Anchor Ts */
+            anchor_ts: string;
+            /**
+             * Anchor Units
+             * @constant
+             */
+            anchor_units: "recorded_equity_units";
+            /** Anchor Value */
+            anchor_value: number;
+            /**
+             * Benchmark Adjustment
+             * @constant
+             */
+            benchmark_adjustment: "none_by_projection";
+            /**
+             * Drawdown Convention
+             * @constant
+             */
+            drawdown_convention: "non_positive_fraction_from_scenario_wealth_peaks";
+            /**
+             * External Cash Flow Status
+             * @constant
+             */
+            external_cash_flow_status: "unknown";
+            /**
+             * Initial Capital Status
+             * @constant
+             */
+            initial_capital_status: "unknown";
+            /**
+             * Pre Anchor Losses
+             * @constant
+             */
+            pre_anchor_losses: "not_measured";
+            /**
+             * Return Accumulation
+             * @constant
+             */
+            return_accumulation: "compounded_simple_returns";
+            /** Schema Version */
+            schema_version: number;
+        };
         /** RiskProvenance */
         RiskProvenance: {
             /** As Of */
@@ -10898,6 +11474,7 @@ export interface components {
              * @constant
              */
             derived_projection: true;
+            metric_basis?: components["schemas"]["RiskMetricBasis"] | null;
             /**
              * Metric Namespace
              * @constant
@@ -12979,6 +13556,41 @@ export interface operations {
             };
         };
     };
+    retained_quality_api_crypto_data_quality__manifest_id__retained_coverage_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                manifest_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetainedCoverageRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetainedCoverageResponse"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     snapshot_create_api_crypto_data_snapshots_post: {
         parameters: {
             query?: never;
@@ -14759,6 +15371,37 @@ export interface operations {
             };
         };
     };
+    native_result_api_native_jobs__job_id__result_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NativeJobResultV1"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     overlays_api_overlays__symbol__get: {
         parameters: {
             query?: {
@@ -16329,6 +16972,91 @@ export interface operations {
             };
         };
     };
+    research_source_original_pdf_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Hash-verified original PDF bytes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Source or original PDF is unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Original PDF failed integrity verification */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Original PDF access is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    research_source_original_pdf_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verification metadata in X-Research-Original-Pdf-* headers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
     research_status_api_research_cases__project_id__status_get: {
         parameters: {
             query?: never;
@@ -16492,6 +17220,7 @@ export interface operations {
             query: {
                 run_id: string;
                 confidence?: number;
+                include_metric_basis?: boolean;
             };
             header?: never;
             path?: never;

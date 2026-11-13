@@ -4,7 +4,7 @@ paths:
 ---
 # alpha_strategies rules
 
-Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP (drift-tested against `tests/fixtures/claude_md_v1.md`). The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
+Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 ### `alpha_strategies` (`packages/alpha-strategies/src/alpha_strategies/`) — nautilus Strategy + pure decision fns. core only.
 Since Phase 5 S4 (2026-09-06) the import-linter contract is "depends only on core and patterns": `rules.py` reads indicators from `alpha_patterns` (the same functions `alpha chart overlays` draws) and nothing else new is permitted.
 | Module | Responsibility | Key public symbols |

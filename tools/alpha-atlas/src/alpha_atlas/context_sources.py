@@ -17,12 +17,20 @@ _ROOT_FILES = {"AGENTS.md", "CLAUDE.md", "docs/ARCHITECTURE.md", "docs/BUILD-STA
 _FAMILIES = {
     "docs/context": "project",
     "docs/adr": "decision",
+    "docs/build-status": "history",
+    "docs/records": "history",
+    "docs/records/audits": "history",
+    "docs/records/investigations": "history",
     "docs/superpowers/plans": "task",
     "docs/superpowers/specs": "feature",
+    "docs/roadmap/backlog": "feature",
+    "docs/roadmap/refactors": "feature",
     "docs/governance": "reference",
     "docs/operations": "reference",
     ".claude/rules": "reference",
 }
+# Completed/superseded plans move to one month folder each (docs/superpowers/plans/archive/YYYY-MM).
+_PLAN_ARCHIVE_MONTH = re.compile(r"docs/superpowers/plans/archive/\d{4}-\d{2}")
 _TOKENS = re.compile(r"[a-z0-9]+")
 _HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 
@@ -56,7 +64,10 @@ def _kind(rel: str) -> str | None:
         "docs/context"
     ):
         return "feature"
-    return _FAMILIES.get(path.parent.as_posix())
+    parent = path.parent.as_posix()
+    if _PLAN_ARCHIVE_MONTH.fullmatch(parent):
+        return "task"
+    return _FAMILIES.get(parent)
 
 
 def read_sources(root: Path) -> dict[str, Source]:

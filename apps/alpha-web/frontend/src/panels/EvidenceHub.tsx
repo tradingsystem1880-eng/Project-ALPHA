@@ -4,7 +4,12 @@
 
 import { useEffect, useState } from 'react'
 
-import { api, type LiteratureAcquisitionResult, type LiteratureDiscoveryResult } from '../api/client'
+import {
+  api,
+  type LiteratureAcquisitionResult,
+  type LiteratureDiscoveryResult,
+  type ResearchOriginalPdfInfo,
+} from '../api/client'
 import type { ResearchEvidenceHub, ResearchEvidenceHubSections } from '../api/types'
 import { contentAddressHash, payloadHash, performOwnerAction, researchCaseRevision } from '../auth/ownerAuth'
 import { Placeholder } from '../components/Placeholder'
@@ -55,6 +60,70 @@ function FindingsSection({
           <p>{finding.summary ?? 'No summary was recorded for this typed finding.'}</p>
         </div>
       ))}
+    </div>
+  )
+}
+
+function OriginalPdfControls({ projectId, sourceId }: { projectId: string; sourceId: string }) {
+  const [info, setInfo] = useState<ResearchOriginalPdfInfo | null>(null)
+  const [busy, setBusy] = useState<'check' | 'download' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function check() {
+    setBusy('check')
+    setError(null)
+    try {
+      setInfo(await api.researchSourceOriginalPdfStatus(projectId, sourceId))
+    } catch (failure) {
+      setInfo(null)
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function download() {
+    setBusy('download')
+    setError(null)
+    try {
+      const result = await api.researchSourceOriginalPdfDownload(projectId, sourceId)
+      const bytes = result.bytes.slice().buffer
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = 'research-source.pdf'
+      anchor.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 0)
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="literature-source-pdf">
+      <button className="btn" type="button" disabled={busy !== null} onClick={() => void check()}>
+        {busy === 'check' ? 'Verifying original PDF…' : 'Check original PDF'}
+      </button>
+      {info ? (
+        <span role="status" aria-live="polite">
+          {info.status === 'available'
+            ? `Verified original PDF · ${info.byte_count} bytes · SHA-256 ${info.sha256?.slice(0, 12)}…`
+            : `Original PDF ${info.status}.`}
+        </span>
+      ) : <span role="status" aria-live="polite">Original PDF not checked.</span>}
+      {info?.status === 'available' ? (
+        <button
+          className="btn"
+          type="button"
+          disabled={busy !== null}
+          onClick={() => void download()}
+        >
+          {busy === 'download' ? 'Verifying download…' : 'Download original PDF'}
+        </button>
+      ) : null}
+      {error ? <span role="alert">{error}</span> : null}
     </div>
   )
 }
@@ -250,10 +319,13 @@ function LiteratureSection({
 
       <div className="research-findings">
         {literature.sources.map((source) => (
-          <label key={source.source_id} className="literature-source-row">
-            <input type="checkbox" checked={selected.has(source.source_id)} onChange={(event) => setSelected((current) => { const next = new Set(current); if (event.target.checked) next.add(source.source_id); else next.delete(source.source_id); return next })} />
-            <span><span className="eyebrow">{source.provider} · {source.access_mode} · {source.extraction_status ?? 'metadata only'}</span><strong>{source.title}</strong><span className="mono muted">{source.locator}</span></span>
-          </label>
+          <div key={source.source_id}>
+            <label className="literature-source-row">
+              <input type="checkbox" checked={selected.has(source.source_id)} onChange={(event) => setSelected((current) => { const next = new Set(current); if (event.target.checked) next.add(source.source_id); else next.delete(source.source_id); return next })} />
+              <span><span className="eyebrow">{source.provider} · {source.access_mode} · {source.extraction_status ?? 'metadata only'}</span><strong>{source.title}</strong><span className="mono muted">{source.locator}</span></span>
+            </label>
+            <OriginalPdfControls projectId={projectId} sourceId={source.source_id} />
+          </div>
         ))}
       </div>
       <button className="btn primary" type="button" disabled={!selected.size || !reason.trim() || busy !== null} onClick={() => void freezePack()}>Confirm · freeze selected source pack</button>

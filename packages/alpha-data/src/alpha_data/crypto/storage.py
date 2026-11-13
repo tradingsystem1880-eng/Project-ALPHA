@@ -29,6 +29,7 @@ from .contracts import (
     require_utc,
 )
 from .root_identity import CloudBulkRootIdentityV1
+from .verification import ArtifactVerificationBudget, MetadataVerificationBudget
 
 _SAFE = re.compile(r"^[A-Za-z0-9._:-]+$")
 _MAX_NORMALIZED_READ_BYTES = 32 * 1024 * 1024
@@ -483,15 +484,25 @@ class CryptoBulkStore:
             finally:
                 fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
-    def retirement(self, manifest_id: str) -> dict[str, object] | None:
+    def retirement(
+        self, manifest_id: str, *, metadata_budget: MetadataVerificationBudget | None = None
+    ) -> dict[str, object] | None:
         """Verify append-only receipt while preserving canonical history."""
-        manifest = self._manifest_metadata(manifest_id)
+        manifest = (
+            self._manifest_metadata(manifest_id)
+            if metadata_budget is None
+            else self._manifest_metadata(manifest_id, metadata_budget=metadata_budget)
+        )
         path = self.manifest_root.parent / "retirements" / f"{manifest_id}.json"
         _reject_symlink_path(self.manifest_root.parent, path)
         if not path.exists():
             return None
         try:
-            record = json.loads(path.read_text(encoding="utf-8"))
+            record = (
+                json.loads(path.read_text(encoding="utf-8"))
+                if metadata_budget is None
+                else metadata_budget.read_json(path)
+            )
             if not isinstance(record, dict):
                 raise ValueError("not an object")
             body = {key: value for key, value in record.items() if key != "record_id"}
@@ -510,8 +521,15 @@ class CryptoBulkStore:
             raise DataError("crypto retirement receipt is unavailable or corrupt") from exc
         return record
 
-    def require_active(self, manifest_id: str) -> None:
-        if self.retirement(manifest_id) is not None:
+    def require_active(
+        self, manifest_id: str, *, metadata_budget: MetadataVerificationBudget | None = None
+    ) -> None:
+        retirement = (
+            self.retirement(manifest_id)
+            if metadata_budget is None
+            else self.retirement(manifest_id, metadata_budget=metadata_budget)
+        )
+        if retirement is not None:
             raise DataError("crypto manifest is retired from new research admission")
 
     def retire_manifest(
@@ -644,14 +662,20 @@ class CryptoBulkStore:
             }
         )
 
-    def _manifest_metadata(self, manifest_id: object) -> dict[str, object]:
+    def _manifest_metadata(
+        self, manifest_id: object, *, metadata_budget: MetadataVerificationBudget | None = None
+    ) -> dict[str, object]:
         if not isinstance(manifest_id, str):
             raise DataError("invalid crypto manifest id")
         _safe_component(manifest_id, "manifest id")
         path = self.manifest_root / f"{manifest_id}.json"
         _reject_symlink_path(Path(path.anchor), path)
         try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
+            raw = (
+                json.loads(path.read_text(encoding="utf-8"))
+                if metadata_budget is None
+                else metadata_budget.read_json(path)
+            )
         except (OSError, json.JSONDecodeError) as exc:
             raise DataError("crypto manifest is unavailable or corrupt") from exc
         if not isinstance(raw, dict) or raw.get("manifest_id") != manifest_id:
@@ -661,8 +685,19 @@ class CryptoBulkStore:
             raise DataError("crypto manifest integrity failure")
         return raw
 
-    def verify_manifest(self, manifest_id: object) -> dict[str, object]:
-        raw = self._manifest_metadata(manifest_id)
+    def verify_manifest(
+        self,
+        manifest_id: object,
+        *,
+        budget: ArtifactVerificationBudget | None = None,
+        metadata_budget: MetadataVerificationBudget | None = None,
+    ) -> dict[str, object]:
+        """Verify exact bytes/lineage; an optional shared budget caps artifact hashing only."""
+        raw = (
+            self._manifest_metadata(manifest_id)
+            if metadata_budget is None
+            else self._manifest_metadata(manifest_id, metadata_budget=metadata_budget)
+        )
         artifact_key = raw.get("artifact_key")
         artifact_hash = raw.get("artifact_sha256")
         artifact_bytes = raw.get("artifact_bytes")
@@ -680,10 +715,20 @@ class CryptoBulkStore:
             or not isinstance(artifact_bytes, int)
             or isinstance(artifact_bytes, bool)
             or artifact.stat().st_size != artifact_bytes
-            or sha256_file(artifact) != artifact_hash
         ):
             raise DataError("crypto external artifact integrity failure")
+        actual_hash = (
+            sha256_file(artifact)
+            if budget is None
+            else budget.hash_file(
+                artifact, expected_bytes=artifact_bytes, expected_sha256=artifact_hash
+            )
+        )
+        if actual_hash != artifact_hash:
+            raise DataError("crypto external artifact integrity failure")
         artifact_kind = raw.get("artifact_kind")
+        if artifact_kind is not None and not isinstance(artifact_kind, str):
+            raise DataError("crypto manifest artifact kind is invalid")
         if artifact_kind in {"normalized", "derived"}:
             input_ids = raw.get("input_manifest_ids")
             if (
@@ -695,7 +740,16 @@ class CryptoBulkStore:
                 raise DataError("crypto manifest input lineage is invalid")
             expected_kind = "raw" if artifact_kind == "normalized" else "normalized"
             for input_id in input_ids:
-                parent = self.verify_manifest(input_id)
+                if metadata_budget is None:
+                    parent = (
+                        self.verify_manifest(input_id)
+                        if budget is None
+                        else self.verify_manifest(input_id, budget=budget)
+                    )
+                else:
+                    parent = self.verify_manifest(
+                        input_id, budget=budget, metadata_budget=metadata_budget
+                    )
                 parent_kind = parent.get("artifact_kind")
                 legacy_raw = (
                     expected_kind == "raw"
@@ -708,7 +762,12 @@ class CryptoBulkStore:
         return raw
 
     def read_verified_normalized(
-        self, manifest_id: object, *, max_bytes: int
+        self,
+        manifest_id: object,
+        *,
+        max_bytes: int,
+        budget: ArtifactVerificationBudget | None = None,
+        metadata_budget: MetadataVerificationBudget | None = None,
     ) -> tuple[dict[str, object], bytes]:
         """Return bounded normalized bytes whose manifest, lineage, and exact payload verify."""
         if (
@@ -721,7 +780,11 @@ class CryptoBulkStore:
                 f"{_MAX_NORMALIZED_READ_BYTES} bytes"
             )
         self.verify_readable()
-        manifest = self._manifest_metadata(manifest_id)
+        manifest = (
+            self._manifest_metadata(manifest_id)
+            if metadata_budget is None
+            else self._manifest_metadata(manifest_id, metadata_budget=metadata_budget)
+        )
         if manifest.get("artifact_kind") != "normalized":
             raise DataError("crypto artifact is not normalized")
         artifact_bytes = manifest.get("artifact_bytes")
@@ -736,7 +799,17 @@ class CryptoBulkStore:
         ):
             raise DataError("crypto normalized artifact exceeds the read size limit")
         # Preflight bounds before the existing streaming payload/lineage verification.
-        if self.verify_manifest(manifest_id) != manifest:
+        if metadata_budget is None:
+            verified = (
+                self.verify_manifest(manifest_id)
+                if budget is None
+                else self.verify_manifest(manifest_id, budget=budget)
+            )
+        else:
+            verified = self.verify_manifest(
+                manifest_id, budget=budget, metadata_budget=metadata_budget
+            )
+        if verified != manifest:
             raise DataError("crypto normalized manifest changed during verification")
         artifact = self.bulk_root / artifact_key
         _reject_symlink_path(self.bulk_root, artifact)

@@ -65,7 +65,7 @@ future changes. Never read, fabricate, or modify hidden test source.
 Separate owner exception (2026-09-19): after being asked explicitly to authorize a
 new missing-suite exception for the research walkthrough closure commit, the owner
 authorized proceeding. This applies only to the changes in
-`docs/superpowers/plans/2026-09-19-research-walkthrough-closure.md`, based on
+`docs/superpowers/plans/archive/2026-09/2026-09-19-research-walkthrough-closure.md`, based on
 `b1b7510`. Keep the absent suite UNVERIFIED and report its attempted execution as
 an informational finding. Its absence alone is nonblocking for this closure commit;
 all other failures, independent review and Git guards remain mandatory. This grants
@@ -82,7 +82,7 @@ attestation and Git guards remain mandatory. No exception for any later change.
 One-time owner exception (2026-10-10): after being explicitly asked, the owner
 authorized proceeding without the absent private engineering suite `tests/holdout/`
 only for the mutation-fix changes under
-`docs/superpowers/plans/2026-10-10-mutation-checkpoints.md`. Record absent coverage
+`docs/superpowers/plans/archive/2026-10/2026-10-10-mutation-checkpoints.md`. Record absent coverage
 and the rejected execution attempt as UNVERIFIED, with an informational finding;
 absence alone does not block this scoped review. Do not retry the denied private
 execution or read/edit private source. Normal guarded commit/push and draft PR
@@ -105,7 +105,7 @@ caller pipes it to `uv run python scripts/gate.py attest --kind review`.
 
 One-time owner exception (2026-10-10): the owner explicitly authorized proceeding
 without the absent private engineering suite `tests/holdout/` only for the bounded
-cleanup under `docs/superpowers/plans/2026-10-10-maintainability-cleanup.md`. Record
+cleanup under `docs/superpowers/plans/archive/2026-10/2026-10-10-maintainability-cleanup.md`. Record
 private coverage UNVERIFIED with an informational finding; absence alone is
 nonblocking for this cleanup review. No private source access or execution of a
 denied private command is granted. All actual failures, public verification, fresh
@@ -119,7 +119,7 @@ or permission for any later change.
 The owner authorized a one-time absence-only exception for the exact ten-file
 Atomic candidate at Git tree `77638a7f657490d5605c92a33e8aa0ff62391f80`,
 plus only this appended instruction and
-`docs/operations/2026-10-21-atomic-snapshot-retry-private-suite-exception.md`.
+`docs/records/2026-10-21-atomic-snapshot-retry-private-suite-exception.md`.
 Verify the record's base, frozen patch and all ten file hashes; independently
 review both software and exception metadata against the recorded authorization.
 No later substantive changes inherit this exception. Documented absence of
@@ -134,7 +134,7 @@ push, PR, publication and merge remain on HOLD.
 ## Stooq candidate: one-time absent-private-suite decision (2026-10-21)
 
 The owner explicitly approved the candidate-specific decision in
-`docs/operations/2026-10-21-stooq-private-suite-absence-decision.md`, which records
+`docs/records/2026-10-21-stooq-private-suite-absence-decision.md`, which records
 exact consent, base, original tree and all nine file hashes. This exception covers
 only those unchanged Stooq/navigation candidate bytes plus that decision record
 and this appended instruction; it covers no later substantive change or separate
@@ -466,7 +466,7 @@ Authorization: user message `Sentinel_7ff5bfff4b508191b72a464f00d48d81`,
 2026-10-29T20:04:44.173549Z, “yes i aspprive all permissoons”, responding to the explicit
 bounded PR93 proposal relayed by parent thread `01a17c01-519d-72f8-9bee-bbc43c37b03f`.
 Scope is the retained PR93 work and necessary reconciliation/corrections described in
-`docs/superpowers/plans/2026-10-29-pr93-recovery-reconciliation.md`, based on final published
+`docs/superpowers/plans/archive/2026-10/2026-10-29-pr93-recovery-reconciliation.md`, based on final published
 PR95 `2b967311be376cb1f96159d2137f964b05c03c77`, through its successor delivery.
 Only documented absence of `tests/holdout/` is informational and nonblocking. Record private
 coverage UNVERIFIED, never PASS; do not read or modify private contents or fabricate tests.
@@ -501,7 +501,7 @@ The owner-approved remaining-cleanup absence-only exception covers recovery and 
 reconciliation of existing snapshot-query commit `4710a00392cc40739f97ed49890a85ac911ec6e0`
 onto main `f847581f2703f6b5b36aeccdf877c4354a19e176` through delivery. Scope and exact
 authorization references are recorded in
-`docs/superpowers/plans/2026-10-25-crypto-snapshot-query.md#task-scoped-missing-private-suite-decision`.
+`docs/superpowers/plans/archive/2026-10/2026-10-25-crypto-snapshot-query.md#task-scoped-missing-private-suite-decision`.
 Verify scope and metadata independently. Documented absence of `tests/holdout/` alone is
 informational/nonblocking; private coverage stays UNVERIFIED, never PASS. Do not read/modify
 private contents or retry denied access. All present-suite failures, other required checks,
