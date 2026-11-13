@@ -95,6 +95,8 @@ def _delta_e(first: str, second: str, kind: str | None = None) -> float:
 
 
 _THEME_IDS = ("alpha-dark", "terminal-classic")
+# alpha-dark predates the rule and is no longer the default.
+_PRE_RULE_TEXT_EXEMPTIONS = frozenset({("alpha-dark", "faint")})
 
 
 @pytest.fixture(scope="module", params=_THEME_IDS)
@@ -125,9 +127,11 @@ def test_figure_font_is_the_pinned_dejavu_face(theme: Theme) -> None:
 @pytest.mark.parametrize("role", ["ink", "ink_dim", "muted", "faint"])
 def test_canvas_text_clears_wcag_aa_on_the_canvas(theme: Theme, role: str) -> None:
     """`faint` colours the provenance caption and table headers, so it is text too."""
-    if theme.theme_id == "alpha-dark" and role == "faint":
-        pytest.skip("alpha-dark predates the rule and is no longer the default")
-    assert _contrast(getattr(theme, role), theme.bg) >= 4.5
+    contrast = _contrast(getattr(theme, role), theme.bg)
+    if (theme.theme_id, role) in _PRE_RULE_TEXT_EXEMPTIONS:
+        assert contrast < 4.5
+    else:
+        assert contrast >= 4.5
 
 
 @pytest.mark.parametrize("role", ["accent", "up", "down", "gold"])
