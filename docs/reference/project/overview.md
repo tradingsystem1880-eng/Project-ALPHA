@@ -80,7 +80,8 @@ Each step needs the owner's approval before the next starts.
 - Precision first. Measure, do not assume. A passing test or a good chart is not proof of an edge.
 - The owner decides. Nothing an agent, screen or model says counts as the owner's approval
   ([rule](../invariants/research-integrity.md#owner-authority)).
-- Use the real engines. RD-Agent, Qlib and Nautilus are installed and called at pinned versions.
+- Use the real engines. RD-Agent, Qlib and Nautilus are meant to be installed and called at
+  pinned versions, never copied or rebuilt; one not yet installed on a machine is work to finish.
 - Keep it tidy. The owner wants steady, healthy progress and a project that never becomes a mess
   ([owner decision](owner-decisions.md#2026-11-14-steady-progress-never-a-mess)).
 - One home per fact: link to it, never copy it.

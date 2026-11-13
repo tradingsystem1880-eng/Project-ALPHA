@@ -45,6 +45,7 @@ See the capabilities below on [STATUS.md](../../../../STATUS.md). Start it with 
 ## Decisions and open questions
 
 - No owner decision about this part is in the [owner decisions log](../owner-decisions.md) yet.
+- Open: no next step is recorded for the Workstation itself; new screens arrive with the parts they show.
 
 ## Never
 
