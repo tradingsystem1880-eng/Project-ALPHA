@@ -57,6 +57,7 @@ the area's row says what to read.
 | Current status | [STATUS.md](STATUS.md) (generated) |
 | History | git log and pull requests |
 | Codes and terms | [docs/reference/glossary.md](docs/reference/glossary.md) |
+| Who builds and reviews, which model, limits | [docs/reference/model-routing.md](docs/reference/model-routing.md) |
 
 When a fact changes, update its one home and link to it from elsewhere; never copy it.
 

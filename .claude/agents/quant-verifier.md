@@ -4,6 +4,7 @@ description: Independent academic referee for Project ALPHA statistical code. Ch
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 disallowedTools: Edit, Write, NotebookEdit
 skills: quant-source-verification
+model: opus
 effort: high
 maxTurns: 50
 ---

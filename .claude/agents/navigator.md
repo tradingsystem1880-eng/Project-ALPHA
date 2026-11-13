@@ -3,6 +3,7 @@ name: navigator
 description: Read-only finder for Project ALPHA. Answers "where does X live", "how does Y flow", "where do I add Z" and "which rules apply here" with file:line maps, using the CONTEXT.md routing files and scripts/fs.py orient|search. Never dumps files. Used in stages 02 and 03 of the delivery pipeline.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, NotebookEdit
+model: sonnet
 effort: medium
 maxTurns: 25
 ---

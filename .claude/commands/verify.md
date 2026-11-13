@@ -7,3 +7,5 @@ You are in stage 04 of the delivery pipeline. Read `workflow/stages/04-verify/CO
 for: $ARGUMENTS
 
 A check you did not run is written UNVERIFIED with the reason.
+
+The reviewers come from `python3 scripts/handoff.py review`; the writer is never the only reviewer.

@@ -41,7 +41,9 @@ sections to read first.
 3. State the assumptions you rely on and what verified each, the alternative you rejected, and
    at least two ways the plan could fail (the pre-mortem).
 4. Set `tier_impact` honestly: `quant`, `risk`, `protected`, `dag`, `bias`, `determinism` or
-   `none`. Name protected files the change touches.
+   `none`. List every file in scope in `files` (the builder's diff is checked against it) and
+   name protected files the change touches. State the task class ([model
+   routing](../../../docs/reference/model-routing.md#task-classes)) as a `**Build class:**` line.
 5. Name the one owning document each changed fact lives in (`docs_to_update`).
 6. Add the task to `docs/roadmap/capabilities.toml` (the capability's `plans` list, or an
    `[[unassigned_plan]]` with a reason), then run `uv run python scripts/capabilities.py`,
@@ -55,7 +57,7 @@ sections to read first.
 
 1. `# <title>`, then within the first 12 lines one `**Delivery state:** Planned — <note>` line
    (vocabulary in the Feature plans rules; `In progress` only once stage 03 starts and the
-   work-in-progress cap allows it).
+   work-in-progress cap allows it), and one `**Build class:** small|standard|hard — <reason>` line.
 2. `## For the owner` — at most 10 plain-English lines: what will change for them, how they will
    see it, what it will not do, anything they must decide.
 3. The first fenced `json` block: a `FeaturePlan` (`scripts/harness_models.py`).

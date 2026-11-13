@@ -2,6 +2,7 @@
 owner: delivery pipeline
 sources:
   - .github/pull_request_template.md
+  - scripts/handoff.py
   - docs/roadmap/wip-limit.json
   - docs/roadmap/capabilities.toml
   - scripts/roadmap_index.py
@@ -51,8 +52,10 @@ the status page and roadmap tell the truth.
 
 `docs/work/<task>/05-handoff.md`, with the headings of `.github/pull_request_template.md`, in
 plain English: `## What changed for you`, `## How to see it`, `## Checks run` (from
-`04-verify.md`, including what was not run), `## The one document updated`, `## What I am unsure
-about`, `## Protected files touched`.
+`04-verify.md`, including what was not run), `## Who built and who reviewed` (from
+`03-build.json` — or, on the small route, the record `handoff.py` printed — and `04-verify.md`:
+tool, model, effort, rounds, fallback, reviewers), `## The one document updated`, `## What I am
+unsure about`, `## Protected files touched`.
 
 Done means all of these hold:
 

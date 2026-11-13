@@ -7,3 +7,5 @@ You are in stage 05 of the delivery pipeline. Read `workflow/stages/05-land/CONT
 for: $ARGUMENTS
 
 Never merge or approve your own pull request; the owner merges.
+
+The pull request says who built and who reviewed, from the build record.

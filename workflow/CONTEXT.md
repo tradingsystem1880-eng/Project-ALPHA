@@ -6,6 +6,7 @@ sources:
   - tests/unit/test_plan_schema.py
   - tests/unit/test_filesystem_contract.py
   - docs/roadmap/wip-limit.json
+  - scripts/handoff.py
 verified: 00f70c232ea5
 ---
 
@@ -41,17 +42,18 @@ all `done`: 03. Slices done but no `04-verify.md`: 04. Otherwise: 05.
 
 - One folder per task: `docs/work/<yyyy-mm-dd>-<slug>/`, named after the day it was shaped and a
   few lowercase words (`2026-11-14-coverage-source-column`).
-- It holds only the stage files `01-brief.md`, `02-plan.md`, `04-verify.md` and `05-handoff.md`.
-  Stage 03 leaves commits, not a file. A folder is committed only once it has a `02-plan.md`
+- It holds only the stage files `01-brief.md`, `02-plan.md`, `03-build.json` (the build record
+  `scripts/handoff.py` writes), `04-verify.md` and `05-handoff.md`. A folder is committed only once it has a `02-plan.md`
   (the contract test checks this); an idea that must wait goes to the backlog instead.
 - The owner may edit any stage file between stages; the next stage reads the edited file, not
   the agent's memory of it.
 - Finished folders move to `docs/work/archive/<yyyy-mm>/` (stage 05). Plans finished before
   2026-11-14 are single files there.
 - The small route skips the folder: a fix confined to one module and its tests, with an obvious
-  test, or a documentation-only change. It runs stages 03–05 on a branch: 03 reads the code
-  area's `CONTEXT.md` in place of a plan, 04's results go under `## Checks run` in the pull
-  request, and 05 fills the template directly (no `05-handoff.md`, no close-out).
+  test, or a documentation-only change. It runs stages 03–05 on a branch: 03 builds from a
+  short brief (stage 03 names its headings) and the code area's `CONTEXT.md` in place of a plan,
+  04's results go under `## Checks run` in the pull request, and 05 fills the template directly
+  (no `05-handoff.md`, no close-out).
 
 ## How to change it
 

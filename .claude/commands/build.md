@@ -7,3 +7,6 @@ You are in stage 03 of the delivery pipeline. Read `workflow/stages/03-build/CON
 for: $ARGUMENTS
 
 Read the plan's own Read first table before touching code.
+
+Codex builds by default: run `python3 scripts/handoff.py build` as stage 03 says and read only its
+summary. A Claude builder is used only for the fallback or work stage 03 keeps with Claude.

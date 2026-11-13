@@ -627,3 +627,23 @@ def test_rule_files_are_thin_pointers_with_live_globs(rel: str) -> None:
         if not any(t.endswith(CONTEXT) or "/reference/invariants/" in t for t in targets):
             problems.append(f"{rel}: must link to a workspace CONTEXT.md or an invariants file")
     assert not problems, "\n".join(problems)
+
+
+# ---------------------------------------------------------------------------------------------
+# Model routing: one home for who builds and reviews, kept in step with scripts/handoff.py
+
+ROUTING = "docs/reference/model-routing.md"
+
+
+def test_model_routing_has_its_home_and_matches_the_handoff_tool() -> None:
+    import handoff
+
+    assert f"]({ROUTING})" in _text(CONTEXT), f"root {CONTEXT}: add {ROUTING} to One home per fact"
+    text = _text(ROUTING)
+    problems = [
+        f"{ROUTING}: class {name!r} must name model {p.model!r} and effort {p.effort!r}"
+        for name, p in handoff.PROFILES.items()
+        if not re.search(rf"`{name}`.*`{re.escape(p.model)}`, `{p.effort}`", text)
+    ]
+    assert handoff.RECORD_NAME == BUILD_RECORD, "scripts/handoff.py writes the task's build record"
+    assert not problems, "\n".join(problems)

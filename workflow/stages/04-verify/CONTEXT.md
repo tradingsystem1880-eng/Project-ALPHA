@@ -5,6 +5,7 @@ sources:
   - scripts/harness_models.py
   - docs/roadmap/capabilities.toml
   - .claude/agents/*.md
+  - scripts/handoff.py
 verified: 40d916b11519
 ---
 
@@ -41,14 +42,14 @@ plainly what was not checked. A claim without a command and its result is not ev
 3. When CI would run something heavier for this change (a component, the browser lanes, the slow
    oracles and mutation for quant files), run it with `uv run python scripts/gate.py component
    NAME` if the machine can, or list it as not run with the reason.
-4. Quant change: the `quant-verifier` agent checks every formula, estimator convention and
-   default against the primary source, runs the `tests/oracles/` suite for each changed primitive
-   and recomputes values by hand; its `QuantVerificationReport` is FAIL unless every claim is
-   verified, citations are complete and oracles exist. A FAIL goes back to stage 03.
-5. Risk-tier, protected or quant change: the `reviewer` agent reviews the diff, given only the
-   diff (never your reasoning). Its findings are advisory; fix real defects or say why not.
-   An optional second opinion: `/codex-review`; dispose of each finding (agree, refute, out of
-   scope) in this file.
+4. Review: `python3 scripts/handoff.py review --base main --task docs/work/<task>/` prints the
+   reviewers the [routing rules](../../../docs/reference/model-routing.md#review-by-risk-tier)
+   require for this diff and, for Claude-built work, runs Codex's review. The writer is never
+   the only reviewer. Give each agent only the diff, never your reasoning.
+5. Quant change: `quant-verifier` checks every formula, convention and default against the
+   primary source, runs `tests/oracles/` for each changed primitive and recomputes values by
+   hand; its `QuantVerificationReport` is FAIL unless all is verified. A FAIL goes back to 03.
+   Findings of every reviewer are advisory: fix real defects or say why not.
 6. Anything you could not run is written `UNVERIFIED:` with the reason; never "should pass".
 
 ## Outputs
@@ -59,8 +60,8 @@ plainly what was not checked. A claim without a command and its result is not ev
 - `## End-to-end check` — the test that proves the workflow and its result, or the statement
   that none exists and which one is needed.
 - `## Not run` — every check CI or the plan would run that was not run here, and why.
-- `## Review findings` — reviewer, quant-verifier and Codex findings with what was done about each,
-  or "no review needed: tier_impact none".
+- `## Review findings` — who built (from `03-build.json`), who reviewed with which model, and
+  each finding with what was done about it.
 
 ## Checkpoint
 
