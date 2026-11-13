@@ -86,9 +86,12 @@ before ALPHA writes its own.
    and an end-to-end worker run; `tests/smoke/test_ml_smoke.py` runs prepare -> real worker ->
    import -> evaluate -> replay through the installed `alpha` program.
 6. **Legacy v1/v2 frozen as readers.** `features.py`, `native_feature_corrections.py` and the
-   v1/v2 normalisation stay byte-for-byte (golden digests in
-   `workers/qlib/tests/test_feature_recipes.py`) so stored exchanges stay reproducible; they are
-   labelled legacy. Stored feature-v1/v2 exchanges (`tests/fixtures/ml_exchanges/`) must keep
+   v1/v2 normalisation keep their formulas untouched (stored golden values in
+   `workers/qlib/tests/test_feature_recipes.py`, compared at a relative tolerance of 1e-9 with
+   an identical NaN layout) so stored exchanges stay reproducible; they are labelled legacy.
+   The goldens were first written as byte digests and failed on CI: the same code and locked
+   libraries produced different last digits on GitHub's CPU than on the Dell. Byte-identical
+   recomputation is therefore a same-machine property, for every recipe. Stored feature-v1/v2 exchanges (`tests/fixtures/ml_exchanges/`) must keep
    validating. Refit protocols keep frozen inventories: `ml_refit._worker_source_names` is tiered
    7 -> 9 -> 10 files, and a ten-file protocol hash is not satisfied by older code.
 7. **The `qrun` pipeline is a demo** ("Demo: upstream qrun on fabricated data — not a research
@@ -121,4 +124,6 @@ place before it is declared the default rather than adding a fourth recipe.
 - Retiring v1/v2 later (owner decision) would let `features.py`, `native_feature_corrections.py`
   and the v1 normalisation helpers be deleted once no stored exchange needs reproducing.
 - Not established: real-data or economic qualification, provider/corporate-action parity
-  (ALPHA's panel is the input), vendor VWAP.
+  (ALPHA's panel is the input), vendor VWAP, and how far recomputed features differ between
+  machine types (observed on CI as a digest mismatch; the size was not measured). A result
+  recomputed on another machine can match a stored one to tolerance without matching its hash.

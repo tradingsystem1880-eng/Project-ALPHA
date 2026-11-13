@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import hashlib
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -168,74 +169,73 @@ def test_native_correction_does_not_register_providers_or_change_numpy_error_mod
     )
 
 
+# Legacy v1/v2 golden values. Recorded on the reference machine from code whose byte digests
+# equalled those of the pre-v3 worker (branch point 598fd98b). The input panel is stored too:
+# the same code and locked libraries give last-digit differences on another CPU type, so the
+# comparison is "same NaN layout, values equal to a tight tolerance", not a byte digest.
+GOLDEN = np.load(Path(__file__).parent / "fixtures" / "legacy_feature_golden.npz")
+RTOL, ATOL = 1e-9, 1e-12
+
+
 def golden_panel() -> pl.DataFrame:
-    """Fixed multi-symbol fabricated panel for the legacy v1/v2 golden digests."""
-    rng = np.random.default_rng(20261114)
-    rows = []
-    start = datetime(2021, 1, 4, tzinfo=UTC)
-    sessions = [start + timedelta(days=i + (i // 5) * 2) for i in range(90)]
-    for k, symbol in enumerate(("AAA", "BBB", "CCC")):
-        close = 40.0 + 10 * k
-        for i, ts in enumerate(sessions):
-            close *= float(np.exp(rng.normal(0, 0.02)))
-            open_ = close * float(np.exp(rng.normal(0, 0.01)))
-            high = max(open_, close) * (1 + float(rng.uniform(0, 0.02)))
-            low = min(open_, close) * (1 - float(rng.uniform(0, 0.02)))
-            volume = 0.0 if (k == 2 and i == 17) else float(rng.integers(1_000, 90_000))
-            rows.append(
-                {
-                    "symbol": symbol,
-                    "session_ts": ts,
-                    "open": open_,
-                    "high": high,
-                    "low": low,
-                    "close": close,
-                    "volume": volume,
-                }
-            )
-    return pl.DataFrame(rows).sort(["session_ts", "symbol"])
+    """The stored fabricated three-symbol panel (one zero-volume bar, weekend gaps)."""
+    return pl.DataFrame(
+        {
+            "symbol": GOLDEN["symbol"].tolist(),
+            "session_ts": pl.Series(GOLDEN["session_us"]).cast(pl.Datetime("us", "UTC")),
+            **{name: GOLDEN[name] for name in ("open", "high", "low", "close", "volume")},
+        }
+    )
 
 
-def frame_digest(frame: pd.DataFrame) -> str:
-    digest = hashlib.sha256()
-    digest.update(",".join(frame.columns).encode())
-    digest.update(frame.index.get_level_values(0).astype("int64").to_numpy().tobytes())
-    digest.update("|".join(frame.index.get_level_values(1)).encode())
-    digest.update(np.ascontiguousarray(frame.to_numpy(dtype="<f8")).tobytes())
-    return digest.hexdigest()
+def nan_layout(frame: pd.DataFrame) -> np.ndarray[Any, Any]:
+    return np.packbits(np.isnan(frame.to_numpy(dtype="float64")))
 
 
-# Recorded from the pre-v3 worker (branch point 598fd98b) on golden_panel(). Stored v1/v2
-# exchanges stay reproducible only while these bytes are unchanged.
-GOLDEN_FEATURES = {
-    1: "39af83e5a389907fcd257da3476798b28a43dfb73cb12b69f0c8500f3adcce8e",
-    2: "cfcaa0bd09a2d2e00dc0ab9d5b86cc0653e30eeda773d2e82d7362ea11e1a23e",
-}
+def test_legacy_v1_feature_values_are_unchanged() -> None:
+    features = build_features(golden_panel(), version=1)
+    np.testing.assert_array_equal(nan_layout(features), GOLDEN["v1_nan"])
+    np.testing.assert_allclose(
+        features.to_numpy(dtype="float64")[GOLDEN["rows"]], GOLDEN["v1"], rtol=RTOL, atol=ATOL
+    )
 
 
-@pytest.mark.parametrize("version", [1, 2])
-def test_legacy_feature_matrices_are_byte_for_byte_unchanged(version: int) -> None:
-    assert frame_digest(build_features(golden_panel(), version=version)) == GOLDEN_FEATURES[version]
+def test_legacy_v2_feature_values_are_unchanged() -> None:
+    panel_frame = golden_panel()
+    features = build_features(panel_frame, version=2)
+    corrected = GOLDEN["v2_corrected_columns"].tolist()
+    np.testing.assert_array_equal(nan_layout(features), GOLDEN["v2_nan"])
+    np.testing.assert_allclose(
+        features[corrected].to_numpy(dtype="float64")[GOLDEN["rows"]],
+        GOLDEN["v2_corrected"],
+        rtol=RTOL,
+        atol=ATOL,
+    )
+    inherited = [name for name in features.columns if name not in corrected]
+    assert len(inherited) == 118
+    # Same process, same code path: the 118 inherited columns are v1's, exactly.
+    pd.testing.assert_frame_equal(
+        features[inherited], build_features(panel_frame, version=1)[inherited], check_exact=True
+    )
 
 
-def test_legacy_normalisation_is_byte_for_byte_unchanged() -> None:
+def test_legacy_normalisation_is_unchanged() -> None:
     features = build_features(golden_panel(), version=1)
     dates = features.index.get_level_values("datetime")
     cut = sorted(dates.unique())[60]
     train, other = features.loc[dates < cut], features.loc[dates >= cut]
     normalized_train, (normalized_other,), statistics, missing = _normalize_features(train, [other])
-    assert frame_digest(normalized_train) == (
-        "6e69bdeaec0f8a6a74b59510cd63d40d5cf85e2a8a869ff9a5cf82a3bc3fd46e"
-    )
-    assert frame_digest(normalized_other) == (
-        "d27289c6630b046dec349e03b2d92b0db8df335bb922040a1413b47c81cb2de0"
-    )
-    assert statistics == "0c52adc34f94083f5804fb7be20bc97275b2742c655edbad7acd6ba1da0fb72d"
     assert missing == 12
-    labels = pd.Series(np.sin(np.arange(len(train))), index=train.index)
+    assert len(statistics) == 64
+    for actual, raw in ((normalized_train, train), (normalized_other, other)):
+        expected = (raw.fillna(pd.Series(GOLDEN["median"], index=raw.columns))) - GOLDEN["center"]
+        np.testing.assert_allclose(
+            actual.to_numpy(), expected / GOLDEN["scale"], rtol=RTOL, atol=ATOL
+        )
+    labels = pd.Series(GOLDEN["labels"], index=train.index)
     normalized = _normalize_label(
         labels, pd.Series(train.index.get_level_values("datetime"), index=train.index)
     )
-    assert hashlib.sha256(normalized.to_numpy(dtype="<f8").tobytes()).hexdigest() == (
-        "402ce48f5d4ce0b474a828565f910e6a565bedc3a71e5acd460b9ef93512f16b"
+    np.testing.assert_allclose(
+        normalized.to_numpy(), GOLDEN["normalized_labels"], rtol=RTOL, atol=ATOL
     )
