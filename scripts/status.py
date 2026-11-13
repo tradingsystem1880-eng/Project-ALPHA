@@ -109,6 +109,15 @@ def _how_to_see(cap: Capability) -> str:
     return "nothing to see yet (internal only)" if cap.internal_only else cap.see_it[0]
 
 
+def _real_run(cap: Capability) -> str:
+    return "" if cap.real_data.startswith("not yet") else " (a real run is recorded)"
+
+
+def _tested_without_smoke(cap: Capability) -> bool:
+    """Partial only because nothing runs it end to end yet; it needs nothing else."""
+    return cap.missing.endswith(capabilities.NO_SMOKE_YET) and not cap.needs
+
+
 def _bullets(caps: list[Capability], line: str) -> list[str]:
     return [line.format(c=c) for c in caps] if caps else ["- None."]
 
@@ -155,25 +164,52 @@ def render(root: Path = ROOT) -> str:
             f"reaches {wip.limit}."
         )
     out += [
+        f"- **Known defects:** {len(cmap.known_defects)}"
+        + (" (listed below)." if cmap.known_defects else "."),
         f"- **Decisions waiting for you:** {len(waiting)}.",
         "",
-        '"Working" means a test runs it from start to finish on made-up (synthetic) data.',
+        '"Working" means the workflow was run from start to finish through the installed program',
+        "on made-up (synthetic) data.",
         "Runs on real market data are still to be confirmed on the Mac, except where noted.",
         "",
         "## What works today",
         "",
     ]
     for cap in by_state["Working"]:
-        real = "" if cap.real_data.startswith("not yet") else " (a real run is recorded)"
-        out.append(f"- **{cap.label}** — {_how_to_see(cap)}{real}")
+        out.append(f"- **{cap.label}** — {_how_to_see(cap)}{_real_run(cap)}")
     if not by_state["Working"]:
         out.append("- None.")
     out += ["", "## Partly working", ""]
+    untried = [c for c in by_state["Partial"] if _tested_without_smoke(c)]
     for cap in by_state["Partial"]:
+        if cap in untried:
+            continue
         needs = f" Needs: {'; '.join(cap.needs)}." if cap.needs else ""
         out.append(f"- **{cap.label}** — {cap.missing}.{needs}")
+    if untried:
+        if len(untried) < len(by_state["Partial"]):
+            out.append("")
+        out += [
+            "Tested piece by piece inside the test suite, but not yet run from start to finish "
+            "through the installed program:",
+            "",
+        ]
+        for cap in untried:
+            how = cap.missing.removesuffix(capabilities.NO_SMOKE_YET).rstrip("; ")
+            out.append(f"- **{cap.label}** — {how}{_real_run(cap)}.")
     if not by_state["Partial"]:
         out.append("- None.")
+    out += [
+        "",
+        "## Known defects",
+        "",
+        "Found by running the installed program; each has a check that will fail once it is fixed.",
+        "",
+    ]
+    for defect in cmap.known_defects:
+        out.append(f"- **{defect.title}.** To see it: {defect.how_to_reproduce}.")
+    if not cmap.known_defects:
+        out.append("- None known.")
     out += ["", "## Demo only", ""]
     out += _bullets(by_state["Demo only"], "- **{c.label}** — {c.missing}.")
     out += ["", "## Shelved", ""]

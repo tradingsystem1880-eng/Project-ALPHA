@@ -58,6 +58,7 @@ PLATFORM_PREFIXES: dict[str, tuple[str, ...]] = {
         "test_web_",
     ),
     "tests/unit/study": ("test_",),
+    "tests/smoke": ("test_",),
     "tests/integration": (
         "test_accounted_backfill_process",
         "test_accounted_http_process",

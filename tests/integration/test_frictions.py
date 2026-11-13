@@ -48,3 +48,16 @@ def test_fee_and_slippage_combine() -> None:
     fees = (entry + exit_) * 100 * 0.001  # 10 bps on each leg's notional
     assert result.trades[0].realized_pnl == pytest.approx(gross - fees)  # realized nets commissions
     assert result.final_equity == pytest.approx(1_000_000.0 + gross - fees)
+
+
+@pytest.mark.parametrize("fee_bps", [float("nan"), float("inf"), float("-inf"), -1.0])
+def test_non_finite_or_negative_fee_fails_loud_for_any_strategy(fee_bps: float) -> None:
+    """The engine itself rejects the fee; it must not rely on a strategy's optional cash hook.
+
+    ``RoundTrip`` has no ``configure_cash_execution``, so before this check a NaN fee passed
+    ``fee_bps < 0`` and ``fee_bps > 0`` alike and the run completed with no fee model at all.
+    """
+    inst = equity_instrument("AAPL")
+    data = to_execution_feed(ladder_bars("AAPL"), daily_bar_type("AAPL"))
+    with pytest.raises(DataError, match="fee_bps must be finite and >= 0"):
+        run_backtest(inst, data, RoundTrip(inst.id), fee_bps=fee_bps)

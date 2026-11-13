@@ -88,6 +88,16 @@ For one focused browser test, `scripts/playwright_evidence.py prepare --output-p
 prints the owner-wrapped command to run; `export` copies one stopped run's files with hashes.
 A focused result never replaces the lane sequence in CI.
 
+## Prove a workflow end to end
+
+`tests/smoke/` runs each user workflow (data, backtest, validation, research case, web app)
+through the installed `alpha` and `alpha-web` programs in a fresh temporary home, offline, in
+about two minutes. CI's `check` job runs them; the fast local tier leaves them out.
+
+```sh
+uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0
+```
+
 ## Process environment facts
 
 - Web→CLI forwards `UV_CACHE_DIR` and `MPLCONFIGDIR` only when set, verbatim; it invents no

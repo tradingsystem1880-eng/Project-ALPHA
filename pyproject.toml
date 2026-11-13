@@ -135,6 +135,7 @@ markers = [
     "network: tests that hit the live network (skipped in CI / offline runs)",
     "oracle: fast metamorphic / differential oracle tests over statistical primitives",
     "slow_oracle: known-truth calibration and coverage oracles (nightly + on-touch of quant modules)",
+    "smoke: end-to-end workflow checks that run the installed alpha / alpha-web programs in a temporary home (tests/smoke)",
     "platform: control-plane / serving / wire-parser / harness tests, applied by tests/conftest.py from tests/_tiers.py; the fast gate runs `not platform`",
 ]
 filterwarnings = [

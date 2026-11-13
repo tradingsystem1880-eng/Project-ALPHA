@@ -54,6 +54,7 @@ def test_page_sections_appear_in_the_agreed_order() -> None:
         "## At a glance",
         "## What works today",
         "## Partly working",
+        "## Known defects",
         "## Demo only",
         "## Shelved",
         "## Not started",
@@ -91,3 +92,38 @@ def test_wip_limit_file_is_validated(tmp_path: Path, raw: str, message: str) -> 
     target.write_text(raw, encoding="utf-8")
     with pytest.raises(status.StatusError, match=message):
         status.read_wip_limit(tmp_path)
+
+
+def test_working_is_defined_as_run_end_to_end_through_the_installed_program() -> None:
+    text = status.render(ROOT)
+    assert (
+        '"Working" means the workflow was run from start to finish through the installed program\n'
+        "on made-up (synthetic) data." in text
+    )
+    cmap = capabilities.load(ROOT)
+    for cap in cmap.capabilities:
+        if cap.state == "Working":
+            assert cap.proof_smoke and not cap.needs, cap.id
+
+
+def test_known_defects_are_counted_and_listed() -> None:
+    cmap = capabilities.load(ROOT)
+    text = status.render(ROOT)
+    section = text.split("## Known defects", 1)[1].split("\n## ", 1)[0]
+    for defect in cmap.known_defects:
+        assert f"- **{defect.title}.** To see it: {defect.how_to_reproduce}." in section
+    if not cmap.known_defects:
+        assert "- None known." in section
+    assert f"- **Known defects:** {len(cmap.known_defects)}" in text
+
+
+def test_in_process_only_items_are_grouped_without_repeating_the_phrase() -> None:
+    text = status.render(ROOT)
+    partly = text.split("## Partly working", 1)[1].split("\n## ", 1)[0]
+    assert capabilities.NO_SMOKE_YET not in partly
+    cmap = capabilities.load(ROOT)
+    untried = [c for c in cmap.capabilities if status._tested_without_smoke(c)]
+    if untried:
+        group = partly.split("not yet run from start to finish", 1)[1]
+        for cap in untried:
+            assert f"**{cap.label}**" in group, cap.id

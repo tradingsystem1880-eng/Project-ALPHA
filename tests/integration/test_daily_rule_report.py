@@ -249,6 +249,49 @@ def test_unrelated_legacy_run_returns_explicit_unavailable(tmp_path: Path) -> No
     DailyRuleEvidenceResponse.model_validate(report)
 
 
+def test_web_daily_evidence_for_an_ordinary_run_stays_explicit_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The web endpoint asks the CLI for daily evidence explicitly; ordinary runs stay unavailable.
+
+    ``alpha report RUN --json`` on an ordinary run prints that run's manifest, so the endpoint
+    must not rely on plain ``--json``.
+    """
+    run_id = "a" * 16
+    run = tmp_path / "runs" / run_id
+    run.mkdir(parents=True)
+    (run / "manifest.json").write_text(json.dumps({"run_id": run_id, "command": "backtest_run"}))
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    cli = CliRunner().invoke(app, ["report", run_id, "--daily-rule-evidence"])
+    assert cli.exit_code == 0, cli.output
+    assert json.loads(cli.stdout) == daily_rule_evidence(run_id, data_dir=tmp_path)
+
+    def cli_transport(arguments: list[str], *, data_dir: Path) -> object:
+        assert data_dir == tmp_path
+        result = CliRunner().invoke(app, arguments)
+        assert result.exit_code == 0, result.output
+        return json.loads(result.stdout)
+
+    monkeypatch.setattr("alpha_web.api.runs._run_json", cli_transport)
+    with TestClient(create_app()) as client:
+        response = client.get(f"/api/runs/{run_id}/daily-rule-evidence")
+    assert response.status_code == 200, response.text
+    assert DailyRuleEvidenceResponse.model_validate(response.json()).available is False
+
+
+def test_plain_json_report_of_a_daily_rule_run_is_still_the_evidence(
+    published: tuple[Path, dict[str, Any], dict[str, Any]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, manifest, _ = published
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(root))
+    args = ["report", manifest["run_id"], "--json", "--role", "control", "--limit", "2"]
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 0, result.output
+    expected = daily_rule_evidence(manifest["run_id"], data_dir=root, role="control", limit=2)
+    assert json.loads(result.stdout) == expected
+    assert expected["schema"] == "DailyRuleEvidenceV1" and expected["available"] is True
+
+
 def test_reader_rejects_rehashed_selector_role_substitution(
     published: tuple[Path, dict[str, Any], dict[str, Any]],
 ) -> None:
