@@ -303,6 +303,7 @@ def _plan_inputs(
     *,
     changed_seed: int | None = None,
     feature_version: int = 1,
+    upstream: bool = False,
 ) -> tuple[Path, Path, Path, str, Path]:
     worker = tmp_path / "worker"
     source = worker / "src" / "alpha_qlib_worker"
@@ -319,7 +320,7 @@ def _plan_inputs(
         "tabular_contract.py",
         "tabular_adapters.py",
         "fit_provenance.py",
-    )
+    ) + (("upstream_alpha158.py",) if upstream else ())
     for name in names:
         (source / name).write_text(f"# synthetic source {name}\n")
     for name in ("refit_harness.py", "test_fake_worker.py"):
@@ -626,4 +627,43 @@ def test_legacy_inventory_cannot_plan_feature_v2(
     payload["worker_source_sha256"] = hashlib.sha256(canonical_json_bytes(hashes)).hexdigest()
     digest = _write(protocol, payload)
     with pytest.raises(MLContractError, match="v2 requires the expanded"):
+        plan_refit(original, changed, protocol_path=protocol, expected_protocol_sha256=digest)
+
+
+@pytest.mark.parametrize("feature_version", [1, 2, 3])
+def test_ten_file_upstream_inventory_plans_every_feature_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, feature_version: int
+) -> None:
+    original, changed, protocol, digest, _ = _plan_inputs(
+        tmp_path, monkeypatch, feature_version=feature_version, upstream=True
+    )
+    report = plan_refit(original, changed, protocol_path=protocol, expected_protocol_sha256=digest)
+    assert len(report["worker_source_files"]) == 10
+    assert "upstream_alpha158.py" in report["worker_source_files"]
+
+
+def test_nine_file_inventory_still_plans_v2_but_cannot_plan_feature_v3(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original, changed, protocol, digest, _ = _plan_inputs(tmp_path, monkeypatch, feature_version=2)
+    report = plan_refit(original, changed, protocol_path=protocol, expected_protocol_sha256=digest)
+    assert len(report["worker_source_files"]) == 9
+    original, changed, protocol, digest, _ = _plan_inputs(
+        tmp_path / "v3", monkeypatch, feature_version=3
+    )
+    with pytest.raises(MLContractError, match="v3 requires the upstream"):
+        plan_refit(original, changed, protocol_path=protocol, expected_protocol_sha256=digest)
+
+
+def test_ten_file_protocol_hash_is_not_satisfied_by_a_nine_file_worker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original, changed, protocol, digest, worker = _plan_inputs(tmp_path, monkeypatch, upstream=True)
+    (worker / "src" / "alpha_qlib_worker" / "upstream_alpha158.py").unlink()
+    with pytest.raises(MLContractError, match="differs from the frozen protocol"):
+        plan_refit(original, changed, protocol_path=protocol, expected_protocol_sha256=digest)
+    for name in ("feature_recipes.py", "native_feature_corrections.py"):
+        (worker / "src" / "alpha_qlib_worker" / name).unlink()
+    (worker / "src" / "alpha_qlib_worker" / "upstream_alpha158.py").write_text("# partial\n")
+    with pytest.raises(MLContractError, match="incomplete upstream"):
         plan_refit(original, changed, protocol_path=protocol, expected_protocol_sha256=digest)

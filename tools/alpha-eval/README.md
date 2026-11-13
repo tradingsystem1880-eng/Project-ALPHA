@@ -12,7 +12,7 @@ summaries remain readable and unchanged. Claude-branded repository instructions 
 and are not removed from the platform.
 
 The continuation plan is
-[2026-09-29-codex-benchmark-continuation](../../docs/superpowers/plans/archive/2026-09/2026-09-29-codex-benchmark-continuation.md).
+[2026-09-29-codex-benchmark-continuation](../../docs/work/archive/2026-09/2026-09-29-codex-benchmark-continuation.md).
 The [capability audit](../../docs/records/audits/2026-09-29-codex-capability-audit.md) distinguishes confirmed
 findings from disputed judgments and missing evidence.
 
@@ -113,7 +113,7 @@ signal, bounded follow-up value and deployability. Do not pool these with histor
 The initial paired panel is five questions (R06-v1, R08-v1, R19-v1, R21 positive/null),
 one baseline and one candidate trial each. Completion status is independently adjudicated
 from retained execution evidence, separately from rubric credit. Ten trials are diagnostic,
-not a powered general capability comparison. See the [active plan](../../docs/superpowers/plans/2026-09-30-research-workflow-completion.md).
+not a powered general capability comparison. See the [active plan](../../docs/work/archive/2026-09/2026-09-30-research-workflow-completion.md).
 
 ## Closed synthetic investigation demo
 
@@ -176,7 +176,7 @@ a subset of input, never an additional charge estimate. Trial elapsed time inclu
 and provider setup/model calls but excludes shared preflight/calibration. Calibration
 measurements are reported separately. No billing dollars or statistical uplift are inferred.
 
-See the [efficiency plan](../../docs/superpowers/plans/archive/2026-10/2026-10-02-investigation-efficiency.md).
+See the [efficiency plan](../../docs/work/archive/2026-10/2026-10-02-investigation-efficiency.md).
 
 [Retained nine-trial results](results/investigation-efficiency-20261002/report.md) show lower
 measured usage for prechecked and fixed policies, with an independent qualitative evidence
@@ -205,7 +205,7 @@ retrieve a source is not successful handling of its text. Automatic accounting e
 separate from model judgment. The fixed mode still supplies all available measurements; no
 artificial cost handicap is added to manufacture an adaptive advantage.
 
-[Judgment plan](../../docs/superpowers/plans/archive/2026-10/2026-10-02-research-judgment-cases.md) defines the
+[Judgment plan](../../docs/work/archive/2026-10/2026-10-02-research-judgment-cases.md) defines the
 case-specific expectations outside model inputs. Completion, engineering verification and
 research-quality review are separate. Real execution reconciliation and data export remain
 prerequisites for using owner trading evidence.

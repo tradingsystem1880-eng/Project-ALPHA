@@ -313,7 +313,7 @@ def test_coverage_reports_global_figure_and_gates_changed_lines(
         calls.append(command)
         if "diff-cover" in command:
             return False, 0.1, "Coverage: 50%"
-        return True, 0.1, "Combined data\n92.50\n" if "--format=total" in command else ""
+        return True, 0.1, "92.50\nCombined 4 files\n" if "--format=total" in command else ""
 
     monkeypatch.setattr(gate, "_env_runner", runner)
     summary = tmp_path / "summary.md"

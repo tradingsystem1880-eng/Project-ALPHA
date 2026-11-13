@@ -61,7 +61,7 @@ def test_default_and_explicit_v1_are_identical_without_mutating_experiment() -> 
     assert "feature_recipe_version" not in default
 
 
-@pytest.mark.parametrize("version", [0, 3, True, 1.0, "2", None])
+@pytest.mark.parametrize("version", [0, 4, True, 1.0, "2", "3", None])
 def test_explicit_invalid_stage_feature_version_fails(version: object) -> None:
     value = experiment()
     value["stage_config"]["ml"]["feature_recipe_version"] = version
@@ -85,8 +85,8 @@ def test_explicit_v2_changes_only_feature_version_and_digest() -> None:
 @pytest.mark.parametrize(
     "envelope,model", [(1, "lightgbm"), (2, "rank_ensemble_v1"), (3, "linear")]
 )
-def test_both_portable_feature_versions_validate(envelope: int, model: str) -> None:
-    for version in (1, 2):
+def test_all_portable_feature_versions_validate(envelope: int, model: str) -> None:
+    for version in (1, 2, 3):
         request = _draft()
         request["schema_version"] = envelope
         request["model"] = {"name": model, "parameters": {}}
@@ -95,7 +95,7 @@ def test_both_portable_feature_versions_validate(envelope: int, model: str) -> N
         assert MlFeatureRecipe.model_validate(request["feature_recipe"]).version == version
 
 
-@pytest.mark.parametrize("version", [0, 3, True, 1.0, "2"])
+@pytest.mark.parametrize("version", [0, 4, True, 1.0, "2", 3.0])
 def test_portable_validator_rejects_unsupported_feature_versions(version: object) -> None:
     request = _draft()
     request["feature_recipe"]["version"] = version
@@ -127,11 +127,11 @@ def test_v2_result_cannot_reuse_v1_prediction_lineage(tmp_path: Path) -> None:
     )
 
 
-def test_request_descriptors_allow_only_two_explicit_recipe_versions() -> None:
+def test_request_descriptors_allow_only_three_explicit_recipe_versions() -> None:
     directory = Path(__file__).parents[2] / "workers/qlib/src/alpha_qlib_worker/schemas"
     for name in ("request.schema.json", "request-v2.schema.json", "request-v3.schema.json"):
         recipe = json.loads((directory / name).read_text())["properties"]["feature_recipe"]
-        assert recipe["properties"]["version"] == {"type": "integer", "enum": [1, 2]}
+        assert recipe["properties"]["version"] == {"type": "integer", "enum": [1, 2, 3]}
         assert recipe["properties"]["parameters"]["maxProperties"] == 0
 
 
@@ -143,5 +143,72 @@ def test_legacy_diagnostic_projection_still_accepts_old_shape() -> None:
         "vwap_source": "causal_typical_price_proxy_not_vendor_vwap",
     }
     projection = MlDiagnosticFeatureRecipe.model_validate(value)
+    assert projection.versioned_correction is None
+    assert projection.model_dump(mode="json") == value
+
+
+def test_explicit_v3_changes_only_feature_version_and_digest() -> None:
+    value = experiment()
+    legacy = draft(value)
+    value["stage_config"]["ml"]["feature_recipe_version"] = 3
+    upstream = draft(value)
+    expected = copy.deepcopy(legacy)
+    expected_recipe = expected["feature_recipe"]
+    assert isinstance(expected_recipe, dict)
+    expected_recipe["version"] = 3
+    assert upstream == expected
+    assert compute_config_hash(upstream) != compute_config_hash(legacy)
+
+
+STORED = Path(__file__).parents[1] / "fixtures" / "ml_exchanges"
+
+
+@pytest.mark.parametrize("version", [1, 2])
+def test_stored_legacy_exchanges_still_validate(tmp_path: Path, version: int) -> None:
+    """Exchanges published by the pre-v3 CLI and fake worker (598fd98b), byte for byte."""
+    import shutil
+
+    exchange = Path(shutil.copytree(STORED / f"feature-v{version}", tmp_path / "exchange"))
+    validated = validate_result_bundle(exchange)
+    assert validated.request.request["feature_recipe"] == {
+        "name": "alpha158",
+        "version": version,
+        "parameters": {},
+    }
+    assert validated.result["config_hash"] == validated.request.request["config_hash"]
+    assert compute_config_hash(validated.request.request) == validated.result["config_hash"]
+    assert validated.predictions.height == 2420
+    assert MlFeatureRecipe.model_validate(validated.request.request["feature_recipe"])
+
+
+def test_v3_diagnostic_projection_accepts_upstream_metadata() -> None:
+    names = [f"F{i}" for i in range(158)]
+    value = {
+        "name": "Alpha158 v3 (upstream Qlib expressions and processors)",
+        "feature_count": 158,
+        "names": names,
+        "vwap_source": "causal_typical_price_proxy_not_vendor_vwap",
+        "upstream_alpha158": {
+            "name": "alpha158",
+            "version": 3,
+            "scope": "upstream_alpha158_all_158_columns",
+            "upstream_columns": 158,
+            "legacy_columns": 0,
+            "feature_config": "qlib.contrib.data.handler.Alpha158.get_feature_config",
+            "expression_engine": "qlib.utils.parse_field + qlib.data.ops.OpsList",
+            "precision": "float32",
+            "calendar": "panel sessions",
+            "vwap": {"source": "causal_typical_price_proxy_not_vendor_vwap"},
+            "processors": {"process_type": "append"},
+            "warmup": "Qlib partial windows",
+            "nonfinite": "upstream",
+            "input": "validated ALPHA OHLCV panel only",
+            "upstream": {"versions": {"pyqlib": "0.9.7"}},
+            "source_sha256": {"upstream_alpha158.py": "0" * 64},
+            "compatibility_key": "config_hash + worker_lock_hash + model_hash",
+        },
+    }
+    projection = MlDiagnosticFeatureRecipe.model_validate(value)
+    assert projection.upstream_alpha158 is not None
     assert projection.versioned_correction is None
     assert projection.model_dump(mode="json") == value

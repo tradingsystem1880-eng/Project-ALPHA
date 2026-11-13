@@ -1239,10 +1239,10 @@ a hard1 GiB Docker boundary, including interrupted publication and later-reserva
 The approved real-data demonstration has not begun: no admitted retention/recovery path is configured
 for both bulk data and authoritative control/manifests/runs. Private coverage remains UNVERIFIED
 under the owner’s bounded Packet3 absence-only exception. Full-tree qualification remains separate.
-See the [active implementation record](../superpowers/plans/2026-10-31-packet3-daily-rule.md).
+See the [active implementation record](../work/2026-10-31-packet3-daily-rule/02-plan.md).
 
 2026-10-31 implementation checkpoint (not complete): [active implementation and exact proposed
-terms](../superpowers/plans/2026-10-31-packet3-daily-rule.md). Exact source lag, UTC-day feed,
+terms](../work/2026-10-31-packet3-daily-rule/02-plan.md). Exact source lag, UTC-day feed,
 bounded verified price-query and inert frozen-study identity have artificial-fixture coverage.
 Real operator/admission/worker/completion/report integration remains pending, as do supported cloud
 storage and exact economic/resource confirmation. No market execution or W01–W19 completion

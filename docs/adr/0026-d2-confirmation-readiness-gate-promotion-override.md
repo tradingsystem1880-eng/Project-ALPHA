@@ -63,8 +63,8 @@ different bypass.
 
 ## Implementation anchors
 
-- Spec: `docs/superpowers/specs/2026-08-07-research-first-workstation-design.md` §10, §11, §15
-- Phase plan: `docs/superpowers/plans/archive/2026-08/2026-08-07-research-first-R6-confirmation-promotion.md`
+- Spec: `docs/records/specs/2026-08-07-research-first-workstation-design.md` §10, §11, §15
+- Phase plan: `docs/work/archive/2026-08/2026-08-07-research-first-R6-confirmation-promotion.md`
 - D2 machinery: `transition_research_d2_state`, `record_research_decision`,
   `create_strategy_version` in `apps/alpha-cli/src/alpha_cli/control_store.py`
 - Brief: `get_agent_brief_context`; scope events: `project_scope_events`

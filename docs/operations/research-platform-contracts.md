@@ -174,11 +174,11 @@ durable budget/resume, storage admission and production full-page refusal are un
 
 ## Design navigation
 
-- [Baseline architecture](../superpowers/specs/2026-06-14-project-alpha-v1-design.md)
-- [Provider control plane](../superpowers/specs/2026-07-19-provider-control-plane-crypto-paper-design.md)
-- [Daily data and IBKR paper](../superpowers/specs/2026-08-03-daily-data-ibkr-paper-hardening.md)
-- [Research Scientist program](../superpowers/specs/2026-08-06-research-scientist-program-design.md)
-- [Research-first workstation](../superpowers/specs/2026-08-07-research-first-workstation-design.md)
+- [Baseline architecture](../records/specs/2026-06-14-project-alpha-v1-design.md)
+- [Provider control plane](../records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md)
+- [Daily data and IBKR paper](../records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md)
+- [Research Scientist program](../records/specs/2026-08-06-research-scientist-program-design.md)
+- [Research-first workstation](../records/specs/2026-08-07-research-first-workstation-design.md)
 - [Capability and authority inventory](../governance/capability-authority-matrix.md)
 - [Provider terms and third-party notices](../governance/2026-07-19-dependency-license-matrix.md)
 

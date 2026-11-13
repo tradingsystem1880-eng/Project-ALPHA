@@ -43,6 +43,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6.0.3
+        with:
+          # Full history: tests and the gate read commits (documents pin them, gates diff them).
+          fetch-depth: 0
       - uses: ./.github/actions/setup
         with:
           sync: "false"
@@ -62,6 +65,9 @@ jobs:
         shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v6.0.3
+        with:
+          # Full history: tests and the gate read commits (documents pin them, gates diff them).
+          fetch-depth: 0
       - uses: ./.github/actions/setup
         with:
           sync: "false"

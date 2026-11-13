@@ -4,7 +4,7 @@
 Nothing local has to pass before a commit except the commit-message format.
 
 ```text
-edit → gate.py check → commit → push → draft pull request → CI → owner merges
+edit → gate.py check → commit → push → draft pull request → CI → merge
 ```
 
 1. Work on a branch, never on `main`. Commit as often as is useful; partial staging and
@@ -23,7 +23,8 @@ edit → gate.py check → commit → push → draft pull request → CI → own
    oracles, `tests/acceptance`, tests mapped from the files changed since the merge base with
    `origin/main`, and last run's failures. It writes nothing except pytest and tool caches.
 3. Push and open a **draft** pull request. CI runs every component. Mark it ready when CI is
-   green; the owner merges. Model review is advisory and belongs on the pull request.
+   green; the orchestrating session then merges it with a merge commit (the owner delegated routine
+   merging on 2026-11-14). Model review is advisory and belongs on the pull request.
 
 ## What CI checks
 

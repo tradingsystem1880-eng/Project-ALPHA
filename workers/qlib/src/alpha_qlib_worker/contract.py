@@ -352,7 +352,7 @@ def validate_request(exchange_dir: Path) -> WorkerRequest:
     if (
         feature["name"] != "alpha158"
         or type(feature["version"]) is not int
-        or feature["version"] not in (1, 2)
+        or feature["version"] not in (1, 2, 3)
         or feature["parameters"] != {}
     ):
         _fail("unsupported feature recipe")

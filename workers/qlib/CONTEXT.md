@@ -4,7 +4,7 @@ sources:
   - workers/qlib/src/**
   - workers/qlib/pyproject.toml
   - workers/qlib/uv.lock
-verified: 1ac86fc02443
+verified: 3f2e49b56507
 ---
 
 # Qlib worker workspace
@@ -26,6 +26,7 @@ Parquet with `alpha_cli`, and its results are advisory: ALPHA's own replay is th
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Models and isolated workers | always |
 | [command line machine learning](../../docs/reference/invariants/cli-ml.md) | Exchange contract | changing what the worker reads or writes |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Point-in-time reads | changing features or fold boundaries |
+| [ADR-0042](../../docs/adr/0042-qlib-worker-delegates-data-layer-to-upstream.md) | Decision | changing a feature recipe or its normalisation |
 
 ## How to change it
 

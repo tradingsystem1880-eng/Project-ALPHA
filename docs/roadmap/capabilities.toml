@@ -31,7 +31,7 @@
 #                    proof_synthetic exists (the page lists those together)
 #   triage           {card, recommendation, owner_decision} for items on the triage sheet;
 #                    owner_decision is "undecided" until the owner answers (TOML has no null)
-#   plans            live plans (docs/superpowers/plans/*.md file names) that belong to it
+#   plans            live plans (docs/work/<task> folder names) that belong to it
 #   docs             plain-English documents for the owner (repo-relative .md paths; optional)
 #
 # [[decision]] holds triage cards that are not a workflow of their own; [[unassigned_plan]] holds
@@ -164,12 +164,12 @@ state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"
 triage = { card = "1", recommendation = "KEEP", owner_decision = "undecided" }
 plans = [
-  "2026-09-10-edge-first-phase-b-feed-the-machine.md",
-  "2026-11-07-backfill-ledger-exclusion.md",
-  "2026-11-07-backfill-resume-evidence.md",
-  "2026-11-07-backfill-verification-budget.md",
-  "2026-11-08-backfill-metadata-bounds.md",
-  "2026-11-08-backfill-readonly-status.md",
+  "2026-09-10-edge-first-phase-b-feed-the-machine",
+  "2026-11-07-backfill-ledger-exclusion",
+  "2026-11-07-backfill-resume-evidence",
+  "2026-11-07-backfill-verification-budget",
+  "2026-11-08-backfill-metadata-bounds",
+  "2026-11-08-backfill-readonly-status",
 ]
 
 [[capability]]
@@ -190,11 +190,11 @@ state = "Partial"
 missing = "not connected to any command; tests only"
 triage = { card = "2", recommendation = "SHELVE", owner_decision = "undecided" }
 plans = [
-  "2026-11-07-acquisition-disposable-transactions.md",
-  "2026-11-08-accounted-backfill-dispatch.md",
-  "2026-11-08-accounted-http-attempts.md",
-  "2026-11-08-complete-http-response-evidence.md",
-  "2026-11-08-bound-http-retained-resume.md",
+  "2026-11-07-acquisition-disposable-transactions",
+  "2026-11-08-accounted-backfill-dispatch",
+  "2026-11-08-accounted-http-attempts",
+  "2026-11-08-complete-http-response-evidence",
+  "2026-11-08-bound-http-retained-resume",
 ]
 
 [[capability]]
@@ -239,10 +239,10 @@ state = "Partial"
 missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
 triage = { card = "3", recommendation = "KEEP", owner_decision = "undecided" }
 plans = [
-  "2026-11-08-retained-daily-bar-grid.md",
-  "2026-11-08-retained-bar-quality-ui.md",
-  "2026-11-08-retained-bar-production-assembly.md",
-  "2026-11-08-retained-project-production-smoke.md",
+  "2026-11-08-retained-daily-bar-grid",
+  "2026-11-08-retained-bar-quality-ui",
+  "2026-11-08-retained-bar-production-assembly",
+  "2026-11-08-retained-project-production-smoke",
 ]
 
 [[capability]]
@@ -272,8 +272,8 @@ state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"
 triage = { card = "4", recommendation = "KEEP", owner_decision = "undecided" }
 plans = [
-  "2026-11-08-asset-master-source-provenance.md",
-  "2026-11-08-snapshot-capture-binding.md",
+  "2026-11-08-asset-master-source-provenance",
+  "2026-11-08-snapshot-capture-binding",
 ]
 
 [[capability]]
@@ -456,10 +456,10 @@ state = "Partial"
 missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
 triage = { card = "5", recommendation = "KEEP", owner_decision = "undecided" }
 plans = [
-  "2026-11-08-c04-risk-anchor-disclosure.md",
-  "2026-11-08-risk-equity-clocks.md",
-  "2026-11-08-risk-strict-json.md",
-  "2026-11-10-risk-basis-fixture-capture.md",
+  "2026-11-08-c04-risk-anchor-disclosure",
+  "2026-11-08-risk-equity-clocks",
+  "2026-11-08-risk-strict-json",
+  "2026-11-10-risk-basis-fixture-capture",
 ]
 
 [[capability]]
@@ -593,7 +593,7 @@ needs = []
 state = "Partial"
 missing = "no test takes one paper all the way to an experiment"
 triage = { card = "6", recommendation = "KEEP", owner_decision = "undecided" }
-plans = ["2026-11-07-paper-to-experiment-provenance.md"]
+plans = ["2026-11-07-paper-to-experiment-provenance"]
 
 [[capability]]
 id = "ai-investigations"
@@ -706,16 +706,18 @@ entry_points = [
 proof_synthetic = [
   "tests/integration/test_ml_cli.py::test_offline_ml_cli_round_trip",
 ]
+proof_smoke = [
+  "tests/smoke/test_ml_smoke.py::test_ml_upstream_alpha158_train_import_evaluate_replay",
+]
 real_data = "not yet confirmed (to check on the Mac later)"
-needs = ["the Qlib worker setup (not installed on this computer)"]
-state = "Partial"
-missing = "proved only with a stand-in worker"
+needs = []
+state = "Working"
 plans = []
 
 [[capability]]
 id = "alpha158-v2"
 name = "Corrected Alpha158 price features"
-what = "Opt in to a corrected version of the standard Alpha158 feature set; 40 of its 158 columns now match upstream Qlib."
+what = "Opt in to a corrected version of the standard Alpha158 feature set; 40 of its 158 columns now match upstream Qlib. Superseded by version 3 for new work; kept to reproduce stored results."
 see_it = ["set feature_recipe_version: 2 in an ML stage config used by alpha ml …"]
 entry_points = [
   "cli: alpha ml prepare",
@@ -723,11 +725,33 @@ entry_points = [
 ]
 proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
-needs = ["the Qlib worker setup (not installed on this computer)"]
+needs = []
 state = "Partial"
-missing = "no ML run with version 2; final review pending"
+missing = "no ML run with version 2; superseded by version 3 (kept for stored results)"
 triage = { card = "11", recommendation = "KEEP", owner_decision = "undecided" }
-plans = ["2026-11-09-alpha158-versioned-correction.md"]
+plans = ["2026-11-09-alpha158-versioned-correction"]
+
+[[capability]]
+id = "alpha158-v3"
+name = "Upstream Alpha158 price features"
+what = "Opt in to Alpha158 features and fold normalisation computed entirely by upstream Qlib, proven equal to Qlib's own Alpha158 handler; version 1 stays the default until the normalisation settings are measured on real data and you switch it."
+see_it = ["set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec"]
+entry_points = [
+  "cli: alpha ml prepare",
+  "cli: alpha ml train",
+  "code: workers/qlib/src/alpha_qlib_worker/upstream_alpha158.py",
+]
+proof_synthetic = [
+  "workers/qlib/tests/test_upstream_alpha158.py::test_v3_equals_upstream_provider_and_alpha158_handler_for_all_158_columns",
+  "workers/qlib/tests/test_upstream_alpha158.py::test_v3_processors_fit_on_training_rows_only",
+]
+proof_smoke = [
+  "tests/smoke/test_ml_smoke.py::test_ml_upstream_alpha158_train_import_evaluate_replay",
+]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Working"
+plans = []
 
 [[capability]]
 id = "qlib-refit"
@@ -738,14 +762,11 @@ see_it = ["uv run alpha ml refit-plan …, uv run alpha ml refit-status … (pla
 entry_points = ["cli: alpha ml refit-plan", "cli: alpha ml refit-status"]
 proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
-needs = [
-  "the Qlib worker setup (not installed on this computer)",
-  "reviewed statistics modules that do not exist yet",
-]
+needs = ["reviewed statistics modules that do not exist yet"]
 state = "Partial"
 missing = "blocked on missing statistics modules"
 triage = { card = "10", recommendation = "SHELVE", owner_decision = "undecided" }
-plans = ["2026-10-26-qlib-w11-refit.md"]
+plans = ["2026-10-26-qlib-w11-refit"]
 
 [[capability]]
 id = "qlib-in-research-cases"
@@ -779,9 +800,9 @@ entry_points = [
 ]
 proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
-needs = ["the Qlib worker setup, to re-create the pipeline demo"]
+needs = []
 state = "Demo only"
-missing = "made-up prices only; not a production path"
+missing = "made-up prices only; not a production path (the pipeline demo re-ran on this computer on 2026-11-14)"
 triage = { card = "F", recommendation = "SHELVE", owner_decision = "undecided" }
 plans = []
 
@@ -813,15 +834,15 @@ missing = "RD-Agent's general loop now runs here end to end with stand-in steps 
 triage = { card = "7", recommendation = "KEEP", owner_decision = "KEEP" }
 docs = ["docs/roadmap/rd-agent-in-alpha.md"]
 plans = [
-  "2026-11-07-stock-rdloop-continuation.md",
-  "2026-11-07-stock-retained-dispatch.md",
-  "2026-11-08-native-stock-inspection.md",
-  "2026-11-08-native-stock-operator-command.md",
-  "2026-11-08-native-stock-profile-verification.md",
-  "2026-11-08-native-stock-result-recovery.md",
-  "2026-11-08-native-stock-snapshot-validation.md",
-  "2026-11-08-native-stock-worker-hardening.md",
-  "2026-11-08-native-cumulative-regression.md",
+  "2026-11-07-stock-rdloop-continuation",
+  "2026-11-07-stock-retained-dispatch",
+  "2026-11-08-native-stock-inspection",
+  "2026-11-08-native-stock-operator-command",
+  "2026-11-08-native-stock-profile-verification",
+  "2026-11-08-native-stock-result-recovery",
+  "2026-11-08-native-stock-snapshot-validation",
+  "2026-11-08-native-stock-worker-hardening",
+  "2026-11-08-native-cumulative-regression",
 ]
 
 [[capability]]
@@ -848,8 +869,8 @@ missing = "the screen and its API answer here but say unavailable until a stock 
 triage = { card = "8", recommendation = "SHELVE", owner_decision = "KEEP" }
 docs = ["docs/roadmap/rd-agent-in-alpha.md"]
 plans = [
-  "2026-11-08-native-job-result-api.md",
-  "2026-11-08-native-job-result-view.md",
+  "2026-11-08-native-job-result-api",
+  "2026-11-08-native-job-result-view",
 ]
 
 [[capability]]
@@ -882,8 +903,8 @@ missing = "RD-Agent's loop runs the rule and its costed backtest in-process on m
 triage = { card = "9", recommendation = "KEEP", owner_decision = "KEEP" }
 docs = ["docs/roadmap/rd-agent-in-alpha.md"]
 plans = [
-  "2026-10-31-packet3-daily-rule.md",
-  "2026-10-26-native-rule-study-boundary.md",
+  "2026-10-31-packet3-daily-rule",
+  "2026-10-26-native-rule-study-boundary",
 ]
 
 [[capability]]
@@ -898,7 +919,7 @@ needs = []
 state = "Not started"
 missing = "only a plan; one advisory slice shipped"
 triage = { card = "15", recommendation = "YOUR CALL", owner_decision = "undecided" }
-plans = ["2026-10-02-agentic-research-capability-program.md"]
+plans = ["2026-10-02-agentic-research-capability-program"]
 
 [[capability]]
 id = "mac-real-data"
@@ -913,8 +934,8 @@ state = "Partial"
 missing = "one final review and a run on your Mac"
 triage = { card = "13", recommendation = "KEEP", owner_decision = "undecided" }
 plans = [
-  "2026-08-30-crypto-operational-readiness.md",
-  "2026-10-26-mac-portability-qualification.md",
+  "2026-08-30-crypto-operational-readiness",
+  "2026-10-26-mac-portability-qualification",
 ]
 
 [[capability]]
@@ -965,47 +986,47 @@ owner_decision = "undecided"
 
 # Live plans that belong to no single workflow.
 [[unassigned_plan]]
-plan = "2026-10-05-clean-reconcile-main.md"
+plan = "2026-10-05-clean-reconcile-main"
 reason = "Repository clean-up programme, no product feature (triage card 14)."
 
 [[unassigned_plan]]
-plan = "2026-10-08-repository-hygiene.md"
+plan = "2026-10-08-repository-hygiene"
 reason = "Repository clean-up programme, no product feature (triage card 14)."
 
 [[unassigned_plan]]
-plan = "2026-11-09-selector-error-test-correction.md"
+plan = "2026-11-09-selector-error-test-correction"
 reason = "Test correction only, no change for the owner (triage card 12)."
 
 [[unassigned_plan]]
-plan = "2026-11-09-web-matplotlib-environment.md"
+plan = "2026-11-09-web-matplotlib-environment"
 reason = "Web app plumbing for chart settings, nothing new to see (triage card 12)."
 
 [[unassigned_plan]]
-plan = "2026-11-10-browser-lane-routing.md"
+plan = "2026-11-10-browser-lane-routing"
 reason = "Browser test tooling, nothing new to see (triage card 12)."
 
 # Plain-English titles for plans that are "In progress", shown on STATUS.md.
 [[plan_summary]]
-plan = "2026-09-10-edge-first-phase-b-feed-the-machine.md"
+plan = "2026-09-10-edge-first-phase-b-feed-the-machine"
 title = "Get real crypto history into ALPHA"
 line = "Resumable crypto history download is built; the real download of the top 50 Bybit contracts has not been done."
 
 [[plan_summary]]
-plan = "2026-10-05-clean-reconcile-main.md"
+plan = "2026-10-05-clean-reconcile-main"
 title = "Clean up and protect the main branch"
 line = "Old programme from October; one hardening step left. The triage recommends closing it."
 
 [[plan_summary]]
-plan = "2026-10-08-repository-hygiene.md"
+plan = "2026-10-08-repository-hygiene"
 title = "Repository tidy-up programme"
 line = "Old open-ended to-do list; several items shipped. The triage recommends closing it."
 
 [[plan_summary]]
-plan = "2026-10-26-mac-portability-qualification.md"
+plan = "2026-10-26-mac-portability-qualification"
 title = "Make ALPHA run on your Mac"
 line = "Five of six steps done; one final independent review is left."
 
 [[plan_summary]]
-plan = "2026-10-31-packet3-daily-rule.md"
+plan = "2026-10-31-packet3-daily-rule"
 title = "AI-run daily trading-rule study (Packet 3)"
 line = "Works on made-up data; the real-market run has not begun and needs RD-Agent and permanent hosting."
