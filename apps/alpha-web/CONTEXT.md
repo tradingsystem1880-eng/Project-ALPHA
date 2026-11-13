@@ -27,7 +27,8 @@ grants authority.
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Owner authority | always |
 | [web API invariants](../../docs/reference/invariants/web-api.md) | Calling the CLI | always |
 | [web frontend invariants](../../docs/reference/invariants/web-frontend.md) | No authority in the browser | changing the browser app |
-| [web API invariants](../../docs/reference/invariants/web-api.md) | — | changing the backend or adding a route |
+| [web API invariants](../../docs/reference/invariants/web-api.md) | Adding a route | adding or changing a route |
+| [web API invariants](../../docs/reference/invariants/web-api.md) | API contract | changing a response model or the OpenAPI contract |
 | [web frontend invariants](../../docs/reference/invariants/web-frontend.md) | — | changing a panel, chart or the browser app |
 | [web research surfaces](../../docs/reference/invariants/web-research.md) | — | changing the assistant, investigations, rules, scans or Study tab |
 | [command line native](../../docs/reference/invariants/cli-native.md) | Results and inspection | showing a native job result (see `api/native_results.py`) |

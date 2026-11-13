@@ -427,7 +427,9 @@ def test_stage_folders_are_numbered_and_each_has_a_context_file() -> None:
     problems += [f"{rel} is missing" for rel in stage_files() if not (ROOT / rel).is_file()]
     numbers = [int(p.name[:2]) for p in folders if _STAGE_NAME.match(p.name)]
     if numbers != list(range(1, len(numbers) + 1)):
-        problems.append(f"{STAGES_DIR}: stages must be numbered 01, 02, ... without gaps: {numbers}")
+        problems.append(
+            f"{STAGES_DIR}: stages must be numbered 01, 02, ... without gaps: {numbers}"
+        )
     assert not problems, "\n".join(problems)
 
 
@@ -468,9 +470,7 @@ def test_task_folders_hold_a_plan_and_only_stage_files() -> None:
 
 def test_work_folder_holds_only_task_folders_and_the_archive() -> None:
     stray = [
-        p.relative_to(ROOT).as_posix()
-        for p in sorted((ROOT / WORK_DIR).iterdir())
-        if p.is_file()
+        p.relative_to(ROOT).as_posix() for p in sorted((ROOT / WORK_DIR).iterdir()) if p.is_file()
     ]
     assert not stray, f"{WORK_DIR} holds only task folders and archive/; move: {stray}"
 

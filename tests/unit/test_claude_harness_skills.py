@@ -2,14 +2,13 @@
 
 `.claude/skills/<name>/SKILL.md` stubs exist only for auto-discovery; the
 canonical skill body lives in `.agents/skills/<name>/SKILL.md`. These tests
-check the 1:1 mapping, frontmatter integrity, the karpathy copy against its
-plugin, and the load-bearing `alpha-research-protocols` path that must never
-be stubbed. Skill wording is reviewed in the pull request, not pinned here.
+check the 1:1 mapping (a stub with no body would load nothing), frontmatter
+integrity, that every skill an agent preloads exists, and the load-bearing
+`alpha-research-protocols` library that `alpha_cli` reads and must never be
+stubbed. Skill wording is reviewed in the pull request, not pinned here.
 """
 
 from __future__ import annotations
-
-from pathlib import Path
 
 import gate
 import pytest
@@ -59,39 +58,10 @@ class TestStubRegistry:
         assert protocols.is_file(), "load-bearing protocols.json moved — alpha_cli breaks"
 
 
-class TestNewCanonicalSkills:
-    @pytest.mark.parametrize("name", ["quant-source-verification", "alpha-feature-workflow"])
-    def test_canonical_exists_with_frontmatter(self, name: str) -> None:
-        text = (CANONICAL_DIR / name / "SKILL.md").read_text()
-        fields = gate._frontmatter(text)
-        assert fields.get("name") == name
-        assert fields.get("description")
-
-
-KARPATHY_PLUGIN_GLOB = (
-    ".claude/plugins/cache/andrej-karpathy-skills/karpathy-guidelines/*/skills/"
-    "karpathy-guidelines/SKILL.md"
-)
-
-
-class TestKarpathyTextIsCanonical:
-    """W0: karpathy-guidelines is a mechanical constant, not a suggestion."""
-
-    def test_karpathy_matches_plugin(self) -> None:
-        candidates = sorted(Path.home().glob(KARPATHY_PLUGIN_GLOB))
-        if not candidates:
-            pytest.skip("andrej-karpathy-skills plugin not installed on this machine")
-        plugin = candidates[-1].read_text()
-        repo = (CANONICAL_DIR / "karpathy-guidelines" / "SKILL.md").read_text()
-        assert repo.split("---", 2)[2].strip() == plugin.split("---", 2)[2].strip(), (
-            "repo karpathy-guidelines body drifted from the plugin copy — re-sync it"
-        )
-
-    def test_every_agent_preloads_karpathy(self) -> None:
-        agents = sorted((REPO_ROOT / ".claude" / "agents").glob("*.md"))
-        assert agents
-        for agent in agents:
-            fields = gate._frontmatter(agent.read_text())
-            assert "karpathy-guidelines" in fields.get("skills", ""), (
-                f"{agent.name} does not preload karpathy-guidelines"
-            )
+def test_every_skill_an_agent_preloads_exists() -> None:
+    agents = sorted((REPO_ROOT / ".claude" / "agents").glob("*.md"))
+    assert agents
+    for agent in agents:
+        fields = gate._frontmatter(agent.read_text())
+        for name in filter(None, (s.strip() for s in fields.get("skills", "").split(","))):
+            assert (STUB_DIR / name / "SKILL.md").is_file(), f"{agent.name} preloads {name}"

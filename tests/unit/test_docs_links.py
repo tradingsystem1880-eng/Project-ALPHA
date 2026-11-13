@@ -44,6 +44,18 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "docs/work/archive/2026-10/2026-10-26-qlib-tabular-wave1.md",
         "../../../../context/software-team.md",
     ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
+    (
+        "docs/archive/2026-11-context-maps/software-team.md",
+        "../../../.agents/skills/alpha-feature-workflow/SKILL.md",
+    ): "archived map; skill retired 2026-11-14, a copy is archived beside it",
+    (
+        "docs/archive/2026-11-context-maps/software-team.md",
+        "../../../.agents/skills/code-review-and-quality/SKILL.md",
+    ): "archived map; skill retired 2026-11-14, a copy is archived beside it",
+    (
+        "docs/archive/2026-11-context-maps/software-team.md",
+        "../../../.agents/skills/verification-before-completion/SKILL.md",
+    ): "archived map; skill retired 2026-11-14, a copy is archived beside it",
 }
 
 # Archived documents are not edited (docs/README.md, Lifecycle). Their links into the retired

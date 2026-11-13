@@ -48,7 +48,7 @@ to load at launch (Claude Code 2.1.322), which would put every workspace file in
 
 | Event | Entrypoint | Behavior |
 |---|---|---|
-| SessionStart | `session-start` | Bounded pointers to CLAUDE.md, applicable rules, the canonical skill, orientation and the local check. No scanning or telemetry. |
+| SessionStart | `session-start` | Bounded pointers to CLAUDE.md, the root CONTEXT.md, the delivery-pipeline stage commands, `scripts/fs.py orient|search` and the local check. No scanning or telemetry. |
 | PreToolUse: Read/Edit/Write/MultiEdit | `pre-file-guard` | Denies hidden-holdout paths, including resolved symlinks and nested edit paths. |
 | PreToolUse: alpha MCP | `pre-mcp-guard` | Retains denial of owner research decisions, overrides and holdout reveal. |
 | PreToolUse: Bash/WebFetch/MCP | `pre-owner-action-guard` | Denies tool input naming owner-action routes or owner-auth enrollment/recovery, including decoded references. |

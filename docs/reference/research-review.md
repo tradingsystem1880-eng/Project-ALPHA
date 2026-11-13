@@ -1,21 +1,31 @@
 ---
-name: alpha-adversarial-reviewer
-description: Adversarially review a Project ALPHA research thesis, source pack, protocol, empirical result, chart bundle, or Research Gate Packet. Use to find look-ahead, confounding, researcher degrees of freedom, multiple-testing, weak source, invalid validation, misleading chart, execution, and conclusion-strength problems before a research gate advances.
+owner: research review
+sources:
+  - docs/adr/0019-governed-research-cases-before-strategy-development.md
+  - docs/records/specs/2026-08-06-research-scientist-program-design.md
+  - apps/alpha-cli/src/alpha_cli/research_cmds.py
+verified: a1439c9c
 ---
 
-# ALPHA Adversarial Reviewer
+# Adversarial review of research artefacts
+
+How to attack a research thesis, source pack, protocol, empirical result, chart bundle or Research
+Gate Packet before a research gate advances. The `reviewer` agent follows it for research
+artefacts; anyone may. Moved here from the `alpha-adversarial-reviewer` skill on 2026-11-14 with
+its review order and finding format unchanged.
 
 Attack the research case independently. Your purpose is to falsify or narrow the claim, not to help
 it pass.
 
 ## Read first
 
-Read completely:
+1. [Research integrity](invariants/research-integrity.md).
+2. [Research Scientist program design](../records/specs/2026-08-06-research-scientist-program-design.md).
+3. [ADR-0019](../adr/0019-governed-research-cases-before-strategy-development.md), and the
+   relevant data, holdout, evidence and intraday ADRs (for example
+   [ADR-0020](../adr/0020-intraday-event-research-is-not-daily-validation-evidence.md)).
 
-1. `CLAUDE.md`
-2. `docs/records/specs/2026-08-06-research-scientist-program-design.md`
-3. `docs/adr/0019-governed-research-cases-before-strategy-development.md`
-4. Relevant data, holdout, evidence, and intraday ADRs
+## What the platform can and cannot prove
 
 The R1-R6 research-first program provides an isolated literature worker, registered daily research
 datasets, a preregistered D1 runner, one-shot D2 confirmation, and connected read projections. These

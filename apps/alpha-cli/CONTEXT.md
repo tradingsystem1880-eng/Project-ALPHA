@@ -24,10 +24,12 @@ did not give, and never route live capital.
 | [engineering rules](../../docs/reference/invariants/engineering.md) | Subprocess boundary | always |
 | [engineering rules](../../docs/reference/invariants/engineering.md) | Hash-bound source bytes | always |
 | [command reference](../../docs/reference/commands.md) | — | finding a command or its options |
-| [command line research](../../docs/reference/invariants/cli-research.md) | — | research cases, D0/D1/D2 runs, gate packets, `research_*` |
+| [command line research](../../docs/reference/invariants/cli-research.md) | Projections and dossiers | gate packets, case projections or dossiers |
+| [command line research](../../docs/reference/invariants/cli-research.md) | — | research cases, contracts, D0/D1/D2 runs, owner decisions, `research_*` |
 | [command line control store](../../docs/reference/invariants/cli-control-store.md) | — | the SQLite control store, migrations, owner receipts, jobs |
 | [command line runs](../../docs/reference/invariants/cli-runs.md) | — | backtest, validate, optimise, suites, figures, rules, scans |
-| [command line crypto data](../../docs/reference/invariants/cli-crypto-data.md) | — | `alpha data`, `alpha crypto-data`, coverage, backfill |
+| [command line crypto data](../../docs/reference/invariants/cli-crypto-data.md) | Read-only queries | a read-only report or query, such as bar coverage |
+| [command line crypto data](../../docs/reference/invariants/cli-crypto-data.md) | — | `alpha data` or `alpha crypto-data` acquisition, storage or backfill |
 | [command line native](../../docs/reference/invariants/cli-native.md) | — | native fixtures and rule jobs, RD-Agent loops, `native_*` |
 | [command line machine learning](../../docs/reference/invariants/cli-ml.md) | — | the Qlib worker exchange or Kronos forecasts, `ml_*` |
 | [command line paper](../../docs/reference/invariants/cli-paper.md) | — | paper sessions, IBKR Paper, the crypto sandbox, providers |

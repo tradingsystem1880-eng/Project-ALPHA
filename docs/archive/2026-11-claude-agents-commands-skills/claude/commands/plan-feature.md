@@ -14,7 +14,7 @@ Follow `.agents/skills/alpha-feature-workflow/SKILL.md`. Steps:
    quant/risk-tier paths also dispatch `invariants-auditor` in parallel. Do not
    explore inline — keep this context clean.
 3. Dispatch the `test-architect` subagent for the failing-test specification.
-4. Draft the dated plan doc at `docs/work/<today>-<slug>.md`. It
+4. Draft the dated plan doc at `docs/superpowers/plans/<today>-<slug>.md`. It
    MUST open with a fenced ```json front block whose fields match
    `scripts/harness_models.py::FeaturePlan` exactly — this is Karpathy §1–§3
    made structural, and `/implement` refuses to start without it. Prose

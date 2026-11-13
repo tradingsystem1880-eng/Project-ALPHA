@@ -45,7 +45,8 @@ _FAMILIES = {
     ".claude/rules": "reference",
 }
 # Task folders (docs/work/<task>/) hold stage outputs; finished ones move to
-# docs/work/archive/YYYY-MM/ as a folder, or as a single plan file for plans archived before 2026-11-14.
+# docs/work/archive/YYYY-MM/ as a folder (or a single plan file, for plans archived before
+# 2026-11-14).
 _TASK_FOLDER = re.compile(r"docs/work/(?!archive$)[^/]+")
 _TASK_ARCHIVE = re.compile(r"docs/work/archive/\d{4}-\d{2}(/[^/]+)?")
 # Retired documents: prose only (the folder also holds scripts, images and captured JSON).

@@ -15,7 +15,7 @@ the Claude adapter is not a shell sandbox. You never edit anything.
 
 Your verdict is advisory and goes on the pull request. The binding controls are
 CI on the pull request and the owner's merge
-([ADR-0039](../../docs/adr/0039-ci-is-the-merge-gate.md)).
+([ADR-0039](../../../../adr/0039-ci-is-the-merge-gate.md)).
 
 ## What to run
 

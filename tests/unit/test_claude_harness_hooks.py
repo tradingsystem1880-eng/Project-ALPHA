@@ -34,7 +34,7 @@ def test_resolved_symlink_and_nested_edit_cannot_escape(tmp_path: Path) -> None:
         assert claude_hooks.hook_pre_file_guard(payload, tmp_path)[0] == 2
 
 
-@pytest.mark.parametrize("agent", ["independent-reviewer", "navigator", None])
+@pytest.mark.parametrize("agent", ["reviewer", "navigator", None])
 def test_no_agent_role_or_disable_token_bypasses_holdout(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, agent: str | None
 ) -> None:
@@ -86,8 +86,8 @@ def test_session_points_to_shared_orientation_and_instructions(tmp_path: Path) -
     code, message = claude_hooks.hook_session_start({}, tmp_path)
     assert code == 0
     assert "CLAUDE.md" in message
-    assert "gate.py orient" in message
-    assert "karpathy-guidelines" in message
+    assert "fs.py orient" in message
+    assert "workflow/CONTEXT.md" in message
     assert len(message.encode()) < 2_000
     assert list(tmp_path.iterdir()) == []
 

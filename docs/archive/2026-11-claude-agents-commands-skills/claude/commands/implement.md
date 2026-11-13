@@ -1,12 +1,12 @@
 ---
 description: Own the approved plan through focused TDD, independent review and authorized delivery
-argument-hint: [plan doc path, defaults to the newest in docs/work/]
+argument-hint: [plan doc path, defaults to the newest in docs/superpowers/plans/]
 ---
 
 Implement the approved plan: $ARGUMENTS
 
 Use the task's approved plan. If no path was given, identify the plan that matches
-the task from `docs/work/`; recency alone does not establish scope.
+the task from `docs/superpowers/plans/`; recency alone does not establish scope.
 State which plan you are executing before touching code. Existing authorization
 covers routine implementation and necessary fixes; ask only for missing scope or authority.
 
@@ -51,7 +51,7 @@ marking it ready, obtain the independent `/review-gate` APPROVE for risk-tier an
 protected paths and `/verify-quant` for quant paths, and post their reports on the
 pull request. The reviewer receives the diff, not the author's reasoning. Fix BLOCK
 findings and re-review; never self-approve. Preserve failed-run evidence before
-retries ([development loop](../../docs/operations/development-loop.md)).
+retries ([development loop](../../../../operations/development-loop.md)).
 
 Continue through delivery within existing authorization. If publication or a
 private-suite exception is missing, prepare the exact qualified payload, report the
