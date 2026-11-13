@@ -401,3 +401,7 @@ The [context index](docs/context/README.md) links the deeper maps; the
 The isolated worker also offers an explicit [partial Alpha158 feature-v2 correction](workers/qlib/README.md#opt-in-partial-alpha158-feature-correction):
 40 columns use pinned Qlib operators, while 118 retain the legacy recipe. Feature v1 stays the
 default. This does not establish native whole-recipe parity or qualify historical models.
+Opt-in [feature recipe v3](workers/qlib/README.md#feature-recipe-v3-upstream-alpha158-opt-in)
+computes all 158 Alpha158 columns and the fold normalisation with upstream Qlib; a parity test
+shows exact equality with Qlib's own Alpha158 handler ([ADR-0042](docs/adr/0042-qlib-worker-delegates-data-layer-to-upstream.md)).
+V1 and v2 remain as legacy readers for stored results.

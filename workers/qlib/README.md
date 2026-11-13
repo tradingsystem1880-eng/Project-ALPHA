@@ -280,7 +280,7 @@ worker above is. Re-running it on 2026-11-14 reproduced `native_predictions.csv`
 remain reproducible; golden digests in `tests/test_feature_recipes.py` pin their feature and
 normalisation bytes. New work uses v3.
 
-### Opt-in partial Alpha158 feature correction (v2)
+### Opt-in partial Alpha158 feature correction
 
 Feature recipe version **1 remains the default**, with unchanged formulas and default request
 bytes. Set `stage_config.ml.feature_recipe_version` to `2` when preparing a new experiment, or
