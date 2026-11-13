@@ -5,7 +5,7 @@ sources:
   - tests/conftest.py
   - tests/bias_guards/test_future_poison_pattern.py
   - tests/oracles/_reference/**
-verified: 1ac86fc02443
+verified: ed121b80e439
 ---
 
 # tests workspace

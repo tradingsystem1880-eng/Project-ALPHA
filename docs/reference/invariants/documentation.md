@@ -10,7 +10,7 @@ sources:
   - tests/unit/test_docs_links.py
   - tests/unit/test_repo_awareness_drift.py
   - tests/unit/test_roadmap_index.py
-verified: 1ac86fc02443
+verified: ed121b80e439
 ---
 
 # Documentation invariants

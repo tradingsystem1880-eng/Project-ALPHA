@@ -6,7 +6,7 @@ sources:
   - scripts/gate.py
   - scripts/gate_components.py
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
-verified: 1ac86fc02443
+verified: ed121b80e439
 ---
 
 # Engineering rules
