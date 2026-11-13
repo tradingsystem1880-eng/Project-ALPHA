@@ -52,8 +52,8 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 
 - **Numbering:** zero-padded, sequential, never reused. A superseded ADR keeps its number and links forward to the one that replaces it.
 - **Status:** one of `Proposed` · `Accepted` · `Superseded`. Accepted records capture approved
-  load-bearing decisions; implementation status is reported separately in `CLAUDE.md` and the
-  changelog.
+  load-bearing decisions; implementation status is reported separately in the generated
+  [`STATUS.md`](../../STATUS.md).
 - **Structure:** Every record keeps the Status/Date/Deciders header plus explicit `Context`,
   `Decision`, and `Consequences` sections. Options and trade-offs must be recorded in proportion to
   the decision: concise bullets are acceptable for a narrow choice; a comparison table or separate
@@ -64,6 +64,6 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 
 ## Candidate future ADRs
 
-Decisions that are real but currently documented inline in [`../ARCHITECTURE.md`](../ARCHITECTURE.md) §5 and [`CLAUDE.md`](../../CLAUDE.md) rather than as standalone records — promote to an ADR here if deeper rationale is later wanted:
+Decisions that are real but currently documented inline in [`../ARCHITECTURE.md`](../ARCHITECTURE.md) §5 and [`engineering.md`](../reference/invariants/engineering.md) rather than as standalone records — promote to an ADR here if deeper rationale is later wanted:
 
 - **Polars as the default dataframe** (pandas confined to the yfinance adapter/parser, tear-sheet rendering edge, and Kronos facade — see ADR-0008).

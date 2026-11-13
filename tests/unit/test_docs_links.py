@@ -28,6 +28,22 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "docs/superpowers/plans/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md",
         "../../../../../tools/alpha-atlas/README.md",
     ): "archived plan; target removed by ADR-0040",
+    (
+        "docs/superpowers/plans/archive/2026-06/2026-06-16-phase-2b-nautilus-run-harness.md",
+        "../../../../context/alpha-quant-platform.md#native-upstream-first--2026-11-06",
+    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
+    (
+        "docs/superpowers/plans/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md",
+        "../../../../context/software-team.md",
+    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
+    (
+        "docs/superpowers/plans/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md",
+        "../../../../context/alpha-quant-platform.md",
+    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
+    (
+        "docs/superpowers/plans/archive/2026-10/2026-10-26-qlib-tabular-wave1.md",
+        "../../../../context/software-team.md",
+    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
 }
 
 _FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")

@@ -17,7 +17,19 @@ from typing import Any
 
 KINDS = ("all", "project", "feature", "task", "decision", "history", "reference")
 LIVE, ARCHIVED = "live", "archived"
-_ROOT_FILES = {"AGENTS.md", "CLAUDE.md", "docs/ARCHITECTURE.md", "docs/BUILD-STATUS.md"}
+_ROOT_FILES = {
+    "AGENTS.md",
+    "CLAUDE.md",
+    "CONTEXT.md",
+    "STATUS.md",
+    "docs/ARCHITECTURE.md",
+    "docs/BUILD-STATUS.md",
+}
+# Workspace routing files: one CONTEXT.md per code area (never under the hidden test suite).
+_ROUTING_NAME = "CONTEXT.md"
+_HIDDEN_TESTS = "tests/holdout/"
+# Reference material (Layer 3): every Markdown file under docs/reference/, at any depth.
+_REFERENCE = "docs/reference/"
 _FAMILIES = {
     "docs/context": "project",
     "docs/adr": "decision",
@@ -91,6 +103,12 @@ def family(rel: str) -> str | None:
     if rel in _ROOT_FILES:
         return "history" if rel == "docs/BUILD-STATUS.md" else "project"
     path = PurePosixPath(rel)
+    if rel.startswith(_HIDDEN_TESTS):
+        return None
+    if path.name == _ROUTING_NAME:
+        return "project"
+    if rel.startswith(_REFERENCE):
+        return "reference" if path.suffix == ".md" else None
     if rel.startswith(_DOCS_ARCHIVE):
         return "history" if path.suffix == ".md" else None
     if path.suffix not in {".md", ".txt", ".json"}:

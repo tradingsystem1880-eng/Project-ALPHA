@@ -1,6 +1,6 @@
 # Research platform contracts
 
-This is the domain-detail companion to [CLAUDE.md](../../CLAUDE.md), extracted during the
+This is the domain-detail companion to the [research-integrity rules](../reference/invariants/research-integrity.md), extracted during the
 2026-09-16 engineering simplification. It records continuing constraints, not a new delivery or
 acceptance claim. The [ADR index](../adr/README.md), path rules and cited designs govern changes.
 

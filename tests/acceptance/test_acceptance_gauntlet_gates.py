@@ -1,8 +1,8 @@
-"""Hidden holdout: the gauntlet gate semantics of spec §8 as behaviour, not implementation.
+"""Acceptance: the gauntlet gate semantics of spec §8 as behaviour, not implementation.
 
-Every assertion here is a documented contract from CLAUDE.md "Validation gauntlet gates". A
-change that silently relaxes a threshold, flips a comparison, or lets an advisory tier veto is
-caught by tests the authoring agent never read.
+Every assertion here is a documented contract from docs/reference/invariants/validation.md
+"Gauntlet gates". A change that silently relaxes a threshold, flips a comparison, or lets an
+advisory tier veto fails here.
 """
 
 from __future__ import annotations
@@ -20,8 +20,6 @@ from alpha_validation.tearsheet import (
     build_outcomes,
 )
 from alpha_validation.verdict import VerdictSummary, grade_verdict
-
-pytestmark = pytest.mark.holdout
 
 
 def _null(tier: str, *, passed: bool, flagged: bool = False) -> NullSummary:

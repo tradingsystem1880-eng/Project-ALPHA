@@ -879,7 +879,7 @@ LoopBase fixture is not full RD-Agent application deployment. The supplied newly
 RD-Agent CLI has no configured model backend, spend cap or research loop, and this amendment
 starts none.
 
-Use the [crosswalk and migration sequence](../../context/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+Use the [crosswalk and migration sequence](../../archive/2026-11-context-maps/alpha-quant-platform.md#native-upstream-first--2026-11-06)
 to map each proposed replacement to the existing owner and acceptance ID. Keep one continuation
 owner, pre-effect admission, trial/exposure accounting, cancellation, containment, immutable
 receipts and recovery in ALPHA. Compare native checkpoint semantics rather than assuming they

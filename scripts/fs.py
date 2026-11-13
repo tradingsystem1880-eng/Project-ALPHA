@@ -1,22 +1,27 @@
-"""The file system's command line: orientation and document search. Read-only; writes stdout.
+"""The file system's command line: orientation, document search and staleness. Read-only.
 
     uv run python scripts/fs.py orient [--component NAME] [--json]
     uv run python scripts/fs.py search "QUERY" [--kind KIND] [--limit N] [--format text|json]
+    uv run python scripts/fs.py stale [--strict] [--format text|json]
 
 ``orient`` lists components, module counts and the routing documents to read first. ``search``
 returns ranked excerpts of tracked documentation (path, heading, line range, kind, and whether
-the document is live or archived history), live documents first.
+the document is live or archived history), live documents first. ``stale`` lists living documents
+whose ``sources`` changed after their ``verified`` commit; it exits 0 (a report) unless
+``--strict`` is given or a document's front matter cannot be checked.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 import fs_orient
 import fs_search
+import fs_stale
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -31,6 +36,9 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--kind", choices=fs_search.KINDS, default="all")
     search.add_argument("--limit", type=int, default=8, help="excerpts to show (1-20)")
     search.add_argument("--format", choices=("text", "json"), default="text")
+    stale = sub.add_parser("stale", help="living documents whose sources changed since verified")
+    stale.add_argument("--strict", action="store_true", help="exit 1 when any document is stale")
+    stale.add_argument("--format", choices=("text", "json"), default="text")
     return parser
 
 
@@ -45,6 +53,17 @@ def main(argv: list[str] | None = None) -> int:
                 if args.json
                 else fs_orient.render_orientation(payload)
             )
+        elif args.command == "stale":
+            reports = fs_stale.stale(root)
+            print(
+                json.dumps([r.as_dict() for r in reports], sort_keys=True, indent=2)
+                if args.format == "json"
+                else fs_stale.render_text(reports)
+            )
+            if any(r.problems for r in reports):
+                return 1
+            if args.strict and any(r.changed_files for r in reports):
+                return 1
         else:
             result = fs_search.search(root, args.query, kind=args.kind, limit=args.limit)
             print(
@@ -52,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
                 if args.format == "json"
                 else fs_search.render_text(result)
             )
-    except (ValueError, OSError) as exc:
+    except (ValueError, OSError, subprocess.CalledProcessError) as exc:
         print(f"fs {args.command}: {exc}", file=sys.stderr)
         return 2
     return 0

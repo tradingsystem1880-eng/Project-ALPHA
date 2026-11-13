@@ -18,8 +18,6 @@ from typer.testing import CliRunner
 from alpha_cli.main import app
 from alpha_data.store import ParquetStore
 
-pytestmark = pytest.mark.holdout
-
 _SMALL = [
     "--lookback", "20", "--skip", "1", "--vol-window", "10",
     "--tier1-paths", "50", "--tier2-paths", "8", "--n-resamples", "100", "--max-workers", "1",

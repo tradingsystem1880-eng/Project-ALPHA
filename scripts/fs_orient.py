@@ -15,9 +15,9 @@ COMPONENT_GLOBS = ("packages/*", "apps/*", "workers/*")
 # The small files an agent reads first; each routes to the rest.
 ROUTING_DOCUMENTS = (
     "CLAUDE.md",
-    "docs/README.md",
+    "CONTEXT.md",
+    "STATUS.md",
     "docs/roadmap/README.md",
-    "docs/context/README.md",
 )
 DEFAULT_SIZE_CAP = 6_000
 

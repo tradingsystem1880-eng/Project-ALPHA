@@ -80,7 +80,7 @@
     "CLAUDE.md",
     "docs/BUILD-STATUS.md",
     "docs/context/README.md",
-    "docs/context/alpha-quant-platform.md"
+    "docs/reference/invariants/engineering.md"
   ],
   "out_of_scope": [
     "Real data/providers",
