@@ -804,11 +804,10 @@ proof_smoke = [
 ]
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = [
-  "a pinned runtime for RD-Agent's full stock loop (ALPHA_STOCK_PYTHON; no lock in the repository)",
   "an AI model connection for RD-Agent",
 ]
 state = "Partial"
-missing = "RD-Agent's general loop now runs here end to end with stand-in steps on made-up data, but the stock loop itself cannot run yet (no installable runtime; its smoke check skips), no alpha command starts a run, and restart after a crash is not solved"
+missing = "RD-Agent's own stock loop now runs here end to end (pinned Python 3.11 runtime, both smoke checks pass) but only with stand-in steps on made-up data; no AI model is connected, no alpha command starts a run, and restart after a crash is not solved"
 # owner, 2026-11-14: RD-Agent is a key component of how the project works
 triage = { card = "7", recommendation = "KEEP", owner_decision = "KEEP" }
 docs = ["docs/roadmap/rd-agent-in-alpha.md"]
@@ -841,9 +840,9 @@ real_data = "not yet confirmed (to check on the Mac later)"
 proof_smoke = [
   "tests/smoke/test_rdagent_smoke.py::test_stock_rdloop_result_is_read_by_alpha_and_the_web_app",
 ]
-needs = ["a finished stock RD-Agent job, which needs the stock runtime (ALPHA_STOCK_PYTHON)"]
+needs = ["a real (not made-up) stock RD-Agent job, which needs an AI model connection"]
 state = "Partial"
-missing = "the screen and its API answer here but say unavailable until a stock job exists; its smoke check and browser lane skip without the stock runtime"
+missing = "its smoke check now passes here: alpha and the web app read a made-up stock job's result; the browser lane fails here only because the web front end's test packages are not installed; no real job exists yet"
 # owner, 2026-11-14: RD-Agent is a key component of how the project works
 triage = { card = "8", recommendation = "SHELVE", owner_decision = "KEEP" }
 docs = ["docs/roadmap/rd-agent-in-alpha.md"]
@@ -872,15 +871,14 @@ proof_synthetic = [
 ]
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = [
-  "the qualified daily Docker image (not on this machine)",
-  "a permanent place to host the runs (retained storage with a 100 GB reserve)",
+  "the Dell's storage settings, created by you (docs/operations/storage-settings.md; 10 GB reserve per ADR-0043)",
   "real Binance daily bars admitted into that storage",
 ]
 state = "Partial"
-missing = "RD-Agent's loop runs the rule and its costed backtest in-process on made-up bars; the full daily study fails here without its Docker image and has no end-to-end smoke check"
+missing = "with its Docker image now qualified here, the full daily study's tests pass on made-up bars; it has no end-to-end smoke check, the storage settings are not yet created, and no real data has been acquired"
 # owner, 2026-11-14: RD-Agent is a key component of how the project works
 triage = { card = "9", recommendation = "KEEP", owner_decision = "KEEP" }
-docs = ["docs/roadmap/rd-agent-in-alpha.md"]
+docs = ["docs/roadmap/rd-agent-in-alpha.md", "docs/operations/storage-settings.md"]
 plans = [
   "2026-10-31-packet3-daily-rule.md",
   "2026-10-26-native-rule-study-boundary.md",
@@ -1008,4 +1006,4 @@ line = "Five of six steps done; one final independent review is left."
 [[plan_summary]]
 plan = "2026-10-31-packet3-daily-rule.md"
 title = "AI-run daily trading-rule study (Packet 3)"
-line = "Works on made-up data; the real-market run has not begun and needs RD-Agent and permanent hosting."
+line = "Works on made-up data, including its Docker image on the Dell; the real-market run has not begun and needs your storage settings and real data."
