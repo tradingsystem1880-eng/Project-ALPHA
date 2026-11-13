@@ -4,7 +4,7 @@ sources:
   - tools/alpha-eval/src/**
   - tools/alpha-eval/scenarios/**
   - tools/alpha-eval/pyproject.toml
-verified: ed121b80e439
+verified: 00f70c232ea5
 ---
 
 # alpha-eval workspace

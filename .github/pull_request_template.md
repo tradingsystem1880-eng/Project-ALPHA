@@ -10,6 +10,11 @@
 
 <!-- What was run and the result; also what was NOT run, and why. -->
 
+## Who built and who reviewed
+
+<!-- Builder: tool, model, effort, fix rounds, any fallback (from 03-build.json or the handoff.py record).
+     Reviewers: who reviewed with which model, and how each finding was handled. -->
+
 ## The one document updated
 
 <!-- The owning document changed in this pull request, or "none needed" and the reason. -->

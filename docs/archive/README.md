@@ -38,3 +38,13 @@ routing in the root `CONTEXT.md` and each workspace `CONTEXT.md`.
 | `2026-11-context-maps/README.md` | `docs/context/README.md` | Context index; replaced by the root `CONTEXT.md`. Relative links rewritten to resolve from here. |
 | `2026-11-context-maps/software-team.md` | `docs/context/software-team.md` | Engineering map; its facts are in `engineering.md`, `testing.md` and `scripts/CONTEXT.md`. Links rewritten. |
 | `2026-11-context-maps/alpha-quant-platform.md` | `docs/context/alpha-quant-platform.md` | Platform map and the dated 2026-11-06 native-upstream crosswalk; its rules are in the invariants files. Links rewritten. |
+
+## Moved on 2026-11-14 (delivery pipeline, M3)
+
+History only, not a live source: how a change is made now lives in
+[`workflow/CONTEXT.md`](../../workflow/CONTEXT.md) and its five stage files.
+
+| Archive path | Original path | Notes |
+| --- | --- | --- |
+| `2026-11-claude-agents-commands-skills/claude/` | `.claude/agents/`, `.claude/commands/`, `.claude/skills/` | All nine agent prompts, ten commands and nine skill stubs as of commit `8fd5e6dc`, before the pipeline replaced them. The leading dot is dropped from the folder names. Bytes unchanged except two relative links, rewritten to resolve from here. |
+| `2026-11-claude-agents-commands-skills/agents/` | `.agents/skills/*`, `.agents/references/` | The seven deleted skills, `UPSTREAM.md` and `definition-of-done.md`, same commit. Bytes unchanged except one relative link. |

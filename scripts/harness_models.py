@@ -125,7 +125,7 @@ class PlanAssumption(_Strict):
 
 
 class FeaturePlan(_Strict):
-    """Machine-checked front block of a docs/superpowers/plans/ document."""
+    """Machine-checked front block of a task plan, docs/work/<task>/02-plan.md."""
 
     schema_version: Literal[1] = 1
     title: str

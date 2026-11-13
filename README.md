@@ -68,7 +68,7 @@ unfinished or deferred. Paper paths require separate opt-ins and readiness evide
 live-capital route ships**. The [scope and limits](#implemented-scope-and-limits) and
 [authority matrix](docs/governance/capability-authority-matrix.md) explain these boundaries.
 
-The [first daily rule/control route](docs/superpowers/plans/2026-10-31-packet3-daily-rule.md)
+The [first daily rule/control route](docs/work/2026-10-31-packet3-daily-rule/02-plan.md)
 connects a frozen momentum rule and control to native execution, accounting, cancellation,
 recovery and the existing reports. Artificial fixtures exercise the actual RD-Agent loop under a
 hard 1 GiB container limit; they establish no market result. The approved real-data demonstration
@@ -280,14 +280,14 @@ the isolated launcher and closed rule/economics environments, validates their id
 prints the source export for later shells. Existing source must remain pinned and clean;
 failed partial acquisitions are preserved and acquired source is validated before use.
 Foundation-only setup stays non-fetching.
-See the [clean-bootstrap record](docs/superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md)
+See the [clean-bootstrap record](docs/work/archive/2026-10/2026-10-31-clean-rdagent-bootstrap.md)
 for fresh-workspace/container evidence and its limits. Provisioning does not grant execution authority.
 On a local development checkout, `bash scripts/setup_rdagent.sh` does only the RD-Agent part
 (no Git hooks, npm or browser download); see [workers/rdagent/README.md](workers/rdagent/README.md#install-on-a-development-machine)
 and the owner's overview [RD-Agent in ALPHA](docs/roadmap/rd-agent-in-alpha.md).
 
 The daily research route additionally uses an explicitly qualified, immutable local Docker image
-for its hard physical-memory boundary. Follow the [daily runtime and storage instructions](docs/superpowers/plans/2026-10-31-packet3-daily-rule.md#runtime-and-storage-setup).
+for its hard physical-memory boundary. Follow the [daily runtime and storage instructions](docs/work/2026-10-31-packet3-daily-rule/02-plan.md#runtime-and-storage-setup).
 The older synthetic probes retain their existing process boundary.
 
 Before selecting a different research storage root, inspect the existing authoritative history:
@@ -408,3 +408,7 @@ the codes. The frozen [build record](docs/BUILD-STATUS.md) preserves dated deliv
 The isolated worker also offers an explicit [partial Alpha158 feature-v2 correction](workers/qlib/README.md#opt-in-partial-alpha158-feature-correction):
 40 columns use pinned Qlib operators, while 118 retain the legacy recipe. Feature v1 stays the
 default. This does not establish native whole-recipe parity or qualify historical models.
+Opt-in [feature recipe v3](workers/qlib/README.md#feature-recipe-v3-upstream-alpha158-opt-in)
+computes all 158 Alpha158 columns and the fold normalisation with upstream Qlib; a parity test
+shows exact equality with Qlib's own Alpha158 handler ([ADR-0042](docs/adr/0042-qlib-worker-delegates-data-layer-to-upstream.md)).
+V1 and v2 remain as legacy readers for stored results.

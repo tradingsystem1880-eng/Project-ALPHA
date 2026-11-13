@@ -29,5 +29,5 @@ ADR and threat/risk review (the crypto readiness plan lists live capital as expl
 - [Checklist: Definite later live trading phase](../../context/feature-readiness-checklist-2026-10-27.md#definite-later-live-trading-phase)
 - [Checklist: Explicit exclusions and boundaries](../../context/feature-readiness-checklist-2026-10-27.md#explicit-exclusions-and-boundaries)
 - [Checklist W17](../../context/feature-readiness-checklist-2026-10-27.md#w17-qualify-the-whole-research-process-and-paper-boundary)
-- [Crypto operational readiness plan, deferral table](../../superpowers/plans/2026-08-30-crypto-operational-readiness.md)
+- [Crypto operational readiness plan, deferral table](../../work/2026-08-30-crypto-operational-readiness/02-plan.md)
 - [README: Implemented scope and limits](../../../README.md#implemented-scope-and-limits)

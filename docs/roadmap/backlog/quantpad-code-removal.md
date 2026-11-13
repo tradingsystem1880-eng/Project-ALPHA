@@ -24,6 +24,6 @@ A ControlStore schema migration decision for `quantpad_receipt`; an ADR update.
 
 ## Sources
 
-- [Edge-first Phase A plan, out of scope](../../superpowers/plans/archive/2026-09/2026-09-10-edge-first-phase-a-shorten-the-loop.md)
+- [Edge-first Phase A plan, out of scope](../../work/archive/2026-09/2026-09-10-edge-first-phase-a-shorten-the-loop.md)
 - [ADR-0018](../../adr/0018-quantpad-external-research-data-boundary.md) and [ADR-0023](../../adr/0023-research-dataset-registration-and-quantpad-lane.md)
 - [README: Implemented scope and limits](../../../README.md#implemented-scope-and-limits)

@@ -6,7 +6,7 @@ sources:
   - scripts/gate.py
   - scripts/gate_components.py
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
-verified: a7e687ae729f
+verified: d0fffa796f8e
 ---
 
 # Engineering rules
@@ -93,7 +93,8 @@ Project-wide coding rules. Area files add their own detail and link here. The re
 - Growth of `# noqa` or `type: ignore` in quant modules is blocked by `gate.py lint-harness`
   against `.claude/harness-baseline.json`.
 - Float-literal equality is banned in quant code (semgrep rule `alpha-float-literal-equality`).
-- `/verify-quant` and `/review-gate` reports are advisory on the pull request.
+- The `quant-verifier` and `reviewer` agents report on the pull request and are advisory
+  ([stage 04](../../../workflow/stages/04-verify/CONTEXT.md)).
 
 ## Reproducible code
 
@@ -114,15 +115,16 @@ Project-wide coding rules. Area files add their own detail and link here. The re
 - Goal-driven: define how success is checked (usually a failing test first), then make it pass. For
   multi-step work state a short plan with a check per step.
 - One agent mutates the working tree per slice; others read or review.
-- Skills live in `.agents/skills/`: always `karpathy-guidelines` (the long form of this section); multi-file
-  work `incremental-implementation`; refactors `code-simplification`; merging `code-review-and-quality`;
-  claims of done `verification-before-completion`; nontrivial features `alpha-feature-workflow`.
+- Evidence before claims: say a check passes only after running it on this tree and reading its result;
+  an agent's report of success is checked against the diff before it is repeated.
+- How a change is shaped, planned, built, verified and landed: the [delivery pipeline](../../../workflow/CONTEXT.md).
 
 ## Checks and commits
 
 - Loop: edit, then `uv run python scripts/gate.py check` (ruff, import contracts, mypy, and the
   tests mapped from changed files), then commit, push, open a draft pull request.
-- CI on the pull request is the merge gate; the owner merges. A commit needs only a
+- CI on the pull request is the merge gate; the orchestrating session merges on green
+  (merge commits only; owner's delegation, 2026-11-14). A commit needs only a
   `type(scope): summary` message. Model review is advisory.
   [ADR-0039](../../adr/0039-ci-is-the-merge-gate.md)
 - One CI job locally: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,

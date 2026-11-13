@@ -322,7 +322,7 @@ RequestMutation = Callable[[dict[str, Any]], None]
             lambda request: request.update(
                 {"feature_recipe": {"name": "other", "version": 1, "parameters": {}}}
             ),
-            "alpha158 with integer version 1 or 2",
+            "alpha158 with integer version 1, 2 or 3",
         ),
         (
             lambda request: request.update(

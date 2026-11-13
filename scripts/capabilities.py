@@ -2,8 +2,9 @@
 
 The map is hand-written; this module enforces its schema and checks every claim it can check
 against the repository: entry points exist, each ``proof_synthetic`` and ``proof_smoke`` test file
-and test exists, every listed plan exists, and every live plan in ``docs/superpowers/plans/``
-belongs to exactly one capability or is listed under ``[[unassigned_plan]]`` with a reason.
+and test exists, every listed plan exists, and every live task in ``docs/work/`` (its
+``02-plan.md``) belongs to exactly one capability or is listed under ``[[unassigned_plan]]`` with a
+reason.
 
 "Working" means run end to end: a capability is ``Working`` only with at least one ``proof_smoke``
 node (a check under ``tests/smoke/`` that runs the installed programs) that is not skipped or
@@ -437,11 +438,12 @@ def _known_defects(root: Path, raw: object) -> tuple[KnownDefect, ...]:
 
 def _live_plans(root: Path) -> tuple[LivePlan, ...]:
     live: list[LivePlan] = []
-    for rel in roadmap_index._docs(root, roadmap_index.PLANS):
+    for rel in roadmap_index.live_plans(root):
         text = (root / rel).read_text(encoding="utf-8")
         state = roadmap_index._plan_state(rel, text)
         if not state.startswith(roadmap_index._FINISHED):
-            live.append(LivePlan(rel.name, state, roadmap_index._title(rel, text)))
+            name = roadmap_index.task_name(rel)
+            live.append(LivePlan(name, state, roadmap_index._title(rel, text)))
     return tuple(live)
 
 
@@ -507,7 +509,7 @@ def load(root: Path = ROOT) -> CapabilityMap:
     owners = Counter([p for c in caps for p in c.plans] + list(unassigned))
     for plan, count in sorted(owners.items()):
         if plan not in live_names:
-            raise CapabilityError(f"{MAP}: {plan} is not a live plan in {roadmap_index.PLANS}")
+            raise CapabilityError(f"{MAP}: {plan} is not a live task in {roadmap_index.WORK}")
         if count > 1:
             raise CapabilityError(f"{MAP}: {plan} is assigned {count} times")
     orphans = sorted(live_names - set(owners))

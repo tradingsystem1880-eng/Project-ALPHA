@@ -1,7 +1,7 @@
 # Working style (always loaded)
 
-Long form: `.agents/skills/karpathy-guidelines/SKILL.md`; project rules:
-`docs/reference/invariants/engineering.md` § Working style.
+Project rules: `docs/reference/invariants/engineering.md` § Working style; the steps of a change:
+`workflow/CONTEXT.md`.
 
 1. Think first: state assumptions; name competing readings; if unclear, stop and ask.
 2. Simplicity: minimum code; no unrequested features, configurability or single-use abstractions.

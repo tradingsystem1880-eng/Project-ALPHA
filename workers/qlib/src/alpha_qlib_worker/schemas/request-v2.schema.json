@@ -23,7 +23,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["name", "version", "parameters"],
       "properties": {
-        "name": {"const": "alpha158"}, "version": {"type": "integer", "enum": [1, 2]},
+        "name": {"const": "alpha158"}, "version": {"type": "integer", "enum": [1, 2, 3]},
         "parameters": {"type": "object", "maxProperties": 0}
       }
     },

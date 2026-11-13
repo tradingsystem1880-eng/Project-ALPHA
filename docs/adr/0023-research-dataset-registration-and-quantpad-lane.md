@@ -40,8 +40,8 @@ suite. ADR-0020 requires research intraday data to stay permanently `research_on
 
 ## Implementation anchors
 
-- Spec: `docs/superpowers/specs/2026-08-07-research-first-workstation-design.md` §8
-- Phase plan: `docs/superpowers/plans/archive/2026-08/2026-08-07-research-first-R3-data-hub.md`
+- Spec: `docs/records/specs/2026-08-07-research-first-workstation-design.md` §8
+- Phase plan: `docs/work/archive/2026-08/2026-08-07-research-first-R3-data-hub.md`
 - Pure type: `packages/alpha-research/src/alpha_research/data.py` (`ResearchDatasetRef`)
 - Quality gate: `packages/alpha-data/src/alpha_data/pipeline.py`; snapshots:
   `packages/alpha-data/src/alpha_data/snapshot.py`

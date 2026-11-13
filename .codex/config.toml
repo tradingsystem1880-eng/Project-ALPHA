@@ -1,9 +1,18 @@
-# Project-level Codex config (Codex sessions opened in this repo; the same rules dir
-# `.claude/rules/` and CLAUDE.md/AGENTS.md apply to Codex reviewing this repo).
-# The harness's second-model seam (`scripts/codex_bridge.py`) does NOT rely on a profile
-# block here: codex-cli 0.146+ `-p` layers `$CODEX_HOME/<name>.config.toml`, so the bridge
-# passes every override explicitly (`-m gpt-6-astra`, `-s read-only`, `--ephemeral`,
-# `-c approval_policy="never"`, `-c model_reasoning_effort="medium"`, `--output-schema`).
+# Project-level Codex config, for interactive Codex sessions the owner opens in this repo.
+# Codex loads a project `.codex/` layer only when the project is trusted (user config).
+#
+# Instructions: Codex reads AGENTS.md from the repository root down to its working directory
+# (not below it), which sends it to CLAUDE.md and CONTEXT.md. A build handed over by
+# `scripts/handoff.py` carries its own read list, rules and checks in the prompt.
+#
+# No profiles here: codex-cli 0.146+ `-p <name>` layers `$CODEX_HOME/<name>.config.toml`, so
+# project-level profiles do not exist. The per-class model and effort live in
+# `scripts/handoff.py` (PROFILES; rules in docs/reference/model-routing.md), which runs
+# `codex exec --ignore-user-config` and passes every setting explicitly: `-s workspace-write`,
+# `-c approval_policy="never"`, `-m`, `-c model_reasoning_effort=...`,
+# `-c shell_environment_policy.inherit="core"`. The second-opinion bridge
+# (`scripts/codex_bridge.py`) likewise passes `-s read-only`, `--ephemeral` and its model.
+# Nothing here enables network access or holds a secret.
 
 [mcp_servers.alpha]
 command = "uv"
