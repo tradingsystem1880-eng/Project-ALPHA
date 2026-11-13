@@ -12,7 +12,7 @@ sources:
   - tests/unit/test_owner_auth_api.py
   - tests/unit/test_owner_local_confirmation.py
   - tests/unit/test_run_context_authority.py
-verified: 1ac86fc02443
+verified: a7e687ae729f
 ---
 
 # Web API invariants
@@ -57,6 +57,8 @@ as JSON and SSE (server-sent events, a one-way live stream) and serves the built
 - The generic launcher `POST /api/jobs` classifies argv with `alpha_cli.catalog.classify_generic_command`:
   - `owner_only` commands are refused (for example `owner-auth`, `project`, `suite`, `provider`, `assistant`, most
     `research` and `paper` verbs). Enforced by `tests/unit/test_owner_auth_api.py`.
+  - An argv root that is not a classified `alpha` command (`unknown`) is refused with 422 before any subprocess or
+    job record exists, with or without a run context.
   - `empirical` commands need an explicit run context, resolved by `run_authority.resolve_run_context`. A missing or
     unverifiable context is a denial, never a default. Enforced by `tests/unit/test_run_context_authority.py`.
 - `MPLCONFIGDIR`, when set, passes to the CLI child verbatim (`_catalog._PROCESS_ENV_NAMES`), so Matplotlib

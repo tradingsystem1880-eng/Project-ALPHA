@@ -4,44 +4,33 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 19 working, 14 partly working, 1 demo only, 1 shelved, 2 not started.
+- **Capabilities:** 3 working, 30 partly working, 1 demo only, 1 shelved, 2 not started.
 - **Work in progress:** 41 in progress (limit 3).
   - 5 being worked on
   - 36 built but not yet checked end to end
   - Not counted: 3 blocked, 1 planned, not started.
   - Allowed for now: 41. This number only goes down, until it reaches 3.
+- **Known defects:** 0.
 - **Decisions waiting for you:** 22.
 
-"Working" means a test runs it from start to finish on made-up (synthetic) data.
+"Working" means the workflow was run from start to finish through the installed program
+on made-up (synthetic) data.
 Runs on real market data are still to be confirmed on the Mac, except where noted.
 
 ## What works today
 
 - **Workstation web app** — uv run alpha-web, then open http://localhost:8801
-- **Price charts with indicators and patterns** — Workstation: View → Chart (a real run is recorded)
-- **Download and freeze stock and ETF prices** — uv run alpha data pull SPY --source tiingo --start 2020-01-01 --end 2020-12-31
-- **Download crypto market data (W05)** — uv run alpha crypto-data catalog (a real run is recorded)
-- **Crypto history download that resumes safely (backfill, Phase B)** — uv run alpha crypto-data backfill bybit <family> --symbols BTCUSDT --quote USDT --start … --end … --ledger <name> --dry-run
-- **"Are my downloaded daily bars complete?" check** — uv run alpha crypto-data quality <manifest-id> --coverage-start … --coverage-end … --as-of …
-- **Freeze crypto data into exact snapshots and check them (W05)** — uv run alpha crypto-data snapshot-create …, then uv run alpha crypto-data snapshot-verify <snapshot-id>
 - **Run a backtest** — uv run alpha backtest run SPY
-- **Reports, figures and run comparison** — uv run alpha report <run-id>
-- **Write trading rules and scan markets** — uv run alpha rules save <name> …, then uv run alpha scan run <name>
-- **Strategy development workspace** — uv run alpha suite plan <project-id> <experiment-id> <action>
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
-- **Path-risk simulation (Monte Carlo)** — uv run alpha monte-carlo classical --from-run <run-id>
-- **Risk numbers that state what they are based on (C04)** — uv run alpha risk scenario --from-run <run-id> --json --include-metric-basis
-- **Prop-firm challenge check** — uv run alpha propfirm run SPY …, or --from-run <run-id>
-- **Research cases from idea to decision (D0, D1, D2)** — uv run alpha research capture "<your idea>" --json, then uv run alpha research status <project-id>
-- **Quick idea screening (Phase C)** — uv run alpha scan hypotheses --as-of <date>
-- **Ask the AI assistant about a recorded run (Codex)** — Workstation: open a run, then "Investigate this run" (a real run is recorded)
-- **Let an AI assistant use ALPHA's tools (MCP)** — uv run alpha-mcp (started by an MCP-capable AI client)
 
 ## Partly working
 
+- **Download and freeze stock and ETF prices** — no offline way to get prices in; snapshot, verify and as-of read are proven end to end.
 - **Download bookkeeping: receipts and quota** — not connected to any command; tests only.
 - **Bybit funding-rate download** — not connected to any command; real downloads refused on purpose.
+- **Reports, figures and run comparison** — the text and JSON (--json) reports are proven end to end; figures and run comparison are tested in-process only.
 - **Price forecasts with the Kronos model** — proved only with a stand-in model. Needs: the Kronos model files (downloaded on first use; not on this computer).
+- **Research cases from idea to decision (D0, D1, D2)** — proven up to the owner-approval boundary; a full case needs provider data and your approval.
 - **Find papers and screen their claims (R4)** — paper download tested only with a stand-in worker. Needs: the literature worker setup (not installed on this computer).
 - **Link paper claims to experiments and keep the original PDFs** — no test takes one paper all the way to an experiment.
 - **Check data providers and background jobs** — job list tested only with a stand-in command; provider checks need real providers.
@@ -53,6 +42,28 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **"Native job result" screen (W04, W18)** — empty until the AI stock research loop produces a job. Needs: the RD-Agent setup, for its browser test.
 - **AI-run daily trading-rule study (Packet 3, W08)** — only the report is proven; the study itself needs RD-Agent. Needs: the RD-Agent setup, which no machine has yet; a permanent place to host the runs.
 - **Running ALPHA on your Mac with real data providers** — one final review and a run on your Mac. Needs: your Mac; access to a real data provider (blocked since 31 August).
+
+Tested piece by piece inside the test suite, but not yet run from start to finish through the installed program:
+
+- **Price charts with indicators and patterns** — tested in-process and in a browser against a test server (a real run is recorded).
+- **Download crypto market data (W05)** — tested in-process only (a real run is recorded).
+- **Crypto history download that resumes safely (backfill, Phase B)** — tested in-process only.
+- **"Are my downloaded daily bars complete?" check** — tested in-process and in a browser against a test server.
+- **Freeze crypto data into exact snapshots and check them (W05)** — tested in-process only.
+- **Write trading rules and scan markets** — tested in-process and in a browser against a test server.
+- **Strategy development workspace** — tested in-process only.
+- **Path-risk simulation (Monte Carlo)** — tested in-process only.
+- **Risk numbers that state what they are based on (C04)** — tested in-process and in a browser against a test server.
+- **Prop-firm challenge check** — tested in-process only.
+- **Quick idea screening (Phase C)** — tested in-process only.
+- **Ask the AI assistant about a recorded run (Codex)** — tested in a browser against a test server only (a real run is recorded).
+- **Let an AI assistant use ALPHA's tools (MCP)** — tested in-process only.
+
+## Known defects
+
+Found by running the installed program; each has a check that will fail once it is fixed.
+
+- None known.
 
 ## Demo only
 
@@ -129,6 +140,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Live trading phase (private, single owner) — very large (XL)
 - Local vision model and hosted finance reasoning — medium (M)
 - Multi-agent specialist swarm / PydanticAI migration — large (L)
+- Offline price import from a local file — medium (M)
 - Options expression research (W16) — large (L)
 - RD-Agent autonomous native research and restart continuation (W08/W13, T07) — very large (XL)
 - Remove the remaining QuantPad code — small (S)
@@ -137,7 +149,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 
 - Live plans: 45
 - Archived plans: 111
-- Backlog items: 15
+- Backlog items: 16
 - Staged refactors: 7
 
 ## Where things are

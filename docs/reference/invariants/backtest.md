@@ -10,7 +10,7 @@ sources:
   - tests/integration/test_frictions.py
   - tests/integration/test_order_rejection.py
   - tests/bias_guards/test_cash_fee_affordability_future_poison.py
-verified: 1ac86fc02443
+verified: a7e687ae729f
 ---
 
 # Backtest invariants
@@ -51,7 +51,7 @@ Nautilus harness, its feed encoding, fee model and result schema, and the multi-
   The spread is quantised to the price precision, so slippage under one tick has no effect. Quote size is
   large on purpose: book depth is not the slippage model.
 - Fees are separate: `BpsFeeModel` charges notional x `bps_rate(fee_bps)` in the instrument's quote
-  currency. `run_backtest` rejects `fee_bps < 0`; the finite check lives in `bps_rate`.
+  currency. `run_backtest` rejects a `fee_bps` that is negative or not finite (NaN would silently mean no fee model).
   `tests/integration/test_frictions.py`.
 - The account is denominated in the instrument's quote currency so PnL never needs an exchange rate.
 

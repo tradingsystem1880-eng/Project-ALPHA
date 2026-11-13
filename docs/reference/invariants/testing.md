@@ -14,7 +14,7 @@ sources:
   - scripts/claude_hooks.py
   - pyproject.toml
   - .semgrep/alpha.yml
-verified: 00f70c232ea5
+verified: a7e687ae729f
 ---
 
 # Testing invariants
@@ -29,7 +29,9 @@ this file holds the mechanics.
 - `tests/unit/` pure units; `tests/integration/` CLI and engine; `tests/bias_guards/` future-poison
   guards; `tests/oracles/` metamorphic, calibration and differential oracles (shared reference code and
   named tolerances in `tests/oracles/_reference/`); `tests/fixtures/` goldens; `tests/acceptance/`
-  17 visible behaviour tests of the gauntlet, threshold and execution contracts.
+  17 visible behaviour tests of the gauntlet, threshold and execution contracts; `tests/smoke/` end-to-end
+  workflow checks run through the installed `alpha` and `alpha-web` programs (marker `smoke`, left out of the
+  fast local tier, run by CI).
 - Statistical goldens carry named tolerances (`tests/oracles/_reference/tolerances.py`), never exact float
   equality. Semgrep rule `alpha-float-literal-equality` flags literal float equality.
 - Warnings are errors (`filterwarnings = ["error", ...]` in `pyproject.toml`): a new warning fails the test.
@@ -39,7 +41,7 @@ this file holds the mechanics.
 ## Markers and tiers
 
 - Markers are strict (`--strict-markers`): `bias_guard`, `network`, `oracle`, `slow_oracle`,
-  `platform`. An unregistered marker fails collection, and `gate.py lint-harness` fails if strict markers
+  `smoke`, `platform`. An unregistered marker fails collection, and `gate.py lint-harness` fails if strict markers
   are turned off.
 - Never add `platform` by hand. `tests/conftest.py` applies it at collection from
   `tests/_tiers.py::classify_platform`, which defaults to fast and opts files out by directory-scoped

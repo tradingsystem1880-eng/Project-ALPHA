@@ -13,6 +13,7 @@ needs a multi-instrument engine and is future work.)
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -121,6 +122,9 @@ def run_cross_sectional(
     vol (capped at ``max_leverage``). Fails loud (``DataError``) on too few symbols/dates or a
     degenerate stream.
     """
+    for name, cost in (("fee_bps", fee_bps), ("slippage_bps", slippage_bps)):
+        if not math.isfinite(cost) or cost < 0.0:  # a negative cost is paid out as income
+            raise DataError(f"{name} must be finite and >= 0, got {cost}")
     if len(symbols) < 2:
         raise DataError(f"cross-sectional needs >= 2 symbols, got {len(symbols)}")
     if len(set(symbols)) != len(symbols):

@@ -50,3 +50,20 @@ def test_split_and_dividend_coexist(tmp_path: Path) -> None:
     divs = r.dividends_as_of("AAPL", when)
     assert len(divs) == 1
     assert divs[0].pay_date == date(2020, 8, 13)
+
+
+def test_dividends_as_of_rejects_a_naive_cutoff_like_the_price_channel(tmp_path: Path) -> None:
+    """A naive cutoff would be read as host-local time, so the knowledge date could shift by a day.
+
+    ``as_of`` already refuses it; the dividend channel must apply the same firewall rule.
+    """
+    from alpha_core import DataError
+
+    store = ParquetStore(tmp_path)
+    store.write_bars("AAPL", linear_bars("AAPL", date(2020, 8, 3), 12))
+    r = PointInTimeReader(store, actions={"AAPL": [aapl_dividend()]})
+    naive = datetime(2020, 7, 30, 0, 30)  # deliberately naive
+    with pytest.raises(DataError, match="PIT cutoff must be timezone-aware"):
+        r.as_of("AAPL", naive)
+    with pytest.raises(DataError, match="PIT cutoff must be timezone-aware"):
+        r.dividends_as_of("AAPL", naive)

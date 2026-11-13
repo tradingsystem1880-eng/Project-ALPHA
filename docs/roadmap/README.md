@@ -71,7 +71,7 @@ work may be open.
 | [2026-10-26-qlib-w11-refit](../work/2026-10-26-qlib-w11-refit/02-plan.md) | Qlib W11: bounded whole-pipeline refit evidence | Blocked | 2026-10 |
 | [2026-10-02-agentic-research-capability-program](../work/2026-10-02-agentic-research-capability-program/02-plan.md) | Agentic research capability program | Planned | 2026-10 |
 
-## Backlog (15)
+## Backlog (16)
 
 | Item | Status | Rough size |
 | --- | --- | --- |
@@ -86,6 +86,7 @@ work may be open.
 | [Live trading phase (private, single owner)](backlog/live-trading-phase.md) | Scoped | XL |
 | [Local vision model and hosted finance reasoning](backlog/local-vision-and-hosted-finance-reasoning.md) | Idea | M |
 | [Multi-agent specialist swarm / PydanticAI migration](backlog/multi-agent-specialist-swarm.md) | Idea | L |
+| [Offline price import from a local file](backlog/offline-data-import.md) | Scoped | M |
 | [Options expression research (W16)](backlog/options-research.md) | Scoped | L |
 | [Full Qlib model zoo and fold-by-fold counterfactual retraining (W11/W12)](backlog/qlib-model-zoo-and-fold-retraining.md) | Scoped | XL |
 | [Remove the remaining QuantPad code](backlog/quantpad-code-removal.md) | Scoped | S |

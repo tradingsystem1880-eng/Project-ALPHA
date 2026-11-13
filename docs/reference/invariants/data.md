@@ -10,7 +10,7 @@ sources:
   - tests/bias_guards/test_pit_*.py
   - tests/bias_guards/test_source_future_poison.py
   - tests/bias_guards/test_universe_survivorship.py
-verified: 1ac86fc02443
+verified: a7e687ae729f
 ---
 
 # Data layer invariants
@@ -42,8 +42,8 @@ General rule: [research integrity § Point-in-time reads](research-integrity.md#
 - `PointInTimeReader.as_of` raises `DataError` on a naive cutoff before reading any data, and converts a
   named-zone cutoff to UTC before comparing, so the inclusive instant survives DST. The host time zone never
   supplies an offset. Enforced by `tests/unit/test_pit_tz.py`.
-- `dividends_as_of` does not check for a naive cutoff (it calls `astimezone(UTC)`, which would read the host
-  zone). Always pass an aware cutoff; do not rely on it to reject one.
+- `dividends_as_of` also raises `DataError` on a naive cutoff, for the same reason: `astimezone(UTC)` would
+  read the host zone.
 - Typed reads validate bars only after cutoff filtering: an invalid future bar cannot break a past read; an
   invalid visible bar raises chained `DataError` with symbol, timestamp and reason. Never skip or coerce it.
   Enforced by `tests/bias_guards/test_source_future_poison.py`.

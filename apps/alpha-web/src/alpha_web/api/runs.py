@@ -79,6 +79,7 @@ def run_daily_rule_evidence(
                 "report",
                 run_id,
                 "--json",
+                "--daily-rule-evidence",
                 "--role",
                 role,
                 "--limit",

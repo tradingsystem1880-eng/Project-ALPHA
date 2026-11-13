@@ -109,3 +109,28 @@ def test_cross_sectional_rejects_single_symbol(
     seed_store(tmp_path, symbol="AAA", n=120)
     result = runner.invoke(app, ["backtest", "cross-sectional", "AAA", *_ARGS])
     assert result.exit_code != 0  # needs >= 2 symbols
+
+
+@pytest.mark.parametrize(
+    ("option", "value"),
+    [
+        ("--fee-bps", "-50"),
+        ("--fee-bps", "nan"),
+        ("--fee-bps", "inf"),
+        ("--slippage-bps", "-1"),
+        ("--slippage-bps", "nan"),
+    ],
+)
+def test_cross_sectional_rejects_negative_or_non_finite_costs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, option: str, value: str
+) -> None:
+    """A negative cost would be paid out as income on every rebalance; fail before any run."""
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    for symbol in ("AAA", "BBB"):
+        seed_store(tmp_path, symbol=symbol, n=120)
+    result = runner.invoke(
+        app, ["backtest", "cross-sectional", "AAA", "BBB", *_ARGS, option, value]
+    )
+    assert result.exit_code == 2, result.output
+    assert f"{option.removeprefix('--').replace('-', '_')} must be finite and >= 0" in result.output
+    assert not (tmp_path / "cross_sectional").exists()

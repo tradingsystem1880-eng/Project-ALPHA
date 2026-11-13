@@ -42,6 +42,7 @@ ROOT = Path(__file__).resolve().parents[2]
         "tests/integration/test_accounted_backfill_process.py",
         "tests/integration/test_validate_determinism.py",
         "tests/unit/test_cli_entry_lazy_groups.py",
+        "tests/smoke/test_web_smoke.py",
     ],
 )
 def test_platform_shaped_paths_are_platform(path: str) -> None:

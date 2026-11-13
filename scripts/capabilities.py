@@ -1,9 +1,15 @@
 """Load and check docs/roadmap/capabilities.toml, the map of ALPHA's user-facing workflows.
 
 The map is hand-written; this module enforces its schema and checks every claim it can check
-against the repository: entry points exist, each ``proof_synthetic`` test file and test exists,
-every listed plan exists, and every live task in ``docs/work/`` (its ``02-plan.md``) belongs to
-exactly one capability or is listed under ``[[unassigned_plan]]`` with a reason.
+against the repository: entry points exist, each ``proof_synthetic`` and ``proof_smoke`` test file
+and test exists, every listed plan exists, and every live task in ``docs/work/`` (its
+``02-plan.md``) belongs to exactly one capability or is listed under ``[[unassigned_plan]]`` with a
+reason.
+
+"Working" means run end to end: a capability is ``Working`` only with at least one ``proof_smoke``
+node (a check under ``tests/smoke/`` that runs the installed programs) that is not skipped or
+xfailed by design, and nothing in ``needs``. Every strict-xfail smoke check must be listed under
+``[[known_defect]]``, and every listed defect must be such a check, so the status page shows them.
 
 ``uv run python scripts/capabilities.py`` prints ``ok`` or the first problem (exit 1).
 ``tests/unit/test_capabilities.py`` runs the same check on the committed tree.
@@ -11,6 +17,7 @@ exactly one capability or is listed under ``[[unassigned_plan]]`` with a reason.
 
 from __future__ import annotations
 
+import ast
 import re
 import sys
 import tomllib
@@ -29,6 +36,9 @@ RECOMMENDATIONS = ("KEEP", "SHELVE", "SHELVE (your call)", "DELETE", "YOUR CALL"
 DECISIONS = ("undecided", "KEEP", "SHELVE", "DELETE")
 INTERNAL_ONLY = "nothing to see yet — internal only"
 LIVE_STATES = roadmap_index._LIVE_ORDER
+SMOKE_DIR = "tests/smoke/"
+# A Partial capability whose 'missing' ends with this has in-process tests but no smoke check.
+NO_SMOKE_YET = "no end-to-end smoke check yet"
 
 _ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 _CLI_MAIN = Path("apps/alpha-cli/src/alpha_cli/main.py")
@@ -49,7 +59,14 @@ _CAPABILITY_KEYS = {
     "state": str,
     "plans": list,
 }
-_OPTIONAL_KEYS = {"codes": list, "real_data_needs": str, "missing": str, "triage": dict}
+_OPTIONAL_KEYS = {
+    "codes": list,
+    "proof_smoke": list,
+    "real_data_needs": str,
+    "missing": str,
+    "triage": dict,
+}
+_DESIGNED_MARKS = frozenset({"skip", "skipif", "xfail"})
 
 
 class CapabilityError(ValueError):
@@ -76,6 +93,7 @@ class Capability:
     see_it: tuple[str, ...]
     entry_points: tuple[str, ...]
     proof_synthetic: tuple[str, ...]
+    proof_smoke: tuple[str, ...]
     real_data: str
     real_data_needs: str
     needs: tuple[str, ...]
@@ -103,6 +121,15 @@ class Decision:
 
 
 @dataclass(frozen=True)
+class KnownDefect:
+    """A strict-xfail smoke check: a defect seen through the installed program, not yet fixed."""
+
+    title: str
+    node: str
+    how_to_reproduce: str
+
+
+@dataclass(frozen=True)
 class PlanSummary:
     title: str
     line: str
@@ -122,6 +149,7 @@ class CapabilityMap:
     unassigned_plans: dict[str, str]
     plan_summaries: dict[str, PlanSummary]
     live_plans: tuple[LivePlan, ...]
+    known_defects: tuple[KnownDefect, ...] = ()
 
     def triage_items(self) -> list[tuple[str, Triage]]:
         """Every triage card with the plain name it is shown under, in file order."""
@@ -190,6 +218,7 @@ def _capability(index: int, raw: object) -> Capability:
         see_it=_strings(where, "see_it", table["see_it"], allow_empty=False),
         entry_points=_strings(where, "entry_points", table["entry_points"]),
         proof_synthetic=_strings(where, "proof_synthetic", table["proof_synthetic"]),
+        proof_smoke=_strings(where, "proof_smoke", table.get("proof_smoke", [])),
         real_data=_text(where, "real_data", table["real_data"]),
         real_data_needs=str(table.get("real_data_needs", "")),
         needs=_strings(where, "needs", table["needs"]),
@@ -203,12 +232,14 @@ def _capability(index: int, raw: object) -> Capability:
     if cap.state not in STATES:
         raise CapabilityError(f"{where}: state must be one of {STATES}")
     if cap.state == "Working":
-        if not cap.proof_synthetic or cap.needs:
-            raise CapabilityError(f"{where}: Working needs proof_synthetic and no needs")
+        if not cap.proof_smoke or cap.needs:
+            raise CapabilityError(f"{where}: Working needs proof_smoke and no needs")
         if cap.missing:
             raise CapabilityError(f"{where}: a Working capability has nothing missing")
     elif not cap.missing.strip():
         raise CapabilityError(f"{where}: state {cap.state} must say what is 'missing'")
+    if cap.missing.endswith(NO_SMOKE_YET) and cap.proof_smoke:
+        raise CapabilityError(f"{where}: says '{NO_SMOKE_YET}' but lists proof_smoke")
     if INTERNAL_ONLY in cap.see_it and len(cap.see_it) != 1:
         raise CapabilityError(f"{where}: '{INTERNAL_ONLY}' must be the only see_it entry")
     return cap
@@ -278,6 +309,130 @@ def _check_proof(root: Path, where: str, node: str) -> None:
         raise CapabilityError(f"{where}: proof test {test!r} not found in {path}")
 
 
+def _mark_name(expr: ast.expr) -> str | None:
+    """``skip`` for ``pytest.mark.skip`` / ``pytest.mark.skip(...)``; None for anything else."""
+    if isinstance(expr, ast.Call):
+        expr = expr.func
+    if (
+        isinstance(expr, ast.Attribute)
+        and isinstance(expr.value, ast.Attribute)
+        and expr.value.attr == "mark"
+    ):
+        return expr.attr
+    return None
+
+
+def _is_strict(expr: ast.expr) -> bool:
+    return isinstance(expr, ast.Call) and any(
+        kw.arg == "strict" and isinstance(kw.value, ast.Constant) and kw.value.value is True
+        for kw in expr.keywords
+    )
+
+
+def _module_marks(module: ast.Module) -> list[ast.expr]:
+    for stmt in module.body:
+        if isinstance(stmt, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == "pytestmark" for t in stmt.targets
+        ):
+            value = stmt.value
+            return list(value.elts) if isinstance(value, (ast.List, ast.Tuple)) else [value]
+    return []
+
+
+def _smoke_tests(root: Path, path: str) -> tuple[ast.Module, dict[str, ast.FunctionDef]]:
+    module = ast.parse((root / path).read_text(encoding="utf-8"), filename=path)
+    tests = {
+        stmt.name: stmt
+        for stmt in module.body
+        if isinstance(stmt, ast.FunctionDef) and stmt.name.startswith("test_")
+    }
+    return module, tests
+
+
+def _designed_outcome(module: ast.Module, func: ast.FunctionDef) -> str | None:
+    """'xfail' or 'skip' when the test is xfailed or skipped by design, else None."""
+    for expr in [*_module_marks(module), *func.decorator_list]:
+        name = _mark_name(expr)
+        if name in _DESIGNED_MARKS:
+            return "xfail" if name == "xfail" else "skip"
+    for stmt in func.body:
+        call = stmt.value if isinstance(stmt, ast.Expr) else None
+        if (
+            isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Attribute)
+            and isinstance(call.func.value, ast.Name)
+            and call.func.value.id == "pytest"
+            and call.func.attr in ("skip", "xfail")
+        ):
+            return call.func.attr
+    return None
+
+
+def _strict_xfail(func: ast.FunctionDef) -> bool:
+    return any(_mark_name(e) == "xfail" and _is_strict(e) for e in func.decorator_list)
+
+
+def _smoke_node(root: Path, where: str, node: str) -> tuple[ast.Module, ast.FunctionDef]:
+    path, sep, test = node.partition("::")
+    if not sep or not test or not path.startswith(SMOKE_DIR) or not path.endswith(".py"):
+        raise CapabilityError(
+            f"{where}: smoke node {node!r} must be '{SMOKE_DIR}<file>.py::<test>'"
+        )
+    if not (root / path).is_file():
+        raise CapabilityError(f"{where}: smoke file {path} does not exist")
+    module, tests = _smoke_tests(root, path)
+    if test not in tests:
+        raise CapabilityError(f"{where}: smoke test {test!r} not found in {path}")
+    return module, tests[test]
+
+
+def _check_smoke(root: Path, cap: Capability) -> None:
+    where = f"capability '{cap.id}'"
+    proven = [
+        node
+        for node in cap.proof_smoke
+        if _designed_outcome(*_smoke_node(root, where, node)) is None
+    ]
+    if cap.state == "Working" and not proven:
+        raise CapabilityError(
+            f"{where}: Working needs a proof_smoke check that is not skipped or xfailed by design"
+        )
+
+
+def _known_defects(root: Path, raw: object) -> tuple[KnownDefect, ...]:
+    if not isinstance(raw, list):
+        raise CapabilityError(f"{MAP}: [[known_defect]] must be an array of tables")
+    defects: list[KnownDefect] = []
+    for i, item in enumerate(raw):
+        where = f"known_defect #{i + 1}"
+        table = _table(where, item, {"title", "node", "how_to_reproduce"})
+        defect = KnownDefect(
+            title=_text(where, "title", table["title"]),
+            node=_text(where, "node", table["node"]),
+            how_to_reproduce=_text(where, "how_to_reproduce", table["how_to_reproduce"]),
+        )
+        _, func = _smoke_node(root, f"known_defect '{defect.title}'", defect.node)
+        if not _strict_xfail(func):
+            raise CapabilityError(
+                f"known_defect '{defect.title}': {defect.node} is not marked "
+                "pytest.mark.xfail(strict=True) in its file"
+            )
+        defects.append(defect)
+    listed = Counter(d.node for d in defects)
+    if any(n > 1 for n in listed.values()):
+        raise CapabilityError(f"{MAP}: a known_defect node is listed more than once")
+    for path in sorted((root / SMOKE_DIR).glob("test_*.py")):
+        rel = path.relative_to(root).as_posix()
+        module, tests = _smoke_tests(root, rel)
+        for name, func in tests.items():
+            node = f"{rel}::{name}"
+            if _designed_outcome(module, func) == "xfail" and node not in listed:
+                raise CapabilityError(
+                    f"{MAP}: xfail smoke check {node} is not listed as a [[known_defect]]"
+                )
+    return tuple(defects)
+
+
 def _live_plans(root: Path) -> tuple[LivePlan, ...]:
     live: list[LivePlan] = []
     for rel in roadmap_index.live_plans(root):
@@ -295,7 +450,7 @@ def load(root: Path = ROOT) -> CapabilityMap:
         data = tomllib.loads((root / MAP).read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as exc:
         raise CapabilityError(f"{MAP}: not valid TOML: {exc}") from exc
-    allowed = {"capability", "decision", "unassigned_plan", "plan_summary"}
+    allowed = {"capability", "decision", "unassigned_plan", "plan_summary", "known_defect"}
     if set(data) - allowed:
         raise CapabilityError(f"{MAP}: unknown top-level keys {sorted(set(data) - allowed)}")
     raw_caps = data.get("capability", [])
@@ -337,6 +492,8 @@ def load(root: Path = ROOT) -> CapabilityMap:
             _check_entry_point(root, where, entry, known)
         for node in cap.proof_synthetic:
             _check_proof(root, where, node)
+        _check_smoke(root, cap)
+    defects = _known_defects(root, data.get("known_defect", []))
 
     try:
         live = _live_plans(root)
@@ -359,7 +516,7 @@ def load(root: Path = ROOT) -> CapabilityMap:
             f"missing {sorted(in_progress - set(summaries))}, "
             f"extra {sorted(set(summaries) - in_progress)}"
         )
-    return CapabilityMap(caps, tuple(decisions), unassigned, summaries, live)
+    return CapabilityMap(caps, tuple(decisions), unassigned, summaries, live, defects)
 
 
 def main(argv: list[str] | None = None) -> int:
