@@ -724,7 +724,7 @@ class TestQuantRigorTooling:
             # Real findings whose matched source mentions OSError / a missing file must FAIL.
             ("3 Code Findings\n  340┆ except OSError:\n  341┆     pass\n", 1),
             ("finding: raise DataError('No such file')\n", 1),
-            # Missing scanner and launch failures are blocking; they cannot produce a stamp.
+            # Missing scanner and launch failures are blocking; they fail the step.
             ("FileNotFoundError: [Errno 2] No such file or directory: 'uvx'", 1),
             ("zsh: command not found: uvx", 1),
         ],

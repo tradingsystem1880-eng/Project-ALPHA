@@ -13,8 +13,8 @@ edit → gate.py check → commit → push → draft pull request → CI → own
 2. Run the fast local check while you work:
 
    ```sh
-   uv run python scripts/gate.py check            # about 1–3 minutes
-   uv run python scripts/gate.py check --all      # the whole fast test tier
+   uv run python scripts/gate.py check            # under a minute for a typical change
+   uv run python scripts/gate.py check --all      # the whole fast test tier, about 2–3 minutes
    uv run python scripts/gate.py check --base main
    ```
 

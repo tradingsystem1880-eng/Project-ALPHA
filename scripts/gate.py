@@ -137,7 +137,7 @@ def matches_quant(path: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# state files, audit journal
+# state files
 
 
 def _state_dir(root: Path) -> Path:
