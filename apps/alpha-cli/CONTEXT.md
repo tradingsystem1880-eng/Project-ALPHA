@@ -3,7 +3,7 @@ owner: command line application
 sources:
   - apps/alpha-cli/src/**
   - apps/alpha-cli/pyproject.toml
-verified: a7e687ae729f
+verified: 1724a5befe5d
 ---
 
 # alpha-cli workspace
@@ -41,7 +41,7 @@ did not give, and never route live capital.
 
 ## How to change it
 
-Code is flat in `apps/alpha-cli/src/alpha_cli/` (174 modules; `_name.py` = private helper,
+Code is flat in `apps/alpha-cli/src/alpha_cli/` (172 modules; `_name.py` = private helper,
 `*_cmds.py` = one Typer command group, wired in `main.py`). Where to look:
 
 | Sub-area | Modules (count) | Tests in `tests/unit/` |

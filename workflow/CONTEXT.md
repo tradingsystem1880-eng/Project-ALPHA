@@ -7,7 +7,7 @@ sources:
   - tests/unit/test_filesystem_contract.py
   - docs/roadmap/wip-limit.json
   - scripts/handoff.py
-verified: d0fffa796f8e
+verified: 1724a5befe5d
 ---
 
 # Delivery pipeline — how a change gets made

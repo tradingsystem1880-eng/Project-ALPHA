@@ -4,7 +4,7 @@ sources:
   - docs/adr/0019-governed-research-cases-before-strategy-development.md
   - docs/records/specs/2026-08-06-research-scientist-program-design.md
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
-verified: 00f70c232ea5
+verified: 1724a5befe5d
 ---
 
 # Adversarial review of research artefacts
