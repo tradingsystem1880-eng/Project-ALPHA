@@ -10,23 +10,23 @@ import pytest
 from tests.unit._harness_support import git
 
 ROOT = Path(__file__).resolve().parents[2]
-BACKEND = [
+STATIC = [
     "uv lock",
     "uv sync",
     "ruff check",
     "ruff format",
     "import contracts",
     "mypy",
-    "mypy harness",
     "harness lint",
+    "harness doctor",
     "semgrep",
     "semgrep contracts",
-    "pytest + coverage",
     "openapi freshness",
     "openapi authority",
     "build wheels",
     "wheel smoke",
 ]
+BACKEND = [*STATIC, "pytest + coverage"]
 
 
 @pytest.mark.parametrize(
@@ -46,12 +46,18 @@ def test_backend_runs_the_ci_steps_and_quant_checks_only_when_quant_source_chang
     quant = ["slow oracles", "mutation gate"]
     assert names == BACKEND + (quant if quant_expected else [])
     by_name = {name: command for name, _, command in commands}
-    assert by_name["mypy"] == list(gate.FULL_GATE_MYPY_COMMAND)
+    harness = [rel for rel in gate.HARNESS_SCRIPTS if (ROOT / rel).is_file()]
+    assert by_name["mypy"] == [*gate.FULL_GATE_MYPY_COMMAND, *harness]
     assert by_name["pytest + coverage"] == [
-        *("uv", "run", "pytest", "-q", "-n", "auto"),
-        *("-m", "not network and not slow_oracle", "--cov"),
+        *("uv", "run", "pytest", "-q", "-n", "auto", "--dist", "worksteal"),
+        *("-m", "not network and not slow_oracle", "--cov", "--cov-report="),
     ]
     assert all(cwd == ROOT for _, cwd, _ in commands)
+    assert sum(command[:3] == ["uv", "run", "mypy"] for command in by_name.values()) == 1
+    quant_steps = gate_components.component_steps(ROOT, "backend-quant", context={"paths": paths})
+    assert [n for n, _, _ in quant_steps] == ["uv sync", *(quant if quant_expected else [])]
+    static = gate_components.component_steps(ROOT, "backend-static")
+    assert [name for name, _, _ in static] == STATIC
 
 
 def test_an_empty_component_refuses_to_pass(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -93,7 +99,14 @@ def test_frontend_build_checks_types_once_before_browser_and_freshness() -> None
         "../../../scripts/run_frontend_browser_lanes.py"
     )
     assert scripts["test:e2e"] == "npm run build && npm run test:e2e:built"
-    assert by_name["browser"] == ["npm", "run", "test:e2e:built"]
+    assert by_name["browser"] == [
+        *("npm", "run", "test:e2e:built", "--", "--viewports", "reference")
+    ]
+    full = {name: c for name, _, c in gate_components.component_steps(ROOT, "frontend-full")}
+    assert full["browser"][-2:] == ["--viewports", "all"]
+    assert {k: v for k, v in full.items() if k != "browser"} == {
+        k: v for k, v in by_name.items() if k != "browser"
+    }
     assert names.index("build + types") < names.index("browser") < names.index("SPA freshness")
     assert sum("tsc" in arg for _, _, command in commands for arg in command) == 0
     assert by_name["coverage"] == ["npm", "run", "test:coverage"]
@@ -135,7 +148,9 @@ def test_component_freezes_definition_before_execution(
 ) -> None:
     calls = []
 
-    def steps(root: Path, name: str, *, context: object = None) -> list[gate_components.Step]:
+    def steps(
+        root: Path, name: str, *, context: object = None, shard: object = None
+    ) -> list[gate_components.Step]:
         calls.append(name)
         return [("test", root, [f"test-{len(calls)}"])]
 
@@ -205,3 +220,113 @@ def test_detached_head_is_exact_and_unborn_head_is_conservative(
     unborn = gate_components.comparison_context(repo)
     assert unborn["resolved_base"] == head and unborn["merge_base"] is None
     assert unborn["selection_mode"] == "conservative_fallback"
+
+
+def test_shards_cover_every_test_file_exactly_once() -> None:
+    files = gate_components.collected_test_files(ROOT)
+    assert "tests/unit/test_gate_components.py" in files
+    assert "tests/oracles/test_differential_runs_test.py" in files
+    for total in (1, 3, 4):
+        shards = [gate_components.shard_paths(ROOT, i, total) for i in range(1, total + 1)]
+        flat = [path for shard in shards for path in shard]
+        assert sorted(flat) == files and len(flat) == len(set(flat))
+        assert all(shards)
+    assert gate_components.shard_paths(ROOT, 2, 4) == gate_components.shard_paths(ROOT, 2, 4)
+
+
+def test_shard_command_is_the_ci_pytest_run_over_one_shard() -> None:
+    steps = gate_components.component_steps(ROOT, "backend-tests", shard=(2, 4))
+    assert [name for name, _, _ in steps] == ["uv sync", "pytest shard 2/4"]
+    command = steps[1][2]
+    shard = gate_components.shard_paths(ROOT, 2, 4)
+    assert command == [*gate_components.pytest_command(shard), "--junitxml=pytest-shard-2.xml"]
+    assert "--cov" in command and "not network and not slow_oracle" in command
+
+
+@pytest.mark.parametrize("bad", ["0/4", "5/4", "x/4", "4"])
+def test_shard_spec_rejects_out_of_range(bad: str) -> None:
+    with pytest.raises(SystemExit):
+        gate.build_parser().parse_args(["component", "backend-tests", "--shard", bad])
+
+
+@pytest.mark.parametrize(
+    ("paths", "expected"),
+    [
+        (["docs/notes.md"], {"qlib": False, "literature": False, "eval": True}),
+        (["apps/alpha-web/frontend/src/App.tsx"], {"qlib": False, "literature": False}),
+        (["workers/literature/src/x.py"], {"qlib": False, "literature": True, "eval": False}),
+        (["apps/alpha-cli/src/alpha_cli/x.py"], {"qlib": True, "literature": False}),
+        (["scripts/gate_components.py"], {"qlib": True, "literature": True, "eval": True}),
+        ([".github/workflows/ci.yml"], {"qlib": True, "literature": True, "eval": True}),
+        (["workers/qlib/pyproject.toml"], {"qlib": True, "literature": False, "eval": False}),
+        (["tools/alpha-eval/pyproject.toml"], {"qlib": False, "eval": True}),
+        (None, {"qlib": True, "literature": True, "eval": True, "quant": True}),
+        ([], {"qlib": False, "literature": False, "eval": False, "quant": False}),
+    ],
+)
+def test_path_filters_select_conditional_jobs(
+    paths: list[str] | None, expected: dict[str, bool]
+) -> None:
+    selected = gate_components.ci_changes(ROOT, {"paths": paths})
+    assert set(selected) == {"qlib", "literature", "eval", "quant"}
+    assert {name: selected[name] for name in expected} == expected
+
+
+def test_push_runs_every_path_job_but_quant_keeps_its_own_rule() -> None:
+    selected = gate_components.ci_changes(ROOT, {"paths": ["README.md"]}, run_all=True)
+    assert selected == {"qlib": True, "literature": True, "eval": True, "quant": False}
+    quant = gate_components.ci_changes(
+        ROOT, {"paths": ["packages/alpha-validation/src/alpha_validation/dsr.py"]}
+    )
+    assert quant["quant"] is True
+
+
+def test_changes_cli_prints_github_output_lines(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.chdir(repo)
+    monkeypatch.setenv("ALPHA_GATE_BASE", "missing-base")
+    assert gate.main(["changes"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines == ["eval=true", "literature=true", "qlib=true", "quant=false"]
+
+
+def test_coverage_refuses_missing_shard_data(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (repo / ".coverage.shard-1").write_text("")
+    monkeypatch.setattr(gate, "_env_runner", lambda *a, **kw: pytest.fail("must not run"))
+    assert gate_components.run_coverage(repo, shards=2, base="HEAD") == 1
+    assert ".coverage.shard-2" in capsys.readouterr().out
+
+
+def test_coverage_reports_global_figure_and_gates_changed_lines(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    for index in (1, 2):
+        (repo / f".coverage.shard-{index}").write_text("")
+    calls: list[list[str]] = []
+
+    def runner(command: list[str], **_: object) -> tuple[bool, float, str]:
+        calls.append(command)
+        if "diff-cover" in command:
+            return False, 0.1, "Coverage: 50%"
+        return True, 0.1, "92.50\nCombined 4 files\n" if "--format=total" in command else ""
+
+    monkeypatch.setattr(gate, "_env_runner", runner)
+    summary = tmp_path / "summary.md"
+    assert gate_components.run_coverage(repo, shards=2, base="abc", summary=summary) == 1
+    assert "92.50%" in summary.read_text()
+    diff = next(command for command in calls if "diff-cover" in command)
+    assert diff[diff.index("--compare-branch") + 1] == "abc"
+    assert diff[diff.index("--config-file") + 1] == "pyproject.toml"
+    assert gate_components.run_coverage(repo, shards=2, base=None) == 0
+
+
+def test_changed_line_floor_lives_in_pyproject_and_is_guarded() -> None:
+    import tomllib
+
+    config = tomllib.loads((ROOT / "pyproject.toml").read_text())
+    assert config["tool"]["diff_cover"]["fail_under"] == 85
+    assert "fail_under" not in config["tool"]["coverage"]["report"]
+    assert gate.harness_metrics(ROOT)["coverage_fail_under"] == 85

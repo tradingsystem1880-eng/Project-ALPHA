@@ -13,6 +13,11 @@ build/
 .ruff_cache/
 .coverage
 .coverage.*
+# CI coverage and shard outputs (scripts/gate_components.py)
+coverage.xml
+diff-coverage.md
+pytest-shard-*.xml
+test-durations.json
 htmlcov/
 .hypothesis/
 .import_linter_cache/

@@ -26,6 +26,7 @@ isolated workers and `tools/alpha-eval` keep their own suites. Tests must never 
 | [research integrity](../docs/reference/invariants/research-integrity.md) | Protected and hidden tests | always |
 | [testing invariants](../docs/reference/invariants/testing.md) | Bias guards | adding or changing a bias guard |
 | [testing invariants](../docs/reference/invariants/testing.md) | Oracles | adding or changing an oracle |
+| [checks](../docs/reference/checks.md) | — | adding a marker or moving tests between CI tiers |
 | [testing invariants](../docs/reference/invariants/testing.md) | Owned test processes | a test spawns processes that may outlive it |
 | [research integrity](../docs/reference/invariants/research-integrity.md) | Statistical evidence | writing tolerances for statistics |
 

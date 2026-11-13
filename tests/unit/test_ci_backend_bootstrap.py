@@ -16,11 +16,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def backend_command() -> list[str]:
     workflow = (ROOT / ".github/workflows/ci.yml").read_text()
-    backend = workflow.split("  check:\n", 1)[1].split("  harness:\n", 1)[0]
+    backend = workflow.split("  static:\n", 1)[1].split("  tests:\n", 1)[0]
     commands = [line.split("run: ", 1)[1] for line in backend.splitlines() if "run: " in line]
     assert commands == [
-        "uv run --no-project --python 3.12 python scripts/gate.py component backend"
+        "uv run --no-project --python 3.12 python scripts/gate.py component backend-static"
     ]
+    # The shared setup action must not run its own `uv sync` before the gate owns it.
+    assert 'sync: "false"' in backend
     return shlex.split(commands[0])
 
 
@@ -80,7 +82,7 @@ def setup_repo(tmp_path: Path) -> Path:
         "(state / 'bootstrap.json').write_text(json.dumps({'venv_exists': "
         "(root / '.venv').exists(), 'python': sys.executable, "
         "'pydantic_available': importlib.util.find_spec('pydantic') is not None}))\n"
-        "steps = gate_components.component_steps(root, 'backend', context={'paths': []})[:2]\n"
+        "steps = gate_components.component_steps(root, 'backend-static')[:2]\n"
         "original_runner = gate._env_runner\n"
         "def runner(command, **kwargs):\n"
         "    result = original_runner(command, **kwargs)\n"
@@ -102,7 +104,9 @@ def launch(root: Path, *, success: bool) -> list[tuple[str, bool]]:
     assert (result.returncode == 0) is success, result.stdout + result.stderr
     return [
         (match.group(1), match.group(2) == "PASS")
-        for match in re.finditer(r"^\[gate:backend\] (.+): (PASS|FAIL) \(", result.stdout, re.M)
+        for match in re.finditer(
+            r"^\[gate:backend-static\] (.+): (PASS|FAIL) \(", result.stdout, re.M
+        )
     ]
 
 

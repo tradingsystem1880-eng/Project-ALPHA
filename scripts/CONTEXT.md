@@ -28,6 +28,7 @@ read owner data, credentials or hidden tests.
 | [engineering rules](../docs/reference/invariants/engineering.md) | Checks and commits | always |
 | [testing invariants](../docs/reference/invariants/testing.md) | Markers and tiers | always |
 | [testing invariants](../docs/reference/invariants/testing.md) | Quant sweeps | changing mutation, semgrep, determinism or raise-cov |
+| [checks](../docs/reference/checks.md) | — | adding, moving or retiming a CI job or check |
 | [documentation invariants](../docs/reference/invariants/documentation.md) | Generated files | changing a generator |
 | [research integrity](../docs/reference/invariants/research-integrity.md) | Owner authority | changing `claude_hooks.py` |
 | [agent harness](../docs/operations/claude-code-harness.md) | — | changing agent hooks, deny rules or harness settings |

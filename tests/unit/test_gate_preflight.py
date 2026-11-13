@@ -177,7 +177,11 @@ class TestGatePreflight(unittest.TestCase):
                 Path(__file__).resolve().parents[2], "backend"
             )
         }
-        self.assertEqual(commands["mypy"], list(gate.FULL_GATE_MYPY_COMMAND))
+        # The one CI mypy run is the full-gate scope plus the harness scripts.
+        self.assertEqual(
+            commands["mypy"][: len(gate.FULL_GATE_MYPY_COMMAND)], list(gate.FULL_GATE_MYPY_COMMAND)
+        )
+        self.assertTrue(gate_preflight.mypy_covers_tests(tuple(commands["mypy"])))
 
     def test_candidate_venv_check_reports_missing_and_local_environment(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

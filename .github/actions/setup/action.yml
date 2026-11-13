@@ -1,0 +1,63 @@
+name: ALPHA setup
+description: >
+  The one environment setup every CI job uses: Python 3.12 through uv (cached), the locked
+  backend install, and optionally Node with the npm cache and a cached Playwright Chromium.
+
+inputs:
+  sync:
+    description: Run `uv sync --locked` (off when the job's gate step owns the locked setup).
+    default: "true"
+  node:
+    description: Set up Node 22 with the npm cache.
+    default: "false"
+  playwright:
+    description: Install the frontend packages and a cached Playwright Chromium (implies node).
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v8.2.0
+      with:
+        python-version: "3.12"
+        enable-cache: true
+    - name: Install backend (locked)
+      if: inputs.sync == 'true'
+      shell: bash
+      run: uv sync --locked
+    - uses: actions/setup-node@v5
+      if: inputs.node == 'true' || inputs.playwright == 'true'
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: apps/alpha-web/frontend/package-lock.json
+    - name: Read the locked Playwright version
+      id: playwright
+      if: inputs.playwright == 'true'
+      shell: bash
+      working-directory: apps/alpha-web/frontend
+      run: |
+        version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+    - name: Restore Playwright browsers
+      id: browsers
+      if: inputs.playwright == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+    - name: Install frontend packages and Playwright Chromium
+      if: inputs.playwright == 'true'
+      shell: bash
+      working-directory: apps/alpha-web/frontend
+      env:
+        BROWSERS_CACHED: ${{ steps.browsers.outputs.cache-hit }}
+      # The browser binary comes from the cache when it hits; its system libraries always come
+      # from the runner's package manager.
+      run: |
+        npm ci
+        if [ "$BROWSERS_CACHED" = "true" ]; then
+          npx playwright install-deps chromium
+        else
+          npx playwright install --with-deps chromium
+        fi
