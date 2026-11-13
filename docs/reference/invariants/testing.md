@@ -35,6 +35,10 @@ this file holds the mechanics.
 - Statistical goldens carry named tolerances (`tests/oracles/_reference/tolerances.py`), never exact float
   equality. Semgrep rule `alpha-float-literal-equality` flags literal float equality.
 - Warnings are errors (`filterwarnings = ["error", ...]` in `pyproject.toml`): a new warning fails the test.
+- An error test asserts the error type plus one stable token of its message (an identifier, a field name,
+  a code), for example `pytest.raises(DataError, match="non-finite")`, never the full message text: a
+  reworded message must not fail a test whose behaviour still holds. Existing full-text pins are fixed
+  when a change touches them for another reason, not rewritten in bulk.
 - `tests/conftest.py` sets `NO_COLOR` and removes `GITHUB_ACTIONS`, `FORCE_COLOR` and `PY_COLORS` before
   typer loads, so CLI output assertions match on every terminal.
 
