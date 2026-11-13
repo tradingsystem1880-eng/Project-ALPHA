@@ -537,7 +537,7 @@ Owner correction: [scientific research renderer and project-free browsing](recor
 Prefer pinned Qlib native workflows, RD-Agent native loops and NautilusTrader primitives over
 reimplementing their internals. Current main already uses native models/recorders, actual
 LoopBase/LoopMeta fixtures and Nautilus BacktestEngine. The
-[source-bound crosswalk](context/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+[source-bound crosswalk](archive/2026-11-context-maps/alpha-quant-platform.md#native-upstream-first--2026-11-06)
 separates the demonstrated Alpha158 feature duplication from suspected orchestration overlap
 and required ALPHA integration. It records supplied unmerged synthetic/UI evidence separately
 from inspected main and defines parity, license, migration and rollback prerequisites for any

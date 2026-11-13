@@ -38,9 +38,8 @@ other files link to it.
   repeated across files.
 - When the code a document describes changes, fix the document and set `verified` to the commit
   you checked it against; `uv run python scripts/fs.py stale` lists the documents to re-check.
-- Generated pages are never edited by hand: `docs/reference/commands.md`
-  (`uv run python scripts/commands_reference.py`) and `docs/roadmap/README.md`
-  (`uv run python scripts/roadmap_index.py`).
+- Generated pages are never edited by hand; their commands are listed in
+  [docs/README.md § Generated files](README.md#generated-files).
 - Check: `uv run pytest -q tests/unit/test_docs_links.py tests/unit/test_filesystem_contract.py`,
   then `uv run python scripts/gate.py check`.
 
