@@ -9,7 +9,7 @@ sources:
   - tests/unit/test_literature_worker_pin.py
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
   - apps/alpha-cli/src/alpha_cli/_native_rule_environment.py
-verified: 1ac86fc02443
+verified: 00f70c232ea5
 ---
 
 # Worker invariants

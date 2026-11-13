@@ -126,11 +126,11 @@ references grant no launch authority; this fixture is not a new registration in 
 scientific operator registry. It exercises existing reservation exposure, not generic study/trial
 admission or scientific acceptance. Full resource metering, durable scientific artifact admission,
 cross-owner recovery and production activation remain W08 gaps. See
-[`2026-10-26-native-w04-admission.md`](../../docs/superpowers/plans/archive/2026-10/2026-10-26-native-w04-admission.md).
+[`2026-10-26-native-w04-admission.md`](../../docs/work/archive/2026-10/2026-10-26-native-w04-admission.md).
 
 ## Closed frozen-rule authority profiles (2026-10-26)
 
-See the [current handoff plan](../../docs/superpowers/plans/2026-10-26-native-rule-authority.md).
+See the [current handoff plan](../../docs/work/archive/2026-10/2026-10-26-native-rule-authority.md).
 The old `.venv` and `uv.lock` above remain the W04 conformance environment. Two **fresh-only**
 environments add closed position and costed synthetic profiles, with hash-pinned requirements
 reusing already approved root/worker versions. Root `uv.lock` is unchanged. The economics profile
@@ -229,7 +229,7 @@ The report always grants no authority to initialize, migrate or switch roots. Re
 and unknown records first; do not import artificial ledgers, copy stale authority over later
 state, or reset consumption. Actual activation still requires qualified Linux process/container
 boundaries, retained storage, real input bindings and exact local owner confirmation. See the
-[implementation record](../../docs/superpowers/plans/archive/2026-10/2026-10-31-linux-storage-history.md).
+[implementation record](../../docs/work/archive/2026-10/2026-10-31-linux-storage-history.md).
 
 ## Stock RDLoop continuation diagnostic
 

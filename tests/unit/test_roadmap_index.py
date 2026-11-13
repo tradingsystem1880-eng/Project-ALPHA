@@ -39,8 +39,9 @@ def test_render_lists_each_family(tmp_path: Path) -> None:
     root = _tree(
         tmp_path,
         {
-            "docs/superpowers/plans/2026-11-01-live.md": _LIVE,
-            "docs/superpowers/plans/archive/2026-10/2026-10-01-done.md": _DONE,
+            "docs/work/2026-11-01-live/02-plan.md": _LIVE,
+            "docs/work/archive/2026-10/2026-10-01-done.md": _DONE,
+            "docs/work/archive/2026-10/2026-10-03-folder/02-plan.md": _DONE,
             "docs/roadmap/backlog/idea.md": _BACKLOG,
             "docs/roadmap/refactors/split.md": _REFACTOR,
         },
@@ -49,7 +50,7 @@ def test_render_lists_each_family(tmp_path: Path) -> None:
     assert "| Live plan | In progress | 2026-11 |" in text
     assert "| [Idea](backlog/idea.md) | Idea | M |" in text
     assert "| [Split](refactors/split.md) | H |" in text
-    assert "| [2026-10](../superpowers/plans/archive/2026-10/) | 1 |" in text
+    assert "| [2026-10](../work/archive/2026-10/) | 2 |" in text
     assert "[STATUS.md](../../STATUS.md)" in text
     assert "[wip-limit.json](wip-limit.json)" in text
 
@@ -57,8 +58,10 @@ def test_render_lists_each_family(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("rel", "text", "message"),
     [
-        ("docs/superpowers/plans/2026-11-01-x.md", "# X\n\n**Delivery state:** Done\n", "vocab"),
-        ("docs/superpowers/plans/archive/2026-10/2026-10-01-x.md", _LIVE, "not Completed"),
+        ("docs/work/2026-11-01-x/02-plan.md", "# X\n\n**Delivery state:** Done\n", "vocab"),
+        ("docs/work/2026-11-01-x/02-plan.md", _DONE, "finished task"),
+        ("docs/work/archive/2026-10/2026-10-01-x.md", _LIVE, "not Completed"),
+        ("docs/work/archive/2026-10/2026-10-01-y/02-plan.md", _LIVE, "not Completed"),
         ("docs/roadmap/backlog/x.md", "# X\n\n**Status:** Maybe\n**Rough size:** M\n", "Status"),
         ("docs/roadmap/refactors/x.md", "# X\n\n**Risk:** extreme\n", "Risk"),
     ],
@@ -69,7 +72,7 @@ def test_render_rejects_template_violations(
     root = _tree(
         tmp_path,
         {
-            "docs/superpowers/plans/archive/2026-10/2026-10-02-ok.md": _DONE,
+            "docs/work/archive/2026-10/2026-10-02-ok.md": _DONE,
             "docs/roadmap/backlog/ok.md": _BACKLOG,
             "docs/roadmap/refactors/ok.md": _REFACTOR,
             rel: text,

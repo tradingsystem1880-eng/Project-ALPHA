@@ -24,4 +24,4 @@ composition.
 ## Sources
 
 - [Checklist W15](../../context/feature-readiness-checklist-2026-10-27.md#w15-add-catalyst-and-expectations-research)
-- [Edge-first Phase B plan, out of scope: SEC XBRL fundamentals](../../superpowers/plans/2026-09-10-edge-first-phase-b-feed-the-machine.md)
+- [Edge-first Phase B plan, out of scope: SEC XBRL fundamentals](../../work/2026-09-10-edge-first-phase-b-feed-the-machine/02-plan.md)

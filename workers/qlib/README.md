@@ -121,7 +121,7 @@ The fingerprint covers the supported first-party worker package, schemas, projec
 lock, including rank-ensemble code. Source reads are bounded and mutation-checked; this
 does not qualify installed binaries or the native runtime. Readiness remains `BLOCKED`,
 with execution/reuse/fitted-state verification false and observed work unknown. The
-[bounded plan](../../docs/superpowers/plans/archive/2026-11/2026-11-01-w09-planning-contracts.md)
+[bounded plan](../../docs/work/archive/2026-11/2026-11-01-w09-planning-contracts.md)
 records limits and qualification requirements. This does not extend the separate W11
 ridge/DoubleEnsemble reference protocol or change existing v1/v2 outputs/computations.
 
@@ -158,7 +158,7 @@ verification, durable accounting, execution, reuse and promotion false, with no 
 resource units or independent-trial count. ControlStore remains the durable authority;
 there is no native registration, resource-policy change, retry/refund/reuse authorization
 or research dispatch here. V3/W11 computation and reference graph classification stay
-unchanged. See the [bounded observation plan](../../docs/superpowers/plans/archive/2026-11/2026-11-02-w09-component-observations.md).
+unchanged. See the [bounded observation plan](../../docs/work/archive/2026-11/2026-11-02-w09-component-observations.md).
 
 ## Durable diagnostic associations
 
@@ -184,11 +184,11 @@ Qlib admission or proof that the reservation covers these fits. It creates no at
 changes no charge/refund/retry/reuse policy, and enables no native dispatch. The
 current slice has isolated synthetic engineering tests. Its bounded delivery has an
 absence-only private-suite exception: private coverage stays UNVERIFIED, while all
-public checks, the 93% floor and independent final-tree review remain mandatory. See the [durable diagnostic plan](../../docs/superpowers/plans/archive/2026-11/2026-11-02-w09-durable-observations.md).
+public checks, the 93% floor and independent final-tree review remain mandatory. See the [durable diagnostic plan](../../docs/work/archive/2026-11/2026-11-02-w09-durable-observations.md).
 
 ## Gate
 
-The [W11 engineering packet](../../docs/superpowers/plans/2026-10-26-qlib-w11-refit.md)
+The [W11 engineering packet](../../docs/work/2026-10-26-qlib-w11-refit/02-plan.md)
 adds observed schema3 component provenance: raw fold scopes and label clocks, actual normalization
 inputs/state, and native Linear/DoubleEnsemble fit, selection and reweighting links. Other recipes
 are explicitly outside the initial W11 reference protocol. `tests/refit_harness.py` is a private,
@@ -232,7 +232,7 @@ The full recipe is already in `config_hash`, which prediction readers enforce. P
 config and worker-lock identity alongside model hashes; do not reuse a model solely because its
 feature names match. New worker-code fingerprints are genuine new implementations, including for
 v1 executions, not changes to recipe-1 meaning. Historical results and frozen-source protocols are
-not rewritten. See the [scope and verification plan](../../docs/superpowers/plans/2026-11-09-alpha158-versioned-correction.md).
+not rewritten. See the [scope and verification plan](../../docs/work/2026-11-09-alpha158-versioned-correction/02-plan.md).
 
 Service compatibility is narrower than data compatibility: upgrade the worker and typed web API
 together for the new capability fields and v2 diagnostics. An old strict web service is not

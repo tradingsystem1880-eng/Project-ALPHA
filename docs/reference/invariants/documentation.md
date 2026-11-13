@@ -10,7 +10,7 @@ sources:
   - tests/unit/test_docs_links.py
   - tests/unit/test_repo_awareness_drift.py
   - tests/unit/test_roadmap_index.py
-verified: ed121b80e439
+verified: d0fffa796f8e
 ---
 
 # Documentation invariants
@@ -51,22 +51,25 @@ delivery states, the generated roadmap index, append-only records, and relative 
 
 ## Feature plans
 
-- Live plans are `docs/superpowers/plans/YYYY-MM-DD-<slug>.md` with a `FeaturePlan` object in the first
+- A live plan is `docs/work/YYYY-MM-DD-<slug>/02-plan.md` (the task folder of the
+  [delivery pipeline](../../../workflow/CONTEXT.md)) with a `FeaturePlan` object in the first
   fenced `json` code block. It must validate against `scripts/harness_models.py::FeaturePlan`
   (`schema_version` 1, at least one alternative, at least two pre-mortem items, at least two slices each
   with `verify`, `expected`, `rollback`, and a closed `tier_impact` list). Check with
-  `uv run python scripts/gate.py plan-check PLAN.md`; enforced for every live plan by
+  `uv run python scripts/gate.py plan-check docs/work/<task>/02-plan.md`; enforced for every live plan by
   `tests/unit/test_plan_schema.py`.
 - Every plan, live or archived, has exactly one `**Delivery state:** <state>` line within its first 12 lines.
   States: `Completed`, `Implemented – qualification pending` (en dash), `In progress`, `Blocked`, `Planned`,
   `Superseded by <relative path>`. Text may follow after ` — `, `(`, `.`, `;`, `,` or a date.
+- A plan written from 2026-11-14 also states `**Build class:** small|standard|hard — <reason>` in its first
+  12 lines and lists every file in scope in the front block's `files`
+  ([model routing](../model-routing.md#task-classes)); `scripts/handoff.py` builds and checks from them.
 - Use `Completed` only for merged work (older plans may cite an acceptance recorded in `BUILD-STATUS.md`).
 - By convention the state line sits under the title, or on line 1 when a JSON block leads the file, and
   reads `**Delivery state:** <state> — <evidence>` (the test checks only the first 12 lines).
-- A `Completed` or `Superseded` plan moves with `git mv` to `docs/superpowers/plans/archive/YYYY-MM/`, the
-  month of its filename date; fix links to it. Only plans in `PINNED_FLAT` (`tests/unit/test_plan_schema.py`,
-  mirrored in `docs/superpowers/plans/archive/README.md`) stay flat, because a file that cannot change names
-  their path. Archived plans keep their text and JSON blocks as written.
+- A `Completed` or `Superseded` task folder moves with `git mv` to `docs/work/archive/YYYY-MM/`, the
+  month of its name; fix links to it. Plans finished before 2026-11-14 are single files there. Archived
+  plans keep their text and JSON blocks as written; no finished plan stays in `docs/work/`.
 
 ## Roadmap index
 
@@ -77,7 +80,8 @@ delivery states, the generated roadmap index, append-only records, and relative 
   `**Rough size:**` `S`, `M`, `L` or `XL` within its first 8 lines. Remove it when a plan replaces it.
 - A staged refactor is `docs/roadmap/refactors/<slug>.md` with `**Risk:**` `L`, `M` or `H` within its first
   8 lines. Copy an existing file's template.
-- Archive month folders must be named `YYYY-MM` and hold only finished plans, or the generator raises.
+- Archive month folders must be named `YYYY-MM` and hold only finished plans, and no live task folder may
+  hold a finished plan, or the generator raises.
 
 ## Generated files
 
@@ -94,6 +98,6 @@ delivery states, the generated roadmap index, append-only records, and relative 
   `.agents/**/*.md`, and READMEs under `apps/`, `packages/`, `tools/`, `workers/`. Fenced code, inline
   code, external URLs and `mailto:` are skipped. Enforced by `tests/unit/test_docs_links.py`.
 - Its `ALLOWLIST` is only for links in dated records (including archived plans) whose target was removed or
-  moved; each entry needs a reason and
-  the test fails if an entry is no longer needed.
+  moved; each entry needs a reason and the test fails if an entry is no longer needed. Links from
+  `docs/archive/` into the retired `docs/superpowers/` folder are tolerated, because archives are not edited.
 - Find documents with `uv run python scripts/fs.py search "QUERY"`; it ranks living documents ahead of records.

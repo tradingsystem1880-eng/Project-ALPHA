@@ -22,7 +22,7 @@ adoption rule in the checklist.
 
 ## Sources
 
-- [Research workflow completion plan, alternatives](../../superpowers/plans/2026-09-30-research-workflow-completion.md)
-- [Bounded research controller plan](../../superpowers/plans/archive/2026-09/2026-09-30-bounded-research-controller.md)
+- [Research workflow completion plan, alternatives](../../work/archive/2026-09/2026-09-30-research-workflow-completion.md)
+- [Bounded research controller plan](../../work/archive/2026-09/2026-09-30-bounded-research-controller.md)
 - [Checklist: Current specialist adoption rule](../../context/feature-readiness-checklist-2026-10-27.md#current-specialist-adoption-rule)
 - [Bounded research workflow runbook](../../operations/bounded-research-workflow.md)

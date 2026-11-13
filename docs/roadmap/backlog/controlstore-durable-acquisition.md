@@ -25,5 +25,5 @@ owner policy for acquisition budgets.
 
 - [Offline funding delivery](../../operations/2026-11-05-offline-funding-delivery.md)
 - [Research platform contracts](../../operations/research-platform-contracts.md)
-- [Backfill verification budget plan](../../superpowers/plans/2026-11-07-backfill-verification-budget.md)
+- [Backfill verification budget plan](../../work/2026-11-07-backfill-verification-budget/02-plan.md)
 - [BUILD-STATUS, 2026-11-05 funding entries](../../BUILD-STATUS.md)

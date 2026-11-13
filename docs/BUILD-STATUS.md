@@ -40,7 +40,7 @@ generic CLI transport can relay them. No new REST schema, MCP tool or approval a
 
 This addresses fixed-rule operator coverage, not agent pressure-turn behavior or whole-agent
 information isolation. Historical Claude evidence is unchanged; no new model trial is claimed.
-See the [plan](superpowers/plans/archive/2026-10/2026-10-01-immutable-research-rules.md) and
+See the [plan](work/archive/2026-10/2026-10-01-immutable-research-rules.md) and
 [usage guide](operations/bounded-research-workflow.md). Acceptance is recorded separately in
 exact-tree gate and independent-review receipts; combined main/UI integration remains pending.
 
@@ -69,7 +69,7 @@ Playwright matrix. Backend and frontend component receipts were produced on sepa
 API types/static assets were synchronized between checks, so no aggregate full-gate stamp is claimed.
 
 **2026-10-02 — Agentic research capability program (planning only).**
-The [proposed program](superpowers/plans/2026-10-02-agentic-research-capability-program.md)
+The [proposed program](work/2026-10-02-agentic-research-capability-program/02-plan.md)
 defines autonomous loss/regime investigation, bounded chart-pattern search, typed evidence,
 selective specialist roles, information boundaries, and outcome/cost evaluations. It distinguishes
 current-root work from separate delivery at `73fb2a9`; integration must be reconciled first.
@@ -213,7 +213,7 @@ reports failed admission. The corrected configuration preauthorizes only the thr
 Raw cases and reports remain private under `/private/tmp/alpha-codex-acceptance-20261003`, outside
 Git; they contain conversation history and should not be published. The source run and historical
 Claude benchmarks were not edited. [Operation and limits](operations/codex-investigations.md),
-[execution plan and remaining roadmap](superpowers/plans/archive/2026-10/2026-10-03-codex-research-runtime.md).
+[execution plan and remaining roadmap](work/archive/2026-10/2026-10-03-codex-research-runtime.md).
 Engineering acceptance requires the canonical full gate and independent review of the final tree;
 this runtime grants no research, confirmation, paper or trading authority.
 
@@ -235,7 +235,7 @@ Continued `feat/codex-research-runtime` from `e111377`. New investigations optio
 
 Forty-eight new tests passed, including actual MCP-to-CLI comparison execution, future-poison controls, sparse/malformed inputs and bounded reads. The fast gate passed after test-typing corrections. Independent review identified an all-member hashing limit gap; pre-hash manifest/member/payload bounds and pre-materialization row/schema limits resolved it. A real Codex session on a labeled synthetic fixture reported the known 40% versus 20% declines with limitations; both its resume and the earlier real MSFT v2 checkpoint preserved findings without another model turn. This confirms operational wiring, not trading reliability or economic benefit.
 
-[Runbook](operations/codex-investigations.md), [scope and acceptance record](superpowers/plans/archive/2026-10/2026-10-03-codex-comparison-evidence.md). Final-tree full gate and independent review are required before commit. Snapshot provenance is not quality certification or historical-vintage proof; schedule completeness, causality and benchmark suitability remain unverified. Bounded acquisition and existing-contract data qualification remain next. Historical Claude results and concurrent primary UI work were untouched.
+[Runbook](operations/codex-investigations.md), [scope and acceptance record](work/archive/2026-10/2026-10-03-codex-comparison-evidence.md). Final-tree full gate and independent review are required before commit. Snapshot provenance is not quality certification or historical-vintage proof; schedule completeness, causality and benchmark suitability remain unverified. Bounded acquisition and existing-contract data qualification remain next. Historical Claude results and concurrent primary UI work were untouched.
 
 **2026-10-04 workstation performance continuation:** Scientific cursor overlays and a frame-budgeted resize queue preserve real series and chart lifetime; market resizing coalesces while retaining the latest logical range. Revised large-series checks require an actual changed-size settled redraw within the original timing limits. All frontend steps passed; a documentation edit invalidated that component receipt. Current aggregate acceptance still requires the exact-tree canonical full receipt. See the correction report for the methodology and evidence.
 
@@ -270,7 +270,7 @@ Declared instrument metadata, proxy suitability, historical vintage and independ
 agreement remain unverified. Final-tree full gate and independent review are required before commit.
 
 [Runbook](operations/codex-investigations.md),
-[scope and acceptance plan](superpowers/plans/archive/2026-10/2026-10-04-bounded-comparison-acquisition.md).
+[scope and acceptance plan](work/archive/2026-10/2026-10-04-bounded-comparison-acquisition.md).
 Next: live-provider acceptance when configured and workstation integration after reconciling its
 separate active changes; macro attribution, regime learning and strategy engineering remain later
 increments, not implied capabilities of this download path.
@@ -293,7 +293,7 @@ acceptance remains UNVERIFIED without a configured credential. These are operati
 not evidence of trading reliability. The final staged tree requires independent review and the
 canonical full gate before commit; its receipt records aggregate acceptance.
 
-[Plan and acceptance scope](superpowers/plans/archive/2026-10/2026-10-04-workstation-investigations.md),
+[Plan and acceptance scope](work/archive/2026-10/2026-10-04-workstation-investigations.md),
 [operator workflow](operations/codex-investigations.md). Primary checkout's concurrent UI is
 untouched; this branch's acceptance does not certify a future combined tree. Codex stays the only
 reasoning model; Claude artifacts, research admission and trading authority are unchanged.
@@ -312,7 +312,7 @@ and local confirmation/terminal archive charts becomes ADR-0038; every reference
 were regenerated. Re-verification on 2026-10-05: pytest 4,879 passed, vitest 361 passed, ruff,
 format, 13/13 import contracts and semgrep clean. Full archive-wide byte integrity remains an
 unclaimed separate inventory. Reconciliation with origin/main follows under
-[the clean-and-reconcile plan](superpowers/plans/2026-10-05-clean-reconcile-main.md).
+[the clean-and-reconcile plan](work/2026-10-05-clean-reconcile-main/02-plan.md).
 
 Performance budgets became an opt-in lane by owner decision on 2026-10-05. Two consecutive frozen-tree
 gate runs each failed exactly one different frame-timing spec by a small margin (25k-bar median frame
@@ -361,21 +361,21 @@ Playwright 1.61.1 noble container, for Linux (Linux falls back to DejaVu Sans; g
 Recorded series, cartesian plots and the price footnote read the same `--tc-*` tokens, so Default
 applies everywhere. The opt-in perf budget spec was
 measured against `main` on the same machine: both exceed the 34 ms p99 intermittently there (main
-27–35 ms, branch 28–47 ms; medians ~10 ms each). [Plan](superpowers/plans/archive/2026-10/2026-10-07-technical-chart-language.md).
+27–35 ms, branch 28–47 ms; medians ~10 ms each). [Plan](work/archive/2026-10/2026-10-07-technical-chart-language.md).
 
 **2026-10-08 — Technical-chart cleanup review correction (unmerged).** PNG exports now composite the DOM calendar, legends, tags and gaps plus the title/OHLC header over the native Bokeh canvases. Original downloads omitted these layers. Download regression and fresh full verification govern acceptance of this correction; the earlier full stamp is invalid after source edits. Opt-in performance limitations remain recorded in the chart plan.
 
-**2026-10-08 — Repository cleanup checkpoint (in progress).** Outstanding chart and weekly-mutation changes are being completed in their existing worktrees. Initial main regular CI passed; nightly mutation cancelled after six hours while preceding checks passed. Independent review reproduced report-validation holes and a chart PNG export omitting DOM calendar/legend layers. The research import contract omitted the patterns prohibition; a failing regression reproduced it and the corrected boundary passes. Current README and architecture guidance is reconciled to source. No final combined gate, merge, hidden-suite acceptance or scheduled-workflow completion is claimed. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+**2026-10-08 — Repository cleanup checkpoint (in progress).** Outstanding chart and weekly-mutation changes are being completed in their existing worktrees. Initial main regular CI passed; nightly mutation cancelled after six hours while preceding checks passed. Independent review reproduced report-validation holes and a chart PNG export omitting DOM calendar/legend layers. The research import contract omitted the patterns prohibition; a failing regression reproduced it and the corrected boundary passes. Current README and architecture guidance is reconciled to source. No final combined gate, merge, hidden-suite acceptance or scheduled-workflow completion is claimed. [Cleanup plan](work/2026-10-08-repository-hygiene/02-plan.md).
 
-**2026-10-08 — Expanded repository and GitHub cleanup (in progress).** Three merged clean worktrees, five merged local branches, three merged remote branches and two superseded stash entries were retired after preserving full history, working-tree patches and byte-verified local state. Six undelivered research checkpoints are consolidated under `backlog/research-runtime` with original tips archived. Obsolete draft PR #52 is closed and preserved under a GitHub archive tag. The missing CASH fee-affordability fix is being ported separately; no unfinished research features are promoted. The prior combined tree passed all six canonical components; the expanded tree requires fresh verification and hidden-suite acceptance remains blocked. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+**2026-10-08 — Expanded repository and GitHub cleanup (in progress).** Three merged clean worktrees, five merged local branches, three merged remote branches and two superseded stash entries were retired after preserving full history, working-tree patches and byte-verified local state. Six undelivered research checkpoints are consolidated under `backlog/research-runtime` with original tips archived. Obsolete draft PR #52 is closed and preserved under a GitHub archive tag. The missing CASH fee-affordability fix is being ported separately; no unfinished research features are promoted. The prior combined tree passed all six canonical components; the expanded tree requires fresh verification and hidden-suite acceptance remains blocked. [Cleanup plan](work/2026-10-08-repository-hygiene/02-plan.md).
 
-**2026-10-08 — Primary checkout consolidated; final acceptance pending.** The primary integration checkout is the only remaining worktree. Original changed source/workflow paths and the transferred staged Git tree were verified exactly before removing duplicate checkouts. Eight redundant merged/preparation local branches, four obsolete/merged remote branches, six research checkpoint branch names and two superseded stash entries are retired with recovery refs/archives; the unique research lineage remains under `backlog/research-runtime`. GitHub has no open PRs. The recovered CASH affordability fix reproduced seven failures before the port and passes 41 focused tests plus one existing expected failure afterward, including a deliberately leaky bias control. A fresh primary aggregate gate and independent risk review remain required; absent hidden tests continue to block final acceptance, commit and merge. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+**2026-10-08 — Primary checkout consolidated; final acceptance pending.** The primary integration checkout is the only remaining worktree. Original changed source/workflow paths and the transferred staged Git tree were verified exactly before removing duplicate checkouts. Eight redundant merged/preparation local branches, four obsolete/merged remote branches, six research checkpoint branch names and two superseded stash entries are retired with recovery refs/archives; the unique research lineage remains under `backlog/research-runtime`. GitHub has no open PRs. The recovered CASH affordability fix reproduced seven failures before the port and passes 41 focused tests plus one existing expected failure afterward, including a deliberately leaky bias control. A fresh primary aggregate gate and independent risk review remain required; absent hidden tests continue to block final acceptance, commit and merge. [Cleanup plan](work/2026-10-08-repository-hygiene/02-plan.md).
 
-**2026-10-08 — Exact viewport volume mask and orphan recovery.** The volume renderer now restricts painting to every original bar rectangle intersecting the observation-index viewport, including partial edge bars, while preserving the full native source and colors. Four failing-first geometry tests are covered by 23 passing model tests; seven focused browser tests pass with unchanged screenshots and actual PNG export. An isolated timing run passed at 28.5 ms p99; repeats were 26.3/26.2/43.0 ms, so intermittent timing remains unresolved under unchanged limits. A discovered unregistered worktree folder was retired after byte-verifying an archive of all 181 noncache files; its partial source is preserved, not assumed delivered. Final aggregate and hidden-suite acceptance remain required. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+**2026-10-08 — Exact viewport volume mask and orphan recovery.** The volume renderer now restricts painting to every original bar rectangle intersecting the observation-index viewport, including partial edge bars, while preserving the full native source and colors. Four failing-first geometry tests are covered by 23 passing model tests; seven focused browser tests pass with unchanged screenshots and actual PNG export. An isolated timing run passed at 28.5 ms p99; repeats were 26.3/26.2/43.0 ms, so intermittent timing remains unresolved under unchanged limits. A discovered unregistered worktree folder was retired after byte-verifying an archive of all 181 noncache files; its partial source is preserved, not assumed delivered. Final aggregate and hidden-suite acceptance remain required. [Cleanup plan](work/2026-10-08-repository-hygiene/02-plan.md).
 
-**2026-10-09 — Malformed PIT bar error boundary corrected (unmerged).** Visible malformed bars now raise chained `DataError` with symbol, timestamp and original validation reason instead of leaking Pydantic errors past CLI handlers. Point-in-time filtering remains first; invalid rows are neither dropped nor coerced. Twenty failures were reproduced before the source fix; all 27 focused source/bias/public-seed tests pass, including future exclusion, a deliberately leaky twin, and CLI exit 2 with no run publication. The previous primary tree passed all six canonical components; this changed tree requires fresh aggregate verification and independent review. Hidden-suite acceptance remains UNVERIFIED/BLOCK; no commit, merge or scheduled-workflow deployment is claimed. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+**2026-10-09 — Malformed PIT bar error boundary corrected (unmerged).** Visible malformed bars now raise chained `DataError` with symbol, timestamp and original validation reason instead of leaking Pydantic errors past CLI handlers. Point-in-time filtering remains first; invalid rows are neither dropped nor coerced. Twenty failures were reproduced before the source fix; all 27 focused source/bias/public-seed tests pass, including future exclusion, a deliberately leaky twin, and CLI exit 2 with no run publication. The previous primary tree passed all six canonical components; this changed tree requires fresh aggregate verification and independent review. Hidden-suite acceptance remains UNVERIFIED/BLOCK; no commit, merge or scheduled-workflow deployment is claimed. [Cleanup plan](work/2026-10-08-repository-hygiene/02-plan.md).
 
-**2026-10-09 — Exact volume color views (unmerged).** Post-mask profiling exposed full-source CSS color materialization on every view update. Complementary up/down views now share the full native x/volume source with scalar style colors, retaining previous-close classification, equal-close bars, partial viewport intersections, width, scales, cursor and exports. Three failing-first partition tests are covered by 26 passing model tests; seven focused browser tests pass with unchanged screenshots and PNG export. The new profile recorded zero `_from_css_array` samples, versus about 165.5 ms directly before the change. Profiled/ordinary p99 passed at 27.2/27.3 ms; a fixed three-repeat run passed at 27.2/27.3/27.2 ms against the unchanged 34 ms limit. This evidence improves the previously intermittent timing lane without promising every future machine/run will pass. Fresh final aggregate and independent acceptance remain required; hidden-suite execution stays UNVERIFIED/BLOCK. [Cleanup plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+**2026-10-09 — Exact volume color views (unmerged).** Post-mask profiling exposed full-source CSS color materialization on every view update. Complementary up/down views now share the full native x/volume source with scalar style colors, retaining previous-close classification, equal-close bars, partial viewport intersections, width, scales, cursor and exports. Three failing-first partition tests are covered by 26 passing model tests; seven focused browser tests pass with unchanged screenshots and PNG export. The new profile recorded zero `_from_css_array` samples, versus about 165.5 ms directly before the change. Profiled/ordinary p99 passed at 27.2/27.3 ms; a fixed three-repeat run passed at 27.2/27.3/27.2 ms against the unchanged 34 ms limit. This evidence improves the previously intermittent timing lane without promising every future machine/run will pass. Fresh final aggregate and independent acceptance remain required; hidden-suite execution stays UNVERIFIED/BLOCK. [Cleanup plan](work/2026-10-08-repository-hygiene/02-plan.md).
 
 **2026-10-10 existing research-runtime reconciliation (local candidate):** The thirteen committed
 bounded runtime increments through `b18cf921` are merged without a commit against main `454c940f`
@@ -471,7 +471,7 @@ six-component canonical full gate. This focused branch requires its own fresh fu
 independent review and hosted evidence. Private engineering coverage remains UNVERIFIED; main's
 review policy must be satisfied before any protected commit. After an explicit question,
 the owner answered "yes" to a one-time absent-private-suite exception for the mutation fix
-under `docs/superpowers/plans/archive/2026-10/2026-10-10-mutation-checkpoints.md` only. Its absence remains
+under `docs/work/archive/2026-10/2026-10-10-mutation-checkpoints.md` only. Its absence remains
 UNVERIFIED; the denied private execution will not be retried. No actual failure, public
 check, independent review, hosted mutation completeness or Git protection is waived, and
 no private-source access or future exception is granted. The isolated pre-exception tree
@@ -807,7 +807,7 @@ Historical entries above remain dated evidence, not current acceptance assertion
   bounded sprintf fixture tests; [PR71](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/71)
   delivered semantic-payload test isolation; [PR72](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/72)
   delivered README workstation guidance. The
-  [accepted pilot plan](superpowers/plans/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md)
+  [accepted pilot plan](work/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md)
   retains historical collection parity for 135 module and 5,839 public cases,
   AST/fixture/lifecycle and outcome parity; these are retained receipts, not a new
   rerun here. [PR73](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/73)
@@ -816,10 +816,10 @@ Historical entries above remain dated evidence, not current acceptance assertion
   [39082708982](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/39082708982)
   and [39088156452](https://github.com/tradingsystem1880-eng/Project-ALPHA/actions/runs/39088156452).
 - **Pending cleanup:** reconcile the reported owner-side handover count of 144 paths
-  against the [broader hygiene plan](superpowers/plans/2026-10-08-repository-hygiene.md).
+  against the [broader hygiene plan](work/2026-10-08-repository-hygiene/02-plan.md).
   The item-level handover is unavailable to this inspection; this count is
   not a verified repository inventory. The
-  [maintainability plan](superpowers/plans/archive/2026-10/2026-10-10-maintainability-cleanup.md)
+  [maintainability plan](work/archive/2026-10/2026-10-10-maintainability-cleanup.md)
   describes the completed bounded [PR58](https://github.com/tradingsystem1880-eng/Project-ALPHA/pull/58),
   rather than that outstanding handover.
   Preserve the original `454c940f` checkout, 126 status rows and 11 dirty Mac
@@ -832,8 +832,8 @@ Historical entries above remain dated evidence, not current acceptance assertion
   advisory remains open. No failing foundation check is reproduced in the current
   cited receipts; that is not a repository-wide defect census.
 - **Verified cloud operation within dated scope; hardening pending:** the
-  [setup plan](superpowers/plans/archive/2026-10/2026-10-15-cloud-setup.md) and
-  [owned-process readiness plan](superpowers/plans/archive/2026-10/2026-10-15-cloud-readiness-owned-processes.md)
+  [setup plan](work/archive/2026-10/2026-10-15-cloud-setup.md) and
+  [owned-process readiness plan](work/archive/2026-10/2026-10-15-cloud-readiness-owned-processes.md)
   retain setup/fresh-startup, writable cache, dependency, pinned-browser, CLI,
   static Chromium and backend receipts. No new fresh launch was performed here.
   A current configuration/version record does not establish unavailable per-launch
@@ -941,7 +941,7 @@ The original 69 focused tests passed before changes. Added controls cover copy b
 rollback during copying, exact-evidence preservation, conflicting candidate/backup/canonical state,
 CLI exit 2 without traceback and future poison with a discriminating leaky read. Independent review
 found and reproduced the rollback counterexample before the final descriptor-based correction.
-The [audit plan](superpowers/plans/archive/2026-10/2026-10-21-atomic-snapshot-retry.md) records scope and limits.
+The [audit plan](work/archive/2026-10/2026-10-21-atomic-snapshot-retry.md) records scope and limits.
 Final full-gate and exact-tree independent-review outcomes are recorded in separate task receipts;
 this entry does not assert those outcomes, private-suite coverage, provider qualification or release
 acceptance. No prior missing-suite exemption applies. No commit or publication is part of this work.
@@ -1252,7 +1252,7 @@ No new schema/table, migration, dependencies, production dispatcher or native/pr
 Local public-only focused qualification is separate from full-gate and real-native acceptance.
 Activation still requires executable qualification, physical worker isolation, stronger containment
 where claimed, external effect limits, scientific output admission and compatible-writer cutover.
-See `docs/superpowers/plans/archive/2026-10/2026-10-26-synthetic-native-lifecycle.md` for the bounded implementation.
+See `docs/work/archive/2026-10/2026-10-26-synthetic-native-lifecycle.md` for the bounded implementation.
 
 ### 2026-10-26 — Adversarial synthetic lifecycle continuation (local)
 
@@ -1359,7 +1359,7 @@ D0/D1 authority still admits the double-bottom protocol; no rules/control regist
 invented. The isolated worker lacks the qualified ALPHA rule dependency closure. Consequently
 scientific native execution, study/trial outcome accounting, metrics/provenance admission and
 W08 completion remain blocked/incomplete. See
-`docs/superpowers/plans/2026-10-26-native-rule-study-boundary.md` for the acceptance map.
+`docs/work/2026-10-26-native-rule-study-boundary/02-plan.md` for the acceptance map.
 
 ## 2026-10-26 — Closed synthetic native rule workflow candidate
 
@@ -1382,7 +1382,7 @@ Existing context maps now link a lean validation dependency backlog while retain
 native RD-Agent and wider W01–W19 scope. Final candidate review remains pending. This is an uncommitted candidate,
 not full-gate/release approval. Four other-owner transfers failed to materialize; their patches and
 compatibility remain blocked. Real discovery, empirical W08 and full report/UI acceptance remain
-unqualified. See [current plan](superpowers/plans/2026-10-26-native-rule-authority.md) for exact
+unqualified. See [current plan](work/archive/2026-10/2026-10-26-native-rule-authority.md) for exact
 authority, source paths, receipt map, blockers, rollback and resume.
 
 ## 2026-10-26 — Native workflow assembly onto current integration (pending qualification)
@@ -1472,7 +1472,7 @@ engineering checks. No Library-transfer workaround or Qlib adapter change is inc
 Implemented in isolated `Project-ALPHA-handover/qlib-tabular-wave1-20261026`, branch
 `codex/qlib-tabular-wave1-20261026`, from delivery baseline
 `bc5b58351cc334d36112167c9463a80184411cc6`. The dirty primary checkout was not edited.
-[Plan, recipe ledger and evidence route](superpowers/plans/archive/2026-10/2026-10-26-qlib-tabular-wave1.md)
+[Plan, recipe ledger and evidence route](work/archive/2026-10/2026-10-26-qlib-tabular-wave1.md)
 are linked from the existing context index and Quant Platform model row; Atlas is regenerated.
 The initially missing expanded scope authority was subsequently supplied as parent-verified
 Library v1 section9/page9 planning text; the complete document was not materialized locally.
@@ -1533,7 +1533,7 @@ The five-backend/eight-recipe wave remains sealed at tree
 Astra review preserved in its original worktree. The isolated successor
 `Project-ALPHA-handover/qlib-w11-refit-20261026` materializes that exact tree before edits;
 its baseline commit remains `bc5b58351cc334d36112167c9463a80184411cc6`. Predecessor acceptance
-is not inherited. See the [W11 packet plan](superpowers/plans/2026-10-26-qlib-w11-refit.md)
+is not inherited. See the [W11 packet plan](work/2026-10-26-qlib-w11-refit/02-plan.md)
 for supplied planning authority, scope, frozen engineering controls and next action.
 
 Read-only inspection confirms real train-only normalization and fresh model fits already exist.
@@ -1576,7 +1576,7 @@ Preserved W11/native/tabular tree `a284def9502c20884ecf9740867db0810dc9ec83` rem
 This successor reconciles actual PR92 source (`fc6da893` → reviewed `f0ba4c34` → merge `98190e3b`
 with `e635e6cb`) and the single reviewed W05 combined patch (`220b9b02`). PR92 production/test
 bytes match the reviewed transport source; its generated maps are regenerated for the successor.
-The W05 timezone fix is included once. See the [integration plan](superpowers/plans/archive/2026-10/2026-10-26-w05-research-integration.md)
+The W05 timezone fix is included once. See the [integration plan](work/archive/2026-10/2026-10-26-w05-research-integration.md)
 for code, current checks, source identities, recovery and deferred final gate.
 
 Imported producer behavior notes below describe the reviewed source; their historical tests do not
@@ -1630,7 +1630,7 @@ failed-start test preserves an injected startup exception and verifies retained-
 when the escape barrier directory is absent. POSIX lease coverage, LoopBase conformance and the
 coverage policy are unchanged; actual macOS aggregate coverage remains unqualified.
 
-Actual Mac qualification is in progress in the isolated successor. The [combined plan](superpowers/plans/2026-10-26-mac-portability-qualification.md)
+Actual Mac qualification is in progress in the isolated successor. The [combined plan](work/2026-10-26-mac-portability-qualification/02-plan.md)
 links source reconciliation, preserved original failures, actual checks and final review.
 Linux producer 49-stage/93.05% evidence and Darwin-target typing are not a Mac gate stamp.
 Existing schema-v7 writable-open migration remains; synthetic stores only. Source reversal is
@@ -1643,7 +1643,7 @@ successor of b0b9c8ea. Actual Mac typing passed 883 files; the first aggregate a
 failed with two missing-worker capability routes and 91.60% coverage against 93%.
 A bounded readiness fix and portable approval-integrity verification follow; aggregate
 acceptance is not granted by the producer Linux result or targeted checks. Exact final
-receipts and next action are linked by the [Mac qualification plan](superpowers/plans/2026-10-26-mac-portability-qualification.md).
+receipts and next action are linked by the [Mac qualification plan](work/2026-10-26-mac-portability-qualification/02-plan.md).
 
 ### Portable-evidence successor (2026-10-26, in progress)
 
@@ -1652,7 +1652,7 @@ The isolated 24f checkpoint completed 48/49 canonical commands; only 93% backend
 successor after a 363-module/210-function public coverage audit. It targets charged SQL readers,
 closure atomicity, independent fixed costed-result validation and immutable artifacts/projections;
 it does not emulate Linux or claim that the 761-statement gap is all kernel-dependent. See the
-[existing qualification plan](superpowers/plans/2026-10-26-mac-portability-qualification.md) and
+[existing qualification plan](work/2026-10-26-mac-portability-qualification/02-plan.md) and
 `.alpha/state/portable-evidence/`. No inherited aggregate acceptance.
 
 Portable reader/accounting, D0 artifact and numerical/projection checks now include
@@ -1678,13 +1678,13 @@ Gate run 2 on the intermediate tree passed every backend step except coverage (6
 55 skipped, 92.85% against 93%). Native suites passed 111/111 with a derived root of the pinned
 `rdagent/` source; archive bytes were not verified. Five unchanged Linux visual baselines fail in the
 cloud container; protected tests were absent and not executed. Details and open findings are in the
-[native rule plan](superpowers/plans/2026-10-26-native-rule-authority.md#cloud-qualification-stabilization-2026-10-27)
-and the [tabular plan](superpowers/plans/archive/2026-10/2026-10-26-qlib-tabular-wave1.md#cloud-qualification-stabilization-2026-10-27).
+[native rule plan](work/archive/2026-10/2026-10-26-native-rule-authority.md#cloud-qualification-stabilization-2026-10-27)
+and the [tabular plan](work/archive/2026-10/2026-10-26-qlib-tabular-wave1.md#cloud-qualification-stabilization-2026-10-27).
 
 Review-scope alignment (same stabilization): review attestation now requires `files_reviewed` to
 cover the Git guard's full review scope (risk-tier, protected control plane, hooks and guarded
 config), and `/review-gate` uses that scope; see the
-[gate preflight plan](superpowers/plans/archive/2026-10/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27).
+[gate preflight plan](work/archive/2026-10/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27).
 Gate run 4 passed every component on tree `844612d4`; this change creates a new candidate.
 
 ## 2026-10-27 Linux cloud qualification checkpoint published (not accepted)
@@ -1705,7 +1705,7 @@ the checkpoint's gate and review results do not qualify these or any other modif
 
 Current active work is that unpublished Linux cloud foundation successor: navigation/handoff
 routing and gate/review freshness repair (see the
-[gate preflight plan](superpowers/plans/archive/2026-10/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)).
+[gate preflight plan](work/archive/2026-10/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)).
 The published commit above is the preserved qualification checkpoint, not the active stage. The Mac
 portability successor stays open with its requirements intact but is deferred: not the current stage
 or active owner, and not abandoned scope.
@@ -1727,12 +1727,12 @@ change; stale Darwin ML-lab baselines; unconfirmed root cause of the native leas
 the about 21-byte `TMPDIR` limit from the AF_UNIX socket path; unverified RD-Agent archive SHA;
 the gate stamp and review consumption gap (commit-time checks bound only the tree hash and the
 risk-tier diff; a repair is implemented in the unpublished successor, see the
-[gate preflight plan](superpowers/plans/archive/2026-10/2026-10-26-gate-preflight-selection.md#commit-time-gate-and-review-provenance-2026-10-27),
+[gate preflight plan](work/archive/2026-10/2026-10-26-gate-preflight-selection.md#commit-time-gate-and-review-provenance-2026-10-27),
 but not yet full-gated or independently reviewed); the
-[gate preflight plan](superpowers/plans/archive/2026-10/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)
+[gate preflight plan](work/archive/2026-10/2026-10-26-gate-preflight-selection.md#review-scope-alignment-2026-10-27)
 statements that no owner exception or reviewer policy changed are no longer current (an appended
 note there corrects them; the original lines are kept); the missing `alpha ml refit-plan`/`refit-status` entries in `.claude/rules/alpha-cli.md`; the open but deferred
-[Mac portability successor](superpowers/plans/2026-10-26-mac-portability-qualification.md#handoff-and-next-action).
+[Mac portability successor](work/2026-10-26-mac-portability-qualification/02-plan.md#handoff-and-next-action).
 Full scope stays with the
 [canonical feature checklist](context/feature-readiness-checklist-2026-10-27.md).
 
@@ -1748,7 +1748,7 @@ The durable-lease silent-child test holds its child until release instead of rel
 
 Gate run 7 on the preceding tree failed (2 tests) and remains the failed checkpoint. These
 changes are not yet full-gated or formally reviewed; private coverage is UNVERIFIED. Details:
-[native plan](superpowers/plans/2026-10-26-native-rule-authority.md#cloud-foundation-successor-native-and-lease-runtime-findings-2026-10-28).
+[native plan](work/archive/2026-10/2026-10-26-native-rule-authority.md#cloud-foundation-successor-native-and-lease-runtime-findings-2026-10-28).
 
 ## 2026-10-28 Foundation batch: pre-run evidence preservation and opt-in cloud bootstrap
 
@@ -1759,7 +1759,7 @@ before replacing them, once per run, and stop before any overwrite if that copy 
 qualified-venv validation, fontconfig and `origin/main` reporting steps. The native plan carries
 the stage contract and ordered foundation backlog. The gate8 checkpoint (tree `fd960490`, public
 full gate passed, review BLOCK) is separate; this batch is unqualified. Details:
-[native plan](superpowers/plans/2026-10-26-native-rule-authority.md#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation).
+[native plan](work/archive/2026-10/2026-10-26-native-rule-authority.md#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation).
 
 ## 2026-10-28 Gate10/gate11 startup repairs (unpublished, not accepted)
 
@@ -1824,7 +1824,7 @@ PR #95 follow-up:
     (pre-existing, disclosed).
 - Focused native set: 453/453.
 Details:
-[native plan](superpowers/plans/2026-10-26-native-rule-authority.md#gate10gate11-repairs-and-retained-diagnostics-2026-10-28).
+[native plan](work/archive/2026-10/2026-10-26-native-rule-authority.md#gate10gate11-repairs-and-retained-diagnostics-2026-10-28).
 
 ## 2026-10-29 — Isolated PR93 recovery reconciliation on PR95
 
@@ -1839,7 +1839,7 @@ unbound cancellation uses an expected-state guard. PR92 redaction is already ret
 Two pre-implementation controls failed on the published baseline; the integrated focused research
 suite passed 26 cases, generic job-store checks passed 6, and native/adjacent compatibility checks
 passed 57. Changed Python lint/format, strict typing and all 13 import contracts passed. The
-[reconciliation packet](superpowers/plans/archive/2026-10/2026-10-29-pr93-recovery-reconciliation.md) tracks the
+[reconciliation packet](work/archive/2026-10/2026-10-29-pr93-recovery-reconciliation.md) tracks the
 remaining exact-tree producer, Atlas and review evidence. No historical gate or missing-suite
 exception attests this candidate. Full qualification and reconciliation with Claude's final
 published test corrections remain pending; no commit, push, PR mutation or merge is claimed.
@@ -1898,7 +1898,7 @@ Scoped Ruff, mypy and harness lint passed. These are focused results only. At wr
 six-component gate and independent review are pending; their exact-tree receipts belong in the
 candidate evidence. Private coverage remains UNVERIFIED and requires a new scoped owner decision
 before formal delivery; publication also awaits parent authorization. See the
-[completion plan](superpowers/plans/archive/2026-10/2026-10-30-software-team-completion.md).
+[completion plan](work/archive/2026-10/2026-10-30-software-team-completion.md).
 
 ### Orphan-precondition scope completion, 2026-10-30
 
@@ -1987,14 +1987,14 @@ each completed with seven successful listed jobs. The plans now distinguish thos
 engineering packages from their historical unpublished/BLOCK checkpoints; earlier failure and
 UNKNOWN-cause records remain unchanged. Private coverage remains UNVERIFIED.
 
-The [bounded cleanup/refactor successor](superpowers/plans/archive/2026-10/2026-10-30-project-lineage-projection-refactor.md)
+The [bounded cleanup/refactor successor](work/archive/2026-10/2026-10-30-project-lineage-projection-refactor.md)
 consolidates project-history policy and removes the test-only `changed_paths` wrapper in favor of
 `comparison_context`; existing selection and gate semantics are retained. ADR/governance routes
 and local receipt references are cleaned up. The prior 12-path checkpoint passed all six public
 components/49 steps on `01bf937e`; the expanded successor needs its own final gate and review.
 No prior private-suite exception is inherited, and no publication or merge has occurred.
 
-The [existing hygiene plan](superpowers/plans/2026-10-08-repository-hygiene.md#cloud-visible-ledger-reconciliation-2026-10-30)
+The [existing hygiene plan](work/2026-10-08-repository-hygiene/02-plan.md#cloud-visible-ledger-reconciliation-2026-10-30)
 records the observed cloud branch/path/operation ledger, retained refs and verified move of the
 cancelled docs-only predecessor. The saved Mac ledger, physical storage and historical owner-side
 counts remain unverified and separately blocked; no unique local data was deleted. This bounded
@@ -2004,7 +2004,7 @@ cloud reconciliation does not declare the broader cleanup/refactor programme com
 
 The expanded `f1550eca` gate stopped at backend pytest: three failures, 6,711 passes, 61 skips,
 two passed subtests; coverage met the unchanged floor at 93.01%. Complete failed evidence is
-preserved privately by the [cleanup plan](superpowers/plans/archive/2026-10/2026-10-30-project-lineage-projection-refactor.md#aggregate-re-entry-findings-and-bounded-repairs).
+preserved privately by the [cleanup plan](work/archive/2026-10/2026-10-30-project-lineage-projection-refactor.md#aggregate-re-entry-findings-and-bounded-repairs).
 One synthetic cancellation test read an empty PID marker between creation and content write.
 Its deterministic regression was red, then green after the test reader waited for contents
 within the same five-second bound. Production supervisor, budgets and exact-once assertions stay.
@@ -2032,7 +2032,7 @@ validation replays them and rejects changed/added/missing sources, stale policy,
 and altered payloads. Markdown and plain-text views support direct inspection. No new knowledge
 graph, database, folder hierarchy, scientific authority or autonomous execution is introduced.
 
-The [delivery record](superpowers/plans/archive/2026-10/2026-10-30-queryable-context-filesystem.md) maps H26
+The [delivery record](work/archive/2026-10/2026-10-30-queryable-context-filesystem.md) maps H26
 from the sole canonical feature checklist to the implementation and the actual primary ICM
 paper (arXiv2603.16021v2, 21 pages) plus pinned companion source. Mechanical invalidation and
 expiry are ALPHA adaptations, not demonstrated performance gains from the paper. Existing
@@ -2054,7 +2054,7 @@ The owner approved the bounded missing-private-suite exception through delivery 
 cleanup/refactor, file-system, Software Team and two-bug follow-up workstreams at 05:41 UTC,
 including necessary integration fixes. The exact request, response, scope and unchanged
 requirements are recorded in the existing
-[file-system plan](superpowers/plans/archive/2026-10/2026-10-30-queryable-context-filesystem.md#owner-absence-only-decision--2026-10-30).
+[file-system plan](work/archive/2026-10/2026-10-30-queryable-context-filesystem.md#owner-absence-only-decision--2026-10-30).
 Documented absence alone is now informational for this delivery; private coverage remains
 UNVERIFIED. No actual failure or other required check is waived, and no GitHub APPROVE review
 or protection bypass is authorized. Earlier absence-only BLOCKs remain correct history.
@@ -2080,7 +2080,7 @@ A two-line command-scoped transport repair now preserves the configured cache fo
 only. Its failing-first public regression and the existing credential/auth-home isolation and
 two real capability-route checks passed (5 cases); changed lint/format passed. No ML response
 schema or PDF source was changed. The
-[existing delivery plan](superpowers/plans/archive/2026-10/2026-10-30-queryable-context-filesystem.md#required-integration-repair-configured-ml-worker-cache)
+[existing delivery plan](work/archive/2026-10/2026-10-30-queryable-context-filesystem.md#required-integration-repair-configured-ml-worker-cache)
 records this necessary integration fix. Final source/producer reconciliation, exact-tree full
 qualification and independent review remain required; private coverage stays UNVERIFIED under
 the approved absence-only scope. No failed check, threshold or authority boundary is waived.
@@ -2129,7 +2129,7 @@ Inherited checks passed 39 cases; four discriminating regressions failed before 
 Corrected focused checks passed 45 cases including the availability poison/control. Independent
 early review identified repeated unchanged captures with distinct raw receipts; exact retained
 `--manifest-id` reopening resolves ambiguity without rewriting the snapshot contract.
-[Scope and owner decision](superpowers/plans/archive/2026-10/2026-10-25-crypto-snapshot-query.md#cleanup-recovery--2026-10-30).
+[Scope and owner decision](work/archive/2026-10/2026-10-25-crypto-snapshot-query.md#cleanup-recovery--2026-10-30).
 Private coverage stays UNVERIFIED under the scoped absence-only exception. Final full/review/CI
 acceptance belongs to external exact-tree evidence; no historical receipt is reused.
 
@@ -2148,7 +2148,7 @@ reviewer and delivery histories retain all scopes and failures. Derived Atlas ou
 from the complete tree. The combined candidate requires its own exact-tree full gate and
 independent review; no prior individual pass accepts this assembly. Private coverage stays
 UNVERIFIED under the existing task-scoped absence-only decisions. Main and existing PRs are not
-mutated during preparation. See the [follow-on execution record](superpowers/plans/archive/2026-10/2026-10-25-crypto-snapshot-query.md#coordinated-follow-on-assembly--2026-10-30).
+mutated during preparation. See the [follow-on execution record](work/archive/2026-10/2026-10-25-crypto-snapshot-query.md#coordinated-follow-on-assembly--2026-10-30).
 
 ## 2026-10-30 — Verified combined delivery on main
 
@@ -2183,7 +2183,7 @@ refetching or recreating environments. The container reused locked download cach
 exited 0 at 02:11:42 UTC. The initial Dockerfile build failed before execution on a read-only
 client-state path; direct use of the pinned prebuilt image required no authentication, proxy,
 network-policy or protection changes. Detailed commands, pins, profile identities and limits
-are in the [bootstrap execution record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md).
+are in the [bootstrap execution record](work/archive/2026-10/2026-10-31-clean-rdagent-bootstrap.md).
 
 Focused setup regressions passed 26 tests with one host-specific fontconfig skip. Repository
 full qualification, independent review and hosted checks remain required for delivery of this
@@ -2210,7 +2210,7 @@ state remains unverified. Focused tests cover archive round trips, corruption, s
 symlink/path rejection and dry-run exclusions. Final exact-tree qualification and independent
 review are required before the guarded commit; private tests remain UNVERIFIED under the
 existing task-scoped absence-only approval. See the
-[retention plan](superpowers/plans/archive/2026-10/2026-10-31-checkpoint-retention.md).
+[retention plan](work/archive/2026-10/2026-10-31-checkpoint-retention.md).
 
 The first independent review blocked substituted FIFO manifests/archives that could hang the
 new inventory. Bounded probes reproduced both failures. The repair rejects nonregular opened
@@ -2227,7 +2227,7 @@ normal docs PR review. Existing CI gains explicit manual dispatch and stale READ
 no application authority or trading behavior changes. Technical setup content remains intact.
 
 Focused fixture tests and qualification results are recorded in the
-[feature plan](superpowers/plans/archive/2026-10/2026-10-31-readme-maintenance.md); activation and recovery are in the
+[feature plan](work/archive/2026-10/2026-10-31-readme-maintenance.md); activation and recovery are in the
 [runbook](archive/readme-maintenance.md). The workflow is not active, and no live inference,
 hosted trigger or README PR has been demonstrated. No Actions inference credential is available
 in this task environment; repository secret availability is unverified. The private review suite is
@@ -2249,7 +2249,7 @@ Old PR/head/run receipts remain superseded historical evidence. PR102 stays draf
 same-purpose implementation; the existing publication approval and scoped private absence-only
 exception cover necessary corrections. Private coverage is UNVERIFIED. Revised focused tests,
 exact-tree full qualification and independent review are required before its next guarded commit.
-See the [existing plan](superpowers/plans/archive/2026-10/2026-10-31-readme-maintenance.md) and
+See the [existing plan](work/archive/2026-10/2026-10-31-readme-maintenance.md) and
 [worked delivery workflow](archive/readme-maintenance.md).
 
 ## 2026-10-31 — Combined foundation follow-on preparation
@@ -2265,11 +2265,11 @@ commands, while retaining product authority and incomplete-scope boundaries.
 Each source's dated evidence and failures remain intact. Final Atlas output, a native README
 session decision, one coherent full gate and independent review must accept the assembled tree;
 individual source passes are not aggregate acceptance. Original heads remain preserved as
-ancestors through normal guarded merges. See the [integration execution record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#coordinated-foundation-integration--2026-10-31).
+ancestors through normal guarded merges. See the [integration execution record](work/archive/2026-10/2026-10-31-clean-rdagent-bootstrap.md#coordinated-foundation-integration--2026-10-31).
 # 2026-10-31 — Packet 3 daily rule prerequisites (unpublished, in progress)
 
 Branch `codex/packet3-real-rule-v1`, base `ab0f6b75c2ff84c1563925721c33c50b1be36965`.
-The existing [Packet 3 implementation](superpowers/plans/2026-10-31-packet3-daily-rule.md)
+The existing [Packet 3 implementation](work/2026-10-31-packet3-daily-rule/02-plan.md)
 adds exact causal source lag, an explicit UTC-day execution clock, a bounded verified Binance
 spot daily price query and an inert typed study identity. Existing synthetic plan/launch checks
 continue to reject a real study. Full native admission, execution, completion and V1 report are
@@ -2285,7 +2285,7 @@ no new product-task exception assumed. This entry is implementation progress, no
 
 # 2026-10-31 — Packet 3 native vertical implementation (unpublished; market acceptance open)
 
-The [active Packet3 record](superpowers/plans/2026-10-31-packet3-daily-rule.md) now describes the
+The [active Packet3 record](work/2026-10-31-packet3-daily-rule/02-plan.md) now describes the
 registered all-D1 daily route, exact owner/query/package/image/guard binding, existing native
 reservation/ownership/cancellation, fixed-unit fractional spot execution and observed accounting,
 immutable completion, missing-only evidence restore and existing CLI/API/UI report integration.
@@ -2361,7 +2361,7 @@ after commit, readback failure/conflict and bounded actual CLI timeout. The orig
 regression failed before the fix. Final aggregate verification and independent review remain
 separate delivery evidence; this entry does not assert either. Private coverage is UNVERIFIED
 under the recorded task-scoped four-workstream absence-only exception. No real study ran.
-See [plan](superpowers/plans/archive/2026-10/2026-10-31-durable-cancellation-publication.md).
+See [plan](work/archive/2026-10/2026-10-31-durable-cancellation-publication.md).
 
 ### 2026-10-31 — Daily history inspection before Linux storage selection (candidate)
 
@@ -2380,7 +2380,7 @@ is not admitted: the source-only Linux probe failed the internal-disk reserve an
 denied the separate Expansion read-only bind. No security setting, real study, private
 payload, protected test source or permanent cleanup was involved.
 
-Plan: [Linux storage/history preparation](superpowers/plans/archive/2026-10/2026-10-31-linux-storage-history.md).
+Plan: [Linux storage/history preparation](work/archive/2026-10/2026-10-31-linux-storage-history.md).
 
 Candidate correction: fresh independent review reproduced offsets beyond SQLite's signed
 integer range escaping as OverflowError. The reader now validates that bound before opening
@@ -2413,7 +2413,7 @@ also exercise fetched-source refusal and existing acquisition/re-entry/partial-p
 README and the operating manual explain early refusal. Final-tree full qualification, independent
 review and hosted delivery evidence are separate requirements; this record claims no aggregate pass.
 Private coverage remains UNVERIFIED. No live study, allowance consumption, Mac access or trading.
-See the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#supplied-input-validation-follow-up--2026-11-01).
+See the [existing bootstrap record](work/archive/2026-10/2026-10-31-clean-rdagent-bootstrap.md#supplied-input-validation-follow-up--2026-11-01).
 
 ## 2026-11-01 — Cloud setup public-fixture correction checkpoint
 
@@ -2429,7 +2429,7 @@ Consolidated focused checks: 44 passed, one host-specific skip, one web heartbea
 failure; targeted lint/format/types pass. Original aggregate and TMPDIR causes remain bounded
 uncertainties, and no focused pass is aggregate acceptance. Reader-first reconciliation, pending
 private-suite absence authorization and final-tree full verification remain required. Evidence and
-limits are in the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#bounded-public-fixture-repair-checkpoint--2026-11-01).
+limits are in the [existing bootstrap record](work/archive/2026-10/2026-10-31-clean-rdagent-bootstrap.md#bounded-public-fixture-repair-checkpoint--2026-11-01).
 
 ## 2026-11-01 — Narrow heartbeat CLI startup optimization
 
@@ -2444,7 +2444,7 @@ The consolidated focused selection passed 62 cases with one host-specific skip u
 Retained baseline/overlay timings are bounded diagnostic evidence, not performance guarantees or
 aggregate acceptance. The original full-gate/TMPDIR/supervisor uncertainties remain recorded.
 Reader-first base reconciliation, pending private-suite approval, fresh independent review and the
-required final-tree full gate remain open. See the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#lazy-intake-startup-correction-checkpoint--2026-11-01).
+required final-tree full gate remain open. See the [existing bootstrap record](work/archive/2026-10/2026-10-31-clean-rdagent-bootstrap.md#lazy-intake-startup-correction-checkpoint--2026-11-01).
 
 ## 2026-11-01 — Cloud workflow correction reconciled after PR108
 
@@ -2458,7 +2458,7 @@ independent review and normal guarded/hosted delivery requirements remain mandat
 The environment restart lost prior `/tmp` raw logs. Exact source preservation, surviving workspace
 receipts/coverage and transcript-only historical results are explicitly distinguished. Fresh final
 qualification evidence is retained under ignored workspace state. This entry records reconciliation
-and scope, not a final pass. See the [existing bootstrap record](superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md#reader-main-reconciliation-and-bounded-approval--2026-11-01).
+and scope, not a final pass. See the [existing bootstrap record](work/archive/2026-10/2026-10-31-clean-rdagent-bootstrap.md#reader-main-reconciliation-and-bounded-approval--2026-11-01).
 
 ### 2026-11-02 — Inert W09 planning identities and blocked readiness
 
@@ -2479,7 +2479,7 @@ exception preserves private coverage UNVERIFIED and all public checks/floors/gua
 Ordinary synthetic engineering qualification is separate from native research execution.
 No real-data fit, research allowance consumption, native Qlib admission or Mac operation.
 
-Plan: [W09 planning contracts](superpowers/plans/archive/2026-11/2026-11-01-w09-planning-contracts.md).
+Plan: [W09 planning contracts](work/archive/2026-11/2026-11-01-w09-planning-contracts.md).
 
 ### 2026-11-02 — W09 private invocation observations, delivery pending
 
@@ -2503,7 +2503,7 @@ the correction, and independent re-review found no remaining required source cha
 That focused assessment is not formal delivery approval. No native research run, data acquisition, policy,
 ControlStore/ledger change, real-data fitting or Mac operation occurred.
 
-Plan: [W09 invocation observations](superpowers/plans/archive/2026-11/2026-11-02-w09-component-observations.md).
+Plan: [W09 invocation observations](work/archive/2026-11/2026-11-02-w09-component-observations.md).
 
 ### 2026-11-02 — W09 observation delivery approval and qualification boundary
 
@@ -2562,7 +2562,7 @@ isolated offline fixtures. Final integrated Atlas generation, README attestation
 qualification and independent review remain pending. Private coverage is UNVERIFIED;
 no prior absence exception or publication permission is adopted.
 
-Plan: [Backend CI setup ownership](superpowers/plans/archive/2026-11/2026-11-02-backend-setup-dedup.md).
+Plan: [Backend CI setup ownership](work/archive/2026-11/2026-11-02-backend-setup-dedup.md).
 
 ### 2026-11-04 — Backend setup delivery authorization and reconciliation
 
@@ -2594,7 +2594,7 @@ and generated Atlas reconciliation are included. Final exact-tree full public ch
 the unchanged 93% floor, independent review and normal guards remain mandatory; their
 receipts establish acceptance separately from this preparation record.
 
-Plan: [W09 durable diagnostic associations](superpowers/plans/archive/2026-11/2026-11-02-w09-durable-observations.md).
+Plan: [W09 durable diagnostic associations](work/archive/2026-11/2026-11-02-w09-durable-observations.md).
 
 # Assistant cleanup candidate — 6 November 2026
 
@@ -2606,7 +2606,7 @@ of the leader identity. Cleanup waits for group disappearance and can remain blo
 OS reaper is unavailable. No model calls, credentials, trading authority or statistical
 behavior change. The original failed aggregate and isolated passing diagnostic remain
 historical evidence. This is an uncommitted candidate, not delivery or acceptance; the
-[plan](superpowers/plans/archive/2026-11/2026-11-06-assistant-cleanup-barrier.md) records verification scope.
+[plan](work/archive/2026-11/2026-11-06-assistant-cleanup-barrier.md) records verification scope.
 
 ## 2026-11-05 offline Bybit funding-page contract (unpublished)
 
@@ -2631,7 +2631,7 @@ real datasets, studies, commits, pushes or external publication were used. Durab
 budgets, pagination, raw-page-first retention and restore remain separate work.
 Providers remain unqualified and QuantPad remains excluded.
 
-Plan: [Offline Bybit funding page](superpowers/plans/archive/2026-11/2026-11-05-offline-bybit-funding-page.md).
+Plan: [Offline Bybit funding page](work/archive/2026-11/2026-11-05-offline-bybit-funding-page.md).
 
 ## 2026-11-05 offline funding backward progression (unpublished successor)
 
@@ -2660,7 +2660,7 @@ is added. Full/Atlas/preflight gates, protected contents, provider calls, creden
 dependencies/installations, commits and publication were not used. QuantPad remains
 excluded. Original checkout and predecessor workspace remain unchanged.
 
-Plan: [Offline Bybit funding pagination](superpowers/plans/archive/2026-11/2026-11-05-offline-bybit-funding-pagination.md).
+Plan: [Offline Bybit funding pagination](work/archive/2026-11/2026-11-05-offline-bybit-funding-pagination.md).
 
 ## 2026-11-05 offline raw-first funding retention (unpublished successor)
 
@@ -2693,7 +2693,7 @@ calls, dependencies/installations, protected contents, full/Atlas/preflight gate
 commits/push/external publication were used. Coverage and providers remain unqualified;
 settlement/publication clocks remain distinct, and QuantPad remains excluded.
 
-Plan: [Offline raw-first funding retention](superpowers/plans/archive/2026-11/2026-11-05-offline-funding-raw-retention.md).
+Plan: [Offline raw-first funding retention](work/archive/2026-11/2026-11-05-offline-funding-raw-retention.md).
 
 ## 2026-11-05 injected bounded funding response reader (unpublished successor)
 
@@ -2722,7 +2722,7 @@ storage/rights admission and durable acquisition controls remain prerequisites. 
 providers, credentials, real data, protected contents, prohibited gates, installs,
 commits/push or external publication were used. QuantPad remains excluded.
 
-Plan: [Offline bounded funding reader](superpowers/plans/archive/2026-11/2026-11-05-offline-funding-bounded-reader.md).
+Plan: [Offline bounded funding reader](work/archive/2026-11/2026-11-05-offline-funding-bounded-reader.md).
 
 ## 2026-11-05 integrated offline funding delivery candidate (unpublished)
 
@@ -2853,7 +2853,7 @@ approved after its required delayed-response test correction. Full qualification
 projects, Atlas freshness and guarded commit/publication remain pending native UI integration.
 No private test content was read; private-suite coverage is UNVERIFIED.
 
-Plan: [backtest result card](superpowers/plans/archive/2026-11/2026-11-06-backtest-result-card.md).
+Plan: [backtest result card](work/archive/2026-11/2026-11-06-backtest-result-card.md).
 
 ## Backtest card parent-review corrections — 6 November 2026
 
@@ -3058,7 +3058,7 @@ native deployment/process ownership, installed dependencies, real backend/model
 qualification and full project gates remain unverified. The pre-existing protected
 Atlas input restriction remains stopped; no private-suite/full-gate claim is made.
 The original preserved candidates, studies, budgets and holdouts are untouched.
-See `docs/superpowers/plans/2026-11-07-stock-rdloop-continuation.md` and the worker
+See `docs/work/2026-11-07-stock-rdloop-continuation/02-plan.md` and the worker
 README for exact contracts and verification evidence.
 
 Focused stock-loop checks: 5 tests and 9 subtests passed, including actual native continuation/interruption and adversarial artifact/request cases; all four changed Python files pass Ruff, the ALPHA module passes focused strict mypy, and 13 import contracts remain kept. Independent Codex source review APPROVE within synthetic-only scope; Claude route unavailable. Full qualification, activation and publication remain blocked/unperformed.
@@ -3262,7 +3262,7 @@ recorded separately with the delivery receipt.
 No real model training/inference, provider initialization, market/broker access, owner-store
 operation, GPU work, package change, commit or publication occurred. Full gate, Atlas/protected
 suites, end-to-end fitting, UI visual qualification and scientific/economic acceptance remain
-unverified. See the [scope plan](superpowers/plans/2026-11-09-alpha158-versioned-correction.md).
+unverified. See the [scope plan](work/2026-11-09-alpha158-versioned-correction/02-plan.md).
 
 ## 2026-11-09 — Configured Matplotlib web-to-CLI environment
 
@@ -3290,7 +3290,7 @@ storage and a verified owned CWD without `matplotlibrc`. This is not whole-home,
 font-discovery, other-library/descendant-cache or network isolation, nor a sandbox.
 No owner configuration/data, provider/model workload, installation, history repair,
 commit or publication was used. See the
-[contract plan](superpowers/plans/2026-11-09-web-matplotlib-environment.md).
+[contract plan](work/2026-11-09-web-matplotlib-environment/02-plan.md).
 
 **2026-11-10 scoped candidate — deferred risk UI fixture capture:** Added a version-1
 capture command for the previously deferred public synthetic risk-metric-basis input.
@@ -3304,7 +3304,7 @@ application code and the four original source-mounted browser assertions/config 
 unchanged. Independent final review and the dedicated browser run remain separate;
 default browser-suite routing is still unresolved. No full gate, protected tests,
 providers/models/owner data, installs, commits or publication. See
-[the capture plan](superpowers/plans/2026-11-10-risk-basis-fixture-capture.md).
+[the capture plan](work/2026-11-10-risk-basis-fixture-capture/02-plan.md).
 
 ## 2026-11-10 — Bounded browser-lane routing successor
 
@@ -3321,5 +3321,5 @@ This is scoped source/test/docs work on a distinct uncommitted successor of froz
 verify orchestration only. Full/default/native execution and project qualification
 remain unrun; installed native selectors remain a named prerequisite, not an accepted
 skip. Predecessor browser evidence is preserved at its original narrow scope.
-The [routing plan](superpowers/plans/2026-11-10-browser-lane-routing.md) records
+The [routing plan](work/2026-11-10-browser-lane-routing/02-plan.md) records
 prerequisites, immutable evidence, README/manual review and remaining acceptance.

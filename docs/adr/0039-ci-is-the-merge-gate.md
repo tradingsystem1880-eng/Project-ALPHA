@@ -21,6 +21,9 @@ Meanwhile GitHub CI already runs every component on every pull request (about 20
 
 - **CI on the pull request is the merge gate.** A single aggregate job, `ci-ok`, depends on every
   other CI job; branch protection requires only `ci-ok`. The owner merges.
+  *Amended 2026-11-14:* the owner delegated routine merging to the orchestrating Claude session
+  (merge commits only, `ci-ok` green). Branch protection, required checks, credentials and
+  research approvals stay with the owner.
 - **A local commit needs only a well-formed message.** The `commit-msg` hook
   (`scripts/git_guard.py:check_message`) is the only local check that can refuse a commit; partial
   staging and work-in-progress commits are allowed. There is no pre-commit hook.
