@@ -102,8 +102,10 @@ A focused result never replaces the lane sequence in CI.
 Pure Python behaviour lives in the owning `packages/alpha-*` package. CLI commands live in
 `apps/alpha-cli/src/alpha_cli/*_cmds.py`; web and MCP relay CLI seams; frontend models render
 results Python computed. Follow the import contracts before adding a dependency. Read the
-[manual](../../CLAUDE.md) for the research invariants, the [architecture](../ARCHITECTURE.md) for
-ownership and data flow, and the [ADRs](../adr/README.md) for decisions.
+[research-integrity rules](../reference/invariants/research-integrity.md) for the invariants, the
+[architecture](../ARCHITECTURE.md) for ownership and data flow, and the [ADRs](../adr/README.md) for
+decisions. When behaviour changes, update the one document that owns the fact (see the table in
+[CONTEXT.md](../../CONTEXT.md)); never copy a fact into a second file.
 
 ## Evidence and recovery
 

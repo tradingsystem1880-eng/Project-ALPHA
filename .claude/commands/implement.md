@@ -40,9 +40,10 @@ Per slice, in order:
    independent work. A locally verified slice is not aggregate acceptance.
 
 Own the task through QA, necessary fixes, independent review findings and documentation
-upkeep. Update the existing manual, plan and current-state records in the same candidate;
-use existing context maps and generated indexes rather than another module inventory.
-Keep the plan's `**Delivery state:**` line true; archive it when Completed (`.claude/rules/docs.md`).
+upkeep. In the same candidate, update the one document that owns the fact (see the table in CONTEXT.md); never copy a fact into a second file;
+use the routing files and generated indexes rather than another module inventory.
+Keep the plan's `**Delivery state:**` line true; archive it when Completed
+(`docs/reference/invariants/documentation.md`).
 Do not hand implementation defects back to the user as planning questions.
 
 Push the branch and open a **draft** pull request; CI is the merge gate. Before

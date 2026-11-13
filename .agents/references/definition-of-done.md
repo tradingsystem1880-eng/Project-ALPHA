@@ -41,6 +41,7 @@ The depth behind these items lives in `code-review-and-quality` (the five-axis r
 
 ### Documentation
 - [ ] Public interfaces, APIs, and user-facing behavior are documented
+- [ ] For each changed fact: update the one document that owns the fact (see the table in CONTEXT.md); never copy a fact into a second file
 - [ ] Architectural decisions worth preserving are recorded as ADRs in `docs/adr/`
 - [ ] Documentation describes the current state in timeless language, not the change history
 - [ ] README was reviewed against the branch and updated where readers need it (say so in the

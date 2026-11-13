@@ -43,8 +43,7 @@ It composes the repo's existing skills — `karpathy-guidelines` (always),
 5. **Review** — risk-tier paths, the protected control plane, hooks and guarded config need
    `/review-gate` (independent APPROVE); quant paths need `/verify-quant` (PASS). Post both on
    the pull request. BLOCK findings are fixed and re-reviewed, never argued away.
-6. **Docs honesty** — CLAUDE.md / spec / plan-doc status updates land in the same
-   change as the code they describe (repo rule). Run
+6. **Docs honesty** — in the same change as the code, update the one document that owns the fact (see the table in CONTEXT.md); never copy a fact into a second file; plan status lines stay true. Run
    `verification-before-completion` before claiming done.
 
 The implementing owner stays responsible through necessary fixes, QA, review findings,
