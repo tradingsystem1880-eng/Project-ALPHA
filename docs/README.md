@@ -24,7 +24,7 @@ Where each kind of document lives, and how long it stays current. Tasks are rout
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Current package boundaries, layered DAG and runtime components. |
 | [`BUILD-STATUS.md`](BUILD-STATUS.md) | Frozen delivery history from 2026-10-01 to 2026-11; history since is git log and pull requests. |
 | [`build-status/`](build-status/) | Quarterly archives of older `BUILD-STATUS.md` entries, moved verbatim: [2026 Q2](build-status/2026-Q2.md), [2026 Q3](build-status/2026-Q3.md). |
-| [`reference/`](reference/commands.md) | The file system's reference layer: `invariants/` (rules), generated `commands.md`, `glossary.md`; at most 200 lines each. |
+| [`reference/`](reference/commands.md) | The file system's reference layer: `invariants/` (rules), `project/` (what each part is for, the owner's decisions), generated `commands.md`, `glossary.md`; at most 200 lines each. |
 | [`adr/`](adr/README.md) | Architecture decision records `NNNN-*.md`; the README is the index and supersession map. |
 | [`context/`](context/README.md) | The canonical [feature readiness checklist](context/feature-readiness-checklist-2026-10-27.md) (the full-scope owner). The retired navigation maps are in `archive/2026-11-context-maps/`. |
 | [`governance/`](governance/README.md) | Capability/authority matrix, OpenAPI operation classification, dependency licences, risk register and provenance records. |

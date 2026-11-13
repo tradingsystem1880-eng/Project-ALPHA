@@ -248,7 +248,12 @@ def test_preserve_native_lexical_selector_and_bind_current_source(
 
 
 def browser_report(
-    frontend: Path, config: str, file: str, *, listing: bool = False
+    frontend: Path,
+    config: str,
+    file: str,
+    *,
+    listing: bool = False,
+    selected: list[str] | None = None,
 ) -> dict[str, object]:
     names = (
         [""]
@@ -260,6 +265,7 @@ def browser_report(
             "chromium-reference-only",
         ]
     )
+    ran = selected or names
     return {
         "errors": [],
         "config": {
@@ -267,7 +273,7 @@ def browser_report(
             "projects": [{"name": name} for name in names],
             "rootDir": str(frontend / "e2e"),
         },
-        "stats": {"unexpected": 0, "expected": 0 if listing else len(names), "flaky": 0},
+        "stats": {"unexpected": 0, "expected": 0 if listing else len(ran), "flaky": 0},
         "suites": [
             {
                 "specs": [
@@ -279,7 +285,7 @@ def browser_report(
                                 "projectName": name,
                                 "results": [] if listing else [{"status": "passed"}],
                             }
-                            for name in names
+                            for name in ran
                         ],
                     }
                 ]
@@ -310,8 +316,15 @@ def stub_children(
             }[config]
             report = Path(env["PLAYWRIGHT_JSON_OUTPUT_FILE"])
             assert not report.exists()
+            selected = [
+                command[i + 1] for i, arg in enumerate(command) if arg == "--project"
+            ] or None
             report.write_text(
-                json.dumps(browser_report(cwd, config, file, listing="--list" in command))
+                json.dumps(
+                    browser_report(
+                        cwd, config, file, listing="--list" in command, selected=selected
+                    )
+                )
             )
         if "pytest" in command:
             evidence = Path(env["ALPHA_NATIVE_WEB_EVIDENCE"])
@@ -709,3 +722,55 @@ def test_retained_interpreter_selector_is_checked_but_not_replaced(
     for selector in ("relative/bin/python", "python"):
         selected = {**env, "ALPHA_TEST_PYTHON": selector}
         assert lanes.prerequisites(root, selected)["ALPHA_TEST_PYTHON"] == selector
+
+
+def test_reference_viewport_set_runs_one_viewport_and_reference_only_journeys(
+    installed: tuple[Path, dict[str, str]],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, env = installed
+    calls = stub_children(monkeypatch)
+    directory = lanes.run(root, env, tmp_path, "reference")
+    summary = json.loads((directory / "summary.json").read_text())
+    assert summary["status"] == "passed" and summary["viewports"] == "reference"
+    assert summary["completed_lanes"] == ["default", "risk-basis", "risk-live", "native"]
+    selection = ["--project", "chromium-reference", "--project", "chromium-reference-only"]
+    defaults = 0
+    for command, _, _ in calls:
+        if "--config" not in command:
+            continue
+        config = Path(command[command.index("--config") + 1]).name
+        if config == "playwright.config.ts":
+            assert command[-5:] == [*selection, "--no-deps"]
+            defaults += 1
+        else:
+            assert "--project" not in command
+    assert defaults == 2  # the fresh listing and the run select the same projects
+
+
+def test_reference_report_must_contain_exactly_the_selected_projects(tmp_path: Path) -> None:
+    selected = lanes.VIEWPORT_SETS["reference"][0]
+    body = browser_report(
+        tmp_path, "playwright.config.ts", "ordinary.spec.ts", selected=sorted(selected)
+    )
+    report = tmp_path / "report.json"
+    report.write_text(json.dumps(body))
+    identities = lanes.validate_browser_report(
+        report, tmp_path, "playwright.config.ts", None, selected_projects=selected
+    )
+    assert {project for project, _, _ in identities} == selected
+    with pytest.raises(ValueError):
+        lanes.validate_browser_report(report, tmp_path, "playwright.config.ts", None)
+    full = browser_report(tmp_path, "playwright.config.ts", "ordinary.spec.ts")
+    report.write_text(json.dumps(full))
+    with pytest.raises(ValueError):
+        lanes.validate_browser_report(
+            report, tmp_path, "playwright.config.ts", None, selected_projects=selected
+        )
+
+
+def test_viewport_sets_are_the_full_four_or_one_viewport() -> None:
+    assert lanes.VIEWPORT_SETS["all"] == (lanes.ALL_PROJECTS, ())
+    projects, arguments = lanes.VIEWPORT_SETS["reference"]
+    assert projects < lanes.ALL_PROJECTS and arguments[-1] == "--no-deps"

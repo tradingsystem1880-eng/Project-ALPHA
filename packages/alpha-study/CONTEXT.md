@@ -26,6 +26,7 @@ It owns no persistence, commands, approvals, evidence or trading authority.
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | Point-in-time reads | always |
 | [research invariants](../../docs/reference/invariants/research.md) | Phase allocation | the change touches D0 or D1 references |
 | [command line research](../../docs/reference/invariants/cli-research.md) | Projections and dossiers | the change surfaces through `alpha research` |
+| [what this part is for](../../docs/reference/project/components/research-cases-and-approval.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

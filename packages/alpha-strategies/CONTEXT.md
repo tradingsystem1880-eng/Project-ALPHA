@@ -26,6 +26,7 @@ the next open, never earlier.
 | [backtest invariants](../../docs/reference/invariants/backtest.md) | Next-open fills | changing how orders are submitted |
 | [research integrity](../../docs/reference/invariants/research-integrity.md) | No live capital | changing paper or sandbox behaviour |
 | [command line runs](../../docs/reference/invariants/cli-runs.md) | Run identity | adding a strategy module (it is fingerprinted) |
+| [what this part is for](../../docs/reference/project/components/strategies-and-signals.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

@@ -29,6 +29,7 @@ import it. It must never let a read see data that was not knowable at the cutoff
 | [crypto provider invariants](../../docs/reference/invariants/crypto-providers.md) | — | changing `crypto/providers/` or coverage profiles |
 | [command line crypto data](../../docs/reference/invariants/cli-crypto-data.md) | — | the change is driven by an `alpha crypto-data` command |
 | [engineering rules](../../docs/reference/invariants/engineering.md) | Polars by default | touching an adapter or adding a dataframe library |
+| [what this part is for](../../docs/reference/project/components/data-layer.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 

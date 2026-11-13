@@ -109,7 +109,12 @@ def stage_mutation_tree(root: Path, modules: list[str], staging: Path) -> list[s
         target = staging / "tests" / rel_path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(tests_root / rel_path, target)
-    also_copy = ["packages"]
+    # tests/conftest.py imports the stdlib-only test-process owner from scripts/; without it the
+    # staged clean run dies at conftest import and no staging-only failure is ever excluded.
+    (staging / "scripts").mkdir()
+    owner = Path(__file__).resolve().with_name("run_owned_test.py")
+    shutil.copy2(owner, staging / "scripts" / owner.name)
+    also_copy = ["packages", "scripts"]
     if Path("unit/test_theme_drift.py") in keep:
         # Public theme assertions inspect committed CSS by repository-relative path.
         # Preserve those exact bytes in both staging and mutmut's nested execution tree.
@@ -136,7 +141,7 @@ def stage_mutation_tree(root: Path, modules: list[str], staging: Path) -> list[s
         "track_dependencies = false\n"
         "\n[tool.pytest.ini_options]\n"
         'addopts = "--strict-markers --import-mode=importlib"\n'
-        'pythonpath = [".", "src"]\n'
+        'pythonpath = [".", "src", "scripts"]\n'
         f"markers = {json.dumps(markers)}\n"
     )
     return only

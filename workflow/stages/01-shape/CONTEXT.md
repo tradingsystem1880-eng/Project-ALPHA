@@ -24,6 +24,7 @@ Nothing is designed or built here; the job is to agree what "done" means before 
 | Read | Section | When |
 |---|---|---|
 | [STATUS.md](../../../STATUS.md) | At a glance | always: the work-in-progress count and what is allowed |
+| [component files](../../../docs/reference/project/overview.md) | Components | the request touches a part: read its file and the owner decisions log |
 | [roadmap index](../../../docs/roadmap/README.md) | — | `fs.py search` finds a plan or backlog item that may cover it |
 | [documentation invariants](../../../docs/reference/invariants/documentation.md) | Roadmap index | writing a backlog file |
 | [research integrity](../../../docs/reference/invariants/research-integrity.md) | Research before strategy | the idea is a market idea or a strategy |
@@ -41,9 +42,12 @@ Nothing is designed or built here; the job is to agree what "done" means before 
    owner which open work blocks it.
 4. Ask at most three questions, and only ones that change what gets built; give your
    recommended answer with each. Record every other default in the brief.
-5. A market idea is research, not a feature: it goes to the research pipeline (a research case),
+5. A request to shelve, delete or cut a part starts from its component file and the owner
+   decisions log ([rule](../../../docs/reference/project/overview.md#before-you-recommend-removing-anything)).
+   Being uninstalled, skipped or unfinished is a task to finish, not a reason to shelve.
+6. A market idea is research, not a feature: it goes to the research pipeline (a research case),
    never straight to strategy code.
-6. Write the output below in plain English the owner can read without the code.
+7. Write the output below in plain English the owner can read without the code.
 
 ## Outputs
 

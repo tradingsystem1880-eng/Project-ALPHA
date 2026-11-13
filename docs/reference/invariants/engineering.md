@@ -127,8 +127,9 @@ Project-wide coding rules. Area files add their own detail and link here. The re
   (merge commits only; owner's delegation, 2026-11-14). A commit needs only a
   `type(scope): summary` message. Model review is advisory.
   [ADR-0039](../../adr/0039-ci-is-the-merge-gate.md)
-- One CI job locally: `uv run python scripts/gate.py component NAME` (`backend`, `frontend`,
-  `literature`, `qlib`, `eval`).
+- One CI job locally: `uv run python scripts/gate.py component NAME` (`backend` is the whole
+  backend; CI runs it as `backend-static`, `backend-tests --shard I/4` and `backend-quant`;
+  also `frontend`, `frontend-full`, `literature`, `qlib`, `eval`). Every check: [checks](../checks.md).
 - Step by step, with focused checks and owned test processes: [development loop](../../operations/development-loop.md).
 - CI passing changes no application authority: owner actions, approvals and promotion are unchanged by it.
 - A check result holds only for the exact tree and environment it ran on, with its command, exit and scope.
