@@ -228,7 +228,10 @@ def _select_split(
     start: datetime,
     end: datetime,
     require_label: bool,
+    feature_names: Sequence[str] | None = None,
 ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
+    if feature_names is None:
+        feature_names = alpha158_feature_names()
     selected = samples.loc[samples["target_ts"].between(start, end, inclusive="both")].copy()
     if require_label:
         selected = selected.loc[selected["label"].notna()].copy()
@@ -237,7 +240,7 @@ def _select_split(
     selected = selected.sort_values(["datetime", "instrument"], kind="mergesort").set_index(
         ["datetime", "instrument"]
     )
-    features = selected.loc[:, alpha158_feature_names()].astype("float64")
+    features = selected.loc[:, list(feature_names)].astype("float64")
     labels = selected["label"].astype("float64")
     metadata = selected.loc[:, ["target_ts"]]
     return features, labels, metadata
@@ -510,6 +513,68 @@ def _normalize_features(
         raise
 
 
+def _normalize_upstream(
+    train: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
+    validation: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
+    test: pd.DataFrame,
+    *,
+    recorder: FitTrace | None = None,
+) -> tuple[pd.DataFrame, list[pd.DataFrame], pd.Series, pd.Series, str, int]:
+    """Feature recipe v3: upstream DataHandlerLP processors, fitted on training rows only.
+
+    The trace keeps the legacy component names so provenance links stay comparable: the
+    ``normalizer`` window covers the single upstream handler run, which also produces the
+    labels recorded afterwards under ``label.train`` and ``label.validation``.
+    """
+    from alpha_qlib_worker.upstream_alpha158 import upstream_fold_frames
+
+    train_x, train_y, train_meta = train
+    valid_x, valid_y, valid_meta = validation
+    token = (
+        recorder.begin("normalizer", "fit", {"train": train_x}) if recorder is not None else None
+    )
+    try:
+        processed = upstream_fold_frames((train_x, train_y), (valid_x, valid_y), test)
+        state = processed["state"]
+        normalization_hash = hashlib.sha256(canonical_json_bytes(state)).hexdigest()
+        if recorder is not None and token is not None:
+            recorder.complete(
+                token,
+                {
+                    "state": state,
+                    "train_features": processed["train_features"],
+                    "other_0_features": processed["validation_features"],
+                    "other_1_features": processed["test_features"],
+                },
+            )
+    except BaseException as exc:
+        if recorder is not None and token is not None:
+            recorder.failed_if_entered(token, exc)
+        raise
+    labels: dict[str, pd.Series] = {}
+    for role, raw, meta, key in (
+        ("train", train_y, train_meta, "train_labels"),
+        ("validation", valid_y, valid_meta, "validation_labels"),
+    ):
+        result = processed[key]
+        if recorder is not None:
+            label_token = recorder.begin(
+                f"label.{role}",
+                "transform",
+                {"labels": raw, "target_sessions": pd.Index(meta["target_ts"])},
+            )
+            recorder.complete(label_token, {"state": result, "normalized_labels": result})
+        labels[role] = result
+    return (
+        processed["train_features"],
+        [processed["validation_features"], processed["test_features"]],
+        labels["train"],
+        labels["validation"],
+        normalization_hash,
+        int(processed["all_missing"]),
+    )
+
+
 def _qlib_frame(
     features: pd.DataFrame,
     labels: pd.Series | None = None,
@@ -548,6 +613,7 @@ def _fold_model(
     qlib_module: ModuleType,
     lightgbm_module: ModuleType,
     fit_trace: FitTrace | None = None,
+    feature_names: Sequence[str] | None = None,
 ) -> tuple[
     pl.DataFrame,
     dict[str, Any],
@@ -565,23 +631,28 @@ def _fold_model(
         if trace is not None and not schema3
         else {}
     )
+    upstream_v3 = request.payload["feature_recipe"]["version"] == 3
+    names = list(feature_names) if feature_names is not None else None
     train_x, train_y, train_meta = _select_split(
         samples,
         start=fold["train_start"],
         end=fold["train_end"],
         require_label=True,
+        feature_names=names,
     )
     valid_x, valid_y, valid_meta = _select_split(
         samples,
         start=fold["validation_start"],
         end=fold["validation_end"],
         require_label=True,
+        feature_names=names,
     )
     test_x, _, test_meta = _select_split(
         samples,
         start=fold["test_start"],
         end=fold["test_end"],
         require_label=False,
+        feature_names=names,
     )
     input_provenance = (
         _fold_input_provenance(
@@ -595,15 +666,30 @@ def _fold_model(
         if schema3
         else None
     )
-    train_x, (valid_x, test_x), normalization_hash, all_missing = _normalize_features(
-        train_x, [valid_x, test_x], recorder=trace
-    )
-    train_y = _normalize_label(
-        train_y, train_meta["target_ts"], recorder=trace, component="label.train"
-    )
-    valid_y = _normalize_label(
-        valid_y, valid_meta["target_ts"], recorder=trace, component="label.validation"
-    )
+    if upstream_v3:
+        (
+            train_x,
+            (valid_x, test_x),
+            train_y,
+            valid_y,
+            normalization_hash,
+            all_missing,
+        ) = _normalize_upstream(
+            (train_x, train_y, train_meta),
+            (valid_x, valid_y, valid_meta),
+            test_x,
+            recorder=trace,
+        )
+    else:
+        train_x, (valid_x, test_x), normalization_hash, all_missing = _normalize_features(
+            train_x, [valid_x, test_x], recorder=trace
+        )
+        train_y = _normalize_label(
+            train_y, train_meta["target_ts"], recorder=trace, component="label.train"
+        )
+        valid_y = _normalize_label(
+            valid_y, valid_meta["target_ts"], recorder=trace, component="label.validation"
+        )
     dataset = _MemoryDataset(
         {
             "train": _qlib_frame(train_x, train_y),
@@ -876,7 +962,7 @@ def _fold_model(
         "best_iteration": best_iteration,
         "model_hash": model_hash,
         "normalization": {
-            "method": "train_only_median_then_zscore",
+            "method": "qlib_processors_v3" if upstream_v3 else "train_only_median_then_zscore",
             "statistics_hash": normalization_hash,
             "all_missing_train_features": all_missing,
         },
@@ -1258,6 +1344,7 @@ def source_fingerprint() -> str:
         "features.py",
         "feature_recipes.py",
         "native_feature_corrections.py",
+        "upstream_alpha158.py",
         "fit_provenance.py",
         "contract.py",
         "tabular.py",
@@ -1334,12 +1421,17 @@ def _run_real(
     request = validate_request(exchange_dir)
     adapter_hash = source_fingerprint() if request.payload["schema_version"] == 3 else None
     request_hash = value_digest(request.payload)
+    feature_version = int(request.payload["feature_recipe"]["version"])
 
     feature_binding: dict[str, Any] | None = None
 
     def verify_source() -> None:
-        if feature_binding is not None and feature_recipe_diagnostics(2) != feature_binding:
-            raise RuntimeError("feature recipe v2 source or dependency binding changed")
+        if feature_binding is not None and (
+            feature_recipe_diagnostics(feature_version) != feature_binding
+        ):
+            raise RuntimeError(
+                f"feature recipe v{feature_version} source or dependency binding changed"
+            )
         if adapter_hash is not None and source_fingerprint() != adapter_hash:
             raise RuntimeError("worker adapter source changed during execution")
         if (adapter_hash is not None or observe_legacy) and (
@@ -1373,8 +1465,9 @@ def _run_real(
     observation.require_checkpoint_context()
     qlib_module, lightgbm_module = require_real_dependencies()
     _official_feature_names()
-    feature_version = request.payload["feature_recipe"]["version"]
-    feature_binding = feature_recipe_diagnostics(2) if feature_version == 2 else None
+    feature_binding = (
+        feature_recipe_diagnostics(feature_version) if feature_version in (2, 3) else None
+    )
     features = (
         alpha158_features(request.panel)
         if feature_version == 1
@@ -1399,6 +1492,7 @@ def _run_real(
             qlib_module=qlib_module,
             lightgbm_module=lightgbm_module,
             fit_trace=trace,
+            feature_names=list(features.columns),
         )
         if adapter_hash is not None:
             provenance_folds.append(diagnostic.pop("_fit_provenance"))
