@@ -6,7 +6,7 @@ sources:
   - scripts/handoff.py
   - tests/unit/test_plan_schema.py
   - tests/unit/test_filesystem_contract.py
-verified: f89aa1bb78af
+verified: f2779da9fef4
 ---
 
 # Delivery pipeline — how a change gets made
