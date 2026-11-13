@@ -1,9 +1,10 @@
 # Project ALPHA agent instructions
 
-Read [CLAUDE.md](CLAUDE.md), the authoritative manual, before work.
-Use current evidence. Read applicable `.claude/rules/` and required skills. Separate domain
-authority from engineering checks; second-opinion bridge output is advisory.
+For any coding agent that is not Claude Code:
 
-Local check: `uv run python scripts/gate.py check`; CI on the pull request is the merge gate
-([development loop](docs/operations/development-loop.md)). On behavior changes, update the manual
-and current-state docs. Preserve user work; report unverified results honestly.
+1. Read [CLAUDE.md](CLAUDE.md): what ALPHA is, the rules that must never break, the one check.
+2. Then read the root [CONTEXT.md](CONTEXT.md) and follow its routing to one workspace's `CONTEXT.md`.
+3. A change follows the [delivery pipeline](workflow/CONTEXT.md). A build prompt from
+   `scripts/handoff.py` already names what to read and run: then read CLAUDE.md and that list only.
+
+Model or second-opinion output is advisory; checks and CI grant no research or owner authority.

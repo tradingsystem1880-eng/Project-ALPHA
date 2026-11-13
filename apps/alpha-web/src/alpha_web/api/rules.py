@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from alpha_web import _rules
 from alpha_web._catalog import _run_json
 from alpha_web.api._common import data_dir
+from alpha_web.api.errors import safe_message
 from alpha_web.api.models import (
     RuleDeleted,
     RuleList,
@@ -30,6 +31,8 @@ def evaluate_rule(body: RuleEvaluationRequest) -> dict[str, Any]:
         args += ["--as-of", body.as_of]
     try:
         result: dict[str, Any] = _run_json(args, data_dir=data_dir())
+        if isinstance(result.get("error"), str):
+            result["error"] = safe_message(result["error"], fallback="rule evaluation failed")
         return result
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

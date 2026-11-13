@@ -29,7 +29,7 @@ def docs_repo(tmp_path: Path) -> Path:
             "CLAUDE.md": "# ALPHA\nResearch precedes strategy.\n",
             "docs/context/features.md": "# Feature scope\n## H26 context filesystem\n"
             "Queryable intent and task context. NOT_TESTED; backup is separate.\n",
-            "docs/superpowers/plans/task.md": "# Context task\n## Verification\n"
+            "docs/work/2026-11-01-task/02-plan.md": "# Context task\n## Verification\n"
             "Context filesystem implementation remains pending.\n",
             "docs/adr/0001-context.md": "# ADR-0001: Context\n## Decision\n"
             "Context filesystem must preserve provenance.\n",
@@ -72,14 +72,25 @@ def test_kind_filter_and_query_bounds(docs_repo: Path) -> None:
         ("docs/records/2026-10-21-decision.md", "history", "archived"),
         ("docs/records/audits/2026-07-05-audit.md", "history", "archived"),
         ("docs/records/investigations/2026-06-23-bias.md", "history", "archived"),
-        ("docs/superpowers/plans/archive/2026-10/2026-10-26-done.md", "task", "archived"),
+        ("docs/work/archive/2026-10/2026-10-26-done.md", "task", "archived"),
+        ("docs/work/archive/2026-11/2026-11-02-done/04-verify.md", "task", "archived"),
+        ("docs/records/specs/2026-07-16-design.md", "feature", "archived"),
         ("docs/archive/README.md", "history", "archived"),
         ("docs/archive/2026-prompts/old-prompt.md", "history", "archived"),
-        ("docs/superpowers/plans/2026-11-01-live.md", "task", "live"),
+        ("docs/work/2026-11-01-live/02-plan.md", "task", "live"),
+        ("workflow/stages/02-plan/CONTEXT.md", "project", "live"),
         ("docs/roadmap/backlog/options-research.md", "feature", "live"),
         ("docs/roadmap/refactors/split-models.md", "feature", "live"),
         ("docs/context/feature-readiness-checklist-2026-10-27.md", "feature", "live"),
         (".claude/rules/docs.md", "reference", "live"),
+        ("CONTEXT.md", "project", "live"),
+        ("STATUS.md", "project", "live"),
+        ("docs/archive/2026-11-context-maps/software-team.md", "history", "archived"),
+        ("packages/alpha-data/CONTEXT.md", "project", "live"),
+        ("apps/alpha-web/CONTEXT.md", "project", "live"),
+        ("tests/CONTEXT.md", "project", "live"),
+        ("docs/reference/commands.md", "reference", "live"),
+        ("docs/reference/invariants/data.md", "reference", "live"),
     ],
 )
 def test_families_and_lifecycles(rel: str, kind: str, lifecycle: str) -> None:
@@ -92,15 +103,19 @@ def test_families_and_lifecycles(rel: str, kind: str, lifecycle: str) -> None:
     [
         "docs/build-status/notes/deep.md",
         "docs/records/other/2026-01-01-x.md",
-        "docs/superpowers/plans/archive/README.md",
-        "docs/superpowers/plans/archive/misc/x.md",
-        "docs/superpowers/plans/archive/2026-10/deep/x.md",
+        "docs/work/archive/README.md",
+        "docs/work/archive/misc/x.md",
+        "docs/work/archive/2026-10/2026-10-01-x/deep/x.md",
+        "docs/work/2026-11-01-x/data.json",
         "docs/roadmap/README.md",
         "docs/archive/research-one-offs/x/script.py",
         "docs/archive/data-hygiene/report.json",
         "docs/context/image.png",
         "data/private.md",
         "tests/holdout/private.md",
+        "tests/holdout/CONTEXT.md",
+        "docs/reference/invariants/data.json",
+        "packages/alpha-data/README.txt",
         ".env",
     ],
 )
@@ -113,17 +128,17 @@ def test_live_documents_rank_ahead_of_archived_history(docs_repo: Path) -> None:
         docs_repo,
         {
             # The archived plan matches more strongly (heading); live still ranks first.
-            "docs/superpowers/plans/archive/2026-10/2026-10-01-old.md": "# Ledger rotation\n"
+            "docs/work/archive/2026-10/2026-10-01-old.md": "# Ledger rotation\n"
             "Ledger rotation plan, first attempt.\n",
-            "docs/superpowers/plans/2026-11-01-new.md": "# New plan\nThe ledger rotation plan.\n",
+            "docs/work/2026-11-01-new/02-plan.md": "# New plan\nThe ledger rotation plan.\n",
             "docs/BUILD-STATUS.md": "# Build\n## Ledger rotation\nLedger rotation shipped.\n",
         },
     )
     found = search_sections(read_sources(docs_repo), "ledger rotation")
     assert [row.path for row in found] == [
-        "docs/superpowers/plans/2026-11-01-new.md",
+        "docs/work/2026-11-01-new/02-plan.md",
         "docs/BUILD-STATUS.md",
-        "docs/superpowers/plans/archive/2026-10/2026-10-01-old.md",
+        "docs/work/archive/2026-10/2026-10-01-old.md",
     ]
     assert [row.lifecycle for row in found] == ["live", "archived", "archived"]
 

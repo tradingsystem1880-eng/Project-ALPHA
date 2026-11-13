@@ -25,10 +25,44 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "atlas/system-map.md",
     ): "frozen delivery history; target removed by ADR-0040",
     (
-        "docs/superpowers/plans/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md",
+        "docs/work/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md",
         "../../../../../tools/alpha-atlas/README.md",
     ): "archived plan; target removed by ADR-0040",
+    (
+        "docs/work/archive/2026-06/2026-06-16-phase-2b-nautilus-run-harness.md",
+        "../../../../context/alpha-quant-platform.md#native-upstream-first--2026-11-06",
+    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
+    (
+        "docs/work/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md",
+        "../../../../context/software-team.md",
+    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
+    (
+        "docs/work/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md",
+        "../../../../context/alpha-quant-platform.md",
+    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
+    (
+        "docs/work/archive/2026-10/2026-10-26-qlib-tabular-wave1.md",
+        "../../../../context/software-team.md",
+    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
+    (
+        "docs/archive/2026-11-context-maps/software-team.md",
+        "../../../.agents/skills/alpha-feature-workflow/SKILL.md",
+    ): "archived map; skill retired 2026-11-14, a copy is archived beside it",
+    (
+        "docs/archive/2026-11-context-maps/software-team.md",
+        "../../../.agents/skills/code-review-and-quality/SKILL.md",
+    ): "archived map; skill retired 2026-11-14, a copy is archived beside it",
+    (
+        "docs/archive/2026-11-context-maps/software-team.md",
+        "../../../.agents/skills/verification-before-completion/SKILL.md",
+    ): "archived map; skill retired 2026-11-14, a copy is archived beside it",
 }
+
+# Archived documents are not edited (docs/README.md, Lifecycle). Their links into the retired
+# docs/superpowers/ folder (plans moved to docs/work/, specs to docs/records/specs/ on 2026-11-14)
+# are left as written; every other link in them must still resolve.
+ARCHIVE_PREFIX = "docs/archive/"
+RETIRED_FOLDER = "/superpowers/"
 
 _FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
 _INLINE_CODE = re.compile(r"(`+)(?:(?!\1).)+?\1")
@@ -132,6 +166,8 @@ def broken_links(rel: str) -> list[str]:
         else:
             dest = source.parent / path_part
         if not dest.exists():
+            if rel.startswith(ARCHIVE_PREFIX) and RETIRED_FOLDER in "/" + path_part:
+                continue
             problems.append(f"{rel}:{number}: missing target {target}")
             continue
         is_markdown = dest.is_file() and dest.suffix == ".md"

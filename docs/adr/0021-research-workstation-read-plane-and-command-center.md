@@ -53,8 +53,8 @@ statement **for read-only projections only**.
 
 ## Implementation anchors
 
-- Spec: `docs/superpowers/specs/2026-08-07-research-first-workstation-design.md` §2, §6
-- Phase plan: `docs/superpowers/plans/archive/2026-08/2026-08-07-research-first-R1-command-center.md`
+- Spec: `docs/records/specs/2026-08-07-research-first-workstation-design.md` §2, §6
+- Phase plan: `docs/work/archive/2026-08/2026-08-07-research-first-R1-command-center.md`
 - Unserved model: `apps/alpha-web/frontend/src/panels/researchCockpitModel.ts`
 - Router: `apps/alpha-web/src/alpha_web/api/research.py`; seam `apps/alpha-web/src/alpha_web/_research.py`
 - Screen composition: `apps/alpha-web/frontend/src/shell/screens.tsx`

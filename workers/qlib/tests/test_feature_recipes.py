@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -11,6 +13,7 @@ import pytest
 
 from alpha_qlib_worker.feature_recipes import build_features, feature_recipe_diagnostics
 from alpha_qlib_worker.features import alpha158_features
+from alpha_qlib_worker.real import _normalize_features, _normalize_label
 
 FAMILIES = ("MA", "STD", "VSTD", "RANK", "IMAX", "IMIN", "IMXD", "WVMA")
 WINDOWS = (5, 10, 20, 30, 60)
@@ -86,7 +89,7 @@ def test_v1_is_the_unchanged_default_and_unknown_versions_fail() -> None:
     expected = alpha158_features(raw)
     pd.testing.assert_frame_equal(build_features(raw), expected, check_exact=True)
     pd.testing.assert_frame_equal(build_features(raw, version=1), expected, check_exact=True)
-    for version in (0, 3, True, 1.0, "2"):
+    for version in (0, 4, True, 1.0, "2"):
         with pytest.raises(ValueError, match="feature recipe version"):
             build_features(raw, version=version)
 
@@ -163,4 +166,76 @@ def test_native_correction_does_not_register_providers_or_change_numpy_error_mod
     assert all(
         vars(getattr(data, key)).get("_provider") is None
         for key in ("Cal", "Inst", "FeatureD", "PITD", "ExpressionD", "DatasetD", "D")
+    )
+
+
+# Legacy v1/v2 golden values. Recorded on the reference machine from code whose byte digests
+# equalled those of the pre-v3 worker (branch point 598fd98b). The input panel is stored too:
+# the same code and locked libraries give last-digit differences on another CPU type, so the
+# comparison is "same NaN layout, values equal to a tight tolerance", not a byte digest.
+GOLDEN = np.load(Path(__file__).parent / "fixtures" / "legacy_feature_golden.npz")
+RTOL, ATOL = 1e-9, 1e-12
+
+
+def golden_panel() -> pl.DataFrame:
+    """The stored fabricated three-symbol panel (one zero-volume bar, weekend gaps)."""
+    return pl.DataFrame(
+        {
+            "symbol": GOLDEN["symbol"].tolist(),
+            "session_ts": pl.Series(GOLDEN["session_us"]).cast(pl.Datetime("us", "UTC")),
+            **{name: GOLDEN[name] for name in ("open", "high", "low", "close", "volume")},
+        }
+    )
+
+
+def nan_layout(frame: pd.DataFrame) -> np.ndarray[Any, Any]:
+    return np.packbits(np.isnan(frame.to_numpy(dtype="float64")))
+
+
+def test_legacy_v1_feature_values_are_unchanged() -> None:
+    features = build_features(golden_panel(), version=1)
+    np.testing.assert_array_equal(nan_layout(features), GOLDEN["v1_nan"])
+    np.testing.assert_allclose(
+        features.to_numpy(dtype="float64")[GOLDEN["rows"]], GOLDEN["v1"], rtol=RTOL, atol=ATOL
+    )
+
+
+def test_legacy_v2_feature_values_are_unchanged() -> None:
+    panel_frame = golden_panel()
+    features = build_features(panel_frame, version=2)
+    corrected = GOLDEN["v2_corrected_columns"].tolist()
+    np.testing.assert_array_equal(nan_layout(features), GOLDEN["v2_nan"])
+    np.testing.assert_allclose(
+        features[corrected].to_numpy(dtype="float64")[GOLDEN["rows"]],
+        GOLDEN["v2_corrected"],
+        rtol=RTOL,
+        atol=ATOL,
+    )
+    inherited = [name for name in features.columns if name not in corrected]
+    assert len(inherited) == 118
+    # Same process, same code path: the 118 inherited columns are v1's, exactly.
+    pd.testing.assert_frame_equal(
+        features[inherited], build_features(panel_frame, version=1)[inherited], check_exact=True
+    )
+
+
+def test_legacy_normalisation_is_unchanged() -> None:
+    features = build_features(golden_panel(), version=1)
+    dates = features.index.get_level_values("datetime")
+    cut = sorted(dates.unique())[60]
+    train, other = features.loc[dates < cut], features.loc[dates >= cut]
+    normalized_train, (normalized_other,), statistics, missing = _normalize_features(train, [other])
+    assert missing == 12
+    assert len(statistics) == 64
+    for actual, raw in ((normalized_train, train), (normalized_other, other)):
+        expected = (raw.fillna(pd.Series(GOLDEN["median"], index=raw.columns))) - GOLDEN["center"]
+        np.testing.assert_allclose(
+            actual.to_numpy(), expected / GOLDEN["scale"], rtol=RTOL, atol=ATOL
+        )
+    labels = pd.Series(GOLDEN["labels"], index=train.index)
+    normalized = _normalize_label(
+        labels, pd.Series(train.index.get_level_values("datetime"), index=train.index)
+    )
+    np.testing.assert_allclose(
+        normalized.to_numpy(), GOLDEN["normalized_labels"], rtol=RTOL, atol=ATOL
     )

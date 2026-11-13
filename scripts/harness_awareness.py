@@ -30,25 +30,24 @@ def referenced_adr_ids(text: str) -> set[int]:
     return ids
 
 
+_INDEX_LINK_RE = re.compile(r"\]\(\s*(?:\./)?(\d{4}-[^)\s#]+\.md)")
+
+
 def adr_drift(root: Path) -> list[str]:
-    """ADR ids that neither CLAUDE.md nor .claude/rules/*.md mention (awareness drift)."""
-    haystack = ""
-    claude_md = root / "CLAUDE.md"
-    if claude_md.exists():
-        haystack += claude_md.read_text(errors="replace")
-    for rule in sorted((root / ".claude" / "rules").glob("*.md")):
-        haystack += rule.read_text(errors="replace")
-    mentioned = referenced_adr_ids(haystack)
+    """ADR files that the ADR index ``docs/adr/README.md`` does not link (its one listing)."""
+    index = root / "docs" / "adr" / "README.md"
+    text = index.read_text(errors="replace") if index.exists() else ""
+    linked = set(_INDEX_LINK_RE.findall(text))
     ids: list[str] = []
     for name in adr_files(root):
-        match = _ADR_ID_RE.match(name)
-        assert match is not None
-        if int(match.group(1)) not in mentioned:
+        if name not in linked:
+            match = _ADR_ID_RE.match(name)
+            assert match is not None
             ids.append(f"ADR-{match.group(1)}")
     return ids
 
 
-# ---- feature plans (W4): a machine-checked front block in docs/superpowers/plans -----
+# ---- feature plans: a machine-checked front block in docs/work/<task>/02-plan.md ------
 
 _PLAN_BLOCK_RE = re.compile(r"^```json[ \t]*\n(.*?)\n```", re.S | re.M)
 
@@ -74,17 +73,18 @@ def plan_check(path: Path) -> tuple[bool, str]:
         text = path.read_text()
     except OSError as exc:
         return (False, f"cannot read {path}: {exc}")
+    name = path.parent.name if path.name == "02-plan.md" else path.name
     block = plan_front_block(text)
     if block is None:
-        return (False, f"{path.name}: no fenced ```json front block (or it is not a JSON object)")
+        return (False, f"{name}: no fenced ```json front block (or it is not a JSON object)")
     try:
         plan = FeaturePlan.model_validate(block)
     except ValidationError as exc:
-        return (False, f"{path.name}: FeaturePlan invalid:\n{exc}")
+        return (False, f"{name}: FeaturePlan invalid:\n{exc}")
     done = sum(1 for s in plan.slices if s.status == "done")
     return (
         True,
-        f"{path.name}: FeaturePlan ok — {len(plan.slices)} slice(s), {done} done; "
+        f"{name}: FeaturePlan ok — {len(plan.slices)} slice(s), {done} done; "
         f"tier impact {', '.join(plan.tier_impact)}; "
         f"{len(plan.assumptions)} assumption(s), {len(plan.pre_mortem)} pre-mortem item(s)",
     )

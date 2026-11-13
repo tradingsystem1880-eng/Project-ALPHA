@@ -1,4 +1,6 @@
-"""Eight Alpha158 families computed by pinned Qlib 0.9.7 operators, without providers.
+"""Legacy recipe v2 — kept to reproduce stored results; new work uses v3.
+
+Eight Alpha158 families computed by pinned Qlib 0.9.7 operators, without providers.
 
 Primary sources: installed pyqlib 0.9.7 qlib/contrib/data/loader.py Alpha158DL and
 qlib/data/ops.py. The single adapter is a content-keyed in-memory Expression leaf.

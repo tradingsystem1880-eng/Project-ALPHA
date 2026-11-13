@@ -20,7 +20,7 @@ qualification. W12 asks for a worker-only Qlib 0.9.8 migration and all 25 pinned
 ## Dependencies
 
 W09 (current Qlib routed through the native case), W10 controls, contract/position data. The
-blocked [W11 refit plan](../../superpowers/plans/2026-10-26-qlib-w11-refit.md) is the live engineering packet.
+blocked [W11 refit plan](../../work/2026-10-26-qlib-w11-refit/02-plan.md) is the live engineering packet.
 
 ## Sources
 

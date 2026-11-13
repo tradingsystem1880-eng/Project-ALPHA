@@ -274,6 +274,8 @@ HARNESS_SCRIPTS = (
     "scripts/fs.py",
     "scripts/fs_orient.py",
     "scripts/fs_search.py",
+    "scripts/fs_stale.py",
+    "scripts/commands_reference.py",
     "scripts/status.py",
     "scripts/capabilities.py",
     "scripts/claude_hooks.py",
@@ -285,6 +287,7 @@ HARNESS_SCRIPTS = (
     "scripts/mutation_fragment.py",
     "scripts/check_mutation_report.py",
     "scripts/codex_bridge.py",
+    "scripts/handoff.py",
     ".claude/statusline.py",
 )
 
@@ -619,7 +622,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("lint-harness")
     sub.add_parser("baseline", help="rewrite .claude/harness-baseline.json from the tree")
     plan_p = sub.add_parser("plan-check")
-    plan_p.add_argument("plan", help="docs/superpowers/plans/<doc>.md with a ```json front block")
+    plan_p.add_argument("plan", help="docs/work/<task>/02-plan.md with a ```json front block")
     doctor_p = sub.add_parser("doctor")
     doctor_p.add_argument("--json", action="store_true")
     mutate_p = sub.add_parser("mutate")

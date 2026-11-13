@@ -21,7 +21,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0013](0013-run-identity-v3-and-causal-artifacts.md) | Version run identity and publish causal artifact contracts | Accepted | 2026-07-19 |
 | [0014](0014-cli-owned-development-control-plane.md) | Keep development lifecycle state in a CLI-owned control plane | Accepted | 2026-07-19 |
 | [0015](0015-evidence-ledger-not-agent-memory.md) | Store cited evidence revisions, not an agent truth database | Accepted | 2026-07-19 |
-| [0016](0016-isolated-qlib-worker.md) | Isolate Qlib behind immutable JSON/Parquet exchange contracts | Accepted | 2026-07-19 |
+| [0016](0016-isolated-qlib-worker.md) | Isolate Qlib behind immutable JSON/Parquet exchange contracts | Accepted; feature layer delegated to upstream by 0042 | 2026-07-19 |
 | [0017](0017-authoritative-daily-data-and-broker-paper-boundary.md) | Qualify authoritative daily data before releasing broker-paper intents | Accepted | 2026-08-03 |
 | [0018](0018-quantpad-external-research-data-boundary.md) | Split QuantPad discovery from bulk research-data access | Accepted | 2026-08-04 |
 | [0019](0019-governed-research-cases-before-strategy-development.md) | Govern finite research cases before strategy development | Accepted | 2026-08-06 |
@@ -47,14 +47,15 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0039](0039-ci-is-the-merge-gate.md) | CI on the pull request is the merge gate; local commits need only a well-formed message | Accepted | 2026-11-13 |
 | [0040](0040-one-file-system-atlas-retired.md) | One file system; the Atlas graph, viewer and gate component are retired | Accepted | 2026-11-13 |
 | [0041](0041-no-hidden-test-suite.md) | No hidden test suite; the seed tests are visible acceptance tests | Accepted | 2026-11-13 |
-| [0043](0043-storage-reserve-is-owner-set.md) | Storage reserve is an owner-set value; the default stays 100 GB / 15% | Accepted (0042 is taken by another open branch) | 2026-11-14 |
+| [0042](0042-qlib-worker-delegates-data-layer-to-upstream.md) | The Qlib worker delegates its data layer to upstream Qlib (opt-in Alpha158 feature recipe v3; v1 stays default) | Accepted | 2026-11-14 |
+| [0043](0043-storage-reserve-is-owner-set.md) | Storage reserve is an owner-set value; the default stays 100 GB / 15% | Accepted | 2026-11-14 |
 
 ## Conventions
 
 - **Numbering:** zero-padded, sequential, never reused. A superseded ADR keeps its number and links forward to the one that replaces it.
 - **Status:** one of `Proposed` · `Accepted` · `Superseded`. Accepted records capture approved
-  load-bearing decisions; implementation status is reported separately in `CLAUDE.md` and the
-  changelog.
+  load-bearing decisions; implementation status is reported separately in the generated
+  [`STATUS.md`](../../STATUS.md).
 - **Structure:** Every record keeps the Status/Date/Deciders header plus explicit `Context`,
   `Decision`, and `Consequences` sections. Options and trade-offs must be recorded in proportion to
   the decision: concise bullets are acceptable for a narrow choice; a comparison table or separate
@@ -65,6 +66,6 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 
 ## Candidate future ADRs
 
-Decisions that are real but currently documented inline in [`../ARCHITECTURE.md`](../ARCHITECTURE.md) §5 and [`CLAUDE.md`](../../CLAUDE.md) rather than as standalone records — promote to an ADR here if deeper rationale is later wanted:
+Decisions that are real but currently documented inline in [`../ARCHITECTURE.md`](../ARCHITECTURE.md) §5 and [`engineering.md`](../reference/invariants/engineering.md) rather than as standalone records — promote to an ADR here if deeper rationale is later wanted:
 
 - **Polars as the default dataframe** (pandas confined to the yfinance adapter/parser, tear-sheet rendering edge, and Kronos facade — see ADR-0008).

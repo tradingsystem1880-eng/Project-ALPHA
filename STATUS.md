@@ -4,7 +4,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 3 working, 30 partly working, 1 demo only, 1 shelved, 2 not started.
+- **Capabilities:** 5 working, 29 partly working, 1 demo only, 1 shelved, 2 not started.
 - **Work in progress:** 41 in progress (limit 3).
   - 5 being worked on
   - 36 built but not yet checked end to end
@@ -22,6 +22,8 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Workstation web app** — uv run alpha-web, then open http://localhost:8801
 - **Run a backtest** — uv run alpha backtest run SPY
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
+- **Machine-learning experiments with Qlib** — uv run alpha ml capabilities
+- **Upstream Alpha158 price features** — set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec
 
 ## Partly working
 
@@ -35,9 +37,8 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Link paper claims to experiments and keep the original PDFs** — no test takes one paper all the way to an experiment.
 - **Check data providers and background jobs** — job list tested only with a stand-in command; provider checks need real providers.
 - **Paper trading: practice trading with no real money (IBKR Paper)** — no end-to-end test; parts tested with stand-ins. Needs: an opt-in setting, live Binance public data, and an IBKR practice account and gateway for stocks.
-- **Machine-learning experiments with Qlib** — proved only with a stand-in worker. Needs: the Qlib worker setup (not installed on this computer).
-- **Corrected Alpha158 price features** — no ML run with version 2; final review pending. Needs: the Qlib worker setup (not installed on this computer).
-- **Qlib model refit evidence (W11)** — blocked on missing statistics modules. Needs: the Qlib worker setup (not installed on this computer); reviewed statistics modules that do not exist yet.
+- **Corrected Alpha158 price features** — no ML run with version 2; superseded by version 3 (kept for stored results).
+- **Qlib model refit evidence (W11)** — blocked on missing statistics modules. Needs: reviewed statistics modules that do not exist yet.
 - **AI stock research loop (RD-Agent, W02)** — RD-Agent's own stock loop now runs here end to end (pinned Python 3.11 runtime, both smoke checks pass) but only with stand-in steps on made-up data; no AI model is connected, no alpha command starts a run, and restart after a crash is not solved. Needs: an AI model connection for RD-Agent. More: [docs/roadmap/rd-agent-in-alpha.md](docs/roadmap/rd-agent-in-alpha.md).
 - **"Native job result" screen (W04, W18)** — its smoke check now passes here: alpha and the web app read a made-up stock job's result; the browser lane fails here only because the web front end's test packages are not installed; no real job exists yet. Needs: a real (not made-up) stock RD-Agent job, which needs an AI model connection. More: [docs/roadmap/rd-agent-in-alpha.md](docs/roadmap/rd-agent-in-alpha.md).
 - **AI-run daily trading-rule study (Packet 3, W08)** — with its Docker image now qualified here, the full daily study's tests pass on made-up bars; it has no end-to-end smoke check, the storage settings are not yet created, and no real data has been acquired. Needs: the Dell's storage settings, created by you (docs/operations/storage-settings.md; 10 GB reserve per ADR-0043); real Binance daily bars admitted into that storage. More: [docs/roadmap/rd-agent-in-alpha.md](docs/roadmap/rd-agent-in-alpha.md). More: [docs/operations/storage-settings.md](docs/operations/storage-settings.md).
@@ -67,7 +68,7 @@ Found by running the installed program; each has a check that will fail once it 
 
 ## Demo only
 
-- **Qlib and Nautilus demonstration views** — made-up prices only; not a production path.
+- **Qlib and Nautilus demonstration views** — made-up prices only; not a production path (the pipeline demo re-ran on this computer on 2026-11-14).
 
 ## Shelved
 
@@ -124,6 +125,7 @@ The full triage sheet, with what each item does and why: [docs/roadmap/triage-20
 
 Ideas not yet planned (no order recorded, so alphabetical):
 
+- A route for new daily-bar research ideas — large (L)
 - Catalyst, expectations and fundamentals research (W15) — large (L)
 - ControlStore-owned durable acquisition journal — large (L)
 - Data-directory naming migration — medium (M)
@@ -144,8 +146,8 @@ Ideas not yet planned (no order recorded, so alphabetical):
 ## Housekeeping
 
 - Live plans: 45
-- Archived plans: 104
-- Backlog items: 16
+- Archived plans: 111
+- Backlog items: 17
 - Staged refactors: 7
 
 ## Where things are

@@ -1,7 +1,7 @@
 # Codex second-model runbook
 
-Codex is an **optional** second model attached to the harness for code review and source-checked
-research. Nothing in this repo depends on it: every gate, hook and CI job passes with Codex
+Codex is an **optional** second model attached to the harness for code review, source-checked
+research and benchmark judging. Nothing in this repo depends on it: every gate, hook and CI job passes with Codex
 uninstalled, logged out, rate-limited or timing out. If you only want the gates to be green, you
 can stop reading here.
 
@@ -63,7 +63,7 @@ python3 scripts/codex_bridge.py review --diff /path/to/some.diff
 python3 scripts/codex_bridge.py research --question "..."
 ```
 
-Every call runs `codex exec` with `--ephemeral`, sandbox `read-only`, and an output JSON schema
+Every call runs `codex exec` with `--ephemeral`, sandbox `read-only`, `--ignore-user-config` (the owner's global MCP servers, plugins and settings are not inherited), the apps, plugins, browser, computer-use, image, multi-agent, memories and hooks features disabled, the repository's own `.codex/config.toml` MCP servers replaced by disabled stubs, web search off (research alone keeps it live), and an output JSON schema
 from `scripts/schemas/`, under a wall-clock cap (review 900 s, research 600 s). Diffs are capped
 at 200 000 bytes and prompt-injection patterns in the reviewed text are neutralised before the
 model sees them.
@@ -72,8 +72,11 @@ model sees them.
 MCP server for Claude Code. codex-cli 0.154 removed that subcommand (the CLI now falls through
 to the interactive TUI and exits with `stdin is not a terminal`), so the entry was dropped; it
 had made every Claude Code session report `codex (CONNECTION_CLOSED)`. From Claude Code, Codex
-is reached only through the `codex-liaison` agent (`/codex-review`, `/codex-research`), which
-wraps the bridge above.
+is reached through the `/codex-review` and `/codex-research` commands, which run the bridge
+above, and the `quant-verifier` agent may run `research` as a citation cross-check. The bridge's
+fourth subcommand, `judge`, is the second judge of `tools/alpha-eval`. The bridge is read-only:
+it cannot implement code. When Codex builds a task it is opened as its own session in the
+checkout (stage 03 of the [delivery pipeline](../../workflow/stages/03-build/CONTEXT.md)).
 
 ## 5. Verify
 

@@ -497,9 +497,9 @@ def _validate_recipe_objects(request: dict[str, Any]) -> None:
     if (
         feature["name"] != "alpha158"
         or type(feature["version"]) is not int
-        or feature["version"] not in (1, 2)
+        or feature["version"] not in (1, 2, 3)
     ):
-        raise MLContractError("feature_recipe must be alpha158 with integer version 1 or 2")
+        raise MLContractError("feature_recipe must be alpha158 with integer version 1, 2 or 3")
     if feature["parameters"] != {}:
         raise MLContractError(
             "alpha158 has a fixed versioned recipe; feature_recipe.parameters must be empty"

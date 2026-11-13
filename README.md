@@ -14,7 +14,8 @@ explanations. A chart, a model answer, or a profitable backtest alone does not e
 
 The development direction is to reuse pinned Qlib workflows, RD-Agent native loops and
 NautilusTrader rather than rebuild their internals. ALPHA retains data provenance, trial
-accounting, validation, risk controls and the research UI. The [native reuse crosswalk](docs/context/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+accounting, validation, risk controls and the research UI. The [upstream-first rule](docs/reference/invariants/research-integrity.md#models-and-isolated-workers)
+keeps ALPHA's own acceptance; the dated [native reuse crosswalk](docs/archive/2026-11-context-maps/alpha-quant-platform.md#native-upstream-first--2026-11-06)
 separates existing integration, supplied synthetic demonstrations and replacements that still
 need parity, migration and rollback evidence.
 
@@ -38,7 +39,7 @@ The parts work together like this:
   and [Quickstart](#quickstart).
 - **The CLI is the coordinator.** The browser and agent tools ask it to perform supported actions.
   It connects data, simulations, validation, and research records while keeping explicit owner
-  decisions separate from suggestions. See the [project map](docs/context/alpha-quant-platform.md).
+  decisions separate from suggestions. See the [CLI workspace](apps/alpha-cli/CONTEXT.md).
 - **The research packages are the laboratory.** They keep data tied to what was known at the
   time, simulate strategies with costs, and test competing explanations. Saved snapshots and
   receipts let you check which inputs produced a result. See the [architecture](docs/ARCHITECTURE.md).
@@ -50,11 +51,11 @@ The parts work together like this:
   runs the checked-out module with syncing disabled, network access off, and Python safe-path mode.
 - **Codex helps explain and investigate.** Its answers are advisory. The file system's search
   (`uv run python scripts/fs.py search "QUERY"`) finds tracked project documents, live ones
-  first; neither generated prose nor a search result grants research authority. See the
-  [context index](docs/context/README.md).
+  first; neither generated prose nor a search result grants research authority. See
+  [Finding anything else](CONTEXT.md#finding-anything-else).
 - **The Software Team maintains the machinery.** It changes code, checks the result, and records
   what was delivered. Those engineering checks are separate from approval of market evidence or
-  paper operations. See the [Software Team map](docs/context/software-team.md).
+  paper operations. See the [engineering rules](docs/reference/invariants/engineering.md#checks-and-commits).
 
 A useful first session is to start the Workstation, capture a Research Case, and inspect what is
 missing before running an experiment. An empty installation has no acquired market data or
@@ -67,7 +68,7 @@ unfinished or deferred. Paper paths require separate opt-ins and readiness evide
 live-capital route ships**. The [scope and limits](#implemented-scope-and-limits) and
 [authority matrix](docs/governance/capability-authority-matrix.md) explain these boundaries.
 
-The [first daily rule/control route](docs/superpowers/plans/2026-10-31-packet3-daily-rule.md)
+The [first daily rule/control route](docs/work/2026-10-31-packet3-daily-rule/02-plan.md)
 connects a frozen momentum rule and control to native execution, accounting, cancellation,
 recovery and the existing reports. Artificial fixtures exercise the actual RD-Agent loop under a
 hard 1 GiB container limit; they establish no market result. The approved real-data demonstration
@@ -188,7 +189,7 @@ records this bounded scope. This delivery candidate is not yet merged or deploye
 isolated empty backend stores. These demonstrations create no admitted research, promotion
 approval or live-trading authority.*
 
-See the [Quant Platform map](docs/context/alpha-quant-platform.md),
+See the [file-system routing](CONTEXT.md),
 [bounded research workflow](docs/operations/bounded-research-workflow.md),
 [research contracts](docs/operations/research-platform-contracts.md), and
 [Monte Carlo guide](docs/operations/monte-carlo/README.md) for the detailed protocols.
@@ -279,14 +280,14 @@ the isolated launcher and closed rule/economics environments, validates their id
 prints the source export for later shells. Existing source must remain pinned and clean;
 failed partial acquisitions are preserved and acquired source is validated before use.
 Foundation-only setup stays non-fetching.
-See the [clean-bootstrap record](docs/superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md)
+See the [clean-bootstrap record](docs/work/archive/2026-10/2026-10-31-clean-rdagent-bootstrap.md)
 for fresh-workspace/container evidence and its limits. Provisioning does not grant execution authority.
 On a local development checkout, `bash scripts/setup_rdagent.sh` does only the RD-Agent part
 (no Git hooks, npm or browser download); see [workers/rdagent/README.md](workers/rdagent/README.md#install-on-a-development-machine)
 and the owner's overview [RD-Agent in ALPHA](docs/roadmap/rd-agent-in-alpha.md).
 
 The daily research route additionally uses an explicitly qualified, immutable local Docker image
-for its hard physical-memory boundary. Follow the [daily runtime and storage instructions](docs/superpowers/plans/2026-10-31-packet3-daily-rule.md#runtime-and-storage-setup).
+for its hard physical-memory boundary. Follow the [daily runtime and storage instructions](docs/work/2026-10-31-packet3-daily-rule/02-plan.md#runtime-and-storage-setup).
 The older synthetic probes retain their existing process boundary.
 
 Before selecting a different research storage root, inspect the existing authoritative history:
@@ -370,7 +371,7 @@ rule, use the system configuration unchanged.
 
 Engineering processes are separate from quant research approval and paper authority. Start with
 [AGENTS.md](AGENTS.md), [CLAUDE.md](CLAUDE.md), the
-[Software Team map](docs/context/software-team.md), and the
+[engineering rules](docs/reference/invariants/engineering.md), and the
 [development loop](docs/operations/development-loop.md). For UI development, startup fixtures,
 and browser checks, use the [frontend guide](apps/alpha-web/frontend/README.md).
 The mandatory browser command runs four fixture-specific lanes. The native lane needs explicitly
@@ -400,9 +401,14 @@ Interrupted calls stay unknown; duplicate delivery does not repeat activity. The
 do not establish durable accounting, verified fitted state or completed research evidence.
 Native Qlib parity remains open.
 
-The [context index](docs/context/README.md) links the deeper maps; the
-[build record](docs/BUILD-STATUS.md) preserves dated delivery evidence.
+Finding your way: [STATUS.md](STATUS.md) says what works today; the root [CONTEXT.md](CONTEXT.md)
+routes each kind of task to the files to read; the [glossary](docs/reference/glossary.md) explains
+the codes. The frozen [build record](docs/BUILD-STATUS.md) preserves dated delivery evidence.
 
 The isolated worker also offers an explicit [partial Alpha158 feature-v2 correction](workers/qlib/README.md#opt-in-partial-alpha158-feature-correction):
 40 columns use pinned Qlib operators, while 118 retain the legacy recipe. Feature v1 stays the
 default. This does not establish native whole-recipe parity or qualify historical models.
+Opt-in [feature recipe v3](workers/qlib/README.md#feature-recipe-v3-upstream-alpha158-opt-in)
+computes all 158 Alpha158 columns and the fold normalisation with upstream Qlib; a parity test
+shows exact equality with Qlib's own Alpha158 handler ([ADR-0042](docs/adr/0042-qlib-worker-delegates-data-layer-to-upstream.md)).
+V1 and v2 remain as legacy readers for stored results.
