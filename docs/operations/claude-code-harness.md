@@ -31,6 +31,17 @@ a hook event, `--strict-markers` or the coverage floor is weakened against
 Gate checkpoints and `gate.py checkpoints` were removed with ADR-0039. Existing
 `.alpha/state/gate-checkpoints/` folders are left untouched and are history, not current evidence.
 
+## How instructions load
+
+Claude Code loads the root `CLAUDE.md` and the unscoped `.claude/rules/00-karpathy.md` at launch.
+Each workspace folder (every project under `packages/`, `apps/`, `workers/`, `tools/`, plus
+`scripts/`, `tests/` and `docs/`) has a one-line `CLAUDE.md` holding `@CONTEXT.md`; Claude Code
+loads a subfolder's `CLAUDE.md`, and so its routing file, the first time it reads or edits a file
+there. The other `.claude/rules/*.md` files are path-scoped pointers to the same `CONTEXT.md`
+files. They link instead of importing because an `@` import inside a path-scoped rule was observed
+to load at launch (Claude Code 2.1.322), which would put every workspace file in every session.
+`tests/unit/test_filesystem_contract.py` checks the shapes.
+
 ## Thin Claude adapter
 
 `scripts/claude_hooks.py` is stdlib-only and has precisely four entrypoints:

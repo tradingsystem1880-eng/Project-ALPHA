@@ -274,6 +274,8 @@ HARNESS_SCRIPTS = (
     "scripts/fs.py",
     "scripts/fs_orient.py",
     "scripts/fs_search.py",
+    "scripts/fs_stale.py",
+    "scripts/commands_reference.py",
     "scripts/status.py",
     "scripts/capabilities.py",
     "scripts/claude_hooks.py",

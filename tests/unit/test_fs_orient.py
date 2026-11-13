@@ -79,5 +79,22 @@ def test_gate_orient_and_fs_orient_print_the_same(capsys: pytest.CaptureFixture[
     assert gate.main(["orient"]) == 0
     assert capsys.readouterr().out == from_fs
     assert from_fs.startswith("Repository orientation (source index; authority: none)")
-    assert "Documents: CLAUDE.md, docs/README.md" in from_fs
+    assert "Documents: CLAUDE.md, CONTEXT.md, STATUS.md" in from_fs
     assert fs.main(["orient", "--component", "nope"]) == 2
+
+
+@pytest.mark.parametrize(
+    "src",
+    sorted(p for p in [*ROOT.glob("packages/*/src/*"), *ROOT.glob("apps/*/src/*")] if p.is_dir()),
+    ids=lambda p: p.name,
+)
+def test_every_public_top_level_module_is_in_the_orientation_index(src: Path) -> None:
+    """Modules are discoverable without a handwritten module map (moved from the awareness test)."""
+    index = fs_orient.orientation(ROOT, component=src.name.replace("_", "-"))
+    paths = {row["path"] for row in index["modules"]}
+    missing = [
+        py.name
+        for py in sorted(src.glob("*.py"))
+        if not py.name.startswith("_") and str(py.relative_to(ROOT)) not in paths
+    ]
+    assert missing == [], f"{src.name}: modules absent from source index: {missing}"

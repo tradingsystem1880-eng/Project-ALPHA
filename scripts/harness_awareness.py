@@ -30,20 +30,19 @@ def referenced_adr_ids(text: str) -> set[int]:
     return ids
 
 
+_INDEX_LINK_RE = re.compile(r"\]\(\s*(?:\./)?(\d{4}-[^)\s#]+\.md)")
+
+
 def adr_drift(root: Path) -> list[str]:
-    """ADR ids that neither CLAUDE.md nor .claude/rules/*.md mention (awareness drift)."""
-    haystack = ""
-    claude_md = root / "CLAUDE.md"
-    if claude_md.exists():
-        haystack += claude_md.read_text(errors="replace")
-    for rule in sorted((root / ".claude" / "rules").glob("*.md")):
-        haystack += rule.read_text(errors="replace")
-    mentioned = referenced_adr_ids(haystack)
+    """ADR files that the ADR index ``docs/adr/README.md`` does not link (its one listing)."""
+    index = root / "docs" / "adr" / "README.md"
+    text = index.read_text(errors="replace") if index.exists() else ""
+    linked = set(_INDEX_LINK_RE.findall(text))
     ids: list[str] = []
     for name in adr_files(root):
-        match = _ADR_ID_RE.match(name)
-        assert match is not None
-        if int(match.group(1)) not in mentioned:
+        if name not in linked:
+            match = _ADR_ID_RE.match(name)
+            assert match is not None
             ids.append(f"ADR-{match.group(1)}")
     return ids
 

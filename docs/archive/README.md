@@ -26,3 +26,15 @@ It stands for all three names. Git history still has the originals.
 | Archive path | Original path | Notes |
 | --- | --- | --- |
 | `readme-maintenance.md` | `docs/operations/readme-maintenance.md` | README review evidence (`gate.py attest --kind readme`) was removed by [ADR-0039](../adr/0039-ci-is-the-merge-gate.md); README is now reviewed in the pull request. Bytes unchanged. |
+
+## Moved on 2026-11-14 (file-system switch-over, ADR-0040)
+
+History only: none of these is a live source. Current rules live in `docs/reference/invariants/`,
+routing in the root `CONTEXT.md` and each workspace `CONTEXT.md`.
+
+| Archive path | Original path | Notes |
+| --- | --- | --- |
+| `2026-11-claude-rules/*.md` (16 files) | `.claude/rules/*.md` | Copies of the rule files before they became pointers to the workspace `CONTEXT.md`. Bytes unchanged except six relative links, rewritten to resolve from here. |
+| `2026-11-context-maps/README.md` | `docs/context/README.md` | Context index; replaced by the root `CONTEXT.md`. Relative links rewritten to resolve from here. |
+| `2026-11-context-maps/software-team.md` | `docs/context/software-team.md` | Engineering map; its facts are in `engineering.md`, `testing.md` and `scripts/CONTEXT.md`. Links rewritten. |
+| `2026-11-context-maps/alpha-quant-platform.md` | `docs/context/alpha-quant-platform.md` | Platform map and the dated 2026-11-06 native-upstream crosswalk; its rules are in the invariants files. Links rewritten. |
