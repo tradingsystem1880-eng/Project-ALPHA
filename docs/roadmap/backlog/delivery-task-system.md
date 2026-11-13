@@ -34,4 +34,4 @@ M0: a permitted Codex execution path. Owner-controlled integration of the pilot 
 - Local, not in the repository: the newest delivery model-evidence package (2026-11-11), its
   recovery predecessor and the first delivery-task pilot (both 2026-11-10), and the successor
   build map in the portable 2026-11-10 project copy.
-- [Software Team map](../../context/software-team.md)
+- [Engineering rules](../../reference/invariants/engineering.md#working-style)

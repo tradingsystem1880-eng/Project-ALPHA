@@ -32,7 +32,7 @@ What was hand-written is the data layer:
   on fabricated data; it is not a production path.
 
 The 2026-11-06 "native upstream first" intent
-([area map](../context/alpha-quant-platform.md)) asks that installed upstream capability be used
+([archived area map](../archive/2026-11-context-maps/alpha-quant-platform.md#native-upstream-first--2026-11-06)) asks that installed upstream capability be used
 before ALPHA writes its own.
 
 ## Decision

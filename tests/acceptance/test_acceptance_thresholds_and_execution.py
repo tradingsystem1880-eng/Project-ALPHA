@@ -1,9 +1,9 @@
-"""Hidden holdout: DSR/PBO pass semantics, split causality, and the t+1-open fill convention.
+"""Acceptance: DSR/PBO pass semantics, split causality, and the t+1-open fill convention.
 
-Behavioural contracts (CLAUDE.md): DSR passes iff ``dsr >= threshold`` and a standalone run has
-``N=1, DSR=PSR``; PBO passes iff ``pbo <= threshold``; walk-forward tests start strictly after
-train + embargo; decide on close of ``t``, fill at the OPEN of ``t+1`` (never the close of ``t``);
-fees are notional × bps / 1e4.
+Behavioural contracts (docs/reference/invariants/validation.md and research-integrity.md):
+DSR passes iff ``dsr >= threshold`` and a standalone run has ``N=1, DSR=PSR``; PBO passes iff
+``pbo <= threshold``; walk-forward tests start strictly after train + embargo; decide on close of
+``t``, fill at the OPEN of ``t+1`` (never the close of ``t``); fees are notional × bps / 1e4.
 """
 
 from __future__ import annotations
@@ -19,8 +19,6 @@ from alpha_validation.dsr import deflated_sharpe, probabilistic_sharpe_ratio
 from alpha_validation.overfitting import probability_of_backtest_overfitting
 from alpha_validation.walkforward import walk_forward_splits
 from tests.fixtures.nautilus_fixtures import DecideCloseExecuteOpen, RoundTrip, ladder_bars
-
-pytestmark = pytest.mark.holdout
 
 _RETURNS = np.random.default_rng(11).normal(0.001, 0.01, size=400)
 

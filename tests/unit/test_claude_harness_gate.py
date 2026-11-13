@@ -172,12 +172,12 @@ class TestAdrAwareness:
         (tmp_path / "docs" / "adr").mkdir(parents=True)
         (tmp_path / "docs" / "adr" / "0001-first.md").write_text("# ADR-0001 first\n")
         (tmp_path / "docs" / "adr" / "0002-second.md").write_text("# ADR-0002 second\n")
-        (tmp_path / "docs" / "adr" / "README.md").write_text("index\n")
-        (tmp_path / "CLAUDE.md").write_text("see ADR-0001 only\n")
+        index = tmp_path / "docs" / "adr" / "README.md"
+        index.write_text("| [0001](0001-first.md) | First |\nADR-0002 named but not linked\n")
+        (tmp_path / "CLAUDE.md").write_text("ADR-0002 elsewhere does not count\n")
         assert harness_awareness.adr_files(tmp_path) == ["0001-first.md", "0002-second.md"]
         assert harness_awareness.adr_drift(tmp_path) == ["ADR-0002"]
-        (tmp_path / ".claude" / "rules").mkdir(parents=True)
-        (tmp_path / ".claude" / "rules" / "docs.md").write_text("ADR-0002\n")
+        index.write_text("| [0001](0001-first.md) |\n| [0002](./0002-second.md) |\n")
         assert harness_awareness.adr_drift(tmp_path) == []
 
     def test_adr_mentions_understand_ranges(self) -> None:

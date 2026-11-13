@@ -160,7 +160,7 @@ That is intentional; push and open the PR from the main session, not from a fork
 `scripts/claude_hooks.py`; staying on the historical branch is no longer required
 by that absence claim. File presence does not establish installed or active hooks,
 workspace trust, permissions, or local readiness. Follow the current
-[operating manual](../../CLAUDE.md) and [harness guide](claude-code-harness.md)
+[project instructions](../../CLAUDE.md) and [harness guide](claude-code-harness.md)
 for the current checkout's setup and verification requirements. Other machine
 observations below retain their original inspection date.
 

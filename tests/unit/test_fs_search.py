@@ -80,6 +80,14 @@ def test_kind_filter_and_query_bounds(docs_repo: Path) -> None:
         ("docs/roadmap/refactors/split-models.md", "feature", "live"),
         ("docs/context/feature-readiness-checklist-2026-10-27.md", "feature", "live"),
         (".claude/rules/docs.md", "reference", "live"),
+        ("CONTEXT.md", "project", "live"),
+        ("STATUS.md", "project", "live"),
+        ("docs/archive/2026-11-context-maps/software-team.md", "history", "archived"),
+        ("packages/alpha-data/CONTEXT.md", "project", "live"),
+        ("apps/alpha-web/CONTEXT.md", "project", "live"),
+        ("tests/CONTEXT.md", "project", "live"),
+        ("docs/reference/commands.md", "reference", "live"),
+        ("docs/reference/invariants/data.md", "reference", "live"),
     ],
 )
 def test_families_and_lifecycles(rel: str, kind: str, lifecycle: str) -> None:
@@ -101,6 +109,9 @@ def test_families_and_lifecycles(rel: str, kind: str, lifecycle: str) -> None:
         "docs/context/image.png",
         "data/private.md",
         "tests/holdout/private.md",
+        "tests/holdout/CONTEXT.md",
+        "docs/reference/invariants/data.json",
+        "packages/alpha-data/README.txt",
         ".env",
     ],
 )

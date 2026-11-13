@@ -1,3 +1,12 @@
+---
+owner: status page and roadmap
+sources:
+  - docs/context/feature-readiness-checklist-2026-10-27.md
+  - docs/roadmap/capabilities.toml
+  - scripts/status.py
+verified: a7e687ae729f
+---
+
 # Glossary
 
 This page explains the short codes and technical words you may see on an ALPHA status page.
@@ -12,7 +21,9 @@ that state what they are based on (C04)". Work package list:
 
 ## Work packages
 
-The roadmap has 19 work packages, W01 to W19. None is declared fully accepted yet.
+The roadmap has 19 work packages, W01 to W19. None is declared fully accepted yet. Older numbering
+differs: the August 2026 research-first workstation spec's W1–W10 are walkthrough steps (its W10 is
+regime testing), not these work packages.
 
 - **W01** — Reconcile baseline and prerequisite acceptance: agree what is truly done at the start.
 - **W02** — Bind execution and handoff evidence: tie every run, receipt and recovery to one exact attempt.
@@ -53,6 +64,7 @@ The stages of one governed research case. Data is split by date groups, 60/20/20
 ## Delivery items
 
 - **C04** — Risk numbers that state what they are based on (the "metric basis" shown with risk figures).
+- **EX14** — Checklist item: a finite simulated Student-t wealth mean does not prove finite expected wealth.
 - **H26** — Checklist feature: a lean, queryable store of project context. Superseded by ADR-0040 (Atlas was retired).
 - **H60** — Checklist feature: generate AI context and prompt packs. Superseded by ADR-0040 (Atlas was retired).
 - **Phase A–E (edge-first)** — Steps of the September 2026 "edge-first" programme. Phase B: get real
@@ -88,6 +100,7 @@ The stages of one governed research case. Data is split by date groups, 60/20/20
 
 ## Tools and parts
 
+- **ALPHA Quant Platform** — The owner's name for ALPHA as a whole. A name only: it adds no scope or authority.
 - **Component (gate)** — One named group of checks run by `scripts/gate.py component NAME`. The names
   are backend, frontend, literature, qlib and eval.
 - **ControlStore** — The program part that keeps the project's control database and its append-only ledger.
