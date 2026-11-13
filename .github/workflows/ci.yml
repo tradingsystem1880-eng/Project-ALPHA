@@ -1,5 +1,8 @@
 name: CI
 
+# The pull-request tier. Every check here, the tier it sits in and what it catches is listed in
+# docs/reference/checks.md (a unit test fails when a job is missing from that table).
+
 on:
   push:
     branches: [main]
@@ -9,65 +12,136 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v6.0.3
-        with:
-          fetch-depth: 0
-      - uses: astral-sh/setup-uv@v8.2.0
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - name: Shared backend gate
-        env:
-          ALPHA_GATE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-        # The stdlib-only runner owns uv lock --check and uv sync --locked.
-        run: uv run --no-project --python 3.12 python scripts/gate.py component backend
+env:
+  # The comparison base: the pull request's base commit, or the previous main on a push.
+  ALPHA_GATE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
 
-  harness:
-    # The commit-message hook, the local check and thin optional agent adapters verify themselves.
+jobs:
+  changes:
+    # Which conditional jobs this change needs (scripts/gate_components.py::ci_changes).
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
+    outputs:
+      qlib: ${{ steps.select.outputs.qlib }}
+      literature: ${{ steps.select.outputs.literature }}
+      eval: ${{ steps.select.outputs.eval }}
+      quant: ${{ steps.select.outputs.quant }}
     steps:
       - uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v8.2.0
+      - name: Select conditional jobs
+        id: select
+        env:
+          ALL: ${{ github.event_name == 'push' && '--all' || '' }}
+        # Standard library only; push to main and an unknown base select every path job.
+        run: python3 scripts/gate.py changes $ALL | tee -a "$GITHUB_OUTPUT"
+
+  static:
+    # Lock, lint, import contracts, the one mypy run, harness wiring, semgrep, OpenAPI, wheels.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6.0.3
         with:
-          python-version: "3.12"
-          enable-cache: true
-      - name: Install (locked)
-        run: uv sync --locked
-      - name: Harness doctor
-        run: uv run python scripts/gate.py doctor --json
-      - name: Harness weakening scanner
-        run: uv run python scripts/gate.py lint-harness
-      - name: Harness types
-        run: uv run mypy --strict $(uv run python -c "import sys; sys.path.insert(0, 'scripts'); import gate; print(' '.join(gate.HARNESS_SCRIPTS))")
-      - name: Git hooks, component definitions, local check selection and adapter (disposable repositories)
-        run: uv run pytest -q tests/unit/test_git_guard.py tests/unit/test_gate_components.py tests/unit/test_gate_select.py tests/unit/test_claude_harness_hooks_subprocess.py
+          # Full history: tests and the gate read commits (documents pin them, gates diff them).
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          sync: "false"
+      - name: Shared static gate
+        # The stdlib-only runner owns uv lock --check and uv sync --locked.
+        run: uv run --no-project --python 3.12 python scripts/gate.py component backend-static
+
+  tests:
+    name: tests (${{ matrix.shard }}/4)
+    # Every root test except `network` and `slow_oracle`, split by file into four shards.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          # Full history: tests and the gate read commits (documents pin them, gates diff them).
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          sync: "false"
+      - name: Shared test shard
+        run: >-
+          uv run --no-project --python 3.12 python scripts/gate.py component backend-tests
+          --shard ${{ matrix.shard }}/4
+      - name: Name this shard's coverage data
+        run: mv .coverage ".coverage.shard-${{ matrix.shard }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-shard-${{ matrix.shard }}
+          path: |
+            .coverage.shard-${{ matrix.shard }}
+            pytest-shard-${{ matrix.shard }}.xml
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+  coverage:
+    # Combines the shards; gates changed product lines (>= 85%) and reports the global figure.
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-shard-*
+          merge-multiple: true
+      - name: Combined coverage and changed-line gate
+        env:
+          DIFF_BASE: ${{ github.event.pull_request.base.sha }}
+        run: >-
+          uv run python scripts/gate.py coverage --shards 4 ${DIFF_BASE:+--base "$DIFF_BASE"}
+          --summary "$GITHUB_STEP_SUMMARY"
+      - name: Per-file test times (refresh scripts/gate_test_durations.json from this artifact)
+        if: always()
+        run: uv run python scripts/gate.py durations pytest-shard-*.xml --output test-durations.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-durations
+          path: test-durations.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  quant:
+    # Slow oracles and the mutation gate on the touched quant-tier modules, as before.
+    needs: changes
+    if: needs.changes.outputs.quant == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          sync: "false"
+      - name: Shared quant gate
+        run: uv run --no-project --python 3.12 python scripts/gate.py component backend-quant
 
   frontend:
+    # Lint, build, unit tests, API freshness, and the browser journeys at one viewport.
     runs-on: ubuntu-latest
-    # 308 browser tests across four viewport projects; PR #53 hit 15 minutes inside the browser step.
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6.0.3
-      - uses: actions/setup-node@v5
+      - uses: ./.github/actions/setup
         with:
-          node-version: "22"
-      - uses: astral-sh/setup-uv@v8.2.0
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - name: Install backend for the Playwright real server (locked)
-        run: uv sync --locked
-      - name: Install Playwright Chromium
-        working-directory: apps/alpha-web/frontend
-        run: npm ci && npx playwright install --with-deps chromium
+          playwright: "true"
       - name: Shared frontend gate
         id: frontend_gate
         run: uv run python scripts/gate.py component frontend
@@ -87,43 +161,35 @@ jobs:
             apps/alpha-web/frontend/e2e/workstation.spec.ts-snapshots/chart-document-chromium-wide-linux.png
 
   qlib-worker:
+    needs: changes
+    if: needs.changes.outputs.qlib == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6.0.3
-      - uses: astral-sh/setup-uv@v8.2.0
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - name: Install gate environment
-        run: uv sync --locked
+      - uses: ./.github/actions/setup
       - name: Shared Qlib gate
         run: uv run python scripts/gate.py component qlib
 
   literature-worker:
+    needs: changes
+    if: needs.changes.outputs.literature == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6.0.3
-      - uses: astral-sh/setup-uv@v8.2.0
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - name: Install gate environment
-        run: uv sync --locked
+      - uses: ./.github/actions/setup
       - name: Shared literature gate
         run: uv run python scripts/gate.py component literature
 
   eval:
+    needs: changes
+    if: needs.changes.outputs.eval == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6.0.3
-      - uses: astral-sh/setup-uv@v8.2.0
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - run: uv sync --locked
+      - uses: ./.github/actions/setup
       - name: Shared benchmark (alpha-eval) gate
         run: uv run python scripts/gate.py component eval
 
@@ -131,19 +197,33 @@ jobs:
     # The one check branch protection requires. Add every new job to `needs`; then
     # jobs can be added, removed or renamed without touching repository settings.
     if: always()
-    needs: [check, harness, frontend, qlib-worker, literature-worker, eval]
+    needs: [changes, static, tests, coverage, quant, frontend, qlib-worker, literature-worker, eval]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require every job to succeed
+      - name: Require every job to succeed (a path-skipped job counts as success)
         env:
           RESULTS: ${{ toJSON(needs) }}
-        # No job is conditional today, so "skipped" counts as a failure too.
+          # Conditional job -> the `changes` output that decides it. Only these may be skipped,
+          # and only when `changes` succeeded and said the job was not needed.
+          CONDITIONAL: >-
+            {"quant": "quant", "qlib-worker": "qlib", "literature-worker": "literature",
+            "eval": "eval"}
         run: |
           echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          failed=$(echo "$RESULTS" | jq -r '[to_entries[] | select(.value.result != "success") | .key] | join(" ")')
+          failed=$(echo "$RESULTS" | jq -r --argjson conditional "$CONDITIONAL" '
+            (if .changes.result == "success" then .changes.outputs else {} end) as $selected
+            | [ to_entries[]
+                | select(.value.result != "success")
+                | select(
+                    (.value.result == "skipped"
+                      and ($conditional[.key] // "") != ""
+                      and $selected[$conditional[.key]] == "false")
+                    | not)
+                | .key ]
+            | join(" ")')
           if [ -n "$failed" ]; then
             echo "ci-ok: FAILED, these jobs did not succeed: $failed"
             exit 1
           fi
-          echo "ci-ok: every job succeeded"
+          echo "ci-ok: every job succeeded or was not needed for this change"

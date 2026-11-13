@@ -297,7 +297,10 @@ class TestQuantRigorTooling:
         assert not (staging / "tests" / "unit" / "test_other.py").exists()  # unrelated test dropped
         cfg = (staging / "pyproject.toml").read_text()
         assert 'only_mutate = ["src/alpha_validation/dsr.py"]' in cfg
-        assert 'also_copy = ["packages"]' in cfg
+        assert 'also_copy = ["packages", "scripts"]' in cfg
+        # tests/conftest.py imports the test-process owner; staged runs must find it
+        assert (staging / "scripts" / "run_owned_test.py").is_file()
+        assert 'pythonpath = [".", "src", "scripts"]' in cfg
         assert 'markers = ["oracle: o"]' in cfg
         assert "use_git_change_detection = false" in cfg
 

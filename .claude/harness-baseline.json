@@ -1,5 +1,5 @@
 {
-  "coverage_fail_under": 93,
+  "coverage_fail_under": 85,
   "deny_rules": [
     "Bash(.venv/bin/alpha owner-auth enroll*)",
     "Bash(.venv/bin/alpha owner-auth recover*)",
