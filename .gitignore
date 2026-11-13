@@ -37,8 +37,6 @@ node_modules/
 coverage/
 apps/alpha-web/frontend/playwright-report/
 apps/alpha-web/frontend/test-results/
-tools/alpha-atlas/frontend/playwright-report/
-tools/alpha-atlas/frontend/test-results/
 *.tsbuildinfo
 
 # Data is large + reproducible from snapshots; never commit it

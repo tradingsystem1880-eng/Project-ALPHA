@@ -16,7 +16,6 @@ from pathlib import PurePosixPath
 
 PLATFORM_PREFIXES: dict[str, tuple[str, ...]] = {
     "tests/unit": (
-        "test_atlas_",
         "test_ci_backend_bootstrap",
         "test_claude_",
         "test_cloud_setup",
