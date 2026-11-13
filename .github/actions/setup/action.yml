@@ -13,6 +13,9 @@ inputs:
   playwright:
     description: Install the frontend packages and a cached Playwright Chromium (implies node).
     default: "false"
+  bundle:
+    description: Build the Workstation SPA into alpha_web/static/app (implies node).
+    default: "false"
 
 runs:
   using: composite
@@ -26,7 +29,7 @@ runs:
       shell: bash
       run: uv sync --locked
     - uses: actions/setup-node@v5
-      if: inputs.node == 'true' || inputs.playwright == 'true'
+      if: inputs.node == 'true' || inputs.playwright == 'true' || inputs.bundle == 'true'
       with:
         node-version: "22"
         cache: npm
@@ -61,3 +64,10 @@ runs:
         else
           npx playwright install --with-deps chromium
         fi
+    - name: Build the Workstation SPA (not committed; tests and the wheel need it)
+      if: inputs.bundle == 'true'
+      shell: bash
+      working-directory: apps/alpha-web/frontend
+      run: |
+        [ -d node_modules ] || npm ci
+        npm run build

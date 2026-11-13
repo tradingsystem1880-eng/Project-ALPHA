@@ -35,7 +35,7 @@ request only when its paths (or the workflow and gate files) change, and always 
 | `static`: harness lint and doctor | a removed deny rule, unwired hook, lowered coverage floor or `-x` in CI | PR | 0.2 s |
 | `static`: semgrep over the whole repo, plus its rule contracts | wall-clock reads, unseeded random numbers, negative shifts, silent excepts | PR | 13 s |
 | `static`: OpenAPI freshness and authority | a web route changed without regenerating `openapi.json`, or an unsafe operation | PR | 3 s |
-| `static`: wheel build and wheel smoke | a package that no longer builds or imports when installed | PR | 5 s |
+| `static`: wheel build and wheel smoke | a package that no longer builds or imports, or a web wheel without its SPA | PR | 5 s |
 | `tests` job, four shards: all root tests but `network`, `slow_oracle` | any unit, integration, smoke or acceptance failure | PR | 4.5-5.7 min each |
 | `bias_guard` marker (inside `tests`) | look-ahead: output before the cutoff changes when later data is poisoned | PR | in `tests` |
 | `oracle` marker (inside `tests`) | wrong statistics: metamorphic and differential checks fail | PR | in `tests` |
@@ -50,7 +50,6 @@ request only when its paths (or the workflow and gate files) change, and always 
 | `frontend` job: lint, build with types, unit tests with coverage | TypeScript, lint and component failures | PR | 22 s (job 9.6 min) |
 | `frontend`: API client freshness | `src/api/generated.ts` out of date with `openapi.json` | PR | in `frontend` |
 | `frontend`: browser journeys at the reference viewport (plus reference-only ones) | broken Workstation screens and flows, real backend | PR | 8.6 min |
-| `frontend`: built bundle freshness | the committed web bundle differs from a fresh build | PR | in `frontend` |
 | `qlib-worker` job | the isolated Qlib worker's lint, types or tests | PR (paths) | 5.7 min |
 | `literature-worker` job | the literature worker's lint, types or tests | PR (paths) | 0.5 min |
 | `eval` job | the agent benchmark's lint, types or tests | PR (paths) | 0.7 min |
