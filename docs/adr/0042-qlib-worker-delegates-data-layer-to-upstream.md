@@ -59,11 +59,11 @@ before ALPHA writes its own.
    | | (a) panel fields as `Expression` leaves + upstream parser/ops | (b) dump to a temp file provider, `qlib.init`, real `Alpha158` handler |
    |---|---|---|
    | Upstream code exercised | config, parser, all operators, expression cache, float32 cast, processors and handler | the same plus provider/calendar/instrument loading and `QlibDataLoader` |
-   | Glue | one leaf class and an operator namespace (≈60 lines) | a bin-format writer (`scripts/dump_bin.py` is not in the wheel), calendar and instrument files |
+   | Glue | one leaf class, an operator namespace and the per-instrument loop (≈80 lines) | a bin-format writer (`scripts/dump_bin.py` is not in the wheel), calendar and instrument files |
    | Arbitrary / 24/7 calendars | panel sessions are the calendar | needs a written calendar; works |
    | Missing VWAP | proxy leaf | proxy bin file |
    | Global state | none (`qlib.init` never called; content-keyed cache) | `qlib.init` mutates process-global config and providers; conflicts with the worker's own recorder runtime |
-   | Small panels | ~0.3 s for 4 x 150 rows | similar, plus disk writes |
+   | Speed (this machine) | 0.34 s for 561 rows (v1: 0.31 s); 2.0 s for 20 x 760 rows (v1: 5.6 s) | not measured in production use; adds disk writes per request |
 
    (a) is chosen for production; (b) is the independent reference in the parity test, run in a
    separate process.
