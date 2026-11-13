@@ -115,6 +115,7 @@ def capabilities(
                         for version, scope in (
                             (1, "historical_alpha158_style"),
                             (2, "partial_alpha158_style_40_column_correction"),
+                            (3, "upstream_alpha158_all_158_columns"),
                         )
                     ],
                     "backends": [
