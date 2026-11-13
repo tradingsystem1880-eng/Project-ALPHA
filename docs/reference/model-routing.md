@@ -6,7 +6,7 @@ sources:
   - .claude/agents/*.md
   - .codex/config.toml
   - AGENTS.md
-verified: d0fffa796f8e
+verified: 0d2cc970448a
 ---
 
 # Model routing: who builds, who reviews, what happens at a limit
@@ -66,6 +66,19 @@ Calibration, 2026-11-14, both small route, `gpt-6.1-sol` `medium`, no fix round 
 |---|---|---|---|---|
 | A: redact paths in the rules-evaluate relay error (3 files) | 3m57s | 496,656 (468,736) | 3,749 | correct; one unrequested doc re-wrap, caused by the brief |
 | B: aggregate the per-plan tests in `test_plan_schema.py` (1 file) | 2m57s | 188,778 (150,656) | 2,822 | correct, strictness kept; 314 cases to 6 |
+
+Test clean-up stream, 2026-11-14, all small route, `gpt-6.1-sol` `medium`, no fix round needed,
+reviewed by Claude (Opus) before merge:
+
+| Task | Wall time | Input tokens (cached) | Output | Result |
+|---|---|---|---|---|
+| C: run the v2 Qlib-isolation test in a fresh process (1 file) | 5m03s | 156,373 (126,336) | 1,777 | correct, every assertion kept |
+| D: aggregate the theme drift tests, drop a permanent skip (2 files) | 3m55s | 187,865 (164,864) | 3,199 | correct; 54 cases to 8 |
+| E: barrier for the investigation watchdog deadline test (1 file) | 2m52s | 351,724 (314,112) | 2,161 | correct, test-only, assertions kept |
+
+The mutation-gate change in the same stream touched guarded harness files (`scripts/gate*`,
+`scripts/harness_*`), which a brief cannot declare, so Claude built it and Codex reviewed it
+(`handoff.py review`: 0 findings) alongside an Opus reviewer (one medium finding, fixed).
 
 Most of Codex's allowance goes on context: a turn's input count adds up what is sent with each
 model call (inferred: 497k input for one turn of 32 commands, 94% cached), so every file read
