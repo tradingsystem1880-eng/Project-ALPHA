@@ -20,3 +20,9 @@ input or research evidence. Moved files keep their original bytes except where n
 `output/data-hygiene/2026-10-02-retirement-final-audit.json` were byte-identical to
 `2026-10-02-retirement-applied-audit.json` (same sha256 above), so only that one copy was kept.
 It stands for all three names. Git history still has the originals.
+
+## Moved on 2026-11-13 (CI is the merge gate)
+
+| Archive path | Original path | Notes |
+| --- | --- | --- |
+| `readme-maintenance.md` | `docs/operations/readme-maintenance.md` | README review evidence (`gate.py attest --kind readme`) was removed by [ADR-0039](../adr/0039-ci-is-the-merge-gate.md); README is now reviewed in the pull request. Bytes unchanged. |

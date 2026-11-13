@@ -1,6 +1,6 @@
 ---
 name: alpha-feature-workflow
-description: The mandatory Project ALPHA development pipeline for any multi-file feature or change - explore via the navigator subagent, plan as a dated plan doc, implement with TDD in small slices, pass the tiered gate, then independent review (plus quant verification for statistical code). States when to skip so trivial work never bloats.
+description: The mandatory Project ALPHA development pipeline for any multi-file feature or change - explore via the navigator subagent, plan as a dated plan doc, implement with TDD in small slices, run the fast local check, open a draft pull request for CI, then independent review (plus quant verification for statistical code). States when to skip so trivial work never bloats.
 ---
 
 Canonical skill: read and follow `.agents/skills/alpha-feature-workflow/SKILL.md` exactly.

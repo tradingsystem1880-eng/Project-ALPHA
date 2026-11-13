@@ -36,7 +36,7 @@ stored daily bars are supported. Short-circuit and conflicting-side behavior mat
 
 Verbatim relocation of the pre-v2 CLAUDE.md `CLI surface` section and `alpha_cli` MODULE MAP block. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 
-RISK TIER: `_gauntlet.py`, `_optim.py`, `_seeds.py`, `_identity.py`, `_surrogate.py`, `_synth.py`, `_runner.py` require an APPROVE `ReviewVerdict` (`/review-gate`) before commit.
+RISK TIER: `_gauntlet.py`, `_optim.py`, `_seeds.py`, `_identity.py`, `_surrogate.py`, `_synth.py`, `_runner.py` require an APPROVE `ReviewVerdict` (`/review-gate`) before the pull request is marked ready.
 ## CLI surface (`apps/alpha-cli/src/alpha_cli/`)
 Entry point `alpha = alpha_cli.main:main`. `data`/`crypto-data`/`backtest`/`forecast`/`optim`/`paper`/`propfirm`/`provider`/`quantpad-data`/`info`/`options`/`owner-auth`/`risk`/`screener`/`research`/`figures`/`project`/`evidence`/`ml`/`monte-carlo`/`suite`/`strategy-candidate` are Typer sub-apps; `validate`/`report` are root commands. Machine-readable projections (`--json`) back the Workstation SPA and typed MCP surface. `owner-auth` is a trusted local enrollment/recovery ceremony, not an MCP or generic-job capability.
 - `alpha info` — print resolved `AlphaSettings` + core version.

@@ -4,6 +4,8 @@
 **Date:** 2026-07-19
 **Deciders:** Owner-approved Workstation v3 plan and AI build agents
 
+> **Note (2026-11-13):** [ADR-0039](0039-ci-is-the-merge-gate.md) makes CI on the pull request the merge gate in place of local gate stamps; the evidence-ledger decision below is unaffected and unchanged.
+
 ## Context
 
 Cross-run learning is useful, but uncited chat summaries can leak future knowledge, discard negative

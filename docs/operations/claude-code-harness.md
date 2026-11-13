@@ -1,17 +1,16 @@
 # Agent-neutral engineering checks and the Claude adapter
 
-Current transition: **implemented locally; full aggregate verified, 2026-09-16**.
-[ADR-0037](../adr/0037-agent-neutral-research-engineering.md) supersedes the engineering ceremony
-of ADR-0034. Application owner authorization, scientific verification and sandbox boundaries remain
-unchanged. The [implementation plan](../superpowers/plans/2026-09-16-agent-neutral-reproducible-research.md)
-and fresh gate results determine acceptance; this document does not claim the entire program passed.
+Current rule: **CI on the pull request is the merge gate**
+([ADR-0039](../adr/0039-ci-is-the-merge-gate.md), which supersedes the local-stamp parts of
+[ADR-0037](../adr/0037-agent-neutral-research-engineering.md) and ADR-0034). Application owner
+authorization, scientific verification and sandbox boundaries are unchanged.
 
 ## Verification and discovery
 
-Run `uv run python scripts/gate.py full` for aggregate verification. Shared component definitions
-cover `backend`, `frontend`, `literature`, `qlib`, `atlas` and `eval`; run one with
-`uv run python scripts/gate.py component NAME`. A partial component pass is not a full pass.
-CI and local execution consume the shared definitions; receipts must describe the checked tree.
+`uv run python scripts/gate.py check` is the fast local check; `gate.py component NAME` runs one
+CI job's steps (`backend`, `frontend`, `literature`, `qlib`, `atlas`, `eval`) exactly as CI does.
+The [development loop](development-loop.md) describes both. Nothing local records that a tree
+passed: there are no stamps, receipts, attestations, override tokens or audit journal.
 
 `uv run python scripts/gate.py orient [--json] [--component NAME]` reads the shared computed
 source index. It neither launches the Atlas viewer nor reads owner data or hidden tests.
@@ -19,48 +18,15 @@ source index. It neither launches the Atlas viewer nor reads owner data or hidde
 describes registered analysis families, verified protocols and scan commands. These are descriptive,
 not executable authority registries.
 
-The real Git guards are `.githooks/pre-commit`, `.githooks/commit-msg` and
-`scripts/git_guard.py`. They check staged-content verification evidence and commit-message
-requirements without trying to parse arbitrary shell commands. **Installation is a separate local
-step and is not asserted by the presence of those files.** Verify `core.hooksPath` and the guard
-tests before claiming commit enforcement is active. Git hooks are bypassable local convenience
-checks; CI must independently verify changes.
+The only Git hook is `.githooks/commit-msg` (via `scripts/git_guard.py`), installed with
+`uv run python scripts/git_guard.py install`. It refuses a commit whose subject is not
+`type(scope): summary` and nothing else. `gate.py lint-harness` (in CI) fails if a deny rule,
+a hook event, `--strict-markers` or the coverage floor is weakened against
+`.claude/harness-baseline.json`; `gate.py baseline` rewrites that file for review in a pull request.
 
-At commit time the guard also requires the full stamp's recorded comparison base (reference,
-resolved commit, merge base and selection mode) and all six component receipts to match the current
-base and component definitions; only the interpreter path is abstracted between the gate and the
-hook. Review attestations must carry the current `reviewed_tree_hash` and bind the review-scope paths
-and diff, so later review-scope edits invalidate them; legacy stamps and review records fail closed.
-`gate.py check --tier full` applies the same stamp check; the statusline and Stop hook report
-tree-only freshness. The recorded interpreter is diagnostic, not
-enforced.
-Before `gate.py full`, `component` or `fast` replaces any of that evidence, an explicit allowlist
-(stamp, receipts, review/quant attestations, coverage files) is copied to a hash-verified,
-mode-read-only `.alpha/state/gate-checkpoints/` entry; if that fails, the run stops before overwriting.
-A failed attempt leaves its `.incomplete-*` staging copy (possibly read-only) in place and names it;
-gate execution never deletes these copies. `gate.py attest` is not covered.
-
-### Checkpoint retention without evidence loss
-
-`uv run python scripts/gate.py checkpoints` prints a dry-run JSON inventory. It reads only
-allowlisted gate/coverage evidence, verifies checkpoint manifests and records receipt commit/tree
-identities as historical evidence. Current receipt contents and the newest ten other verified
-checkpoints are retained; `--keep N` changes that proposed hot-set count. Incomplete copies,
-symlinks, unknown entries and invalid checkpoints are excluded for separate investigation.
-
-`uv run python scripts/gate.py checkpoints --archive --keep 10` copies older verified checkpoints
-to `.alpha/state/gate-checkpoint-archives/`. Every archive member is checked against the source
-manifest; source changes or a different existing archive fail closed. Evidence reads use
-nonblocking opens and reject nonregular descriptors, including substituted FIFOs. The report gives archive
-SHA256 values. Original checkpoint paths remain intact; there is no automatic pruning or age-only
-deletion. Failed archive staging is preserved. Review the exact inventory and recovery proof before
-any separate retirement decision; this command does not bound total disk usage by deleting data.
-
-To restore, verify the reported SHA256, create a new empty directory, then run
-`python -m tarfile -e /absolute/path/pre-run-ID.tar.gz /absolute/path/new-empty-directory`.
-Compare its `MANIFEST.tsv` paths, sizes and SHA256 values before explicit reconciliation. Never
-extract over current receipts or treat restored historical verification as current qualification.
-Keep archives and inventories private; no owner data, credentials or private tests belong in them.
+<a id="checkpoint-retention-without-evidence-loss"></a>
+Gate checkpoints and `gate.py checkpoints` were removed with ADR-0039. Existing
+`.alpha/state/gate-checkpoints/` folders are left untouched and are history, not current evidence.
 
 ## Thin Claude adapter
 
@@ -68,7 +34,7 @@ Keep archives and inventories private; no owner data, credentials or private tes
 
 | Event | Entrypoint | Behavior |
 |---|---|---|
-| SessionStart | `session-start` | Bounded pointers to CLAUDE.md, applicable rules, the canonical skill, orientation and gate. No scanning or telemetry. |
+| SessionStart | `session-start` | Bounded pointers to CLAUDE.md, applicable rules, the canonical skill, orientation and the local check. No scanning or telemetry. |
 | PreToolUse: Read/Edit/Write/MultiEdit | `pre-file-guard` | Denies hidden-holdout paths, including resolved symlinks and nested edit paths. |
 | PreToolUse: alpha MCP | `pre-mcp-guard` | Retains denial of owner research decisions, overrides and holdout reveal. |
 | PreToolUse: Bash/WebFetch/MCP | `pre-owner-action-guard` | Denies tool input naming owner-action routes or owner-auth enrollment/recovery, including decoded references. |
@@ -77,11 +43,11 @@ The adapter no longer requires acknowledgments before source edits, checks Stop
 or task/subagent completion, runs prompt judges, reinjects per-turn prose, or writes session/audit
 telemetry. It does not lint each edit or infer shell mutations. The owner-action guard scans
 Bash/WebFetch/MCP tool inputs for the existing denied routes and credential ceremonies; it is not
-a shell parser. Git guards and the shared gate own engineering verification.
+a shell parser. CI on the pull request owns engineering verification.
 
 File/MCP checks fail closed on malformed inputs and when their script is unavailable. Session
-guidance is advisory and does not block startup. Agent role labels, owner-token environment values
-and the former `ALPHA_HARNESS_DISABLE` variable cannot bypass hidden-file safety. Proposed tests
+guidance is advisory and does not block startup. Agent role labels and the former
+`ALPHA_HARNESS_DISABLE` variable cannot bypass hidden-file safety. Proposed tests
 belong in `tests/holdout_seed/`; agents may run hidden tests without reading their source.
 
 All pre-existing native deny entries remain in `.claude/settings.json`, including secret access,
@@ -97,7 +63,7 @@ application owner-auth enforcement remain authoritative regardless of adapter pr
 ## Quantitative and domain controls
 
 Keep point-in-time poison guards with discriminating leaky controls, import-linter boundaries,
-strict typing, immutable evidence verification and independent review. Statistical changes require
+strict typing, immutable evidence verification and review on the pull request. Statistical changes require
 primary-source verification under `.agents/skills/quant-source-verification/` and relevant numeric,
 metamorphic, calibration and differential tests. Quantification remains in Python.
 
@@ -108,30 +74,13 @@ not itself a successful behavioral test. Component/CI definitions own current sc
 Owner Touch ID, sealed D2 authorization, provider receipts, paper opt-ins, venue/unit separation,
 and no-live-capital routing are application controls. No engineering receipt, advisory model
 response, screening result or Monte Carlo scenario output substitutes for them. The optional
-Codex bridge remains a read-only second opinion, not an approver or attestation authority.
+Codex bridge remains a read-only second opinion, not an approver.
 
-## Current state and historical evidence
+## Historical state
 
-New agent-neutral engineering state belongs in `.alpha/state/`. Historical
-`.claude/state/harness-audit.jsonl` is retained; read it using:
-
-```bash
-uv run python scripts/gate.py audit --legacy
-```
-
-The adapter does not delete or rewrite historical logs and does not consume old ack/override
-tokens. Historical records describe the controls that existed when they were written; they do
-not prove the new Git hooks are installed or that the current tree passed. Do not delete a state
-directory as a recovery shortcut.
-
-The root manual, active plan and BUILD-STATUS must distinguish implemented slices, checks actually
-run, local hook installation, and aggregate acceptance. After configuration changes, a running
-client may need to reload repository settings; file presence alone does not prove that happened.
-
-Stage the intended candidate before final review/quant attestation. Moving a new file
-from untracked to staged changes the scoped-diff serialization even when its content
-tree is identical; if staging follows review, the independent reviewer must verify
-identity and refresh the binding before commit. Do not bypass the guard.
+Older `.alpha/state/` and `.claude/state/` files (stamps, receipts, attestations, the audit
+journal) are no longer read or written. They are left in place; do not treat them as evidence
+that any current tree passed, and do not delete a state directory as a recovery shortcut.
 
 ### Research walkthrough operation
 

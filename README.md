@@ -291,10 +291,6 @@ metadata grants no new-root or execution authority. The existing Linux storage b
 one explicitly retained mount for control and bulk; it does not make temporary filesystems durable
 or replace an existing Mac volume-UUID guarantee. See the [storage/history preflight](workers/rdagent/README.md#storage-and-history-preflight).
 
-Inspect retained gate evidence with `uv run python scripts/gate.py checkpoints` (dry-run).
-Adding `--archive --keep 10` creates verified archive copies while retaining every original;
-see the [retention and restoration guide](docs/operations/claude-code-harness.md#checkpoint-retention-without-evidence-loss).
-
 Persist these environment-level settings separately so later shells inherit them:
 
 ```text
@@ -374,19 +370,16 @@ and browser checks, use the [frontend guide](apps/alpha-web/frontend/README.md).
 The mandatory browser command runs four fixture-specific lanes and requires explicitly selected,
 already-installed native source/runtime assets. Missing inputs fail the command, never skip that lane.
 
-Final engineering acceptance requires the canonical gate on one unchanged candidate tree:
+CI on the pull request is the merge gate: it runs the backend, frontend, literature, Qlib, Atlas
+and eval components, and the owner merges once it is green. Locally, run the fast check:
 
 ```bash
-uv run python scripts/gate.py full
+uv run python scripts/gate.py check
 ```
 
-It covers backend, frontend, literature, Qlib, Atlas, and eval components. Focused checks and old
-delivery records do not establish a fresh aggregate pass, research validity, or provider readiness.
-Before delivery, the Codex coding session reviews this README against the final branch code.
-It updates useful explanations and setup details when needed; a branch with no reader impact
-records a meaningful `no_change` decision without making a dummy README edit. Installed Git
-guards require fresh tree-bound review evidence. See [README upkeep](docs/operations/readme-maintenance.md)
-for the workflow, evidence command and enforcement limits. This adds no separate AI job or API key.
+`gate.py component NAME` reproduces one CI job. Passing checks do not establish research
+validity or provider readiness. Review this README against the branch in each pull request and
+update it where readers need a different explanation.
 
 The existing Qlib recipes now have an [inert W09 planning API](workers/qlib/README.md#inert-w09-planning-contracts)
 for metadata identities, source fingerprints and prospective component graphs. It does not

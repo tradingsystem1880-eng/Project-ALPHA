@@ -6,7 +6,7 @@ paths:
 
 Verbatim relocation from the pre-v2 CLAUDE.md MODULE MAP. The core `CLAUDE.md` DAG paragraph and golden rules still apply here.
 
-RISK TIER: every edit under `packages/alpha-backtest/src` requires an APPROVE `ReviewVerdict` (`/review-gate`) before commit.
+RISK TIER: every edit under `packages/alpha-backtest/src` requires an APPROVE `ReviewVerdict` (`/review-gate`) before the pull request is marked ready.
 ### `alpha_backtest` (`packages/alpha-backtest/src/alpha_backtest/`) — nautilus run harness. core + data only.
 | Module | Responsibility | Key public symbols |
 |---|---|---|
