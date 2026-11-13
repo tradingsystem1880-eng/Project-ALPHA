@@ -3,9 +3,9 @@ owner: delivery pipeline
 sources:
   - scripts/harness_models.py
   - scripts/harness_awareness.py
+  - scripts/capabilities.py
   - tests/unit/test_plan_schema.py
-  - docs/roadmap/capabilities.toml
-verified: d0fffa796f8e
+verified: f89aa1bb78af
 ---
 
 # Stage 02 — plan: brief to plan

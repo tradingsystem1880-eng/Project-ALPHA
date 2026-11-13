@@ -2,9 +2,9 @@
 owner: status page and roadmap
 sources:
   - docs/context/feature-readiness-checklist-2026-10-27.md
-  - docs/roadmap/capabilities.toml
+  - scripts/capabilities.py
   - scripts/status.py
-verified: 40d916b11519
+verified: f89aa1bb78af
 ---
 
 # Glossary
