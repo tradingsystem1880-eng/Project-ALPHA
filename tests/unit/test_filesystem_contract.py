@@ -6,8 +6,12 @@ The file system (ADR-0040) follows the Interpretable Context Methodology adapted
   other agents) are small and send the reader to the root ``CONTEXT.md``.
 * Layer 1: the root ``CONTEXT.md`` routes every kind of task to a workspace.
 * Layer 2: every workspace (each project under ``packages/``, ``apps/``, ``workers/``, ``tools/``,
-  plus ``scripts/``, ``tests/`` and ``docs/``) has a ``CONTEXT.md`` with the sections Purpose,
-  Read first, How to change it, Outputs. Its Read first table names exact files and sections.
+  plus ``scripts/``, ``tests/``, ``docs/`` and the delivery pipeline ``workflow/``) has a
+  ``CONTEXT.md`` with the sections Purpose, Read first, How to change it, Outputs. Its Read first
+  table names exact files and sections. Each pipeline stage, ``workflow/stages/NN-name/``, has a
+  ``CONTEXT.md`` with Purpose, Inputs, Read first, Process, Outputs, Checkpoint.
+* Outputs: each task folder ``docs/work/<yyyy-mm-dd>-<slug>/`` holds only stage files and always
+  its ``02-plan.md``.
 * Layer 3: reference documents under ``docs/reference/``.
 * Loading: each workspace has a one-line ``CLAUDE.md`` that imports its ``CONTEXT.md``; Claude
   Code loads a subdirectory's ``CLAUDE.md`` when it opens a file there. ``.claude/rules/*.md`` are
@@ -36,9 +40,17 @@ from tests.unit.test_docs_links import _FENCE, _HEADING, anchors, broken_links, 
 ROOT = Path(__file__).parents[2]
 CONTEXT = "CONTEXT.md"
 WORKSPACE_PARENTS = ("packages", "apps", "workers", "tools")
-EXTRA_WORKSPACES = ("scripts", "tests", "docs")
+EXTRA_WORKSPACES = ("scripts", "tests", "docs", "workflow")
 REFERENCE_DIR = "docs/reference"
 REQUIRED_SECTIONS = ("Purpose", "Read first", "How to change it", "Outputs")
+STAGES_DIR = "workflow/stages"
+STAGE_SECTIONS = ("Purpose", "Inputs", "Read first", "Process", "Outputs", "Checkpoint")
+_STAGE_NAME = re.compile(r"^\d{2}-[a-z]+$")
+WORK_DIR = "docs/work"
+WORK_ARCHIVE = "archive"
+TASK_PLAN = "02-plan.md"
+STAGE_OUTPUTS = frozenset({"01-brief.md", TASK_PLAN, "04-verify.md", "05-handoff.md"})
+_TASK_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9]+(-[a-z0-9]+)*$")
 CONTEXT_MAX_LINES = 80
 REFERENCE_MAX_LINES = 200
 MAX_LINE_CHARS = 160
@@ -78,8 +90,17 @@ def workspaces() -> list[str]:
     return [*found, *EXTRA_WORKSPACES]
 
 
+def stage_files() -> list[str]:
+    """``workflow/stages/NN-name/CONTEXT.md`` for every stage folder."""
+    return [
+        f"{STAGES_DIR}/{path.name}/{CONTEXT}"
+        for path in sorted((ROOT / STAGES_DIR).iterdir())
+        if path.is_dir()
+    ]
+
+
 def context_files() -> list[str]:
-    return [CONTEXT, *(f"{ws}/{CONTEXT}" for ws in workspaces())]
+    return [CONTEXT, *(f"{ws}/{CONTEXT}" for ws in workspaces()), *stage_files()]
 
 
 @cache
@@ -292,11 +313,12 @@ def test_context_sections_appear_in_order() -> None:
     for rel in context_files():
         if not (ROOT / rel).is_file():
             continue
+        required = STAGE_SECTIONS if rel.startswith(STAGES_DIR + "/") else REQUIRED_SECTIONS
         titles = [title for _, level, title in headings(_text(rel)) if level == 2]
-        present = [title for title in titles if title in REQUIRED_SECTIONS]
-        if present != list(REQUIRED_SECTIONS):
+        present = [title for title in titles if title in required]
+        if present != list(required):
             problems.append(
-                f"{rel}: needs the sections {', '.join(REQUIRED_SECTIONS)} once each, "
+                f"{rel}: needs the sections {', '.join(required)} once each, "
                 f"in that order; found {titles}"
             )
     assert not problems, "\n".join(problems)
@@ -388,6 +410,69 @@ def test_root_routes_to_every_workspace() -> None:
         "The root CONTEXT.md routing table (## Read first) has no row linking to these "
         "workspaces' CONTEXT.md:\n" + "\n".join(missing)
     )
+
+
+# ---------------------------------------------------------------------------------------------
+# The delivery pipeline: numbered stages, each routed from workflow/CONTEXT.md
+
+
+def test_stage_folders_are_numbered_and_each_has_a_context_file() -> None:
+    folders = sorted(p for p in (ROOT / STAGES_DIR).iterdir() if p.is_dir())
+    assert folders, f"{STAGES_DIR} has no stage folders"
+    problems = [
+        f"{STAGES_DIR}/{p.name}: name a stage NN-word (for example 03-build)"
+        for p in folders
+        if not _STAGE_NAME.match(p.name)
+    ]
+    problems += [f"{rel} is missing" for rel in stage_files() if not (ROOT / rel).is_file()]
+    numbers = [int(p.name[:2]) for p in folders if _STAGE_NAME.match(p.name)]
+    if numbers != list(range(1, len(numbers) + 1)):
+        problems.append(f"{STAGES_DIR}: stages must be numbered 01, 02, ... without gaps: {numbers}")
+    assert not problems, "\n".join(problems)
+
+
+def test_pipeline_routing_links_every_stage() -> None:
+    text = _text(f"workflow/{CONTEXT}")
+    missing = [rel for rel in stage_files() if rel.removeprefix("workflow/") not in text]
+    assert not missing, f"workflow/{CONTEXT} must link every stage: {missing}"
+
+
+# ---------------------------------------------------------------------------------------------
+# Outputs: task folders under docs/work/
+
+
+def _task_folders() -> list[Path]:
+    root = ROOT / WORK_DIR
+    live = [p for p in root.iterdir() if p.is_dir() and p.name != WORK_ARCHIVE]
+    archived = [p for p in (root / WORK_ARCHIVE).glob("*/*") if p.is_dir()]
+    return sorted(live + archived)
+
+
+def test_task_folders_hold_a_plan_and_only_stage_files() -> None:
+    folders = _task_folders()
+    assert folders, f"{WORK_DIR} has no task folders"
+    problems = []
+    for folder in folders:
+        rel = folder.relative_to(ROOT).as_posix()
+        if not _TASK_NAME.match(folder.name):
+            problems.append(f"{rel}: name a task folder yyyy-mm-dd-<lowercase-slug>")
+        if not (folder / TASK_PLAN).is_file():
+            problems.append(f"{rel}: has no {TASK_PLAN}; commit a task folder with its plan")
+        problems += [
+            f"{rel}/{child.name}: not a stage file; allowed: {', '.join(sorted(STAGE_OUTPUTS))}"
+            for child in sorted(folder.iterdir())
+            if child.name not in STAGE_OUTPUTS
+        ]
+    assert not problems, "\n".join(problems)
+
+
+def test_work_folder_holds_only_task_folders_and_the_archive() -> None:
+    stray = [
+        p.relative_to(ROOT).as_posix()
+        for p in sorted((ROOT / WORK_DIR).iterdir())
+        if p.is_file()
+    ]
+    assert not stray, f"{WORK_DIR} holds only task folders and archive/; move: {stray}"
 
 
 # ---------------------------------------------------------------------------------------------

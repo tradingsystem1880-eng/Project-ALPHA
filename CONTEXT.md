@@ -39,7 +39,7 @@ it points to, never here.
 | [scripts/CONTEXT.md](scripts/CONTEXT.md) | — | the gate, CI steps, file-system tools, generators |
 | [tests/CONTEXT.md](tests/CONTEXT.md) | — | test layout, markers, bias guards, oracles |
 | [docs/CONTEXT.md](docs/CONTEXT.md) | — | documentation, ADRs, plans, this file system |
-| `workflow/` (coming) | — | delivering a change stage by stage: shape, plan, build, verify, land |
+| [workflow/CONTEXT.md](workflow/CONTEXT.md) | — | delivering a change stage by stage: shape, plan, build, verify, land |
 | `research/stages/` (coming) | — | running a research case stage by stage: idea to decision |
 
 A task that spans areas: start at the area whose code you change first; its Read first table
