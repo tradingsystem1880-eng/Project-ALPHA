@@ -160,7 +160,15 @@ def check_document(
 def stale(root: Path) -> list[Report]:
     """One report per living document, in path order."""
     documents = living_documents(root)
-    names = tuple(documents)
+    # Instruction files (root and workspace CLAUDE.md / AGENTS.md) are file-system prose too.
+    loaders = [
+        rel
+        for rel in git(root, "ls-files", "-z", "--", "CLAUDE.md", "*/CLAUDE.md", "AGENTS.md").split(
+            "\0"
+        )
+        if rel
+    ]
+    names = (*documents, *loaders)
     return [check_document(root, rel, meta, names) for rel, meta in sorted(documents.items())]
 
 

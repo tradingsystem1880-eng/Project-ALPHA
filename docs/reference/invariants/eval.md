@@ -51,7 +51,8 @@ its agent through deterministic platform probes and agent trajectory scenarios.
 ## Isolation
 
 - Each campaign exports a pinned platform commit, read-only, used by setup, CLI and MCP alike. Exports exclude
-  evaluator code, audits, plans, answer keys, hidden or proposed holdouts, user configuration and owner data.
+  evaluator code, audits, plans, answer keys, `tests/acceptance`, the guarded `tests/holdout` path, user
+  configuration and owner data (`EXCLUDED_FROM_WORKSPACE` in `sandbox.py`).
   [research integrity § Protected and hidden tests](research-integrity.md#protected-and-hidden-tests).
 - Every trial first proves its permitted and denied reads and writes and its MCP tools; a startup failure
   blocks the trial. If preflight fails, never substitute `workspace-write` or unrestricted execution.

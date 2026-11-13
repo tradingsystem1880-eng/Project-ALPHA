@@ -122,3 +122,14 @@ def test_other_documents_and_foreign_front_matter_do_not_count(repo: Path) -> No
     reports = fs_stale.stale(repo)
     assert [r.path for r in reports] == ["docs/w.md", "workers/a/CONTEXT.md"]
     assert all(not r.changed_files and not r.problems for r in reports)
+
+
+def test_workspace_instruction_files_do_not_make_a_document_stale(repo: Path) -> None:
+    base = _commit(repo, {"workers/a/src/x.py": "", "workers/a/CONTEXT.md": "# A\n"}, "code")
+    _commit(repo, {"docs/w.md": _doc(base, "workers/**")}, "doc")
+    _commit(repo, {"workers/a/CLAUDE.md": "@CONTEXT.md\n", "CLAUDE.md": "# Id\n"}, "loaders")
+    (report,) = fs_stale.stale(repo)
+    assert report.changed_files == []
+    _commit(repo, {"workers/a/src/x.py": "x = 1\n"}, "code change")
+    (report,) = fs_stale.stale(repo)
+    assert report.changed_files == ["workers/a/src/x.py"]

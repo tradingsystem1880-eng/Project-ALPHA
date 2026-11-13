@@ -81,9 +81,11 @@ delivery states, the generated roadmap index, append-only records, and relative 
 
 ## Generated files
 
-- Regenerate, never hand-edit: `docs/governance/capability-authority-matrix.md` and
-  `docs/governance/openapi-operation-classification.json` (`uv run python scripts/check_openapi_operations.py --write`),
-  and `docs/roadmap/README.md` (above).
+- Regenerate, never hand-edit. The generated files (`STATUS.md`, `docs/reference/commands.md`,
+  `docs/roadmap/README.md`, the capability matrix and the OpenAPI classification) and their commands are
+  listed once, in [docs/README.md § Generated files](../../README.md#generated-files).
+- The work-in-progress limit is stated in the generated `docs/roadmap/README.md` (from
+  `docs/roadmap/wip-limit.json`); status comes from `docs/roadmap/capabilities.toml` via `STATUS.md`.
 
 ## Links
 
@@ -91,6 +93,7 @@ delivery states, the generated roadmap index, append-only records, and relative 
   slugs or explicit `<a id>`). Scope: tracked `docs/**/*.md`, root `*.md`, `.claude/**/*.md`,
   `.agents/**/*.md`, and READMEs under `apps/`, `packages/`, `tools/`, `workers/`. Fenced code, inline
   code, external URLs and `mailto:` are skipped. Enforced by `tests/unit/test_docs_links.py`.
-- Its `ALLOWLIST` is only for links in dated records whose target was removed; each entry needs a reason and
+- Its `ALLOWLIST` is only for links in dated records (including archived plans) whose target was removed or
+  moved; each entry needs a reason and
   the test fails if an entry is no longer needed.
 - Find documents with `uv run python scripts/fs.py search "QUERY"`; it ranks living documents ahead of records.
