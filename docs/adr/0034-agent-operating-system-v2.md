@@ -10,6 +10,8 @@
 
 > **Note (2026-11-13):** [ADR-0040](0040-one-file-system-atlas-retired.md) retires the generated session brief and repo index of item 4; orientation and document search are `scripts/fs.py`.
 
+> **Note (2026-11-13):** [ADR-0041](0041-no-hidden-test-suite.md) removes the hidden `tests/holdout/` suite requirement; the seed tests are visible acceptance tests in `tests/acceptance/`.
+
 ## Context
 
 Harness v1 (2026-08-18) made the load-bearing CLAUDE.md rules mechanical: a tree-hash gate
