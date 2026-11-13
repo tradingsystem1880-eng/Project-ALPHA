@@ -140,6 +140,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Live trading phase (private, single owner) — very large (XL)
 - Local vision model and hosted finance reasoning — medium (M)
 - Multi-agent specialist swarm / PydanticAI migration — large (L)
+- Offline price import from a local file — medium (M)
 - Options expression research (W16) — large (L)
 - RD-Agent autonomous native research and restart continuation (W08/W13, T07) — very large (XL)
 - Remove the remaining QuantPad code — small (S)
@@ -148,7 +149,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 
 - Live plans: 45
 - Archived plans: 104
-- Backlog items: 15
+- Backlog items: 16
 - Staged refactors: 7
 
 ## Where things are

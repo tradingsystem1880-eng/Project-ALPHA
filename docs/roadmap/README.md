@@ -85,7 +85,7 @@ These are finished but referenced by path from files that cannot be rewritten; s
 | [2026-10-26-native-rule-authority.md](../superpowers/plans/2026-10-26-native-rule-authority.md) | Frozen rule native authority | Completed |
 | [2026-10-31-clean-rdagent-bootstrap.md](../superpowers/plans/2026-10-31-clean-rdagent-bootstrap.md) | Clean RD-Agent cloud bootstrap | Completed |
 
-## Backlog (15)
+## Backlog (16)
 
 | Item | Status | Rough size |
 | --- | --- | --- |
@@ -100,6 +100,7 @@ These are finished but referenced by path from files that cannot be rewritten; s
 | [Live trading phase (private, single owner)](backlog/live-trading-phase.md) | Scoped | XL |
 | [Local vision model and hosted finance reasoning](backlog/local-vision-and-hosted-finance-reasoning.md) | Idea | M |
 | [Multi-agent specialist swarm / PydanticAI migration](backlog/multi-agent-specialist-swarm.md) | Idea | L |
+| [Offline price import from a local file](backlog/offline-data-import.md) | Scoped | M |
 | [Options expression research (W16)](backlog/options-research.md) | Scoped | L |
 | [Full Qlib model zoo and fold-by-fold counterfactual retraining (W11/W12)](backlog/qlib-model-zoo-and-fold-retraining.md) | Scoped | XL |
 | [Remove the remaining QuantPad code](backlog/quantpad-code-removal.md) | Scoped | S |
