@@ -5,7 +5,7 @@ sources:
   - docs/roadmap/wip-limit.json
   - scripts/status.py
   - tests/unit/test_status_page.py
-verified: 00f70c232ea5
+verified: 40d916b11519
 ---
 
 # Stage 01 — shape: idea to brief
