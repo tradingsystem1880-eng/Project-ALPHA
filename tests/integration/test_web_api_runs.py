@@ -177,6 +177,118 @@ def test_runs_index_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     }
 
 
+def test_runs_index_validation_metadata_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    run_id = "dddd000000000004"
+    manifest: dict[str, object] = {
+        "command": "validate",
+        "metadata": {"run_id": run_id, "symbol": "SPY", "snapshot_id": "validation-snapshot"},
+    }
+    _write_run(tmp_path, "runs", run_id, manifest)
+
+    response = client.get("/api/runs")
+    assert response.status_code == 200
+    item = next(r for r in response.json()["items"] if r["run_id"] == run_id)
+    assert item["snapshot_id"] == "validation-snapshot"
+    assert item["symbol"] == "SPY"
+    assert item["label"] == "SPY"
+    assert item["display_name"] == "validate D1 — SPY · run dddd0000"
+    assert run_id in {r["run_id"] for r in client.get("/api/runs?symbol=SPY").json()["items"]}
+    assert client.get(f"/api/runs/{run_id}").json()["manifest"] == manifest
+
+
+@pytest.mark.parametrize("label", [None, "Validation basket"])
+def test_runs_index_metadata_symbols_and_label(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, label: str | None
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    run_id = "dddd000000000004"
+    _write_run(
+        tmp_path,
+        "runs",
+        run_id,
+        {
+            "command": "validate",
+            "metadata": {"symbols": ["BTC/USDT", "ETH/USDT"], "label": label},
+        },
+    )
+
+    response = client.get("/api/runs", params={"symbol": "ETH/USDT"})
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    item = response.json()["items"][0]
+    assert item["run_id"] == run_id
+    assert item["symbol"] is None
+    assert item["symbols"] == ["BTC/USDT", "ETH/USDT"]
+    assert item["label"] == (label or "BTC/USDT, ETH/USDT")
+    assert item["display_name"] == "validate D1 — BTC/USDT, ETH/USDT · run dddd0000"
+    assert item["market"] == "crypto"
+
+
+@pytest.mark.parametrize(
+    "identity",
+    [
+        {"symbol": "TLT", "symbols": ["TLT", "GLD"], "label": "Top label", "snapshot_id": "top"},
+        {"symbol": None, "symbols": None, "label": None, "snapshot_id": None},
+        {"symbol": "", "symbols": [], "label": "", "snapshot_id": ""},
+    ],
+)
+def test_runs_index_top_level_identity_wins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, identity: dict[str, object]
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    run_id = "dddd000000000004"
+    _write_run(
+        tmp_path,
+        "runs",
+        run_id,
+        {
+            "command": "validate",
+            **identity,
+            "metadata": {
+                "symbol": "BTC/USDT",
+                "symbols": ["ETH/USDT"],
+                "label": "Nested label",
+                "snapshot_id": "nested",
+            },
+        },
+    )
+
+    response = client.get("/api/runs")
+    assert response.status_code == 200
+    item = next(r for r in response.json()["items"] if r["run_id"] == run_id)
+    for key in ("symbol", "symbols", "snapshot_id"):
+        assert item[key] == identity[key]
+    assert item["label"] == (identity["label"] or None)
+    assert item["market"] == "unknown"
+    assert "BTC/USDT" not in item["display_name"]
+    for symbol in ("BTC/USDT", "ETH/USDT"):
+        assert client.get("/api/runs", params={"symbol": symbol}).json()["items"] == []
+    if identity["symbol"]:
+        assert client.get("/api/runs?symbol=GLD").json()["items"][0]["run_id"] == run_id
+
+
+@pytest.mark.parametrize("extra", [{}, {"metadata": None}, {"metadata": []}, {"metadata": "bad"}])
+def test_runs_index_ignores_unusable_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, extra: dict[str, object]
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    run_id = "dddd000000000004"
+    _write_run(tmp_path, "runs", run_id, {"command": "validate", "source": "fixture", **extra})
+
+    response = client.get("/api/runs")
+    assert response.status_code == 200
+    item = next(r for r in response.json()["items"] if r["run_id"] == run_id)
+    assert item["snapshot_id"] is None
+    assert item["symbol"] is None
+    assert item["symbols"] is None
+    assert item["label"] == "fixture"
+    assert item["display_name"] == "validate D1 — fixture · run dddd0000"
+    assert item["market"] == "unknown"
+
+
 def test_runs_index_paginates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     body = _client(tmp_path, monkeypatch).get("/api/runs?limit=1&offset=1").json()
     assert body["total"] == 3 and len(body["items"]) == 1

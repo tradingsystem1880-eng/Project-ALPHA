@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -400,6 +401,14 @@ def _curve_period(rdir: Path) -> str | None:
     return f"{first:%Y-%m-%d} → {last:%Y-%m-%d}"
 
 
+def _manifest_identity_value(manifest: Mapping[str, Any], key: str) -> Any:
+    """Resolve display identity, preserving even null or empty top-level values."""
+    if key in manifest:
+        return manifest[key]
+    metadata = manifest.get("metadata")
+    return metadata.get(key) if isinstance(metadata, Mapping) else None
+
+
 def display_name(kind: str, run_id: str, manifest: dict[str, Any], rdir: Path) -> str:
     """The run's name as a trader reads it (spec 2026-09-01 §4.4):
     `<strategy> D1 — <symbol> · <venue> · <start> → <end> · run <8 hex>`; every engine run is
@@ -408,8 +417,10 @@ def display_name(kind: str, run_id: str, manifest: dict[str, Any], rdir: Path) -
     strategy = (params.get("strategy_name") if isinstance(params, dict) else None) or (
         manifest.get("command") or kind
     )
-    symbols = manifest.get("symbols")
-    symbol = manifest.get("symbol") or (", ".join(symbols) if symbols else None)
+    symbols = _manifest_identity_value(manifest, "symbols")
+    symbol = _manifest_identity_value(manifest, "symbol") or (
+        ", ".join(symbols) if symbols else None
+    )
     parts = [part for part in (symbol, manifest.get("source"), _curve_period(rdir)) if part]
     return f"{strategy} D1 — {' · '.join([*parts, f'run {run_id[:8]}'])}"
 
@@ -427,8 +438,11 @@ def market_of(manifest: dict[str, Any]) -> str:
         return "crypto"
     if source.startswith(_EQUITY_SOURCES):
         return "equities"
-    symbols = manifest.get("symbols")
-    candidates = [manifest.get("symbol"), *(symbols if isinstance(symbols, list) else [])]
+    symbols = _manifest_identity_value(manifest, "symbols")
+    candidates = [
+        _manifest_identity_value(manifest, "symbol"),
+        *(symbols if isinstance(symbols, list) else []),
+    ]
     if any(isinstance(symbol, str) and "/" in symbol for symbol in candidates):
         return "crypto"
     return "unknown"
@@ -450,20 +464,22 @@ def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
     cached = _RECORD_CACHE.get(mpath)
     if cached is not None and cached[0] == mtime:
         return cached[1]
-    symbols = manifest.get("symbols")
+    symbols = _manifest_identity_value(manifest, "symbols")
+    symbol = _manifest_identity_value(manifest, "symbol")
     verdict = manifest.get("verdict")
     record = {
         "run_id": run_id,
         "kind": kind,
         "command": manifest.get("command"),
-        "label": manifest.get("symbol")
+        "label": _manifest_identity_value(manifest, "label")
+        or symbol
         or (", ".join(symbols) if symbols else None)
         or manifest.get("source"),
         "display_name": display_name(kind, run_id, manifest, mpath.parent),
         "market": market_of(manifest),
-        "symbol": manifest.get("symbol"),
+        "symbol": symbol,
         "symbols": symbols,
-        "snapshot_id": manifest.get("snapshot_id"),
+        "snapshot_id": _manifest_identity_value(manifest, "snapshot_id"),
         "snapshot_hash": manifest.get("snapshot_hash"),
         "passed": manifest.get("passed"),
         "verdict": verdict.get("overall") if isinstance(verdict, dict) else None,
