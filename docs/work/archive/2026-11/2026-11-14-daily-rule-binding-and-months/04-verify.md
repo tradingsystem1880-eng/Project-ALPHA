@@ -19,10 +19,10 @@
 | same | MEDIUM: "imported but not called" is not safe, because importing runs top-level code. Imports that execute on daily paths: `_native_stock_launch` (type checks on every launch), `research_readiness` (module level), `research_runtime` (D0 reservation) | Fixed: those modules, `native_stock_fixture.py` and `__init__.py` are bound. Exemptions are now allowed only for imports that never execute on a daily path |
 | same | LOW: the tracer skips `import alpha_cli`, subpackages and `__init__.py` | Fixed: every alpha_cli import adds `__init__.py` (bound), and subpackage imports fail |
 | same | LOW: no test for the 32 MiB aggregate normalized ceiling | Fixed: new test |
-| same | LOW: other coins in a snapshot are now ignored, not refused | Kept, documented in ADR-0047: rows are unaffected and the snapshot id still binds them |
+| same | LOW: other coins in a snapshot are now ignored, not refused | Kept, documented in ADR-0048: rows are unaffected and the snapshot id still binds them |
 | same | LOW: study validator caps members at 100, reader at 200 | Kept: both fail loud; the study needs 36 |
 | same | LOW: the V2 validator does not cross-check member ranges against rows | Kept: every consumer reopens the query and requires the exact document and hash |
-| same | Remaining: alpha_validation (tearsheet) and alpha_research run unbound on daily paths | Not fixed: owner decision, ADR-0047 and 05-handoff |
+| same | Remaining: alpha_validation (tearsheet) and alpha_research run unbound on daily paths | Not fixed: owner decision, ADR-0048 and 05-handoff |
 | same, re-check of `698bb152` | All findings fixed for alpha_cli. Every remaining exemption's import never executes on a daily path. The `_structural_digest` exemption holds only if it binds its own bytes | Confirmed: `binding_digest` writes `rules_sha256 = _own_bytes_sha256()` |
 | Codex (`handoff.py review --built-by claude`, base `0ee3c3b1`, covering the hand fixes and documents) | 0 findings | — |
 

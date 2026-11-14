@@ -22,7 +22,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0014](0014-cli-owned-development-control-plane.md) | Keep development lifecycle state in a CLI-owned control plane | Accepted | 2026-07-19 |
 | [0015](0015-evidence-ledger-not-agent-memory.md) | Store cited evidence revisions, not an agent truth database | Accepted | 2026-07-19 |
 | [0016](0016-isolated-qlib-worker.md) | Isolate Qlib behind immutable JSON/Parquet exchange contracts | Accepted; feature layer delegated to upstream by 0042 | 2026-07-19 |
-| [0017](0017-authoritative-daily-data-and-broker-paper-boundary.md) | Qualify authoritative daily data before releasing broker-paper intents | Accepted | 2026-08-03 |
+| [0017](0017-authoritative-daily-data-and-broker-paper-boundary.md) | Qualify authoritative daily data before releasing broker-paper intents | Accepted; interim Alpaca source on the Dell by 0047 | 2026-08-03 |
 | [0018](0018-quantpad-external-research-data-boundary.md) | Split QuantPad discovery from bulk research-data access | Superseded 2026-11-14 (QuantPad code removed) | 2026-08-04 |
 | [0019](0019-governed-research-cases-before-strategy-development.md) | Govern finite research cases before strategy development | Accepted | 2026-08-06 |
 | [0020](0020-intraday-event-research-is-not-daily-validation-evidence.md) | Keep intraday event research outside daily validation and paper evidence | Accepted | 2026-08-06 |
@@ -50,9 +50,10 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0042](0042-qlib-worker-delegates-data-layer-to-upstream.md) | The Qlib worker delegates its data layer to upstream Qlib (opt-in Alpha158 feature recipe v3; v1 stays default) | Accepted | 2026-11-14 |
 | [0043](0043-storage-reserve-is-owner-set.md) | Storage reserve is an owner-set value; the default stays 100 GB / 15% | Accepted | 2026-11-14 |
 | [0044](0044-rdagent-model-gateway.md) | RD-Agent reaches its models through a local ALPHA gateway; Codex first | Accepted | 2026-11-14 |
-| [0045](0045-approvals-bind-code-structure.md) | Research approvals bind what the code does, not its exact bytes (structural digest as scheme 2; byte-bound scheme-1 approvals keep verifying) | Accepted; daily-rule bound set extended by 0047 | 2026-11-14 |
-| [0046](0046-crypto-snapshot-members-are-content-addressed.md) | A crypto snapshot member is its content; equal recaptures count as one, any difference fails loud | Accepted; daily query over many members by 0047 | 2026-11-14 |
-| [0047](0047-daily-rule-lane-binding-and-named-months.md) | Daily-rule approvals bind every module the lane runs through; the daily price query reads named months | Accepted | 2026-11-14 |
+| [0045](0045-approvals-bind-code-structure.md) | Research approvals bind what the code does, not its exact bytes (structural digest as scheme 2; byte-bound scheme-1 approvals keep verifying) | Accepted; daily-rule bound set extended by 0048 | 2026-11-14 |
+| [0046](0046-crypto-snapshot-members-are-content-addressed.md) | A crypto snapshot member is its content; equal recaptures count as one, any difference fails loud | Accepted; daily query over many members by 0048 | 2026-11-14 |
+| [0047](0047-alpaca-interim-stock-source.md) | Alpaca's free plan is an interim, not-yet-confirmed stock source (SIP feed, raw prices plus actions, split cross-check; never replaces Tiingo) | Accepted | 2026-11-14 |
+| [0048](0048-daily-rule-lane-binding-and-named-months.md) | Daily-rule approvals bind every module the lane runs through; the daily price query reads named months | Accepted | 2026-11-14 |
 
 ## Conventions
 

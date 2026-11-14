@@ -179,10 +179,6 @@ class _Normalizer:
             return "<elapsed>"
         if key in _RECORDED_AT_KEYS and isinstance(value, str):
             return _TIMESTAMP.sub(self._replace, value)
-        if key.endswith(".png") and isinstance(value, dict) and "size_bytes" in value:
-            # PNG bytes depend on in-process Matplotlib state left by earlier tests in the same
-            # worker; the image digest is already a token, so only the size is masked.
-            return self.normalize({**value, "size_bytes": "<png-size>"})
         return self.normalize(value)
 
     def normalize(self, value: object) -> object:
@@ -196,6 +192,35 @@ class _Normalizer:
         if isinstance(value, list):
             return [self.normalize(item) for item in value]
         return value
+
+
+def test_normalizer_keeps_png_size_raw(tmp_path: Path) -> None:
+    entry = {"sha256": "a" * 64, "size_bytes": 12345}
+    normalized = _Normalizer(tmp_path).normalize({"chart.png": entry})
+    assert normalized == {"chart.png": {"sha256": "<sha-1>", "size_bytes": 12345}}
+
+
+def _png_pixels(path: Path) -> str:
+    """SHA-256 of a PNG's image data: the IDAT chunks, without the run-bound text metadata."""
+    data = path.read_bytes()
+    assert data[:8] == b"\x89PNG\r\n\x1a\n", path
+    digest, offset = hashlib.sha256(), 8
+    while offset < len(data):
+        length = int.from_bytes(data[offset : offset + 4], "big")
+        if data[offset + 4 : offset + 8] == b"IDAT":
+            digest.update(data[offset + 8 : offset + 8 + length])
+        offset += 12 + length
+    return digest.hexdigest()
+
+
+def _pixel_record(tmp_path: Path, normalizer: _Normalizer) -> dict[str, object]:
+    # A PNG's sha256 carries run and contract hashes in its text metadata, so it is a token
+    # like every other digest; its image data must not vary at all, so it is pinned raw.
+    pixels = {
+        str(normalizer.normalize(str(path.relative_to(tmp_path)))): _png_pixels(path)
+        for path in sorted(tmp_path.rglob("*.png"))
+    }
+    return {"command": ["<png-pixels>"], "exit_code": 0, "output": pixels}
 
 
 def _records(flow: str, tmp_path: Path) -> list[dict[str, object]]:
@@ -223,6 +248,7 @@ def _records(flow: str, tmp_path: Path) -> list[dict[str, object]]:
         monkeypatch.setattr(CliRunner, "invoke", record)
         _FLOWS[flow](tmp_path, monkeypatch)
     assert records, flow
+    records.append(_pixel_record(tmp_path, normalizer))
     return records
 
 

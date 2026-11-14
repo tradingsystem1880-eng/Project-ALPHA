@@ -1,4 +1,4 @@
-# ADR-0047: Daily-rule approvals bind every module the lane runs through; the daily price query reads named months
+# ADR-0048: Daily-rule approvals bind every module the lane runs through; the daily price query reads named months
 
 **Status:** Accepted
 **Date:** 2026-11-14

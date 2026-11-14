@@ -56,7 +56,7 @@ work-in-progress ceiling admits no new live plan, and the work is finished in on
   "tier_impact": ["protected", "bias", "determinism"],
   "docs_to_update": [
     "docs/adr/0045-approvals-bind-code-structure.md",
-    "docs/adr/0047-daily-rule-lane-binding-and-named-months.md",
+    "docs/adr/0048-daily-rule-lane-binding-and-named-months.md",
     "docs/adr/README.md",
     "docs/reference/invariants/cli-native.md",
     "docs/reference/invariants/cli-crypto-data.md",
@@ -109,7 +109,7 @@ work-in-progress ceiling admits no new live plan, and the work is finished in on
     "tests/unit/test_native_rule_authority.py",
     "tests/integration/test_daily_rule_report.py",
     "docs/adr/0045-approvals-bind-code-structure.md",
-    "docs/adr/0047-daily-rule-lane-binding-and-named-months.md",
+    "docs/adr/0048-daily-rule-lane-binding-and-named-months.md",
     "docs/adr/README.md",
     "docs/reference/invariants/cli-native.md",
     "docs/reference/invariants/cli-crypto-data.md",

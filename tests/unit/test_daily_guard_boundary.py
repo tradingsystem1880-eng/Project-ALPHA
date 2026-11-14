@@ -7,7 +7,7 @@ any alpha_cli import also runs the package __init__.py, which is bound. Packages
 below alpha_cli are outside this test: the costed profile binds alpha-core,
 alpha-patterns, alpha-strategies, alpha-backtest and alpha-data source bytes through
 hashes.environment; alpha_research and alpha_validation are not bound by daily
-approvals (an open owner decision, ADR-0047). The worker side is bound by
+approvals (an open owner decision, ADR-0048). The worker side is bound by
 WORKER_FILES, COSTED_FILES and daily_container_entry.py.
 """
 

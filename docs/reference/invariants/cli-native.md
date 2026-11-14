@@ -62,7 +62,7 @@ project-wide rule is [research integrity § Models and isolated workers](researc
   `_control_schema.py`, `_native_daily_rule_history.py`, `_ml_observation_store.py`, `job_capacity.py`,
   `paper_resources.py`, `run_store.py`, `run_context.py`, `_native_tearsheet.py`, `research_readiness.py`,
   `research_runtime.py`, `_native_stock_launch.py`, `native_stock_fixture.py`, the package `__init__.py`, and the
-  worker `daily_container_entry.py` ([ADR-0047](../../adr/0047-daily-rule-lane-binding-and-named-months.md)).
+  worker `daily_container_entry.py` ([ADR-0048](../../adr/0048-daily-rule-lane-binding-and-named-months.md)).
 - Every `alpha_cli` import in a bound file, at module level or inside a function, must reach a bound file or a reviewed
   exemption whose import never executes on a daily path (`tests/unit/test_daily_guard_boundary.py::REVIEWED_OUTSIDE`);
   a new import of an unbound module fails that test. `alpha_research`, `alpha_validation` and `research_cmds.py` are not

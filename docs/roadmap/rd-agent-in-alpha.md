@@ -1,9 +1,9 @@
 # RD-Agent in ALPHA: what is real today and what is still missing
 
 Written 2026-11-14 for the owner, after RD-Agent was installed and run on the Dell for the first
-time, and updated the same day after the daily study's Docker image, the stock loop's runtime and
-your storage decision were added. Every statement below comes from the repository or from those
-runs; anything not checked is marked "not verified".
+time, and updated the same day after the daily study's Docker image, the stock loop's runtime,
+your storage decision and the first full loop through an AI model on real data. Every statement
+below comes from the repository or from those runs; anything not checked is marked "not verified".
 
 ## What RD-Agent is and what it does in ALPHA
 
@@ -59,14 +59,25 @@ Run on the Dell on 2026-11-14:
 - 85 of the 86 tests that had always been skipped now run and pass here. Both smoke checks (end
   to end through the installed programs) pass: RD-Agent's general loop and its stock loop run,
   then `alpha` and the web app show the job and its result.
+- **One full loop with an AI model, on real data — but its backtest saw nothing.** RD-Agent's own
+  factor loop, unmodified, ran once end to end through the model gateway on the Codex route: the
+  model proposed four simple daily factors, wrote their code, RD-Agent's checks accepted all four,
+  Qlib (in RD-Agent's own Docker image) trained its model and backtested, and the model judged
+  the result. Data: the real Binance daily bars for 15 coins on the Dell, 2017–2026, read only.
+  27 model calls (60 allowed), no money, about 4.5 minutes. The backtest was hollow: RD-Agent's
+  built-in model settings, tuned for about 300 Chinese stocks, gave every coin the same score
+  every day, so the profit figures are noise and the "keep it" verdict rests on noise. This run
+  was set up by hand outside the repository; no ALPHA job runs it
+  ([verification](../work/archive/2026-11/2026-11-14-rdagent-first-real-loop/04-verify.md)).
 
 ## What is still made-up
 
-- **No AI model in the tested loops.** In the fixture and stock loops the "propose" step returns a
-  fixed hypothesis. A model is now connected (item 2 below), but no ALPHA-run job uses it yet.
+- **No AI model in ALPHA-run jobs.** In the fixture and stock loops the "propose" step returns a
+  fixed hypothesis. The one model-driven loop above was run by hand, not as an ALPHA job.
 - **No real tools or code writing.** In the stock loop the "coding" step writes nothing; model and
   tool calls are counted but fake.
-- **No real data.** The rule study uses 7 invented daily bars; the stock loop uses fixed numbers.
+- **No real data in ALPHA-run jobs.** The rule study uses 7 invented daily bars; the stock loop
+  uses fixed numbers. (The hand-run loop above used real bars.)
 - **Supplied answers.** Outcomes such as SUPPORTED or CONTRADICTED and every metric (for example
   a net return of −12.5%) are typed into the test, not computed from markets.
 - **Test approvals.** The approvals in these runs are test records in a throwaway store, not yours.
@@ -79,13 +90,21 @@ Run on the Dell on 2026-11-14:
    a small local program, `workers/rdagent/model_gateway.py`, that only the Dell can reach. RD-Agent
    asks it for answers; it passes each request to the Codex program you are signed in to with
    ChatGPT and gets text comparisons from Ollama, keeps a hard budget, and records every call
-   without its text. No key is stored. Through it, RD-Agent's own factor loop proposed an idea,
-   designed four factors, wrote their code and had its own checks accept them, on made-up data; it
-   stopped at the backtest step, which needs Qlib (item 6). Measured answers:
-   [verification](../work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md). *From you:* whether you
-   accept that the Codex route cannot use RD-Agent's "temperature" setting (it is refused unless
-   accepted, then recorded on every call). The paid fallback stays off until you choose to set a
-   key yourself.
+   without its text. No key is stored. Measured answers:
+   [verification](../work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md). You
+   accepted, for now, that the Codex route cannot use RD-Agent's "temperature" setting
+   ([log](../reference/project/owner-decisions-2.md#2026-11-14-accept-losing-temperature-on-the-codex-route-for-now));
+   it is recorded on every call. The paid fallback stays off until you set a key yourself and
+   compare it.
+2b. **A backtest that can see the idea — new, needs your choice.** The first full loop (see
+   "What is real today") showed that RD-Agent's built-in Qlib backtest is tuned for about 300
+   Chinese stocks: on 15 coins its model learns nothing, so its numbers are noise. Choose one:
+   a wider crypto universe (how wide is enough is untested; needs item 3's data folder and a
+   bigger download); ALPHA judging RD-Agent's factors with Nautilus and its statistical checks (the
+   intended design; engineering, overlaps item 6); or, as a calibration only, one run on Qlib's
+   public Chinese-stock data (a download). RD-Agent's own settings files stay unmodified. Also
+   engineering: pin the extra Python packages, the Qlib image and the launcher this run set up by
+   hand ([handoff](../work/archive/2026-11/2026-11-14-rdagent-first-real-loop/05-handoff.md)).
 3. **A place to keep the data — your decision is in, one command is left.** You decided on
    2026-11-14 to use the Dell's disk for now. The free-space reserve is now a value you set per
    data folder ([ADR-0043](../adr/0043-storage-reserve-is-owner-set.md)): the old rule (keep
