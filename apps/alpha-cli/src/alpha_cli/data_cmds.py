@@ -117,11 +117,12 @@ def _adapter(
             params = ()
         if any(param.name == "exchange" or param.kind is Parameter.VAR_KEYWORD for param in params):
             kwargs["exchange"] = exchange
-    if source == "tiingo":
-        choices = provider_option_choices("tiingo", "asset_class")
+    if source in {"tiingo", "alpaca"}:
+        choices = provider_option_choices(source, "asset_class")
         if asset_class not in choices:
             raise typer.BadParameter(
-                f"unknown Tiingo asset class {asset_class!r}; known: {list(choices)}",
+                f"unknown {source.capitalize()} asset class {asset_class!r}; "
+                f"known: {list(choices)}",
                 param_hint="--asset-class",
             )
         kwargs.update(
@@ -229,10 +230,10 @@ def pull(
     symbol: str,
     source: str = "yfinance",
     exchange: str = typer.Option(_DEFAULT_CCXT_EXCHANGE, help="CCXT exchange: coinbase or binance"),
-    asset_class: str = typer.Option("stock", help="Tiingo asset class: stock or etf"),
-    venue: str = typer.Option("US", help="Tiingo MIC/provider venue identifier"),
-    calendar: str = typer.Option("XNYS", help="Tiingo exchange calendar identifier"),
-    currency: str = typer.Option("USD", help="Tiingo quote currency"),
+    asset_class: str = typer.Option("stock", help="Tiingo or Alpaca asset class: stock or etf"),
+    venue: str = typer.Option("US", help="Tiingo or Alpaca MIC/provider venue identifier"),
+    calendar: str = typer.Option("XNYS", help="Tiingo or Alpaca exchange calendar identifier"),
+    currency: str = typer.Option("USD", help="Tiingo or Alpaca quote currency"),
     start: str = typer.Option(...),
     end: str = typer.Option(...),
 ) -> None:
@@ -263,6 +264,26 @@ def pull(
                 )
         result = adapter.fetch(symbol, start_date, end_date)
         store = _store()
+        existing = store.read_provenance(result.symbol)
+        if existing is not None and existing.get("source") == "tiingo" and adapter.name != "tiingo":
+            raise DataError(
+                f"{adapter.name} is audit-only for {result.symbol}; canonical Tiingo data "
+                "cannot be silently replaced"
+            )
+        # Alpaca (ADR-0047) never shares a price series with another source, in either direction.
+        held_by = existing.get("source") if existing is not None else None
+        has_bars = result.symbol in store.list_symbols()
+        if adapter.name == "alpaca" and has_bars and held_by != "alpaca":
+            raise DataError(
+                f"{result.symbol} already holds {held_by or 'unlabelled'} data here; ALPHA never "
+                "mixes two sources in one price series, so use a separate ALPHA_DATA_DIR for "
+                "Alpaca (docs/operations/alpaca-stock-data.md)"
+            )
+        if held_by == "alpaca" and adapter.name != "alpaca":
+            raise DataError(
+                f"{result.symbol} holds Alpaca data here; ALPHA never mixes two sources in one "
+                f"price series, so pull {adapter.name} into a separate ALPHA_DATA_DIR"
+            )
         if (
             result.identity is not None
             or result.receipt is not None
@@ -271,16 +292,6 @@ def pull(
             outcome = stage_and_promote(store, result, authoritative_source=adapter.name)
             detail = f", receipt {outcome.receipt_id} promoted"
         else:
-            existing = store.read_provenance(result.symbol)
-            if (
-                existing is not None
-                and existing.get("source") == "tiingo"
-                and adapter.name != "tiingo"
-            ):
-                raise DataError(
-                    f"{adapter.name} is audit-only for {result.symbol}; canonical Tiingo data "
-                    "cannot be silently replaced"
-                )
             store.clear_provenance(result.symbol)
             store_fetch_result(store, result)
             store.write_provenance(
@@ -292,6 +303,8 @@ def pull(
             detail = ""
     except DataError as exc:  # expected domain failure (no data, anti-bot gate, bad vendor row)
         raise typer.BadParameter(str(exc)) from exc
+    if adapter.name == "alpaca":
+        detail += "; not yet confirmed (interim source, not the authoritative Tiingo source)"
     typer.echo(
         f"pulled {symbol} from {source}: {result.bars.height} bars, "
         f"{len(result.actions)} actions{detail}"

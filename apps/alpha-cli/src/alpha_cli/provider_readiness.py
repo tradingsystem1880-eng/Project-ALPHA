@@ -17,9 +17,11 @@ from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Final, Literal
+from zoneinfo import ZoneInfo
 
 from alpha_core import DataError
 from alpha_core.atomic import write_text
+from alpha_data.adapters.alpaca_adapter import AlpacaAdapter
 from alpha_data.adapters.tiingo_adapter import TiingoAdapter
 from alpha_data.crypto.providers.coingecko import coingecko_demo_request, fetch_coingecko_demo
 
@@ -210,6 +212,16 @@ def _tiingo_check() -> tuple[tuple[str, ...], dict[str, object]]:
     }
 
 
+def _alpaca_check() -> tuple[tuple[str, ...], dict[str, object]]:
+    end = datetime.now(ZoneInfo("America/New_York")).date() - timedelta(days=1)
+    result = AlpacaAdapter(asset_class="etf").fetch("SPY", end - timedelta(days=14), end)
+    return ("historical_bars", "corporate_actions"), {
+        "interface": "rest",
+        "symbol": "SPY",
+        "row_count": result.bars.height,
+    }
+
+
 def _coingecko_check() -> tuple[tuple[str, ...], dict[str, object]]:
     import os
 
@@ -387,6 +399,7 @@ class ProviderCheckFailure(Exception):
 
 _CHECKERS: dict[str, Callable[[], tuple[tuple[str, ...], dict[str, object]]]] = {
     "tiingo": _tiingo_check,
+    "alpaca": _alpaca_check,
     "ibkr": _ibkr_check,
     "coingecko": _coingecko_check,
     "defillama": _defillama_check,
