@@ -8,7 +8,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 - **Work in progress:** 34 in progress (limit 3).
   - 3 being worked on
   - 31 built but not yet checked end to end
-  - Not counted: 7 blocked.
+  - Not counted: 7 blocked, 1 planned, not started.
   - Allowed for now: 34. This number only goes down, until it reaches 3.
 - **Known defects:** 0.
 - **Decisions waiting for you:** 0.
@@ -115,7 +115,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 
 ## Housekeeping
 
-- Live plans: 41
+- Live plans: 42
 - Archived plans: 118
 - Backlog items: 17
 - Staged refactors: 7

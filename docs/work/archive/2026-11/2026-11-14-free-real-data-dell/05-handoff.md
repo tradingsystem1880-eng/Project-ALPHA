@@ -53,7 +53,8 @@ Binance archive-versus-live comparison, and `uv run python scripts/gate.py check
 ## The one document updated
 
 `docs/reference/project/components/data-layer.md` (section "Real data on the Dell"), plus the
-owner-decisions log entry, the capability map's real-data lines and the regenerated status page.
+capability map's real-data lines and the regenerated status page. The owner's choice was
+already logged on main (decisions log, volume 2), so it was not added again.
 
 ## What I am unsure about
 

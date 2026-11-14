@@ -2,7 +2,7 @@
 owner: project layer
 sources:
   - docs/reference/model-routing.md
-verified: ccf5b56ad3eb
+verified: a79d832d
 ---
 
 # Owner decisions log
@@ -13,8 +13,10 @@ Each entry links to the parts it governs. Component files link here instead of r
 ## How to use this log
 
 - Read the entries for a part before recommending to keep, change, shelve, delete or cut it.
-- When the owner decides something about direction, append a new entry at the end: the date, the
-  exact words in quotation marks, the context in one line, and what it governs.
+- When the owner decides something about direction, append a new entry to the newest volume
+  ([volume 2](owner-decisions-2.md)): the date, the exact words in quotation marks, the context in
+  one line, and what it governs. This file is volume 1 and is full; start a new volume when one
+  nears 200 lines.
 - Never rewrite or delete an entry. If the owner changes their mind, add a new entry that links to
   the old one and says it replaces it.
 - An agent's reading of what the owner meant is marked "Recorded understanding, not yet confirmed
@@ -182,13 +184,3 @@ for the RD-Agent entry (dated on the triage sheet), the exact day of each was no
 - **Governs:** this project layer and every `CONTEXT.md`: a reader starting at `CLAUDE.md` must be
   able to learn what a part is for, why, the plan, where it lives and what must not be done.
 
-
-### 2026-11-14 Free real market data on the Dell
-
-- **Said** (a selection from options an agent offered, not the owner's own words): "The Dell
-  should download FREE real market data now (Yahoo, Stooq, crypto exchanges); paid or keyed
-  providers still wait for the Mac; results stay labelled not yet confirmed."
-- **Context:** until then the Dell used only made-up data. What was downloaded, and why Yahoo and
-  Stooq were not, is in the [data layer](components/data-layer.md#real-data-on-the-dell).
-- **Governs:** the [data layer](components/data-layer.md); it amends
-  [Dell now, Mac later](#2026-11-14-dell-now-mac-later) for free, keyless sources only.

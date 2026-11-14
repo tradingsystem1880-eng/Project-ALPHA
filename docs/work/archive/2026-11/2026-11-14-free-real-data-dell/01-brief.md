@@ -5,7 +5,7 @@
 Chosen on 2026-11-14 from offered options: "The Dell should download FREE real market data now
 (Yahoo, Stooq, crypto exchanges); paid or keyed providers still wait for the Mac; results stay
 labelled not yet confirmed"
-([owner decisions](../../../../reference/project/owner-decisions.md#2026-11-14-free-real-market-data-on-the-dell)).
+([owner decisions](../../../../reference/project/owner-decisions-2.md#2026-11-14-free-real-data-on-the-dell-now)).
 
 In one sentence: real, free market data stored on the Dell through ALPHA's own governed data
 commands, usable by the research loop, and labelled not yet confirmed.

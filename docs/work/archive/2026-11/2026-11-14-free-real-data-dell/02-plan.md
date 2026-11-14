@@ -42,15 +42,14 @@ ceiling (34, a ratchet) admits no new live plan, and the work was finished in on
     {"title": "Terms and access checks for Yahoo, Stooq and Binance", "verify": "04-verify.md quotes each page", "expected": "Binance permitted for personal backtesting; Yahoo and Stooq refuse automated access", "rollback": "none needed", "status": "done"},
     {"title": "Binance spot daily backfill of 15 USDT pairs and a spot market list", "verify": "uv run alpha data chart-datasets --json", "expected": "15 groups, qualified", "rollback": "remove the data folder", "status": "done"},
     {"title": "As-of read, snapshots, verification and one backtest on real data", "verify": "commands in 04-verify.md", "expected": "real rows, integrity OK, eligible, run written", "rollback": "none needed", "status": "done"},
-    {"title": "Owner decision log, data-layer page, capability map, status", "verify": "uv run python scripts/gate.py check --all", "expected": "All checks passed", "rollback": "revert the document changes", "status": "done"}
+    {"title": "Data-layer page, capability map, status", "verify": "uv run python scripts/gate.py check --all", "expected": "All checks passed", "rollback": "revert the document changes", "status": "done"}
   ],
   "tier_impact": ["none"],
-  "docs_to_update": ["docs/reference/project/components/data-layer.md", "docs/reference/project/owner-decisions.md", "docs/roadmap/capabilities.toml", "STATUS.md"],
+  "docs_to_update": ["docs/reference/project/components/data-layer.md", "docs/roadmap/capabilities.toml", "STATUS.md"],
   "out_of_scope": ["packages/alpha-research/src", "packages/alpha-validation/src", "adapter and provider code", "keyed providers", "data files in git", "research approvals"],
   "files": [
     "docs/work/archive/2026-11/2026-11-14-free-real-data-dell/",
     "docs/reference/project/components/data-layer.md",
-    "docs/reference/project/owner-decisions.md",
     "docs/roadmap/capabilities.toml",
     "docs/roadmap/README.md",
     "STATUS.md"

@@ -34,7 +34,7 @@ bottleneck.
 - Development on the Dell uses synthetic data plus free, keyless real data (below); keyed
   providers and confirmation of real data wait for the Mac
   ([owner decisions](../owner-decisions.md#2026-11-14-dell-now-mac-later),
-  [free real data](../owner-decisions.md#2026-11-14-free-real-market-data-on-the-dell)).
+  [free real data](../owner-decisions-2.md#2026-11-14-free-real-data-on-the-dell-now)).
 
 ## What is real today
 
