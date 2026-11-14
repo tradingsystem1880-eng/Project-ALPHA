@@ -215,5 +215,38 @@ def test_only_the_gateway_inherits_the_paid_route_settings(
     assert (run / "logs/probe.stdout.log").read_text().strip() == "False"
 
 
-def test_codex_route_alone_waives_temperature_by_default(tmp_path: Path) -> None:
-    assert args(tmp_path).accept_unhonoured is None
+@pytest.mark.parametrize(("route", "waived"), [("codex", True), ("api", False), ("fake", False)])
+def test_codex_route_alone_waives_temperature_by_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, route: str, waived: bool
+) -> None:
+    extra = ["--chat-route", route]
+    if route == "api":
+        extra += [
+            "--api-model",
+            "m",
+            "--api-price-in-per-mtok",
+            "1",
+            "--api-price-out-per-mtok",
+            "1",
+        ]
+    run = tmp_path / "run"
+    (run / "logs").mkdir(parents=True)
+    job = launch.Launch(
+        args(tmp_path, *extra),
+        {"ALPHA_RDAGENT_SOURCE": tmp_path, "ALPHA_FACTOR_PYTHON": tmp_path / "a/b/c/python"},
+    )
+    job.run = run
+    commands: list[list[str]] = []
+
+    def capture(command: list[str], log: str, **kwargs: object) -> object:
+        commands.append(list(command))
+        raise launch.LaunchError("stop after building the command")
+
+    monkeypatch.setattr(job, "spawn", capture)
+    with pytest.raises(launch.LaunchError):
+        job.gateway()
+    gateway_command = commands[0]
+    assert ("--accept-unhonoured" in gateway_command) is waived
+    if waived:
+        assert gateway_command[gateway_command.index("--accept-unhonoured") + 1] == "temperature"
+    assert ("--api-model" in gateway_command) is (route == "api")

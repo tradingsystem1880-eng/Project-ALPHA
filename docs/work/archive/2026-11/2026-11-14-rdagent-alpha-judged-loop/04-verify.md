@@ -187,3 +187,7 @@ Codex review of the same diff afterwards (two high, four medium):
   no JSON-validity, latency, token or cost figures, no error-shape check against the live service,
   and no ALPHA-judged loop to compare with the Codex route. Nothing here says the route works
   end to end against OpenRouter.
+- Codex review of this follow-on (one medium, one low): both were test gaps, both fixed — a
+  gateway-level test now shows the budget settles on OpenRouter's charged cost and the call log
+  keeps the estimate, with temperature honoured; a launcher test checks the gateway command for
+  each route (temperature waived on Codex only).
