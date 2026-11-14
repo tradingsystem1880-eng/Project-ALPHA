@@ -37,7 +37,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0029](0029-four-family-monte-carlo-validation.md) | Require four-family Monte Carlo path-risk validation | Accepted | 2026-08-12 |
 | [0030](0030-touch-id-owner-presence-for-research-actions.md) | Require fresh Touch ID for Workstation research authority | Partially superseded by 0038 | 2026-08-13 |
 | [0031](0031-provider-readiness-and-paper-acceptance-v2.md) | Separate provider checks, paper acceptance, and IBKR what-if previews | Accepted | 2026-08-13 |
-| [0032](0032-governed-crypto-data-house.md) | Govern crypto data by dataset family | Accepted; storage reserve made owner-settable by 0043 | 2026-08-14 |
+| [0032](0032-governed-crypto-data-house.md) | Govern crypto data by dataset family | Accepted; storage reserve made owner-settable by 0043; snapshot members defined by 0046 | 2026-08-14 |
 | [0033](0033-governed-crypto-crowding-research-and-sandbox-basis.md) | Govern crypto crowding research separately from sandbox basis development | Accepted | 2026-08-15 |
 | [0034](0034-agent-operating-system-v2.md) | Agent operating system v2 — owner-token authorization, oracle test tiers, second-model review seam | Accepted; engineering ceremony superseded by 0037, local stamps by 0039, hidden suite by 0041 | 2026-08-19 |
 | [0035](0035-generic-study-composition-and-external-capability-adapters.md) | Govern generic study composition as a projection layer | Accepted | 2026-08-21 |
@@ -51,6 +51,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0043](0043-storage-reserve-is-owner-set.md) | Storage reserve is an owner-set value; the default stays 100 GB / 15% | Accepted | 2026-11-14 |
 | [0044](0044-rdagent-model-gateway.md) | RD-Agent reaches its models through a local ALPHA gateway; Codex first | Accepted | 2026-11-14 |
 | [0045](0045-approvals-bind-code-structure.md) | Research approvals bind what the code does, not its exact bytes (structural digest as scheme 2; byte-bound scheme-1 approvals keep verifying) | Accepted | 2026-11-14 |
+| [0046](0046-crypto-snapshot-members-are-content-addressed.md) | A crypto snapshot member is its content; equal recaptures count as one, any difference fails loud | Accepted | 2026-11-14 |
 
 ## Conventions
 

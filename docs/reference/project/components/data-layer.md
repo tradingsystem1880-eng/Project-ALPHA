@@ -69,6 +69,21 @@ stock store: `quality_status: legacy_unqualified`).
   two search engines. ALPHA's `yfinance` and `stooq` adapters exist but were not used. Free stock
   history needs an owner decision (see the verification record).
 
+### Limits
+
+- **Stooq:** since 2026-11-14 the `stooq` downloader no longer answers Stooq's "verify your
+  browser" check itself (it used to solve the check and pose as a desktop browser; getting past a
+  bot check is not acceptable here). It now sends one request under a generic client name and, when
+  challenged, refuses with a clear message. Stooq data already stored stays readable.
+- **Yahoo (`yfinance`):** Yahoo's terms forbid collecting data from its services "using any
+  automated means" without Yahoo's express prior permission. The `yfinance` downloader must not be
+  used unless Yahoo has given that permission. It is kept, not deleted, because the owner has not
+  decided its future (see the [verification record](../../../work/archive/2026-11/2026-11-14-free-real-data-dell/05-handoff.md)).
+- **Binance monthly archives:** a month's file exists only after the month ends, so a backfill
+  lists the current month as "not published yet" rather than failing; the current month comes from
+  the bounded live-service tail. A governed crypto snapshot may hold many months of many coins;
+  the daily price reader used by the daily rule lane still reads one month per snapshot.
+
 ## Where it lives
 
 - **Workspaces:** `packages/alpha-data`
@@ -83,7 +98,8 @@ stock store: `quality_status: legacy_unqualified`).
   [durable acquisition journal](../../../roadmap/backlog/controlstore-durable-acquisition.md).
 - Decision records: [ADR-0004](../../../adr/0004-two-clock-corporate-actions.md),
   [ADR-0005](../../../adr/0005-point-in-time-firewall.md), [ADR-0017](../../../adr/0017-authoritative-daily-data-and-broker-paper-boundary.md),
-  [ADR-0032](../../../adr/0032-governed-crypto-data-house.md).
+  [ADR-0032](../../../adr/0032-governed-crypto-data-house.md),
+  [ADR-0046](../../../adr/0046-crypto-snapshot-members-are-content-addressed.md).
 
 ## Decisions and open questions
 

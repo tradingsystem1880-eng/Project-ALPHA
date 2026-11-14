@@ -129,8 +129,10 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
   ratios that disagree within a row. Transport failures expose only the exception type, with context
   suppressed; the API key travels only in a header. A bounded read keeps its byte ceiling (1 byte to 32 MiB).
   Enforced by `tests/unit/test_tiingo_adapter.py` and `tests/unit/test_tiingo_bounded_fetch.py`.
-- Stooq fails loud on its per-IP "Access denied", challenge pages and HTML bodies; HTTP errors and interrupted
-  reads (`IncompleteRead`, timeouts, connection errors) become a typed `DataError`.
+- Stooq never solves, bypasses or works around its "verify your browser" check: it sends one request under a
+  generic client name and fails loud on a challenge page, its per-IP "Access denied" and HTML bodies; HTTP
+  errors and interrupted reads (`IncompleteRead`, timeouts, connection errors) become a typed `DataError`.
+  No error message points to another source.
 - CCXT accepts only `coinbase` and `binance`, returns completed intervals only, never sends `since=0` (Coinbase
   answers it with the latest bars), and keeps venue-qualified `ccxt:<exchange>` provenance byte-compatible.
   It paginates past per-call caps; the daily `fetch(date, date)` contract delegates to `fetch_timeframe`.
@@ -165,6 +167,13 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
   audits references (`--report`) and repeats the audit under the lock before `--apply`; it fails closed on
   unreadable evidence and never retires referenced artifacts.
 - Normalized reads are capped at 32 MiB and re-verify the artifact while reading.
+- A governed snapshot member is its content (dataset, artifact key, artifact hash). Creation and every
+  verification resolve it with one rule (`alpha_cli/_crypto_snapshot_members.py`): several retained
+  captures of the same bytes count as one only if they agree on everything except per-fetch provenance
+  (manifest ids, raw storage keys, receipt ids, fetch times); any other difference fails as ambiguous.
+  Creation freezes members in canonical order, refuses a capture named twice, and members of one
+  dataset must cover disjoint observed ranges.
+  [ADR-0046](../../adr/0046-crypto-snapshot-members-are-content-addressed.md)
 - Archive charts ([ADR-0038](../../adr/0038-local-confirmation-and-terminal-archive-charts.md)): inventory is
   discovery only; a chart read runs full manifest and raw-lineage verification, then checks dataset identity,
   units and the completed-bar cutoff. Reconstructed archive history does not establish point-in-time

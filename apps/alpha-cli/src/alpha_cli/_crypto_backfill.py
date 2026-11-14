@@ -69,6 +69,18 @@ def _iso(instant: datetime) -> str:
     return instant.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def unpublished_binance_periods(start: date, end: date, now: datetime) -> tuple[str, ...]:
+    """Return requested monthly archives whose month has not ended at ``now``."""
+    periods: list[str] = []
+    year, month = start.year, start.month
+    while (year, month) <= (end.year, end.month):
+        next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
+        if datetime(next_year, next_month, 1, tzinfo=UTC) > now:
+            periods.append(f"{year:04d}-{month:02d}")
+        year, month = next_year, next_month
+    return tuple(periods)
+
+
 def plan_windows(
     provider: str,
     family: str,
@@ -87,12 +99,15 @@ def plan_windows(
     if provider == "binance":
         if family not in _BINANCE_MONTHLY_FAMILIES:
             raise DataError(f"backfill supports Binance market_bars monthly archives, not {family}")
+        unpublished = set(unpublished_binance_periods(start, end, now))
         periods: list[BackfillWindow] = []
         year, month = start.year, start.month
         while (year, month) <= (end.year, end.month):
-            if max_windows is not None and len(periods) >= max_windows:
-                raise BackfillInspectionLimit("backfill inspection window limit reached")
-            periods.append(BackfillWindow(start=None, end=None, period=f"{year:04d}-{month:02d}"))
+            period = f"{year:04d}-{month:02d}"
+            if period not in unpublished:
+                if max_windows is not None and len(periods) >= max_windows:
+                    raise BackfillInspectionLimit("backfill inspection window limit reached")
+                periods.append(BackfillWindow(start=None, end=None, period=period))
             year, month = (year + 1, 1) if month == 12 else (year, month + 1)
         return tuple(periods)
     if provider != "bybit":
