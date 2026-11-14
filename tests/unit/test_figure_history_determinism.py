@@ -100,6 +100,10 @@ def _quantstats_restyle() -> None:
     importlib.reload(core)
 
 
+def _canvas_colours() -> None:
+    matplotlib.rcParams.update({"axes.facecolor": "#ffeedd", "grid.color": "#ff0000"})
+
+
 def _ggplot() -> None:
     matplotlib.style.use("ggplot")
 
@@ -143,7 +147,7 @@ def test_figure_bytes_ignore_process_history(writer: str, pollute: Callable[[], 
 
 
 @pytest.mark.parametrize(
-    "pollute", (_tick_size, _ggplot, _local_config), ids=lambda fn: fn.__name__
+    "pollute", (_canvas_colours, _ggplot, _local_config), ids=lambda fn: fn.__name__
 )
 def test_tearsheet_bytes_ignore_process_history(
     tmp_path: Path,
@@ -160,12 +164,23 @@ def test_tearsheet_bytes_ignore_process_history(
 
 
 def test_tearsheet_preserves_process_rcparams(tmp_path: Path) -> None:
-    matplotlib.use("Agg")
-    with matplotlib.rc_context():
-        _local_config()
-        before = dict(matplotlib.rcParams)
-        _tearsheet(tmp_path / "tearsheet.html")
-        assert dict(matplotlib.rcParams) == before
+    # A fresh process, so this tear sheet is the first import of QuantStats and its
+    # import-time restyling would show if it leaked; backend selection is excluded.
+    script = (
+        "import sys; from pathlib import Path; import matplotlib; "
+        "from tests.unit.test_figure_history_determinism import _tearsheet; "
+        "keep = lambda: {k: repr(v) for k, v in matplotlib.rcParams.items() "
+        "if k not in ('backend', 'backend_fallback')}; "
+        "assert 'quantstats_lumi' not in sys.modules; "
+        "before = keep(); _tearsheet(Path(sys.argv[1])); "
+        "changed = sorted(k for k, v in keep().items() if before[k] != v); "
+        "assert not changed, changed"
+    )
+    subprocess.run(
+        [sys.executable, "-c", script, str(tmp_path / "tearsheet.html")],
+        check=True,
+        cwd=Path(__file__).resolve().parents[2],
+    )
 
 
 def test_research_preserves_backend() -> None:
