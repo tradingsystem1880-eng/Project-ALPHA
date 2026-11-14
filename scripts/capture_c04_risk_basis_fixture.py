@@ -54,7 +54,7 @@ SOURCE_PATHS = (
     "apps/alpha-web/src/alpha_web/_catalog.py",
     "apps/alpha-web/src/alpha_web/_risk.py",
     "apps/alpha-web/src/alpha_web/api/risk.py",
-    "apps/alpha-web/src/alpha_web/api/models.py",
+    "apps/alpha-web/src/alpha_web/api/models/risk.py",
 )
 
 
