@@ -63,7 +63,8 @@ def test_csv_or_raise_blocked_messages_do_not_recommend_yfinance(body: str) -> N
     with pytest.raises(DataError) as caught:
         _csv_or_raise(body, "spy.us", "2020-01-01..2020-01-31")
     assert "yfinance" not in str(caught.value).lower()
-    assert "anti-bot" in str(caught.value)
+    blocked = body.strip() not in {"", "No data"}
+    assert ("anti-bot" in str(caught.value)) is blocked
 
 
 def test_csv_or_raise_parses_valid_csv() -> None:

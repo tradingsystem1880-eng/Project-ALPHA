@@ -126,7 +126,7 @@ def _csv_or_raise(text: str, symbol: str, window: str) -> FetchResult:
     """
     stripped = text.strip()
     if not stripped or "No data" in text:
-        raise DataError(f"Stooq returned no data for {symbol} {window} (possible anti-bot refusal)")
+        raise DataError(f"Stooq returned no data for {symbol} {window}")
     if stripped == "Access denied" or _CHALLENGE_MARKER in text.lower() or stripped.startswith("<"):
         raise DataError(
             f"Stooq withheld the free CSV for {symbol} ({stripped[:40]!r}): the /q/d/l/ endpoint "
