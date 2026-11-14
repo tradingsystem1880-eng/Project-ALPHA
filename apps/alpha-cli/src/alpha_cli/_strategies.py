@@ -56,7 +56,8 @@ class StrategyDef:
 
 
 def _ts_momentum_warmup(spec: RunSpec) -> int:
-    return max(spec.lookback + spec.skip + 1, spec.vol_window + 1)
+    signal_history = spec.lookback + spec.skip + 1
+    return signal_history if spec.sizing == "all_in" else max(signal_history, spec.vol_window + 1)
 
 
 def _ts_momentum_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarType) -> Strategy:
@@ -74,6 +75,7 @@ def _ts_momentum_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: Bar
         rebalance_every=spec.rebalance_every,
         periods_per_year=spec.periods_per_year,
         allow_short=spec.allow_short,
+        sizing=spec.sizing,
         size_on_equity=spec.size_on_equity,
         halt_drawdown=spec.halt_drawdown,
     )
@@ -92,6 +94,7 @@ def _ts_momentum_surrogate(spec: RunSpec) -> Surrogate:
         max_leverage=spec.max_leverage,
         allow_short=spec.allow_short,
         cost_bps=spec.fee_bps + spec.slippage_bps,
+        unit_weight=spec.sizing == "all_in",
     )
 
 
@@ -109,7 +112,7 @@ def _ma_crossover_params(spec: RunSpec) -> tuple[int, int]:
 
 def _ma_crossover_warmup(spec: RunSpec) -> int:
     _, slow = _ma_crossover_params(spec)
-    return max(slow, spec.vol_window + 1)
+    return slow if spec.sizing == "all_in" else max(slow, spec.vol_window + 1)
 
 
 def _ma_crossover_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarType) -> Strategy:
@@ -128,6 +131,7 @@ def _ma_crossover_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: Ba
         rebalance_every=spec.rebalance_every,
         periods_per_year=spec.periods_per_year,
         allow_short=spec.allow_short,
+        sizing=spec.sizing,
         size_on_equity=spec.size_on_equity,
         halt_drawdown=spec.halt_drawdown,
     )
@@ -152,6 +156,7 @@ def _ma_crossover_surrogate(spec: RunSpec) -> Surrogate:
         max_leverage=spec.max_leverage,
         allow_short=spec.allow_short,
         cost_bps=spec.fee_bps + spec.slippage_bps,
+        unit_weight=spec.sizing == "all_in",
     )
 
 
@@ -227,7 +232,8 @@ def _breakout_window(spec: RunSpec) -> int:
 
 
 def _breakout_warmup(spec: RunSpec) -> int:
-    return max(_breakout_window(spec) + 1, spec.vol_window + 1)
+    signal_history = _breakout_window(spec) + 1
+    return signal_history if spec.sizing == "all_in" else max(signal_history, spec.vol_window + 1)
 
 
 def _breakout_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarType) -> Strategy:
@@ -244,6 +250,7 @@ def _breakout_build(spec: RunSpec, instrument_id: InstrumentId, bar_type: BarTyp
         rebalance_every=spec.rebalance_every,
         periods_per_year=spec.periods_per_year,
         allow_short=spec.allow_short,
+        sizing=spec.sizing,
         size_on_equity=spec.size_on_equity,
         halt_drawdown=spec.halt_drawdown,
     )
@@ -271,6 +278,7 @@ def _breakout_surrogate(spec: RunSpec) -> Surrogate:
         max_leverage=spec.max_leverage,
         allow_short=spec.allow_short,
         cost_bps=spec.fee_bps + spec.slippage_bps,
+        unit_weight=spec.sizing == "all_in",
     )
 
 
@@ -458,7 +466,7 @@ def _sizing_capital(spec: RunSpec) -> float:
     headroom up front keeps the worst-case boundary fill solvent (a ~3bp sizing haircut at the
     default frictions). MARGIN accounts have buying-power headroom and are left untouched.
     """
-    if spec.account_type.upper() == "MARGIN":
+    if spec.sizing == "all_in" or spec.account_type.upper() == "MARGIN":
         return spec.starting_cash
     slip = spec.slippage_bps / 10_000.0
     fee = spec.fee_bps / 10_000.0
@@ -474,6 +482,13 @@ def _resolve(name: str) -> StrategyDef:
 
 def _check_params(spec: RunSpec, sdef: StrategyDef) -> None:
     """Apply the canonical schema at runtime, including for programmatic ``RunSpec`` values."""
+    if spec.sizing not in ("vol_target", "all_in"):
+        raise DataError(f"unknown sizing {spec.sizing!r}; expected vol_target or all_in")
+    if spec.sizing == "all_in":
+        if spec.allow_short:
+            raise DataError("all_in sizing is incompatible with allow_short=True")
+        if spec.strategy_name not in ("ts_momentum", "ma_crossover", "breakout"):
+            raise DataError(f"all_in sizing is unsupported for {spec.strategy_name!r}")
     unknown = {name for name, _ in spec.strategy_params} - sdef.params
     if unknown:
         known = sorted(sdef.params) if sdef.params else "none (all knobs are first-class flags)"
@@ -507,6 +522,12 @@ def build_strategy(
     sdef = _resolve(spec.strategy_name)
     _check_params(spec, sdef)
     strategy = sdef.build(spec, instrument_id, bar_type)
+    if spec.sizing == "all_in":
+        from alpha_strategies.base import VolTargetStrategy
+
+        if not isinstance(strategy, VolTargetStrategy):
+            raise DataError("all_in sizing requires VolTargetStrategy")
+        strategy.configure_sizing_costs(fee_bps=spec.fee_bps, slippage_bps=spec.slippage_bps)
     if event_sink is not None:
         from alpha_core import ExecutionEventSink
         from alpha_strategies.base import VolTargetStrategy

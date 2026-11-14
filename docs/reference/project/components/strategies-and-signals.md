@@ -3,7 +3,7 @@ owner: project layer
 sources:
   - packages/alpha-strategies/CONTEXT.md
   - packages/alpha-patterns/CONTEXT.md
-verified: a79d832d
+verified: 082b8f476534
 ---
 
 # Strategies and signals
@@ -33,6 +33,9 @@ one of these rules.
   ([rule](../../invariants/research-integrity.md#research-before-strategy)).
 
 ## What is real today
+
+Plain long/flat all-in sizing is available beside volatility targeting for moving-average crossover,
+Donchian breakout and time-series momentum; it holds entry units until the rule exits.
 
 See the capabilities below on [STATUS.md](../../../../STATUS.md).
 

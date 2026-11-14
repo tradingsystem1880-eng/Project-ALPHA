@@ -83,6 +83,7 @@ class RunSpec:
     # manifest carries the exact rules and the run id changes with their bytes. Like
     # ``forecast_cache``, adding this field shifts run ids for runs created after it landed.
     rules_spec: str | None = None
+    sizing: str = "vol_target"
 
     def param(self, name: str, default: float) -> float:
         """Read a per-strategy parameter from ``strategy_params``, or ``default`` if absent."""
@@ -241,6 +242,7 @@ def run_full_backtest(
         bars,
         bar_type,
         price_precision=instrument.price_precision,  # sub-dollar tokens need the finer ticks
+        size_precision=instrument.size_precision,
         slippage_bps=spec.slippage_bps,
     )
     strategy = _strategies.build_strategy(spec, instrument.id, bar_type)
@@ -585,6 +587,8 @@ def run_identity_for(
     """Build versioned identity including code, strategy, and observed source content."""
     from alpha_cli._identity import RUN_IDENTITY_VERSION, strategy_name_from_payload
 
+    if payload.get("sizing") == "vol_target":
+        payload = {key: value for key, value in payload.items() if key != "sizing"}
     execution = execution_fingerprint()
     strategy = strategy_fingerprint(strategy_name_from_payload(payload))
     source = (
