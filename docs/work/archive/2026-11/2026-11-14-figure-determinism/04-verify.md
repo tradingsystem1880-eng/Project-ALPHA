@@ -27,8 +27,18 @@ All in `/home/hunta/alpha-clean-base/wt-det`, branch `m4/figure-determinism`.
   tests/unit/test_figure_history_determinism.py tests/integration/test_research_cmds_golden.py`
   in one process (tear sheets first): 34 passed.
 - `gate.py determinism` (run by the reviewer): 2 passes green over 11 files.
-- `gate.py mutate` on both modules and `gate.py check --all` on the last commit: results in the
-  pull request.
+- `gate.py check --all` on 580c5a0f: PASS (whole fast tier, 119s). `fs.py stale`: nothing
+  stale after the merge of main.
+- `gate.py mutate tearsheet.py`: pass, kill rate 0.4918 against a floor of 0.2665 (locally and
+  in CI's `quant` job).
+- `gate.py mutate rendering.py --require-measured`: "unavailable" (the 1800-second module cap
+  passed) locally and in CI. The same happens on `origin/main` (f8f687c1) without this change:
+  241 of 283 mutants done at the cap, 55 survivors, so the module could not be measured before
+  either. On this branch, run directly with mutmut in a staged tree, 120 of the 287 mutants
+  (`_1*` and `_8*`) gave 116 killed, 4 survived, 0 timeouts; two survivors are the `"backend"`
+  key mutants, which are equivalent (Matplotlib ignores setting the auto-backend sentinel once a
+  backend is set). The cap is the limit, not the kill rate; the gate was not changed.
+- CI `quant` job, first push: slow oracles PASS (262s); mutation gate FAIL for the reason above.
 
 ## End-to-end check
 
