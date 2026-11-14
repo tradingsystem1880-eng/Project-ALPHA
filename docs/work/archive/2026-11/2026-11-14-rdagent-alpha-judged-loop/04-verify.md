@@ -160,3 +160,30 @@ Codex review of the same diff afterwards (two high, four medium):
 
 - Earlier, on the decision record: two Codex review findings (look-ahead cut coverage; BH over an
   adaptive family claims no error control), both fixed in ADR-0049.
+
+## Follow-on: the DeepSeek route through OpenRouter (owner decision, 2026-11-14)
+
+- Model chosen from OpenRouter's public list (read 2026-11-14 12:35 UTC, no key):
+  `deepseek/deepseek-v4.1-flash-1017`, DeepSeek V4.1 Flash, 17 October 2026 snapshot served by
+  DeepSeek; context 1,048,576 tokens; listed parameters include `response_format`,
+  `structured_outputs`, `temperature`, `seed` and optional `reasoning` (one model with reasoning as a switch; the listing has no separate
+  "reasoner" id for V4.1, unlike the older `deepseek/deepseek-r1-0528`; whether reasoning is off
+  by default was not verified). Prices: USD
+  0.038 per million input, 0.50 per million output, 0.01 per million cached input. The undated
+  `deepseek/deepseek-v4.1-flash` (0.0507 / 0.2028) and the moving `~deepseek/deepseek-flash-latest`
+  alias were not chosen: a run should not change model under it.
+- Gateway: `--api-openrouter` adds `provider.require_parameters` (OpenRouter otherwise may route to
+  a provider that drops `temperature` or `response_format` silently) and `usage.include`, and
+  settles the budget with OpenRouter's charged `usage.cost` (failing closed if it is missing),
+  recording the gateway's own token-price estimate beside it (`estimated_usd`; the estimate prices
+  cached input at the full rate, so it is the higher of the two). Temperature is forwarded and
+  honoured on this route; the launcher waives it only on the Codex route. Tests: fake provider,
+  no network, no key.
+- Launcher: `--chat-route api --api-model … --api-price-in-per-mtok … --api-price-out-per-mtok …
+  --api-openrouter`; refuses without the two environment variables; only the gateway process
+  inherits them (tested: the freeze, prepare, verify and loop children do not see the key).
+- **Not measured.** Loading the key file (sourcing it inside the gateway's command, as the owner
+  directed) was refused by this agent's permission settings, so no call was made on this route:
+  no JSON-validity, latency, token or cost figures, no error-shape check against the live service,
+  and no ALPHA-judged loop to compare with the Codex route. Nothing here says the route works
+  end to end against OpenRouter.

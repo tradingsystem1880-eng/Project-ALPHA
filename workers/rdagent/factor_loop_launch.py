@@ -29,6 +29,12 @@ MAX_CALLS = 60
 LABEL = "exploratory, not admitted, not yet confirmed"
 AUTHORITY = dict.fromkeys(("admitted", "evidence", "approval", "promotion"), False)
 SETUP_HINT = "bash scripts/setup_rdagent.sh --with-factor-runtime"
+# The paid route's settings reach only the gateway process, never another child.
+GATEWAY_SECRETS = ("ALPHA_GATEWAY_API_KEY", "ALPHA_GATEWAY_API_BASE")
+
+
+def _without_secrets() -> dict[str, str]:
+    return {k: v for k, v in os.environ.items() if k not in GATEWAY_SECRETS}
 
 
 class LaunchError(Exception):
@@ -60,6 +66,17 @@ def validate(args: argparse.Namespace, environ: dict[str, str]) -> dict[str, Pat
         raise LaunchError(f"--run-max-calls must be between 1 and {MAX_CALLS}")
     if args.wall_seconds <= 0:
         raise LaunchError("--wall-seconds must be positive")
+    if args.chat_route == "api":
+        if not args.api_model or not args.api_price_in_per_mtok or not args.api_price_out_per_mtok:
+            raise LaunchError(
+                "--chat-route api needs --api-model, --api-price-in-per-mtok and "
+                "--api-price-out-per-mtok"
+            )
+        if any(not environ.get(key) for key in GATEWAY_SECRETS):
+            raise LaunchError(
+                "--chat-route api needs ALPHA_GATEWAY_API_BASE and ALPHA_GATEWAY_API_KEY in the "
+                "launcher's environment (load the owner's file in the same command; never print it)"
+            )
     for name in ("data_dir", "run_dir", "gateway_data_dir", "trial_ledger"):
         if not getattr(args, name).is_absolute():
             raise LaunchError(f"--{name.replace('_', '-')} must be an absolute path")
@@ -148,7 +165,11 @@ class Launch:
 
     def check(self, step: str, command: Sequence[str], **kwargs: Any) -> str:
         result = subprocess.run(
-            list(command), capture_output=True, text=True, check=False, **kwargs
+            list(command),
+            capture_output=True,
+            text=True,
+            check=False,
+            **{"env": _without_secrets(), **kwargs},
         )
         if result.returncode:
             tail = (result.stderr or result.stdout).strip().splitlines()[-1:] or ["no output"]
@@ -223,7 +244,11 @@ class Launch:
             (self.run / "logs" / f"{log}.stderr.log").open("ab") as err,
         ):
             child = subprocess.Popen(
-                list(command), stdout=out, stderr=err, start_new_session=True, **kwargs
+                list(command),
+                stdout=out,
+                stderr=err,
+                start_new_session=True,
+                **{"env": _without_secrets(), **kwargs},
             )
         self.children.append(child)
         return child
@@ -247,9 +272,32 @@ class Launch:
             "--embedding-route",
             self.args.embedding_route,
         ]
-        if self.args.accept_unhonoured:
-            command += ["--accept-unhonoured", self.args.accept_unhonoured]
-        child = self.spawn(command, "gateway")
+        accept = self.args.accept_unhonoured
+        if accept is None:  # the owner accepted losing temperature on the Codex route only
+            accept = "temperature" if self.args.chat_route == "codex" else ""
+        if accept:
+            command += ["--accept-unhonoured", accept]
+        if self.args.chat_route == "api":
+            command += [
+                "--api-model",
+                self.args.api_model,
+                "--api-price-in-per-mtok",
+                str(self.args.api_price_in_per_mtok),
+                "--api-price-out-per-mtok",
+                str(self.args.api_price_out_per_mtok),
+            ]
+            if self.args.api_openrouter:
+                command.append("--api-openrouter")
+        self.receipt["route"] = {
+            "chat": self.args.chat_route,
+            "api_model": self.args.api_model,
+            "api_price_in_per_mtok": self.args.api_price_in_per_mtok,
+            "api_price_out_per_mtok": self.args.api_price_out_per_mtok,
+            "api_openrouter": self.args.api_openrouter,
+            "accept_unhonoured": accept,
+        }
+        # Only the gateway inherits the paid route's settings.
+        child = self.spawn(command, "gateway", env=dict(os.environ))
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             if child.poll() is not None:
@@ -332,6 +380,7 @@ class Launch:
             capture_output=True,
             text=True,
             check=False,
+            env=_without_secrets(),
         )
         try:
             state = json.loads(result.stdout)
@@ -409,9 +458,13 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--loop-n", type=int, default=2)
     r.add_argument("--run-max-calls", type=int, default=MAX_CALLS)
     r.add_argument("--wall-seconds", type=float, default=5400)
-    r.add_argument("--chat-route", choices=("codex", "fake"), default="codex")
+    r.add_argument("--chat-route", choices=("codex", "api", "fake"), default="codex")
     r.add_argument("--embedding-route", choices=("ollama", "fake"), default="ollama")
-    r.add_argument("--accept-unhonoured", default="temperature")
+    r.add_argument("--accept-unhonoured", default=None)
+    r.add_argument("--api-model")
+    r.add_argument("--api-price-in-per-mtok", type=float)
+    r.add_argument("--api-price-out-per-mtok", type=float)
+    r.add_argument("--api-openrouter", action="store_true")
     return p
 
 

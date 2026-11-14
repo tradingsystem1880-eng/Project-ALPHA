@@ -169,3 +169,51 @@ def test_gateway_starts_with_fake_routes_and_token_stays_out_of_logs(tmp_path: P
     assert token not in json.dumps(receipt)
     assert receipt["label"] == launch.LABEL
     assert not any(receipt["authority"].values())
+
+
+def test_api_route_needs_model_prices_and_keys(tmp_path: Path) -> None:
+    with pytest.raises(launch.LaunchError, match="--api-model"):
+        launch.validate(args(tmp_path, "--chat-route", "api"), environ(tmp_path))
+    priced = args(
+        tmp_path,
+        "--chat-route",
+        "api",
+        "--api-model",
+        "deepseek/x",
+        "--api-price-in-per-mtok",
+        "0.1",
+        "--api-price-out-per-mtok",
+        "0.5",
+    )
+    with pytest.raises(launch.LaunchError, match="ALPHA_GATEWAY_API_KEY"):
+        launch.validate(priced, environ(tmp_path))
+    keyed = {
+        **environ(tmp_path),
+        "ALPHA_GATEWAY_API_BASE": "https://x",
+        "ALPHA_GATEWAY_API_KEY": "k",
+    }
+    assert launch.validate(priced, keyed)
+
+
+def test_only_the_gateway_inherits_the_paid_route_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_GATEWAY_API_KEY", "sk-test-not-real")
+    monkeypatch.setenv("ALPHA_GATEWAY_API_BASE", "https://example.com/v1")
+    assert "ALPHA_GATEWAY_API_KEY" not in launch._without_secrets()
+    run = tmp_path / "run"
+    (run / "logs").mkdir(parents=True)
+    job = launch.Launch(
+        args(tmp_path),
+        {"ALPHA_RDAGENT_SOURCE": tmp_path, "ALPHA_FACTOR_PYTHON": tmp_path / "a/b/c/python"},
+    )
+    job.run = run
+    probe = [sys.executable, "-c", "import os; print('ALPHA_GATEWAY_API_KEY' in os.environ)"]
+    assert job.check("probe", probe) == "False"
+    child = job.spawn(probe, "probe")
+    child.wait(timeout=10)
+    assert (run / "logs/probe.stdout.log").read_text().strip() == "False"
+
+
+def test_codex_route_alone_waives_temperature_by_default(tmp_path: Path) -> None:
+    assert args(tmp_path).accept_unhonoured is None

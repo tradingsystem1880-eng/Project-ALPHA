@@ -107,8 +107,11 @@ Run on the Dell on 2026-11-14:
    [verification](../work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md). You
    accepted, for now, that the Codex route cannot use RD-Agent's "temperature" setting
    ([log](../reference/project/owner-decisions-2.md#2026-11-14-accept-losing-temperature-on-the-codex-route-for-now));
-   it is recorded on every call. The paid fallback stays off until you set a key yourself and
-   compare it.
+   it is recorded on every call. On 2026-11-14 you allowed DeepSeek through OpenRouter for
+   RD-Agent, so temperature can be honoured; the gateway and launcher now support it
+   (`deepseek/deepseek-v4.1-flash-1017`, USD 0.038 / 0.50 per million tokens, read that day).
+   Not run yet: loading the key needs a permission this agent did not have; the one command is in
+   the [worker README](../../workers/rdagent/README.md#alpha-judged-factor-loop-2026-11-14).
 2b. ~~**A backtest that can see the idea.**~~ Done 2026-11-14 without needing your choice:
    ALPHA judges RD-Agent's factors itself (the second option below), with a pinned install and
    one launch command ([ADR-0049](../adr/0049-alpha-judges-rdagent-factors.md)). Still open: a

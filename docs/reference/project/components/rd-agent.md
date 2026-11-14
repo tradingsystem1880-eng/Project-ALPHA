@@ -93,7 +93,12 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
 - Decided, for now: accept losing RD-Agent's "temperature" setting on the Codex route; launch the
   gateway with `--accept-unhonoured temperature`
   ([log](../owner-decisions-2.md#2026-11-14-accept-losing-temperature-on-the-codex-route-for-now)).
-- Open: test the paid route and compare it with the Codex route (the owner will do this later).
+- Decided 2026-11-14: RD-Agent may use DeepSeek through OpenRouter (temperature honoured), caps
+  unchanged. Built: `--chat-route api --api-openrouter` on the gateway and the factor-loop launcher,
+  model `deepseek/deepseek-v4.1-flash-1017` at USD 0.038 / 0.50 per million input / output tokens
+  (OpenRouter's list, read 2026-11-14). Codex stays the default and the fallback; how to choose:
+  [worker README](../../../../workers/rdagent/README.md#alpha-judged-factor-loop-2026-11-14).
+  Open: no call has been made on it yet, so the comparison with the Codex route is not measured.
 - Decided: the first goal after the clean-up is one real RD-Agent loop, connected to a model through Codex
   ([log](../owner-decisions-2.md#2026-11-14-first-goal-one-real-rd-agent-loop)). First run,
   2026-11-14: every step ran on real crypto bars, but RD-Agent's built-in Qlib backtest learned
