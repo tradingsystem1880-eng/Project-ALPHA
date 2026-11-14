@@ -143,3 +143,46 @@ The option text was written by the agent, so it is not quoted as the owner's wor
 - **Context:** a standing rule for every design choice: daily bars first, intraday (minutes to
   hours) second; nothing is built for tick, order-book or latency-sensitive trading.
 - **Governs:** the whole project; the [overview](overview.md).
+
+### 2026-11-14 DeepSeek through OpenRouter for RD-Agent
+
+- **Said:** "For now just use deep seek model as it's cheap and fast." Then: "You can now run deep
+  seek for rd agents so we can have the tempters control and hopefully it works better with api
+  key". Then: "Run deep seek loop". And on 2026-11-15: "Use the newest deep seek model flash."
+- **Context:** the paid route of the model gateway is allowed for RD-Agent with a DeepSeek flash
+  model through OpenRouter; the caps stay at 10 US dollars a run and 50 a month; the owner
+  entered the key himself. It replaces, for RD-Agent, the earlier preference for Codex only; the
+  Codex route stays as the fallback.
+- **Governs:** [RD-Agent](components/rd-agent.md).
+
+### 2026-11-14 The retail trader's fit is the design brief
+
+- **Said:** "we have to remember I'm a retail trader and this project should be built around how
+  a retail trader can make huge profits swing trading (htf and instead day are much harder to
+  stay profitable) so we want to design this to the advantage a retail trader has and can use
+  (longer holding periods, trading products big funds can't. Less rules etc)". And, correcting
+  a too-narrow reading: "Don't focus too much on that. As a retail I can still trade large names
+  and coins".
+- **Context:** large liquid names stay in scope; less-efficient markets are one possibility.
+- **Governs:** the whole project; the [overview](overview.md).
+
+### 2026-11-14 The interface shows charts with text, in a quant style, and is finished later
+
+- **Said:** "All 3 with clean matpkot lib charts. The more charts and visuales the better as I am
+  a visual leaner. ... Don't confuse this with having no text. Tests still very important". And
+  on the prototype: "It looks a little bit ai generated slop I prefer the quant style. But the
+  idea is right. ... We will focus on getting the project and infosture down for now and come
+  back to finishing the ui when everything is actually usable".
+- **Context:** "all 3" are the Learn, Live and Findings views of a research-loop screen.
+- **Governs:** the Workstation web app (`apps/alpha-web`).
+
+### 2026-11-15 Until production grade, every research run is a test of the system
+
+- **Said:** "we are just building this project and getting it to production usable grade. While
+  we are running full end to end use. These ideas are merely random test and we are not acually
+  trying to use the systsem to develop anything. All these loops and reserash, strateegies etc
+  are all just to prove things work. I will not do a proper research or strgey development
+  until this project is production grade."
+- **Context:** test ideas are chosen to exercise abilities and are reported by what they show
+  about the system: what works, what breaks, what to change, improve or add.
+- **Governs:** the whole project; the [overview](overview.md).
