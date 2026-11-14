@@ -2,7 +2,8 @@
 
 Written 2026-11-14 for the owner, after RD-Agent was installed and run on the Dell for the first
 time, and updated the same day after the daily study's Docker image, the stock loop's runtime,
-your storage decision and the first full loop through an AI model on real data. Every statement
+your storage decision, the first full loop through an AI model on real data, and the first loop
+that ALPHA judges. Every statement
 below comes from the repository or from those runs; anything not checked is marked "not verified".
 
 ## What RD-Agent is and what it does in ALPHA
@@ -69,6 +70,18 @@ Run on the Dell on 2026-11-14:
   every day, so the profit figures are noise and the "keep it" verdict rests on noise. This run
   was set up by hand outside the repository; no ALPHA job runs it
   ([verification](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-rdagent-first-real-loop/04-verify.md)).
+- **A loop that ALPHA judges, three rounds on real data — nothing found yet.** Same RD-Agent factor
+  loop, unmodified, but ALPHA now does the judging through RD-Agent's own settings
+  ([ADR-0049](../adr/0049-alpha-judges-rdagent-factors.md)): each new factor is first screened by
+  how well it ranks the coins' next-open-to-next-open returns (with honest error bars, corrected
+  for every factor ever tried), and only a factor that passes is put through ALPHA's cost-aware
+  trading simulation. RD-Agent never sees 2024 or later; that period is kept for a later check
+  only you can approve. Three rounds, five factors, 37 model calls (60 allowed), no money, about
+  7 minutes, started by one command. Two factors (the coins' recent daily trading range, over 7
+  and over 28 days) ranked returns strongly (calmer coins did better day by day), but buying the
+  calmest third lost money against simply holding all 15 coins, after costs; so no factor became
+  a candidate. Everything is labelled exploratory and is about 15 coins that survived to today
+  ([verification](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/094ce61213923cf9b74661013703cd6ebad16ecc/docs/work/archive/2026-11/2026-11-14-rdagent-alpha-judged-loop/04-verify.md)).
 
 ## What is still made-up
 
@@ -94,9 +107,18 @@ Run on the Dell on 2026-11-14:
    [verification](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md). You
    accepted, for now, that the Codex route cannot use RD-Agent's "temperature" setting
    ([log](../reference/project/owner-decisions-2.md#2026-11-14-accept-losing-temperature-on-the-codex-route-for-now));
-   it is recorded on every call. The paid fallback stays off until you set a key yourself and
-   compare it.
-2b. **A backtest that can see the idea — new, needs your choice.** The first full loop (see
+   it is recorded on every call. On 2026-11-14 you allowed DeepSeek through OpenRouter for
+   RD-Agent, so temperature can be honoured; the gateway and launcher now support it
+   (`deepseek/deepseek-v4.1-flash-1017`, USD 0.038 / 0.50 per million tokens, read that day).
+   Not run yet: loading the key needs a permission this agent did not have; the one command is in
+   the [worker README](../../workers/rdagent/README.md#alpha-judged-factor-loop-2026-11-14).
+2b. ~~**A backtest that can see the idea.**~~ Done 2026-11-14 without needing your choice:
+   ALPHA judges RD-Agent's factors itself (the second option below), with a pinned install and
+   one launch command ([ADR-0049](../adr/0049-alpha-judges-rdagent-factors.md)). Still open: a
+   Nautilus simulation (today ALPHA's own synchronized replay is used), starting it from `alpha`
+   under the job supervisor ([backlog](backlog/rdagent-factor-loop-supervision.md)), and turning a
+   candidate into a research case draft for you
+   ([backlog](backlog/rdagent-candidate-to-research-case.md)). The original note: The first full loop (see
    "What is real today") showed that RD-Agent's built-in Qlib backtest is tuned for about 300
    Chinese stocks: on 15 coins its model learns nothing, so its numbers are noise. Choose one:
    a wider crypto universe (how wide is enough is untested; needs item 3's data folder and a
@@ -144,3 +166,7 @@ about 120 MB and the stock runtime about 230 MB. To read a stock
 job's result once one exists: `uv run alpha research diagnostic native-result --data-dir … --job-id …
 --profile-source … --profile-runtime … --profile-mode resume`, or the Native job result screen.
 Technical detail: [worker README](../../workers/rdagent/README.md).
+
+To repeat the ALPHA-judged loop (real model calls, about 40 per run, never more than 60):
+`bash scripts/setup_rdagent.sh --with-factor-runtime` once, then the one `factor_loop_launch.py
+run` command in the [worker README](../../workers/rdagent/README.md#alpha-judged-factor-loop-2026-11-14).

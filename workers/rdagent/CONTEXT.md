@@ -4,7 +4,7 @@ sources:
   - workers/rdagent/*.py
   - workers/rdagent/pyproject.toml
   - workers/rdagent/uv.lock
-verified: aa600e57932d
+verified: ec6d827da973
 ---
 
 # RD-Agent worker workspace
@@ -14,7 +14,8 @@ verified: aa600e57932d
 Flat entry scripts and pinned locks that run Microsoft RD-Agent's native loops (synthetic
 fixtures, rule and costed probes, the stock RDLoop) in their own environments for the CLI's
 native job supervisor, plus `model_gateway.py`, the local program through which RD-Agent reaches
-a model. It is a separate uv project (`package = false`) with its own lock; no ALPHA package
+a model, and the ALPHA-judged factor loop (`factor_loop_launch.py`, `factor_loop_entry.py`,
+`alpha_factor_judge.py`, `alpha_factor_data.py`; ADR-0049). It is a separate uv project (`package = false`) with its own lock; no ALPHA package
 imports it, though its probes import ALPHA packages inside qualified profile environments. It has
 no market, inference or evidence authority.
 
@@ -34,7 +35,8 @@ no market, inference or evidence authority.
   imports neither ALPHA nor RD-Agent; `install_stock_profile.py` and `stock-requirements.lock` build the Python 3.11
   stock runtime).
 - Tests live in the root suite: `tests/unit/test_native_*.py`, `test_rdagent_model_gateway.py`,
-  `test_setup_rdagent.py`. Tests that need the RD-Agent source skip unless `ALPHA_RDAGENT_SOURCE` (and, for stock lanes, `ALPHA_STOCK_PYTHON`) is set.
+  `test_setup_rdagent.py`, `test_rdagent_factor_{eval,judge,launch}.py` (the factor-runtime cases need
+  `ALPHA_FACTOR_PYTHON` as well). Tests that need the RD-Agent source skip unless `ALPHA_RDAGENT_SOURCE` (and, for stock lanes, `ALPHA_STOCK_PYTHON`) is set.
 - There is no CI gate component for this worker; run `uv run python scripts/gate.py check` from
   the repository root.
 - Editing `alpha_core`, `alpha_patterns` or `alpha_strategies` source changes the installed rule

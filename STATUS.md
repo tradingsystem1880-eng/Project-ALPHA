@@ -4,7 +4,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 9 working, 22 partly working, 0 demo only, 5 shelved, 1 not started.
+- **Capabilities:** 12 working, 19 partly working, 0 demo only, 5 shelved, 1 not started.
 - **Known defects:** 0.
 - **Decisions waiting for you:** 0.
 
@@ -21,6 +21,9 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Freeze crypto data into exact snapshots and check them (W05)** — uv run alpha crypto-data snapshot-create …, then uv run alpha crypto-data snapshot-verify <snapshot-id>
 - **Run a backtest** — uv run alpha backtest run SPY
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
+- **Path-risk simulation (Monte Carlo)** — uv run alpha monte-carlo classical --from-run <run-id> (a real run is recorded)
+- **Risk numbers that state what they are based on (C04)** — uv run alpha risk scenario --from-run <run-id> --json --include-metric-basis (a real run is recorded)
+- **Quick idea screening (Phase C)** — uv run alpha scan hypotheses --as-of <date> (a real run is recorded)
 - **Machine-learning experiments with Qlib** — uv run alpha ml capabilities
 - **Upstream Alpha158 price features** — set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec
 
@@ -35,7 +38,7 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Check data providers and background jobs** — job list tested only with a stand-in command; provider checks need real providers.
 - **Paper trading: practice trading with no real money (IBKR Paper)** — no end-to-end test; parts tested with stand-ins. Needs: an opt-in setting, live Binance public data, and an IBKR practice account and gateway for stocks.
 - **Corrected Alpha158 price features** — no ML run with version 2; superseded by version 3 (kept for stored results).
-- **AI stock research loop (RD-Agent, W02)** — an AI model connection now exists (local gateway to the signed-in Codex program and Ollama, with budget and per-call records; ADR-0044) and RD-Agent's own factor loop got through proposal, experiment design and coding on made-up data, stopping at the Qlib backtest; the fixture and stock loops ALPHA runs still use stand-in steps, no alpha command starts a model-connected run, and restart after a crash is not solved. Needs: the owner's decision whether to accept losing RD-Agent's temperature setting on the Codex route; an alpha command that starts a model-connected RD-Agent run under ALPHA's controls; Qlib's runner for the backtest step. More: [docs/roadmap/rd-agent-in-alpha.md](docs/roadmap/rd-agent-in-alpha.md).
+- **AI stock research loop (RD-Agent, W02)** — RD-Agent's own factor loop now runs model-connected on real Binance bars, judged by ALPHA instead of its built-in Qlib backtest (ADR-0049), from one launcher command with a hash-pinned runtime and the gateway's call cap: one run of 3 iterations, 5 factors, no candidate; it is not yet started by alpha or supervised as an ALPHA job, has no end-to-end smoke check with a scripted model, the fixture and stock loops ALPHA runs still use stand-in steps, and restart after a crash is not solved. Needs: an alpha command that starts the model-connected factor loop under the native job supervisor (backlog: rdagent-factor-loop-supervision); an end-to-end smoke check of the factor loop through the installed programs with a scripted model route. More: [docs/roadmap/rd-agent-in-alpha.md](docs/roadmap/rd-agent-in-alpha.md).
 - **"Native job result" screen (W04, W18)** — its smoke check now passes here: alpha and the web app read a made-up stock job's result; the browser lane fails here only because the web front end's test packages are not installed; no real job exists yet. Needs: a real (not made-up) stock RD-Agent job, which needs an AI model connection. More: [docs/roadmap/rd-agent-in-alpha.md](docs/roadmap/rd-agent-in-alpha.md).
 - **AI-run daily trading-rule study (Packet 3, W08)** — with its Docker image now qualified here, the full daily study's tests pass on made-up bars; it has no end-to-end smoke check, the storage settings are not yet created, and no real data has been acquired. Needs: the Dell's storage settings, created by you (docs/operations/storage-settings.md; 10 GB reserve per ADR-0043); real Binance daily bars admitted into that storage. More: [docs/roadmap/rd-agent-in-alpha.md](docs/roadmap/rd-agent-in-alpha.md). More: [docs/operations/storage-settings.md](docs/operations/storage-settings.md).
 - **Running ALPHA on your Mac with real data providers** — one final review and a run on your Mac. Needs: your Mac; access to a real data provider (blocked since 31 August).
@@ -45,10 +48,7 @@ Tested piece by piece inside the test suite, but not yet run from start to finis
 - **Price charts with indicators and patterns** — tested in-process and in a browser against a test server (a real run is recorded).
 - **Write trading rules and scan markets** — tested in-process and in a browser against a test server.
 - **Strategy development workspace** — tested in-process only.
-- **Path-risk simulation (Monte Carlo)** — tested in-process only.
-- **Risk numbers that state what they are based on (C04)** — tested in-process and in a browser against a test server.
 - **Prop-firm challenge check** — tested in-process only.
-- **Quick idea screening (Phase C)** — tested in-process only.
 - **Ask the AI assistant about a recorded run (Codex)** — tested in a browser against a test server only (a real run is recorded).
 - **Let an AI assistant use ALPHA's tools (MCP)** — tested in-process only.
 
@@ -91,6 +91,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - ControlStore-owned durable acquisition journal — large (L)
 - Data-directory naming migration — medium (M)
 - Freeze a crypto snapshot by coin and date range — medium (M)
+- From an RD-Agent candidate factor to a research case draft — medium (M)
 - Full Qlib model zoo and fold-by-fold counterfactual retraining (W11/W12) — very large (XL)
 - Gate coverage for workers/rdagent — small (S)
 - Generalise D0 screening to every registered producer (Phase E) — medium (M)
@@ -102,12 +103,15 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Multi-agent specialist swarm / PydanticAI migration — large (L)
 - Offline price import from a local file — medium (M)
 - Options expression research (W16) — large (L)
+- Overlap-corrected t statistic for the quick screen — small (S)
 - RD-Agent autonomous native research and restart continuation (W08/W13, T07) — very large (XL)
+- RD-Agent factor loop under the command line's job supervisor — medium (M)
+- Risk stress scenarios that can move the drawdown — small (S)
 - Web-started downloads ignore proxy and certificate settings — small (S)
 
 ## Housekeeping
 
-- Backlog items: 20
+- Backlog items: 24
 - Staged refactors: 6
 
 ## Where things are

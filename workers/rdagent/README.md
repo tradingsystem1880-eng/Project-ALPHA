@@ -414,3 +414,74 @@ tests/smoke/test_rdagent_model_gateway_smoke.py` (loopback only; with `ALPHA_RDA
 fake route). Measurements: [the task's verification](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md).
 It is not part of `scripts/setup.sh` or `gate.py doctor`: it needs no install, and whether Codex is
 signed in is already what `codex login status` reports.
+
+## ALPHA-judged factor loop (2026-11-14)
+
+RD-Agent's own factor loop (`rdagent.app.qlib_rd_loop.factor`, unmodified) with ALPHA as the
+judge ([ADR-0049](../../docs/adr/0049-alpha-judges-rdagent-factors.md)). RD-Agent proposes and
+codes factors; its settings `QLIB_FACTOR_SCEN`, `QLIB_FACTOR_HYPOTHESIS_GEN`, `QLIB_FACTOR_RUNNER`
+and `QLIB_FACTOR_SUMMARIZER` name four classes in `alpha_factor_judge.py`; the runner sends the
+factor values to `alpha_cli.rdagent_factor_eval` in ALPHA's environment, which screens each new
+factor (rank IC against the next-open-to-next-open return, autocorrelation-adjusted inference,
+BH over the cross-run trial ledger) and replays only those that pass through ALPHA's canonical
+synchronized engine with crypto costs. RD-Agent never sees 2024 or later; no Qlib model, Docker
+image, MLflow or conda is involved.
+
+```sh
+bash scripts/setup_rdagent.sh --with-factor-runtime      # once; hash-pinned Python 3.11 runtime
+export ALPHA_RDAGENT_SOURCE=... ALPHA_FACTOR_PYTHON=...   # as printed by the setup script
+.venv/bin/python workers/rdagent/factor_loop_launch.py run \
+  --data-dir /abs/alpha/data --run-dir /abs/runs/<date>-<slug> \
+  --gateway-data-dir /abs/runs/model-gateway-state \
+  --trial-ledger /abs/runs/rdagent-trial-ledger/rdagent-factor-trials.jsonl \
+  --run-id <id> --loop-n 2      # at most 3 loops and 60 model calls; Codex and Ollama routes
+```
+
+- `factor-requirements.lock`: 79 hash-pinned packages (the stock runtime's plus pandas 2.2.3,
+  tables, pyarrow, pandarallel, fire, scipy); recorded by
+  `install_stock_profile.py --profile factor`. `gate.py doctor` names it when missing.
+- `factor_loop_entry.py`: verifies the source pin, imports RD-Agent through a meta-path finder
+  (the source root is never on `sys.path`) and runs the loop.
+- `alpha_factor_data.py`: writes RD-Agent's `daily_pv.h5` folders and the truncated copies the
+  prefix-invariance (look-ahead) check uses.
+- The run folder holds `panel/` (frozen panel and receipt), `factor_data/`, `work/` (RD-Agent's
+  own log and workspaces), `evaluations/` and `evaluations.jsonl` (one ALPHA record per
+  iteration), `feedback.jsonl` (the model's suggestion beside ALPHA's decision), `launch.jsonl`,
+  `logs/` and `receipt.json`. The trial ledger is shared by all runs and append-only.
+- Generated factor code runs with the gateway's address and token removed from its environment.
+
+Choosing the model route (owner decision 2026-11-14: DeepSeek through OpenRouter is allowed for
+RD-Agent, with temperature control; caps unchanged at 60 calls and 10 USD a run, 50 USD a month):
+
+- **Codex (default, no cost):** as above. `temperature` is waived and recorded on every call.
+- **DeepSeek through OpenRouter (paid, honours temperature):** model
+  `deepseek/deepseek-v4.1-flash-1017` (DeepSeek V4.1 Flash, 17 October 2026 snapshot served by
+  DeepSeek; 1,048,576-token context; OpenRouter lists `response_format`, `structured_outputs`,
+  `temperature` and optional `reasoning` for it), USD 0.038 per million input and 0.50 per
+  million output tokens (cache reads 0.01), read from https://openrouter.ai/api/v1/models on
+  2026-11-14 12:35 UTC. Chosen over the undated `deepseek/deepseek-v4.1-flash` (0.0507 / 0.2028)
+  because a dated snapshot cannot change under a run; re-read the prices before each use.
+  `--api-openrouter` makes OpenRouter route only to providers that honour every parameter sent
+  (`provider.require_parameters`) and settles the budget with the cost OpenRouter reports
+  (`usage.cost`, recorded beside the gateway's own estimate as `estimated_usd`). The key reaches
+  only the gateway process: load the owner's file inside the same command, never print it.
+
+```sh
+bash -c 'set -a; . ~/.config/alpha/openrouter.env; set +a; exec .venv/bin/python \
+  workers/rdagent/factor_loop_launch.py run --chat-route api --api-openrouter \
+  --api-model deepseek/deepseek-v4.1-flash-1017 \
+  --api-price-in-per-mtok 0.038 --api-price-out-per-mtok 0.5 \
+  --data-dir ... --run-dir ... --gateway-data-dir ... --trial-ledger ... --run-id ... --loop-n 2'
+```
+
+  First run 2026-11-14 13:04-13:13 UTC (run `rdloop-deepseek-20261114-1`, 3 iterations): 54
+  calls of 60, USD 0.044 as reported by OpenRouter (gateway estimate 0.039), every reply valid
+  on the first attempt, temperature honoured. Nine factors entered the ledger (trials 6-14),
+  mostly short-term reversal: five failed the screen, one failed to run, three passed the screen
+  and failed the replay after costs (daily turnover 0.52-0.79). No candidate. One run per route
+  is not a quality comparison.
+- Embeddings stay on local Ollama on both routes.
+- Not yet: supervision by `alpha`'s native job supervisor
+  ([backlog](../../docs/roadmap/backlog/rdagent-factor-loop-supervision.md)); a Nautilus replay;
+  the candidate-to-research-case hand-off
+  ([backlog](../../docs/roadmap/backlog/rdagent-candidate-to-research-case.md)).

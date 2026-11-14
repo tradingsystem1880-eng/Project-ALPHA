@@ -547,6 +547,39 @@ def _daily_image_pin(root: Path) -> tuple[str, str] | None:
     return (digest.group(1), image.group(1)) if digest and image else None
 
 
+def _rdagent_runtime_items(runtime: Path, env: dict[str, str]) -> list[dict[str, Any]]:
+    """Doctor items for the Python 3.11 RD-Agent runtimes (stock loop; factor loop, ADR-0049)."""
+    stock = Path(
+        env.get("ALPHA_STOCK_PYTHON") or runtime / "rdagent-stock-py311" / "venv" / "bin" / "python"
+    )
+    factor_bundle = runtime / "rdagent-factor-py311"
+    factor = Path(env.get("ALPHA_FACTOR_PYTHON") or factor_bundle / "venv" / "bin" / "python")
+    factor_profile = factor_bundle / "factor-profile.json"
+    factor_ok = factor.is_file() and factor_profile.is_file()
+    if factor_ok:
+        factor_detail = f"found at {factor}, profile recorded"
+    elif factor.is_file():
+        factor_detail = f"profile not recorded at {factor_profile}"
+    else:
+        factor_detail = f"not found at {factor}"
+    return [
+        _item(
+            "RD-Agent stock runtime (Python 3.11)",
+            False,
+            stock.is_file(),
+            f"found at {stock}" if stock.is_file() else f"not found at {stock}",
+            f"{SETUP_COMMAND} --with-stock-runtime",
+        ),
+        _item(
+            "RD-Agent factor-loop runtime (Python 3.11, ADR-0049)",
+            False,
+            factor_ok,
+            factor_detail,
+            f"{SETUP_COMMAND} --with-factor-runtime",
+        ),
+    ]
+
+
 def machine_readiness(
     root: Path,
     environ: dict[str, str] | None = None,
@@ -643,18 +676,7 @@ def machine_readiness(
             f"{SETUP_COMMAND} --with-rdagent",
         )
     )
-    stock = Path(
-        env.get("ALPHA_STOCK_PYTHON") or runtime / "rdagent-stock-py311" / "venv" / "bin" / "python"
-    )
-    items.append(
-        _item(
-            "RD-Agent stock runtime (Python 3.11)",
-            False,
-            stock.is_file(),
-            f"found at {stock}" if stock.is_file() else f"not found at {stock}",
-            f"{SETUP_COMMAND} --with-stock-runtime",
-        )
-    )
+    items += _rdagent_runtime_items(runtime, env)
 
     docker_fix = "install Docker (https://docs.docker.com/engine/install/) and start it"
     if which("docker") is None:

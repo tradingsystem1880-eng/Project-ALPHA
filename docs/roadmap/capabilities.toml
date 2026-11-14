@@ -254,7 +254,7 @@ proof_smoke = [
   "tests/smoke/test_crypto_snapshots_smoke.py::test_snapshot_freezes_months_verifies_and_refuses_a_changed_file",
   "tests/smoke/test_crypto_snapshots_smoke.py::test_workstation_verifies_the_snapshot",
 ]
-real_data = "not yet confirmed: on 2026-11-14 two one-month Binance BTCUSDT snapshots on the Dell verify, including the January 2024 month downloaded twice, and the whole-store check passes; a 222-month BTC and ETH full-history snapshot was created and verified on a copy of the data folder (docs/work/archive/2026-11/2026-11-14-prove-crypto-snapshots/04-verify.md). snapshot-query (DefiLlama TVL only) is not run end to end."
+real_data = "not yet confirmed: on 2026-11-14 two one-month Binance BTCUSDT snapshots on the Dell verify, including the January 2024 month downloaded twice, and the whole-store check passes; a 222-month BTC and ETH full-history snapshot was created and verified on a copy of the data folder (pull request #167, its 04-verify.md). snapshot-query (DefiLlama TVL only) is not run end to end."
 needs = []
 state = "Working"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; small and built into existing commands
@@ -403,10 +403,13 @@ entry_points = [
 proof_synthetic = [
   "tests/integration/test_monte_carlo_cli.py::test_classical_monte_carlo_publishes_three_auditable_families",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+proof_smoke = [
+  "tests/smoke/test_monte_carlo_smoke.py::test_classical_monte_carlo_is_published_and_recomputes_independently",
+  "tests/smoke/test_monte_carlo_smoke.py::test_monte_carlo_refuses_a_backtest_source",
+]
+real_data = "On 2026-11-14 the installed alpha ran the classical simulation on a validation run over the free Alpaca SPY bars (2016-2026) on the Dell; every summary matched an independent recomputation; not yet confirmed (pull request #173, its 04-verify.md). The classical families are proven end to end; alpha monte-carlo kronos ran only with the stand-in model and needs the Kronos model files."
 needs = []
-state = "Partial"
-missing = "tested in-process only; no end-to-end smoke check yet"
+state = "Working"
 
 [[capability]]
 id = "risk-numbers"
@@ -428,10 +431,15 @@ proof_synthetic = [
   "tests/integration/test_c04_web_metric_basis.py::test_real_http_cli_and_serialization_preserve_basis_and_legacy",
   "apps/alpha-web/frontend/e2e/risk-live.spec.ts::compiled SPA and real backend preserve/display metric basis",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+proof_smoke = [
+  "tests/smoke/test_risk_smoke.py::test_backtest_risk_figures_recompute_and_state_their_basis",
+  "tests/smoke/test_risk_smoke.py::test_workstation_serves_the_same_risk_payload",
+  "tests/smoke/test_risk_smoke.py::test_validation_run_risk_names_its_snapshot",
+  "tests/smoke/test_risk_smoke.py::test_rewritten_equity_is_refused_before_any_figure",
+]
+real_data = "On 2026-11-14 the installed alpha and alpha-web computed the figures for a validation run over the free Alpaca SPY bars (2016-2026) on the Dell; all 30 matched an independent recomputation and the web route returned the same payload; not yet confirmed (pull request #174, its 04-verify.md)."
 needs = []
-state = "Partial"
-missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
+state = "Working"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; closest to working
 triage = { card = "5", recommendation = "KEEP", owner_decision = "KEEP" }
 
@@ -509,10 +517,13 @@ entry_points = ["cli: alpha scan hypotheses", "cli: alpha scan replay"]
 proof_synthetic = [
   "tests/integration/test_hypothesis_scan_cli.py::test_frozen_screen_cli_and_replay",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+proof_smoke = [
+  "tests/smoke/test_screening_smoke.py::test_screen_is_recorded_replayed_and_recomputes_independently",
+  "tests/smoke/test_screening_smoke.py::test_screen_without_a_snapshot_is_refused_and_recorded",
+]
+real_data = "On 2026-11-14 the installed alpha screened the free Yahoo (16 symbols, 1990-2026) and Alpaca (15 symbols, 2016-2026) snapshots on the Dell; every IC, t statistic and spread matched an independent recomputation; not yet confirmed (pull request #171, its 04-verify.md). The equity lane is proven end to end; the crypto lane (Bybit funding and open interest) is not."
 needs = []
-state = "Partial"
-missing = "tested in-process only; no end-to-end smoke check yet"
+state = "Working"
 
 [[capability]]
 id = "literature"
@@ -788,12 +799,11 @@ proof_smoke = [
 ]
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = [
-  "the owner's decision whether to accept losing RD-Agent's temperature setting on the Codex route",
-  "an alpha command that starts a model-connected RD-Agent run under ALPHA's controls",
-  "Qlib's runner for the backtest step",
+  "an alpha command that starts the model-connected factor loop under the native job supervisor (backlog: rdagent-factor-loop-supervision)",
+  "an end-to-end smoke check of the factor loop through the installed programs with a scripted model route",
 ]
 state = "Partial"
-missing = "an AI model connection now exists (local gateway to the signed-in Codex program and Ollama, with budget and per-call records; ADR-0044) and RD-Agent's own factor loop got through proposal, experiment design and coding on made-up data, stopping at the Qlib backtest; the fixture and stock loops ALPHA runs still use stand-in steps, no alpha command starts a model-connected run, and restart after a crash is not solved"
+missing = "RD-Agent's own factor loop now runs model-connected on real Binance bars, judged by ALPHA instead of its built-in Qlib backtest (ADR-0049), from one launcher command with a hash-pinned runtime and the gateway's call cap: one run of 3 iterations, 5 factors, no candidate; it is not yet started by alpha or supervised as an ALPHA job, has no end-to-end smoke check with a scripted model, the fixture and stock loops ALPHA runs still use stand-in steps, and restart after a crash is not solved"
 # owner, 2026-11-14: RD-Agent is a key component of how the project works
 triage = { card = "7", recommendation = "KEEP", owner_decision = "KEEP" }
 docs = ["docs/roadmap/rd-agent-in-alpha.md"]

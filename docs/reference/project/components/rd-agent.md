@@ -45,6 +45,10 @@ what counts as evidence; [the owner does](research-cases-and-approval.md).
   chat through the signed-in Codex program, embeddings through local Ollama, an owner-keyed paid
   route only if configured. The gateway holds ALPHA's call and dollar budget, refuses or records
   every setting it cannot honour, and logs each call without its text.
+- RD-Agent's factor loop is judged by ALPHA, not by its built-in Qlib backtest: ALPHA's classes
+  are named through RD-Agent's own settings, a cheap rank-IC screen over a cross-run trial ledger
+  comes first and ALPHA's cost-aware replay only for factors that pass; 2024 onward is locked away
+  from the loop ([ADR-0049](../../../adr/0049-alpha-judges-rdagent-factors.md)).
 - Later: RD-Agent drives the Qlib worker, and composes studies across all research families.
 - The plain-English walk-through is [RD-Agent in ALPHA](../../../roadmap/rd-agent-in-alpha.md).
 
@@ -68,9 +72,12 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
 - How to change it: [workers/rdagent/CONTEXT.md](../../../../workers/rdagent/CONTEXT.md).
 - Plans: the `plans` of each capability above in `docs/roadmap/capabilities.toml`.
 - Backlog: [autonomous research and restart](../../../roadmap/backlog/rdagent-autonomous-research.md),
+  [factor loop under the job supervisor](../../../roadmap/backlog/rdagent-factor-loop-supervision.md),
+  [candidate to research case](../../../roadmap/backlog/rdagent-candidate-to-research-case.md),
   [gate coverage](../../../roadmap/backlog/gate-coverage-rdagent.md).
 - Decision records: [ADR-0044](../../../adr/0044-rdagent-model-gateway.md) (how it reaches its
-  models). Related: [ADR-0011](../../../adr/0011-evidence-gated-external-integrations.md),
+  models), [ADR-0049](../../../adr/0049-alpha-judges-rdagent-factors.md) (ALPHA judges its factors).
+  Related: [ADR-0011](../../../adr/0011-evidence-gated-external-integrations.md),
   [ADR-0035](../../../adr/0035-generic-study-composition-and-external-capability-adapters.md).
 
 ## Decisions and open questions
@@ -86,7 +93,12 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
 - Decided, for now: accept losing RD-Agent's "temperature" setting on the Codex route; launch the
   gateway with `--accept-unhonoured temperature`
   ([log](../owner-decisions-2.md#2026-11-14-accept-losing-temperature-on-the-codex-route-for-now)).
-- Open: test the paid route and compare it with the Codex route (the owner will do this later).
+- Decided 2026-11-14: RD-Agent may use DeepSeek through OpenRouter (temperature honoured), caps
+  unchanged. Built: `--chat-route api --api-openrouter` on the gateway and the factor-loop launcher,
+  model `deepseek/deepseek-v4.1-flash-1017` at USD 0.038 / 0.50 per million input / output tokens
+  (OpenRouter's list, read 2026-11-14). Codex stays the default and the fallback; how to choose:
+  [worker README](../../../../workers/rdagent/README.md#alpha-judged-factor-loop-2026-11-14).
+  Open: no call has been made on it yet, so the comparison with the Codex route is not measured.
 - Decided: the first goal after the clean-up is one real RD-Agent loop, connected to a model through Codex
   ([log](../owner-decisions-2.md#2026-11-14-first-goal-one-real-rd-agent-loop)). First run,
   2026-11-14: every step ran on real crypto bars, but RD-Agent's built-in Qlib backtest learned
