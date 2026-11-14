@@ -83,9 +83,27 @@ def measure_tree() -> tuple[dict[str, int], dict[str, int]]:
     return files, functions
 
 
+def parse_baseline(text: str | bytes) -> Baseline:
+    """The baseline, failing loud unless it is two maps of names to whole line counts."""
+    data = json.loads(text)
+    assert isinstance(data, dict) and set(data) == {"files", "functions"}, (
+        f"{BASELINE_REL} must hold exactly the maps 'files' and 'functions'"
+    )
+    for kind in ("files", "functions"):
+        entries = data[kind]
+        assert isinstance(entries, dict), f"{BASELINE_REL}: '{kind}' must be a map"
+        bad = [
+            name
+            for name, size in entries.items()
+            if not isinstance(name, str) or type(size) is not int or size < 1
+        ]
+        assert not bad, f"{BASELINE_REL}: '{kind}' entries need positive whole sizes: {bad}"
+    return cast(Baseline, data)
+
+
 @cache
 def read_baseline() -> Baseline:
-    return cast(Baseline, json.loads(BASELINE.read_text(encoding="utf-8")))
+    return parse_baseline(BASELINE.read_text(encoding="utf-8"))
 
 
 def _new_offenders(measured: dict[str, int], recorded: dict[str, int], limit: int) -> list[str]:
@@ -142,7 +160,7 @@ def test_baseline_never_grows_against_main() -> None:
         return  # main has no baseline yet: this change introduces it
     shown = _git("show", f"{commit}:{BASELINE_REL}")
     assert shown.returncode == 0, shown.stderr.decode(errors="replace")
-    previous = cast(Baseline, json.loads(shown.stdout))
+    previous = parse_baseline(shown.stdout)
     errors = baseline_growth(previous, read_baseline())
     assert not errors, "\n".join(errors)
 
@@ -167,6 +185,22 @@ def test_baseline_growth_names_added_and_raised_entries() -> None:
         f"a.py: raised from 1600 to 1700 in {BASELINE_REL}",
         f"b.py: added to {BASELINE_REL}; split the code instead",
     ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"files": {"a.py": NaN}, "functions": {}}',
+        '{"files": {"a.py": 1600.0}, "functions": {}}',
+        '{"files": {"a.py": true}, "functions": {}}',
+        '{"files": {"a.py": "1600"}, "functions": {}}',
+        '{"files": {}}',
+        '{"files": {}, "functions": [], "extra": {}}',
+    ],
+)
+def test_malformed_baseline_fails_loud(text: str) -> None:
+    with pytest.raises(AssertionError):
+        parse_baseline(text)
 
 
 def test_measure_nested_function() -> None:
