@@ -22,10 +22,7 @@ import typer
 from alpha_cli._crypto_acquisition import (
     AcquisitionPlan as _AcquisitionPlan,
 )
-from alpha_cli._crypto_acquisition import (
-    bybit_plan,
-    option_quote_frame,
-)
+from alpha_cli._crypto_acquisition import bybit_plan, option_quote_frame
 from alpha_cli._crypto_analysis import (
     LegacyUnscopedEventError as _LegacyUnscopedEventError,
 )
@@ -50,7 +47,10 @@ from alpha_cli._crypto_analysis import (
 from alpha_cli._crypto_analysis import (
     parquet_frame as _parquet_frame,
 )
-from alpha_cli._crypto_asset_master_sources import verify_asset_master_sources
+from alpha_cli._crypto_asset_master_sources import (
+    builtin_asset_master,
+    verify_asset_master_sources,
+)
 from alpha_cli._crypto_backfill_accounting import FixtureAccountingBlocked
 from alpha_cli._crypto_coverage import batch_digest as _coverage_batch_digest
 from alpha_cli._crypto_coverage import batch_directory as _coverage_batch_directory
@@ -4285,7 +4285,7 @@ def asset_master_verify(
 ) -> None:
     """Rederive a frozen asset master's content identity before snapshot use."""
     try:
-        master = _verified_asset_master(_bulk_store(), version)
+        master = builtin_asset_master(version) or _verified_asset_master(_bulk_store(), version)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(
