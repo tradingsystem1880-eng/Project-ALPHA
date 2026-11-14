@@ -35,8 +35,8 @@ work-in-progress ceiling admits no new live plan, and the work is finished in on
     "The builtin branch lets a custom master with a builtin-looking name skip source verification: names are matched exactly against REVIEWED_NATIVE_LABELS, which are not SHA-256 strings, so a stored custom master can never take that branch."
   ],
   "slices": [
-    {"title": "asset-master-verify accepts the built-in versions it lists", "verify": "uv run pytest -q tests/unit/test_crypto_asset_master_sources.py tests/integration/test_asset_master_provenance.py", "expected": "all pass; the new builtin test fails on the base", "rollback": "revert the two source files and the test", "status": "pending"},
-    {"title": "Snapshot smoke check through the recorded provider", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_crypto_snapshots_smoke.py", "expected": "2 passed", "rollback": "delete the smoke file", "status": "pending"}
+    {"title": "asset-master-verify accepts the built-in versions it lists", "verify": "uv run pytest -q tests/unit/test_crypto_asset_master_sources.py tests/integration/test_asset_master_provenance.py", "expected": "all pass; the new builtin test fails on the base", "rollback": "revert the two source files and the test", "status": "done"},
+    {"title": "Snapshot smoke check through the recorded provider", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_crypto_snapshots_smoke.py", "expected": "2 passed", "rollback": "delete the smoke file", "status": "done"}
   ],
   "tier_impact": ["none"],
   "docs_to_update": ["docs/roadmap/capabilities.toml", "STATUS.md", "docs/roadmap/README.md", "docs/roadmap/wip-limit.json"],

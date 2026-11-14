@@ -17,6 +17,7 @@ import ssl
 import sys
 import threading
 import zipfile
+import zlib
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler
@@ -251,9 +252,10 @@ class RecordedProvider:
         }
 
 
-def _kline_row(open_ms: int) -> list[str | int]:
+def _kline_row(open_ms: int, symbol: str) -> list[str | int]:
+    # Prices differ by coin: a snapshot refuses two members with byte-identical artifacts.
     day = datetime.fromtimestamp(open_ms / 1000, UTC).day
-    price = 42000 + day
+    price = 42000 + day + zlib.crc32(symbol.encode()) % 997
     return [
         open_ms,
         str(price),
@@ -278,7 +280,7 @@ def binance_monthly_klines(symbol: str, year: int, month: int) -> tuple[str, byt
     csv_output = io.StringIO(newline="")
     writer = csv.writer(csv_output, lineterminator="\n")
     for day in range(calendar.monthrange(year, month)[1]):
-        writer.writerow(_kline_row(start_ms + day * _DAY_MS))
+        writer.writerow(_kline_row(start_ms + day * _DAY_MS, symbol))
     output = io.BytesIO()
     member = zipfile.ZipInfo(f"{symbol}-1d-{period}.csv", date_time=(2024, 1, 1, 0, 0, 0))
     with zipfile.ZipFile(output, "w") as archive:
@@ -319,5 +321,5 @@ def binance_rest_klines(symbol: str, start_ms: int, end_ms: int) -> tuple[str, b
             "endTime": end_ms,
         },
     )
-    rows = [_kline_row(open_ms) for open_ms in range(start_ms, end_ms + 1, _DAY_MS)]
+    rows = [_kline_row(open_ms, symbol) for open_ms in range(start_ms, end_ms + 1, _DAY_MS)]
     return url, json.dumps(rows, separators=(",", ":")).encode()
