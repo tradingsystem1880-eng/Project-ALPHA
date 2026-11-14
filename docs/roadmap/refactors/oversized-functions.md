@@ -50,7 +50,9 @@ parameters (`crypto_data_cmds.py::_acquire_result` takes 22).
    touches no approval.
 2. **`research_cmds.py`'s six** (`_run_confirm`, `_run_deep`, `run_research`, `_approval_payload`,
    `draft_confirmation`, `draft`): share the confirm and deep scaffolding; covered by the existing
-   research CLI tests.
+   research CLI tests. `research_cmds.py` is not itself hashed: it computes the research binding
+   of `alpha_research` and four other modules. Leave `_research_code_paths`,
+   `_implementation_hashes` and `_byte_code_hash` untouched, and no research approval changes.
 3. **The rest of the unbound group** only when a feature edits the function: the feature's pull
    request splits it below 150 lines (the size test then requires removing its baseline entry).
 4. **Bound groups** with the control-store split's renewal window (control store, `_artifacts.py`,
