@@ -642,3 +642,146 @@ def test_symbols_json_surfaces_estimated_knowledge_times(
     payload = json.loads(result.stdout)
     assert payload["symbols"] == ["AAPL"]
     assert payload["actions"]["AAPL"] == {"actions": 2, "knowledge_estimated": 1}
+
+
+@pytest.mark.parametrize("text", ["1s", "tick"])
+def test_pull_refuses_hft_timeframes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, text: str
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    result = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "SPY",
+            "--source",
+            "alpaca",
+            "--timeframe",
+            text,
+            "--start",
+            "2026-11-27",
+            "--end",
+            "2026-11-27",
+        ],
+    )
+    assert result.exit_code == 2
+    assert "owner's no-high-frequency-trading rule" in " ".join(result.output.split())
+
+
+def test_daily_source_refuses_intraday(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    result = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "SPY",
+            "--source",
+            "yfinance",
+            "--timeframe",
+            "1h",
+            "--start",
+            "2026-11-27",
+            "--end",
+            "2026-11-27",
+        ],
+    )
+    assert result.exit_code == 2
+    assert "yfinance provides daily bars only in ALPHA" in " ".join(result.output.split())
+
+
+def test_intraday_pull_store_snapshot_and_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from alpha_data.snapshot import snapshot_timeframe, verify_snapshot
+    from alpha_data.timeframe import parse_timeframe
+    from tests.unit.test_alpaca_adapter import intraday_result
+    from tests.unit.test_ingest_pipeline_intraday import session_stamps
+
+    seen = []
+
+    class FakeAlpaca:
+        name = "alpaca"
+        version = parser_version = "1"
+
+        def __init__(self, **kwargs: object) -> None:
+            seen.append(kwargs)
+
+        def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
+            return intraday_result(session_stamps(start, half_day=True), start, end)
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(data_cmds, "_ADAPTERS", {"alpaca": FakeAlpaca})
+    result = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "SPY",
+            "--source",
+            "alpaca",
+            "--timeframe",
+            "5m",
+            "--start",
+            "2026-11-27",
+            "--end",
+            "2026-11-27",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "5m" in result.output and seen[0]["timeframe"] == parse_timeframe("5m")
+    assert (tmp_path / "store-5m" / "bars" / "SPY.parquet").exists()
+    assert not (tmp_path / "store").exists()
+    status = runner.invoke(app, ["data", "source-status", "SPY", "--timeframe", "5m", "--json"])
+    assert status.exit_code == 0, status.output
+    payload = json.loads(status.stdout)
+    assert payload["provenance"]["dataset"]["timeframe"] == "5m"
+    receipt_id = payload["provenance"]["receipt"]["receipt_id"]
+    audit = runner.invoke(
+        app, ["data", "audit", "alpaca", receipt_id, "--timeframe", "5m", "--json"]
+    )
+    assert audit.exit_code == 0 and json.loads(audit.stdout)["status"] == "passed"
+    symbols = runner.invoke(app, ["data", "symbols", "--timeframe", "5m", "--json"])
+    assert json.loads(symbols.stdout) == {"symbols": ["SPY"]}
+    snap = runner.invoke(
+        app, ["data", "snapshot", "five", "SPY", "--source", "alpaca", "--timeframe", "5m"]
+    )
+    assert snap.exit_code == 0, snap.output
+    root = tmp_path / "snapshots" / "five"
+    assert json.loads((root / "manifest.json").read_text())["timeframe"] == "5m"
+    assert snapshot_timeframe(root) == "5m"
+    verify_snapshot(root)
+    provenance = data_cmds._candle_provenance(
+        "SPY", snapshot_id="five", knowledge_cutoff=None, timeframe=parse_timeframe("5m")
+    )
+    assert provenance["quality_status"] == "passed"
+
+
+def test_daily_snapshot_has_no_timeframe_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from alpha_data.snapshot import snapshot_timeframe
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(data_cmds, "_ADAPTERS", {"fake": _FakeAdapter})
+    pull = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "AAPL",
+            "--source",
+            "fake",
+            "--start",
+            "2020-08-28",
+            "--end",
+            "2020-09-02",
+        ],
+    )
+    assert pull.exit_code == 0, pull.output
+    snap = runner.invoke(app, ["data", "snapshot", "daily", "AAPL", "--source", "fake"])
+    assert snap.exit_code == 0, snap.output
+    root = tmp_path / "snapshots" / "daily"
+    assert "timeframe" not in json.loads((root / "manifest.json").read_text())
+    assert snapshot_timeframe(root) == "1D"

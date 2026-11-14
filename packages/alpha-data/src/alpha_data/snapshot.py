@@ -15,6 +15,7 @@ from typing import Any
 
 from alpha_core import DataError
 from alpha_data.store import ParquetStore
+from alpha_data.timeframe import parse_timeframe
 
 
 def _sha256(path: Path) -> str:
@@ -178,8 +179,10 @@ def create_snapshot(
     adapter_version: str,
     parser_version: str,
     created_at: datetime,
+    timeframe: str = "1D",
 ) -> dict[str, Any]:
     """Freeze bars + actions for `symbols` into snaps_root/snapshot_id/ with a manifest."""
+    timeframe = parse_timeframe(timeframe).canonical
     _check_snapshot_id(snapshot_id)
     dest = resolve_snapshot_dir(snaps_root, snapshot_id)
     if dest.exists():
@@ -202,6 +205,8 @@ def create_snapshot(
                 parser_version=parser_version,
             ),
         }
+        if timeframe != "1D":
+            manifest["timeframe"] = timeframe
         (staging / "manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
         )
@@ -226,6 +231,7 @@ def verify_snapshot(snapshot_dir: Path) -> None:
         raise DataError(f"corrupt snapshot manifest at {manifest_path}") from exc
     if not isinstance(manifest, dict) or not isinstance(manifest.get("symbols"), dict):
         raise DataError(f"invalid snapshot manifest at {manifest_path}")
+    _manifest_timeframe(manifest)
     for sym, entry in manifest["symbols"].items():
         if not isinstance(sym, str) or not isinstance(entry, dict):
             raise DataError(f"invalid snapshot symbol entry for {sym!r}")
@@ -253,3 +259,22 @@ def snapshot_manifest_hash(snapshot_dir: Path) -> str:
     """
     verify_snapshot(snapshot_dir)
     return _sha256(snapshot_dir / "manifest.json")
+
+
+def _manifest_timeframe(manifest: dict[str, Any]) -> str:
+    value = manifest.get("timeframe", "1D")
+    if not isinstance(value, str) or parse_timeframe(value).canonical != value:
+        raise DataError("snapshot timeframe must be canonical")
+    return value
+
+
+def snapshot_timeframe(snapshot_dir: Path) -> str:
+    """Read a snapshot's canonical timeframe; legacy manifests represent daily bars."""
+    path = snapshot_dir / "manifest.json"
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise DataError(f"corrupt snapshot manifest at {path}") from exc
+    if not isinstance(manifest, dict):
+        raise DataError(f"invalid snapshot manifest at {path}")
+    return _manifest_timeframe(manifest)

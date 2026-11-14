@@ -16,6 +16,7 @@ import pytest
 
 from alpha_core import ActionType, DataError
 from alpha_data.adapters.alpaca_adapter import AlpacaAdapter, parse_alpaca_daily
+from alpha_data.adapters.base import FetchResult
 
 START = date(2024, 1, 2)
 END = date(2024, 1, 3)
@@ -707,3 +708,197 @@ def test_header_value_errors_become_redacted_data_errors() -> None:
             clock=lambda: NOW,
         ).fetch("SPY", START, END)
     assert SECRET not in str(caught.value) and caught.value.__cause__ is None
+
+
+def test_daily_bytes_and_receipt_regression() -> None:
+    result = adapter(FakeTransport(), asset_class="etf").fetch("SPY", START, END)
+    assert result.raw_response is not None and result.receipt is not None
+    digest = "e803780814a17987b0fcccc7e30b26e92c6dc6d86d94d350bd4cad65a2c33ead"
+    assert hashlib.sha256(result.raw_response).hexdigest() == digest
+    assert result.receipt.to_dict() == {
+        "action_count": 2,
+        "adapter_version": "1",
+        "fetched_at": "2024-05-01T12:00:00+00:00",
+        "parser_version": "1",
+        "receipt_id": "21b5b4dafa269abb9fa8d11af289bbfa",
+        "request_metadata": {
+            "adjustment": "raw; split used as cross-check",
+            "asof": "2024-01-03",
+            "endpoint_actions": "/v1/corporate-actions",
+            "endpoint_bars": "/v2/stocks/bars",
+            "feed": "sip",
+            "pages": "4",
+        },
+        "requested_end": "2024-01-03",
+        "requested_start": "2024-01-02",
+        "response_bytes": 2501,
+        "response_sha256": digest,
+        "row_count": 2,
+    }
+
+
+def intraday_result(
+    stamps: list[str], start: date, end: date, *, timeframe: str = "5m"
+) -> FetchResult:
+    from alpha_data.timeframe import parse_timeframe
+
+    rows = [dict(t=stamp, o=100, h=100, l=100, c=100, v=100) for stamp in stamps]
+    transport = FakeTransport(
+        [
+            {"bars": {"SPY": rows[:1]}, "next_page_token": "next"},
+            {"bars": {"SPY": rows[1:]}, "next_page_token": None},
+            {"bars": {"SPY": rows}, "next_page_token": None},
+            {"corporate_actions": {}, "next_page_token": None},
+        ]
+    )
+    return AlpacaAdapter(
+        timeframe=parse_timeframe(timeframe),
+        api_key_id=KEY,
+        api_secret_key=SECRET,
+        transport=transport,
+        sleep=lambda _: None,
+        clock=lambda: datetime(2026, 12, 1, tzinfo=UTC),
+    ).fetch("SPY", start, end)
+
+
+def replay_intraday(value: dict[str, Any], start: date, end: date) -> Any:
+    return parse_alpaca_daily(
+        json.dumps(value, sort_keys=True, separators=(",", ":")).encode(),
+        symbol="SPY",
+        provider_symbol="SPY",
+        asset_class="stock",
+        venue="US",
+        calendar="XNYS",
+        currency="USD",
+        start=start,
+        end=end,
+        fetched_at=datetime(2026, 12, 1, tzinfo=UTC),
+    )
+
+
+def test_intraday_dst_half_day_extended_hours_and_replay() -> None:
+    start, end = date(2026, 10, 30), date(2026, 11, 27)
+    stamps = [
+        "2026-10-30T08:00:00Z",
+        "2026-10-30T13:30:00Z",
+        "2026-10-30T23:55:00Z",
+        "2026-11-02T09:00:00Z",
+        "2026-11-02T14:30:00Z",
+        "2026-11-03T00:55:00Z",
+        "2026-11-27T14:30:00Z",
+        "2026-11-27T17:55:00Z",
+        "2026-11-27T19:00:00Z",
+    ]
+    result = intraday_result(stamps, start, end)
+    assert result.identity is not None and result.receipt is not None
+    assert result.raw_response is not None
+    assert result.bars["ts"].to_list() == [datetime.fromisoformat(s) for s in stamps]
+    assert result.identity.timeframe == "5m"
+    metadata = dict(result.receipt.request_metadata)
+    assert metadata["timeframe"] == "5m"
+    assert metadata["timestamp_convention"] == "interval_start_utc"
+    assert metadata["session_scope"] == "all hours Alpaca returns: pre-market, regular, after-hours"
+    value = json.loads(result.raw_response)
+    assert value["schema"] == "alpha.alpaca.bars.v1" and value["timeframe"] == "5Min"
+    assert dict(value["pages"][0]["query"]) == {
+        "symbols": "SPY",
+        "timeframe": "5Min",
+        "start": "2026-10-30T04:00:00Z",
+        "end": "2026-11-28T04:59:59Z",
+        "adjustment": "raw",
+        "feed": "sip",
+        "asof": "2026-11-27",
+        "currency": "USD",
+        "limit": "10000",
+        "sort": "asc",
+    }
+    assert dict(value["pages"][1]["query"])["page_token"] == "next"
+    assert dict(value["pages"][-1]["query"])["start"] == "2026-10-30"
+    assert replay_intraday(value, start, end).receipt == result.receipt
+    summer = intraday_result(["2026-10-30T13:30:00Z"], start, start)
+    assert summer.raw_response is not None
+    assert (
+        dict(json.loads(summer.raw_response)["pages"][0]["query"])["end"] == "2026-10-31T03:59:59Z"
+    )
+
+
+@pytest.mark.parametrize(
+    "stamp,match",
+    [
+        ("2026-11-27T14:31:00Z", "aligned"),
+        ("2026-11-27T14:30:01Z", "whole"),
+        ("2026-11-27T14:30:00.0000001Z", "whole"),
+        ("2026-11-27T14:30:00.000Z", "whole"),
+        ("2026-11-27T14:30:00", "RFC 3339"),
+        ("2026-11-28T05:00:00Z", "outside"),
+    ],
+)
+def test_intraday_bad_timestamps(stamp: str, match: str) -> None:
+    with pytest.raises(DataError, match=match):
+        intraday_result([stamp], date(2026, 11, 27), date(2026, 11, 27))
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("timeframe", "1Day"),
+        ("start", "2026-11-27"),
+        ("end", "2026-11-28T04:00:00Z"),
+        ("limit", "1000"),
+        ("sort", "desc"),
+        ("feed", "iex"),
+        ("asof", "2026-11-26"),
+        ("currency", "EUR"),
+        ("adjustment", "all"),
+    ],
+)
+def test_intraday_query_tampering(field: str, value: str) -> None:
+    day = date(2026, 11, 27)
+    result = intraday_result(["2026-11-27T14:30:00Z"], day, day)
+    assert result.raw_response is not None
+    envelope = json.loads(result.raw_response)
+    page = envelope["pages"][0]
+    page["query"] = [[k, value if k == field else v] for k, v in page["query"]]
+    with pytest.raises(DataError, match="not the adapter's request"):
+        replay_intraday(envelope, day, day)
+
+
+def test_intraday_split_uses_new_york_date() -> None:
+    start, end = date(2026, 11, 2), date(2026, 11, 3)
+    result = intraday_result(["2026-11-03T00:55:00Z", "2026-11-03T14:30:00Z"], start, end)
+    assert result.raw_response is not None
+    value = json.loads(result.raw_response)
+    split_body = json.loads(base64.b64decode(value["pages"][2]["body_b64"]))
+    for key in ("o", "h", "l", "c"):
+        split_body["bars"]["SPY"][0][key] = 50
+    replace_body(value["pages"][2], split_body)
+    replace_body(
+        value["pages"][3],
+        {
+            "corporate_actions": {
+                "forward_splits": [dict(symbol="SPY", ex_date="2026-11-03", old_rate=1, new_rate=2)]
+            },
+            "next_page_token": None,
+        },
+    )
+    assert replay_intraday(value, start, end).actions[0].ratio == 2
+    replace_body(value["pages"][3], {"corporate_actions": {}, "next_page_token": None})
+    with pytest.raises(DataError, match="split cross-check"):
+        replay_intraday(value, start, end)
+
+
+def test_intraday_descending_or_duplicate_fails() -> None:
+    for stamps in (["2026-11-27T14:30:00Z"] * 2, ["2026-11-27T14:35:00Z", "2026-11-27T14:30:00Z"]):
+        with pytest.raises(DataError, match="duplicate|descending"):
+            intraday_result(stamps, date(2026, 11, 27), date(2026, 11, 27))
+
+
+@pytest.mark.parametrize("timeframe", [None, [], "1Day", "5m", "bogus"])
+def test_intraday_envelope_timeframe_must_be_exact(timeframe: Any) -> None:
+    day = date(2026, 11, 27)
+    result = intraday_result(["2026-11-27T14:30:00Z"], day, day)
+    assert result.raw_response is not None
+    value = json.loads(result.raw_response)
+    value["timeframe"] = timeframe
+    with pytest.raises(DataError):
+        replay_intraday(value, day, day)

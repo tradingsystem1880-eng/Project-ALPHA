@@ -1,4 +1,4 @@
-"""Alpaca SIP daily raw bars, replayable receipts and split cross-checks."""
+"""Alpaca SIP raw time bars, replayable receipts and split cross-checks."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ from pydantic import ValidationError
 
 from alpha_core import ActionType, Bar, CorporateAction, DataError
 from alpha_data.adapters.base import DatasetIdentity, FetchReceipt, FetchResult
+from alpha_data.timeframe import DAILY, BarTimeframe, parse_timeframe
 
 _VERSION = "1"
 PARSER_VERSION = "1"
@@ -116,13 +117,55 @@ def _date(value: object, field: str) -> date:
         raise DataError(f"Alpaca {field} must be a valid date") from None
 
 
+def _bar_query(
+    symbol: str, start: date, end: date, timeframe: BarTimeframe, *, adjustment: str
+) -> dict[str, str]:
+    if timeframe.is_daily:
+        lower, upper = str(start), str(end)
+    else:
+        lower = (
+            datetime.combine(start, datetime.min.time(), tzinfo=_NY)
+            .astimezone(UTC)
+            .strftime("%Y-%m-%dT%H:%M:%SZ")
+        )
+        upper = (
+            datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=_NY).astimezone(
+                UTC
+            )
+            - timedelta(seconds=1)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return {
+        "symbols": symbol,
+        "timeframe": timeframe.alpaca,
+        "start": lower,
+        "end": upper,
+        "adjustment": adjustment,
+        "feed": FEED,
+        "asof": str(end),
+        "currency": "USD",
+        "limit": "10000",
+        "sort": "asc",
+    }
+
+
+def _envelope_timeframe(payload: dict[str, Any]) -> BarTimeframe:
+    if payload.get("schema") == "alpha.alpaca.daily.v1":
+        return DAILY
+    if payload.get("schema") == "alpha.alpaca.bars.v1":
+        value = payload.get("timeframe")
+        if not isinstance(value, str):
+            raise DataError("invalid Alpaca envelope timeframe")
+        timeframe = parse_timeframe(value)
+        if not timeframe.is_daily and payload["timeframe"] == timeframe.alpaca:
+            return timeframe
+    raise DataError("invalid Alpaca envelope schema")
+
+
 def _pages(
-    envelope: bytes, provider_symbol: str, start: date, end: date
+    envelope: bytes, provider_symbol: str, start: date, end: date, timeframe: BarTimeframe
 ) -> dict[str, list[dict[str, Any]]]:
     payload = _json(envelope)
-    if payload.get("schema") != "alpha.alpaca.daily.v1" or not isinstance(
-        payload.get("pages"), list
-    ):
+    if _envelope_timeframe(payload) != timeframe or not isinstance(payload.get("pages"), list):
         raise DataError("invalid Alpaca envelope schema")
     groups: dict[str, list[dict[str, Any]]] = {series: [] for series in _SERIES}
     expected: dict[str, str | None] = dict.fromkeys(_SERIES)
@@ -158,6 +201,18 @@ def _pages(
         fixed = {**_FIXED_QUERY[series], "symbols": provider_symbol, "start": str(start)}
         if series != "actions":
             fixed.update(end=str(end), asof=str(end))
+            if not timeframe.is_daily:
+                fixed = _bar_query(
+                    provider_symbol,
+                    start,
+                    end,
+                    timeframe,
+                    adjustment="raw" if series == "bars_raw" else "split",
+                )
+                if set(params) - {"page_token"} != set(fixed):
+                    raise DataError(
+                        f"Alpaca envelope query for {series} is not the adapter's request"
+                    )
         else:
             fixed["end"] = str(end + timedelta(days=90))
         if any(params.get(name) != value for name, value in fixed.items()):
@@ -195,7 +250,12 @@ def _pages(
 
 
 def _bars(
-    pages: list[dict[str, Any]], symbol: str, provider_symbol: str, start: date, end: date
+    pages: list[dict[str, Any]],
+    symbol: str,
+    provider_symbol: str,
+    start: date,
+    end: date,
+    timeframe: BarTimeframe,
 ) -> list[Bar]:
     rows: list[Bar] = []
     for page in pages:
@@ -222,15 +282,29 @@ def _bars(
             # datetime truncates fractional seconds beyond six digits; reject nonzero
             # fractions explicitly so submicrosecond times cannot become midnight.
             fraction = re.search(r"\.(\d+)", stamp)
-            if fraction is not None and any(digit != "0" for digit in fraction.group(1)):
+            if (
+                timeframe.is_daily
+                and fraction is not None
+                and any(digit != "0" for digit in fraction.group(1))
+            ):
                 raise DataError("Alpaca t must be exactly midnight in America/New_York")
             local = timestamp.astimezone(_NY)
-            if (local.hour, local.minute, local.second, local.microsecond) != (0, 0, 0, 0):
-                raise DataError("Alpaca t must be exactly midnight in America/New_York")
+            if timeframe.is_daily:
+                if (local.hour, local.minute, local.second, local.microsecond) != (0, 0, 0, 0):
+                    raise DataError("Alpaca t must be exactly midnight in America/New_York")
+            else:
+                if fraction is not None or timestamp.second != 0:
+                    raise DataError("Alpaca t must use whole minutes (second == 0, no fraction)")
+                if not timeframe.is_aligned(timestamp):
+                    raise DataError(f"Alpaca t must be timeframe-aligned: {stamp}")
             session = local.date()
             if not start <= session <= end:
                 raise DataError("Alpaca session outside requested range")
-            ts = datetime.combine(session, datetime.min.time(), tzinfo=UTC)
+            ts = (
+                datetime.combine(session, datetime.min.time(), tzinfo=UTC)
+                if timeframe.is_daily
+                else timestamp.astimezone(UTC)
+            )
             if rows and ts <= rows[-1].ts:
                 raise DataError("Alpaca duplicate or descending session dates")
             values = {
@@ -364,9 +438,10 @@ def parse_alpaca_daily(
     """Rebuild raw bars, actions and their receipt from the envelope alone."""
     if currency != "USD" or asset_class not in {"stock", "etf"}:
         raise DataError("Alpaca supports only USD stock or etf datasets")
-    groups = _pages(envelope, provider_symbol, start, end)
-    raw = _bars(groups["bars_raw"], symbol, provider_symbol, start, end)
-    split = _bars(groups["bars_split"], symbol, provider_symbol, start, end)
+    timeframe = _envelope_timeframe(_json(envelope))
+    groups = _pages(envelope, provider_symbol, start, end, timeframe)
+    raw = _bars(groups["bars_raw"], symbol, provider_symbol, start, end, timeframe)
+    split = _bars(groups["bars_split"], symbol, provider_symbol, start, end, timeframe)
     if [bar.ts for bar in raw] != [bar.ts for bar in split]:
         raise DataError("Alpaca raw and split session dates differ")
     if not raw:
@@ -374,12 +449,13 @@ def parse_alpaca_daily(
     actions = _actions(groups["actions"], symbol, provider_symbol, start, end)
     last_factor = raw[-1].close / split[-1].close
     for raw_bar, split_bar in zip(raw, split, strict=True):
+        session = raw_bar.ts.date() if timeframe.is_daily else raw_bar.ts.astimezone(_NY).date()
         expected = math.prod(
             action.ratio
             for action in actions
             if action.action_type == ActionType.SPLIT
             and action.ratio is not None
-            and action.ex_date > raw_bar.ts.date()
+            and action.ex_date > session
         )
         factor = raw_bar.close / split_bar.close
         relative = factor / last_factor if last_factor > 0 else math.inf
@@ -390,7 +466,7 @@ def parse_alpaca_daily(
             or not math.isclose(relative, expected, rel_tol=1e-3 + 1e-4 / split_bar.close)
         ):
             raise DataError(
-                f"Alpaca split cross-check failed for {symbol} on {raw_bar.ts.date()}: "
+                f"Alpaca split cross-check failed for {symbol} on {session}: "
                 f"bar factor {relative}, action factor {expected}"
             )
     bars = pl.DataFrame(
@@ -420,7 +496,7 @@ def parse_alpaca_daily(
         provider_symbol=provider_symbol,
         venue=venue,
         asset_class=asset_class,
-        timeframe="1D",
+        timeframe=timeframe.canonical,
         calendar=calendar,
         currency=currency,
         price_basis="raw",
@@ -443,6 +519,15 @@ def parse_alpaca_daily(
             "adjustment": "raw; split used as cross-check",
             "asof": end.isoformat(),
             "pages": str(sum(len(pages) for pages in groups.values())),
+            **(
+                {
+                    "timeframe": timeframe.canonical,
+                    "timestamp_convention": "interval_start_utc",
+                    "session_scope": "all hours Alpaca returns: pre-market, regular, after-hours",
+                }
+                if not timeframe.is_daily
+                else {}
+            ),
         },
     )
     return FetchResult(
@@ -456,7 +541,7 @@ def parse_alpaca_daily(
 
 
 class AlpacaAdapter:
-    """Bounded daily SIP acquisition; credentials are resolved only at fetch time."""
+    """Bounded SIP bar acquisition; credentials are resolved only at fetch time."""
 
     name = "alpaca"
     version = _VERSION
@@ -465,6 +550,7 @@ class AlpacaAdapter:
     def __init__(
         self,
         *,
+        timeframe: BarTimeframe = DAILY,
         asset_class: Literal["stock", "etf"] = "stock",
         venue: str = "US",
         calendar: str = "XNYS",
@@ -477,6 +563,7 @@ class AlpacaAdapter:
     ) -> None:
         if currency != "USD" or asset_class not in {"stock", "etf"}:
             raise DataError("Alpaca supports only USD stock or etf datasets")
+        self._timeframe = timeframe
         self._asset_class = asset_class
         self._venue = venue
         self._calendar = calendar
@@ -604,18 +691,13 @@ class AlpacaAdapter:
                     "sort": "asc",
                 }
             else:
-                query = {
-                    "symbols": symbol,
-                    "timeframe": "1Day",
-                    "start": str(start),
-                    "end": str(end),
-                    "adjustment": "raw" if series == "bars_raw" else "split",
-                    "feed": FEED,
-                    "asof": str(end),
-                    "currency": "USD",
-                    "limit": "10000",
-                    "sort": "asc",
-                }
+                query = _bar_query(
+                    symbol,
+                    start,
+                    end,
+                    self._timeframe,
+                    adjustment="raw" if series == "bars_raw" else "split",
+                )
             seen: set[str] = set()
             for _ in range(_MAX_PAGES):
                 raw = self._request(
@@ -642,7 +724,13 @@ class AlpacaAdapter:
             else:
                 raise DataError("Alpaca exceeded 200 pages per series")
         envelope = json.dumps(
-            {"schema": "alpha.alpaca.daily.v1", "pages": pages},
+            {"schema": "alpha.alpaca.daily.v1", "pages": pages}
+            if self._timeframe.is_daily
+            else {
+                "schema": "alpha.alpaca.bars.v1",
+                "timeframe": self._timeframe.alpaca,
+                "pages": pages,
+            },
             sort_keys=True,
             separators=(",", ":"),
             ensure_ascii=True,

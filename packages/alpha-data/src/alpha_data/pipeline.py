@@ -9,8 +9,9 @@ import math
 import os
 import shutil
 import tempfile
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 
@@ -20,6 +21,7 @@ from alpha_core import CorporateAction, DataError
 from alpha_data._atomic import publish
 from alpha_data.adapters.base import DatasetIdentity, FetchReceipt, FetchResult
 from alpha_data.store import ParquetStore
+from alpha_data.timeframe import BarTimeframe, parse_timeframe
 
 _BAR_COLUMNS = ("ts", "open", "high", "low", "close", "volume")
 
@@ -216,6 +218,45 @@ def _merge_actions(
     )
 
 
+def _intraday_session_errors(
+    timestamps: list[datetime],
+    sessions: list[tuple[date, datetime, datetime]],
+    timeframe: BarTimeframe,
+) -> tuple[list[str], int]:
+    """Check interval intersections on the shared grid, retaining all extended hours."""
+    errors = [
+        f"misaligned_bar:{ts.isoformat()}" for ts in timestamps if not timeframe.is_aligned(ts)
+    ]
+    ordered = sorted(timestamps)
+    regular: set[datetime] = set()
+    for session, opening, closing in sessions:
+        first = bisect_right(ordered, opening - timeframe.duration)
+        last = bisect_left(ordered, closing)
+        present = set(ordered[first:last])
+        regular.update(present)
+        if not present:
+            errors.append(f"calendar_gap:{session.isoformat()}")
+            continue
+        expected: set[datetime] = set()
+        day = (opening - timeframe.duration).replace(hour=0, minute=0, second=0, microsecond=0)
+        while day < closing:
+            for minute in range(0, 1440, timeframe.minutes):
+                stamp = day + timedelta(minutes=minute)
+                if (
+                    timeframe.is_aligned(stamp)
+                    and stamp < closing
+                    and stamp + timeframe.duration > opening
+                ):
+                    expected.add(stamp)
+            day += timedelta(days=1)
+        missing = sorted(expected - present)
+        if missing:
+            errors.append(
+                f"intraday_gap:{session.isoformat()}:{len(missing)}:{missing[0].isoformat()}"
+            )
+    return errors, sum(ts not in regular for ts in timestamps)
+
+
 def _quality_report(
     *,
     store: ParquetStore,
@@ -263,6 +304,9 @@ def _quality_report(
             current_source = source_value
 
     incoming_rows = _rows_by_ts(result.bars)
+    timeframe = parse_timeframe(identity.timeframe)
+    intraday_stock = not timeframe.is_daily and identity.asset_class in {"stock", "etf"}
+    extended_hours_rows = 0
     if identity.asset_class in {"stock", "etf"}:
         try:
             import exchange_calendars as xcals  # type: ignore[import-untyped]  # noqa: PLC0415
@@ -271,18 +315,30 @@ def _quality_report(
             )
 
             calendar = xcals.get_calendar(identity.calendar)
-            expected_sessions = {
-                timestamp.date()
-                for timestamp in calendar.sessions_in_range(
-                    receipt.requested_start.isoformat(), receipt.requested_end.isoformat()
+            sessions = calendar.sessions_in_range(
+                receipt.requested_start.isoformat(), receipt.requested_end.isoformat()
+            )
+            expected_sessions = {timestamp.date() for timestamp in sessions}
+            if intraday_stock:
+                intervals = [
+                    (
+                        session.date(),
+                        calendar.session_open(session).to_pydatetime().astimezone(UTC),
+                        calendar.session_close(session).to_pydatetime().astimezone(UTC),
+                    )
+                    for session in sessions
+                ]
+                errors, extended_hours_rows = _intraday_session_errors(
+                    result.bars["ts"].to_list(), intervals, timeframe
                 )
-            }
+                critical.extend(errors)
         except (ValueError, KeyError, CalendarError) as exc:
             critical.append(f"invalid_exchange_calendar:{identity.calendar}:{type(exc).__name__}")
         else:
-            incoming_dates = {timestamp.date() for timestamp in incoming_rows}
-            for missing in sorted(expected_sessions - incoming_dates):
-                critical.append(f"calendar_gap:{missing.isoformat()}")
+            if timeframe.is_daily:
+                incoming_dates = {timestamp.date() for timestamp in incoming_rows}
+                for missing in sorted(expected_sessions - incoming_dates):
+                    critical.append(f"calendar_gap:{missing.isoformat()}")
     current_rows = _rows_by_ts(current_bars) if current_bars is not None else {}
     requested_current = {
         timestamp: row
@@ -347,6 +403,8 @@ def _quality_report(
         "incoming_rows": result.bars.height,
         "canonical_rows_after_merge": merged_bars.height,
     }
+    if intraday_stock:
+        report.update(timeframe=timeframe.canonical, extended_hours_rows=extended_hours_rows)
     return merged_bars, merged_actions, report
 
 

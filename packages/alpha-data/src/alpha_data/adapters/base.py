@@ -11,15 +11,16 @@ from typing import Literal, Protocol
 import polars as pl
 
 from alpha_core import CorporateAction, DataError
+from alpha_data.timeframe import parse_timeframe
 
 type AssetClass = Literal["stock", "etf", "crypto", "future", "index"]
-type Timeframe = Literal["1D"]
+type Timeframe = str
 type PriceBasis = Literal["raw"]
 
 
 @dataclass(frozen=True)
 class DatasetIdentity:
-    """Stable identity for one provider-qualified daily dataset."""
+    """Stable identity for one provider-qualified dataset at one bar timeframe."""
 
     symbol: str
     provider: str
@@ -47,8 +48,8 @@ class DatasetIdentity:
             raise DataError("dataset identity values must be non-empty strings")
         if self.asset_class not in {"stock", "etf", "crypto", "future", "index"}:
             raise DataError(f"unsupported asset class {self.asset_class!r}")
-        if self.timeframe != "1D":
-            raise DataError(f"unsupported timeframe {self.timeframe!r}; ALPHA is daily-only")
+        if parse_timeframe(self.timeframe).canonical != self.timeframe:
+            raise DataError(f"dataset timeframe must be canonical: {self.timeframe!r}")
         if self.price_basis != "raw":
             raise DataError("canonical datasets must use raw prices")
 

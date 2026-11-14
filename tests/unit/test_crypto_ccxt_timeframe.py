@@ -43,8 +43,9 @@ def test_ccxt_timeframe_rejects_invalid_bounds_and_empty_provider(
     exchange = _Exchange({"enableRateLimit": True})
     monkeypatch.setitem(sys.modules, "ccxt", SimpleNamespace(coinbase=lambda _config: exchange))
     aware = datetime(2024, 1, 1, tzinfo=UTC)
-    with pytest.raises(DataError, match="timeframe"):
-        CCXTAdapter().fetch_timeframe("BTC/USD", aware, aware, timeframe="2h")
+    # any bar from one minute to one day is accepted; sub-minute bars are the no-HFT boundary
+    with pytest.raises(DataError, match="one minute or longer"):
+        CCXTAdapter().fetch_timeframe("BTC/USD", aware, aware, timeframe="30s")
     with pytest.raises(DataError, match="timezone"):
         CCXTAdapter().fetch_timeframe("BTC/USD", datetime(2024, 1, 1), aware, timeframe="1d")
     with pytest.raises(DataError, match="precedes"):
