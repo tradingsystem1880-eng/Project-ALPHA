@@ -50,7 +50,7 @@ the area's row says what to read.
 | Fact | Its one home |
 |---|---|
 | Commands and options | [docs/reference/commands.md](docs/reference/commands.md) (generated) |
-| Part purposes, owner decisions | [project layer](docs/reference/project/overview.md); newest: [vol. 2](docs/reference/project/owner-decisions-2.md) |
+| Part purposes, owner decisions | [project layer](docs/reference/project/overview.md); newest: [vol. 3](docs/reference/project/owner-decisions-3.md) |
 | Rules that must not break | [docs/reference/invariants/](docs/reference/invariants/research-integrity.md) |
 | Decisions and their reasons | [docs/adr/](docs/adr/README.md) |
 | Package layers and data folders | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |

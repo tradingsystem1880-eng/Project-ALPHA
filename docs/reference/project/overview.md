@@ -2,7 +2,7 @@
 owner: project layer
 sources:
   - README.md
-verified: af0137c5fd74
+verified: a925da3ea835
 ---
 
 # ALPHA: what it is for and how the parts fit
@@ -24,10 +24,38 @@ the time, after costs, out of sample, against other explanations. The strategies
 meant to trade real money one day, so there is no room for error and no silent loss of quality
 ([owner decision](owner-decisions.md#2026-11-14-precision-and-live-capital)).
 
+## The target shape
+
+Decided on 2026-11-15 ([clean spine](owner-decisions-3.md#2026-11-15-build-the-thin-spine-clean-then-switch-over),
+[production grade](owner-decisions-3.md#2026-11-15-what-production-grade-means),
+[research partner](owner-decisions-3.md#2026-11-15-the-ai-must-be-a-research-partner-not-an-instruction-follower)).
+This is where the project is going; [STATUS.md](../../../STATUS.md) says what works today.
+
+| Layer | What it is | Its job |
+|---|---|---|
+| Partner | Claude or ChatGPT, in an app or a terminal | Thinks, suggests, interprets, learns; guided by a playbook and tool cards |
+| Toolbox | ALPHA, kept thin | Data, backtests with costs, overfit tests, diagnostics, records, lessons |
+| Engines | [RD-Agent](components/rd-agent.md), [Qlib](components/qlib.md), [Nautilus](components/nautilus.md) | Called at pinned versions |
+| Screens | The [Workstation](components/web-workstation.md) | How the owner sees and understands; never the place the AI is driven from |
+
+One pipeline serves every idea, at any bar timeframe except high-frequency trading:
+idea, data, look before testing, backtest with costs, overfit tests, automatic diagnostic pass,
+record and show. Integrity appears as labels on results, not as refusals. The only approval
+gate is before paper or live trading.
+
+The spine is built clean inside this repository, one golden path at a time. Each path runs from
+a plain-English prompt to a result on a screen, and the old lane it replaces is deleted when it
+works. At most two streams of work are in flight.
+
+| Golden path | The prompt it must serve | State |
+|---|---|---|
+| 1. Rule test | "Test this trend rule on these assets" | next |
+| 2. Chart setup | "Show every match of this setup and what happened after" | after 1 |
+| 3. Factor mining | "Mine factors on this universe", through RD-Agent with memory | after 2 |
+
 ## The research loop
 
-The intended loop, step by step, and the part that does each step. Today only parts of it run
-end to end, and only on made-up data; see [STATUS.md](../../../STATUS.md) for what works.
+The loop below is what the old lanes implement. It stays until the golden paths replace it.
 
 | Step | What happens | Done by |
 |---|---|---|
@@ -40,18 +68,10 @@ end to end, and only on made-up data; see [STATUS.md](../../../STATUS.md) for wh
 | 7. Decide | Only the owner admits evidence and promotes a strategy | [cases and approval](components/research-cases-and-approval.md) |
 | 8. Trade | Paper trading first; live capital only in a later phase the owner approves | [paper and live trading](components/paper-and-live.md) |
 
-Today a human-run case walks these steps through the six stages of the
-[research pipeline](../../../research/CONTEXT.md); changing ALPHA itself walks the
-[delivery pipeline](../../../workflow/CONTEXT.md). RD-Agent (Microsoft's open-source AI research
-agent) is meant to run steps 3 to 6 over and over. ALPHA keeps
-the budget, the data, the backtests, the statistics and the owner's approvals. The fullest account
-of this split is [RD-Agent in ALPHA](../../roadmap/rd-agent-in-alpha.md).
-
-In the owner's words: "RD-Agent runs the research loop; Qlib supplies research tools and models;
-Nautilus runs execution-aware backtests; ALPHA connects and governs them." ALPHA is more than a
-shell: it owns budgets, data rules, experiment records, validation and approvals. Not every
-experiment needs Qlib. This is the intended architecture; the complete model-connected, real-data
-loop is not yet qualified ([log](owner-decisions.md#2026-11-14-the-architecture-in-one-line)).
+In the owner's words (2026-11-14): "RD-Agent runs the research loop; Qlib supplies research tools
+and models; Nautilus runs execution-aware backtests; ALPHA connects and governs them"
+([log](owner-decisions.md#2026-11-14-the-architecture-in-one-line)). The 2026-11-15 decisions
+above refine this: the AI partner leads, and RD-Agent is one engine it calls.
 
 ## How the parts connect
 
@@ -112,6 +132,6 @@ Each step needs the owner's approval before the next starts.
 
 Any recommendation to shelve, delete or cut the scope of a part must first cite that part's
 component file (its "Why it exists" and "Never" sections) and the
-[owner decisions log](owner-decisions.md) (volume 2: [owner-decisions-2.md](owner-decisions-2.md)). If the two disagree with the recommendation, say so
+[owner decisions log](owner-decisions.md) (volumes [2](owner-decisions-2.md) and [3](owner-decisions-3.md)). If the two disagree with the recommendation, say so
 and ask the owner; do not decide. A part being uninstalled, skipped in tests or unfinished is a
 task to finish, not a reason to shelve it.
