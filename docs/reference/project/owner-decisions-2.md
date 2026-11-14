@@ -7,8 +7,8 @@ verified: ccf5b56a
 
 # Owner decisions log, volume 2
 
-Continues the [owner decisions log](owner-decisions.md); the rules for entries are there. New
-entries are appended at the end of this file.
+Continues the [owner decisions log](owner-decisions.md); the rules for entries are there. This
+volume is full: new entries go in [volume 3](owner-decisions-3.md).
 
 ## Entries
 
