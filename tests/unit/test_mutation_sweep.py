@@ -499,3 +499,107 @@ def test_aggregate_certified_no_tests_retains_proof_and_rejects_corruption(
         assert result["total"] == 193 and result["no_tests"] == 193 and result["killed"] == 0
         assert result["status"] == "fail" and result["kill_rate"] == 0.0
         assert len(result["no_tests_proofs"]) == 3
+
+
+@pytest.mark.parametrize("width", [20, 200])
+def test_error_fragment_prints_status_and_bounded_command_tails(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], width: int
+) -> None:
+    root = repo(tmp_path)
+    keys = ["alpha_validation.dsr.x_f__mutmut_1"]
+    plan = sweep.inventory(root, "commit", "run", {MODULE: keys})
+    output = tmp_path / "output"
+    log = "\r".join(f"line-{i:02d}:" + "x" * width for i in range(60)) + "\rfinal failure"
+
+    def failed(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+        return (True, 0.1, "preflight evidence") if "pytest" in cmd else (False, 0.1, log)
+
+    assert sweep.run_module(root, plan, 0, output, runner=failed) == 1
+    record = sweep.load_json(next(output.glob("module-*.json")))
+    err = capsys.readouterr().err
+    assert MODULE in err and "fragment 0" in err
+    assert record["error"] in err
+    assert record["report"]["modules"][MODULE]["status"].replace("\r", "\n") in err
+    for timing in record["timings"]:
+        assert timing["log"] in err
+    tail = "\n".join(log.replace("\r", "\n").splitlines()[-40:])[-4000:]
+    marker = "(last 40 lines, at most 4000 characters):\n"
+    assert err.rsplit(marker, 1)[1] == tail + "\n"
+    assert "line-00:" not in err and "preflight evidence" in err
+    assert "\r" not in err
+
+
+@pytest.mark.parametrize("complete", [False, True])
+def test_fragment_prints_each_preflight_exclusion(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], complete: bool
+) -> None:
+    root = repo(tmp_path)
+    plan = sweep.inventory(root, "commit", "run")
+    excluded = ["tests/unit/test_one.py::test_first", "tests/unit/test_two.py::test_second"]
+
+    def runner(cmd: list[str], **kwargs: Any) -> tuple[bool, float, str]:
+        if "pytest" in cmd:
+            return False, 0.1, "\n".join(f"FAILED {node} - missing fixture" for node in excluded)
+        if complete:
+            return stats_runner(cmd, **kwargs)
+        return False, 0.1, "mutation failed"
+
+    assert sweep.run_module(root, plan, 0, tmp_path / "output", runner=runner) == int(not complete)
+    err = capsys.readouterr().err
+    for node in excluded:
+        assert node in err.splitlines()
+
+
+@pytest.mark.parametrize("selected", ["", MODULE, "missing.py", "$(touch injected)"])
+def test_dispatch_module_filters_matrix_without_changing_inventory(
+    tmp_path: Path, selected: str
+) -> None:
+    import os
+    import re
+    import textwrap
+
+    workflow = (
+        Path(__file__).resolve().parents[2] / ".github/workflows/mutation-weekly.yml"
+    ).read_text()
+    assert 'type: string\n        default: ""' in workflow
+    assert (
+        "MUTATION_MODULE: ${{ github.event_name == 'workflow_dispatch' && inputs.module || '' }}"
+        in workflow
+    )
+    assert (
+        "if: always() && !(github.event_name == 'workflow_dispatch' && inputs.module != '')"
+        in workflow
+    )
+    match = re.search(r"python - <<'PY'\n(.*?)\n          PY", workflow, re.S)
+    assert match is not None
+    script = textwrap.dedent(match[1])
+    assert "${{" not in script
+    jobs = [
+        {"index": 0, "module": MODULE, "fragment": 0, "mutants": ["key-1"]},
+        {"index": 1, "module": "another.py", "fragment": 0, "mutants": ["key-2"]},
+        {"index": 2, "module": MODULE, "fragment": 1, "mutants": ["key-3"]},
+    ]
+    inventory = tmp_path / "mutation-inventory.json"
+    inventory.write_text(json.dumps({"jobs": jobs, "expected": [MODULE, "another.py"]}))
+    original = inventory.read_bytes()
+    output = tmp_path / "github-output"
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "MUTATION_MODULE": selected, "GITHUB_OUTPUT": str(output)},
+        check=False,
+    )
+    assert inventory.read_bytes() == original
+    assert not (tmp_path / "injected").exists()
+    if selected not in ("", MODULE):
+        assert result.returncode != 0 and "No mutation fragments" in result.stderr
+        assert not output.exists()
+    else:
+        assert result.returncode == 0, result.stderr
+        matrix = json.loads(output.read_text().removeprefix("list="))
+        expected = [job for job in jobs if not selected or job["module"] == selected]
+        assert matrix == [
+            {key: value for key, value in job.items() if key != "mutants"} for job in expected
+        ]

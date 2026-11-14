@@ -109,12 +109,16 @@ def stage_mutation_tree(root: Path, modules: list[str], staging: Path) -> list[s
         target = staging / "tests" / rel_path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(tests_root / rel_path, target)
-    # tests/conftest.py imports the stdlib-only test-process owner from scripts/; without it the
-    # staged clean run dies at conftest import and no staging-only failure is ever excluded.
-    (staging / "scripts").mkdir()
-    owner = Path(__file__).resolve().with_name("run_owned_test.py")
-    shutil.copy2(owner, staging / "scripts" / owner.name)
+    # Public tests import script helpers and inspect repository documentation.
+    shutil.copytree(
+        Path(__file__).resolve().parent,
+        staging / "scripts",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
     also_copy = ["packages", "scripts"]
+    if (root / "docs").is_dir():
+        shutil.copytree(root / "docs", staging / "docs")
+        also_copy.append("docs")
     if Path("unit/test_theme_drift.py") in keep:
         # Public theme assertions inspect committed CSS by repository-relative path.
         # Preserve those exact bytes in both staging and mutmut's nested execution tree.
@@ -132,6 +136,8 @@ def stage_mutation_tree(root: Path, modules: list[str], staging: Path) -> list[s
         markers = []
     (staging / "pyproject.toml").write_text(
         "[tool.mutmut]\n"
+        # Polars' thread pool in a forked parent deadlocks the children.
+        'process_isolation = "forkserver"\n'
         f"source_paths = {json.dumps([f'src/{pkg}' for pkg in sorted(packages)])}\n"
         f"only_mutate = {json.dumps(only)}\n"
         f"also_copy = {json.dumps(also_copy)}\n"
