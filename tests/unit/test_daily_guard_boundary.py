@@ -1,9 +1,14 @@
 """Every alpha_cli import of a bound module, at module or function level, must be
-bound or REVIEWED_OUTSIDE with a reason the daily lane does not run it. Imports
-under TYPE_CHECKING do not count. Packages below alpha_cli are outside this test:
-the costed profile binds alpha-core, alpha-patterns, alpha-strategies,
-alpha-backtest and alpha-data source bytes through hashes.environment. The worker
-side is bound by WORKER_FILES, COSTED_FILES and daily_container_entry.py.
+bound or REVIEWED_OUTSIDE with a reason the daily lane does not run it. An exemption
+is valid only when the import statement itself never executes on a daily path:
+importing runs the imported module's top level, so an import that executes is
+bound even when nothing from it is called. Imports under TYPE_CHECKING do not count;
+any alpha_cli import also runs the package __init__.py, which is bound. Packages
+below alpha_cli are outside this test: the costed profile binds alpha-core,
+alpha-patterns, alpha-strategies, alpha-backtest and alpha-data source bytes through
+hashes.environment; alpha_research and alpha_validation are not bound by daily
+approvals (an open owner decision, ADR-0047). The worker side is bound by
+WORKER_FILES, COSTED_FILES and daily_container_entry.py.
 """
 
 from __future__ import annotations
@@ -18,36 +23,23 @@ from alpha_cli import _native_rule_environment as environment
 ROOT = Path(environment.__file__).parent
 REVIEWED_OUTSIDE: dict[tuple[str, str], str] = {
     (
-        "_artifacts.py",
-        "_native_tearsheet.py",
+        "_ml_observation_store.py",
+        "ml_contract.py",
     ): (
-        "Only write_native_tearsheet; daily uses publish_artifact, run_dir, "
-        "write_manifest, read_manifest."
+        "Never loaded on a daily path: control_store imports _ml_observation_store only "
+        "inside its W09 methods; bound for its writes to job tables."
     ),
     (
         "_ml_observation_store.py",
-        "ml_contract.py",
-    ): "W09 types; bound _scope refuses rule and native-owner records.",
-    (
-        "_ml_observation_store.py",
         "ml_native_plan.py",
-    ): "W09 types; bound _scope refuses rule and native-owner records.",
+    ): (
+        "Never loaded on a daily path: control_store imports _ml_observation_store only "
+        "inside its W09 methods; bound for its writes to job tables."
+    ),
     (
         "control_store.py",
         "ml_native_plan.py",
     ): "W09 types; bound _ml_observation_store._scope refuses rule and native-owner records.",
-    (
-        "control_store.py",
-        "research_readiness.py",
-    ): "record_research_decision D2 confirmation branch; daily is D1 discovery only.",
-    (
-        "_native_fixture_store.py",
-        "_native_stock_launch.py",
-    ): "Type identity checks; a daily launch is NativeLaunch.",
-    (
-        "native_supervisor.py",
-        "_native_stock_launch.py",
-    ): "Type identity checks; a daily launch is NativeLaunch.",
     (
         "_native_rule_artifacts.py",
         "_native_rule_projection.py",
@@ -79,14 +71,6 @@ REVIEWED_OUTSIDE: dict[tuple[str, str], str] = {
     ): "Research D0/D1/D2 evidence; rule contracts return earlier through is_rule_contract.",
     ("control_store.py", "research_gate_packet.py"): "Strategy promotion packets.",
     ("control_store.py", "study_semantic.py"): "Blind semantic resolver.",
-    (
-        "control_store.py",
-        "research_runtime.py",
-    ): (
-        "reserve_d0_research_launch calls validate_d0_pilot_contract, handing rules to bound "
-        "_native_rule_protocol.validate_rule_contract first; "
-        "research approvals bind research_runtime."
-    ),
 }
 
 
@@ -107,22 +91,27 @@ def imported_modules(source: str, root: Path = ROOT) -> set[str]:
         if isinstance(node, ast.ImportFrom):
             assert node.level == 0, "relative import cannot be traced"
             module = node.module or ""
-            assert module != "importlib" and not module.startswith("importlib."), "dynamic import"
+            assert module != "importlib" and (
+                not module.startswith("importlib.") or module == "importlib.metadata"
+            ), "dynamic import"
             if module.startswith("alpha_cli."):
-                found.add(module.split(".")[1] + ".py")
+                # Importing any submodule first runs the package's __init__.py.
+                found.update({"__init__.py", module.split(".")[1] + ".py"})
             elif module == "alpha_cli":
-                found.update(
-                    item.name + ".py"
-                    for item in node.names
-                    if (root / (item.name + ".py")).is_file()
-                )
+                found.add("__init__.py")
+                for item in node.names:
+                    assert not (root / item.name).is_dir(), "subpackage import cannot be traced"
+                    if (root / (item.name + ".py")).is_file():
+                        found.add(item.name + ".py")
         if isinstance(node, ast.Import):
             for item in node.names:
                 assert item.name != "importlib" and not item.name.startswith("importlib."), (
                     "dynamic import"
                 )
-                if item.name.startswith("alpha_cli."):
-                    found.add(item.name.split(".")[1] + ".py")
+                if item.name == "alpha_cli":
+                    found.add("__init__.py")
+                elif item.name.startswith("alpha_cli."):
+                    found.update({"__init__.py", item.name.split(".")[1] + ".py"})
         if isinstance(node, ast.Call):
             name = (
                 node.func.id
@@ -184,7 +173,19 @@ def function():
     from alpha_cli.lazy import value
 """,
         tmp_path,
-    ) == {"top.py", "direct.py", "local.py", "runtime.py", "fallback.py", "lazy.py"}
+    ) == {
+        "__init__.py",
+        "top.py",
+        "direct.py",
+        "local.py",
+        "runtime.py",
+        "fallback.py",
+        "lazy.py",
+    }
+    assert imported_modules("import alpha_cli\n", tmp_path) == {"__init__.py"}
+    (tmp_path / "package").mkdir()
+    with pytest.raises(AssertionError, match="subpackage"):
+        imported_modules("from alpha_cli import package\n", tmp_path)
 
 
 @pytest.mark.parametrize(

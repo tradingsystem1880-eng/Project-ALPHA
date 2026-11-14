@@ -1,4 +1,4 @@
-"""Daily approval bindings cover logic and tolerate comments in the nine added guards."""
+"""Daily approval bindings cover logic and tolerate comments in the added guards."""
 
 from pathlib import Path
 from types import SimpleNamespace
@@ -30,6 +30,19 @@ EDITS = {
         "_RUN_ID_RE.fullmatch(run_id) is None",
     ),
     "run_context.py": ('context.get("schema_version") != 1', 'context.get("schema_version") != 2'),
+    "_native_tearsheet.py": (
+        "benchmark_equity is not None and not benchmark_kind",
+        "benchmark_equity is not None and benchmark_kind",
+    ),
+    "research_readiness.py": (
+        'primary.get("status") != "TESTED"',
+        'primary.get("status") == "TESTED"',
+    ),
+    "research_runtime.py": (
+        "if is_rule_contract(contract):\n        return validate_rule_contract(contract)",
+        "if not is_rule_contract(contract):\n        return validate_rule_contract(contract)",
+    ),
+    "__init__.py": ('__all__ = ["RUN_DIRS", "__version__"]', '__all__ = ["RUN_DIRS"]'),
 }
 
 
@@ -63,3 +76,18 @@ def test_added_guards_bind_by_structure(name: str) -> None:
 
 def test_environment_binds_its_own_bytes() -> None:
     assert file_binding(ROOT / "_native_rule_environment.py")["mode"] == "bytes"
+
+
+@pytest.mark.parametrize("name", ["_native_stock_launch.py", "native_stock_fixture.py"])
+def test_added_byte_bound_guards_change_approval_on_any_edit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    for guard in environment.DAILY_GUARD_FILES:
+        (tmp_path / guard).write_bytes((ROOT / guard).read_bytes())
+    monkeypatch.setattr(environment, "__file__", str(tmp_path / "_native_rule_environment.py"))
+    monkeypatch.setattr(environment, "measure_rule_environment", lambda _: "e" * 64)
+    study = cast(DailyRuleStudyV1, SimpleNamespace(query_sha256="a" * 64))
+    original = environment.rule_implementation_fingerprints(True, daily_study=study)["code"]
+    assert file_binding(ROOT / name)["mode"] == "bytes"
+    (tmp_path / name).write_text((ROOT / name).read_text() + "# A comment changes bytes.\n")
+    assert environment.rule_implementation_fingerprints(True, daily_study=study)["code"] != original

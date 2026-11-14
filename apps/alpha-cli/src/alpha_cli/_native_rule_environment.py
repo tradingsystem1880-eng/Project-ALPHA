@@ -53,6 +53,12 @@ DAILY_GUARD_FILES = (
     "paper_resources.py",
     "run_store.py",
     "run_context.py",
+    "_native_tearsheet.py",
+    "research_readiness.py",
+    "research_runtime.py",
+    "_native_stock_launch.py",
+    "native_stock_fixture.py",
+    "__init__.py",
 )
 
 

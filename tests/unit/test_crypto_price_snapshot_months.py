@@ -213,6 +213,28 @@ def test_aggregate_raw_size_precedes_hashing(
         query(store, results)
 
 
+def test_aggregate_normalized_size_precedes_hashing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = _store(tmp_path)
+    results = [publish_month(store, 2020, month) for month in (1, 2)]
+    metadata = list(store.metadata_inventory())
+    for item in metadata:
+        if item["artifact_kind"] == "normalized":
+            item["artifact_bytes"] = 17 * 1024 * 1024
+    monkeypatch.setattr(store, "metadata_inventory", lambda: tuple(metadata))
+
+    def forbidden(*args: object, **kwargs: object) -> NoReturn:
+        pytest.fail("payload hashing preceded aggregate normalized preflight")
+
+    monkeypatch.setattr(store, "verify_manifest", forbidden)
+    monkeypatch.setattr(store, "read_verified_normalized", forbidden)
+    with pytest.raises(DataError, match="32 MiB"):
+        query(store, results)
+    single = [item for item in metadata if item["artifact_kind"] == "normalized"]
+    assert all(item["artifact_bytes"] < 32 * 1024 * 1024 for item in single)
+
+
 def test_document_is_identical_across_stores(tmp_path: Path) -> None:
     documents = []
     for name in ("first", "second"):
