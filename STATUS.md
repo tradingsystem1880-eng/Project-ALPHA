@@ -4,12 +4,12 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 7 working, 24 partly working, 0 demo only, 5 shelved, 1 not started.
-- **Work in progress:** 33 in progress (limit 3).
+- **Capabilities:** 8 working, 23 partly working, 0 demo only, 5 shelved, 1 not started.
+- **Work in progress:** 28 in progress (limit 3).
   - 3 being worked on
-  - 30 built but not yet checked end to end
+  - 25 built but not yet checked end to end
   - Not counted: 7 blocked, 1 planned, not started.
-  - Allowed for now: 33. This number only goes down, until it reaches 3.
+  - Allowed for now: 28. This number only goes down, until it reaches 3.
 - **Known defects:** 0.
 - **Decisions waiting for you:** 0.
 
@@ -21,6 +21,7 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 
 - **Workstation web app** — uv run alpha-web, then open http://localhost:8801
 - **Download crypto market data (W05)** — uv run alpha crypto-data catalog (a real run is recorded)
+- **Crypto history download that resumes safely (backfill, Phase B)** — uv run alpha crypto-data backfill bybit <family> --symbols BTCUSDT --quote USDT --start … --end … --ledger <name> --dry-run
 - **Freeze crypto data into exact snapshots and check them (W05)** — uv run alpha crypto-data snapshot-create …, then uv run alpha crypto-data snapshot-verify <snapshot-id>
 - **Run a backtest** — uv run alpha backtest run SPY
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
@@ -46,7 +47,6 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 Tested piece by piece inside the test suite, but not yet run from start to finish through the installed program:
 
 - **Price charts with indicators and patterns** — tested in-process and in a browser against a test server (a real run is recorded).
-- **Crypto history download that resumes safely (backfill, Phase B)** — tested in-process only.
 - **"Are my downloaded daily bars complete?" check** — tested in-process and in a browser against a test server.
 - **Write trading rules and scan markets** — tested in-process and in a browser against a test server.
 - **Strategy development workspace** — tested in-process only.
@@ -117,8 +117,8 @@ Ideas not yet planned (no order recorded, so alphabetical):
 
 ## Housekeeping
 
-- Live plans: 41
-- Archived plans: 129
+- Live plans: 36
+- Archived plans: 137
 - Backlog items: 19
 - Staged refactors: 6
 

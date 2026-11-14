@@ -24,9 +24,9 @@ public seams, is only learnable by reading imports.
   `figure_cache`, `assistant_contracts`); `alpha_mcp` imports 7 of them. The import-linter
   contracts in `pyproject.toml` name these paths, and `owner_auth` carries the one
   `ignore_imports` exception (ADR-0030).
-- **Approval binding.** The 25 `DAILY_GUARD_FILES` are looked up as flat names next to
+- **Approval binding.** The 40 `DAILY_GUARD_FILES` are looked up as flat names next to
   `_native_rule_environment.py` (`Path(__file__).with_name(name)`, which refuses a subpath), and the
-  four research modules are hashed under the label `alpha_cli/<name>.py`. Moving any of these 29
+  four research modules are hashed under the label `alpha_cli/<name>.py`. Moving any of these 43
   files means editing `_native_rule_environment.py` or `research_cmds.py`, and invalidates every
   daily-rule approval (any move) or research approval (if the label or import changes).
 - **Run identity.** `_identity.execution_fingerprint` labels each file by its package-relative path,

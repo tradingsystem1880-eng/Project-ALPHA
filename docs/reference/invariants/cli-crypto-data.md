@@ -87,10 +87,14 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
   (`FixtureAccountingBlocked`) stops the run and never splits or retries.
 - One owner at a time: the ledger takes a non-blocking `flock` on a persistent `.lock` sidecar and checks the sidecar
   identity; never delete the sidecar or unlock an inherited descriptor in a child.
+- `--end` is exclusive: the last month planned is the month of the day before `--end`, so `--end 2026-11-01` plans
+  nothing in November.
 - Binance publishes a monthly archive only after the month ends. A Binance backfill never plans a month that has
-  not ended at run time: it lists it under `not_published_yet` and records nothing for it in the ledger. A month
-  that has ended but whose file is missing is still a recorded failure. `backfill-status` names the same months
-  under `not_published_yet`, so a shortened plan is never silent. The current month comes from the bounded REST
+  not ended at run time: it lists it under `not_published_yet` and records nothing for it in the ledger. For
+  `BINANCE_PUBLICATION_GRACE` (14 days) after a month ends, an HTTP 404 for its file is also not published yet
+  (listed under `awaiting_publication` and `not_published_yet`, nothing recorded, retried next run); Binance's
+  measured delay is 1 to 7 days, once 12. Any other error, or a 404 after the grace, is a recorded failure.
+  `backfill-status` names the same months under `not_published_yet`, so a shortened plan is never silent. The current month comes from the bounded REST
   tail (`acquire ... --start/--end`); daily archive files are not read.
 - Backfill has no research, quota or execution authority. Inspection (`_crypto_backfill_inspection.py`) is read-only.
 
@@ -102,6 +106,12 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
 - Its `available_at` filter follows the parser's next-UTC-day convention; it does not prove a publication time.
 - `crypto_price_snapshot_query.py`, `_chart_data.py` and `_crypto_bar_coverage.py` are bounded diagnostics. They never
   write to snapshots or artifacts and grant no admission.
+- The daily price query reads one caller-named normalized manifest per BTCUSDT month member, in observed-start order:
+  one name gives the unchanged `BinanceDailyPriceSnapshotQueryV1`, several give `BinanceDailyPriceSnapshotQueryV2`.
+  Duplicate names, overlapping members, a missing day, a named member outside the range, and an unnamed same-coin member
+  meeting the range fail loud; other coins are ignored. Each member's receipts must postdate each of its candles'
+  completion; a Binance monthly archive receipt bounds only its `period` month. 8 MiB raw and 32 MiB normalized across
+  the query. [ADR-0048](../../adr/0048-daily-rule-lane-binding-and-named-months.md)
 
 ## Crypto research edge
 

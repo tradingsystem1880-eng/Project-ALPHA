@@ -1,0 +1,178 @@
+{
+  "base": "origin/m8/prove-crypto-data",
+  "base_sha": "1c2a00531591b15999261cb28bf7741766e60563",
+  "branch": "m8/prove-crypto-backfill",
+  "built_by": {
+    "effort": "high",
+    "model": "gpt-6.1-sol",
+    "tool": "codex"
+  },
+  "checks": [
+    {
+      "command": "uv sync --locked",
+      "exit_code": 0,
+      "name": "uv sync",
+      "passed": true,
+      "round": 0,
+      "seconds": 0.0
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base origin/m8/prove-crypto-data",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 0,
+      "seconds": 307.9
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base origin/m8/prove-crypto-data",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 1,
+      "seconds": 223.4
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base origin/m8/prove-crypto-data",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 2,
+      "seconds": 128.4
+    }
+  ],
+  "class": "standard",
+  "class_reason": "4 files in scope (> 3)",
+  "diffstat": " apps/alpha-cli/src/alpha_cli/_crypto_backfill.py                       |  57 ++++++++++++++--\n apps/alpha-cli/src/alpha_cli/crypto_data_cmds.py                       |  16 ++---\n docs/work/archive/2026-11/2026-11-14-prove-crypto-backfill/01-brief.md |  34 ++++++++++\n docs/work/archive/2026-11/2026-11-14-prove-crypto-backfill/02-plan.md  | 144 +++++++++++++++++++++++++++++++++++++++\n tests/unit/test_crypto_backfill.py                                     | 148 +++++++++++++++++++++++++++++++++++++++--\n 5 files changed, 379 insertions(+), 20 deletions(-)\n",
+  "fallback": null,
+  "files_changed": [
+    {
+      "path": "docs/work/archive/2026-11/2026-11-14-prove-crypto-backfill/01-brief.md",
+      "status": "A"
+    },
+    {
+      "path": "docs/work/archive/2026-11/2026-11-14-prove-crypto-backfill/02-plan.md",
+      "status": "A"
+    },
+    {
+      "path": "tests/smoke/test_crypto_backfill_smoke.py",
+      "status": "A"
+    },
+    {
+      "path": "apps/alpha-cli/src/alpha_cli/_crypto_backfill.py",
+      "status": "M"
+    },
+    {
+      "path": "apps/alpha-cli/src/alpha_cli/crypto_data_cmds.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/test_crypto_backfill.py",
+      "status": "M"
+    }
+  ],
+  "finished_at": "2026-11-14T09:43:57Z",
+  "fix_rounds": 2,
+  "logs": "/home/hunta/alpha-clean-base/tmp/handoff/logs/2026-11-14-prove-crypto-backfill-20261114-092648-979434",
+  "notes": [],
+  "outside_scope": [
+    "docs/work/archive/2026-11/2026-11-14-prove-crypto-backfill/01-brief.md",
+    "docs/work/archive/2026-11/2026-11-14-prove-crypto-backfill/02-plan.md"
+  ],
+  "policy_violations": [],
+  "previous_attempts": [
+    {
+      "built_by": {
+        "effort": "high",
+        "model": "gpt-6.1-sol",
+        "tool": "codex"
+      },
+      "fallback": null,
+      "fix_rounds": 2,
+      "run_id": "2026-11-14-prove-crypto-data-20261114-090437-805665",
+      "tokens": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3455360,
+        "input_tokens": 3642096,
+        "output_tokens": 40803,
+        "reasoning_output_tokens": 9686
+      },
+      "verdict": "verification_failed",
+      "wall_seconds": 903.8
+    }
+  ],
+  "rounds": [
+    {
+      "commands": 30,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 5,
+      "kind": "build",
+      "outcome": "ok",
+      "seconds": 322.1,
+      "thread_id": "01a1d961-8464-7fa0-8c31-4714ccd501f5",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 961152,
+        "input_tokens": 1019694,
+        "output_tokens": 11245,
+        "reasoning_output_tokens": 3383
+      }
+    },
+    {
+      "commands": 0,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 0,
+      "kind": "fix",
+      "outcome": "ok",
+      "seconds": 28.9,
+      "thread_id": "01a1d961-8464-7fa0-8c31-4714ccd501f5",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 1037056,
+        "input_tokens": 1096989,
+        "output_tokens": 11913,
+        "reasoning_output_tokens": 3814
+      }
+    },
+    {
+      "commands": 0,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 0,
+      "kind": "fix",
+      "outcome": "ok",
+      "seconds": 16.7,
+      "thread_id": "01a1d961-8464-7fa0-8c31-4714ccd501f5",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 1114880,
+        "input_tokens": 1176194,
+        "output_tokens": 12208,
+        "reasoning_output_tokens": 3898
+      }
+    }
+  ],
+  "run_id": "2026-11-14-prove-crypto-backfill-20261114-092648-979434",
+  "schema_version": 1,
+  "source": "docs/work/archive/2026-11/2026-11-14-prove-crypto-backfill/02-plan.md",
+  "started_at": "2026-11-14T09:26:48Z",
+  "tokens": {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 3113088,
+    "input_tokens": 3292877,
+    "output_tokens": 35366,
+    "reasoning_output_tokens": 11095
+  },
+  "unverified": [
+    "The mypy failure remains undiagnosed because its diagnostic is absent from the supplied output. No checks rerun."
+  ],
+  "verdict": "verification_failed",
+  "wall_seconds": 1028.0,
+  "work_order": {
+    "kind": "task",
+    "name": "2026-11-14-prove-crypto-backfill"
+  },
+  "worktree": "/home/hunta/alpha-clean-base/wt-prove"
+}

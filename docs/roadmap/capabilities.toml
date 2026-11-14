@@ -160,20 +160,17 @@ proof_synthetic = [
   "tests/integration/test_crypto_backfill_resume_cli.py::test_cli_reopens_completed_bytes_and_retries_only_unfinished_instrument",
   "tests/integration/test_crypto_backfill_status_cli.py::test_status_verifies_completion_and_pending_without_writes",
 ]
-real_data = "not yet confirmed: on 2026-11-14 a free Binance spot daily backfill of 15 USDT pairs ran on the Dell; the unfinished month is now reported as not published yet rather than failed; Bybit not yet run (docs/reference/project/components/data-layer.md)"
+proof_smoke = [
+  "tests/smoke/test_crypto_backfill_smoke.py::test_binance_backfill_resumes_only_unfinished_months_and_refuses_a_second_writer",
+]
+real_data = "not yet confirmed: on 2026-11-14 a free Binance spot daily backfill of 15 USDT pairs ran on the Dell; on a copy of that folder a resume verified all 111 finished BTC months without downloading and a fresh 111-month ETH run downloaded through the installed alpha; Bybit not yet run (docs/reference/project/components/data-layer.md)"
 real_data_needs = "Network access to Bybit and a storage volume for years of data."
 needs = []
-state = "Partial"
-missing = "tested in-process only; no end-to-end smoke check yet"
+state = "Working"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; needs one real download run
 triage = { card = "1", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = [
   "2026-09-10-edge-first-phase-b-feed-the-machine",
-  "2026-11-07-backfill-ledger-exclusion",
-  "2026-11-07-backfill-resume-evidence",
-  "2026-11-07-backfill-verification-budget",
-  "2026-11-08-backfill-metadata-bounds",
-  "2026-11-08-backfill-readonly-status",
 ]
 
 [[capability]]
@@ -897,7 +894,7 @@ name = "AI-run daily trading-rule study"
 codes = ["Packet 3", "W08"]
 what = "Run one complete, rule-governed study of a simple daily momentum rule against a \"do nothing\" control, with locked inputs and a final report."
 see_it = [
-  "uv run alpha research draft-daily <project-id> --source-pack-id … --snapshot-id … --normalized-manifest-id …",
+  "uv run alpha research draft-daily <project-id> --source-pack-id … --snapshot-id … --normalized-manifest-id … (once per month)",
   "Workstation: the daily rule report on a study run",
 ]
 entry_points = [
