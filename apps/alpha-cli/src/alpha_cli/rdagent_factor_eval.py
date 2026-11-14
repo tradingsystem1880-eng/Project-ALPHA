@@ -24,7 +24,11 @@ from alpha_cli.crypto_bulk_store import configured_crypto_bulk_store
 from alpha_core import Bar, DataError
 from alpha_research.panel import cross_sectional_ic
 from alpha_validation.bootstrap import block_bootstrap_ci
-from alpha_validation.dsr import deflated_sharpe
+from alpha_validation.dsr import (
+    deflated_sharpe,
+    expected_max_sharpe,
+    probabilistic_sharpe_ratio,
+)
 from alpha_validation.proportion import autocorrelation_effective_size, benjamini_hochberg
 
 RESERVED_START = "2024-01-01"
@@ -67,6 +71,18 @@ CONFIG = {
     "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
 }
 TRIAL_SCHEMA = "AlphaRdagentFactorTrialV1"
+STATUSES = frozenset(
+    {
+        "FAILED",
+        "LOOKAHEAD",
+        "DEGENERATE",
+        "ERROR",
+        "SCREEN_FAIL",
+        "REPLAY_FAIL",
+        "CANDIDATE",
+        "REPEAT",
+    }
+)
 
 
 def sha(data: bytes) -> str:
@@ -214,8 +230,11 @@ def screen(signal: pd.DataFrame, outcome: pd.DataFrame, digest: str) -> dict[str
     ties = sum(
         bool(row.size and np.ptp(row) == 0) for row in (r[np.isfinite(r)] for r in values)
     ) / len(values)
-    result: dict[str, Any] = {"coverage": coverage, "tie_share": ties}
-    if coverage < 0.8 or ties > 0.05:
+    thin_days = int((finite.sum(axis=1) < MIN_NAMES).sum())
+    result: dict[str, Any] = {"coverage": coverage, "tie_share": ties, "thin_days": thin_days}
+    if coverage < 0.8 or ties > 0.05 or thin_days:
+        # thin_days: the canonical replay needs a full weight cross-section every day and
+        # cannot hold cash, so a factor with any day under MIN_NAMES names cannot be replayed.
         return {**result, "status": "DEGENERATE", "p": 1.0}
     ic = cross_sectional_ic(
         np.where(finite, values, np.nan), outcome.to_numpy(), min_names=MIN_NAMES
@@ -358,6 +377,8 @@ def _read_ledger(path: Path) -> list[dict[str, Any]]:
                     raise ValueError(f"missing {key}")
             if not 0 <= row["p"] <= 1 or not 0 <= row["q"] <= 1 or row["authority"] != AUTHORITY:
                 raise ValueError("invalid trial metrics or authority")
+            if row["status"] not in STATUSES or row["stage"] not in {"none", "screen", "replay"}:
+                raise ValueError("invalid trial status or stage")
         except (ValueError, TypeError, KeyError) as error:
             raise DataError(f"invalid trial ledger line {index}: {error}") from error
         records.append(row)
@@ -471,7 +492,14 @@ def _evaluate_locked(
                     index="date", columns="instrument", values=factor["name"]
                 ).reindex(index=dates, columns=symbols)
                 signals[digest] = signal
-                stats = screen(signal, outcome, digest)
+                try:
+                    stats = screen(signal, outcome, digest)
+                except (DataError, ValueError, ZeroDivisionError, FloatingPointError) as error:
+                    stats = {
+                        "status": "ERROR",
+                        "p": 1.0,
+                        "error": f"{type(error).__name__}: {error}",
+                    }
                 row.update(status=stats["status"], p=stats["p"], screen=stats, stage="screen")
             family[digest] = row
         rows.append(row)
@@ -487,7 +515,15 @@ def _evaluate_locked(
             continue
         row["status"] = "SCREEN_FAIL"
         if row["q"] < Q_THRESHOLD:
-            metrics, net = replay(panel, signals[digest], row["screen"]["direction"])
+            try:
+                metrics, net = replay(panel, signals[digest], row["screen"]["direction"])
+            except (DataError, ValueError, ZeroDivisionError, FloatingPointError) as error:
+                row.update(
+                    stage="replay",
+                    status="ERROR",
+                    replay={"error": f"{type(error).__name__}: {error}"},
+                )
+                continue
             row.update(
                 stage="replay",
                 replay=metrics,
@@ -497,14 +533,30 @@ def _evaluate_locked(
     trials = [
         row["replay"]["net"]["per_observation_sharpe"]
         for row in [*history, *rows]
-        if row["stage"] == "replay"
+        if row["stage"] == "replay" and "net" in row["replay"]
     ]
     for row in rows:
         row["replayed_trials"] = len(trials)
-        if row["stage"] == "replay":
+        if row["code_sha256"] in replay_returns:
+            returns = replay_returns[row["code_sha256"]]
             row["replay"]["deflated_sharpe"] = asdict(
-                deflated_sharpe(replay_returns[row["code_sha256"]], trial_sharpes=trials)
+                deflated_sharpe(returns, trial_sharpes=trials)
             )
+            # Replayed factors passed the screen, so the replayed set alone understates the
+            # search. Also deflate against the expected maximum of the whole family's size.
+            if len(trials) >= 2:
+                benchmark = expected_max_sharpe(float(np.var(trials, ddof=1)), len(family))
+                row["replay"]["deflated_sharpe_family"] = {
+                    "n_trials": len(family),
+                    "benchmark_sharpe": benchmark,
+                    "psr": probabilistic_sharpe_ratio(returns, benchmark_sr=benchmark),
+                }
+            else:
+                row["replay"]["deflated_sharpe_family"] = {
+                    "n_trials": len(family),
+                    "psr": None,
+                    "reason": "fewer than two replayed trials: no cross-trial variance",
+                }
         if row["status"] == "REPEAT":
             first = family[row["code_sha256"]]
             row["first_trial"] = {

@@ -103,7 +103,11 @@ def test_loop_environment_is_exact_and_names_alpha_classes(tmp_path: Path) -> No
     assert env["FACTOR_CoSTEER_max_loop"] == "1"
     assert env["CONDA_DEFAULT_ENV"] == "alpha-no-conda"
     assert not any(k.startswith(("OPENAI", "ALPHA_GATEWAY", "MODEL_CoSTEER")) for k in env)
-    assert len(env) == 30
+    assert len(env) == 31
+    assert env["FACTOR_CoSTEER_python_bin"].startswith(
+        "env -u LM_STUDIO_API_KEY -u LM_STUDIO_API_BASE "
+    )
+    assert env["ALPHA_FACTOR_CODE_PYTHON"] == str(tmp_path / "py/bin/python")
 
 
 def test_stop_kills_the_whole_process_group(tmp_path: Path) -> None:

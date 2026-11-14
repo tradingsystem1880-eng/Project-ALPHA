@@ -38,7 +38,7 @@ class AlphaFactorScenario(QlibFactorScenario):
 
         script = Path(info.__file__).with_name("runtime_info.py")
         result = subprocess.run(
-            [os.environ["FACTOR_CoSTEER_python_bin"], str(script)],  # noqa: SIM112
+            [os.environ["ALPHA_FACTOR_CODE_PYTHON"], str(script)],
             capture_output=True,
             text=True,
             check=True,
@@ -82,10 +82,12 @@ class AlphaFactorRunner(Developer):
             exp.stdout = "baseline: no factors; ALPHA evaluates factors standalone"
             return exp
         run = Path(os.environ["ALPHA_FACTOR_RUN_DIR"])
-        evaluations = run / "evaluations.jsonl"
-        iteration = len(evaluations.read_bytes().splitlines()) if evaluations.exists() else 0
+        # Number attempts by the folders already made, so a failed evaluation (no record line)
+        # or a resumed checkpoint never collides with an earlier attempt's folder.
+        (run / "evaluations").mkdir(exist_ok=True)
+        iteration = len(list((run / "evaluations").glob("iter-*")))
         folder = run / "evaluations" / f"iter-{iteration}"
-        folder.mkdir(parents=True, exist_ok=False)
+        folder.mkdir(exist_ok=False)
         factors, frames = [], []
         if not (len(exp.sub_tasks) == len(exp.sub_workspace_list) == len(exp.prop_dev_feedback)):
             raise ValueError("factor tasks, workspaces and feedback lengths differ")
@@ -113,14 +115,15 @@ class AlphaFactorRunner(Developer):
                         code,
                         values,
                         run / "factor_data/cuts",
-                        os.environ["FACTOR_CoSTEER_python_bin"],  # noqa: SIM112
+                        os.environ["ALPHA_FACTOR_CODE_PYTHON"],
                         120.0,
                     )
                     factor["lookahead"] = check
                     factor["status"] = "OK" if check["status"] == "PASS" else "LOOKAHEAD"
+                    if factor["status"] == "OK" and len(values.columns) != 1:
+                        factor["status"] = "FAILED"
+                        factor["failure_detail"] = "one output column required per factor task"
                     if factor["status"] == "OK":
-                        if len(values.columns) != 1:
-                            raise ValueError("one output column required per factor task")
                         frame = values.copy()
                         frame.columns = [task.factor_name]
                         frame.index.names = ["date", "instrument"]
@@ -179,7 +182,9 @@ class AlphaFactorHypothesisGen(QlibFactorHypothesisGen):
         context, flag = super().prepare_context(trace)
         ledger_name = os.environ.get("ALPHA_FACTOR_TRIAL_LEDGER")
         if ledger_name and Path(ledger_name).exists():
-            rows = [json.loads(line) for line in Path(ledger_name).read_bytes().splitlines()]
+            raw = Path(ledger_name).read_bytes()
+            # Only complete lines: another run may be appending at this moment.
+            rows = [json.loads(line) for line in raw[: raw.rfind(b"\n") + 1].splitlines()]
             if rows:
                 heading = (
                     "\nALPHA trial ledger (all runs; exploratory, not admitted; "

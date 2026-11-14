@@ -74,6 +74,7 @@ for expression, expected in [
     subprocess.run(
         [os.environ["ALPHA_FACTOR_PYTHON"], "-I", "-B", "-c", script, str(WORKER), str(tmp_path)],
         check=True,
+        cwd=tmp_path,
         timeout=180,
     )
 
@@ -105,6 +106,11 @@ with patch.object(j,'APIBackend') as backend:
 row=json.loads((Path(sys.argv[3])/'feedback.jsonl').read_text())
 assert row['model_decision'] is True and row['alpha_decision'] is False
 assert 'reply' not in row
+runner=j.AlphaFactorRunner(scen)
+base=SimpleNamespace(based_experiments=[],sub_tasks=[],result=None,stdout='')
+runner.develop(base)
+labels=['IC','1day.excess_return_without_cost.annualized_return','1day.excess_return_without_cost.max_drawdown']
+assert list(base.result.loc[labels].index)==labels
 """
     subprocess.run(
         [
@@ -118,5 +124,6 @@ assert 'reply' not in row
             str(tmp_path),
         ],
         check=True,
+        cwd=tmp_path,
         timeout=60,
     )

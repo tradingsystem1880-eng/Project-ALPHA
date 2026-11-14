@@ -96,7 +96,12 @@ def loop_environment(
         "LITELLM_LOCAL_MODEL_COST_MAP": "True",
         "MAX_RETRY": "2",
         "CONDA_DEFAULT_ENV": "alpha-no-conda",
-        "FACTOR_CoSTEER_python_bin": str(factor_python),
+        # RD-Agent runs generated factor code as a shell string `<python_bin> factor.py` that
+        # inherits this environment; strip the gateway settings so that code cannot read them.
+        "FACTOR_CoSTEER_python_bin": (
+            f"env -u LM_STUDIO_API_KEY -u LM_STUDIO_API_BASE {factor_python}"
+        ),
+        "ALPHA_FACTOR_CODE_PYTHON": str(factor_python),
         "FACTOR_CoSTEER_max_loop": "1",
         "FACTOR_CoSTEER_data_folder": str(run / "factor_data" / "full"),
         "FACTOR_CoSTEER_data_folder_debug": str(run / "factor_data" / "debug"),
@@ -293,19 +298,25 @@ class Launch:
             return -1
 
     def stop(self) -> None:
+        # Signal every group even when its leader has exited: orphaned members (a factor run,
+        # the evaluator) keep the group alive.
         for child in reversed(self.children):
-            if child.poll() is not None:
-                continue
-            for sig, wait in ((signal.SIGTERM, 10.0), (signal.SIGKILL, 5.0)):
+            for sig in (signal.SIGTERM, signal.SIGKILL):
                 try:
                     os.killpg(child.pid, sig)
                 except ProcessLookupError:
                     break
-                try:
-                    child.wait(timeout=wait)
-                    break
-                except subprocess.TimeoutExpired:
+                deadline = time.monotonic() + (10.0 if sig == signal.SIGTERM else 5.0)
+                while time.monotonic() < deadline:
+                    child.poll()
+                    try:
+                        os.killpg(child.pid, 0)
+                    except ProcessLookupError:
+                        break
+                    time.sleep(0.1)
+                else:
                     continue
+                break
         self.children.clear()
 
     def gateway_status(self) -> Any:
@@ -323,9 +334,14 @@ class Launch:
             check=False,
         )
         try:
-            return json.loads(result.stdout)
+            state = json.loads(result.stdout)
         except ValueError:
             return {"error": (result.stderr or "no output").strip()[:300]}
+        return {
+            "caps": state.get("caps"),
+            "this_run": state.get("runs", {}).get(self.args.run_id),
+            "months": state.get("months"),
+        }
 
     def finish(self, exit_status: int, reason: str) -> int:
         evaluations = self.run / "evaluations.jsonl"
@@ -364,11 +380,19 @@ def run(args: argparse.Namespace, environ: dict[str, str]) -> int:
     except KeyboardInterrupt:
         launch.log("cancel", status="cancelled")
         reason = "cancelled"
+    except Exception as error:  # noqa: BLE001 - every failure still stops children and writes a receipt
+        launch.log("error", status="failed", detail=repr(error)[:300])
+        reason = f"unexpected error: {error!r}"[:300]
     finally:
-        launch.stop()
-        for sig, handler in previous.items():
-            signal.signal(sig, handler)
-    return launch.finish(status, reason)
+        for sig in previous:
+            signal.signal(sig, signal.SIG_IGN)  # a second signal must not abort the cleanup
+        try:
+            launch.stop()
+            status = launch.finish(status, reason)
+        finally:
+            for sig, handler in previous.items():
+                signal.signal(sig, handler)
+    return status
 
 
 def parser() -> argparse.ArgumentParser:

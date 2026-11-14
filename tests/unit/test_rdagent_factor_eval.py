@@ -181,3 +181,43 @@ def test_invalid_inputs_refused(tmp_path: Path, kind: str) -> None:
         ledger.write_text('{"schema": "wrong"}\n')
     with pytest.raises(DataError):
         evaluate(run, req, ledger)
+
+
+def test_one_failing_factor_is_recorded_as_error_and_the_rest_still_land(tmp_path: Path) -> None:
+    run = tmp_path / "run"
+    req = fixture(run)
+    value = json.loads(req.read_bytes())
+    value["factors"].append(
+        {"name": "broken", "code_sha256": "e" * 64, "status": "OK", "lookahead": {}}
+    )
+    frame = pd.read_parquet(run / "factors.parquet")
+    frame["broken"] = frame["factor"]
+    frame.to_parquet(run / "factors.parquet", index=False)
+    req.write_text(json.dumps(value))
+    real = ev.screen
+
+    def flaky(signal: pd.DataFrame, outcome: pd.DataFrame, digest: str) -> dict[str, Any]:
+        if digest == "e" * 64:
+            raise ZeroDivisionError("planted")
+        return real(signal, outcome, digest)
+
+    ledger = tmp_path / "ledger.jsonl"
+    with patch.object(ev, "screen", flaky):
+        result = evaluate(run, req, ledger)
+    statuses = {f["name"]: f["status"] for f in result["factors"]}
+    assert statuses == {"factor": "CANDIDATE", "broken": "ERROR"}
+    assert result["family_size"] == 2
+    assert len(ledger.read_bytes().splitlines()) == 2
+
+
+def test_a_day_with_too_few_names_is_degenerate_not_a_crash(tmp_path: Path) -> None:
+    run = tmp_path / "run"
+    req = fixture(run)
+    frame = pd.read_parquet(run / "factors.parquet")
+    day = frame["date"] == frame["date"].iloc[15 * 400]
+    frame.loc[day & ~frame["instrument"].isin(["C00USDT", "C01USDT"]), "factor"] = float("nan")
+    frame.to_parquet(run / "factors.parquet", index=False)
+    result = evaluate(run, req, tmp_path / "ledger.jsonl")
+    factor = result["factors"][0]
+    assert factor["status"] == "DEGENERATE"
+    assert factor["screen"]["thin_days"] == 1
