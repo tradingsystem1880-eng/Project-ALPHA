@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException
 from fastapi.routing import APIRoute
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import Field, StringConstraints
 
 from alpha_cli import run_projection
 from alpha_core import DataError
@@ -14,11 +14,7 @@ from alpha_web.api import development as development_api
 from alpha_web.api import ml as ml_api
 from alpha_web.api import runs as runs_api
 from alpha_web.api._common import data_dir
-
-
-class StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+from alpha_web.api.models import StrictModel
 
 RunId = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{16}$")]
 
