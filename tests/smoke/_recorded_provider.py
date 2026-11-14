@@ -17,7 +17,7 @@ import ssl
 import sys
 import threading
 import zipfile
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -270,7 +270,9 @@ def _kline_row(open_ms: int) -> list[str | int]:
     ]
 
 
-def binance_monthly_klines(symbol: str, year: int, month: int) -> tuple[str, bytes, str, bytes]:
+def binance_monthly_klines(
+    symbol: str, year: int, month: int, *, missing_days: Collection[int] = ()
+) -> tuple[str, bytes, str, bytes]:
     """Build a deterministic synthetic daily CSV archive and its exact SHA-256 sidecar."""
     period = f"{year:04d}-{month:02d}"
     url = archive_url("spot", "klines", symbol, "1d", period)
@@ -278,7 +280,8 @@ def binance_monthly_klines(symbol: str, year: int, month: int) -> tuple[str, byt
     csv_output = io.StringIO(newline="")
     writer = csv.writer(csv_output, lineterminator="\n")
     for day in range(calendar.monthrange(year, month)[1]):
-        writer.writerow(_kline_row(start_ms + day * _DAY_MS))
+        if day + 1 not in missing_days:
+            writer.writerow(_kline_row(start_ms + day * _DAY_MS))
     output = io.BytesIO()
     member = zipfile.ZipInfo(f"{symbol}-1d-{period}.csv", date_time=(2024, 1, 1, 0, 0, 0))
     with zipfile.ZipFile(output, "w") as archive:

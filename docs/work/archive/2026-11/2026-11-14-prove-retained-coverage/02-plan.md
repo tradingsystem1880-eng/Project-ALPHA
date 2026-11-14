@@ -34,8 +34,8 @@ work-in-progress ceiling admits no new live plan, and the work is finished in on
     "The audit's exit code differs between CLI and web: the web test asserts the same missing range and the API's own status field, not the CLI exit code."
   ],
   "slices": [
-    {"title": "Recorded months can leave out days", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_crypto_data_smoke.py", "expected": "2 passed (unchanged behaviour by default)", "rollback": "revert _recorded_provider.py", "status": "pending"},
-    {"title": "Completeness smoke check through the recorded provider", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_retained_coverage_smoke.py", "expected": "2 passed", "rollback": "delete the smoke file", "status": "pending"}
+    {"title": "Recorded months can leave out days", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_crypto_data_smoke.py", "expected": "2 passed (unchanged behaviour by default)", "rollback": "revert _recorded_provider.py", "status": "done"},
+    {"title": "Completeness smoke check through the recorded provider", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_retained_coverage_smoke.py", "expected": "2 passed", "rollback": "delete the smoke file", "status": "done"}
   ],
   "tier_impact": ["none"],
   "docs_to_update": ["docs/roadmap/capabilities.toml", "STATUS.md", "docs/roadmap/README.md", "docs/roadmap/wip-limit.json"],

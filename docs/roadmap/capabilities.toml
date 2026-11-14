@@ -239,14 +239,16 @@ proof_synthetic = [
   "tests/integration/test_web_retained_coverage.py::test_real_api_preserves_inspected_exit_one_and_native_findings",
   "apps/alpha-web/frontend/e2e/retained-bar-production.spec.ts::production-served bundle and real retained API show exact gaps without mutation or provider calls",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+proof_smoke = [
+  "tests/smoke/test_retained_coverage_smoke.py::test_completeness_check_finds_the_missing_day_without_provider_calls",
+  "tests/smoke/test_retained_coverage_smoke.py::test_workstation_reports_the_same_missing_day",
+]
+real_data = "not yet confirmed: on 2026-11-14 every one of the Dell's 1,426 Binance daily monthly files was checked against its calendar month; 1,412 are complete and the 14 short ones are each pair's listing month (docs/work/archive/2026-11/2026-11-14-prove-retained-coverage/04-verify.md)"
 needs = []
-state = "Partial"
-missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
+state = "Working"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; needs one real dataset
 triage = { card = "3", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = [
-  "2026-11-08-retained-daily-bar-grid",
   "2026-11-08-retained-bar-quality-ui",
   "2026-11-08-retained-bar-production-assembly",
   "2026-11-08-retained-project-production-smoke",
