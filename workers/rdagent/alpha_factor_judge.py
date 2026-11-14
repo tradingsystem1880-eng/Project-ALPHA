@@ -30,6 +30,68 @@ LEGACY_KEYS = ["IC"] + [
 ]
 
 
+SWING_BRIEF = (
+    "The trader is a retail swing trader holding days to weeks, never high frequency. "
+    "ALPHA judges every factor at daily, weekly (7-day) and monthly (28-day) holding clocks; "
+    "only a weekly or monthly pass can become a candidate. Wanted: slow signals whose "
+    "cross-sectional ranks change rarely (low turnover). State an economic or behavioural "
+    "mechanism in the hypothesis and a falsifier: what result would show it wrong. "
+    "Every trade costs 10 bps fee plus 6 bps slippage on each side; turning over half the book "
+    "every day costs about 29% a year. Fast daily reversal, gap and range ideas already passed "
+    "the daily screen but lost money after costs because they traded 19%-79% of the portfolio "
+    "per day; avoid re-proposing them. Exploratory, not admitted."
+)
+
+
+def ledger_summary(row: dict[str, Any]) -> str:
+    if row.get("schema") not in {
+        "AlphaRdagentFactorTrialV1",
+        "AlphaRdagentFactorTrialV2",
+        "AlphaRdagentFactorTrialV3",
+    }:
+        raise ValueError("invalid ALPHA trial ledger schema")
+    if row["schema"] == "AlphaRdagentFactorTrialV3":
+        clocks = row["clocks"]
+        statuses = ", ".join(f"{c} {clocks[c]['status']}" for c in ("daily", "weekly", "monthly"))
+        lead = clocks[row["lead_clock"]]
+        line = (
+            f"{row['name']}: {row['status']} ({statuses}); lead {row['lead_clock']} "
+            f"IC {lead['screen'].get('mean_ic')}; q {lead['q']}"
+        )
+    else:
+        line = (
+            f"{row['name']}: {row['status']}; mean rank IC {row['screen'].get('mean_ic')}; "
+            f"q {row['q']}; run {row['run_id']}"
+        )
+    if row.get("exposure", {}).get("previously_exposed") is True:
+        line += "; protected window previously exposed"
+    return line
+
+
+def append_swing_context(context: dict[str, Any], ledger_name: str | None) -> None:
+    context["hypothesis_and_feedback"] += "\n" + SWING_BRIEF
+    if not ledger_name or not Path(ledger_name).exists():
+        return
+    raw = Path(ledger_name).read_bytes()
+    # Another run may be appending; only complete lines participate in the summary.
+    rows = [json.loads(line) for line in raw[: raw.rfind(b"\n") + 1].splitlines()]
+    if not rows:
+        return
+    heading = (
+        "\nALPHA trial ledger (all runs; exploratory, not admitted; 15 surviving coins only)\n"
+    )
+    lines, seen = [], set()
+    for row in reversed(rows):
+        line = ledger_summary(row)
+        if row["code_sha256"] in seen or row["status"] == "REPEAT":
+            continue
+        seen.add(row["code_sha256"])
+        lines.append(line)
+        if len(lines) == 30:
+            break
+    context["hypothesis_and_feedback"] += (heading + "\n".join(lines))[:4000]
+
+
 def record_code(run: Path, digest: str, code: bytes) -> None:
     folder = run / "code"
     folder.mkdir(exist_ok=True)
@@ -99,12 +161,16 @@ class AlphaFactorScenario(QlibFactorScenario):
     def simulator(self) -> str:
         return (
             "A factor is judged by ALPHA's rank IC with inference and a cost-aware replay; there "
-            "is no Qlib model. Decide at the close of UTC day d, fill at open d+1, exit at open "
-            "d+2. ALPHA canonical synchronized long-only replay (not Nautilus), top third equal "
+            "is no Qlib model. Decide at the close of UTC day d, fill at open d+1, hold daily "
+            "(1 day), weekly (7 days) or monthly (28 days). Each clock uses non-overlapping "
+            "screen windows phased at 2021-01-01. ALPHA canonical synchronized long-only replay "
+            "(not Nautilus), top third equal "
             "weighted, against the equal-weight basket; 10 bps fee plus 6 bps slippage per side, "
             "365 days/year. Direction chosen in-sample. BH q < 0.10 screens the cross-run trial "
-            "ledger; only screened factors are replayed. Positive net excess makes an exploratory "
-            "candidate, never admission, evidence, approval or promotion."
+            "ledger, counting each factor x clock as a trial; only screened clocks are replayed. "
+            "Hold drifted weights between rebalances; residual trades are executed and charged. "
+            "Positive net excess at a weekly or monthly clock makes an exploratory candidate; "
+            "a daily-only pass is FAST_ONLY, never admission, evidence, approval or promotion."
         )
 
     @property
@@ -114,7 +180,8 @@ class AlphaFactorScenario(QlibFactorScenario):
             "2017-08-17..2020-12-31; exploration decisions: 2021-01-01..2023-12-24; panel ends "
             "2023-12-31. 2024-01-01 onward is reserved and never available to this loop. "
             "Prefix-invariance checks at quarter ends and 2023-12-24 detect some look-ahead, "
-            "not all. "
+            "not all. Daily, weekly (7-day) and monthly (28-day) holding/rebalance clocks are "
+            "fixed in advance; only a weekly or monthly pass can become a candidate. "
             "exploratory, not admitted, not yet confirmed."
         )
 
@@ -228,39 +295,7 @@ class AlphaFactorRunner(Developer):
 class AlphaFactorHypothesisGen(QlibFactorHypothesisGen):
     def prepare_context(self, trace: Any) -> tuple[dict[str, Any], bool]:
         context, flag = super().prepare_context(trace)
-        ledger_name = os.environ.get("ALPHA_FACTOR_TRIAL_LEDGER")
-        if ledger_name and Path(ledger_name).exists():
-            raw = Path(ledger_name).read_bytes()
-            # Only complete lines: another run may be appending at this moment.
-            rows = [json.loads(line) for line in raw[: raw.rfind(b"\n") + 1].splitlines()]
-            if rows:
-                heading = (
-                    "\nALPHA trial ledger (all runs; exploratory, not admitted; "
-                    "15 surviving coins only)\n"
-                )
-                lines, seen = [], set()
-                for row in reversed(rows):
-                    if row.get("schema") not in {
-                        "AlphaRdagentFactorTrialV1",
-                        "AlphaRdagentFactorTrialV2",
-                    }:
-                        raise ValueError("invalid ALPHA trial ledger schema")
-                    if row["code_sha256"] in seen or row["status"] == "REPEAT":
-                        continue
-                    seen.add(row["code_sha256"])
-                    lines.append(
-                        f"{row['name']}: {row['status']}; "
-                        f"mean rank IC {row['screen'].get('mean_ic')}; "
-                        f"q {row['q']}; run {row['run_id']}"
-                    )
-                    if (
-                        row["schema"] == "AlphaRdagentFactorTrialV2"
-                        and row["exposure"]["previously_exposed"] is True
-                    ):
-                        lines[-1] += "; protected window previously exposed"
-                    if len(lines) == 30:
-                        break
-                context["hypothesis_and_feedback"] += (heading + "\n".join(lines))[:4000]
+        append_swing_context(context, os.environ.get("ALPHA_FACTOR_TRIAL_LEDGER"))
         return context, flag
 
 

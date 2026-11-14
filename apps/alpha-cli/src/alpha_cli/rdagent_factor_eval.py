@@ -20,7 +20,20 @@ from typing import Any
 import numpy as np
 import polars as pl
 
-from alpha_backtest.portfolio_replay import WeightTarget, run_weight_replay
+from alpha_backtest.portfolio_replay import run_weight_replay
+from alpha_cli._rdagent_clocks import (
+    CLOCKS as CLOCKS,
+)
+from alpha_cli._rdagent_clocks import (
+    SWING_CLOCKS,
+    clock_feedback,
+    clock_samples,
+    clock_targets,
+    overall_status,
+    trial_clocks,
+    trial_family,
+    validate_clock_row,
+)
 from alpha_cli.crypto_bulk_store import configured_crypto_bulk_store
 from alpha_core import Bar, DataError
 from alpha_research.panel import cross_sectional_ic
@@ -60,8 +73,16 @@ WINDOWS = {
     "panel_end": PANEL_END,
     "reserved_start": RESERVED_START,
 }
-CONFIG = {
+CONFIG: dict[str, Any] = {
     "windows": WINDOWS,
+    "clocks": CLOCKS,
+    "swing_clocks": SWING_CLOCKS,
+    "clock_phase": EXPLORATION[0],
+    "forward_windows": "non-overlapping; open(d+1+h) / open(d+1) - 1",
+    "residual_trades": (
+        "Drifted holdings between rebalances; fill-price and fee differences cause small "
+        "residual trades, executed and charged."
+    ),
     "cuts": CUTS,
     "fee_bps": FEE_BPS,
     "slippage_bps": SLIPPAGE_BPS,
@@ -71,7 +92,7 @@ CONFIG = {
     "q_threshold": Q_THRESHOLD,
     "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
 }
-TRIAL_SCHEMA = "AlphaRdagentFactorTrialV2"
+TRIAL_SCHEMA = "AlphaRdagentFactorTrialV3"
 LOOP_UNIVERSE = (
     "ADAUSDT",
     "ATOMUSDT",
@@ -98,6 +119,7 @@ STATUSES = frozenset(
         "SCREEN_FAIL",
         "REPLAY_FAIL",
         "CANDIDATE",
+        "FAST_ONLY",
         "REPEAT",
         "IMPORTED",
     }
@@ -305,6 +327,7 @@ def screen(
     digest: str,
     *,
     series: dict[str, Any] | None = None,
+    n_resamples: int | None = None,
 ) -> dict[str, Any]:
     values = np.asarray(signal, dtype=float)
     finite = np.isfinite(values)
@@ -329,13 +352,14 @@ def screen(
         daily,
         lambda x: float(np.mean(x)),
         seed=int(digest[:8], 16),
-        n_resamples=BOOTSTRAP_RESAMPLES,
+        n_resamples=BOOTSTRAP_RESAMPLES if n_resamples is None else n_resamples,
     )
     return {
         **result,
         "status": "OK",
         "mean_ic": mean,
         "n": len(daily),
+        "warnings": [f"low_sample: n={len(daily)}"] if len(daily) < 20 else [],
         "effective_n": effective,
         "z": z,
         "p": math.erfc(abs(z) / math.sqrt(2)),
@@ -343,6 +367,25 @@ def screen(
         "direction": 1 if mean > 0 else -1 if mean < 0 else 0,
         "direction_selection": "chosen in-sample",
     }
+
+
+def screen_at_clock(
+    signal: np.ndarray,
+    opens: np.ndarray,
+    days: list[date],
+    digest: str,
+    clock: str,
+    *,
+    open_days: list[date],
+    series: dict[str, Any] | None = None,
+    n_resamples: int | None = None,
+) -> dict[str, Any]:
+    data = clock_samples(signal, opens, days, open_days, clock)
+    if series is not None:
+        series.update(data)
+    seed_digest = digest if clock == "daily" else sha((digest + clock).encode())
+    options = {} if n_resamples is None else {"n_resamples": n_resamples}
+    return screen(data["signal"], data["outcome"], seed_digest, series=series, **options)
 
 
 def _return_metrics(values: np.ndarray) -> dict[str, float]:
@@ -365,9 +408,12 @@ def replay(
     days: list[date],
     direction: int,
     *,
+    clock: str = "daily",
     series: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], np.ndarray]:
     sessions = [days[0] + timedelta(days=n) for n in range((days[-1] - days[0]).days + 3)]
+    if sessions[-1] >= RESERVED_DAY or (panel["date"] >= RESERVED_DAY).any():
+        raise DataError("replay reaches reserved window")
     rows = panel.filter(pl.col("date").is_between(sessions[0], sessions[-1]))
     symbols = sorted(panel["instrument"].unique().to_list())
     bars = {}
@@ -387,28 +433,16 @@ def replay(
             )
             for r in group.iter_rows(named=True)
         ]
-    targets, missing, cash_days = [], 0, 0
-    for day, row in zip(days, np.asarray(signal, dtype=float), strict=True):
-        values = dict(zip(symbols, map(float, row), strict=True))
-        available = [s for s in symbols if math.isfinite(values[s])]
-        missing += len(symbols) - len(available)
-        k = max(1, round(TOP_FRACTION * len(available)))
-        ranked = sorted(available, key=lambda s: (-direction * values[s], s))
-        selected = set(ranked[:k]) if len(available) >= MIN_NAMES else set()
-        cash_days += not selected
-        origin = datetime.combine(day, time(), UTC)
-        for name in symbols:
-            targets.append(
-                WeightTarget(
-                    symbol=name,
-                    origin_ts=origin,
-                    available_at=origin + timedelta(hours=23),
-                    target_ts=origin + timedelta(days=1),
-                    target_weight=1 / k if name in selected else 0.0,
-                    score=direction * values[name] if name in available else 0.0,
-                    fold=0,
-                )
-            )
+    targets, missing, cash_days, rebalances = clock_targets(
+        signal,
+        matrix(panel, "close", days, symbols),
+        days,
+        symbols,
+        direction,
+        clock,
+        top_fraction=TOP_FRACTION,
+        min_names=MIN_NAMES,
+    )
     result = run_weight_replay(bars, targets, fee_bps=FEE_BPS, slippage_bps=SLIPPAGE_BPS)
     if series is not None:
         series.update(periods=result.periods, targets=targets)
@@ -418,6 +452,14 @@ def replay(
         "net": _return_metrics(net),
         "gross": _return_metrics(gross),
         "mean_turnover": float(np.mean([p.turnover for p in result.periods])),
+        "turnover_per_rebalance": sum(p.turnover for p in result.periods) / rebalances,
+        "annual_cost": (
+            sum(p.fees + p.slippage_cost for p in result.periods)
+            / float(np.mean([equity for _, equity in result.backtest.equity_curve]))
+            * ANNUAL_DAYS
+            / len(result.periods)
+        ),
+        "rebalances": rebalances,
         "missing_coin_days": missing,
         "cash_days": cash_days,
         "tie_break": "instrument name ascending",
@@ -439,7 +481,8 @@ def _read_ledger(path: Path) -> list[dict[str, Any]]:
         try:
             row = json.loads(line)
             if (
-                row["schema"] not in {"AlphaRdagentFactorTrialV1", TRIAL_SCHEMA}
+                row["schema"]
+                not in {"AlphaRdagentFactorTrialV1", "AlphaRdagentFactorTrialV2", TRIAL_SCHEMA}
                 or row["trial_index"] != index
                 or not re.fullmatch("[0-9a-f]{64}", row["code_sha256"])
             ):
@@ -468,7 +511,7 @@ def _read_ledger(path: Path) -> list[dict[str, Any]]:
                 raise ValueError("invalid trial metrics or authority")
             if row["status"] not in STATUSES or row["stage"] not in {"none", "screen", "replay"}:
                 raise ValueError("invalid trial status or stage")
-            if row["schema"] == TRIAL_SCHEMA and (
+            if row["schema"] in {"AlphaRdagentFactorTrialV2", TRIAL_SCHEMA} and (
                 not isinstance(row["instruments"], list)
                 or not row["instruments"]
                 or any(not isinstance(s, str) or not s.strip() for s in row["instruments"])
@@ -476,9 +519,15 @@ def _read_ledger(path: Path) -> list[dict[str, Any]]:
                 or not {"previously_exposed", "worst_status", "matches"} <= row["exposure"].keys()
             ):
                 raise ValueError("invalid V2 instruments or exposure")
+            if row["schema"] == TRIAL_SCHEMA:
+                validate_clock_row(row)
             if row["status"] == "IMPORTED":
                 _validate_imported(row["imported"])
-                if row["schema"] != TRIAL_SCHEMA or row["stage"] != "none" or row["p"] != 1.0:
+                if (
+                    row["schema"] not in {"AlphaRdagentFactorTrialV2", TRIAL_SCHEMA}
+                    or row["stage"] != "none"
+                    or row["p"] != 1.0
+                ):
                     raise ValueError("invalid imported trial")
         except (ValueError, TypeError, KeyError) as error:
             raise DataError(f"invalid trial ledger line {index}: {error}") from error
@@ -567,7 +616,7 @@ def import_historical(ledger: Path, source: Path) -> list[dict[str, Any]]:
             except (ValueError, TypeError, KeyError, OSError) as error:
                 raise DataError(f"invalid historical item {len(rows) + 1}: {error}") from error
             row = {
-                "schema": TRIAL_SCHEMA,
+                "schema": "AlphaRdagentFactorTrialV2",
                 "trial_index": len(history) + len(rows) + 1,
                 "name": item["name"],
                 "plain_name": plain_name(item["name"]),
@@ -592,7 +641,11 @@ def import_historical(ledger: Path, source: Path) -> list[dict[str, Any]]:
             rows.append(row)
             identities.add(digest)
         for row in rows:
-            row.update(family_size=len(identities), total_trials=len(history) + len(rows))
+            row.update(
+                family_size=len(trial_family([*history, *rows])),
+                distinct_factors=len(identities),
+                total_trials=len(history) + len(rows),
+            )
         with ledger.open("ab", buffering=0) as stream:
             for row in rows:
                 line = canonical(row)
@@ -642,7 +695,9 @@ def _inputs(
     if not set(values["instrument"].to_list()) <= set(panel["instrument"].to_list()):
         raise DataError("factor instruments outside panel")
     fingerprint = sha(
-        Path(__file__).read_bytes() + (Path(__file__).resolve().parents[4] / "uv.lock").read_bytes()
+        Path(__file__).read_bytes()
+        + Path(__file__).with_name("_rdagent_clocks.py").read_bytes()
+        + (Path(__file__).resolve().parents[4] / "uv.lock").read_bytes()
     )
     return (
         request,
@@ -661,63 +716,99 @@ def _inputs(
 def _deflate(
     rows: list[dict[str, Any]],
     history: list[dict[str, Any]],
-    family: dict[str, dict[str, Any]],
-    replay_returns: dict[str, np.ndarray],
+    family: dict[tuple[str, str], dict[str, Any]],
+    replay_returns: dict[tuple[str, str], np.ndarray],
 ) -> list[float]:
-    """Deflated Sharpe for this request's replays; returns every replayed trial's Sharpe."""
+    """Deflate against every distinct replayed factor x clock in ledger order."""
     trials = [
-        row["replay"]["net"]["per_observation_sharpe"]
-        for row in [*history, *rows]
-        if row["stage"] == "replay" and "net" in row["replay"]
+        trial["replay"]["net"]["per_observation_sharpe"]
+        for trial in family.values()
+        if "net" in trial["replay"]
     ]
+    identities: dict[str, dict[str, Any]] = {}
+    for row in [*history, *rows]:
+        if row["status"] != "REPEAT":
+            identities.setdefault(row["code_sha256"], row)
     for row in rows:
         row["replayed_trials"] = len(trials)
-        if row["code_sha256"] in replay_returns:
-            returns = replay_returns[row["code_sha256"]]
-            row["replay"]["deflated_sharpe"] = asdict(
+        if row["status"] == "REPEAT":
+            earliest = identities[row["code_sha256"]]
+            row["first_trial"] = {
+                k: earliest[k] for k in ("run_id", "iteration", "name", "status", "screen")
+            }
+            for clock, trial in trial_clocks(earliest).items():
+                row["clocks"][clock].update(
+                    {k: trial[k] for k in ("status", "p", "screen", "replay")}
+                )
+            row["lead_clock"] = earliest.get("lead_clock", "daily")
+            row.update({k: row["clocks"]["daily"][k] for k in ("p", "q", "screen", "replay")})
+            continue
+        for clock, trial in trial_clocks(row).items():
+            key = (row["code_sha256"], clock)
+            if key not in replay_returns:
+                continue
+            returns = replay_returns[key]
+            trial["replay"]["deflated_sharpe"] = asdict(
                 deflated_sharpe(returns, trial_sharpes=trials)
             )
-            # Replayed factors passed the screen, so the replayed set alone understates the
-            # search. Also deflate against the expected maximum of the whole family's size.
             if len(trials) >= 2:
                 benchmark = expected_max_sharpe(float(np.var(trials, ddof=1)), len(family))
-                row["replay"]["deflated_sharpe_family"] = {
+                trial["replay"]["deflated_sharpe_family"] = {
                     "n_trials": len(family),
                     "benchmark_sharpe": benchmark,
                     "psr": probabilistic_sharpe_ratio(returns, benchmark_sr=benchmark),
                 }
             else:
-                row["replay"]["deflated_sharpe_family"] = {
+                trial["replay"]["deflated_sharpe_family"] = {
                     "n_trials": len(family),
                     "psr": None,
                     "reason": "fewer than two replayed trials: no cross-trial variance",
                 }
-        if row["status"] == "REPEAT":
-            earliest = family[row["code_sha256"]]
-            row["first_trial"] = {
-                k: earliest[k] for k in ("run_id", "iteration", "name", "status", "screen")
-            }
     return trials
 
 
 def _report(
     rows: list[dict[str, Any]],
     history: list[dict[str, Any]],
-    family: dict[str, dict[str, Any]],
+    family: dict[tuple[str, str], dict[str, Any]],
     trials: list[float],
-) -> tuple[dict[str, Any] | None, dict[str, float], dict[str, Any], bool, str]:
+) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any], bool, str]:
     """Lead factor, RD-Agent's result keys, disclosures, ALPHA's decision and feedback text."""
     # The lead is the best candidate when there is one, so RD-Agent's stored result matches the
     # decision; otherwise the lowest q among this request's new factors.
     candidates = [row for row in rows if row["status"] == "CANDIDATE"]
     eligible = candidates or [row for row in rows if row["status"] != "REPEAT"]
-    lead = min(eligible, key=lambda r: (r["q"], r["name"])) if eligible else None
-    legacy = {"IC": lead["screen"].get("mean_ic", float("nan")) if lead else float("nan")}
+    lead = (
+        min(eligible, key=lambda r: (r["clocks"][r["lead_clock"]]["q"], r["name"]))
+        if eligible
+        else None
+    )
+    lead_trial = lead["clocks"][lead["lead_clock"]] if lead else None
+    legacy = {
+        "IC": lead_trial["screen"].get("mean_ic", float("nan")) if lead_trial else float("nan")
+    }
     for cost, key in (("without", "gross"), ("with", "net")):
         for metric in ("annualized_return", "max_drawdown"):
             legacy[f"1day.excess_return_{cost}_cost.{metric}"] = (
-                lead["replay"].get(key, {}).get(metric, float("nan")) if lead else float("nan")
+                lead_trial["replay"].get(key, {}).get(metric, float("nan"))
+                if lead_trial
+                else float("nan")
             )
+    for row in rows:
+        for clock, trial in trial_clocks(row).items():
+            prefix = f"{row['name']}.{clock}."
+            legacy.update(
+                {
+                    prefix + "status": trial["status"],
+                    prefix + "mean_ic": trial["screen"].get("mean_ic", float("nan")),
+                    prefix + "q": trial["q"],
+                    prefix + "net_annual_excess": trial["replay"]
+                    .get("net", {})
+                    .get("annualized_return", float("nan")),
+                    prefix + "mean_turnover": trial["replay"].get("mean_turnover", float("nan")),
+                }
+            )
+        legacy[f"{row['name']}.feedback"] = clock_feedback(row)
     disclosures = {
         "survivorship": SURVIVORSHIP,
         "multiple_testing": "screening only, adaptive family, no error rate claimed",
@@ -731,20 +822,18 @@ def _report(
     }
     decision = any(row["status"] == "CANDIDATE" for row in rows)
     feedback = (
-        f"{LABEL}. {SURVIVORSHIP}. Ledger trials: {len(history) + len(rows)}; distinct family: "
-        f"{len(family)}; replayed trials: {len(trials)}. Screening only, adaptive family, no "
+        f"{LABEL}. {SURVIVORSHIP}. Ledger trials: {len(family)}; "
+        f"distinct factors: {len({key[0] for key in family})}; "
+        f"replayed trials: {len(trials)}. Screening only, adaptive family, no "
         "error rate claimed. Direction chosen in-sample. Exploration "
         f"{EXPLORATION[0]}..{EXPLORATION[1]}; history 2017-08-17..2020-12-31; panel ends "
         f"{PANEL_END}; {RESERVED_START}+ reserved, never evaluated. Decide at close, fill next "
-        "open, exit following open; ALPHA canonical synchronized replay, not Nautilus; 10 bps "
+        "open; daily (1-day), weekly (7-day), monthly (28-day) non-overlapping holding clocks "
+        "phased at 2021-01-01; ALPHA canonical synchronized replay, not Nautilus; 10 bps "
         "fee + 6 bps slippage per side. Prefix invariance is a fixed-cut check, not proof. "
     )
-    feedback += " ".join(
-        f"{r['name']}: {r['status']}, mean rank IC {r['screen'].get('mean_ic')}, "
-        f"q={r['q']:.6g}, net annual excess "
-        f"{r['replay'].get('net', {}).get('annualized_return')}."
-        for r in rows
-    )
+    feedback += CONFIG["residual_trades"] + " "
+    feedback += " ".join(clock_feedback(row) for row in rows)
     for row in rows:
         exposure = row["exposure"]
         if exposure["previously_exposed"]:
@@ -797,7 +886,7 @@ def _bucket_frames(
     )
 
 
-def _series_frames(
+def _clock_series_frames(
     row: dict[str, Any],
     data: dict[str, Any],
     signal: np.ndarray,
@@ -842,6 +931,29 @@ def _series_frames(
                 ]
             ).sort(["clock", "date", "instrument"]),
         )
+
+
+def _series_frames(
+    row: dict[str, Any],
+    data: dict[str, Any],
+    signal: np.ndarray,
+    outcome: np.ndarray,
+    days: list[date],
+    symbols: list[str],
+) -> Iterator[tuple[str, pl.DataFrame]]:
+    frames: dict[str, list[pl.DataFrame]] = {}
+    for clock in CLOCKS:
+        if clock not in data:
+            continue
+        block = data[clock]
+        if "days" not in block:
+            continue
+        for kind, frame in _clock_series_frames(
+            row["clocks"][clock], block, block["signal"], block["outcome"], block["days"], symbols
+        ):
+            frames.setdefault(kind, []).append(frame.with_columns(pl.lit(clock).alias("clock")))
+    for kind, blocks in frames.items():
+        yield kind, pl.concat(blocks)
 
 
 def _series_file(path: Path, payload: bytes) -> None:
@@ -922,11 +1034,12 @@ def _screen_factors(
     values: pl.DataFrame,
     inputs: dict[str, str],
     history: list[dict[str, Any]],
-    family: dict[str, dict[str, Any]],
+    identities: dict[str, dict[str, Any]],
     entries: Any,
     days: list[date],
     symbols: list[str],
-    outcome: np.ndarray,
+    opens: np.ndarray,
+    open_days: list[date],
     series: dict[str, dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], dict[str, np.ndarray]]:
     from alpha_cli.rdagent_exposure import label_for
@@ -950,35 +1063,104 @@ def _screen_factors(
             "q": 1.0,
             "screen": {},
             "replay": {},
+            "lead_clock": "daily",
             "label": LABEL,
             "survivorship": SURVIVORSHIP,
             "authority": AUTHORITY,
+            "clocks": {
+                c: {"status": "ERROR", "p": 1.0, "q": 1.0, "screen": {}, "replay": {}}
+                for c in CLOCKS
+            },
         }
         row["exposure"] = label_for(row, entries)
-        if digest in family:
+        if digest in identities:
+            earliest = identities[digest]
             row["status"] = "REPEAT"
             row["first_trial"] = {
-                k: family[digest][k] for k in ("run_id", "iteration", "name", "status", "screen")
+                k: earliest[k] for k in ("run_id", "iteration", "name", "status", "screen")
             }
-            row["p"] = family[digest]["p"]
+            # Copy: repeats must never mutate the original trial or create replay evidence.
+            for c, trial in trial_clocks(earliest).items():
+                row["clocks"][c] = {k: trial[k] for k in ("status", "p", "q", "screen", "replay")}
+            row["lead_clock"] = earliest.get("lead_clock", "daily")
         else:
             if factor["status"] == "OK":
-                try:
-                    if factor["name"] not in values.columns:
-                        raise DataError(f"no value column for factor {factor['name']!r}")
-                    signal = matrix(values, factor["name"], days, symbols)
-                    signals[digest] = signal
-                    stats = screen(signal, outcome, digest, series=series.setdefault(digest, {}))
-                except (DataError, ValueError, ZeroDivisionError, FloatingPointError) as error:
-                    stats = {
-                        "status": "ERROR",
-                        "p": 1.0,
-                        "error": f"{type(error).__name__}: {error}",
-                    }
-                row.update(status=stats["status"], p=stats["p"], screen=stats, stage="screen")
-            family[digest] = row
+                row["stage"] = "screen"
+                for clock in CLOCKS:
+                    block = series.setdefault(digest, {}).setdefault(clock, {})
+                    try:
+                        if factor["name"] not in values.columns:
+                            raise DataError(f"no value column for factor {factor['name']!r}")
+                        if digest not in signals:
+                            signals[digest] = matrix(values, factor["name"], days, symbols)
+                        stats = screen_at_clock(
+                            signals[digest],
+                            opens,
+                            days,
+                            digest,
+                            clock,
+                            open_days=open_days,
+                            series=block,
+                        )
+                    except (DataError, ValueError, ZeroDivisionError, FloatingPointError) as error:
+                        stats = {
+                            "status": "ERROR",
+                            "p": 1.0,
+                            "error": f"{type(error).__name__}: {error}",
+                        }
+                    row["clocks"][clock].update(status=stats["status"], p=stats["p"], screen=stats)
+            identities[digest] = row
         rows.append(row)
     return rows, signals
+
+
+def _replay_clocks(
+    rows: list[dict[str, Any]],
+    panel: pl.DataFrame,
+    signals: dict[str, np.ndarray],
+    days: list[date],
+    series: dict[str, dict[str, Any]],
+    family: dict[tuple[str, str], dict[str, Any]],
+    total_rows: int,
+) -> tuple[dict[tuple[str, str], np.ndarray], dict[str, dict[str, float]]]:
+    q = benjamini_hochberg([trial["p"] for trial in family.values()], alpha=Q_THRESHOLD).qvalues
+    qvalues: dict[str, dict[str, float]] = {}
+    for (digest, clock), value in zip(family, q, strict=True):
+        qvalues.setdefault(digest, {})[clock] = float(value)
+    replay_returns = {}
+    for row in rows:
+        digest = row["code_sha256"]
+        row.update(family_size=len(family), distinct_factors=len(qvalues), total_trials=total_rows)
+        for clock, trial in row["clocks"].items():
+            trial["q"] = qvalues[digest].get(clock, 1.0)
+            if row["status"] != "OK" or trial["status"] != "OK":
+                continue
+            trial["status"] = "SCREEN_FAIL"
+            if trial["q"] < Q_THRESHOLD:
+                row["stage"] = "replay"
+                try:
+                    metrics, net = replay(
+                        panel,
+                        signals[digest],
+                        days,
+                        trial["screen"]["direction"],
+                        clock=clock,
+                        series=series[digest][clock],
+                    )
+                except (DataError, ValueError, ZeroDivisionError, FloatingPointError) as error:
+                    trial.update(
+                        status="ERROR", replay={"error": f"{type(error).__name__}: {error}"}
+                    )
+                    continue
+                trial.update(
+                    replay=metrics,
+                    status="PASS" if metrics["net"]["annualized_return"] > 0 else "REPLAY_FAIL",
+                )
+                replay_returns[(digest, clock)] = net
+        if row["status"] == "OK":
+            row["status"], row["lead_clock"] = overall_status(row["clocks"])
+        row.update({k: row["clocks"]["daily"][k] for k in ("p", "q", "screen", "replay")})
+    return replay_returns, qvalues
 
 
 def _evaluate_locked(
@@ -997,55 +1179,37 @@ def _evaluate_locked(
         "exposure_log_sha256": sha(exposure_bytes) if exposure_bytes is not None else None,
     }
     history = _read_ledger(ledger)
-    family: dict[str, dict[str, Any]] = {}
+    identities: dict[str, dict[str, Any]] = {}
     for row in history:
         if row["status"] != "REPEAT":
-            family.setdefault(row["code_sha256"], row)
+            identities.setdefault(row["code_sha256"], row)
     first, last = (date.fromisoformat(d) for d in EXPLORATION)
     days = [first + timedelta(days=n) for n in range((last - first).days + 1)]
     symbols = sorted(panel["instrument"].unique().to_list())
-    # opens[i] is the open of day days[0] + i, for i up to len(days) + 1.
-    opens = matrix(
-        panel, "open", [first + timedelta(days=n) for n in range(len(days) + 2)], symbols
-    )
-    outcome = opens[2:] / opens[1:-1] - 1  # decision day d: open(d+2) / open(d+1) - 1
+    open_days = [
+        first + timedelta(days=n) for n in range((date.fromisoformat(PANEL_END) - first).days + 1)
+    ]
+    opens = matrix(panel, "open", open_days, symbols)
+    outcome = opens[2 : len(days) + 2] / opens[1 : len(days) + 1] - 1
     series: dict[str, dict[str, Any]] = {}
     rows, signals = _screen_factors(
-        run, request, values, inputs, history, family, entries, days, symbols, outcome, series
+        run,
+        request,
+        values,
+        inputs,
+        history,
+        identities,
+        entries,
+        days,
+        symbols,
+        opens,
+        open_days,
+        series,
     )
-    q = benjamini_hochberg([f["p"] for f in family.values()], alpha=Q_THRESHOLD).qvalues
-    qvalues = dict(zip(family, map(float, q), strict=True))
-    replay_returns = {}
-    for row in rows:
-        digest = row["code_sha256"]
-        row.update(
-            q=qvalues[digest], family_size=len(family), total_trials=len(history) + len(rows)
-        )
-        if row["status"] != "OK":
-            continue
-        row["status"] = "SCREEN_FAIL"
-        if row["q"] < Q_THRESHOLD:
-            try:
-                metrics, net = replay(
-                    panel,
-                    signals[digest],
-                    days,
-                    row["screen"]["direction"],
-                    series=series.setdefault(digest, {}),
-                )
-            except (DataError, ValueError, ZeroDivisionError, FloatingPointError) as error:
-                row.update(
-                    stage="replay",
-                    status="ERROR",
-                    replay={"error": f"{type(error).__name__}: {error}"},
-                )
-                continue
-            row.update(
-                stage="replay",
-                replay=metrics,
-                status="CANDIDATE" if metrics["net"]["annualized_return"] > 0 else "REPLAY_FAIL",
-            )
-            replay_returns[digest] = net
+    family = trial_family([*history, *rows])
+    replay_returns, qvalues = _replay_clocks(
+        rows, panel, signals, days, series, family, len(history) + len(rows)
+    )
     series_note = _record_series(
         run, request["iteration"], rows, series, signals, outcome, days, symbols, record_inputs
     )
@@ -1060,6 +1224,7 @@ def _evaluate_locked(
         "inputs": record_inputs,
         "factors": rows,
         "family_size": len(family),
+        "distinct_factors": len(identities),
         "total_trials": len(history) + len(rows),
         "replayed_trials": len(trials),
         "qvalues": qvalues,

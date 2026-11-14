@@ -54,7 +54,8 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0046](0046-crypto-snapshot-members-are-content-addressed.md) | A crypto snapshot member is its content; equal recaptures count as one, any difference fails loud | Accepted; daily query over many members by 0048 | 2026-11-14 |
 | [0047](0047-alpaca-interim-stock-source.md) | Alpaca's free plan is an interim, not-yet-confirmed stock source (SIP feed, raw prices plus actions, split cross-check; never replaces Tiingo) | Accepted | 2026-11-14 |
 | [0048](0048-daily-rule-lane-binding-and-named-months.md) | Daily-rule approvals bind every module the lane runs through; the daily price query reads named months | Accepted | 2026-11-14 |
-| [0049](0049-alpha-judges-rdagent-factors.md) | ALPHA, not RD-Agent's built-in Qlib backtest, judges RD-Agent's factors (ALPHA classes through RD-Agent's settings; reserved 2024+ window) | Accepted | 2026-11-14 |
+| [0049](0049-alpha-judges-rdagent-factors.md) | ALPHA, not RD-Agent's built-in Qlib backtest, judges RD-Agent's factors (ALPHA classes through RD-Agent's settings; reserved 2024+ window) | Accepted; amended by 0050 | 2026-11-14 |
+| [0050](0050-swing-clocks-in-the-factor-judge.md) | The factor judge tests every idea at daily, weekly and monthly holding; only a swing pass is a candidate | Accepted | 2026-11-15 |
 
 ## Conventions
 

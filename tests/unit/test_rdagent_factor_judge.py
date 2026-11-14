@@ -138,30 +138,9 @@ assert list(base.result.loc[labels].index)==labels
 def test_hypothesis_context_shows_imported_and_exposed_v2_rows(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # Compile only this class so the actual summary method runs without optional RD-Agent imports.
-    import ast
     import json
-    from typing import Any
 
-    tree = ast.parse((WORKER / "alpha_factor_judge.py").read_text())
-    node = next(
-        n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "AlphaFactorHypothesisGen"
-    )
-
-    class Base:
-        def prepare_context(self, trace: Any) -> tuple[dict[str, Any], bool]:
-            return {"hypothesis_and_feedback": "Existing context"}, True
-
-    namespace: dict[str, Any] = {
-        "QlibFactorHypothesisGen": Base,
-        "Any": Any,
-        "os": os,
-        "Path": Path,
-        "json": json,
-    }
-    exec(
-        compile(ast.Module(body=[node], type_ignores=[]), "<hypothesis-summary>", "exec"), namespace
-    )
+    namespace = swing_parts()
     ledger = tmp_path / "trials.jsonl"
     rows = [
         {
@@ -334,3 +313,126 @@ def test_round_text_retains_words_and_factor_hashes(tmp_path: Path) -> None:
     ]
     assert record["feedback"] == vars(feedback)
     assert raw == json.dumps(record, sort_keys=True) + "\n"
+
+
+def swing_parts() -> dict[str, Any]:
+    import ast
+    import json
+
+    tree = ast.parse((WORKER / "alpha_factor_judge.py").read_text())
+    names = {"append_swing_context", "ledger_summary", "AlphaFactorHypothesisGen"}
+    nodes: list[ast.stmt] = [
+        n
+        for n in tree.body
+        if (isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.name in names)
+        or (
+            isinstance(n, ast.Assign)
+            and any(isinstance(t, ast.Name) and t.id == "SWING_BRIEF" for t in n.targets)
+        )
+    ]
+
+    class Base:
+        def prepare_context(self, trace: Any) -> tuple[dict[str, Any], bool]:
+            return {"hypothesis_and_feedback": "Existing context"}, True
+
+    namespace = {"Any": Any, "Path": Path, "os": os, "json": json, "QlibFactorHypothesisGen": Base}
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), "<swing-context>", "exec"), namespace)
+    return namespace
+
+
+@pytest.mark.parametrize("ledger_kind", ["absent", "empty", "v3"])
+def test_swing_brief_always_precedes_ledger(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ledger_kind: str
+) -> None:
+    import json
+
+    namespace = swing_parts()
+    ledger = tmp_path / "ledger.jsonl"
+    monkeypatch.delenv("ALPHA_FACTOR_TRIAL_LEDGER", raising=False)
+    if ledger_kind != "absent":
+        monkeypatch.setenv("ALPHA_FACTOR_TRIAL_LEDGER", str(ledger))
+        ledger.write_text("")
+    if ledger_kind == "v3":
+        row = {
+            "schema": "AlphaRdagentFactorTrialV3",
+            "name": "slow",
+            "code_sha256": "a" * 64,
+            "status": "CANDIDATE",
+            "lead_clock": "monthly",
+            "clocks": {
+                c: {
+                    "status": "PASS" if c == "monthly" else "SCREEN_FAIL",
+                    "screen": {"mean_ic": 0.2},
+                    "q": 0.03,
+                }
+                for c in ("daily", "weekly", "monthly")
+            },
+            "exposure": {"previously_exposed": False},
+        }
+        ledger.write_text(json.dumps(row) + "\n")
+    context, flag = namespace["AlphaFactorHypothesisGen"]().prepare_context(None)
+    brief = namespace["SWING_BRIEF"]
+    assert flag and len(brief) < 1800
+    assert context["hypothesis_and_feedback"].startswith("Existing context\n" + brief)
+    for wanted in (
+        "retail swing",
+        "never high frequency",
+        "7-day",
+        "28-day",
+        "low turnover",
+        "mechanism",
+        "falsifier",
+        "10 bps",
+        "6 bps",
+        "29%",
+        "19%-79%",
+        "not admitted",
+    ):
+        assert wanted in brief
+    pure = {"hypothesis_and_feedback": "Existing context"}
+    namespace["append_swing_context"](pure, str(ledger) if ledger_kind != "absent" else None)
+    assert pure == context
+    if ledger_kind == "v3":
+        assert (
+            "slow: CANDIDATE (daily SCREEN_FAIL, weekly SCREEN_FAIL, monthly PASS); lead monthly IC 0.2; q 0.03"
+            in context["hypothesis_and_feedback"]
+        )
+        assert context["hypothesis_and_feedback"].index(brief) < context[
+            "hypothesis_and_feedback"
+        ].index("ALPHA trial ledger")
+
+
+@RUNTIME
+def test_real_proposer_gets_swing_brief_with_and_without_ledger(tmp_path: Path) -> None:
+    script = r"""
+import sys, os
+from pathlib import Path
+from unittest.mock import patch
+sys.path.insert(0, sys.argv[1])
+from factor_loop_entry import install_source
+install_source(Path(sys.argv[2]))
+import alpha_factor_judge as j
+with patch.object(j.QlibFactorHypothesisGen, 'prepare_context', return_value=({'hypothesis_and_feedback': ''}, True)):
+ gen = object.__new__(j.AlphaFactorHypothesisGen)
+ os.environ.pop('ALPHA_FACTOR_TRIAL_LEDGER', None)
+ assert j.SWING_BRIEF in gen.prepare_context(None)[0]['hypothesis_and_feedback']
+ ledger = Path(sys.argv[3]) / 'ledger.jsonl'
+ ledger.write_text('')
+ os.environ['ALPHA_FACTOR_TRIAL_LEDGER'] = str(ledger)
+ assert j.SWING_BRIEF in gen.prepare_context(None)[0]['hypothesis_and_feedback']
+"""
+    subprocess.run(
+        [
+            os.environ["ALPHA_FACTOR_PYTHON"],
+            "-I",
+            "-B",
+            "-c",
+            script,
+            str(WORKER),
+            os.environ["ALPHA_RDAGENT_SOURCE"],
+            str(tmp_path),
+        ],
+        check=True,
+        cwd=tmp_path,
+        timeout=60,
+    )

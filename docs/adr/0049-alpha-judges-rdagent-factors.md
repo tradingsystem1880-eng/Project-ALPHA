@@ -1,6 +1,6 @@
 # ADR-0049: ALPHA, not RD-Agent's built-in Qlib backtest, judges RD-Agent's factors
 
-**Status:** Accepted
+**Status:** Accepted; amended by [ADR-0050](0050-swing-clocks-in-the-factor-judge.md) (clocks, family, candidate rule)
 **Date:** 2026-11-14
 **Deciders:** AI build agents, under the owner's standing instruction to act on what serves the
 goal and the architecture the owner stated: "RD-Agent runs the research loop; Qlib supplies
