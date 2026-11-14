@@ -88,7 +88,13 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
   ([log](../owner-decisions-2.md#2026-11-14-accept-losing-temperature-on-the-codex-route-for-now)).
 - Open: test the paid route and compare it with the Codex route (the owner will do this later).
 - Decided: the first goal after the clean-up is one real RD-Agent loop, connected to a model through Codex
-  ([log](../owner-decisions-2.md#2026-11-14-first-goal-one-real-rd-agent-loop)).
+  ([log](../owner-decisions-2.md#2026-11-14-first-goal-one-real-rd-agent-loop)). First run,
+  2026-11-14: every step ran on real crypto bars, but RD-Agent's built-in Qlib backtest learned
+  nothing on 15 coins, so the loop is not yet meaningful
+  ([verification](../../../work/archive/2026-11/2026-11-14-rdagent-first-real-loop/04-verify.md)).
+- Open, for the owner: how RD-Agent's ideas get a backtest that can see them (a wider universe,
+  ALPHA's own Nautilus and statistical checks, or a calibration run on Qlib's public data)
+  ([roadmap item 2b](../../../roadmap/rd-agent-in-alpha.md#what-stands-between-today-and-rd-agent-researching-real-ideas)).
 - Decided: long studies use the Dell's disk for now
   ([log](../owner-decisions.md#2026-11-14-use-the-dells-disk-for-studies-for-now)).
 - Decided: the autonomous research team is a broader ALPHA capability built around and using
