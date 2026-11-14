@@ -364,3 +364,53 @@ Its closed request/audit/context/result checks keep the exact native RDLoop and 
 existing three-file worker manifest. Changed bytes require freshly derived profiles;
 old approvals/history are not rewritten. Synthetic execution remains unqualified for
 live inference, scientific admission or hard budget enforcement.
+
+## Model gateway (2026-11-14)
+
+`model_gateway.py` is the one way RD-Agent reaches an AI model
+([ADR-0044](../../docs/adr/0044-rdagent-model-gateway.md)). It is a stdlib-only program, run with
+any Python 3.11 or 3.12, that listens on `127.0.0.1` only and speaks the OpenAI chat-completions
+and embeddings formats; it imports neither ALPHA nor RD-Agent. Chat goes to the signed-in Codex
+CLI (`codex exec`, confined: read-only, ephemeral, no user configuration, no tools, no web search,
+RD-Agent's system message in place of Codex's built-in instructions), embeddings to local Ollama
+`nomic-embed-text`, and an optional paid route to an OpenAI-compatible provider whose key the
+owner sets in the environment. The fixture loops above still clear every model setting; nothing
+here changes them.
+
+```sh
+python3 workers/rdagent/model_gateway.py serve --data-dir /absolute/data/dir --run-id <id> \
+  --accept-unhonoured temperature          # writes model-gateway/session.json; logs to stderr
+python3 workers/rdagent/model_gateway.py status --data-dir /absolute/data/dir
+```
+
+RD-Agent is pointed at it with `CHAT_MODEL=lm_studio/alpha-chat`,
+`EMBEDDING_MODEL=lm_studio/alpha-embed`, `LM_STUDIO_API_BASE=<base_url>/v1`,
+`LM_STUDIO_API_KEY=<token>` (both from `session.json`, a per-start local token, mode 0600) and
+`LITELLM_LOCAL_MODEL_COST_MAP=True` (otherwise LiteLLM downloads its price list at import). The
+`lm_studio/` prefix is LiteLLM's generic OpenAI-compatible provider: unlike `openai/<unknown
+name>` it forwards `response_format`, so the gateway can enforce RD-Agent's JSON mode.
+
+- **Fidelity:** each request parameter is honoured, enforced another way (JSON checked and retried;
+  a JSON schema passed as `--output-schema`; streaming replayed after the whole reply), waived only
+  if listed in `--accept-unhonoured` (and then recorded on every call), or refused with an
+  OpenAI-shaped 400 naming it. On the Codex route `temperature`, `top_p`, `seed`, penalties and
+  `max_tokens` cannot be honoured; RD-Agent always sends `temperature` 0.5, so its launch accepts
+  losing that one. Tools, `stop`, `n`>1, images and unknown keys are always refused.
+- **Budget:** `--run-max-calls` (60), `--month-max-calls` (3000), `--run-max-usd` (10) and
+  `--month-max-usd` (50, the owner's ceiling, cannot be raised) are checked under a file lock before
+  every model attempt and fail closed. State: `<data-dir>/model-gateway/budget.json`; the data
+  directory may not be inside a git tree; unreadable state refuses every call.
+- **Records:** `<data-dir>/model-gateway/calls.jsonl`, one line per request (route, real model,
+  effort, honoured/enforced/waived/refused, attempts, JSON validity, tokens, dollars, time, status,
+  prompt and reply hashes). No prompt or reply text unless `--log-content`.
+- **No silent switch:** a Codex usage limit returns `codex_usage_limit` (429); the paid route is
+  used only when the gateway is started with `--chat-route api` and the owner's
+  `ALPHA_GATEWAY_API_BASE`/`ALPHA_GATEWAY_API_KEY` plus `--api-model` and both prices.
+
+Checks: `uv run pytest -q tests/unit/test_rdagent_model_gateway.py` (no sockets, fake `codex`) and
+`uv run python scripts/run_owned_test.py -- uv run pytest -q -m smoke -n 0
+tests/smoke/test_rdagent_model_gateway_smoke.py` (loopback only; with `ALPHA_RDAGENT_SOURCE` and
+`ALPHA_STOCK_PYTHON` set it also drives RD-Agent's own `APIBackend` through LiteLLM against the
+fake route). Measurements: [the task's verification](../../docs/work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md).
+It is not part of `scripts/setup.sh` or `gate.py doctor`: it needs no install, and whether Codex is
+signed in is already what `codex login status` reports.

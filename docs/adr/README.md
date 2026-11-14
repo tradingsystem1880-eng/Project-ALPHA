@@ -49,6 +49,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0041](0041-no-hidden-test-suite.md) | No hidden test suite; the seed tests are visible acceptance tests | Accepted | 2026-11-13 |
 | [0042](0042-qlib-worker-delegates-data-layer-to-upstream.md) | The Qlib worker delegates its data layer to upstream Qlib (opt-in Alpha158 feature recipe v3; v1 stays default) | Accepted | 2026-11-14 |
 | [0043](0043-storage-reserve-is-owner-set.md) | Storage reserve is an owner-set value; the default stays 100 GB / 15% | Accepted | 2026-11-14 |
+| [0044](0044-rdagent-model-gateway.md) | RD-Agent reaches its models through a local ALPHA gateway; Codex first | Accepted | 2026-11-14 |
 
 ## Conventions
 
