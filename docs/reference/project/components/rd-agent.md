@@ -40,6 +40,11 @@ what counts as evidence; [the owner does](research-cases-and-approval.md).
 - An AI model proposes the hypotheses. The owner prefers strong models through the ChatGPT
   subscription, with a cheap model on an API key as the fallback, without losing quality
   ([owner decisions](../owner-decisions.md#2026-11-14-rd-agents-ai-models)).
+- RD-Agent reaches every model through ALPHA's local model gateway
+  (`workers/rdagent/model_gateway.py`, [ADR-0044](../../../adr/0044-rdagent-model-gateway.md)):
+  chat through the signed-in Codex program, embeddings through local Ollama, an owner-keyed paid
+  route only if configured. The gateway holds ALPHA's call and dollar budget, refuses or records
+  every setting it cannot honour, and logs each call without its text.
 - Later: RD-Agent drives the Qlib worker, and composes studies across all research families.
 - The plain-English walk-through is [RD-Agent in ALPHA](../../../roadmap/rd-agent-in-alpha.md).
 
@@ -54,15 +59,18 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
 
 - **Workspaces:** `workers/rdagent`
 - **Capabilities:** `ai-stock-research`, `native-job-result`, `daily-rule-study`, `ai-research-team`
-- Code: [`workers/rdagent/`](../../../../workers/rdagent/README.md); the job supervisor in
+- Code: [`workers/rdagent/`](../../../../workers/rdagent/README.md) (the model gateway is
+  `workers/rdagent/model_gateway.py`); the job supervisor in
   `apps/alpha-cli/src/alpha_cli/native_supervisor.py`. Setup: `scripts/setup_rdagent.sh`.
 - Tests: `tests/smoke/test_rdagent_smoke.py`, `tests/unit/test_native_loop_conformance.py`,
-  `tests/unit/test_rdagent_foundation_contract.py`.
+  `tests/unit/test_rdagent_foundation_contract.py`; the gateway's
+  `tests/unit/test_rdagent_model_gateway.py` and `tests/smoke/test_rdagent_model_gateway_smoke.py`.
 - How to change it: [workers/rdagent/CONTEXT.md](../../../../workers/rdagent/CONTEXT.md).
 - Plans: the `plans` of each capability above in `docs/roadmap/capabilities.toml`.
 - Backlog: [autonomous research and restart](../../../roadmap/backlog/rdagent-autonomous-research.md),
   [gate coverage](../../../roadmap/backlog/gate-coverage-rdagent.md).
-- Decision records: none of its own yet. Related: [ADR-0011](../../../adr/0011-evidence-gated-external-integrations.md),
+- Decision records: [ADR-0044](../../../adr/0044-rdagent-model-gateway.md) (how it reaches its
+  models). Related: [ADR-0011](../../../adr/0011-evidence-gated-external-integrations.md),
   [ADR-0035](../../../adr/0035-generic-study-composition-and-external-capability-adapters.md).
 
 ## Decisions and open questions
@@ -71,7 +79,13 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
 - What is next, in order, with what each needs from the owner:
   [the seven blockers](../../../roadmap/rd-agent-in-alpha.md#what-stands-between-today-and-rd-agent-researching-real-ideas).
 - Decided: the Codex route comes first; an API key is the fallback, capped at about 50 US dollars a
-  month ([log](../owner-decisions.md#2026-11-14-api-spending-limit-for-rd-agents-models)).
+  month ([log](../owner-decisions.md#2026-11-14-api-spending-limit-for-rd-agents-models)). Built as
+  the model gateway ([ADR-0044](../../../adr/0044-rdagent-model-gateway.md)); measured quality and
+  how far a real step got are in the
+  [task's verification](../../../work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md).
+- Open, for the owner: whether to accept losing RD-Agent's "temperature" setting on the Codex
+  route (the gateway refuses it unless told to accept it; the measurements were made with it
+  dropped).
 - Decided: long studies use the Dell's disk for now
   ([log](../owner-decisions.md#2026-11-14-use-the-dells-disk-for-studies-for-now)).
 - Decided: the autonomous research team is a broader ALPHA capability built around and using
@@ -86,5 +100,7 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
   [owner decisions log](../owner-decisions.md).
 - Never copy, patch or re-implement RD-Agent inside ALPHA; use the pinned upstream version.
 - Never let its output count as evidence or approval.
+- Never connect it to a model except through the gateway, and never let the gateway switch to the
+  paid route by itself.
 - The worker rules: [RD-Agent worker](../../invariants/workers.md#rd-agent-worker) and
   [command line native](../../invariants/cli-native.md).

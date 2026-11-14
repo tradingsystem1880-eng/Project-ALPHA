@@ -62,7 +62,8 @@ Run on the Dell on 2026-11-14:
 
 ## What is still made-up
 
-- **No AI model.** The "propose" step returns a fixed hypothesis; no model is called anywhere.
+- **No AI model in the tested loops.** In the fixture and stock loops the "propose" step returns a
+  fixed hypothesis. A model is now connected (item 2 below), but no ALPHA-run job uses it yet.
 - **No real tools or code writing.** In the stock loop the "coding" step writes nothing; model and
   tool calls are counted but fake.
 - **No real data.** The rule study uses 7 invented daily bars; the stock loop uses fixed numbers.
@@ -74,14 +75,17 @@ Run on the Dell on 2026-11-14:
 
 1. ~~A runtime for RD-Agent's full stock loop.~~ Done 2026-11-14: the pinned package list above,
    installed with `bash scripts/setup_rdagent.sh --with-stock-runtime`.
-2. **An AI model connection.** Pinned RD-Agent reads its model from settings named `CHAT_MODEL`,
-   `EMBEDDING_MODEL` and `BACKEND` (LiteLLM by default), with the provider address and key in
-   `OPENAI_API_BASE`/`OPENAI_API_KEY` (or `CHAT_OPENAI_BASE_URL`/`CHAT_OPENAI_API_KEY`, Azure
-   variants, and `LITELLM_`-prefixed copies); its own command line reads them from a `.env` file.
-   ALPHA's workers deliberately clear these settings and block the network today, so connecting a
-   model is also engineering work. The stock runtime already contains LiteLLM 1.97.0 (the version
-   RD-Agent's own test settings name), which a connection would use. *From you:* which provider, a
-   spending limit, and the key, entered by you, never written into the repository.
+2. ~~An AI model connection.~~ Built 2026-11-14 ([ADR-0044](../adr/0044-rdagent-model-gateway.md)):
+   a small local program, `workers/rdagent/model_gateway.py`, that only the Dell can reach. RD-Agent
+   asks it for answers; it passes each request to the Codex program you are signed in to with
+   ChatGPT and gets text comparisons from Ollama, keeps a hard budget, and records every call
+   without its text. No key is stored. Through it, RD-Agent's own factor loop proposed an idea,
+   designed four factors, wrote their code and had its own checks accept them, on made-up data; it
+   stopped at the backtest step, which needs Qlib (item 6). Measured answers:
+   [verification](../work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md). *From you:* whether you
+   accept that the Codex route cannot use RD-Agent's "temperature" setting (it is refused unless
+   accepted, then recorded on every call). The paid fallback stays off until you choose to set a
+   key yourself.
 3. **A place to keep the data — your decision is in, one command is left.** You decided on
    2026-11-14 to use the Dell's disk for now. The free-space reserve is now a value you set per
    data folder ([ADR-0043](../adr/0043-storage-reserve-is-owner-set.md)): the old rule (keep

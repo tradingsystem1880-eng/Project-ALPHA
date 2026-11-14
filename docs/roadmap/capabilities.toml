@@ -833,13 +833,16 @@ proof_synthetic = []
 proof_smoke = [
   "tests/smoke/test_rdagent_smoke.py::test_native_fixture_loop_runs_and_alpha_shows_its_job",
   "tests/smoke/test_rdagent_smoke.py::test_stock_rdloop_result_is_read_by_alpha_and_the_web_app",
+  "tests/smoke/test_rdagent_model_gateway_smoke.py::test_stock_rdagent_client",
 ]
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = [
-  "an AI model connection for RD-Agent",
+  "the owner's decision whether to accept losing RD-Agent's temperature setting on the Codex route",
+  "an alpha command that starts a model-connected RD-Agent run under ALPHA's controls",
+  "Qlib's runner for the backtest step",
 ]
 state = "Partial"
-missing = "RD-Agent's own stock loop now runs here end to end (pinned Python 3.11 runtime, both smoke checks pass) but only with stand-in steps on made-up data; no AI model is connected, no alpha command starts a run, and restart after a crash is not solved"
+missing = "an AI model connection now exists (local gateway to the signed-in Codex program and Ollama, with budget and per-call records; ADR-0044) and RD-Agent's own factor loop got through proposal, experiment design and coding on made-up data, stopping at the Qlib backtest; the fixture and stock loops ALPHA runs still use stand-in steps, no alpha command starts a model-connected run, and restart after a crash is not solved"
 # owner, 2026-11-14: RD-Agent is a key component of how the project works
 triage = { card = "7", recommendation = "KEEP", owner_decision = "KEEP" }
 docs = ["docs/roadmap/rd-agent-in-alpha.md"]

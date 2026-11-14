@@ -91,6 +91,17 @@ First standard and hard builds, 2026-11-14, standard and hard briefs, triage cle
    check that also searched documents the builder was told not to touch (a brief error).
 2. Task G was approved unchanged; the orchestrator rebuilt the SPA bundle, which needs the network.
 
+RD-Agent model gateway, 2026-11-14, from a brief (three code files, raised to standard with
+`--class standard`), reviewed by Claude (Opus):
+
+| Task | Class, model, effort | Wall time | Input tokens (cached) | Output | Fix rounds | Result |
+|---|---|---|---|---|---|---|
+| H: RD-Agent model gateway and tests (3 files) | standard, `gpt-6.1-sol`, `high` | 19m27s | 3,228,369 (3,052,928) | 73,983 | 1 (gate) | correct; note 3 |
+
+3. The first live Codex call found two things no offline test could: a setting 0.167.0 does not
+   recognise and a CLI notice item mistaken for tool use. Claude fixed both by hand (small edits
+   plus one test), reviewed by Codex. A long brief with exact flags was worth its context.
+
 A fix round resumes the whole thread, so even an empty round costs about the full context again
 (about 40k more input each in task F). A brief's checks must only cover files the builder may change.
 
