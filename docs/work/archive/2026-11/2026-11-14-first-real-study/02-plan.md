@@ -1,7 +1,6 @@
 # Document the daily rule lane in the research stages
 
-**Delivery state:** Completed on branch `m8/first-real-study`; done when its pull request merges
-(filed straight into the archive). Documentation only.
+**Delivery state:** Completed — documentation only, on branch `m8/first-real-study`; done when its pull request merges (filed straight into the archive).
 **Build class:** small.
 
 ## For the owner
