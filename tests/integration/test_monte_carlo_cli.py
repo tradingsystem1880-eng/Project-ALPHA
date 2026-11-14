@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
+from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import polars as pl
 import pytest
+from numpy.typing import NDArray
 from typer.testing import CliRunner
 
 from alpha_cli.main import app
+from alpha_core import Bar
 from tests.fixtures.cli_fixtures import seed_store
 
 runner = CliRunner()
@@ -64,6 +69,20 @@ def test_classical_monte_carlo_publishes_three_auditable_families(
         "regime_switching",
         "student_t",
     }
+    regime = next(row for row in manifest["families"] if row["family"] == "regime_switching")
+    calm, volatile = manifest["regime_diagnostics"]["state_observations"]
+    assert regime["caveats"][0].startswith("Causal states: calm")
+    assert f"calm {calm} of {manifest['horizon']} OOS returns" in regime["caveats"][0]
+    assert f"volatile {volatile} (" in regime["caveats"][0]
+    shares = manifest["regime_diagnostics"]["state_shares"]
+    assert sum(shares) == pytest.approx(1.0)
+    assert shares == pytest.approx([calm / manifest["horizon"], volatile / manifest["horizon"]])
+    for family in manifest["families"]:
+        line = next(
+            line for line in result.output.splitlines() if line.startswith(f"  {family['family']}:")
+        )
+        assert "median terminal" in line
+        assert "P(ruin" in line
     paths = pl.read_parquet(rdir / "paths.parquet")
     metrics = pl.read_parquet(rdir / "path_metrics.parquet")
     assert paths.columns == ["family", "path_index", "step", "account_return"]
@@ -81,6 +100,48 @@ def test_classical_monte_carlo_publishes_three_auditable_families(
         "monte_carlo_drawdown_ruin",
         "monte_carlo_regimes",
     }
+
+
+def test_classical_monte_carlo_discloses_imbalanced_regime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def imbalanced_states(
+        bars: Sequence[Bar],
+        return_timestamps: Sequence[datetime],
+        *,
+        train_size: int,
+        window: int,
+    ) -> tuple[NDArray[np.int8], float, NDArray[np.float64]]:
+        horizon = len(return_timestamps)
+        states = np.ones(horizon, dtype=np.int8)
+        states[0] = 0
+        return states, 0.01, np.full(horizon, 0.02)
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr("alpha_cli.monte_carlo_cmds._causal_regime_states", imbalanced_states)
+    seed_store(tmp_path, symbol="SPY", n=120, sigma=0.02)
+    validation = runner.invoke(app, ["validate", "SPY", *_VALIDATE])
+    assert validation.exit_code == 0, validation.output
+    source = next((tmp_path / "runs").iterdir()).name
+    result = runner.invoke(
+        app,
+        [
+            "monte-carlo", "classical", "--from-run", source, "--paths", "8",
+            "--regime-window", "3", "--min-state-observations", "1",
+            "--min-state-transitions", "1",
+        ],
+    )  # fmt: skip
+    assert result.exit_code == 0, result.output
+    rdir = next(path for path in (tmp_path / "runs").iterdir() if path.name != source)
+    manifest = json.loads((rdir / "manifest.json").read_text())
+    regime = next(row for row in manifest["families"] if row["family"] == "regime_switching")
+    assert regime["status"] != "not_estimable"
+    assert manifest["regime_diagnostics"]["state_observations"] == [1, manifest["horizon"] - 1]
+    warning = "rest on few observations"
+    assert warning in regime["caveats"][1]
+    report = (rdir / "report.md").read_text()
+    assert f"Regime states: {regime['caveats'][0]} {regime['caveats'][1]}" in report
+    assert warning in result.output.splitlines()[-1]
 
 
 def test_classical_monte_carlo_is_byte_stable(
@@ -148,6 +209,9 @@ def test_classical_non_estimable_regime_publishes_fail_contract(
     assert regime["status"] == "not_estimable"
     assert regime["n_paths"] == 0
     assert regime["terminal_return_q50"] is None
+    assert regime["caveats"][0].startswith("state 0 needs at least 1000 observations")
+    assert regime["caveats"][1].startswith("Causal states: calm")
+    assert f"  regime_switching: not estimable; {regime['caveats'][0]}" in result.output
     assert pl.read_parquet(rdir / "paths.parquet")["family"].unique().sort().to_list() == [
         "iid_empirical",
         "student_t",

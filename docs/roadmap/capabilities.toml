@@ -236,14 +236,16 @@ proof_synthetic = [
   "tests/integration/test_web_retained_coverage.py::test_real_api_preserves_inspected_exit_one_and_native_findings",
   "apps/alpha-web/frontend/e2e/retained-bar-production.spec.ts::production-served bundle and real retained API show exact gaps without mutation or provider calls",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+proof_smoke = [
+  "tests/smoke/test_retained_coverage_smoke.py::test_completeness_check_finds_the_missing_day_without_provider_calls",
+  "tests/smoke/test_retained_coverage_smoke.py::test_workstation_reports_the_same_missing_day",
+]
+real_data = "not yet confirmed: on 2026-11-14 every one of the Dell's 1,426 Binance daily monthly files was checked against its calendar month; 1,412 are complete and the 14 short ones are each pair's listing month (docs/work/archive/2026-11/2026-11-14-prove-retained-coverage/04-verify.md)"
 needs = []
-state = "Partial"
-missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
+state = "Working"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; needs one real dataset
 triage = { card = "3", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = [
-  "2026-11-08-retained-daily-bar-grid",
   "2026-11-08-retained-bar-quality-ui",
   "2026-11-08-retained-bar-production-assembly",
   "2026-11-08-retained-project-production-smoke",
@@ -431,10 +433,13 @@ entry_points = [
 proof_synthetic = [
   "tests/integration/test_monte_carlo_cli.py::test_classical_monte_carlo_publishes_three_auditable_families",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+proof_smoke = [
+  "tests/smoke/test_monte_carlo_smoke.py::test_classical_monte_carlo_is_published_and_recomputes_independently",
+  "tests/smoke/test_monte_carlo_smoke.py::test_monte_carlo_refuses_a_backtest_source",
+]
+real_data = "On 2026-11-14 the installed alpha ran the classical simulation on a validation run over the free Alpaca SPY bars (2016-2026) on the Dell; every summary matched an independent recomputation; not yet confirmed (docs/work/archive/2026-11/2026-11-14-prove-monte-carlo/04-verify.md). The classical families are proven end to end; alpha monte-carlo kronos ran only with the stand-in model and needs the Kronos model files."
 needs = []
-state = "Partial"
-missing = "tested in-process only; no end-to-end smoke check yet"
+state = "Working"
 plans = []
 
 [[capability]]
@@ -457,18 +462,18 @@ proof_synthetic = [
   "tests/integration/test_c04_web_metric_basis.py::test_real_http_cli_and_serialization_preserve_basis_and_legacy",
   "apps/alpha-web/frontend/e2e/risk-live.spec.ts::compiled SPA and real backend preserve/display metric basis",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+proof_smoke = [
+  "tests/smoke/test_risk_smoke.py::test_backtest_risk_figures_recompute_and_state_their_basis",
+  "tests/smoke/test_risk_smoke.py::test_workstation_serves_the_same_risk_payload",
+  "tests/smoke/test_risk_smoke.py::test_validation_run_risk_names_its_snapshot",
+  "tests/smoke/test_risk_smoke.py::test_rewritten_equity_is_refused_before_any_figure",
+]
+real_data = "On 2026-11-14 the installed alpha and alpha-web computed the figures for a validation run over the free Alpaca SPY bars (2016-2026) on the Dell; all 30 matched an independent recomputation and the web route returned the same payload; not yet confirmed (docs/work/archive/2026-11/2026-11-14-prove-risk-numbers/04-verify.md)."
 needs = []
-state = "Partial"
-missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
+state = "Working"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; closest to working
 triage = { card = "5", recommendation = "KEEP", owner_decision = "KEEP" }
-plans = [
-  "2026-11-08-c04-risk-anchor-disclosure",
-  "2026-11-08-risk-equity-clocks",
-  "2026-11-08-risk-strict-json",
-  "2026-11-10-risk-basis-fixture-capture",
-]
+plans = []
 
 [[capability]]
 id = "prop-firm-check"
@@ -547,10 +552,13 @@ entry_points = ["cli: alpha scan hypotheses", "cli: alpha scan replay"]
 proof_synthetic = [
   "tests/integration/test_hypothesis_scan_cli.py::test_frozen_screen_cli_and_replay",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+proof_smoke = [
+  "tests/smoke/test_screening_smoke.py::test_screen_is_recorded_replayed_and_recomputes_independently",
+  "tests/smoke/test_screening_smoke.py::test_screen_without_a_snapshot_is_refused_and_recorded",
+]
+real_data = "On 2026-11-14 the installed alpha screened the free Yahoo (16 symbols, 1990-2026) and Alpaca (15 symbols, 2016-2026) snapshots on the Dell; every IC, t statistic and spread matched an independent recomputation; not yet confirmed (docs/work/archive/2026-11/2026-11-14-prove-quick-screening/04-verify.md). The equity lane is proven end to end; the crypto lane (Bybit funding and open interest) is not."
 needs = []
-state = "Partial"
-missing = "tested in-process only; no end-to-end smoke check yet"
+state = "Working"
 plans = []
 
 [[capability]]

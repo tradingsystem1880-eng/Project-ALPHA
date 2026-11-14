@@ -360,6 +360,21 @@ def _absent_leavers(signal: np.ndarray, *, minimum: int, quantiles: int) -> int:
     return total
 
 
+def horizon_turnover(signal: np.ndarray, *, horizon: int, quantiles: int, min_names: int) -> float:
+    """Mean bucket replacement between dates one horizon apart.
+
+    Interleave each (t, t + horizon) pair with an all-NaN separator row so
+    bucket_turnover skips transitions between pairs and averages exactly those
+    pairs. For horizon == 1 this equals panel.bucket_turnover(signal, ...).
+    """
+    if horizon < 1 or horizon >= len(signal):
+        raise DataError("turnover horizon must be at least 1 and less than the number of dates")
+    paired = np.full((3 * (len(signal) - horizon), signal.shape[1]), np.nan)
+    paired[0::3] = signal[:-horizon]
+    paired[1::3] = signal[horizon:]
+    return panel.bucket_turnover(paired, quantiles=quantiles, min_names=min_names)
+
+
 def evaluate_spec(
     data_dir: Path,
     spec: Mapping[str, Any],
@@ -395,6 +410,9 @@ def evaluate_spec(
             quantile = panel.quantile_returns(
                 signal, outcome, quantiles=quantiles, min_names=minimum
             )
+            turn_h = horizon_turnover(
+                signal, horizon=horizon, quantiles=quantiles, min_names=minimum
+            )
             decay[horizon] = ic.mean
             rows.append(
                 {
@@ -403,13 +421,14 @@ def evaluate_spec(
                     "ic": asdict(ic),
                     "quantiles": asdict(quantile),
                     "turnover": turnover,
+                    "horizon_turnover": turn_h,
                     "absent_leavers": absent,
                     "truncated_outcomes": int(
                         np.count_nonzero(np.isfinite(signal) & ~np.isfinite(outcome))
                     ),
                     "overlapping_outcomes": horizon > 1,
                     "cost_adjusted_spread": panel.cost_adjusted_spread(
-                        quantile.spread, turnover, cost_bps=options["cost_bps"]
+                        quantile.spread, turn_h, cost_bps=options["cost_bps"]
                     ),
                 }
             )
@@ -434,8 +453,10 @@ def evaluate_spec(
             "Exploratory screening only; no evidence or promotion authority.",
             "Plain IC t statistics; overlapping outcomes are not corrected.",
             "Trial count is provenance, not PBO, DSR, SPA or a validation verdict.",
-            "Cost-adjusted spread combines daily turnover with horizon returns; "
+            "Cost-adjusted spread charges 4 x horizon_turnover (bucket replacement between dates "
+            "one horizon apart) x the one-way cost against the horizon spread; "
             "no portfolio simulation.",
+            "Equity outcomes are split-adjusted price returns; dividends are not included.",
             "Disappeared bucket names are excluded by turnover; inspect absent_leavers.",
             "Universe membership gates signal formation and warmup; pre-entry history is excluded.",
             "Forward outcomes retain observed prices after ordinary membership exits.",

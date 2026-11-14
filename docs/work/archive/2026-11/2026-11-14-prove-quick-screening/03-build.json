@@ -1,0 +1,137 @@
+{
+  "base": "HEAD",
+  "base_sha": "baf8b2007fa2edb3a64aa0283512f8dad70e5589",
+  "branch": "m8/prove-quick-screening",
+  "built_by": {
+    "effort": "high",
+    "model": "gpt-6.1-sol",
+    "tool": "codex"
+  },
+  "checks": [
+    {
+      "command": "uv sync --locked",
+      "exit_code": 0,
+      "name": "uv sync",
+      "passed": true,
+      "round": 0,
+      "seconds": 0.0
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base HEAD",
+      "exit_code": 0,
+      "name": "gate check",
+      "passed": true,
+      "round": 0,
+      "seconds": 77.8
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_hypothesis_scan_signals.py tests/integration/test_hypothesis_scan_cli.py",
+      "exit_code": 0,
+      "name": "check 1",
+      "passed": true,
+      "round": 0,
+      "seconds": 9.0
+    },
+    {
+      "command": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_screening_smoke.py",
+      "exit_code": 0,
+      "name": "check 2",
+      "passed": true,
+      "round": 0,
+      "seconds": 14.8
+    }
+  ],
+  "class": "standard",
+  "class_reason": "5 files in scope (> 3)",
+  "diffstat": " apps/alpha-cli/src/alpha_cli/_hypothesis_scan.py | 25 +++++++++++++++++--\n apps/alpha-cli/src/alpha_cli/scan_cmds.py        | 28 ++++++++++++++++++++--\n tests/integration/test_hypothesis_scan_cli.py    | 84 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n tests/unit/test_hypothesis_scan_signals.py       | 52 ++++++++++++++++++++++++++++++++++++++++\n 4 files changed, 185 insertions(+), 4 deletions(-)\n",
+  "fallback": null,
+  "files_changed": [
+    {
+      "path": "tests/smoke/test_screening_smoke.py",
+      "status": "A"
+    },
+    {
+      "path": "apps/alpha-cli/src/alpha_cli/_hypothesis_scan.py",
+      "status": "M"
+    },
+    {
+      "path": "apps/alpha-cli/src/alpha_cli/scan_cmds.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/integration/test_hypothesis_scan_cli.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/test_hypothesis_scan_signals.py",
+      "status": "M"
+    }
+  ],
+  "finished_at": "2026-11-14T11:19:48Z",
+  "fix_rounds": 0,
+  "logs": "/home/hunta/alpha-clean-base/tmp/handoff/logs/2026-11-14-prove-quick-screening-20261114-111334-897487",
+  "notes": [],
+  "outside_scope": [],
+  "policy_violations": [],
+  "previous_attempts": [
+    {
+      "built_by": {
+        "effort": "high",
+        "model": "gpt-6-astra",
+        "tool": "codex"
+      },
+      "fallback": null,
+      "fix_rounds": 0,
+      "run_id": "2026-11-14-prove-quick-screening-20261114-111243-509201",
+      "tokens": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 29056,
+        "input_tokens": 51417,
+        "output_tokens": 618,
+        "reasoning_output_tokens": 127
+      },
+      "verdict": "verification_failed",
+      "wall_seconds": 21.3
+    }
+  ],
+  "rounds": [
+    {
+      "commands": 20,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 3,
+      "kind": "build",
+      "outcome": "ok",
+      "seconds": 271.8,
+      "thread_id": "01a1d9c3-436f-7191-92ff-348137ad9641",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 611840,
+        "input_tokens": 665113,
+        "output_tokens": 10098,
+        "reasoning_output_tokens": 2475
+      }
+    }
+  ],
+  "run_id": "2026-11-14-prove-quick-screening-20261114-111334-897487",
+  "schema_version": 1,
+  "source": "docs/work/archive/2026-11/2026-11-14-prove-quick-screening/02-plan.md",
+  "started_at": "2026-11-14T11:13:34Z",
+  "tokens": {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 611840,
+    "input_tokens": 665113,
+    "output_tokens": 10098,
+    "reasoning_output_tokens": 2475
+  },
+  "unverified": [
+    "Smoke execution was not run because the standing sandbox instructions prohibit running `tests/smoke/` checks."
+  ],
+  "verdict": "passed",
+  "wall_seconds": 373.6,
+  "work_order": {
+    "kind": "task",
+    "name": "2026-11-14-prove-quick-screening"
+  },
+  "worktree": "/home/hunta/alpha-clean-base/wt-prove2"
+}

@@ -1,0 +1,182 @@
+{
+  "base": "HEAD",
+  "base_sha": "b59688acf0387be497748d331ff7effd88122d10",
+  "branch": "m8/prove-risk-numbers",
+  "built_by": {
+    "effort": "high",
+    "model": "gpt-6.1-sol",
+    "tool": "codex"
+  },
+  "checks": [
+    {
+      "command": "uv sync --locked",
+      "exit_code": 0,
+      "name": "uv sync",
+      "passed": true,
+      "round": 0,
+      "seconds": 0.1
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base HEAD",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 0,
+      "seconds": 143.9
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base HEAD",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 1,
+      "seconds": 85.5
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base HEAD",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 2,
+      "seconds": 62.8
+    }
+  ],
+  "class": "standard",
+  "class_reason": "3 file(s) in scope, no risk tier; raised to standard by the plan or --class",
+  "diffstat": " apps/alpha-cli/src/alpha_cli/risk_cmds.py | 19 ++++++++++++++++++-\n tests/integration/test_risk_cli.py        | 42 ++++++++++++++++++++++++++++++++++++++++++\n 2 files changed, 60 insertions(+), 1 deletion(-)\n",
+  "fallback": null,
+  "files_changed": [
+    {
+      "path": "tests/smoke/test_risk_smoke.py",
+      "status": "A"
+    },
+    {
+      "path": "apps/alpha-cli/src/alpha_cli/risk_cmds.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/integration/test_risk_cli.py",
+      "status": "M"
+    }
+  ],
+  "finished_at": "2026-11-14T11:57:49Z",
+  "fix_rounds": 2,
+  "logs": "/home/hunta/alpha-clean-base/tmp/handoff/logs/2026-11-14-prove-risk-numbers-20261114-114458-920828",
+  "notes": [],
+  "outside_scope": [],
+  "policy_violations": [],
+  "previous_attempts": [
+    {
+      "built_by": {
+        "effort": "high",
+        "model": "gpt-6-astra",
+        "tool": "codex"
+      },
+      "fallback": null,
+      "fix_rounds": 0,
+      "run_id": "2026-11-14-prove-quick-screening-20261114-111243-509201",
+      "tokens": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 29056,
+        "input_tokens": 51417,
+        "output_tokens": 618,
+        "reasoning_output_tokens": 127
+      },
+      "verdict": "verification_failed",
+      "wall_seconds": 21.3
+    },
+    {
+      "built_by": {
+        "effort": "high",
+        "model": "gpt-6.1-sol",
+        "tool": "codex"
+      },
+      "fallback": null,
+      "fix_rounds": 0,
+      "run_id": "2026-11-14-prove-quick-screening-20261114-111334-897487",
+      "tokens": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 611840,
+        "input_tokens": 665113,
+        "output_tokens": 10098,
+        "reasoning_output_tokens": 2475
+      },
+      "verdict": "passed",
+      "wall_seconds": 373.6
+    }
+  ],
+  "rounds": [
+    {
+      "commands": 26,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 3,
+      "kind": "build",
+      "outcome": "ok",
+      "seconds": 404.2,
+      "thread_id": "01a1d9e0-0399-77b3-a337-ccd42a416b1e",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 1653632,
+        "input_tokens": 1695813,
+        "output_tokens": 10191,
+        "reasoning_output_tokens": 3400
+      }
+    },
+    {
+      "commands": 6,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 0,
+      "kind": "fix",
+      "outcome": "ok",
+      "seconds": 53.0,
+      "thread_id": "01a1d9e0-0399-77b3-a337-ccd42a416b1e",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 1824000,
+        "input_tokens": 1871827,
+        "output_tokens": 11948,
+        "reasoning_output_tokens": 4518
+      }
+    },
+    {
+      "commands": 0,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 0,
+      "kind": "fix",
+      "outcome": "ok",
+      "seconds": 20.9,
+      "thread_id": "01a1d9e0-0399-77b3-a337-ccd42a416b1e",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 1885440,
+        "input_tokens": 1934322,
+        "output_tokens": 12592,
+        "reasoning_output_tokens": 5001
+      }
+    }
+  ],
+  "run_id": "2026-11-14-prove-risk-numbers-20261114-114458-920828",
+  "schema_version": 1,
+  "source": "docs/work/archive/2026-11/2026-11-14-prove-risk-numbers/02-plan.md",
+  "started_at": "2026-11-14T11:44:58Z",
+  "tokens": {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 5363072,
+    "input_tokens": 5501962,
+    "output_tokens": 34731,
+    "reasoning_output_tokens": 12919
+  },
+  "unverified": [
+    "No local checks rerun. Smoke execution remains prohibited in this sandbox."
+  ],
+  "verdict": "verification_failed",
+  "wall_seconds": 770.7,
+  "work_order": {
+    "kind": "task",
+    "name": "2026-11-14-prove-risk-numbers"
+  },
+  "worktree": "/home/hunta/alpha-clean-base/wt-prove2"
+}

@@ -1,0 +1,173 @@
+{
+  "base": "HEAD",
+  "base_sha": "6abb9ed86ab0cdcfa0861169fa26a3385992b0eb",
+  "branch": "m8/prove-monte-carlo",
+  "built_by": {
+    "effort": "high",
+    "model": "gpt-6.1-sol",
+    "tool": "codex"
+  },
+  "checks": [
+    {
+      "command": "uv sync --locked",
+      "exit_code": 0,
+      "name": "uv sync",
+      "passed": true,
+      "round": 0,
+      "seconds": 0.0
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base HEAD",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 0,
+      "seconds": 83.0
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base HEAD",
+      "exit_code": 0,
+      "name": "gate check",
+      "passed": true,
+      "round": 1,
+      "seconds": 45.9
+    },
+    {
+      "command": "uv run pytest -q tests/integration/test_monte_carlo_cli.py",
+      "exit_code": 0,
+      "name": "check 1",
+      "passed": true,
+      "round": 1,
+      "seconds": 15.7
+    },
+    {
+      "command": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_monte_carlo_smoke.py",
+      "exit_code": 0,
+      "name": "check 2",
+      "passed": true,
+      "round": 1,
+      "seconds": 18.6
+    }
+  ],
+  "class": "standard",
+  "class_reason": "3 file(s) in scope, no risk tier; raised to standard by the plan or --class",
+  "diffstat": " apps/alpha-cli/src/alpha_cli/monte_carlo_cmds.py | 51 ++++++++++++++++++++++++++++++++++++++++++++++++---\n tests/integration/test_monte_carlo_cli.py        | 64 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n 2 files changed, 112 insertions(+), 3 deletions(-)\n",
+  "fallback": null,
+  "files_changed": [
+    {
+      "path": "tests/smoke/test_monte_carlo_smoke.py",
+      "status": "A"
+    },
+    {
+      "path": "apps/alpha-cli/src/alpha_cli/monte_carlo_cmds.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/integration/test_monte_carlo_cli.py",
+      "status": "M"
+    }
+  ],
+  "finished_at": "2026-11-14T11:33:55Z",
+  "fix_rounds": 1,
+  "logs": "/home/hunta/alpha-clean-base/tmp/handoff/logs/2026-11-14-prove-monte-carlo-20261114-112615-344453",
+  "notes": [],
+  "outside_scope": [],
+  "policy_violations": [],
+  "previous_attempts": [
+    {
+      "built_by": {
+        "effort": "high",
+        "model": "gpt-6-astra",
+        "tool": "codex"
+      },
+      "fallback": null,
+      "fix_rounds": 0,
+      "run_id": "2026-11-14-prove-quick-screening-20261114-111243-509201",
+      "tokens": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 29056,
+        "input_tokens": 51417,
+        "output_tokens": 618,
+        "reasoning_output_tokens": 127
+      },
+      "verdict": "verification_failed",
+      "wall_seconds": 21.3
+    },
+    {
+      "built_by": {
+        "effort": "high",
+        "model": "gpt-6.1-sol",
+        "tool": "codex"
+      },
+      "fallback": null,
+      "fix_rounds": 0,
+      "run_id": "2026-11-14-prove-quick-screening-20261114-111334-897487",
+      "tokens": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 611840,
+        "input_tokens": 665113,
+        "output_tokens": 10098,
+        "reasoning_output_tokens": 2475
+      },
+      "verdict": "passed",
+      "wall_seconds": 373.6
+    }
+  ],
+  "rounds": [
+    {
+      "commands": 26,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 4,
+      "kind": "build",
+      "outcome": "ok",
+      "seconds": 245.3,
+      "thread_id": "01a1d9ce-de14-7152-a8d3-ed9f73b05675",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 681472,
+        "input_tokens": 734157,
+        "output_tokens": 8476,
+        "reasoning_output_tokens": 1606
+      }
+    },
+    {
+      "commands": 10,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 1,
+      "kind": "fix",
+      "outcome": "ok",
+      "seconds": 51.1,
+      "thread_id": "01a1d9ce-de14-7152-a8d3-ed9f73b05675",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 974592,
+        "input_tokens": 1030316,
+        "output_tokens": 9872,
+        "reasoning_output_tokens": 1975
+      }
+    }
+  ],
+  "run_id": "2026-11-14-prove-monte-carlo-20261114-112615-344453",
+  "schema_version": 1,
+  "source": "docs/work/archive/2026-11/2026-11-14-prove-monte-carlo/02-plan.md",
+  "started_at": "2026-11-14T11:26:15Z",
+  "tokens": {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 1656064,
+    "input_tokens": 1764473,
+    "output_tokens": 18348,
+    "reasoning_output_tokens": 3581
+  },
+  "unverified": [
+    "The full gate and smoke command require outside-sandbox execution under the standing restrictions."
+  ],
+  "verdict": "passed",
+  "wall_seconds": 459.8,
+  "work_order": {
+    "kind": "task",
+    "name": "2026-11-14-prove-monte-carlo"
+  },
+  "worktree": "/home/hunta/alpha-clean-base/wt-prove2"
+}

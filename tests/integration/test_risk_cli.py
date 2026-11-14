@@ -38,6 +38,48 @@ def test_scenario_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert set(payload["scenarios"][0]) >= {"annual_vol", "max_drawdown", "value_at_risk"}
 
 
+@pytest.mark.parametrize("top_level", [{}, {"snapshot_id": None}])
+def test_validation_snapshot_provenance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, top_level: dict[str, object]
+) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    run_id = "1111222233334444"
+    _seed_run_with_equity(tmp_path, run_id)
+    manifest = {
+        "command": "validate",
+        "metadata": {"snapshot_id": "snap-1"},
+        "snapshot_hash": "h",
+        **top_level,
+    }
+    (tmp_path / "runs" / run_id / "manifest.json").write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
+
+    result = runner.invoke(app, ["risk", "scenario", "--from-run", run_id, "--json"])
+
+    assert result.exit_code == 0
+    provenance = json.loads(result.stdout)["provenance"]
+    assert provenance["snapshot_id"] == (None if "snapshot_id" in top_level else "snap-1")
+    assert provenance["snapshot_hash"] == "h"
+
+
+def test_scenario_text_explains_transforms(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
+    _seed_run_with_equity(tmp_path, "1111222233334444")
+
+    result = runner.invoke(app, ["risk", "scenario", "--from-run", "1111222233334444"])
+
+    assert result.exit_code == 0
+    assert (
+        "Shock scenarios append one day of -3 or -5 sample standard deviations after the last "
+        "recorded return; the drawdown changes only if that day deepens one."
+    ) in result.stdout
+    assert (
+        "VaR and CVaR: historical, one period, 95% confidence, positive numbers are losses; "
+        "volatility scaling keeps the mean and scales every return, flat days included."
+    ) in result.stdout
+
+
 def test_unknown_run_fails_loud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path))
     result = runner.invoke(app, ["risk", "scenario", "--from-run", "deadbeefdeadbeef", "--json"])
