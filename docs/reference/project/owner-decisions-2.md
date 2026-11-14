@@ -107,3 +107,21 @@ The option text was written by the agent, so it is not quoted as the owner's wor
 - **Context:** widens the entry above: a free source that needs no key may be used now. The
   owner was told on 2026-11-14 that Yahoo's terms forbid automated collection.
 - **Governs:** the [data layer](components/data-layer.md).
+
+### 2026-11-14 Thin ALPHA dramatically; RD-Agent and Qlib are the proven core
+
+- **Said:** "Yes lighten rules. If aloha is being too constraining and over complicating rd
+  agents and qlibs ore design flows. Cut all bloat and mess. Qlib and rd agents are much more
+  robust and proven then aloha which is vibe coded. We need robust systsem for this. Keep alpha
+  things that make rd agents and qlib better but cut any bloat or over complicating things.
+  Rector and thin out project dramatically."
+- **Context:** answers the assistant's question whether to lighten the approval rules to: free
+  exploration, with the owner's approval required only before a candidate goes to paper or live
+  trading. It follows the first real RD-Agent loop, where RD-Agent's idea generation and Qlib
+  worked as built and ALPHA's approval machinery blocked a first study. Supersedes
+  [prove all 31 features](#2026-11-14-prove-all-31-unproven-features-one-by-one) where they
+  conflict: a feature that does not make an RD-Agent and Qlib research loop better, or get a
+  result to market, is cut, not proven. Research-integrity guards (point-in-time data, bias
+  guards, oracles, determinism) are not part of what is lightened. Main before the cut is
+  tagged `pre-thin-2026-11-14`.
+- **Governs:** the whole project; the [overview](overview.md).
