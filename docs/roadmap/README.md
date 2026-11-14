@@ -21,7 +21,7 @@ exceed the `ceiling` in [wip-limit.json](wip-limit.json), and the ceiling must b
 lowered each time work closes. Once it reaches the `limit` of 3, at most 3 pieces of
 work may be open.
 
-## Live plans (37)
+## Live plans (36)
 
 | Plan | Title | Delivery state | Month |
 | --- | --- | --- | --- |
@@ -48,7 +48,6 @@ work may be open.
 | [2026-11-08-retained-project-production-smoke](../work/2026-11-08-retained-project-production-smoke/02-plan.md) | Exercise retained coverage with ready synthetic project context | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-risk-equity-clocks](../work/2026-11-08-risk-equity-clocks/02-plan.md) | Reject invalid recorded-equity clocks before risk metrics | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-risk-strict-json](../work/2026-11-08-risk-strict-json/02-plan.md) | Strict risk JSON serialization of legacy provenance | Implemented – qualification pending | 2026-11 |
-| [2026-11-08-snapshot-capture-binding](../work/2026-11-08-snapshot-capture-binding/02-plan.md) | Refuse ambiguous retained captures at frozen snapshot verification | Implemented – qualification pending | 2026-11 |
 | [2026-11-09-alpha158-versioned-correction](../work/2026-11-09-alpha158-versioned-correction/02-plan.md) | Explicit partial Alpha158 correction | Implemented – qualification pending | 2026-11 |
 | [2026-11-09-selector-error-test-correction](../work/2026-11-09-selector-error-test-correction/02-plan.md) | Correct stale-selector error coverage without changing product behavior | Implemented – qualification pending | 2026-11 |
 | [2026-11-09-web-matplotlib-environment](../work/2026-11-09-web-matplotlib-environment/02-plan.md) | Forward configured Matplotlib configuration and cache placement to CLI children | Implemented – qualification pending | 2026-11 |
@@ -63,13 +62,14 @@ work may be open.
 | [2026-11-08-complete-http-response-evidence](../work/2026-11-08-complete-http-response-evidence/02-plan.md) | Strict complete-response evidence before replay | Blocked | 2026-11 |
 | [2026-11-14-approval-by-structure](../work/2026-11-14-approval-by-structure/02-plan.md) | Approvals bind code structure, not bytes | Planned | 2026-11 |
 
-## Backlog (18)
+## Backlog (19)
 
 | Item | Status | Rough size |
 | --- | --- | --- |
 | [Autonomous research agent programme](backlog/agentic-research-programme.md) | Scoped | XL |
 | [Catalyst, expectations and fundamentals research (W15)](backlog/catalyst-research.md) | Scoped | L |
 | [ControlStore-owned durable acquisition journal](backlog/controlstore-durable-acquisition.md) | Idea | L |
+| [Freeze a crypto snapshot by coin and date range](backlog/crypto-snapshot-by-range.md) | Idea | M |
 | [Generalise D0 screening to every registered producer (Phase E)](backlog/d0-generalisation.md) | Idea | M |
 | [A route for new daily-bar research ideas](backlog/daily-research-operators.md) | Idea | L |
 | [Data-directory naming migration](backlog/data-directory-naming-migration.md) | Idea | M |
@@ -97,7 +97,7 @@ work may be open.
 | [Break up oversized functions](refactors/oversized-functions.md) | M |
 | [Reduce `# type: ignore` suppressions](refactors/type-ignore-reduction.md) | L |
 
-## Archived plans (135)
+## Archived plans (137)
 
 | Month | Plans |
 | --- | --- |
@@ -105,4 +105,4 @@ work may be open.
 | [2026-08](../work/archive/2026-08/) | 10 |
 | [2026-09](../work/archive/2026-09/) | 21 |
 | [2026-10](../work/archive/2026-10/) | 60 |
-| [2026-11](../work/archive/2026-11/) | 31 |
+| [2026-11](../work/archive/2026-11/) | 33 |
