@@ -410,6 +410,26 @@ def _dsr_cpcv_html(report: GauntletReport) -> str:
     return "\n".join(parts)
 
 
+def _quantstats_style() -> dict[Any, Any]:
+    """Rebuild QuantStats' import-time style on shipped defaults, independent of caller rcParams.
+
+    Reload its own plotting module so the style follows the pinned QuantStats version without
+    copying its seaborn settings. Exclude backend, which rc_context does not restore.
+    """
+    import importlib
+
+    import matplotlib
+
+    pinned: dict[Any, Any] = {
+        key: value for key, value in matplotlib.rcParamsDefault.items() if key != "backend"
+    }
+    with matplotlib.rc_context(pinned):
+        import quantstats_lumi._plotting.core as core
+
+        importlib.reload(core)
+        return {key: value for key, value in matplotlib.rcParams.items() if key != "backend"}
+
+
 def _render_with_section(
     returns: FloatArray,
     timestamps: Sequence[datetime],
@@ -438,7 +458,9 @@ def _render_with_section(
     matplotlib.use("Agg")  # headless: no display needed/available in CI
     logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)  # silence font fallbacks
     import pandas as pd
-    import quantstats_lumi as qs
+
+    with matplotlib.rc_context():
+        import quantstats_lumi as qs
 
     index = pd.DatetimeIndex(list(timestamps))
     if index.tz is not None:
@@ -448,7 +470,7 @@ def _render_with_section(
     # quantstats interpolates the title into its HTML unescaped; strip markup-significant
     # characters so a hostile symbol string cannot inject script into the served tear sheet
     safe_title = title.replace("<", "").replace(">", "").replace("&", "")
-    with matplotlib.rc_context({"svg.hashsalt": _QUANTSTATS_SVG_HASH_SALT}):
+    with matplotlib.rc_context({**_quantstats_style(), "svg.hashsalt": _QUANTSTATS_SVG_HASH_SALT}):
         qs.reports.html(
             series, output=str(output_path), title=safe_title, periods_per_year=periods_per_year
         )

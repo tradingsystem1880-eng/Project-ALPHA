@@ -31,7 +31,7 @@ def render_research_line_chart(chart: ResearchChartData) -> bytes:
     Stability is guaranteed only within ALPHA's locked Python, Matplotlib, and font environment.
     The output deliberately contains no creation timestamp.
     """
-    from matplotlib import rc_context
+    from matplotlib import rc_context, rcParamsDefault
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     from matplotlib.figure import Figure
 
@@ -61,7 +61,9 @@ def render_research_line_chart(chart: ResearchChartData) -> bytes:
         "xtick.color": "#AAB7C4",
         "ytick.color": "#AAB7C4",
     }
-    with rc_context(style):  # type: ignore[arg-type]  # matplotlib's rc-key Literal is exhaustive
+    # Pin defaults against process history; rc_context does not restore the backend.
+    pinned = {key: value for key, value in rcParamsDefault.items() if key != "backend"}
+    with rc_context({**pinned, **style}):  # type: ignore[dict-item]  # rc-key Literal is exhaustive
         figure = Figure(figsize=(8.0, 4.5), dpi=120)
         canvas = FigureCanvasAgg(figure)
         axes = figure.add_subplot(1, 1, 1)
