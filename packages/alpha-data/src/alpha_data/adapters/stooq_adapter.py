@@ -1,13 +1,13 @@
 """Stooq adapter: free end-of-day OHLCV for equities, ETFs, indices, commodities, and FX.
 
 Stooq serves key-free daily CSV (``Date,Open,High,Low,Close,Volume``) for a broad cross-asset
-universe — the cheapest way to widen ALPHA beyond yfinance/crypto to commodities and FX. The pure
+universe. The adapter never solves or bypasses Stooq checks; it fails loud instead. The pure
 ``parse_stooq_csv`` validates every row through ``Bar`` (1a invariants) and is fully unit-tested
 offline; the live ``fetch`` is network-gated.
 
 Caveat (documented free-data limitation, like survivorship): Stooq prices are provider-adjusted, so
 this adapter emits no separate corporate actions (``actions=[]``) — the PIT two-clock firewall has
-nothing to apply. Use the yfinance adapter when point-in-time split/dividend handling matters.
+nothing to apply.
 """
 
 from __future__ import annotations
@@ -24,15 +24,9 @@ _VERSION = "1"
 PARSER_VERSION = "1"
 _REQUIRED = ("date", "open", "high", "low", "close")
 
-# Stooq blocks the bare ``Python-urllib`` user-agent (HTTP 404) and, for fresh clients, serves a
-# SHA-256 proof-of-work "verify your browser" gate before releasing the CSV. A browser UA + solving
-# that gate is the documented browser flow; we still fail loud on its per-IP "Access denied" quota.
-_UA = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-)
+# Identify ALPHA as a generic client; never solve or bypass Stooq checks, and fail loud instead.
+_UA = "Project-ALPHA/1.0"
 _CHALLENGE_MARKER = "verify your browser"
-_POW_MAX_ITERS = 8_000_000  # difficulty-4 needs ~65k hashes; this is a runaway backstop
 
 
 def parse_stooq_csv(text: str, symbol: str) -> FetchResult:
@@ -85,75 +79,41 @@ def parse_stooq_csv(text: str, symbol: str) -> FetchResult:
     return FetchResult(symbol=symbol, bars=bars, actions=[])
 
 
-def _solve_pow(challenge: str, difficulty: int) -> str:
-    """Solve Stooq's browser-verification proof-of-work.
-
-    Find the smallest ``n`` such that ``hex(sha256(challenge + n))`` has ``difficulty`` leading
-    zeros — exactly what Stooq's ``<noscript>This site requires JavaScript to verify your
-    browser</noscript>`` page asks any JS-capable client to do. Difficulty 4 ≈ 65k hashes.
-    """
-    import hashlib
-
-    target = "0" * difficulty
-    for n in range(_POW_MAX_ITERS):
-        if hashlib.sha256(f"{challenge}{n}".encode()).hexdigest().startswith(target):
-            return str(n)
-    raise DataError(
-        f"Stooq proof-of-work unsolved after {_POW_MAX_ITERS} iterations (difficulty={difficulty})"
-    )
-
-
 def _fetch_stooq_text(url: str) -> str:
-    """GET a Stooq CSV URL, transparently clearing the JS browser-verification gate if served.
+    """GET once as a generic client, refusing browser verification rather than bypassing it.
 
-    Sends a browser user-agent (the bare ``Python-urllib`` UA 404s) and, if Stooq returns its
-    proof-of-work page instead of CSV, solves it like a browser would — POST ``/__verify`` then
-    reload carrying the auth cookie. Returns the raw response body; the caller decides whether the
-    body is CSV, "No data", or a still-blocked response and fails loud accordingly.
+    Return the raw body unless Stooq asks for browser verification. The caller classifies other
+    blocked or non-CSV responses. HTTP errors and interrupted reads fail loud as ``DataError``.
     """
     import http.client
-    import http.cookiejar
-    import re
     import urllib.error
-    import urllib.parse
     import urllib.request
 
-    jar = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-
-    def _get(target: str, data: bytes | None = None, *, form: bool = False) -> str:
-        headers = {"User-Agent": _UA, "Accept": "text/csv,text/plain,*/*"}
-        if form:
-            headers["Content-Type"] = "application/x-www-form-urlencoded"
-            headers["Origin"] = "https://stooq.com"
-            headers["Referer"] = url
-        req = urllib.request.Request(target, data=data, headers=headers)
-        try:
-            with opener.open(req, timeout=30) as resp:
-                body: str = resp.read().decode("utf-8", "replace")
-        except urllib.error.HTTPError as exc:
-            raise DataError(
-                f"Stooq anti-bot/transport rejected the request with HTTP {exc.code}; "
-                "use --source yfinance for equities/ETFs"
-            ) from exc
-        except (
-            urllib.error.URLError,
-            TimeoutError,
-            ConnectionError,
-            http.client.IncompleteRead,
-        ) as exc:
-            raise DataError(f"Stooq transport failed: {exc}") from exc
-        return body
-
-    text = _get(url)
-    challenge = re.search(r'c="([^"]+)"', text)
-    if challenge is not None and _CHALLENGE_MARKER in text.lower():
-        diff_match = re.search(r"\bd=(\d+)", text)
-        nonce = _solve_pow(challenge.group(1), int(diff_match.group(1)) if diff_match else 4)
-        verify = urllib.parse.urlencode({"c": challenge.group(1), "n": nonce}).encode()
-        _get("https://stooq.com/__verify", data=verify, form=True)
-        text = _get(url)  # reload now carries the auth cookie set by /__verify
-    return text
+    opener = urllib.request.build_opener()
+    req = urllib.request.Request(
+        url, headers={"User-Agent": _UA, "Accept": "text/csv,text/plain,*/*"}
+    )
+    try:
+        with opener.open(req, timeout=30) as resp:
+            body: str = resp.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        raise DataError(
+            f"Stooq anti-bot/transport rejected the request with HTTP {exc.code}"
+        ) from exc
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        ConnectionError,
+        http.client.IncompleteRead,
+    ) as exc:
+        raise DataError(f"Stooq transport failed: {exc}") from exc
+    if _CHALLENGE_MARKER in body.lower():
+        raise DataError(
+            "Stooq asked for a browser verification check (anti-bot); "
+            "ALPHA does not get past bot checks, so this download is refused; "
+            "data already stored stays readable."
+        )
+    return body
 
 
 def _csv_or_raise(text: str, symbol: str, window: str) -> FetchResult:
@@ -166,12 +126,11 @@ def _csv_or_raise(text: str, symbol: str, window: str) -> FetchResult:
     """
     stripped = text.strip()
     if not stripped or "No data" in text:
-        raise DataError(f"Stooq returned no data for {symbol} {window}")
+        raise DataError(f"Stooq returned no data for {symbol} {window} (possible anti-bot refusal)")
     if stripped == "Access denied" or _CHALLENGE_MARKER in text.lower() or stripped.startswith("<"):
         raise DataError(
             f"Stooq withheld the free CSV for {symbol} ({stripped[:40]!r}): the /q/d/l/ endpoint "
-            "is gated behind an anti-bot challenge + per-IP download quota. "
-            "Use --source yfinance for equities/ETFs."
+            "is gated behind an anti-bot challenge + per-IP download quota."
         )
     return parse_stooq_csv(text, symbol)
 

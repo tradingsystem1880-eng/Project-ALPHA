@@ -2,13 +2,12 @@
 
 Stooq now gates its free CSV behind a SHA-256 "verify your browser" proof-of-work and a per-IP
 "Access denied" quota. The pure parser is covered in test_stooq_parser.py; here we pin the two
-load-bearing pieces that previously had no offline coverage: the proof-of-work solver and the
+load-bearing pieces: refusal of browser verification and the
 fail-loud classification of a blocked/non-CSV response. The live HTTP path stays network-gated.
 """
 
 from __future__ import annotations
 
-import hashlib
 import http.client
 import io
 import urllib.error
@@ -19,8 +18,7 @@ from types import SimpleNamespace
 import pytest
 
 from alpha_core import DataError
-from alpha_data.adapters import stooq_adapter
-from alpha_data.adapters.stooq_adapter import _csv_or_raise, _fetch_stooq_text, _solve_pow
+from alpha_data.adapters.stooq_adapter import _csv_or_raise, _fetch_stooq_text
 
 _VALID_CSV = (
     "Date,Open,High,Low,Close,Volume\n"
@@ -33,18 +31,39 @@ _CHALLENGE_PAGE = (
 )
 
 
-def test_solve_pow_returns_valid_nonce() -> None:
-    for difficulty in (1, 2):
-        nonce = _solve_pow("challenge-token", difficulty)
-        digest = hashlib.sha256(f"challenge-token{nonce}".encode()).hexdigest()
-        assert digest.startswith("0" * difficulty)
+@pytest.mark.parametrize("page", [_CHALLENGE_PAGE, "VERIFY YOUR BROWSER"])
+def test_fetch_refuses_challenge_after_one_generic_get(
+    monkeypatch: pytest.MonkeyPatch, page: str
+) -> None:
+    requests = []
+
+    class Opener:
+        def open(self, request: urllib.request.Request, timeout: int) -> io.BytesIO:
+            requests.append(request)
+            return io.BytesIO(page.encode())
+
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *args: Opener())
+    with pytest.raises(DataError, match="anti-bot") as caught:
+        _fetch_stooq_text("https://stooq.com/q/d/l/?s=spy.us")
+    message = str(caught.value)
+    assert "browser verification check" in message
+    assert "does not get past bot checks" in message
+    assert "download is refused" in message
+    assert "data already stored stays readable" in message
+    assert "yfinance" not in message.lower()
+    assert len(requests) == 1
+    assert requests[0].get_method() == "GET"
+    assert requests[0].get_header("User-agent") == "Project-ALPHA/1.0"
 
 
-def test_solve_pow_fails_loud_when_unsolvable(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Cap iterations far below what difficulty 8 (~16^8 hashes) needs → must raise, not hang.
-    monkeypatch.setattr(stooq_adapter, "_POW_MAX_ITERS", 5)
-    with pytest.raises(DataError, match="proof-of-work unsolved"):
-        _solve_pow("challenge-token", 8)
+@pytest.mark.parametrize(
+    "body", ["Access denied", _CHALLENGE_PAGE, "<html>blocked</html>", "   ", "No data"]
+)
+def test_csv_or_raise_blocked_messages_do_not_recommend_yfinance(body: str) -> None:
+    with pytest.raises(DataError) as caught:
+        _csv_or_raise(body, "spy.us", "2020-01-01..2020-01-31")
+    assert "yfinance" not in str(caught.value).lower()
+    assert "anti-bot" in str(caught.value)
 
 
 def test_csv_or_raise_parses_valid_csv() -> None:
