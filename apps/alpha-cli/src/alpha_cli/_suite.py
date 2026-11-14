@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
+import math as math
 import os
 import re
 import selectors
@@ -18,12 +18,60 @@ import subprocess
 import time
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Final, cast
 
 from alpha_cli._schemas import specs_for
+from alpha_cli._suite_actions import _baseline_steps as _baseline_steps
+from alpha_cli._suite_actions import _candidate_holdout_steps as _candidate_holdout_steps
+from alpha_cli._suite_actions import _candidate_monte_carlo_steps as _candidate_monte_carlo_steps
+from alpha_cli._suite_actions import _candidate_paper_steps as _candidate_paper_steps
+from alpha_cli._suite_actions import _candidate_simple_steps as _candidate_simple_steps
+from alpha_cli._suite_actions import _candidate_step as _candidate_step
+from alpha_cli._suite_actions import _fixed_stress_steps as _fixed_stress_steps
+from alpha_cli._suite_actions import _grid_steps as _grid_steps
+from alpha_cli._suite_actions import _holdout_steps as _holdout_steps
+from alpha_cli._suite_actions import _inner_oos_steps as _inner_oos_steps
+from alpha_cli._suite_actions import _kronos_steps as _kronos_steps
+from alpha_cli._suite_actions import _monte_carlo_steps as _monte_carlo_steps
+from alpha_cli._suite_actions import _null_family_steps as _null_family_steps
+from alpha_cli._suite_actions import _optimize_grid_steps as _optimize_grid_steps
+from alpha_cli._suite_actions import _paper_preflight_steps as _paper_preflight_steps
+from alpha_cli._suite_actions import _portfolio_cross_asset_steps as _portfolio_cross_asset_steps
+from alpha_cli._suite_actions import _qlib_steps as _qlib_steps
+from alpha_cli._suite_actions import _three_null_families_steps as _three_null_families_steps
+from alpha_cli._suite_actions import _unsupported_candidate_steps as _unsupported_candidate_steps
+from alpha_cli._suite_types import _CANDIDATE_SIMPLE_ACTIONS as _CANDIDATE_SIMPLE_ACTIONS
+from alpha_cli._suite_types import _CANDIDATE_SIMPLE_GOVERNANCE as _CANDIDATE_SIMPLE_GOVERNANCE
+from alpha_cli._suite_types import _SAFE_ID as _SAFE_ID
+from alpha_cli._suite_types import _SAFE_MODEL as _SAFE_MODEL
+from alpha_cli._suite_types import _SAFE_REVISION as _SAFE_REVISION
+from alpha_cli._suite_types import _STANDARD_DEFINITION_OPTIONS as _STANDARD_DEFINITION_OPTIONS
+from alpha_cli._suite_types import SuitePlan as SuitePlan
+from alpha_cli._suite_types import SuiteStep as SuiteStep
+from alpha_cli._suite_types import _common as _common
+from alpha_cli._suite_types import _cutoff_preview as _cutoff_preview
+from alpha_cli._suite_types import _definition_options as _definition_options
+from alpha_cli._suite_types import _float_text as _float_text
+from alpha_cli._suite_types import _integer as _integer
+from alpha_cli._suite_types import _latest_run as _latest_run
+from alpha_cli._suite_types import _latest_run_for_command as _latest_run_for_command
+from alpha_cli._suite_types import _managed_qlib_id as _managed_qlib_id
+from alpha_cli._suite_types import _number as _number
+from alpha_cli._suite_types import _object as _object
+from alpha_cli._suite_types import _PlanContext
+from alpha_cli._suite_types import _ResearchWindow as _ResearchWindow
+from alpha_cli._suite_types import _safe_id as _safe_id
+from alpha_cli._suite_types import _seed as _seed
+from alpha_cli._suite_types import _selected as _selected
+from alpha_cli._suite_types import _split_options as _split_options
+from alpha_cli._suite_types import _stage_float as _stage_float
+from alpha_cli._suite_types import _stage_int as _stage_int
+from alpha_cli._suite_types import _stage_states as _stage_states
+from alpha_cli._suite_types import _strategy_options as _strategy_options
+from alpha_cli._suite_types import _workload as _workload
 from alpha_cli.control_store import AttemptStatus, ControlStore, StageState
 from alpha_cli.run_store import RESEARCH_GATE_OVERRIDE_WATERMARK
 from alpha_cli.strategy_candidate import (
@@ -48,6 +96,7 @@ _ACTION_STAGE: Final[dict[str, str]] = {
     "paper_preflight": "paper",
 }
 
+
 _RUN_BACKED_STAGE_ACTIONS: Final = frozenset(
     {
         "baseline",
@@ -61,7 +110,11 @@ _RUN_BACKED_STAGE_ACTIONS: Final = frozenset(
         "holdout_reveal",
     }
 )
+
+
 _GOVERNED_STAGE_ACTIONS: Final = _RUN_BACKED_STAGE_ACTIONS | {"paper_preflight"}
+
+
 _PRE_REVEAL_RESEARCH_ACTIONS: Final = frozenset(
     {
         "baseline",
@@ -75,6 +128,7 @@ _PRE_REVEAL_RESEARCH_ACTIONS: Final = frozenset(
         "kronos",
     }
 )
+
 
 _PREREQUISITES: Final[dict[str, tuple[str, ...]]] = {
     "baseline": (),
@@ -98,78 +152,23 @@ _PREREQUISITES: Final[dict[str, tuple[str, ...]]] = {
     "paper_preflight": ("holdout",),
 }
 
-_STANDARD_DEFINITION_OPTIONS: Final[tuple[tuple[str, str], ...]] = (
-    ("lookback", "--lookback"),
-    ("skip", "--skip"),
-    ("vol_window", "--vol-window"),
-    ("target_vol", "--target-vol"),
-    ("rebalance_every", "--rebalance-every"),
-    ("max_leverage", "--max-leverage"),
-    ("starting_cash", "--starting-cash"),
-    ("periods_per_year", "--periods-per-year"),
-)
-_SAFE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
-_SAFE_MODEL = re.compile(r"(?:fake|[A-Za-z0-9._-]+/[A-Za-z0-9._-]+)")
-_SAFE_REVISION = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,127}")
+
 _RUN_RE = re.compile(r"->\s+run\s+([0-9a-f]{16})\b")
+
+
 _JSON_RUN_RE = re.compile(r'"run_id"\s*:\s*"([0-9a-f]{16})"')
+
+
 _PROCESS_TERM_GRACE_SECONDS: Final = 2.0
+
+
 _PROCESS_REAP_TIMEOUT_SECONDS: Final = 2.0
+
+
 _PROCESS_GROUP_POLL_SECONDS: Final = 0.05
+
+
 _SUITE_HEARTBEAT_INTERVAL_SECONDS: Final = 5.0
-
-
-@dataclass(frozen=True)
-class SuiteStep:
-    """One internal allowlisted command plus its path-safe public preview."""
-
-    label: str
-    argv: tuple[str, ...]
-    preview: tuple[str, ...]
-    evidence_role: str
-    redactions: tuple[tuple[str, str], ...] = ()
-
-    def public(self, index: int) -> dict[str, object]:
-        return {
-            "index": index,
-            "label": self.label,
-            "command": list(self.preview),
-            "evidence_role": self.evidence_role,
-        }
-
-
-@dataclass(frozen=True)
-class SuitePlan:
-    schema_version: int
-    project_id: str
-    experiment_id: str
-    action: SuiteAction
-    stage: str
-    ready: bool
-    blockers: tuple[str, ...]
-    resolved_experiment: dict[str, object]
-    resolved_strategy_version: dict[str, object]
-    current_stage_state: str
-    estimated_workload: dict[str, object]
-    steps: tuple[SuiteStep, ...]
-    governance: dict[str, object]
-
-    def as_dict(self) -> dict[str, object]:
-        return {
-            "schema_version": self.schema_version,
-            "project_id": self.project_id,
-            "experiment_id": self.experiment_id,
-            "action": self.action,
-            "stage": self.stage,
-            "ready": self.ready,
-            "blockers": list(self.blockers),
-            "resolved_experiment": self.resolved_experiment,
-            "resolved_strategy_version": self.resolved_strategy_version,
-            "current_stage_state": self.current_stage_state,
-            "estimated_workload": self.estimated_workload,
-            "steps": [step.public(index) for index, step in enumerate(self.steps, start=1)],
-            "governance": self.governance,
-        }
 
 
 @dataclass(frozen=True)
@@ -185,574 +184,15 @@ class SuiteProcessCleanupError(DataError):
 type StepRunner = Callable[[SuiteStep, str, ControlStore, Callable[[], bool]], StepExecution]
 
 
-def _object(value: object, label: str) -> dict[str, object]:
-    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
-        raise DataError(f"invalid immutable {label}: expected an object")
-    return cast(dict[str, object], value)
-
-
-def _number(value: object, label: str, *, minimum: float | None = None) -> float:
-    if isinstance(value, bool) or not isinstance(value, int | float):
-        raise DataError(f"invalid immutable {label}: expected a finite number")
-    result = float(value)
-    if not math.isfinite(result) or (minimum is not None and result < minimum):
-        raise DataError(f"invalid immutable {label}: expected a finite value >= {minimum}")
-    return result
-
-
-def _integer(
-    value: object,
-    label: str,
-    *,
-    minimum: int = 0,
-    maximum: int = 1_000_000,
-) -> int:
-    number = _number(value, label, minimum=float(minimum))
-    if not number.is_integer() or number > maximum:
-        raise DataError(f"invalid immutable {label}: expected an integer in {minimum}..{maximum}")
-    return int(number)
-
-
-def _float_text(value: float) -> str:
-    return f"{value:g}"
-
-
-def _cutoff_preview(
-    argv: Sequence[str], *, cutoff: str | None, marker: str | None
-) -> tuple[str, ...]:
-    if cutoff is None or marker is None:
-        return tuple(argv)
-    return tuple(marker if value == cutoff else value for value in argv)
-
-
-@dataclass(frozen=True)
-class _ResearchWindow:
-    """Resolved private/public cutoff pair, shared without repeating redaction assembly."""
-
-    cutoff: str
-    public_cutoff: str
-
-    def step(self, label: str, argv: tuple[str, ...], evidence_role: str) -> SuiteStep:
-        return SuiteStep(
-            label,
-            argv,
-            _cutoff_preview(argv, cutoff=self.cutoff, marker=self.public_cutoff),
-            evidence_role,
-            ((self.cutoff, self.public_cutoff),),
-        )
-
-
-def _safe_id(value: object, label: str) -> str:
-    if not isinstance(value, str) or _SAFE_ID.fullmatch(value) is None:
-        raise DataError(f"invalid immutable {label}: expected a managed identifier")
-    return value
-
-
-def _managed_qlib_id(experiment_id: str) -> str:
-    """Return the opaque, stable control-resource id for one immutable experiment."""
-    return hashlib.sha256(
-        b"project-alpha-suite-qlib-v1\0" + experiment_id.encode("utf-8")
-    ).hexdigest()
-
-
-def _selected(rows: object, *, id_field: str, item_id: str, label: str) -> dict[str, object]:
-    if not isinstance(rows, list):
-        raise DataError(f"corrupt control projection: {label} collection")
-    result = next(
-        (
-            _object(row, label)
-            for row in rows
-            if isinstance(row, dict) and row.get(id_field) == item_id
-        ),
-        None,
-    )
-    if result is None:
-        raise DataError(f"unknown immutable {label} {item_id!r}")
-    return result
-
-
-def _stage_states(project: Mapping[str, object], experiment_id: str) -> dict[str, str]:
-    rows = project.get("stage_states")
-    if not isinstance(rows, list):
-        raise DataError("corrupt control projection: stage states")
-    result: dict[str, str] = {}
-    for raw in rows:
-        row = _object(raw, "stage state")
-        if row.get("experiment_id") == experiment_id:
-            result[str(row["stage"])] = str(row["state"])
-    return result
-
-
-def _definition_options(definition: Mapping[str, object]) -> list[str]:
-    result: list[str] = []
-    for name, flag in _STANDARD_DEFINITION_OPTIONS:
-        if name in definition:
-            result.extend([flag, _float_text(_number(definition[name], name, minimum=0.0))])
-    account_type = definition.get("account_type")
-    if account_type is not None:
-        if account_type not in {"CASH", "MARGIN"}:
-            raise DataError("invalid immutable account_type: expected CASH or MARGIN")
-        result.extend(["--account-type", str(account_type)])
-    allow_short = definition.get("allow_short")
-    if allow_short is not None:
-        if not isinstance(allow_short, bool):
-            raise DataError("invalid immutable allow_short: expected a boolean")
-        result.append("--allow-short" if allow_short else "--no-allow-short")
-    return result
-
-
-def _strategy_options(strategy: str, definition: Mapping[str, object]) -> list[str]:
-    schema = specs_for(strategy)
-    result: list[str] = []
-    for name in sorted(schema):
-        if name not in definition:
-            continue
-        value = schema[name].normalize(_number(definition[name], f"strategy parameter {name}"))
-        result.extend(["--param", f"{name}={_float_text(value)}"])
-    return result
-
-
-def _common(
-    *,
-    symbol: str,
-    strategy: str,
-    snapshot: str,
-    costs: Mapping[str, object],
-    definition: Mapping[str, object],
-    gate_overridden: bool = False,
-) -> list[str]:
-    args = [symbol, "--strategy", strategy, "--snapshot", snapshot]
-    for name, flag, default in (
-        ("fee_bps", "--fee-bps", 1.0),
-        ("slippage_bps", "--slippage-bps", 2.0),
-    ):
-        args.extend([flag, _float_text(_number(costs.get(name, default), name, minimum=0.0))])
-    args.extend(_definition_options(definition))
-    args.extend(_strategy_options(strategy, definition))
-    if gate_overridden:
-        # spec §15 / ADR-0026: every strategy run launched under an owner research-gate
-        # override is permanently watermarked EXPLORATORY / RESEARCH GATE NOT COMPLETED.
-        args.append("--research-gate-override")
-    return args
-
-
-def _split_options(split: Mapping[str, object]) -> list[str]:
-    result: list[str] = []
-    for names, flag, default, minimum in (
-        (("train", "train_size"), "--train-size", 504, 1),
-        (("test", "test_size"), "--test-size", 63, 1),
-        (("embargo",), "--embargo", 5, 0),
-    ):
-        raw = next((split[name] for name in names if name in split), default)
-        result.extend([flag, str(_integer(raw, names[0], minimum=minimum, maximum=100_000))])
-    anchored = split.get("anchored")
-    if anchored is not None:
-        if not isinstance(anchored, bool):
-            raise DataError("invalid immutable anchored: expected a boolean")
-        result.append("--anchored" if anchored else "--no-anchored")
-    return result
-
-
-def _seed(seeds: Mapping[str, object]) -> int:
-    return _integer(seeds.get("master", 7), "master seed", maximum=2**32 - 1)
-
-
-def _stage_int(
-    config: Mapping[str, object], name: str, default: int, *, minimum: int, maximum: int
-) -> int:
-    return _integer(config.get(name, default), name, minimum=minimum, maximum=maximum)
-
-
-def _stage_float(
-    config: Mapping[str, object],
-    name: str,
-    default: float,
-    *,
-    minimum: float,
-    maximum: float,
-) -> float:
-    result = _number(config.get(name, default), name, minimum=minimum)
-    if result > maximum:
-        raise DataError(f"invalid immutable {name}: expected a value <= {maximum}")
-    return result
-
-
-def _latest_run(
-    project: Mapping[str, object], experiment_id: str, stages: Sequence[str]
-) -> str | None:
-    rows = project.get("stage_run_links")
-    if not isinstance(rows, list):
-        return None
-    for stage in stages:
-        candidates = [
-            _object(row, "stage run link")
-            for row in rows
-            if isinstance(row, dict)
-            and row.get("experiment_id") == experiment_id
-            and row.get("stage") == stage
-            and row.get("state") in {"pass", "warning"}
-        ]
-        if candidates:
-            return str(candidates[-1]["run_id"])
-    return None
-
-
-def _latest_run_for_command(
-    project: Mapping[str, object],
-    experiment_id: str,
-    stages: Sequence[str],
-    *,
-    data_dir: Path,
-    commands: frozenset[str],
-    states: frozenset[str] = frozenset({"pass", "warning"}),
-    null_model: str | None = None,
-) -> tuple[str, dict[str, object]] | None:
-    from alpha_cli._artifacts import read_manifest
-    from alpha_cli.run_store import find_run_dir
-
-    rows = project.get("stage_run_links")
-    if not isinstance(rows, list):
-        return None
-    for stage in stages:
-        candidates = [
-            row
-            for row in rows
-            if isinstance(row, dict)
-            and row.get("experiment_id") == experiment_id
-            and row.get("stage") == stage
-            and row.get("state") in states
-        ]
-        for row in reversed(candidates):
-            run_id = str(row["run_id"])
-            rdir = find_run_dir(data_dir, run_id)
-            if rdir is None:
-                continue
-            manifest = read_manifest(rdir)
-            if manifest.get("command") not in commands:
-                continue
-            metadata = manifest.get("metadata")
-            if null_model is not None and (
-                not isinstance(metadata, Mapping) or metadata.get("null_model") != null_model
-            ):
-                continue
-            return run_id, cast(dict[str, object], manifest)
-    return None
-
-
-def _workload(
-    action: str, *, commands: int, canonical_runs: int, grid_configurations: int | None = None
-) -> dict[str, object]:
-    descriptions = {
-        "baseline": "one fixed-parameter discovery backtest",
-        "inner_oos": "one fixed-rule walk-forward OOS evaluation with no refit",
-        "three_null_families": "bootstrap headline plus Student-t and GARCH sensitivities",
-        "monte_carlo": "three classical path families plus Kronos full-engine synthetic replay",
-        "optimize_grid": "declared deterministic parameter grid with overfit diagnostics",
-        "fixed_stress": "fixed scenarios over one cited realized return stream",
-        "portfolio_cross_asset": "portfolio and cross-sectional replay over the frozen universe",
-        "qlib": "isolated fold-by-fold Qlib training plus canonical ALPHA replay",
-        "kronos": "one forecast cone and one rolling-origin evaluation",
-        "holdout_reveal": "one audited owner reveal followed by one locked candidate evaluation",
-        "paper_preflight": "one offline sandbox wiring preflight; no order placement",
-    }
-    result: dict[str, object] = {
-        "class": "heavyweight" if action in {"qlib", "kronos", "monte_carlo"} else "standard",
-        "commands": commands,
-        "estimated_canonical_runs": canonical_runs,
-        "description": descriptions[action],
-    }
-    if grid_configurations is not None:
-        result["grid_configurations"] = grid_configurations
-    return result
-
-
-def _grid_steps(
-    *,
-    primary: str,
-    strategy: str,
-    snapshot: str,
-    costs: Mapping[str, object],
-    definition: Mapping[str, object],
-    parameter_space: Mapping[str, object],
-    split: Mapping[str, object],
-    seeds: Mapping[str, object],
-    config: Mapping[str, object],
-    research_cutoff: str,
-    cutoff_marker: str,
-    gate_overridden: bool = False,
-) -> tuple[SuiteStep, int]:
-    schema = specs_for(strategy)
-    allowed = set(schema) | {name for name, _ in _STANDARD_DEFINITION_OPTIONS}
-    axes: list[str] = []
-    combinations = 1
-    for name in sorted(parameter_space):
-        if name not in allowed:
-            raise DataError(f"unsupported immutable optimization axis {name!r}")
-        raw = parameter_space[name]
-        if not isinstance(raw, list) or not 1 <= len(raw) <= 256:
-            raise DataError(f"optimization axis {name!r} must contain 1..256 numeric values")
-        normalized: list[float] = []
-        for value in raw:
-            number = _number(value, f"optimization axis {name}")
-            if name in schema:
-                number = schema[name].normalize(number)
-            normalized.append(number)
-        combinations *= len(normalized)
-        if combinations > 4096:
-            raise DataError("deterministic grid exceeds the 4096-configuration workload cap")
-        axes.extend(["--grid", f"{name}={','.join(_float_text(v) for v in normalized)}"])
-    if not axes:
-        raise DataError("deterministic grid requires a declared parameter_space")
-    args = [
-        "optim",
-        "grid",
-        *_common(
-            symbol=primary,
-            strategy=strategy,
-            snapshot=snapshot,
-            costs=costs,
-            definition=definition,
-            gate_overridden=gate_overridden,
-        ),
-        *axes,
-        *_split_options(split),
-        "--as-of",
-        research_cutoff,
-        "--seed",
-        str(_seed(seeds)),
-    ]
-    for name, flag, default, minimum, maximum in (
-        ("pbo_blocks", "--pbo-blocks", 10, 4, 100),
-        ("n_resamples", "--n-resamples", 2000, 100, 100_000),
-    ):
-        args.extend(
-            [flag, str(_stage_int(config, name, default, minimum=minimum, maximum=maximum))]
-        )
-    for float_name, float_flag, float_default, float_minimum, float_maximum in (
-        ("mean_block", "--mean-block", 5.0, 1.0, 10_000.0),
-        ("dsr_threshold", "--dsr-threshold", 0.95, 0.0, 1.0),
-        ("optim_alpha", "--alpha", 0.05, 0.000001, 1.0),
-    ):
-        args.extend(
-            [
-                float_flag,
-                _float_text(
-                    _stage_float(
-                        config,
-                        float_name,
-                        float_default,
-                        minimum=float_minimum,
-                        maximum=float_maximum,
-                    )
-                ),
-            ]
-        )
-    if "max_workers" in config:
-        args.extend(
-            [
-                "--max-workers",
-                str(_stage_int(config, "max_workers", 1, minimum=1, maximum=64)),
-            ]
-        )
-    step = SuiteStep(
-        label="Deterministic grid optimization",
-        argv=tuple(args),
-        preview=_cutoff_preview(args, cutoff=research_cutoff, marker=cutoff_marker),
-        evidence_role="selection_with_pbo_dsr_reality_check_spa",
-        redactions=((research_cutoff, cutoff_marker),),
-    )
-    return step, combinations
-
-
-_CANDIDATE_SIMPLE_ACTIONS: Final[dict[SuiteAction, tuple[tuple[str, str, str], ...]]] = {
-    "baseline": (
-        ("baseline", "Sandbox two-leg baseline", "two_leg_return_replay_no_order_authority"),
-    ),
-    "inner_oos": (
-        ("inner_oos", "Ordered inner OOS event groups", "ordered_last_20_percent_event_groups"),
-    ),
-    "three_null_families": (
-        (
-            "null_bootstrap",
-            "Sign-randomization headline null",
-            "candidate_return_stream_null_no_majority_vote",
-        ),
-        (
-            "null_student_t",
-            "Student-t sensitivity null",
-            "candidate_return_stream_null_no_majority_vote",
-        ),
-        (
-            "null_garch",
-            "Conditional-volatility sensitivity null",
-            "candidate_return_stream_null_no_majority_vote",
-        ),
-    ),
-    "optimize_grid": (
-        (
-            "optimize_cost_sensitivity",
-            "Frozen cost sensitivity",
-            "fixed_20_40_60_bps_no_adaptive_selection",
-        ),
-    ),
-    "portfolio_cross_asset": (
-        (
-            "portfolio_concentration",
-            "Two-leg concentration diagnostic",
-            "single_candidate_two_venue_concentration",
-        ),
-        (
-            "cross_asset_scope",
-            "Registered cross-asset scope check",
-            "completed_not_applicable_no_invented_asset",
-        ),
-    ),
-    "fixed_stress": (
-        (
-            "fixed_stress",
-            "Fixed two-leg stress scenarios",
-            "scenario_sensitivity_separate_from_nulls",
-        ),
-    ),
-    "qlib": (
-        (
-            "qlib_fixture",
-            "Qlib interface contract fixture",
-            "fixture_only_no_external_model_or_promotion_authority",
-        ),
-    ),
-    "kronos": (
-        (
-            "kronos_forecast_fixture",
-            "Disclosed fake forecast fixture",
-            "fake_model_fixture_not_market_oracle",
-        ),
-        (
-            "kronos_eval_fixture",
-            "Disclosed fake rolling evaluation",
-            "fake_model_fixture_not_market_oracle",
-        ),
-    ),
-}
-
-_CANDIDATE_SIMPLE_GOVERNANCE: Final[dict[SuiteAction, dict[str, object]]] = {
-    "baseline": {
-        "deployment_scope": "sandbox_only",
-        "execution_model": "two_leg_return_replay",
-        "places_orders": False,
-        "paper_eligible": False,
-    },
-    "three_null_families": {"aggregation": "no_majority_vote"},
-    "optimize_grid": {"optimization_authority": "registered_40_bps_cost_remains_immutable"},
-    "fixed_stress": {"separate_from_nulls": True},
-    "qlib": {"model_role": "contract_fixture_not_predictive_evidence"},
-    "kronos": {"kronos_role": "disclosed_fake_fixture_not_market_oracle"},
-}
-
-
-def _candidate_step(
-    *,
-    snapshot: str,
-    research_contract_id: str,
-    analysis: str,
-    label: str,
-    evidence_role: str,
-    cutoff: str,
-    public_cutoff: str,
-) -> SuiteStep:
-    argv = (
-        "strategy-candidate",
-        "run",
-        snapshot,
-        "--research-contract-id",
-        research_contract_id,
-        "--analysis",
-        analysis,
-        "--as-of",
-        cutoff,
-    )
-    return SuiteStep(
-        label,
-        argv,
-        _cutoff_preview(argv, cutoff=cutoff, marker=public_cutoff),
-        evidence_role,
-        ((cutoff, public_cutoff),),
-    )
-
-
-def _null_family_steps(
-    research_common: Sequence[str],
-    split: Mapping[str, object],
-    seeds: Mapping[str, object],
-    config: Mapping[str, object],
-    window: _ResearchWindow,
-) -> list[SuiteStep]:
-    """Build headline and sensitivity commands in the established validation order."""
-    steps: list[SuiteStep] = []
-    validation = [
-        "validate",
-        *research_common,
-        *_split_options(split),
-        "--seed",
-        str(_seed(seeds)),
-        "--tier1-paths",
-        str(_stage_int(config, "tier1_paths", 1000, minimum=100, maximum=100_000)),
-        "--tier2-paths",
-        str(_stage_int(config, "tier2_paths", 64, minimum=1, maximum=10_000)),
-        "--tier3-paths",
-        str(_stage_int(config, "tier3_paths", 64, minimum=1, maximum=10_000)),
-        "--n-resamples",
-        str(_stage_int(config, "n_resamples", 2000, minimum=100, maximum=100_000)),
-        "--mean-block",
-        _float_text(_stage_float(config, "mean_block", 5.0, minimum=1.0, maximum=10_000.0)),
-        "--threshold",
-        _float_text(_stage_float(config, "null_threshold", 0.95, minimum=0.0, maximum=1.0)),
-        "--tier1-divergence-tol",
-        _float_text(
-            _stage_float(
-                config,
-                "tier1_divergence_tol",
-                0.25,
-                minimum=0.0,
-                maximum=100.0,
-            )
-        ),
-    ]
-    if "max_workers" in config:
-        validation.extend(
-            [
-                "--max-workers",
-                str(_stage_int(config, "max_workers", 1, minimum=1, maximum=64)),
-            ]
-        )
-    for family, label, role in (
-        ("bootstrap", "Stationary bootstrap headline", "headline_tier1_plus_tier2"),
-        (
-            "student_t",
-            "Student-t sensitivity",
-            "tier1_sensitivity_tier2_repeated_non_governing",
-        ),
-        (
-            "garch",
-            "GARCH sensitivity",
-            "tier1_sensitivity_tier2_repeated_non_governing",
-        ),
-    ):
-        args = (*validation, "--null-model", family)
-        steps.append(window.step(label, args, role))
-    return steps
-
-
-def build_suite_plan(
+def _resolve_experiment(
     store: ControlStore,
     project_id: str,
     experiment_id: str,
     action: SuiteAction,
     *,
     data_dir: Path,
-    resume_job_id: str | None = None,
-) -> SuitePlan:
-    """Resolve one action solely from immutable, linked control-plane records."""
+    resume_job_id: str | None,
+) -> _PlanContext:
     if action not in SUITE_ACTIONS:
         raise DataError(f"unsupported suite action {action!r}; known: {sorted(SUITE_ACTIONS)}")
     project = store.get_project(project_id)
@@ -800,31 +240,49 @@ def build_suite_plan(
         if prerequisite_state not in {"pass", "warning"}:
             blockers.append(f"{prerequisite} stage must be pass or warning")
 
-    universe_raw = experiment.get("universe")
+    return _PlanContext(
+        store=store,
+        project_id=project_id,
+        experiment_id=experiment_id,
+        action=action,
+        data_dir=data_dir,
+        project=project,
+        experiment=experiment,
+        version=version,
+        stage=stage,
+        states=states,
+        current_state=current_state,
+        resume_reveal=resume_reveal,
+        blockers=blockers,
+    )
+
+
+def _resolve_immutable_inputs(ctx: _PlanContext) -> _PlanContext:
+    universe_raw = ctx.experiment.get("universe")
     if not isinstance(universe_raw, list) or not universe_raw:
         raise DataError("invalid immutable experiment universe")
     universe = sorted(str(symbol) for symbol in universe_raw)
     primary = universe[0]
-    snapshot = _safe_id(experiment.get("snapshot_id"), "snapshot_id")
-    strategy = str(version.get("strategy_name"))
-    definition = _object(version.get("definition"), "strategy definition")
+    snapshot = _safe_id(ctx.experiment.get("snapshot_id"), "snapshot_id")
+    strategy = str(ctx.version.get("strategy_name"))
+    definition = _object(ctx.version.get("definition"), "strategy definition")
     hedged_basis = strategy == registered_hedged_basis_candidate().strategy_name
     if hedged_basis:
         validate_hedged_basis_definition(definition)
-        research_contract_id = version.get("research_contract_id")
+        research_contract_id = ctx.version.get("research_contract_id")
         if not isinstance(research_contract_id, str):
-            blockers.append("hedged basis candidate requires its promoted research contract")
+            ctx.blockers.append("hedged basis candidate requires its promoted research contract")
             research_contract_id = "<promoted-research-contract-required>"
     else:
         specs_for(strategy)  # fail closed before building any argv
         research_contract_id = None
-    parameter_space = _object(version.get("parameter_space"), "parameter space")
-    split = _object(experiment.get("split_policy"), "split policy")
-    costs = _object(experiment.get("costs"), "costs")
-    seeds = _object(experiment.get("seeds"), "seeds")
-    config = _object(experiment.get("stage_config"), "stage configuration")
+    parameter_space = _object(ctx.version.get("parameter_space"), "parameter space")
+    split = _object(ctx.experiment.get("split_policy"), "split policy")
+    costs = _object(ctx.experiment.get("costs"), "costs")
+    seeds = _object(ctx.experiment.get("seeds"), "seeds")
+    config = _object(ctx.experiment.get("stage_config"), "stage configuration")
 
-    holdouts = project.get("holdouts")
+    holdouts = ctx.project.get("holdouts")
     holdout = (
         next(
             (
@@ -832,40 +290,61 @@ def build_suite_plan(
                 for row in holdouts
                 if isinstance(holdouts, list)
                 and isinstance(row, dict)
-                and row.get("experiment_id") == experiment_id
+                and row.get("experiment_id") == ctx.experiment_id
             ),
             None,
         )
         if isinstance(holdouts, list)
         else None
     )
-    sealed_spec = store.get_holdout_spec(project_id, experiment_id)
+    sealed_spec = ctx.store.get_holdout_spec(ctx.project_id, ctx.experiment_id)
+
+    return replace(
+        ctx,
+        universe=universe,
+        primary=primary,
+        snapshot=snapshot,
+        strategy=strategy,
+        definition=definition,
+        hedged_basis=hedged_basis,
+        research_contract_id=research_contract_id,
+        parameter_space=parameter_space,
+        split=split,
+        costs=costs,
+        seeds=seeds,
+        config=config,
+        holdout=holdout,
+        sealed_spec=sealed_spec,
+    )
+
+
+def _resolve_research_window(ctx: _PlanContext) -> _PlanContext:
     research_cutoff: str | None = None
     cutoff_marker: str | None = None
-    if action in _PRE_REVEAL_RESEARCH_ACTIONS:
-        if sealed_spec is None or holdout is None:
-            blockers.append("dated final holdout must be sealed before research begins")
-        elif holdout.get("revealed_at") is not None:
-            blockers.append("research cannot resume after the final holdout is revealed")
-        elif holdout.get("contaminated_at") is not None:
-            blockers.append("final holdout is contaminated for this lineage")
+    if ctx.action in _PRE_REVEAL_RESEARCH_ACTIONS:
+        if ctx.sealed_spec is None or ctx.holdout is None:
+            ctx.blockers.append("dated final holdout must be sealed before research begins")
+        elif ctx.holdout.get("revealed_at") is not None:
+            ctx.blockers.append("research cannot resume after the final holdout is revealed")
+        elif ctx.holdout.get("contaminated_at") is not None:
+            ctx.blockers.append("final holdout is contaminated for this lineage")
         else:
-            holdout_start = date.fromisoformat(str(sealed_spec["start_date"]))
+            holdout_start = date.fromisoformat(str(ctx.sealed_spec["start_date"]))
             research_cutoff = (holdout_start - timedelta(days=1)).isoformat()
-            cutoff_marker = f"<sealed-pre-holdout:{sealed_spec['spec_hash']}>"
+            cutoff_marker = f"<sealed-pre-holdout:{ctx.sealed_spec['spec_hash']}>"
 
     # spec §15 / ADR-0026: an owner override is the only unlinked path through a governed gate;
     # every strategy run launched under it carries the permanent EXPLORATORY watermark.
-    gate_overridden = project.get("research_gate_state") == "overridden"
+    gate_overridden = ctx.project.get("research_gate_state") == "overridden"
     common = (
         []
-        if hedged_basis
+        if ctx.hedged_basis
         else _common(
-            symbol=primary,
-            strategy=strategy,
-            snapshot=snapshot,
-            costs=costs,
-            definition=definition,
+            symbol=ctx.primary,
+            strategy=ctx.strategy,
+            snapshot=ctx.snapshot,
+            costs=ctx.costs,
+            definition=ctx.definition,
             gate_overridden=gate_overridden,
         )
     )
@@ -873,10 +352,8 @@ def build_suite_plan(
     public_cutoff = cutoff_marker or "<sealed-research-cutoff-required>"
     window = _ResearchWindow(cutoff_value, public_cutoff)
     research_common = [*common]
-    if action in _PRE_REVEAL_RESEARCH_ACTIONS:
+    if ctx.action in _PRE_REVEAL_RESEARCH_ACTIONS:
         research_common.extend(["--as-of", cutoff_value])
-    steps: list[SuiteStep] = []
-    workload: dict[str, object]
     governance: dict[str, object] = {
         "paper_only": True,
         "holdout_visible_to_optimization": False,
@@ -887,7 +364,7 @@ def build_suite_plan(
             "state": "overridden",
             "watermark": RESEARCH_GATE_OVERRIDE_WATERMARK,
         }
-    if action in _PRE_REVEAL_RESEARCH_ACTIONS:
+    if ctx.action in _PRE_REVEAL_RESEARCH_ACTIONS:
         governance.update(
             {
                 "sealed_holdout_required_before_research": True,
@@ -896,741 +373,88 @@ def build_suite_plan(
             }
         )
 
-    args: tuple[str, ...]
-    preview: tuple[str, ...]
-    if hedged_basis and action in _CANDIDATE_SIMPLE_ACTIONS:
-        specifications = _CANDIDATE_SIMPLE_ACTIONS[action]
-        steps.extend(
-            _candidate_step(
-                snapshot=snapshot,
-                research_contract_id=str(research_contract_id),
-                analysis=analysis,
-                label=label,
-                evidence_role=evidence_role,
-                cutoff=cutoff_value,
-                public_cutoff=public_cutoff,
-            )
-            for analysis, label, evidence_role in specifications
-        )
-        governance.update(_CANDIDATE_SIMPLE_GOVERNANCE.get(action, {}))
-        workload = _workload(
-            action,
-            commands=len(specifications),
-            canonical_runs=len(specifications),
-            **({"grid_configurations": 3} if action == "optimize_grid" else {}),
-        )
-    elif hedged_basis and action == "monte_carlo":
-        source = _latest_run_for_command(
-            project,
-            experiment_id,
-            ("robustness",),
-            data_dir=data_dir,
-            commands=frozenset({"candidate_null_bootstrap"}),
-        )
-        source_run = None if source is None else source[0]
-        if source_run is None:
-            blockers.append("candidate Monte Carlo requires the completed headline null run")
-            source_run = "<required-validation-run>"
-        for analysis, label, role in (
-            (
-                "monte_carlo_classical",
-                "Classical event-return Monte Carlo",
-                "iid_regime_student_t_no_majority_vote",
-            ),
-            (
-                "monte_carlo_kronos_fixture",
-                "Disclosed fake model-family fixture",
-                "fake_ar1_fixture_not_observed_evidence",
-            ),
-        ):
-            args = (
-                "strategy-candidate",
-                "run",
-                snapshot,
-                "--research-contract-id",
-                str(research_contract_id),
-                "--analysis",
-                analysis,
-                "--source-run-id",
-                source_run,
-                "--as-of",
-                cutoff_value,
-            )
-            steps.append(window.step(label, args, role))
-        governance.update(
-            {
-                "aggregation": "no_majority_vote",
-                "kronos_role": "disclosed_fake_fixture_not_market_oracle",
-            }
-        )
-        workload = _workload(action, commands=2, canonical_runs=2)
-    elif hedged_basis and action == "holdout_reveal":
-        if holdout is None:
-            blockers.append("final holdout must be sealed before owner reveal")
-        elif holdout.get("revealed_at") is not None and not resume_reveal:
-            blockers.append("final holdout was already revealed")
-        elif holdout.get("contaminated_at") is not None:
-            blockers.append("final holdout is contaminated for this lineage")
-        sealed_spec = store.get_holdout_spec(project_id, experiment_id)
-        if sealed_spec is None:
-            blockers.append("final holdout must include a sealed evaluation window")
-        steps.append(
-            SuiteStep(
-                "One-shot final holdout reveal",
-                ("__holdout__",),
-                (
-                    "project",
-                    "reveal-holdout",
-                    project_id,
-                    experiment_id,
-                    "--actor",
-                    "<owner>",
-                    "--reason",
-                    "<owner-confirmed>",
-                ),
-                "owner_only_irreversible_audit",
-            )
-        )
-        if sealed_spec is not None:
-            spec_hash = str(sealed_spec["spec_hash"])
-            args = (
-                "strategy-candidate",
-                "run",
-                snapshot,
-                "--research-contract-id",
-                str(research_contract_id),
-                "--analysis",
-                "holdout",
-                "--holdout-start",
-                str(sealed_spec["start_date"]),
-                "--holdout-end",
-                str(sealed_spec["end_date"]),
-                "--holdout-spec-hash",
-                spec_hash,
-            )
-            preview = (
-                "strategy-candidate",
-                "run",
-                snapshot,
-                "--research-contract-id",
-                str(research_contract_id),
-                "--analysis",
-                "holdout",
-                "--holdout-window",
-                f"<sealed:{spec_hash}>",
-            )
-            steps.append(
-                SuiteStep(
-                    "Locked candidate holdout evaluation",
-                    args,
-                    preview,
-                    "one_shot_fixed_candidate_holdout",
-                )
-            )
-        governance.update(
-            {
-                "owner_only": True,
-                "available_to_mcp": False,
-                "one_shot": True,
-                "resume_same_job_after_interruption": resume_reveal,
-                "sealed_window_redacted_until_reveal": True,
-                "deployment_scope": "sandbox_only",
-                "places_orders": False,
-            }
-        )
-        workload = _workload(action, commands=2, canonical_runs=1)
-    elif hedged_basis and action == "paper_preflight":
-        args = ("strategy-candidate", "paper-preflight", "--json")
-        steps.append(
-            SuiteStep(
-                "Unsupported multi-venue paper boundary",
-                args,
-                args,
-                "blocked_as_designed_no_paper_credit",
-            )
-        )
-        governance.update(
-            {
-                "sandbox": True,
-                "places_orders": False,
-                "owner_only_launch": False,
-                "preflight_outcome": "UNSUPPORTED_MULTI_VENUE_PAPER",
-                "paper_readiness_credit": False,
-            }
-        )
-        workload = _workload(action, commands=1, canonical_runs=0)
-    elif hedged_basis:
-        blockers.append(f"hedged basis candidate analysis {action!r} is not implemented")
-        workload = _workload(action, commands=0, canonical_runs=0)
-    elif action == "baseline":
-        args = ("backtest", "run", *research_common)
-        steps.append(window.step("Baseline discovery", args, "discovery_only"))
-        workload = _workload(action, commands=1, canonical_runs=1)
-    elif action == "inner_oos":
-        args = ("backtest", "oos", *research_common, *_split_options(split))
-        steps.append(window.step("Inner walk-forward OOS", args, "fixed_rule_no_refit"))
-        governance["oos_semantics"] = "fixed_rule_evaluation_no_refit"
-        workload = _workload(action, commands=1, canonical_runs=1)
-    elif action == "three_null_families":
-        steps.extend(_null_family_steps(research_common, split, seeds, config, window))
-        governance.update(
-            {
-                "aggregation": "no_majority_vote",
-                "headline": (
-                    "bootstrap Tier-1 paired with full-engine Tier-2 and bar-permutation Tier-3"
-                ),
-                "sensitivities": ["student_t Tier-1", "garch Tier-1"],
-                "sensitivity_tier2_execution": (
-                    "the canonical validate command currently repeats full-engine Tier-2 for "
-                    "Student-t and GARCH; those repeated checks are recorded but are non-governing"
-                ),
-            }
-        )
-        workload = _workload(action, commands=3, canonical_runs=3)
-    elif action == "monte_carlo":
-        source = _latest_run_for_command(
-            project,
-            experiment_id,
-            ("robustness",),
-            data_dir=data_dir,
-            commands=frozenset({"validate"}),
-            states=frozenset({"pass", "warning", "fail"}),
-            null_model="bootstrap",
-        )
-        evaluation_source = _latest_run_for_command(
-            project,
-            experiment_id,
-            ("kronos",),
-            data_dir=data_dir,
-            commands=frozenset({"forecast_eval"}),
-        )
-        if source is None:
-            blockers.append("Monte Carlo requires the completed bootstrap validation run")
-            source_run = "<bootstrap-validation-required>"
-            source_manifest: dict[str, object] = {}
-        else:
-            source_run, source_manifest = source
-            metadata = source_manifest.get("metadata")
-            null_model = metadata.get("null_model") if isinstance(metadata, Mapping) else None
-            if null_model != "bootstrap":
-                blockers.append("Monte Carlo source must be the stationary-bootstrap headline run")
-        if evaluation_source is None:
-            blockers.append("Monte Carlo requires a matching Kronos rolling-origin evaluation")
-            evaluation_run = "<forecast-evaluation-required>"
-            evaluation_manifest: dict[str, object] = {}
-        else:
-            evaluation_run, evaluation_manifest = evaluation_source
+    return replace(
+        ctx,
+        gate_overridden=gate_overridden,
+        common=common,
+        research_common=research_common,
+        window=window,
+        governance=governance,
+    )
 
-        classical_args = (
-            "monte-carlo",
-            "classical",
-            "--from-run",
-            source_run,
-            "--paths",
-            str(
-                _stage_int(
-                    config,
-                    "monte_carlo_paths",
-                    10_000,
-                    minimum=1,
-                    maximum=1_000_000,
-                )
-            ),
-            "--regime-window",
-            str(
-                _stage_int(
-                    config,
-                    "monte_carlo_regime_window",
-                    63,
-                    minimum=2,
-                    maximum=2_000,
-                )
-            ),
-            "--min-state-observations",
-            str(
-                _stage_int(
-                    config,
-                    "monte_carlo_min_state_observations",
-                    20,
-                    minimum=1,
-                    maximum=100_000,
-                )
-            ),
-            "--min-state-transitions",
-            str(
-                _stage_int(
-                    config,
-                    "monte_carlo_min_state_transitions",
-                    10,
-                    minimum=1,
-                    maximum=100_000,
-                )
-            ),
-            "--seed",
-            str(_seed(seeds)),
-        )
-        steps.append(
-            SuiteStep(
-                "Classical Monte Carlo families",
-                classical_args,
-                classical_args,
-                "iid_regime_student_t_no_majority_vote",
-            )
-        )
 
-        eval_model = evaluation_manifest.get("model")
-        eval_params = evaluation_manifest.get("params")
-        model_block = eval_model if isinstance(eval_model, Mapping) else {}
-        params_block = eval_params if isinstance(eval_params, Mapping) else {}
-        model_id = str(model_block.get("model_id", "fake"))
-        context_bars = int(params_block.get("context", 512))
-        kronos_args: list[str] = [
-            "monte-carlo",
-            "kronos",
-            "--from-run",
-            source_run,
-            "--forecast-eval-run",
-            evaluation_run,
-            "--paths",
-            str(
-                _stage_int(
-                    config,
-                    "kronos_monte_carlo_paths",
-                    128,
-                    minimum=1,
-                    maximum=10_000,
-                )
-            ),
-            "--context",
-            str(context_bars),
-            "--model",
-            model_id,
-            "--seed",
-            str(_seed(seeds)),
-        ]
-        for field, flag in (
-            ("model_revision", "--model-revision"),
-            ("tokenizer_id", "--tokenizer"),
-            ("tokenizer_revision", "--tokenizer-revision"),
-            ("device", "--device"),
-        ):
-            value = model_block.get(field)
-            if isinstance(value, str) and value:
-                kronos_args.extend((flag, value))
-        steps.append(
-            SuiteStep(
-                "Kronos synthetic-OHLCV full-engine replay",
-                tuple(kronos_args),
-                tuple(kronos_args),
-                "standalone_model_path_no_observed_signal_replay",
-            )
-        )
-        governance.update(
-            {
-                "aggregation": "no_majority_vote",
-                "warning_authority": "trusted_local_owner_cli_only",
-                "warning_decisions": ["continue", "revise", "reject"],
-                "kronos_role": "calibrated_stochastic_generator_not_market_oracle",
-            }
-        )
-        workload = _workload(action, commands=2, canonical_runs=2)
-    elif action == "optimize_grid":
-        step, combinations = _grid_steps(
-            primary=primary,
-            strategy=strategy,
-            snapshot=snapshot,
-            costs=costs,
-            definition=definition,
-            parameter_space=parameter_space,
-            split=split,
-            seeds=seeds,
-            config=config,
-            research_cutoff=cutoff_value,
-            cutoff_marker=public_cutoff,
-            gate_overridden=gate_overridden,
-        )
-        steps.append(step)
-        workload = _workload(action, commands=1, canonical_runs=1, grid_configurations=combinations)
-    elif action == "fixed_stress":
-        fixed_source_run = _latest_run(project, experiment_id, ("oos", "baseline"))
-        if fixed_source_run is None:
-            blockers.append("fixed stress requires a cited baseline or OOS run")
-            fixed_source_run = "<required-run>"
-        args = ("risk", "scenario", "--from-run", fixed_source_run, "--json")
-        steps.append(SuiteStep("Fixed stress scenarios", args, args, "scenario_sensitivity"))
-        governance["separate_from_nulls"] = True
-        workload = _workload(action, commands=1, canonical_runs=0)
-    elif action == "portfolio_cross_asset":
-        if len(universe) < 2:
-            blockers.append("portfolio/cross-asset analysis requires at least two frozen symbols")
-        base = [
-            *universe,
-            "--strategy",
-            strategy,
-            "--snapshot",
-            snapshot,
-            "--fee-bps",
-            _float_text(_number(costs.get("fee_bps", 1.0), "fee_bps", minimum=0.0)),
-            "--slippage-bps",
-            _float_text(_number(costs.get("slippage_bps", 2.0), "slippage_bps", minimum=0.0)),
-            *_definition_options(definition),
-            *_strategy_options(strategy, definition),
-            *_split_options(split),
-            "--seed",
-            str(_seed(seeds)),
-            "--as-of",
-            cutoff_value,
-            *(["--research-gate-override"] if gate_overridden else []),
-        ]
-        weighting = config.get("portfolio_weighting", "equal")
-        if weighting not in {"equal", "inverse_vol"}:
-            raise DataError("portfolio_weighting must be equal or inverse_vol")
-        portfolio_args = ("backtest", "portfolio", *base, "--weighting", str(weighting))
-        cross_args = ("backtest", "cross-sectional", *base)
-        steps.extend(
-            [
-                window.step("Portfolio OOS analysis", portfolio_args, "portfolio_allocation"),
-                window.step("Cross-asset OOS analysis", cross_args, "cross_asset_association"),
-            ]
-        )
-        workload = _workload(action, commands=2, canonical_runs=2)
-    elif action == "qlib":
-        if len(universe) < 20:
-            blockers.append("Qlib starter requires at least 20 frozen symbols")
-        managed_id = _managed_qlib_id(experiment_id)
-        ml_root = data_dir / "control" / "ml"
-        input_bundle = ml_root / "inputs" / managed_id
-        exchange = ml_root / "exchanges" / managed_id
-        worker_lock = Path(__file__).resolve().parents[4] / "workers" / "qlib" / "uv.lock"
-        if input_bundle.exists() or exchange.exists():
-            blockers.append(
-                "managed Qlib resources already exist for this immutable experiment; "
-                "inspect the existing ML experiment or create a new ExperimentSpec"
-            )
-        if worker_lock.is_symlink() or not worker_lock.is_file():
-            blockers.append("isolated Qlib worker lock is unavailable")
-        input_marker = f"<managed-input:{managed_id}>"
-        exchange_marker = f"<managed-exchange:{managed_id}>"
-        lock_marker = "<isolated-worker-lock>"
-        redactions = (
-            (str(input_bundle), input_marker),
-            (str(exchange), exchange_marker),
-            (str(worker_lock), lock_marker),
-            (cutoff_value, public_cutoff),
-        )
-        export = (
-            "ml",
-            "export-input",
-            project_id,
-            experiment_id,
-            str(input_bundle),
-            "--as-of",
-            cutoff_value,
-            "--json",
-        )
-        prepare = (
-            "ml",
-            "prepare",
-            str(input_bundle / "spec.json"),
-            str(input_bundle / "panel.parquet"),
-            str(exchange),
-            "--worker-lock",
-            str(worker_lock),
-            "--json",
-        )
-        train = ("ml", "train", str(exchange), "--mode", "real", "--json")
-        replay = (
-            "ml",
-            "replay",
-            str(exchange),
-            "--as-of",
-            cutoff_value,
-            "--json",
-        )
-        steps.extend(
-            [
-                SuiteStep(
-                    "Generate immutable Qlib input",
-                    export,
-                    (
-                        "ml",
-                        "export-input",
-                        project_id,
-                        experiment_id,
-                        input_marker,
-                        "--as-of",
-                        public_cutoff,
-                        "--json",
-                    ),
-                    "immutable_snapshot_bound_input",
-                    redactions,
-                ),
-                SuiteStep(
-                    "Prepare isolated Qlib exchange",
-                    prepare,
-                    (
-                        "ml",
-                        "prepare",
-                        f"{input_marker}/spec.json",
-                        f"{input_marker}/panel.parquet",
-                        exchange_marker,
-                        "--worker-lock",
-                        lock_marker,
-                        "--json",
-                    ),
-                    "validated_portable_worker_contract",
-                    redactions,
-                ),
-                SuiteStep(
-                    "Qlib fold training",
-                    train,
-                    ("ml", "train", exchange_marker, "--mode", "real", "--json"),
-                    "fold_refit",
-                    redactions,
-                ),
-                SuiteStep(
-                    "Canonical ALPHA ML replay",
-                    replay,
-                    (
-                        "ml",
-                        "replay",
-                        exchange_marker,
-                        "--as-of",
-                        public_cutoff,
-                        "--json",
-                    ),
-                    "oos_replay_model_not_recomputed_under_counterfactual",
-                    redactions,
-                ),
-            ]
-        )
-        governance.update(
-            {
-                "isolated_worker": True,
-                "counterfactual_refit": False,
-                "promotion_eligible": False,
-                "managed_resource_id": managed_id,
-                "minimum_aligned_sessions": 756,
-                "minimum_aligned_sessions_enforced_by": "immutable input export",
-            }
-        )
-        workload = _workload(action, commands=4, canonical_runs=1)
-    elif action == "kronos":
-        model = config.get("kronos_model")
-        model_args: list[str] = []
-        if model is None:
-            blockers.append("Kronos requires a pinned model id in the immutable experiment")
-        elif not isinstance(model, str) or _SAFE_MODEL.fullmatch(model) is None:
-            raise DataError("kronos_model must be 'fake' or a managed repository id")
-        else:
-            model_args = ["--model", model]
-        if isinstance(model, str) and model != "fake" and "kronos_model_revision" not in config:
-            blockers.append("Kronos repository models require a pinned model revision")
-        for key, flag in (
-            ("kronos_model_revision", "--model-revision"),
-            ("kronos_tokenizer_revision", "--tokenizer-revision"),
-        ):
-            value = config.get(key)
-            if value is not None:
-                if not isinstance(value, str) or _SAFE_REVISION.fullmatch(value) is None:
-                    raise DataError(f"{key} must be a safe immutable revision id")
-                model_args.extend([flag, value])
-        tokenizer = config.get("kronos_tokenizer")
-        if tokenizer is not None:
-            if not isinstance(tokenizer, str) or _SAFE_MODEL.fullmatch(tokenizer) is None:
-                raise DataError("kronos_tokenizer must be a managed repository id")
-            model_args.extend(["--tokenizer", tokenizer])
-        device = config.get("kronos_device", "cpu")
-        if device not in {"cpu", "mps", "cuda"}:
-            raise DataError("kronos_device must be cpu, mps, or cuda")
-        model_args.extend(["--device", str(device)])
-        horizon = _stage_int(config, "kronos_horizon", 21, minimum=1, maximum=512)
-        samples = _stage_int(config, "kronos_samples", 100, minimum=1, maximum=1000)
-        eval_samples = _stage_int(config, "kronos_eval_samples", 30, minimum=1, maximum=200)
-        context = _stage_int(config, "kronos_context", 400, minimum=2, maximum=100_000)
-        stride = _stage_int(config, "kronos_stride", 21, minimum=1, maximum=10_000)
-        temperature = _stage_float(config, "kronos_temperature", 1.0, minimum=0.0, maximum=10.0)
-        top_p = _stage_float(config, "kronos_top_p", 0.9, minimum=0.0, maximum=1.0)
-        top_k = _stage_int(config, "kronos_top_k", 0, minimum=0, maximum=1_000_000)
-        forecast = (
-            "forecast",
-            "run",
-            primary,
-            "--snapshot",
-            snapshot,
-            "--horizon",
-            str(horizon),
-            "--samples",
-            str(samples),
-            "--context",
-            str(context),
-            "--temperature",
-            _float_text(temperature),
-            "--top-p",
-            _float_text(top_p),
-            "--top-k",
-            str(top_k),
-            "--seed",
-            str(_seed(seeds)),
-            "--as-of",
-            cutoff_value,
-            *model_args,
-        )
-        evaluate = (
-            "forecast",
-            "eval",
-            primary,
-            "--snapshot",
-            snapshot,
-            "--horizon",
-            str(horizon),
-            "--samples",
-            str(eval_samples),
-            "--context",
-            str(context),
-            "--stride",
-            str(stride),
-            "--temperature",
-            _float_text(temperature),
-            "--top-p",
-            _float_text(top_p),
-            "--top-k",
-            str(top_k),
-            "--seed",
-            str(_seed(seeds)),
-            "--as-of",
-            cutoff_value,
-            *model_args,
-        )
-        steps.extend(
-            [
-                window.step("Kronos forecast cone", forecast, "forecast_samples"),
-                window.step("Kronos rolling evaluation", evaluate, "rolling_evaluation"),
-            ]
-        )
-        governance["pretraining_overlap_warning_permanent"] = True
-        workload = _workload(action, commands=2, canonical_runs=2)
-    elif action == "holdout_reveal":
-        if holdout is None:
-            blockers.append("final holdout must be sealed before owner reveal")
-        elif holdout.get("revealed_at") is not None and not resume_reveal:
-            blockers.append("final holdout was already revealed")
-        elif holdout.get("contaminated_at") is not None:
-            blockers.append("final holdout is contaminated for this lineage")
-        sealed_spec = store.get_holdout_spec(project_id, experiment_id)
-        if sealed_spec is None:
-            blockers.append("final holdout must include a sealed evaluation window")
-        preview = (
-            "project",
-            "reveal-holdout",
-            project_id,
-            experiment_id,
-            "--actor",
-            "<owner>",
-            "--reason",
-            "<owner-confirmed>",
-        )
-        steps.append(
-            SuiteStep(
-                "One-shot final holdout reveal",
-                ("__holdout__",),
-                preview,
-                "owner_only_irreversible_audit",
-            )
-        )
-        if sealed_spec is not None:
-            spec_hash = str(sealed_spec["spec_hash"])
-            threshold = _stage_float(
-                config,
-                "holdout_min_sharpe",
-                0.0,
-                minimum=-100.0,
-                maximum=100.0,
-            )
-            evaluation = (
-                "backtest",
-                "holdout",
-                *common,
-                "--holdout-start",
-                str(sealed_spec["start_date"]),
-                "--holdout-end",
-                str(sealed_spec["end_date"]),
-                "--holdout-spec-hash",
-                spec_hash,
-                "--min-sharpe",
-                _float_text(threshold),
-            )
-            public_evaluation = (
-                "backtest",
-                "holdout",
-                *common,
-                "--holdout-window",
-                f"<sealed:{spec_hash}>",
-                "--min-sharpe",
-                _float_text(threshold),
-            )
-            steps.append(
-                SuiteStep(
-                    "Locked final holdout evaluation",
-                    evaluation,
-                    public_evaluation,
-                    "one_shot_fixed_candidate_holdout",
-                )
-            )
-        governance.update(
-            {
-                "owner_only": True,
-                "available_to_mcp": False,
-                "one_shot": True,
-                "resume_same_job_after_interruption": resume_reveal,
-                "sealed_window_redacted_until_reveal": True,
-            }
-        )
-        workload = _workload(action, commands=2, canonical_runs=1)
-    else:
-        paper_symbol_raw = config.get("paper_symbol")
-        paper_symbol = (
-            str(paper_symbol_raw)
-            if paper_symbol_raw is not None
-            else next((symbol for symbol in universe if "/" in symbol), "")
-        )
-        if paper_symbol not in universe or "/" not in paper_symbol:
-            blockers.append("paper preflight requires a frozen BASE/QUOTE symbol")
-            paper_symbol = "<required-base/quote>"
-        paper_args = ["paper", "preflight", paper_symbol, "--strategy", strategy]
-        if "starting_cash" in definition:
-            paper_args.extend(
-                [
-                    "--starting-cash",
-                    _float_text(_number(definition["starting_cash"], "starting_cash", minimum=1.0)),
-                ]
-            )
-        paper_args.extend(_strategy_options(strategy, definition))
-        steps.append(
-            SuiteStep(
-                "Sandbox paper preflight",
-                tuple(paper_args),
-                tuple(paper_args),
-                "sandbox_preflight_only",
-            )
-        )
-        governance.update({"sandbox": True, "places_orders": False, "owner_only_launch": True})
-        workload = _workload(action, commands=1, canonical_runs=0)
+def _build_action_steps(ctx: _PlanContext) -> tuple[list[SuiteStep], dict[str, object]]:
+    if not ctx.universe or not ctx.governance:
+        # The context's defaults are placeholders: refuse rather than build argv from them.
+        raise DataError("suite plan context was not fully resolved")
+    if ctx.hedged_basis and ctx.action in _CANDIDATE_SIMPLE_ACTIONS:
+        return _candidate_simple_steps(ctx)
+    if ctx.hedged_basis and ctx.action == "monte_carlo":
+        return _candidate_monte_carlo_steps(ctx)
+    if ctx.hedged_basis and ctx.action == "holdout_reveal":
+        return _candidate_holdout_steps(ctx)
+    if ctx.hedged_basis and ctx.action == "paper_preflight":
+        return _candidate_paper_steps(ctx)
+    if ctx.hedged_basis:
+        return _unsupported_candidate_steps(ctx)
+    if ctx.action == "baseline":
+        return _baseline_steps(ctx)
+    if ctx.action == "inner_oos":
+        return _inner_oos_steps(ctx)
+    if ctx.action == "three_null_families":
+        return _three_null_families_steps(ctx)
+    if ctx.action == "monte_carlo":
+        return _monte_carlo_steps(ctx)
+    if ctx.action == "optimize_grid":
+        return _optimize_grid_steps(ctx)
+    if ctx.action == "fixed_stress":
+        return _fixed_stress_steps(ctx)
+    if ctx.action == "portfolio_cross_asset":
+        return _portfolio_cross_asset_steps(ctx)
+    if ctx.action == "qlib":
+        return _qlib_steps(ctx)
+    if ctx.action == "kronos":
+        return _kronos_steps(ctx)
+    if ctx.action == "holdout_reveal":
+        return _holdout_steps(ctx)
+    return _paper_preflight_steps(ctx)
 
+
+def build_suite_plan(
+    store: ControlStore,
+    project_id: str,
+    experiment_id: str,
+    action: SuiteAction,
+    *,
+    data_dir: Path,
+    resume_job_id: str | None = None,
+) -> SuitePlan:
+    """Resolve one action solely from immutable, linked control-plane records."""
+    ctx = _resolve_experiment(
+        store,
+        project_id,
+        experiment_id,
+        action,
+        data_dir=data_dir,
+        resume_job_id=resume_job_id,
+    )
+    ctx = _resolve_immutable_inputs(ctx)
+    ctx = _resolve_research_window(ctx)
+    steps, workload = _build_action_steps(ctx)
     return SuitePlan(
         schema_version=1,
-        project_id=project_id,
-        experiment_id=experiment_id,
-        action=action,
-        stage=stage,
-        ready=not blockers,
-        blockers=tuple(blockers),
-        resolved_experiment=experiment,
-        resolved_strategy_version=version,
-        current_stage_state=current_state,
+        project_id=ctx.project_id,
+        experiment_id=ctx.experiment_id,
+        action=ctx.action,
+        stage=ctx.stage,
+        ready=not ctx.blockers,
+        blockers=tuple(ctx.blockers),
+        resolved_experiment=ctx.experiment,
+        resolved_strategy_version=ctx.version,
+        current_stage_state=ctx.current_state,
         estimated_workload=workload,
         steps=tuple(steps),
-        governance=governance,
+        governance=ctx.governance,
     )
 
 
@@ -2035,6 +859,144 @@ def reserve_suite_job(
     )
 
 
+def _start_suite_step(
+    store: ControlStore,
+    plan: SuitePlan,
+    step: SuiteStep,
+    index: int,
+    job_id: str,
+) -> str:
+    """Journal the queued attempt and initial events before checking cancellation."""
+    fingerprint = _fingerprint(plan, step, index)
+    store.record_attempt(
+        plan.project_id,
+        plan.experiment_id,
+        stage=plan.stage,
+        status="queued",
+        config_fingerprint=fingerprint,
+        details={
+            "action": plan.action,
+            "job_id": job_id,
+            "step": index,
+            "label": step.label,
+            "evidence_role": step.evidence_role,
+        },
+    )
+    store.append_job_event(
+        job_id,
+        event_type="progress",
+        payload={"step": index, "total": len(plan.steps), "label": step.label},
+    )
+    store.append_job_event(
+        job_id,
+        event_type="heartbeat",
+        payload={"step": index, "label": step.label},
+    )
+    return fingerprint
+
+
+def _complete_suite_execution(
+    store: ControlStore,
+    plan: SuitePlan,
+    *,
+    data_dir: Path,
+    job_id: str,
+    run_ids: list[str],
+    request: dict[str, object],
+) -> dict[str, object]:
+    """Publish run links, final stage state and the successful job result in order."""
+    _record_optimization_trial_attempts(
+        store,
+        plan,
+        data_dir=data_dir,
+        job_id=job_id,
+        run_ids=run_ids,
+    )
+    if plan.action == "monte_carlo":
+        linked_results = _monte_carlo_results(data_dir, run_ids)
+        stage_state = _monte_carlo_stage_state(linked_results)
+    else:
+        stage_state = _headline_state(data_dir, plan, run_ids)
+        linked_results = [(run_id, stage_state) for run_id in run_ids]
+        if plan.action == "three_null_families" and run_ids:
+            linked_results = [
+                *((run_id, "warning") for run_id in run_ids[1:]),
+                (run_ids[0], stage_state),
+            ]
+    for run_id, link_state in linked_results:
+        store.link_suite_stage_run(
+            plan.project_id,
+            plan.experiment_id,
+            suite_action=plan.action,
+            stage=plan.stage,
+            state=link_state,
+            run_id=run_id,
+        )
+    if plan.action in _GOVERNED_STAGE_ACTIONS:
+        _finish_stage(
+            store,
+            plan,
+            stage_state,
+            "suite completed; headline evidence governs stage state",
+            job_id=job_id,
+        )
+    reported_stage_state = (
+        stage_state if plan.action in _GOVERNED_STAGE_ACTIONS else plan.current_stage_state
+    )
+    result = {
+        "action": plan.action,
+        "stage": plan.stage,
+        "stage_state": reported_stage_state,
+        "run_ids": run_ids,
+        "headline_run_id": run_ids[0] if run_ids else None,
+    }
+    store.append_job_result(job_id, result)
+    completed = store.set_job_status(
+        job_id,
+        "succeeded",
+        result_run_id=run_ids[0] if run_ids else None,
+    )
+    return {**completed, "plan": request, "result": result}
+
+
+def _record_suite_cleanup_failure(
+    store: ControlStore,
+    plan: SuitePlan,
+    job_id: str,
+    index: int,
+    exc: SuiteProcessCleanupError,
+) -> None:
+    """Keep capacity reserved when process cleanup cannot be verified."""
+    if index:
+        step = plan.steps[index - 1]
+        store.record_attempt(
+            plan.project_id,
+            plan.experiment_id,
+            stage=plan.stage,
+            status="failed",
+            config_fingerprint=_fingerprint(plan, step, index),
+            error=str(exc)[:8000],
+            details={
+                "action": plan.action,
+                "job_id": job_id,
+                "step": index,
+                "cleanup_unverified": True,
+            },
+        )
+    store.append_job_event(
+        job_id,
+        event_type="log",
+        payload={
+            "line": (
+                f"suite process-group cleanup failed: {exc}; heavyweight capacity remains reserved"
+            )
+        },
+    )
+    # A terminal journal would release the shared heavyweight slot even though a descendant
+    # may still be executing. Leave both the stage and job running until stale-lease
+    # reconciliation can surface the abandoned execution for an owner.
+
+
 def execute_suite(
     store: ControlStore,
     plan: SuitePlan,
@@ -2074,31 +1036,7 @@ def execute_suite(
     current_index = 0
     try:
         for current_index, step in enumerate(plan.steps, start=1):
-            fingerprint = _fingerprint(plan, step, current_index)
-            store.record_attempt(
-                plan.project_id,
-                plan.experiment_id,
-                stage=plan.stage,
-                status="queued",
-                config_fingerprint=fingerprint,
-                details={
-                    "action": plan.action,
-                    "job_id": jid,
-                    "step": current_index,
-                    "label": step.label,
-                    "evidence_role": step.evidence_role,
-                },
-            )
-            store.append_job_event(
-                jid,
-                event_type="progress",
-                payload={"step": current_index, "total": len(plan.steps), "label": step.label},
-            )
-            store.append_job_event(
-                jid,
-                event_type="heartbeat",
-                payload={"step": current_index, "label": step.label},
-            )
+            fingerprint = _start_suite_step(store, plan, step, current_index, jid)
             if cancellation_requested():
                 raise InterruptedError("suite action cancelled")
             if step.argv == ("__holdout__",):
@@ -2138,58 +1076,14 @@ def execute_suite(
                     "run_ids": list(execution.run_ids),
                 },
             )
-        _record_optimization_trial_attempts(
+        return _complete_suite_execution(
             store,
             plan,
             data_dir=data_dir,
             job_id=jid,
             run_ids=run_ids,
+            request=request,
         )
-        if plan.action == "monte_carlo":
-            linked_results = _monte_carlo_results(data_dir, run_ids)
-            stage_state = _monte_carlo_stage_state(linked_results)
-        else:
-            stage_state = _headline_state(data_dir, plan, run_ids)
-            linked_results = [(run_id, stage_state) for run_id in run_ids]
-            if plan.action == "three_null_families" and run_ids:
-                linked_results = [
-                    *((run_id, "warning") for run_id in run_ids[1:]),
-                    (run_ids[0], stage_state),
-                ]
-        for run_id, link_state in linked_results:
-            store.link_suite_stage_run(
-                plan.project_id,
-                plan.experiment_id,
-                suite_action=plan.action,
-                stage=plan.stage,
-                state=link_state,
-                run_id=run_id,
-            )
-        if plan.action in _GOVERNED_STAGE_ACTIONS:
-            _finish_stage(
-                store,
-                plan,
-                stage_state,
-                "suite completed; headline evidence governs stage state",
-                job_id=jid,
-            )
-        reported_stage_state = (
-            stage_state if plan.action in _GOVERNED_STAGE_ACTIONS else plan.current_stage_state
-        )
-        result = {
-            "action": plan.action,
-            "stage": plan.stage,
-            "stage_state": reported_stage_state,
-            "run_ids": run_ids,
-            "headline_run_id": run_ids[0] if run_ids else None,
-        }
-        store.append_job_result(jid, result)
-        completed = store.set_job_status(
-            jid,
-            "succeeded",
-            result_run_id=run_ids[0] if run_ids else None,
-        )
-        return {**completed, "plan": request, "result": result}
     except InterruptedError:
         if current_index:
             step = plan.steps[current_index - 1]
@@ -2210,35 +1104,7 @@ def execute_suite(
         store.set_job_status(jid, "cancelled")
         raise
     except SuiteProcessCleanupError as exc:
-        if current_index:
-            step = plan.steps[current_index - 1]
-            store.record_attempt(
-                plan.project_id,
-                plan.experiment_id,
-                stage=plan.stage,
-                status="failed",
-                config_fingerprint=_fingerprint(plan, step, current_index),
-                error=str(exc)[:8000],
-                details={
-                    "action": plan.action,
-                    "job_id": jid,
-                    "step": current_index,
-                    "cleanup_unverified": True,
-                },
-            )
-        store.append_job_event(
-            jid,
-            event_type="log",
-            payload={
-                "line": (
-                    f"suite process-group cleanup failed: {exc}; "
-                    "heavyweight capacity remains reserved"
-                )
-            },
-        )
-        # A terminal journal would release the shared heavyweight slot even though a descendant
-        # may still be executing. Leave both the stage and job running until stale-lease
-        # reconciliation can surface the abandoned execution for an owner.
+        _record_suite_cleanup_failure(store, plan, jid, current_index, exc)
         raise
     except Exception as exc:
         if current_index:
