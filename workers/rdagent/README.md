@@ -474,8 +474,12 @@ bash -c 'set -a; . ~/.config/alpha/openrouter.env; set +a; exec .venv/bin/python
   --data-dir ... --run-dir ... --gateway-data-dir ... --trial-ledger ... --run-id ... --loop-n 2'
 ```
 
-  Not yet run: in this session the agent's permission settings refused to load the key file, so
-  no call has been made on this route (see the task's `04-verify.md`).
+  First run 2026-11-14 13:04-13:13 UTC (run `rdloop-deepseek-20261114-1`, 3 iterations): 54
+  calls of 60, USD 0.044 as reported by OpenRouter (gateway estimate 0.039), every reply valid
+  on the first attempt, temperature honoured. Nine factors entered the ledger (trials 6-14),
+  mostly short-term reversal: five failed the screen, one failed to run, three passed the screen
+  and failed the replay after costs (daily turnover 0.52-0.79). No candidate. One run per route
+  is not a quality comparison.
 - Embeddings stay on local Ollama on both routes.
 - Not yet: supervision by `alpha`'s native job supervisor
   ([backlog](../../docs/roadmap/backlog/rdagent-factor-loop-supervision.md)); a Nautilus replay;
