@@ -1,6 +1,6 @@
 # An RD-Agent loop that ALPHA judges: runtime, launcher, judge and evaluator
 
-**Delivery state:** Building — design accepted in ADR-0049; code built from this plan.
+**Delivery state:** Building — design accepted in ADR-0049 (with the trial ledger, locked period, two stages, candidates and feed-forward added the same day); code built from this plan.
 **Build class:** hard — more than eight files and a bias-sensitive evaluation path.
 
 Filed straight into the archive, as the previous RD-Agent tasks were: the work-in-progress ceiling
@@ -16,7 +16,7 @@ admits no new live plan.
     {"statement": "RD-Agent's proposer renders experiment.result.loc[['IC','1day.excess_return_without_cost.annualized_return','1day.excess_return_without_cost.max_drawdown']] and experiment.stdout for past trials, so result must be a pandas Series with those three labels.", "verified_by": "reading rdagent/scenarios/qlib/prompts.yaml hypothesis_and_feedback, last_ and sota_hypothesis_and_feedback"},
     {"statement": "FactorFBWorkspace.execute('All') links every file of FACTOR_CoSTEER_data_folder into the workspace, runs '<FACTOR_CoSTEER_python_bin> factor.py' with cwd=workspace and reads result.h5 (key data) as the factor values.", "verified_by": "reading rdagent/components/coder/factor_coder/factor.py execute()"},
     {"statement": "Without conda, CondaConf._update_bin_path leaves bin_path empty, so an absolute FACTOR_CoSTEER_python_bin and any non-empty CONDA_DEFAULT_ENV string need no conda stand-in.", "verified_by": "reading rdagent/utils/env.py CondaConf and LocalEnv._run"},
-    {"statement": "workers/rdagent/factor-requirements.lock (82 hash-pinned packages, Python 3.11, pandas 2.2.3, numpy 2.2.6, tables 3.11.1) installs with --require-hashes --no-deps and imports rdagent.app.qlib_rd_loop.factor and the Qlib factor developer, proposal and experiment modules.", "verified_by": "installed into a fresh venv on the Dell and imported, 2026-11-14"},
+    {"statement": "workers/rdagent/factor-requirements.lock (79 hash-pinned packages, Python 3.11, pandas 2.2.3, numpy 2.2.6, tables 3.11.1) installs with --require-hashes --no-deps and imports rdagent.app.qlib_rd_loop.factor and the Qlib factor developer, proposal and experiment modules.", "verified_by": "installed into a fresh venv on the Dell and imported, 2026-11-14"},
     {"statement": "alpha_backtest.portfolio_replay.run_weight_replay replays long-only target weights decided at a close and filled at the next open over a fully aligned daily session rectangle of at least two symbols.", "verified_by": "reading packages/alpha-backtest/src/alpha_backtest/portfolio_replay.py"}
   ],
   "alternatives_considered": [
@@ -89,7 +89,8 @@ is importable without side effects; otherwise copy the 20-line class), add only 
 (default 60, refuse more than 60), `--wall-seconds` (default 5400), `--chat-route` and
 `--embedding-route` passed to the gateway (`codex`/`ollama` default), `--accept-unhonoured`
 (default `temperature`). Paths from the environment: `ALPHA_RDAGENT_SOURCE`, `ALPHA_FACTOR_PYTHON`
-(both required; refuse with a plain message naming `scripts/setup_rdagent.sh --with-factor-runtime`).
+(both required; refuse with a plain message naming `scripts/setup_rdagent.sh --with-factor-runtime`),
+`--trial-ledger` (absolute, outside any git tree, required; its parent must exist).
 Steps, each logged as one JSON line to `<run-dir>/launch.jsonl` with a UTC time:
 1. `install_stock_profile.py --profile factor --verify <bundle>` and `source_pin.verify_source`;
    record both identities.
@@ -113,7 +114,9 @@ Steps, each logged as one JSON line to `<run-dir>/launch.jsonl` with a UTC time:
    `QLIB_FACTOR_VALID_START=2021-01-01`, `QLIB_FACTOR_VALID_END=2023-12-24`,
    `QLIB_FACTOR_TEST_START=2023-12-25`, `QLIB_FACTOR_TEST_END=2023-12-31` (only so RD-Agent's
    description renders; ALPHA's windows are in the evaluator), `LOG_TRACE_PATH=<run>/work/log`,
-   `ALPHA_FACTOR_RUN_DIR=<run>`, `ALPHA_FACTOR_EVAL_PYTHON=<repo>/.venv/bin/python`.
+   `ALPHA_FACTOR_RUN_DIR=<run>`, `ALPHA_FACTOR_EVAL_PYTHON=<repo>/.venv/bin/python`,
+   `QLIB_FACTOR_HYPOTHESIS_GEN=alpha_factor_judge.AlphaFactorHypothesisGen`,
+   `ALPHA_FACTOR_TRIAL_LEDGER=<trial ledger>`.
    Command: `<factor python> -I -B workers/rdagent/factor_loop_entry.py <source> <loop_n>`, cwd
    `<run>/work`, own process group, stdout/stderr to `<run>/logs/loop.*.log`.
 6. On exit, timeout (`--wall-seconds`) or SIGINT/SIGTERM to the launcher: terminate the loop's
@@ -131,6 +134,37 @@ loop command (allow the test to inject the loop and freeze/prepare commands thro
 function argument, not a CLI flag); gateway start/stop with `--chat-route fake --embedding-route fake`.
 
 ### 3. Evaluator (`apps/alpha-cli/src/alpha_cli/rdagent_factor_eval.py`)
+
+**Two stages and a cross-run trial ledger (ADR-0049 points 2, 5, 6; these rules override any
+conflicting sentence below).** `evaluate` takes `--ledger LEDGER` (absolute path of the shared
+append-only `rdagent-factor-trials.jsonl`; created if absent; the launcher passes it, see 2). Per
+factor of the request, in order:
+1. If its code sha256 is already in LEDGER (or earlier in this request): status `REPEAT`, with
+   `first_trial` = that trial's run id, iteration, factor name, status and screen metrics; not
+   evaluated, not added to the family.
+2. Request status FAILED / LOOKAHEAD → that status (p = 1). Otherwise coverage and ties →
+   `DEGENERATE` (p = 1).
+3. Stage 1, the screen: the rank-IC statistics below; the family = every distinct factor identity
+   in LEDGER plus this request's new ones, in order; BH q-values over the family's p-values.
+   q ≥ 0.10 → `SCREEN_FAIL`.
+4. Stage 2, only when q < 0.10: the replay below. Annualised net excess > 0 → `CANDIDATE`, else
+   `REPLAY_FAIL`. Deflated Sharpe with the trials = per-observation Sharpe of every factor ever
+   replayed (LEDGER plus this request), stating that trial count beside the ledger's.
+5. Append one line per factor (REPEATs included) to LEDGER, schema `AlphaRdagentFactorTrialV1`:
+   trial index, factor identity (code sha256), factor name, run id (the run directory's name),
+   iteration, panel sha256, windows, stage reached (`screen` / `replay` / `none`), status,
+   p, q at that time, family size at that time, screen and replay metrics, label, survivorship
+   text, authority flags all false. Take an exclusive `fcntl.flock` on `LEDGER.lock` for the
+   read-evaluate-append sequence; write each line with one `write` + `fsync`; never rewrite or
+   truncate earlier lines (refuse to start if any existing line is not valid JSON of that schema).
+ALPHA decision = True iff some factor of this request is `CANDIDATE`; lead factor = lowest q among
+non-REPEAT factors (ties by name). `legacy_result` replay keys are NaN when the lead was not
+replayed. Every record and feedback text states the total number of trials in the ledger so far.
+The per-run `RUN/evaluations.jsonl` stays as specified (one record per iteration). Determinism:
+identical request plus identical LEDGER bytes give identical record bytes and identical appended
+lines. Additional tests: a REPEAT is recognised across two runs sharing a ledger and does not grow
+the family; a factor below the screen threshold is never replayed (assert the replay function is
+not called); the ledger is append-only (earlier bytes unchanged after a second evaluation).
 
 Constants (one place, in the record): `RESERVED_START = 2024-01-01`, `PANEL_END = 2023-12-31`,
 `EXPLORATION = 2021-01-01 .. 2023-12-24` (evaluated decision dates, inclusive), `CUTS` = quarter
@@ -170,7 +204,7 @@ the receipt. For each OK factor, on decision dates d in `EXPLORATION`:
   from `alpha_validation.bootstrap.block_bootstrap_ci` with a seed derived from the factor code
   sha256 (first 8 hex digits as an integer);
 - direction = sign of mean IC (recorded as "chosen in-sample");
-- replay with `alpha_backtest.portfolio_replay.run_weight_replay`: bars of all instruments from
+- replay (stage 2 only) with `alpha_backtest.portfolio_replay.run_weight_replay`: bars of all instruments from
   the panel over the window's sessions (the rectangle must be complete, else `DataError`);
   `WeightTarget` per decision date d for every coin: score = direction × factor, weight 1/k for
   the top k = round(TOP_FRACTION × names) by score (ties broken by instrument name, recorded) and
@@ -183,13 +217,8 @@ the receipt. For each OK factor, on decision dates d in `EXPLORATION`:
   count these days); if the engine refuses an all-zero day, fail loud rather than invent weights.
   From `ReplayPeriod`: net and gross excess daily returns; annualised mean × 365,
   compounded, Sharpe × sqrt(365), max drawdown of the compounded excess curve, mean turnover;
-- family: the run ledger `RUN/evaluations.jsonl` (all prior records) plus this request; every
-  factor of every iteration in order, FAILED/LOOKAHEAD/DEGENERATE with p = 1; q-values by
-  `alpha_validation.proportion.benjamini_hochberg` over the whole family; Deflated Sharpe of each
-  replayed factor's daily net excess returns with `alpha_validation.dsr.deflated_sharpe`, trials =
-  every replayed factor's per-observation Sharpe so far.
-- ALPHA decision: True iff some factor of this iteration has q < `Q_THRESHOLD`, status OK and
-  annualised net excess > 0; lead factor = lowest q (ties by name).
+- family, q-values, Deflated Sharpe and the decision: as in the two-stage rules at the top of
+  this section (the trial ledger, across runs), not the per-run file.
 - `legacy_result` for RD-Agent's proposer: `IC` = lead factor's mean rank IC,
   `1day.excess_return_without_cost.annualized_return` = its gross (no-cost) annualised excess,
   `1day.excess_return_without_cost.max_drawdown` = its gross excess max drawdown (NaN when no
@@ -253,6 +282,15 @@ existing crypto tests use) and its gap/overlap refusals.
   `exp.result = pd.Series(record["legacy_result"])`; `exp.stdout = record["feedback_text"]`;
   keep the record on the experiment as `exp.alpha_evaluation`. If every factor FAILED, raise
   `FactorEmptyError` (upstream's own skip path) after the evaluator recorded the failures.
+- `AlphaFactorHypothesisGen(QlibFactorHypothesisGen)` (read
+  `rdagent/scenarios/qlib/proposal/factor_proposal.py` for `prepare_context`): call
+  `super().prepare_context(trace)`, then, when `ALPHA_FACTOR_TRIAL_LEDGER` names a non-empty
+  ledger, append to `context_dict["hypothesis_and_feedback"]` a block headed
+  "ALPHA trial ledger (all runs; exploratory, not admitted; 15 surviving coins only)" listing the
+  most recent 30 distinct factors, one line each: name, status, mean rank IC, q, run id; at most
+  4,000 characters; return the same tuple shape. The launcher sets
+  `QLIB_FACTOR_HYPOTHESIS_GEN=alpha_factor_judge.AlphaFactorHypothesisGen` and
+  `ALPHA_FACTOR_TRIAL_LEDGER=<ledger>`; the runner passes `--ledger` to the evaluator.
 - `AlphaFactorFeedback(Experiment2Feedback)`: render RD-Agent's own prompts exactly as
   `QlibFactorExperiment2Feedback.generate_feedback` does (same templates, same JSON call), but pass
   `combined_result=exp.stdout` (ALPHA's feedback text) instead of the Qlib comparison; build
