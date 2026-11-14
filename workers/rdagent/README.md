@@ -450,6 +450,31 @@ export ALPHA_RDAGENT_SOURCE=... ALPHA_FACTOR_PYTHON=...   # as printed by the se
   `logs/` and `receipt.json`. The trial ledger is shared by all runs and append-only.
 - Generated factor code runs with the gateway's address and token removed from its environment.
 
+### Exposure log and imported trials
+
+```sh
+.venv/bin/python -m alpha_cli.rdagent_exposure add \
+  --ledger /abs/runs/rdagent-trial-ledger/rdagent-factor-trials.jsonl --file /abs/exposures.json
+.venv/bin/python -m alpha_cli.rdagent_exposure list \
+  --ledger /abs/runs/rdagent-trial-ledger/rdagent-factor-trials.jsonl --json
+.venv/bin/python -m alpha_cli.rdagent_factor_eval import-historical \
+  --ledger /abs/runs/rdagent-trial-ledger/rdagent-factor-trials.jsonl --file /abs/historical-trials.json
+```
+
+`add` appends validated disclosures to `rdagent-exposure-log.jsonl` beside the trial ledger,
+outside git; its input is a JSON list without `schema`, `entry_index` or `label`, and duplicate
+content refuses the whole call. `list` writes nothing and shows the entries and each trial's
+current exposure label (`--json` for canonical JSON, omit it for plain text). `import-historical`
+appends V2 `IMPORTED` trials with hashes of the supplied absolute `code_path` files and their
+original windows and provenance; they count in the distinct-code family with p = 1, are never
+evaluated or replayed, and later identical code is a `REPEAT`.
+
+An exposure matches when its end date reaches the trial's reserved start, its case-insensitive
+Python regex matches the factor name, and its matching instruments overlap the trial's
+instruments (or are `["*"]`); legacy trials use the 15-coin loop universe. Matching `known` or
+`suspected` exposures mark the protected window previously exposed and unable to give fresh
+confirmation; `unknown` stays disclosed, and a missing log leaves exposure unknown.
+
 Choosing the model route (owner decision 2026-11-14: DeepSeek through OpenRouter is allowed for
 RD-Agent, with temperature control; caps unchanged at 60 calls and 10 USD a run, 50 USD a month):
 

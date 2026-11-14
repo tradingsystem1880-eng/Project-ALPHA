@@ -127,3 +127,75 @@ assert list(base.result.loc[labels].index)==labels
         cwd=tmp_path,
         timeout=60,
     )
+
+
+def test_hypothesis_context_shows_imported_and_exposed_v2_rows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Compile only this class so the actual summary method runs without optional RD-Agent imports.
+    import ast
+    import json
+    from typing import Any
+
+    tree = ast.parse((WORKER / "alpha_factor_judge.py").read_text())
+    node = next(
+        n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "AlphaFactorHypothesisGen"
+    )
+
+    class Base:
+        def prepare_context(self, trace: Any) -> tuple[dict[str, Any], bool]:
+            return {"hypothesis_and_feedback": "Existing context"}, True
+
+    namespace: dict[str, Any] = {
+        "QlibFactorHypothesisGen": Base,
+        "Any": Any,
+        "os": os,
+        "Path": Path,
+        "json": json,
+    }
+    exec(
+        compile(ast.Module(body=[node], type_ignores=[]), "<hypothesis-summary>", "exec"), namespace
+    )
+    ledger = tmp_path / "trials.jsonl"
+    rows = [
+        {
+            "schema": "AlphaRdagentFactorTrialV1",
+            "name": "old",
+            "code_sha256": "a" * 64,
+            "status": "FAILED",
+            "screen": {},
+            "q": 1.0,
+            "run_id": "old-run",
+        },
+        {
+            "schema": "AlphaRdagentFactorTrialV2",
+            "name": "imported",
+            "code_sha256": "b" * 64,
+            "status": "IMPORTED",
+            "screen": {},
+            "q": 1.0,
+            "run_id": "external",
+            "exposure": {"previously_exposed": True},
+        },
+        {
+            "schema": "AlphaRdagentFactorTrialV2",
+            "name": "repeat",
+            "code_sha256": "b" * 64,
+            "status": "REPEAT",
+            "screen": {},
+            "q": 1.0,
+            "run_id": "new",
+            "exposure": {"previously_exposed": True},
+        },
+    ]
+    ledger.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    monkeypatch.setenv("ALPHA_FACTOR_TRIAL_LEDGER", str(ledger))
+    context, flag = namespace["AlphaFactorHypothesisGen"]().prepare_context(None)
+    assert flag is True
+    summary = context["hypothesis_and_feedback"]
+    assert (
+        "imported: IMPORTED; mean rank IC None; q 1.0; run external; protected window previously exposed"
+        in summary
+    )
+    assert "old: FAILED; mean rank IC None; q 1.0; run old-run" in summary
+    assert "repeat:" not in summary
