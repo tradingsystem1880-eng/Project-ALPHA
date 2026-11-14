@@ -340,8 +340,14 @@ def _report_text(
     summaries: Sequence[MonteCarloFamilySummaryV1],
     n_paths: int,
     horizon: int,
-    regime_caveats: tuple[str, ...],
 ) -> str:
+    regime_caveats = [
+        caveat
+        for row in summaries
+        if row.family == "regime_switching"
+        for caveat in row.caveats
+        if caveat.startswith(("Causal states:", "One state holds"))
+    ]
     rows = "\n".join(
         f"| {row.family} | {row.status} | {row.risk_grade} | "
         f"{row.terminal_return_q50:.6f} | {row.maximum_drawdown_q95:.6f} | "
@@ -369,6 +375,46 @@ def _report_text(
         "fitted to OOS log-account-return location, scale, and tail thickness, then mapped back "
         "to valid simple returns.\n"
     )
+
+
+def _summarize_families(
+    families: Sequence[tuple[str, np.ndarray]], states: np.ndarray, *, confidence: float
+) -> tuple[tuple[int, int], tuple[str, ...], dict[str, MonteCarloFamilySummaryV1]]:
+    """Summarize each family; the regime family carries its causal-state disclosure."""
+    state_observations = (int(np.sum(states == 0)), int(np.sum(states == 1)))
+    regime_caveats = _regime_caveats(state_observations, int(states.size))
+    summaries = {
+        name: summarize_path_family(
+            name,
+            values,
+            confidence=confidence,
+            caveats=regime_caveats if name == "regime_switching" else (),
+        )
+        for name, values in families
+    }
+    return state_observations, regime_caveats, summaries
+
+
+def _echo_family_lines(
+    summaries: Sequence[MonteCarloFamilySummaryV1], regime_caveats: tuple[str, ...]
+) -> None:
+    for row in summaries:
+        if row.status == "not_estimable":
+            typer.echo(f"  {row.family}: not estimable; {row.caveats[0]}")
+        else:
+            typer.echo(
+                f"  {row.family}: {row.status}/{row.risk_grade} "
+                f"median terminal {row.terminal_return_q50:+.4f} "
+                f"(5%-95% {row.terminal_return_q05:+.4f} to {row.terminal_return_q95:+.4f}), "
+                f"drawdown median {row.maximum_drawdown_q50:.4f} "
+                f"95th {row.maximum_drawdown_q95:.4f}, "
+                f"P(loss) {row.loss_probability.point:.3f} "
+                f"[{row.loss_probability.lower:.3f}, {row.loss_probability.upper:.3f}], "
+                f"P(ruin, drawdown >= 50%) {row.ruin_probability.point:.3f} "
+                f"[{row.ruin_probability.lower:.3f}, {row.ruin_probability.upper:.3f}]"
+            )
+    if len(regime_caveats) > 1:
+        typer.echo(f"regime_switching warning: {regime_caveats[1]}")
 
 
 @monte_carlo_app.command("classical")
@@ -435,17 +481,9 @@ def classical(
         if regime is not None:
             simulated_families.append(("regime_switching", regime.paths))
         simulated_families.append(("student_t", t_paths))
-        state_observations = (int(np.sum(states == 0)), int(np.sum(states == 1)))
-        regime_caveats = _regime_caveats(state_observations, int(account_returns.size))
-        summaries_by_family = {
-            name: summarize_path_family(
-                name,
-                values,
-                confidence=confidence,
-                caveats=regime_caveats if name == "regime_switching" else (),
-            )
-            for name, values in simulated_families
-        }
+        state_observations, regime_caveats, summaries_by_family = _summarize_families(
+            simulated_families, states, confidence=confidence
+        )
         if regime is None:
             unavailable_interval = ProportionInterval(
                 point=math.nan,
@@ -571,7 +609,6 @@ def classical(
             summaries=summaries,
             n_paths=paths,
             horizon=int(account_returns.size),
-            regime_caveats=regime_caveats,
         )
         _artifacts.publish_artifact(
             rdir / "report.md", lambda path: path.write_text(report, encoding="utf-8")
@@ -620,23 +657,7 @@ def classical(
         + ", ".join(f"{row.family}={row.status}/{row.risk_grade}" for row in summaries)
         + f"; manifest at {rdir / 'manifest.json'}"
     )
-    for row in summaries:
-        if row.status == "not_estimable":
-            typer.echo(f"  {row.family}: not estimable; {row.caveats[0]}")
-        else:
-            typer.echo(
-                f"  {row.family}: {row.status}/{row.risk_grade} "
-                f"median terminal {row.terminal_return_q50:+.4f} "
-                f"(5%-95% {row.terminal_return_q05:+.4f} to {row.terminal_return_q95:+.4f}), "
-                f"drawdown median {row.maximum_drawdown_q50:.4f} "
-                f"95th {row.maximum_drawdown_q95:.4f}, "
-                f"P(loss) {row.loss_probability.point:.3f} "
-                f"[{row.loss_probability.lower:.3f}, {row.loss_probability.upper:.3f}], "
-                f"P(ruin, drawdown >= 50%) {row.ruin_probability.point:.3f} "
-                f"[{row.ruin_probability.lower:.3f}, {row.ruin_probability.upper:.3f}]"
-            )
-    if len(regime_caveats) > 1:
-        typer.echo(f"regime_switching warning: {regime_caveats[1]}")
+    _echo_family_lines(summaries, regime_caveats)
 
 
 @monte_carlo_app.command("kronos")
