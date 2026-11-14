@@ -137,7 +137,7 @@ def test_classical_monte_carlo_discloses_imbalanced_regime(
     regime = next(row for row in manifest["families"] if row["family"] == "regime_switching")
     assert regime["status"] != "not_estimable"
     assert manifest["regime_diagnostics"]["state_observations"] == [1, manifest["horizon"] - 1]
-    warning = "close to the IID empirical family"
+    warning = "rest on few observations"
     assert warning in regime["caveats"][1]
     report = (rdir / "report.md").read_text()
     assert f"Regime states: {regime['caveats'][0]} {regime['caveats'][1]}" in report

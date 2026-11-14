@@ -54,9 +54,9 @@ def _regime_caveats(state_observations: tuple[int, int], horizon: int) -> tuple[
     )
     if min(p0, p1) < MIN_STATE_SHARE:
         caveats += (
-            f"One state holds under {MIN_STATE_SHARE:.0%} of OOS returns, so this family "
-            "is close to the IID empirical family; the frozen boundary may not describe "
-            "the OOS period.",
+            f"One state holds under {MIN_STATE_SHARE:.0%} of OOS returns: its emissions and "
+            "transitions rest on few observations, and the frozen boundary may not describe "
+            "the OOS period; compare this family with the IID empirical family.",
         )
     return caveats
 

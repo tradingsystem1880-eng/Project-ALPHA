@@ -52,3 +52,12 @@ the Dell, so that family is not proven.
 
 - New integration tests: 3 fail on `origin/main`; Monte Carlo unit, integration and oracle tests: 25 passed.
 - `uv run python scripts/gate.py check --base origin/main`: passed (see the pull request).
+
+## Review
+
+Codex review through the bridge, one medium finding: the warning claimed a family with a state
+under 10% "is close to the IID empirical family", which a share alone does not establish (a rare,
+persistent state with extreme returns can still change drawdown and ruin). Fixed: the warning now
+says the state's emissions and transitions rest on few observations and asks for a comparison
+with the IID family. On the Alpaca run the two families did come out nearly equal (drawdown 95th
+0.3566 vs 0.3600), which is an observation, not a rule.
