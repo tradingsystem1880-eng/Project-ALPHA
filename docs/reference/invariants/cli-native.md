@@ -8,7 +8,7 @@ sources:
   - tests/unit/test_native_*.py
   - tests/unit/test_daily_rule_*.py
   - tests/unit/test_daily_native_*.py
-verified: 1724a5befe5d
+verified: aa600e57932d
 ---
 
 # Command line native invariants

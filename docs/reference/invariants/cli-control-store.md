@@ -15,7 +15,7 @@ sources:
   - tests/unit/test_project_workspace.py
   - tests/unit/test_research_control_store.py
   - tests/integration/test_control_cli.py
-verified: 1ac86fc02443
+verified: aa600e57932d
 ---
 
 # Command line control plane invariants

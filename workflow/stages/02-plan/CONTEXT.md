@@ -5,7 +5,7 @@ sources:
   - scripts/harness_awareness.py
   - scripts/capabilities.py
   - tests/unit/test_plan_schema.py
-verified: f89aa1bb78af
+verified: aa600e57932d
 ---
 
 # Stage 02 — plan: brief to plan

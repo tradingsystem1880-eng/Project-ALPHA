@@ -5,7 +5,7 @@ sources:
   - tests/unit/study/test_*.py
   - tests/bias_guards/test_study_double_bottom_future_poison.py
   - tests/bias_guards/test_verified_semantic_read_future_poison.py
-verified: 1ac86fc02443
+verified: aa600e57932d
 ---
 
 # Study invariants

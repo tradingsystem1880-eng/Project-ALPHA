@@ -22,7 +22,7 @@ sources:
   - apps/alpha-web/frontend/src/panels/ResearchBacklog.tsx
   - apps/alpha-web/frontend/src/panels/V3Workbenches.tsx
   - apps/alpha-web/frontend/src/panels/actions.ts
-verified: d0fffa796f8e
+verified: aa600e57932d
 ---
 
 # Web research surfaces
