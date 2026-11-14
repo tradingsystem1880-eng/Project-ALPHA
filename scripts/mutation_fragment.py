@@ -80,42 +80,63 @@ class NoAssociatedTests(Exception):
 
 
 def run_fragment(module: str, expected: list[str], assigned: list[str], workers: int) -> int:
-    # Pinned default fork isolation collects in this process. Observe actual tool
-    # state; do not catch upstream generic exits or match printed diagnostics.
+    # Observe actual tool state; do not catch upstream generic exits or match diagnostics.
     from mutmut import __main__ as tool  # type: ignore[import-not-found]
     from mutmut.state import state  # type: ignore[import-not-found]
-    from mutmut.workers.isolation import ForkRunner  # type: ignore[import-not-found]
+    from mutmut.workers.isolation import ForkServerRunner  # type: ignore[import-not-found]
 
     source_sha = hashlib.sha256(Path(module).read_bytes()).hexdigest()
     config_sha = hashlib.sha256(Path("pyproject.toml").read_bytes()).hexdigest()
     target = module.removeprefix("src/").removesuffix(".py").replace("/", ".")
     original_factory = tool.get_mutant_runner
+    origins_path = Path("mutation-import-origins.json").resolve()
+    staged_origin = (Path("mutants") / module).resolve()
 
     def audited_factory(max_workers: int) -> Any:
         runner = original_factory(max_workers)
-        if not isinstance(runner, ForkRunner):
-            raise ValueError("Certified collection requires pinned default fork isolation")
+        if not isinstance(runner, ForkServerRunner):
+            raise ValueError("Certified collection requires pinned forkserver isolation")
         original_collect = runner.collect_stats
 
-        def collect(tests: Any) -> int:
-            if tests:
-                raise ValueError("Certified collection requires complete test selection")
-            if state().duration_by_test or state().tests_by_mangled_function_name or state()._stats:
-                raise ValueError("Stats collection requires fresh tracer state")
-            code = original_collect(tests)
-            if type(code) is not int:
-                raise ValueError("Malformed stats collection exit code")
-            if code == 0 and not state().tests_by_mangled_function_name and not state()._stats:
+        # The pinned backend supplies this base class at runtime.
+        class AuditedTestRunner(runner.test_runner_class):  # type: ignore[name-defined, misc]
+            def run_stats(self, *args: Any, **kwargs: Any) -> Any:
+                code = super().run_stats(*args, **kwargs)
                 origins = {}
                 for name, imported in list(sys.modules.items()):
                     if name == target:
                         origin = getattr(imported, "__file__", None)
                         origins[name] = (
                             "staged"
-                            if origin
-                            and Path(origin).resolve() == (Path("mutants") / module).resolve()
+                            if origin and Path(origin).resolve() == staged_origin
                             else "mismatched"
                         )
+                gate.write_json_atomic(origins_path, origins)
+                return code
+
+        runner.test_runner_class = AuditedTestRunner
+
+        def collect(tests: Any) -> int:
+            if tests:
+                raise ValueError("Certified collection requires complete test selection")
+            if state().duration_by_test or state().tests_by_mangled_function_name or state()._stats:
+                raise ValueError("Stats collection requires fresh tracer state")
+            origins_path.unlink(missing_ok=True)
+            try:
+                code = original_collect(tests)
+                try:
+                    origins = read_object(origins_path)
+                except (OSError, ValueError) as exc:
+                    raise ValueError("Missing or malformed child import origins") from exc
+                if not set(origins) <= {target} or any(
+                    value not in ("staged", "mismatched") for value in origins.values()
+                ):
+                    raise ValueError("Malformed child import origins")
+            finally:
+                origins_path.unlink(missing_ok=True)
+            if type(code) is not int:
+                raise ValueError("Malformed stats collection exit code")
+            if code == 0 and not state().tests_by_mangled_function_name and not state()._stats:
                 proof = {
                     "tool": TOOL,
                     "source_sha256": source_sha,
