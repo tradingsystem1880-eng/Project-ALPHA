@@ -2,7 +2,7 @@
 owner: project layer
 sources:
   - README.md
-verified: ee38a97ab409
+verified: aa600e57932d
 ---
 
 # ALPHA: what it is for and how the parts fit
@@ -67,8 +67,11 @@ loop is not yet qualified ([log](owner-decisions.md#2026-11-14-the-architecture-
 
 Each step needs the owner's approval before the next starts.
 
-1. **Development on the Dell, on synthetic data.** The Dell is the main development machine now;
-   the work is to move the project forward and make it production ready.
+1. **Development on the Dell.** The Dell is the main development machine now; the work is to move the
+   project forward and make it production ready. Since 2026-11-14 it also downloads free real market
+   data (Yahoo, Stooq, crypto exchanges) and results on it are labelled not yet confirmed
+   ([owner decision](owner-decisions-2.md#2026-11-14-free-real-data-on-the-dell-now)); the first goal is one
+   real RD-Agent loop ([owner decision](owner-decisions-2.md#2026-11-14-first-goal-one-real-rd-agent-loop)).
 2. **Confirmation on the Mac, with real data.** The Mac comes later, to confirm with live data
    ([owner decision](owner-decisions.md#2026-11-14-dell-now-mac-later)).
 3. **Paper trading**, with no real money.
@@ -109,6 +112,6 @@ Each step needs the owner's approval before the next starts.
 
 Any recommendation to shelve, delete or cut the scope of a part must first cite that part's
 component file (its "Why it exists" and "Never" sections) and the
-[owner decisions log](owner-decisions.md). If the two disagree with the recommendation, say so
+[owner decisions log](owner-decisions.md) (volume 2: [owner-decisions-2.md](owner-decisions-2.md)). If the two disagree with the recommendation, say so
 and ask the owner; do not decide. A part being uninstalled, skipped in tests or unfinished is a
 task to finish, not a reason to shelve it.

@@ -6,10 +6,11 @@ from typing import Annotated, Literal, cast
 
 import polars as pl
 from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
+from pydantic import Field, JsonValue, field_validator, model_validator
 
 from alpha_web import _ml
 from alpha_web.api._common import data_dir
+from alpha_web.api.models import StrictModel
 
 router = APIRouter(prefix="/api/ml", tags=["ml-research"])
 
@@ -20,10 +21,6 @@ TabularModelName = Literal["lightgbm", "linear", "catboost", "xgboost", "double_
 NumericParameter = (
     Annotated[int, Field(strict=True)] | Annotated[float, Field(strict=True, allow_inf_nan=False)]
 )
-
-
-class StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
 
 
 class MlReadiness(StrictModel):

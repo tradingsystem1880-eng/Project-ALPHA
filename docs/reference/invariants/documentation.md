@@ -10,7 +10,7 @@ sources:
   - tests/unit/test_docs_links.py
   - tests/unit/test_repo_awareness_drift.py
   - tests/unit/test_roadmap_index.py
-verified: 9c1264af2bb6
+verified: aa600e57932d
 ---
 
 # Documentation invariants
@@ -56,7 +56,8 @@ delivery states, the generated roadmap index, append-only records, and relative 
 ## Decision records
 
 - ADRs are `docs/adr/NNNN-<slug>.md`, zero-padded and sequential; a number is never reused. Add the new
-  record to the index table in `docs/adr/README.md`.
+  record to the index table in `docs/adr/README.md`. If another branch merges first and takes the number, renumber
+  yours before it merges (ADR-0045 was 0044 until then) and fix every reference.
 - Decision text is not rewritten. A superseded ADR keeps its number; add a dated status note and a forward
   link to its replacement.
 - Status is one of `Proposed`, `Accepted`, `Superseded`. Keep the Status/Date/Deciders header and the

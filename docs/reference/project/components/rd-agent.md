@@ -3,7 +3,7 @@ owner: project layer
 sources:
   - workers/rdagent/CONTEXT.md
   - workers/rdagent/README.md
-verified: a79d832d
+verified: aa600e57932d
 ---
 
 # RD-Agent
@@ -86,6 +86,8 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
 - Open, for the owner: whether to accept losing RD-Agent's "temperature" setting on the Codex
   route (the gateway refuses it unless told to accept it; the measurements were made with it
   dropped).
+- Decided: the first goal after the clean-up is one real RD-Agent loop, connected to a model through Codex
+  ([log](../owner-decisions-2.md#2026-11-14-first-goal-one-real-rd-agent-loop)).
 - Decided: long studies use the Dell's disk for now
   ([log](../owner-decisions.md#2026-11-14-use-the-dells-disk-for-studies-for-now)).
 - Decided: the autonomous research team is a broader ALPHA capability built around and using
