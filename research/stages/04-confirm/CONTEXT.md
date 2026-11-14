@@ -2,9 +2,10 @@
 owner: research pipeline
 sources:
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
+  - apps/alpha-cli/src/alpha_cli/_research_cmd_parts.py
   - apps/alpha-cli/src/alpha_cli/research_d2.py
   - apps/alpha-cli/src/alpha_cli/control_store.py
-verified: aa600e57932d
+verified: 9c40aa259c97
 ---
 
 # Stage 04 — confirm: one sealed D2 test

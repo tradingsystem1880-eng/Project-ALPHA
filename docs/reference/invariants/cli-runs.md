@@ -24,7 +24,7 @@ sources:
   - tests/unit/test_figure*.py
   - tests/integration/test_validate_*.py
   - tests/integration/test_backtest_*.py
-verified: aa600e57932d
+verified: 9c40aa259c97
 ---
 
 # Command line runs invariants
@@ -104,7 +104,8 @@ and how it names and publishes immutable runs. Project-wide rules:
 ## Suites
 
 - `alpha suite` runs only the declared actions in `SUITE_ACTIONS` through durable attempt and job lineage; it polls
-  heartbeat and cancellation every 5 seconds and reaps child process groups.
+  heartbeat and cancellation every 5 seconds and reaps child process groups. Plan building lives in `_suite.py`
+  (`build_suite_plan`), the step and plan types in `_suite_types.py`, per-action step builders in `_suite_actions.py`.
 - Suite Qlib, Kronos and Monte Carlo kinds share the heavyweight capacity class; see
   [command line control plane § Jobs, leases and capacity](cli-control-store.md#jobs-leases-and-capacity).
 
