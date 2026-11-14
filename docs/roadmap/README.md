@@ -21,22 +21,17 @@ exceed the `ceiling` in [wip-limit.json](wip-limit.json), and the ceiling must b
 lowered each time work closes. Once it reaches the `limit` of 3, at most 3 pieces of
 work may be open.
 
-## Live plans (42)
+## Live plans (37)
 
 | Plan | Title | Delivery state | Month |
 | --- | --- | --- | --- |
 | [2026-09-10-edge-first-phase-b-feed-the-machine](../work/2026-09-10-edge-first-phase-b-feed-the-machine/02-plan.md) | Edge-first Phase B — feed the machine: resumable crypto backfill, a real derivatives dataset, a point-in-time equity universe, and the knowledge-time flag | In progress | 2026-09 |
 | [2026-10-26-mac-portability-qualification](../work/2026-10-26-mac-portability-qualification/02-plan.md) | Running ALPHA on the owner's Mac with real data providers | In progress | 2026-10 |
 | [2026-10-31-packet3-daily-rule](../work/2026-10-31-packet3-daily-rule/02-plan.md) | Packet 3 daily rule implementation | In progress | 2026-10 |
-| [2026-11-07-backfill-ledger-exclusion](../work/2026-11-07-backfill-ledger-exclusion/02-plan.md) | Cooperative whole-file backfill progress exclusion | Implemented – qualification pending | 2026-11 |
-| [2026-11-07-backfill-resume-evidence](../work/2026-11-07-backfill-resume-evidence/02-plan.md) | Verify retained backfill work before resume | Implemented – qualification pending | 2026-11 |
-| [2026-11-07-backfill-verification-budget](../work/2026-11-07-backfill-verification-budget/02-plan.md) | Bound explicit resume artifact verification | Implemented – qualification pending | 2026-11 |
 | [2026-11-07-paper-to-experiment-provenance](../work/2026-11-07-paper-to-experiment-provenance/02-plan.md) | Paper-to-experiment provenance | Implemented – qualification pending | 2026-11 |
 | [2026-11-07-stock-rdloop-continuation](../work/2026-11-07-stock-rdloop-continuation/02-plan.md) | Stock RDLoop synthetic continuation | Implemented – qualification pending | 2026-11 |
 | [2026-11-07-stock-retained-dispatch](../work/2026-11-07-stock-retained-dispatch/02-plan.md) | Retained stock RDLoop dispatch | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-asset-master-source-provenance](../work/2026-11-08-asset-master-source-provenance/02-plan.md) | Reopen frozen asset-master source evidence at retained-data consumers | Implemented – qualification pending | 2026-11 |
-| [2026-11-08-backfill-metadata-bounds](../work/2026-11-08-backfill-metadata-bounds/02-plan.md) | Bound status metadata before parsing | Implemented – qualification pending | 2026-11 |
-| [2026-11-08-backfill-readonly-status](../work/2026-11-08-backfill-readonly-status/02-plan.md) | Read-only backfill status and safe recovery planning | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-c04-risk-anchor-disclosure](../work/2026-11-08-c04-risk-anchor-disclosure/02-plan.md) | C04 risk metric-basis JSON, API and visible consumer integration | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-native-cumulative-regression](../work/2026-11-08-native-cumulative-regression/02-plan.md) | Native RD cumulative qualification correction | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-native-job-result-api](../work/2026-11-08-native-job-result-api/02-plan.md) | Server-owned native-job result read contract | Implemented – qualification pending | 2026-11 |
@@ -102,7 +97,7 @@ work may be open.
 | [Break up oversized functions](refactors/oversized-functions.md) | M |
 | [Reduce `# type: ignore` suppressions](refactors/type-ignore-reduction.md) | L |
 
-## Archived plans (124)
+## Archived plans (130)
 
 | Month | Plans |
 | --- | --- |
@@ -110,4 +105,4 @@ work may be open.
 | [2026-08](../work/archive/2026-08/) | 10 |
 | [2026-09](../work/archive/2026-09/) | 21 |
 | [2026-10](../work/archive/2026-10/) | 60 |
-| [2026-11](../work/archive/2026-11/) | 20 |
+| [2026-11](../work/archive/2026-11/) | 26 |

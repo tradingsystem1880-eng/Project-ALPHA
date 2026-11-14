@@ -40,9 +40,9 @@ work-in-progress ceiling admits no new live plan, and the work is finished in on
     "Existing ledgers hold a failed entry for a month the fixed planner no longer plans: that entry is outside the request and no status lists it (verified on a copy of the real folder)."
   ],
   "slices": [
-    {"title": "An exclusive --end on the 1st plans nothing in that month", "verify": "uv run pytest -q tests/unit/test_crypto_backfill.py", "expected": "all pass; the new end-boundary tests fail on main", "rollback": "revert _crypto_backfill.py and its tests", "status": "pending"},
-    {"title": "A recently ended month answering HTTP 404 is not published yet, not a failure", "verify": "uv run pytest -q tests/unit/test_crypto_backfill.py tests/integration/test_crypto_backfill_resume_cli.py tests/integration/test_crypto_backfill_status_cli.py", "expected": "all pass; the grace tests fail on main", "rollback": "revert _crypto_backfill.py, crypto_data_cmds.py and the tests", "status": "pending"},
-    {"title": "Backfill smoke check through the recorded provider", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_crypto_backfill_smoke.py", "expected": "1 passed", "rollback": "delete the smoke file", "status": "pending"}
+    {"title": "An exclusive --end on the 1st plans nothing in that month", "verify": "uv run pytest -q tests/unit/test_crypto_backfill.py", "expected": "all pass; the new end-boundary tests fail on main", "rollback": "revert _crypto_backfill.py and its tests", "status": "done"},
+    {"title": "A recently ended month answering HTTP 404 is not published yet, not a failure", "verify": "uv run pytest -q tests/unit/test_crypto_backfill.py tests/integration/test_crypto_backfill_resume_cli.py tests/integration/test_crypto_backfill_status_cli.py", "expected": "all pass; the grace tests fail on main", "rollback": "revert _crypto_backfill.py, crypto_data_cmds.py and the tests", "status": "done"},
+    {"title": "Backfill smoke check through the recorded provider", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_crypto_backfill_smoke.py", "expected": "1 passed", "rollback": "delete the smoke file", "status": "done"}
   ],
   "tier_impact": ["none"],
   "docs_to_update": ["docs/reference/invariants/cli-crypto-data.md", "docs/reference/project/components/data-layer.md", "docs/roadmap/capabilities.toml", "STATUS.md", "docs/roadmap/README.md", "docs/roadmap/wip-limit.json"],

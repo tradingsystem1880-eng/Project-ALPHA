@@ -79,8 +79,10 @@ stock store: `quality_status: legacy_unqualified`).
   automated means" without Yahoo's express prior permission. The `yfinance` downloader must not be
   used unless Yahoo has given that permission. It is kept, not deleted, because the owner has not
   decided its future (see the [verification record](../../../work/archive/2026-11/2026-11-14-free-real-data-dell/05-handoff.md)).
-- **Binance monthly archives:** a month's file exists only after the month ends, so a backfill
-  lists the current month as "not published yet" rather than failing; the current month comes from
+- **Binance monthly archives:** a month's file exists only after the month ends, and Binance
+  publishes it 1 to 7 days later (once 12; measured 2026-11-14), so a backfill lists the current
+  month, and a just-ended month whose file is still missing for up to 14 days, as "not published
+  yet" rather than failing; the current month comes from
   the bounded live-service tail. A governed crypto snapshot may hold many months of many coins;
   the daily price reader used by the daily rule lane still reads one month per snapshot.
 
