@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from alpha_data.adapters.alpaca_adapter import AlpacaAdapter
 from alpha_data.adapters.base import DataAdapter
 from alpha_data.adapters.ccxt_adapter import SUPPORTED_CCXT_EXCHANGES, CCXTAdapter
 from alpha_data.adapters.stooq_adapter import StooqAdapter
@@ -307,6 +308,36 @@ def provider_definitions(
             environ=env,
             module_available=module_available,
             verification=verification("tiingo"),
+        ),
+        _definition(
+            provider_id="alpaca",
+            label="Alpaca Market Data (free plan)",
+            capabilities=("historical_bars", "corporate_actions"),
+            module="alpha_data.adapters.alpaca_adapter",
+            network_required=True,
+            credential_names=("APCA_API_KEY_ID", "APCA_API_SECRET_KEY"),
+            options={
+                "asset_class": ProviderOption(
+                    label="Asset class",
+                    choices=("stock", "etf"),
+                    default="stock",
+                )
+            },
+            limitations=(
+                "Free Basic plan: SIP daily history since 2016, 200 calls a minute; "
+                "personal, non-commercial use only; never redistribute.",
+                "Interim, not yet confirmed: not the authoritative stock source (ADR-0017); "
+                "never replaces Tiingo data.",
+            ),
+            asset_classes=("stock", "etf"),
+            timeframes=("1D",),
+            research_authority=False,
+            paper_execution=False,
+            budget_tier="free_basic",
+            factory=AlpacaAdapter,
+            environ=env,
+            module_available=module_available,
+            verification=verification("alpaca"),
         ),
         _definition(
             provider_id="binance",
