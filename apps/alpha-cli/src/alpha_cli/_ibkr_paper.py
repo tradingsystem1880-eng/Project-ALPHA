@@ -21,8 +21,8 @@ from pathlib import Path
 from types import FrameType
 from typing import Any, Literal, cast
 
-from alpha_cli._atomic import write_text
 from alpha_core import DataError
+from alpha_core.atomic import write_text
 
 IBKR_PAPER_HOST = "127.0.0.1"
 IBKR_PAPER_PORT = 4002

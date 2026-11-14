@@ -606,6 +606,11 @@ def test_admission_rejects_every_tampered_artifact_surface(
     # Doctoring the manifest hash alongside the bytes still fails the deeper checks.
     pretty = json.dumps(analyses, sort_keys=True, indent=2).encode("utf-8")
     check(_doctored_manifest(manifest, analyses_path, pretty), "canonical JSON bytes")
+    for raw in (b'{"value":NaN}', b'{"value":Infinity}', b'{"value":-Infinity}'):
+        check(
+            _doctored_manifest(manifest, analyses_path, raw),
+            "D2 analyses artifact must contain finite JSON values",
+        )
     wrong_schema = _canonical_bytes({**analyses, "schema": "SomethingElseV9"})
     check(_doctored_manifest(manifest, analyses_path, wrong_schema), "unsupported schema")
     no_measurements = _canonical_bytes({"schema": analyses["schema"], "schema_version": 1})

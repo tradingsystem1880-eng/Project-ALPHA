@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Protocol
 
 from alpha_cli import paper_acceptance
-from alpha_cli._atomic import write_text
 from alpha_core import DataError
+from alpha_core.atomic import write_text
 
 _ACCOUNT = re.compile(r"^DU[A-Z0-9]+$")
 _SAFE_STATUS = re.compile(r"^[A-Za-z][A-Za-z0-9 _-]{0,31}$")

@@ -7,6 +7,7 @@ import re
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Literal, cast
+from uuid import UUID
 
 from alpha_core import DataError
 from alpha_research import ResearchArtifactRef
@@ -68,6 +69,26 @@ def _hash(name: str, value: object) -> str:
     if not isinstance(value, str) or _SHA256.fullmatch(value) is None:
         raise DataError(f"{name} must be a lowercase 64-character SHA-256 digest")
     return value
+
+
+def _project_id(value: object) -> str:
+    text = _text("project_id", value)
+    try:
+        parsed = UUID(text)
+    except ValueError as exc:
+        raise DataError("project_id must be a canonical UUID") from exc
+    if str(parsed) != text:
+        raise DataError("project_id must be a canonical UUID")
+    return text
+
+
+def _content_id(name: str, value: object, prefix: str) -> str:
+    text = _text(name, value)
+    marker = f"{prefix}_"
+    if not text.startswith(marker):
+        raise DataError(f"{name} must be a content-addressed {marker} id")
+    _hash(name, text[len(marker) :])
+    return text
 
 
 def _scalar(name: str, value: object, value_type: object) -> Scalar:

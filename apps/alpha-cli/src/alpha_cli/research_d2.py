@@ -28,6 +28,12 @@ from pathlib import Path
 from typing import Any, Final, cast
 
 from alpha_cli import _artifacts
+from alpha_cli._research_artifact_io import (
+    estimate_record,
+    publish_bytes,
+    publish_text,
+    read_canonical_json,
+)
 from alpha_cli.research_readiness import derive_research_readiness
 from alpha_core import DataError
 from alpha_research import (
@@ -306,19 +312,6 @@ class _D2Data:
         return events, controls
 
 
-def _estimate_record(estimate: Any) -> dict[str, object]:
-    return {
-        "estimate": float(estimate.estimate),
-        "ci_lower": float(estimate.ci_lower),
-        "ci_upper": float(estimate.ci_upper),
-        "p_value": float(estimate.p_value),
-        "confidence": float(estimate.confidence),
-        "sample_size": int(estimate.sample_size),
-        "effective_event_count": int(estimate.effective_event_count),
-        "low_cluster_count": bool(estimate.low_cluster_count),
-    }
-
-
 def _not_tested() -> dict[str, object]:
     return {"status": "NOT_TESTED", "summary": None}
 
@@ -513,17 +506,6 @@ def derive_d2_findings(
     return findings
 
 
-def _publish_text(path: Path, content: str) -> None:
-    _publish_bytes(path, content.encode("utf-8"))
-
-
-def _publish_bytes(path: Path, content: bytes) -> None:
-    def write(target: Path) -> None:
-        target.write_bytes(content)
-
-    _artifacts.publish_artifact(path, write)
-
-
 def run_confirmation(
     data_dir: Path,
     *,
@@ -626,8 +608,8 @@ def run_confirmation(
             measurements["matched_pairs"] = 0
             measurements["statistic_error"] = str(exc)[:2_000]
         else:
-            measurements["unadjusted"] = _estimate_record(unadjusted)
-            measurements["matched"] = _estimate_record(matched)
+            measurements["unadjusted"] = estimate_record(unadjusted)
+            measurements["matched"] = estimate_record(matched)
             measurements["matched_pairs"] = len(matched_study.pairs)
     else:
         measurements["unadjusted"] = None
@@ -706,14 +688,14 @@ def run_confirmation(
         ],
     }
 
-    _publish_bytes(run_dir / D2_ANALYSES_ARTIFACT, analyses_bytes)
-    _publish_text(run_dir / D2_EVIDENCE_ARTIFACT, _canonical(evidence))
-    _publish_text(
+    publish_bytes(run_dir / D2_ANALYSES_ARTIFACT, analyses_bytes)
+    publish_text(run_dir / D2_EVIDENCE_ARTIFACT, _canonical(evidence))
+    publish_text(
         run_dir / "chart-data.json",
         json.dumps(chart.to_dict(), sort_keys=True, indent=2, allow_nan=False),
     )
-    _publish_bytes(run_dir / "d2-one-shot-confirmation.png", render_research_line_chart(chart))
-    _publish_text(
+    publish_bytes(run_dir / "d2-one-shot-confirmation.png", render_research_line_chart(chart))
+    publish_text(
         run_dir / "report.md",
         "# D2 Sealed Confirmation\n\n"
         "**REGISTERED CONFIRMATORY — ONE-SHOT SEALED-SHARE EVIDENCE**\n\n"
@@ -748,23 +730,6 @@ def run_confirmation(
     }
     _artifacts.write_manifest(run_dir, manifest)
     return _artifacts.read_manifest(run_dir)
-
-
-def _read_canonical_json(path: Path, label: str) -> dict[str, Any]:
-    if path.is_symlink() or not path.is_file():
-        raise DataError(f"{label} is not a regular immutable file")
-    raw = path.read_bytes()
-    if len(raw) > _MAX_ARTIFACT_BYTES:
-        raise DataError(f"{label} exceeds the bounded JSON size")
-    try:
-        parsed: object = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise DataError(f"{label} is not valid UTF-8 JSON") from exc
-    if not isinstance(parsed, dict):
-        raise DataError(f"{label} must contain a JSON object")
-    if raw != _canonical(parsed).encode("utf-8"):
-        raise DataError(f"{label} must use canonical JSON bytes")
-    return parsed
 
 
 def _manifest_artifact_sha(manifest: Mapping[str, object], name: str) -> str:
@@ -810,8 +775,12 @@ def validate_d2_evidence_artifacts(
     if hashlib.sha256(evidence_bytes).hexdigest() != evidence_sha:
         raise DataError("D2 evidence artifact does not match its immutable manifest hash")
 
-    analyses = _read_canonical_json(analyses_path, "D2 analyses artifact")
-    evidence = _read_canonical_json(evidence_path, "D2 evidence artifact")
+    analyses = read_canonical_json(
+        analyses_path, "D2 analyses artifact", max_bytes=_MAX_ARTIFACT_BYTES
+    )
+    evidence = read_canonical_json(
+        evidence_path, "D2 evidence artifact", max_bytes=_MAX_ARTIFACT_BYTES
+    )
     if analyses.get("schema") != _D2_ANALYSES_SCHEMA:
         raise DataError("D2 analyses artifact has an unsupported schema")
     measurements = analyses.get("measurements")

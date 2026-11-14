@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from alpha_core import DataError
-from alpha_web._atomic import write_text
+from alpha_core.atomic import write_text
 
 _SLUG_RE = re.compile(r"[^a-z0-9-]+")
 _VALID_SLUG_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")

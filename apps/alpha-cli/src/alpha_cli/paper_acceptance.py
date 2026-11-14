@@ -14,8 +14,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final, Literal
 
-from alpha_cli._atomic import write_text
 from alpha_core import DataError
+from alpha_core.atomic import write_text
 
 type FactSource = Literal[
     "adapter_callback", "risk_guard", "reconciliation_callback", "connection_guard"

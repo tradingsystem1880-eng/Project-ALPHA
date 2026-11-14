@@ -424,6 +424,9 @@ def test_admission_rejects_non_canonical_and_non_object_artifacts(tmp_path: Path
         (b'{ "schema": "ResearchD1AnalysesV1" }', "canonical JSON bytes"),
         (b"[]", "must contain a JSON object"),
         (b"not json", "valid UTF-8 JSON"),
+        (b'{"value":NaN}', "D1 analyses artifact must contain finite JSON values"),
+        (b'{"value":Infinity}', "D1 analyses artifact must contain finite JSON values"),
+        (b'{"value":-Infinity}', "D1 analyses artifact must contain finite JSON values"),
     ):
         tampered = tmp_path / "tampered"
         shutil.rmtree(tampered, ignore_errors=True)

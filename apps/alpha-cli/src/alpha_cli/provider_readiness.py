@@ -18,8 +18,8 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Final, Literal
 
-from alpha_cli._atomic import write_text
 from alpha_core import DataError
+from alpha_core.atomic import write_text
 from alpha_data.adapters.tiingo_adapter import TiingoAdapter
 from alpha_data.crypto.providers.coingecko import coingecko_demo_request, fetch_coingecko_demo
 
