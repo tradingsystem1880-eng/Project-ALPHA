@@ -1,6 +1,5 @@
 {
   "files": {
-    "apps/alpha-cli/src/alpha_cli/_suite.py": 2275,
     "apps/alpha-cli/src/alpha_cli/control_store.py": 14025,
     "apps/alpha-cli/src/alpha_cli/crypto_data_cmds.py": 4704,
     "apps/alpha-cli/src/alpha_cli/figures/_builders.py": 2664,
@@ -25,8 +24,6 @@
     "apps/alpha-cli/src/alpha_cli/_native_rule_completion.py::complete_rule_trial": 239,
     "apps/alpha-cli/src/alpha_cli/_native_tearsheet.py::native_tearsheet_frames": 210,
     "apps/alpha-cli/src/alpha_cli/_portfolio.py::run_portfolio": 157,
-    "apps/alpha-cli/src/alpha_cli/_suite.py::build_suite_plan": 889,
-    "apps/alpha-cli/src/alpha_cli/_suite.py::execute_suite": 225,
     "apps/alpha-cli/src/alpha_cli/artifact_contract.py::verify_manifest_artifacts": 182,
     "apps/alpha-cli/src/alpha_cli/backtest_cmds.py::holdout": 175,
     "apps/alpha-cli/src/alpha_cli/backtest_cmds.py::portfolio": 176,
