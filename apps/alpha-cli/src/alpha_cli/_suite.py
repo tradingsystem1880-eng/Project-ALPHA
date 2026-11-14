@@ -384,6 +384,9 @@ def _resolve_research_window(ctx: _PlanContext) -> _PlanContext:
 
 
 def _build_action_steps(ctx: _PlanContext) -> tuple[list[SuiteStep], dict[str, object]]:
+    if not ctx.universe or not ctx.governance:
+        # The context's defaults are placeholders: refuse rather than build argv from them.
+        raise DataError("suite plan context was not fully resolved")
     if ctx.hedged_basis and ctx.action in _CANDIDATE_SIMPLE_ACTIONS:
         return _candidate_simple_steps(ctx)
     if ctx.hedged_basis and ctx.action == "monte_carlo":
