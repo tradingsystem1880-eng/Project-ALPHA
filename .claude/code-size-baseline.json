@@ -12,7 +12,7 @@
   "functions": {
     "apps/alpha-cli/src/alpha_cli/_artifacts.py::write_execution_trace": 325,
     "apps/alpha-cli/src/alpha_cli/_crypto_acquisition.py::bybit_plan": 183,
-    "apps/alpha-cli/src/alpha_cli/_crypto_backfill.py::run_backfill": 209,
+    "apps/alpha-cli/src/alpha_cli/_crypto_backfill.py::run_backfill": 205,
     "apps/alpha-cli/src/alpha_cli/_crypto_backfill_inspection.py::inspect_backfill": 280,
     "apps/alpha-cli/src/alpha_cli/_crypto_bar_coverage.py::retained_daily_bar_audit": 160,
     "apps/alpha-cli/src/alpha_cli/_crypto_http_replay.py::FixtureBoundHttpAccounting._dispatch_bound": 272,

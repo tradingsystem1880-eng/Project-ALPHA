@@ -1,6 +1,6 @@
 # Cooperative whole-file backfill progress exclusion
 
-**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+**Delivery state:** Completed — proven end to end by `tests/smoke/test_crypto_backfill_smoke.py` (2026-11-14, `m8/prove-crypto-backfill`); done when that pull request merges.
 
 This is a separate successor to preserved resume/I/O tree
 7953dcde1759b3a3094dd4325d1dcde9a55c12f9 on base
