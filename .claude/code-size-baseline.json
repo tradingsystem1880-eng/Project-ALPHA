@@ -88,7 +88,7 @@
     "packages/alpha-research/src/alpha_research/gate_packet.py::_gate_evidence": 176,
     "packages/alpha-research/src/alpha_research/gate_packet.py::build_research_gate_packet": 319,
     "packages/alpha-strategies/src/alpha_strategies/base.py::VolTargetStrategy.on_quote_tick": 179,
-    "scripts/gate.py::machine_readiness": 177,
+    "scripts/gate.py::machine_readiness": 166,
     "scripts/gate_preflight.py::freshness_index_alignment": 158,
     "scripts/harness_quant.py::mutate": 180,
     "scripts/mutation_sweep.py::aggregate": 158,

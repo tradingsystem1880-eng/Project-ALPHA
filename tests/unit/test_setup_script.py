@@ -161,6 +161,7 @@ def test_dry_run_changes_nothing(setup: Run) -> None:
         (["--with-rdagent"], ""),
         (["--with-stock-runtime"], "--with-stock-runtime"),
         (["--with-daily-container"], "--with-daily-container"),
+        (["--with-factor-runtime"], "--with-factor-runtime"),
         (
             ["--with-stock-runtime", "--with-daily-container"],
             "--with-daily-container --with-stock-runtime",

@@ -1,0 +1,210 @@
+{
+  "base": "m5/rdagent-factor-runtime",
+  "base_sha": "eb9319355d34ea9342840c62cfd453d4cef59aad",
+  "branch": "build/2026-11-14-rdagent-alpha-judged-loop",
+  "built_by": {
+    "effort": "high",
+    "model": "gpt-6-astra",
+    "tool": "codex"
+  },
+  "checks": [
+    {
+      "command": "uv sync --locked",
+      "exit_code": 0,
+      "name": "uv sync",
+      "passed": true,
+      "round": 0,
+      "seconds": 2.0
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base m5/rdagent-factor-runtime",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 0,
+      "seconds": 124.5
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base m5/rdagent-factor-runtime",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 1,
+      "seconds": 41.2
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base m5/rdagent-factor-runtime",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 2,
+      "seconds": 46.5
+    }
+  ],
+  "class": "hard",
+  "class_reason": "13 files in scope (> 8)",
+  "diffstat": " scripts/setup_rdagent.sh                 | 33 +++++++++++++++++++++++++++++++++\n tests/unit/test_native_stock_profile.py  | 34 ++++++++++++++++++++++++++++++++++\n tests/unit/test_setup_rdagent.py         | 12 ++++++++++++\n workers/rdagent/install_stock_profile.py | 26 ++++++++++++++++----------\n 4 files changed, 95 insertions(+), 10 deletions(-)\n",
+  "fallback": null,
+  "files_changed": [
+    {
+      "path": "apps/alpha-cli/src/alpha_cli/rdagent_factor_eval.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/test_rdagent_factor_eval.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/test_rdagent_factor_judge.py",
+      "status": "A"
+    },
+    {
+      "path": "workers/rdagent/alpha_factor_data.py",
+      "status": "A"
+    },
+    {
+      "path": "workers/rdagent/alpha_factor_judge.py",
+      "status": "A"
+    },
+    {
+      "path": "workers/rdagent/factor_loop_entry.py",
+      "status": "A"
+    },
+    {
+      "path": "scripts/setup_rdagent.sh",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/test_native_stock_profile.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/test_setup_rdagent.py",
+      "status": "M"
+    },
+    {
+      "path": "workers/rdagent/install_stock_profile.py",
+      "status": "M"
+    }
+  ],
+  "finished_at": "2026-11-14T10:26:16Z",
+  "fix_rounds": 2,
+  "logs": "/home/hunta/alpha-clean-base/tmp/handoff/logs/2026-11-14-rdagent-alpha-judged-loop-20261114-101127-018852",
+  "notes": [],
+  "outside_scope": [],
+  "policy_violations": [],
+  "previous_attempts": [
+    {
+      "built_by": {
+        "effort": "high",
+        "model": "gpt-6-astra",
+        "tool": "codex"
+      },
+      "fallback": null,
+      "fix_rounds": 0,
+      "run_id": "2026-11-14-rdagent-alpha-judged-loop-20261114-100036-399873",
+      "tokens": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 163328,
+        "input_tokens": 213116,
+        "output_tokens": 1642,
+        "reasoning_output_tokens": 747
+      },
+      "verdict": "verification_failed",
+      "wall_seconds": 68.5
+    },
+    {
+      "built_by": {
+        "effort": "high",
+        "model": "gpt-6-astra",
+        "tool": "codex"
+      },
+      "fallback": null,
+      "fix_rounds": 2,
+      "run_id": "2026-11-14-rdagent-alpha-judged-loop-20261114-100237-469268",
+      "tokens": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 991232,
+        "input_tokens": 1137078,
+        "output_tokens": 7683,
+        "reasoning_output_tokens": 1337
+      },
+      "verdict": "verification_failed",
+      "wall_seconds": 291.1
+    }
+  ],
+  "rounds": [
+    {
+      "commands": 39,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 0,
+      "kind": "build",
+      "outcome": "ok",
+      "seconds": 609.3,
+      "thread_id": "01a1d98a-6b62-7c53-886d-734bc84a4656",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 2475008,
+        "input_tokens": 2574951,
+        "output_tokens": 23425,
+        "reasoning_output_tokens": 3160
+      }
+    },
+    {
+      "commands": 3,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 0,
+      "kind": "fix",
+      "outcome": "ok",
+      "seconds": 49.4,
+      "thread_id": "01a1d98a-6b62-7c53-886d-734bc84a4656",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 2996224,
+        "input_tokens": 3102818,
+        "output_tokens": 24860,
+        "reasoning_output_tokens": 3561
+      }
+    },
+    {
+      "commands": 0,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 0,
+      "kind": "fix",
+      "outcome": "ok",
+      "seconds": 14.7,
+      "thread_id": "01a1d98a-6b62-7c53-886d-734bc84a4656",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3130752,
+        "input_tokens": 3238661,
+        "output_tokens": 25170,
+        "reasoning_output_tokens": 3641
+      }
+    }
+  ],
+  "run_id": "2026-11-14-rdagent-alpha-judged-loop-20261114-101127-018852",
+  "schema_version": 1,
+  "source": "docs/work/archive/2026-11/2026-11-14-rdagent-alpha-judged-loop/02-plan.md",
+  "started_at": "2026-11-14T10:11:27Z",
+  "tokens": {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 8601984,
+    "input_tokens": 8916430,
+    "output_tokens": 73455,
+    "reasoning_output_tokens": 10362
+  },
+  "unverified": [
+    "No checks rerun this turn. Previously reported Ruff and mypy failures remain unresolved."
+  ],
+  "verdict": "verification_failed",
+  "wall_seconds": 888.8,
+  "work_order": {
+    "kind": "task",
+    "name": "2026-11-14-rdagent-alpha-judged-loop"
+  },
+  "worktree": "/home/hunta/alpha-clean-base/tmp/handoff/wt/2026-11-14-rdagent-alpha-judged-loop"
+}
