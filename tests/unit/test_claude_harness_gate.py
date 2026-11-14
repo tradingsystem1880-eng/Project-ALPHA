@@ -185,23 +185,6 @@ class TestAdrAwareness:
         index.write_text("| [0001](0001-first.md) |\n| [0002](./0002-second.md) |\n")
         assert harness_awareness.adr_drift(tmp_path) == []
 
-    def test_adr_mentions_understand_ranges(self) -> None:
-        text = "ADR-0013 and ADRs 0019-0020 plus ADR-0021..0026 (ADRs 0013-0016)"
-        assert harness_awareness.referenced_adr_ids(text) == {
-            13,
-            14,
-            15,
-            16,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24,
-            25,
-            26,
-        }
-
 
 _VALID_PLAN: dict[str, Any] = {
     "title": "Add X",

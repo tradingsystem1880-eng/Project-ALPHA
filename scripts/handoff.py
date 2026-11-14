@@ -99,7 +99,6 @@ EXIT = {
     "codex_timeout": 12,
     "codex_failed": 13,
 }
-FALLBACK_VERDICTS = frozenset({"codex_unavailable", "codex_limit", "codex_timeout", "codex_failed"})
 
 # Paths no builder may change, whatever the plan says.
 NEVER_PATHS = (
@@ -127,6 +126,7 @@ GUARDED: tuple[tuple[str, str, str], ...] = (
         "quant",
         "research implementation hash",
     ),
+    ("apps/alpha-cli/src/alpha_cli/_structural_digest.py", "quant", "approval rules, ADR-0045"),
     ("uv.lock", "protected", "research implementation hash; needs the network"),
     ("tests/oracles/", "quant", "protected test (oracles)"),
     ("tests/bias_guards/", "bias", "protected test (bias guards)"),

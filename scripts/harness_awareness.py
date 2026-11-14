@@ -18,18 +18,6 @@ def adr_files(root: Path) -> list[str]:
     return sorted(p.name for p in adr_dir.glob("*.md") if _ADR_ID_RE.match(p.name))
 
 
-_ADR_MENTION_RE = re.compile(r"ADRs?[ -](\d{4})(?:(?:\.\.|-|–)(\d{4}))?")
-
-
-def referenced_adr_ids(text: str) -> set[int]:
-    """ADR numbers a document mentions: ``ADR-0013``, ``ADRs 0013-0016``, ``ADR-0021..0026``."""
-    ids: set[int] = set()
-    for start, end in _ADR_MENTION_RE.findall(text):
-        lo, hi = int(start), int(end or start)
-        ids.update(range(lo, hi + 1))
-    return ids
-
-
 _INDEX_LINK_RE = re.compile(r"\]\(\s*(?:\./)?(\d{4}-[^)\s#]+\.md)")
 
 

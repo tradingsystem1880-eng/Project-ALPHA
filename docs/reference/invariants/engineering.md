@@ -85,7 +85,8 @@ Project-wide coding rules. Area files add their own detail and link here. The re
 - An approval made before ADR-0045 (scheme 1) stays bound to exact bytes until the owner re-approves.
   So while such an approval may be live, make no cosmetic edits in those files; change them only when
   the behaviour must change, and say in the pull request that approvals will need renewing. Never
-  edit `_structural_digest.py` casually: any edit to it invalidates every scheme-2 approval.
+  edit `_structural_digest.py` casually: any edit to it invalidates every scheme-2 approval, so a
+  builder may change it only under a plan that declares the quant tier (`handoff.py` `GUARDED`).
 - Run identity also fingerprints source bytes (`apps/alpha-cli/src/alpha_cli/_identity.py`), so
   edits to engine, strategy and CLI code change run ids. Details: `cli-runs.md` and `cli-native.md`
   in this folder.
