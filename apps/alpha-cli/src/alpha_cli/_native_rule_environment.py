@@ -124,8 +124,11 @@ def rule_implementation_fingerprints(
 ) -> dict[str, str | None]:
     from alpha_cli._native_rule_protocol import study_data_hash
 
+    # Scheme 2 (ADR-0044): the approved code and evaluator are bound by their structure.
+    from alpha_cli._structural_digest import StructuralDigestError, binding_digest
+
     files = {
-        name: hashlib.sha256((WORKER / name).read_bytes()).hexdigest()
+        name: WORKER / name
         for name in (*WORKER_FILES, *(COSTED_FILES if costed else RULE_FILES))
         if name.endswith(".py")
     }
@@ -134,23 +137,25 @@ def rule_implementation_fingerprints(
             path = Path(__file__).with_name(name)
             if path.is_symlink():
                 raise DataError("daily approval guard source symlink is unsupported")
-            files["cli/" + name] = hashlib.sha256(path.read_bytes()).hexdigest()
+            files["cli/" + name] = path
         watchdog = WORKER / "daily_container_entry.py"
         if watchdog.is_symlink():
             raise DataError("daily approval watchdog source symlink is unsupported")
-        files["worker/daily_container_entry.py"] = hashlib.sha256(watchdog.read_bytes()).hexdigest()
+        files["worker/daily_container_entry.py"] = watchdog
+    evaluator = "costed_probe.py" if costed else "rule_probe.py"
+    try:
+        code = binding_digest(files)
+        evaluator_digest = binding_digest({evaluator: WORKER / evaluator})
+    except StructuralDigestError as exc:
+        raise DataError(f"cannot bind the rule implementation: {exc}") from exc
     return {
-        "code": hashlib.sha256(
-            json.dumps(files, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest(),
+        "code": code,
         "dependency_lock": hashlib.sha256(
             (
                 WORKER / ("economics-requirements.lock" if costed else "rule-requirements.lock")
             ).read_bytes()
         ).hexdigest(),
         "environment": measure_rule_environment(costed),
-        "evaluator": hashlib.sha256(
-            (WORKER / ("costed_probe.py" if costed else "rule_probe.py")).read_bytes()
-        ).hexdigest(),
+        "evaluator": evaluator_digest,
         "data": study_data_hash(costed) if daily_study is None else daily_study.query_sha256,
     }

@@ -21,7 +21,7 @@ exceed the `ceiling` in [wip-limit.json](wip-limit.json), and the ceiling must b
 lowered each time work closes. Once it reaches the `limit` of 3, at most 3 pieces of
 work may be open.
 
-## Live plans (45)
+## Live plans (46)
 
 | Plan | Title | Delivery state | Month |
 | --- | --- | --- | --- |
@@ -70,6 +70,7 @@ work may be open.
 | [2026-10-26-native-rule-study-boundary](../work/2026-10-26-native-rule-study-boundary/02-plan.md) | Frozen-rule native study admission prerequisite | Blocked | 2026-10 |
 | [2026-10-26-qlib-w11-refit](../work/2026-10-26-qlib-w11-refit/02-plan.md) | Qlib W11: bounded whole-pipeline refit evidence | Blocked | 2026-10 |
 | [2026-10-02-agentic-research-capability-program](../work/2026-10-02-agentic-research-capability-program/02-plan.md) | Agentic research capability program | Planned | 2026-10 |
+| [2026-11-14-approval-by-structure](../work/2026-11-14-approval-by-structure/02-plan.md) | Approvals bind code structure, not bytes | Planned | 2026-11 |
 
 ## Backlog (17)
 

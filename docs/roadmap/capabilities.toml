@@ -527,7 +527,7 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "proven up to the owner-approval boundary; a full case needs provider data and your approval"
-plans = []
+plans = ["2026-11-14-approval-by-structure"]
 
 [[capability]]
 id = "quick-screening"

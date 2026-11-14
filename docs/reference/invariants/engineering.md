@@ -6,6 +6,7 @@ sources:
   - scripts/gate.py
   - scripts/gate_components.py
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
+  - apps/alpha-cli/src/alpha_cli/_structural_digest.py
 verified: d0fffa796f8e
 ---
 
@@ -70,14 +71,21 @@ Project-wide coding rules. Area files add their own detail and link here. The re
 
 ## Hash-bound source bytes
 
-- The bytes of every `.py` file in `packages/alpha-research/src` feed the research implementation
-  hash, together with four CLI modules (`research_intake.py`, `research_runtime.py`,
-  `research_crypto_data.py`, `research_crypto_runtime.py`) and the root `uv.lock`. The hash is
-  computed by `apps/alpha-cli/src/alpha_cli/research_cmds.py::_implementation_hashes` and checked
-  against owner-approved research contracts.
-- So even a cosmetic edit there (a comment, formatting, a rename) invalidates existing owner
-  approvals. Make no cosmetic edits in those files; change them only when the behaviour must change,
-  and say in the pull request that approvals will need renewing.
+- Every file in `packages/alpha-research/src`, four CLI modules (`research_intake.py`,
+  `research_runtime.py`, `research_crypto_data.py`, `research_crypto_runtime.py`) and the root
+  `uv.lock` feed the research implementation hash, computed by
+  `apps/alpha-cli/src/alpha_cli/research_cmds.py::_implementation_hashes` and checked against
+  owner-approved research contracts. The fixed and daily rule lanes bind the rdagent worker files
+  and `DAILY_GUARD_FILES` the same way (`_native_rule_environment.py::rule_implementation_fingerprints`).
+- Approvals bind code structure ([ADR-0044](../../adr/0044-approvals-bind-code-structure.md),
+  `apps/alpha-cli/src/alpha_cli/_structural_digest.py`): an approval made since ADR-0044 (scheme 2)
+  survives comments, blank lines, formatting and unread docstrings, and is invalidated by any change
+  to what the code does. Lock files and non-Python files stay bound by bytes, as does a Python file
+  that reads source, line numbers or frames.
+- An approval made before ADR-0044 (scheme 1) stays bound to exact bytes until the owner re-approves.
+  So while such an approval may be live, make no cosmetic edits in those files; change them only when
+  the behaviour must change, and say in the pull request that approvals will need renewing. Never
+  edit `_structural_digest.py` casually: any edit to it invalidates every scheme-2 approval.
 - Run identity also fingerprints source bytes (`apps/alpha-cli/src/alpha_cli/_identity.py`), so
   edits to engine, strategy and CLI code change run ids. Details: `cli-runs.md` and `cli-native.md`
   in this folder.

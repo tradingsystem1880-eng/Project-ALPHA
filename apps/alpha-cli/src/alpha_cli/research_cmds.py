@@ -425,7 +425,8 @@ def _dependency_lock_sha() -> str:
     )
 
 
-def _implementation_hashes() -> dict[str, str | None]:
+def _research_code_paths() -> tuple[Path, dict[str, Path]]:
+    """The approval-bound research code: the ``alpha_research`` tree and four CLI modules."""
     import alpha_research
     from alpha_cli import (
         research_crypto_data,
@@ -434,21 +435,53 @@ def _implementation_hashes() -> dict[str, str | None]:
         research_runtime,
     )
 
-    intake_path = Path(research_intake.__file__)
-    runtime_path = Path(research_runtime.__file__)
-    crypto_data_path = Path(research_crypto_data.__file__)
-    crypto_runtime_path = Path(research_crypto_runtime.__file__)
-    research_root = Path(alpha_research.__file__).parent
-    dependency_lock = _dependency_lock_sha()
-    code = _sha_json(
+    return Path(alpha_research.__file__).parent, {
+        "research_crypto_data": Path(research_crypto_data.__file__),
+        "research_crypto_runtime": Path(research_crypto_runtime.__file__),
+        "research_intake": Path(research_intake.__file__),
+        "research_runtime": Path(research_runtime.__file__),
+    }
+
+
+def _byte_code_hash() -> str:
+    """Scheme 1, exact bytes: the code hash of every approval made before ADR-0044. Frozen."""
+    research_root, modules = _research_code_paths()
+    return _sha_json(
         {
             "alpha_research": _python_tree_sha(research_root),
-            "research_crypto_data": _file_sha(crypto_data_path),
-            "research_crypto_runtime": _file_sha(crypto_runtime_path),
-            "research_intake": _file_sha(intake_path),
-            "research_runtime": _file_sha(runtime_path),
+            **{name: _file_sha(path) for name, path in modules.items()},
         }
     )
+
+
+def _structural_code_hash() -> str:
+    """Scheme 2, code structure (ADR-0044): comments, layout and unread docstrings are free."""
+    from alpha_cli._structural_digest import StructuralDigestError, binding_digest
+
+    research_root, modules = _research_code_paths()
+    tree = sorted(
+        path
+        for path in research_root.rglob("*")
+        if path.is_file()
+        and "__pycache__" not in path.parts
+        and path.suffix != ".pyc"
+        and not path.name.startswith(".")
+    )
+    if not any(path.suffix == ".py" for path in tree):
+        raise DataError(f"cannot fingerprint empty research implementation tree at {research_root}")
+    files = {
+        f"alpha_research/{path.relative_to(research_root).as_posix()}": path for path in tree
+    } | {f"alpha_cli/{name}.py": path for name, path in modules.items()}
+    try:
+        return binding_digest(files)
+    except StructuralDigestError as exc:
+        raise DataError(f"cannot bind the research implementation: {exc}") from exc
+
+
+def _implementation_hashes() -> dict[str, str | None]:
+    """The fingerprints a NEW research approval freezes; its code hash is scheme 2."""
+    dependency_lock = _dependency_lock_sha()
+    code = _structural_code_hash()
     environment = _sha_json(
         {
             "alpha_research": version("alpha-research"),
@@ -491,10 +524,30 @@ def _implementation_drifted(approved_hashes: object) -> bool:
     if not isinstance(approved_hashes, Mapping):
         return True
     current = _implementation_hashes()
-    return any(
+    if any(
         approved_hashes.get(field) != current[field]
-        for field in ("code", "dependency_lock", "environment", "evaluator")
-    )
+        for field in ("dependency_lock", "environment", "evaluator")
+    ):
+        return True
+    return _approved_code_scheme(approved_hashes.get("code"), current) is None
+
+
+def _approved_code_scheme(approved_code: object, current: Mapping[str, object]) -> int | None:
+    """Which scheme reproduces an approved code hash from the code as it is now (ADR-0044).
+
+    Scheme 2 (structure) is what every new approval freezes. Scheme 1 (exact bytes) is how
+    every earlier approval was made, and it stays bound to bytes until the owner re-approves:
+    a scheme-1 hash can only be reproduced by the byte digest, never by the structural one
+    (they hash different, domain-separated documents). ``None`` means neither: drifted.
+    """
+
+    if not isinstance(approved_code, str):
+        return None
+    if approved_code == current["code"]:
+        return 2
+    if approved_code == _byte_code_hash():
+        return 1
+    return None
 
 
 def _require_resolved_material(value: object, label: str) -> None:
