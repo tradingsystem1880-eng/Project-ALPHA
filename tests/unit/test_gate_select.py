@@ -159,3 +159,25 @@ def test_check_all_runs_the_fast_tier(repo: Path) -> None:
 def test_check_cli_flags() -> None:
     args = gate.build_parser().parse_args(["check", "--all", "--base", "main"])
     assert args.all is True and args.base == "main"
+
+
+def test_last_failures_survive_renamed_cases_and_drop_removed_tests(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "tests/unit/test_a.py",
+        "class TestA:\n    def test_a(self, case):\n        pass\n",
+    )
+    _write(
+        tmp_path,
+        str(gate_select.LAST_FAILED),
+        json.dumps(
+            {
+                "tests/unit/test_a.py::TestA::test_a[old case name]": True,
+                "tests/unit/test_a.py::TestA::test_a[other]": True,
+                "tests/unit/test_a.py::test_removed": True,
+                "tests/unit/test_a.py": True,
+            }
+        ),
+    )
+    selection = gate_select.select(tmp_path, None)
+    assert selection.last_failed == ("tests/unit/test_a.py::TestA::test_a",)

@@ -13,8 +13,10 @@ Each entry links to the parts it governs. Component files link here instead of r
 ## How to use this log
 
 - Read the entries for a part before recommending to keep, change, shelve, delete or cut it.
-- When the owner decides something about direction, append a new entry at the end: the date, the
-  exact words in quotation marks, the context in one line, and what it governs.
+- When the owner decides something about direction, append a new entry to the newest volume
+  ([volume 2](owner-decisions-2.md)): the date, the exact words in quotation marks, the context in
+  one line, and what it governs. This file is volume 1 and is full; start a new volume when one
+  nears 200 lines.
 - Never rewrite or delete an entry. If the owner changes their mind, add a new entry that links to
   the old one and says it replaces it.
 - An agent's reading of what the owner meant is marked "Recorded understanding, not yet confirmed

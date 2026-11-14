@@ -80,16 +80,30 @@ def _count_tests(root: Path, files: list[str]) -> int:
 
 
 def _last_failed(root: Path) -> list[str]:
-    """Node ids pytest recorded as failing last time, limited to files that still exist."""
+    """Tests pytest recorded as failing last time that still exist, as ``file::function`` ids.
+
+    The recorded id of a parametrised case (``test_x[case]``) stops existing when the case is
+    renamed, and pytest then refuses the whole run. So each id is cut back to its function and
+    kept only while the file still defines a function of that name.
+    """
     try:
         recorded = json.loads((root / LAST_FAILED).read_text())
     except (OSError, ValueError):
         return []
     if not isinstance(recorded, dict):
         return []
-    return sorted(
-        node for node in recorded if (root / node.split("::", 1)[0]).is_file() and "::" in node
-    )
+    kept: set[str] = set()
+    for node in recorded:
+        file, _, rest = str(node).partition("::")
+        function = rest.split("[", 1)[0]
+        name = function.rsplit("::", 1)[-1]
+        try:
+            text = (root / file).read_text(errors="replace")
+        except OSError:
+            continue
+        if name and re.search(rf"^\s*(?:async\s+)?def {re.escape(name)}\(", text, re.MULTILINE):
+            kept.add(f"{file}::{function}")
+    return sorted(kept)
 
 
 def select(root: Path, changed: list[str] | None) -> Selection:
