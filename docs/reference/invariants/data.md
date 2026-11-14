@@ -10,7 +10,7 @@ sources:
   - tests/bias_guards/test_pit_*.py
   - tests/bias_guards/test_source_future_poison.py
   - tests/bias_guards/test_universe_survivorship.py
-verified: 1c2a00531591
+verified: 13cb45f9b135
 ---
 
 # Data layer invariants
@@ -121,8 +121,9 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
 
 ## Adapters and authority
 
-- Tiingo EOD is the authority for stock/ETF daily history. yfinance and Stooq are comparison only and never
-  replace qualified Tiingo history.
+- Tiingo EOD is the authority for stock/ETF daily history. yfinance, Stooq and the interim Alpaca source are
+  comparison only and never replace qualified Tiingo history. Alpaca's rules (SIP only, raw bars plus actions,
+  split cross-check, byte-exact pages): [ADR-0047](../../adr/0047-alpaca-interim-stock-source.md), `test_alpaca_adapter.py`.
 - Adapters return raw prices plus explicit actions. Yahoo serves split-adjusted OHLCV, so
   `parse_yfinance_history` reconstructs raw prices and fails loud if a split's ex-date jump is missing.
 - Tiingo parsing rejects naive or out-of-range dates, non-finite or non-positive prices, and adjusted/raw

@@ -26,6 +26,7 @@ def test_provider_ids_are_unique_and_historical_sources_come_from_registry() -> 
         "ccxt",
         "stooq",
         "tiingo",
+        "alpaca",
         "binance",
         "bybit",
         "coingecko",
@@ -42,6 +43,7 @@ def test_provider_ids_are_unique_and_historical_sources_come_from_registry() -> 
         "ccxt",
         "stooq",
         "tiingo",
+        "alpaca",
     }
     assert all(
         provider.historical_adapter_factory is not None
@@ -208,3 +210,23 @@ def test_crypto_reference_providers_have_distinct_family_authority() -> None:
 def test_unknown_provider_option_fails_loud() -> None:
     with pytest.raises(RuntimeError, match="unknown provider option"):
         provider_option_choices("missing", "exchange")
+
+
+def test_alpaca_is_interim_and_projects_only_credential_presence() -> None:
+    names = ("APCA_API_KEY_ID", "APCA_API_SECRET_KEY")
+    for environ in ({}, dict.fromkeys(names, "sentinel-private-value")):
+        provider = next(
+            p
+            for p in provider_definitions(environ=environ, module_available=lambda _: True)
+            if p.id == "alpaca"
+        )
+        assert provider.research_authority is False and provider.paper_execution is False
+        assert provider.asset_classes == ("stock", "etf") and provider.timeframes == ("1D",)
+        assert provider.budget_tier == "free_basic"
+        assert provider.capabilities == ("historical_bars", "corporate_actions")
+        assert provider.configured == bool(environ)
+        assert provider.to_dict()["credential_env"] == [
+            {"name": name, "present": bool(environ)} for name in names
+        ]
+        assert "sentinel-private-value" not in json.dumps(provider.to_dict())
+    assert provider_option_choices("alpaca", "asset_class") == ("stock", "etf")
