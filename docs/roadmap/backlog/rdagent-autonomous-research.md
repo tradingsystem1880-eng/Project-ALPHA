@@ -24,8 +24,8 @@ W10 controls, admitted capability contracts, the native stock plans now pending 
 
 ## Sources
 
-- [Checklist W08](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#w08-prove-one-complete-native-investigation) and [W13](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#w13-compose-general-investigations-and-admitted-repairs)
-- [Checklist: RD Agent native destination and researched scenario catalog](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#rd-agent-native-destination-and-researched-scenario-catalog)
-- [Checklist: Master acceptance scenarios T01 to T36](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#master-acceptance-scenarios-t01-to-t36) (T07)
+- [Checklist W08](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#w08-prove-one-complete-native-investigation) and [W13](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#w13-compose-general-investigations-and-admitted-repairs)
+- [Checklist: RD Agent native destination and researched scenario catalog](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#rd-agent-native-destination-and-researched-scenario-catalog)
+- [Checklist: Master acceptance scenarios T01 to T36](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#master-acceptance-scenarios-t01-to-t36) (T07)
 - [Native stock inspection plan](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/2026-11-08-native-stock-inspection/02-plan.md) (T07 boundary)
 - [README: Implemented scope and limits](../../../README.md#implemented-scope-and-limits)

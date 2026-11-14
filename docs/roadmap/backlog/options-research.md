@@ -21,5 +21,5 @@ Derivative snapshots, separate simulator acceptance and W15 where relevant.
 
 ## Sources
 
-- [Checklist W16](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#w16-add-options-expression-when-data-is-sufficient)
-- [Checklist: Conditional data and optional adoption](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#conditional-data-and-optional-adoption)
+- [Checklist W16](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#w16-add-options-expression-when-data-is-sufficient)
+- [Checklist: Conditional data and optional adoption](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#conditional-data-and-optional-adoption)

@@ -24,5 +24,5 @@ adoption rule in the checklist.
 
 - [Research workflow completion plan, alternatives](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-09/2026-09-30-research-workflow-completion.md)
 - [Bounded research controller plan](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-09/2026-09-30-bounded-research-controller.md)
-- [Checklist: Current specialist adoption rule](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#current-specialist-adoption-rule)
+- [Checklist: Current specialist adoption rule](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#current-specialist-adoption-rule)
 - [Bounded research workflow runbook](../../operations/bounded-research-workflow.md)

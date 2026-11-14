@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-KINDS = ("all", "project", "feature", "task", "decision", "reference")
+KINDS = ("all", "project", "feature", "task", "decision", "reference", "research")
 _ROOT_FILES = {
     "AGENTS.md",
     "CLAUDE.md",
@@ -28,6 +28,8 @@ _ROUTING_NAME = "CONTEXT.md"
 _HIDDEN_TESTS = "tests/holdout/"
 # Reference material (Layer 3): every Markdown file under docs/reference/, at any depth.
 _REFERENCE = "docs/reference/"
+# The owner's research notes, kept as source material (Markdown only, at any depth).
+_RESEARCH_NOTES = "docs/archive/research-notes/"
 _FAMILIES = {
     "docs/adr": "decision",
     "docs/roadmap/backlog": "feature",
@@ -83,6 +85,8 @@ def family(rel: str) -> str | None:
         return "project"
     if rel.startswith(_REFERENCE):
         return "reference" if path.suffix == ".md" else None
+    if rel.startswith(_RESEARCH_NOTES):
+        return "research" if path.suffix == ".md" else None
     if path.suffix not in {".md", ".txt", ".json"}:
         return None
     parent = path.parent.as_posix()

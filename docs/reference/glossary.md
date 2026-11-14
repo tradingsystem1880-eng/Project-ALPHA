@@ -3,6 +3,7 @@ owner: status page and roadmap
 sources:
   - scripts/capabilities.py
   - scripts/status.py
+  - docs/archive/research-notes/feature-readiness-checklist-2026-10-27.md
 verified: af0137c5fd74
 ---
 
@@ -16,7 +17,7 @@ documents, not from general usage.
 
 Owner-facing text uses the plain name first, with the code in brackets. Example: "Risk numbers
 that state what they are based on (C04)". Work package list:
-[feature readiness checklist][checklist].
+[feature readiness checklist](../archive/research-notes/feature-readiness-checklist-2026-10-27.md).
 
 ## Work packages
 
@@ -122,6 +123,3 @@ The stages of one governed research case. Data is split by date groups, 60/20/20
 ## Unclear — to confirm
 
 - None. Every term above was found in the repo.
-
-[checklist]:
-  https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md

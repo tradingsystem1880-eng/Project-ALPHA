@@ -24,7 +24,7 @@ blocked [W11 refit plan](https://github.com/tradingsystem1880-eng/Project-ALPHA/
 
 ## Sources
 
-- [Checklist W11](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#w11-qualify-retraining-and-sizing-risk-experiments) and [W12](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#w12-migrate-qlib-and-deliver-model-waves)
-- [Checklist: All 25 declared model entries](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#all-25-declared-model-entries)
+- [Checklist W11](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#w11-qualify-retraining-and-sizing-risk-experiments) and [W12](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#w12-migrate-qlib-and-deliver-model-waves)
+- [Checklist: All 25 declared model entries](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#all-25-declared-model-entries)
 - [README: Implemented scope and limits](../../../README.md#implemented-scope-and-limits)
 - [Qlib worker README](../../../workers/qlib/README.md)

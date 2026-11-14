@@ -32,7 +32,8 @@ delivery states, the generated roadmap index, append-only records, and relative 
   the root `CONTEXT.md`) and link to it from elsewhere; never copy a fact into a second file. There is no
   manual to update and no delivery log to append to — history is git log and pull requests.
 - Retrospectives stay true as of their date: left as-is, with path-only link fix-ups allowed. Older plans,
-  records and archives were removed on 2026-11-14; read them at git tag `pre-thin-2026-11-14`.
+  records and archives were removed on 2026-11-14; read them at git tag `pre-thin-2026-11-14`. The
+  owner's research notes stay in `docs/archive/research-notes/`, never edited (links inside are not checked).
 - Retrospectives are `docs/operations/retrospectives/YYYY-MM-DD-<slug>.md` with a `## Watch-outs` section.
 
 ## Front matter

@@ -57,7 +57,7 @@ behind `gate.py orient`.
 - Context receipts no longer exist. A search result is a pointer to read, not evidence; anything
   that needs evidence cites the source file and commit.
 - Items H26 and H60 of the mirrored
-  [feature readiness checklist](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md) are
+  [feature readiness checklist](../archive/research-notes/feature-readiness-checklist-2026-10-27.md) are
   superseded by this record; the mirror itself is not edited.
 - Tests: `tests/unit/test_fs_search.py`, `tests/unit/test_fs_orient.py`;
   `tests/unit/test_repo_awareness_drift.py` now uses `fs_orient.orientation`.

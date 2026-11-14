@@ -78,6 +78,8 @@ def test_kind_filter_and_query_bounds(docs_repo: Path) -> None:
         ("tests/CONTEXT.md", "project"),
         ("docs/reference/commands.md", "reference"),
         ("docs/reference/invariants/data.md", "reference"),
+        ("docs/archive/research-notes/2026-06/00-SYNTHESIS.md", "research"),
+        ("docs/archive/research-notes/feature-readiness-checklist-2026-10-27.md", "research"),
     ],
 )
 def test_families(rel: str, kind: str) -> None:
@@ -91,6 +93,8 @@ def test_families(rel: str, kind: str) -> None:
         "docs/work/2026-11-01-x/data.json",
         "docs/roadmap/README.md",
         "docs/roadmap/backlog/image.png",
+        "docs/archive/research-notes/mizerxbt-eth/mizerxbt_eth_short_1h.py",
+        "docs/archive/other/x.md",
         "data/private.md",
         "tests/holdout/private.md",
         "tests/holdout/CONTEXT.md",

@@ -29,6 +29,7 @@ Where each kind of document lives, and how long it stays current. Tasks are rout
 | [`operations/retrospectives/`](operations/retrospectives/) | Dated retrospectives `YYYY-MM-DD-<slug>.md` with a `## Watch-outs` section. |
 | `work/` | A task folder `YYYY-MM-DD-<slug>/` holding `02-plan.md` for `scripts/handoff.py build --task`, only on a branch while its pull request is open ([delivery pipeline](../workflow/CONTEXT.md)). |
 | [`roadmap/`](roadmap/README.md) | Generated index of [backlog](roadmap/backlog/) items (wanted features with no plan yet) and staged [refactors](roadmap/refactors/). |
+| [`archive/research-notes/`](archive/research-notes/README.md) | The owner's research material kept as source (reports, scope checklist, a trade review, a bias investigation); bytes never edited. |
 | [`assets/`](assets/) | Images referenced by documentation. |
 
 ## Generated files

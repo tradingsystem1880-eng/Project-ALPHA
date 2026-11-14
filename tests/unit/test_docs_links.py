@@ -19,7 +19,20 @@ ROOT = Path(__file__).parents[2]
 
 # Links that cannot be made to resolve without rewriting a dated record's meaning.
 # Key: (source path, raw link target). Keep this list short and explain each entry.
-ALLOWLIST: dict[tuple[str, str], str] = {}
+ALLOWLIST: dict[tuple[str, str], str] = {
+    (
+        "docs/roadmap/backlog/intraday-equity-timeframe.md",
+        "../../work/2026-09-10-edge-first-phase-b-feed-the-machine/02-plan.md",
+    ): "owner keeps this file untouched; plan removed 2026-11-14 (tag pre-thin-2026-11-14)",
+    (
+        "docs/roadmap/backlog/intraday-equity-timeframe.md",
+        "../../context/feature-readiness-checklist-2026-10-27.md#explicit-exclusions-and-boundaries",
+    ): "owner keeps this file untouched; checklist now in docs/archive/research-notes/",
+}
+
+# The owner's research notes keep their bytes exactly (docs/archive/research-notes/README.md), so
+# links inside them are not checked; links *to* them are.
+RESEARCH_NOTES = "docs/archive/research-notes/"
 
 _FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
 _INLINE_CODE = re.compile(r"(`+)(?:(?!\1).)+?\1")
@@ -107,6 +120,8 @@ def links(text: str) -> list[tuple[int, str]]:
 
 
 def broken_links(rel: str) -> list[str]:
+    if rel.startswith(RESEARCH_NOTES):
+        return []
     source = ROOT / rel
     problems: list[str] = []
     for number, target in links(source.read_text(encoding="utf-8")):

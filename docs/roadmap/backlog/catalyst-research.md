@@ -23,5 +23,5 @@ composition.
 
 ## Sources
 
-- [Checklist W15](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#w15-add-catalyst-and-expectations-research)
+- [Checklist W15](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#w15-add-catalyst-and-expectations-research)
 - [Edge-first Phase B plan, out of scope: SEC XBRL fundamentals](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/2026-09-10-edge-first-phase-b-feed-the-machine/02-plan.md)
