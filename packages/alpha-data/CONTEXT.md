@@ -3,7 +3,7 @@ owner: data layer
 sources:
   - packages/alpha-data/src/**
   - packages/alpha-data/pyproject.toml
-verified: 13cb45f9b135
+verified: b4b36f41caa0
 ---
 
 # alpha-data workspace
@@ -29,14 +29,17 @@ import it. It must never let a read see data that was not knowable at the cutoff
 | [crypto provider invariants](../../docs/reference/invariants/crypto-providers.md) | — | changing `crypto/providers/` or coverage profiles |
 | [command line crypto data](../../docs/reference/invariants/cli-crypto-data.md) | — | the change is driven by an `alpha crypto-data` command |
 | [engineering rules](../../docs/reference/invariants/engineering.md) | Polars by default | touching an adapter or adding a dataframe library |
+| [bar timeframes](../../docs/reference/invariants/data-bar-timeframes.md) | — | changing bar timeframes, intraday stores or intraday quality |
 | [what this part is for](../../docs/reference/project/components/data-layer.md) | — | why it exists; before you keep, shelve or remove it |
 
 ## How to change it
 
-- Code: `packages/alpha-data/src/alpha_data/`; vendor adapters in `adapters/`, the crypto data
+- Code: `packages/alpha-data/src/alpha_data/`; bar timeframes (one minute to one day, the no-HFT boundary,
+  one store per timeframe) in `timeframe.py`; vendor adapters in `adapters/`, the crypto data
   house in `crypto/` and `crypto/providers/`.
 - Tests: `tests/unit/test_pit_*.py`, `test_parquet_store.py`, `test_snapshot.py`, `test_ingest*.py`,
   `test_corporate_actions.py`, `test_dividends_pit.py`, `test_universe_store.py`, `test_tiingo_*`, `test_alpaca_adapter.py`,
+  `test_bar_timeframe.py`, `test_ingest_pipeline_intraday.py`,
   `test_crypto_*` (all in `tests/unit/`); bias guards `tests/bias_guards/test_pit_*.py`,
   `test_survivorship.py`, `test_candles_pit.py`, `test_crypto_*_future_poison.py`; integration
   `tests/integration/test_data_cli.py` and `tests/integration/test_crypto_*`.

@@ -10,7 +10,7 @@ sources:
   - tests/bias_guards/test_pit_*.py
   - tests/bias_guards/test_source_future_poison.py
   - tests/bias_guards/test_universe_survivorship.py
-verified: 841eb50dcc89
+verified: b4b36f41caa0
 ---
 
 # Data layer invariants
@@ -101,34 +101,7 @@ provider → immutable receipt → candidate → quality gate → canonical Parq
   and every read of that symbol raises until `rollback_interrupted_promotion(..., acknowledge=True)`.
 - Immutable receipt, candidate and quarantine directories may be republished only with identical bytes.
 - Provenance v2 embeds `DatasetIdentity` and `FetchReceipt`; three-field legacy provenance stays readable.
-  `DatasetIdentity` accepts raw-price datasets at any canonical bar timeframe (`alpha_data.timeframe`).
-
-## Bar timeframes
-
-Owner decision 2026-11-15: there is no daily-only rule. Daily (`1D`) is the default, not a limit.
-
-- `BarTimeframe` covers 1 to 59 minutes, 1 to 23 whole hours, and one day; canonical spellings are
-  `1D`, `<n>m`, `<n>h`. Longer bars are a design limit (resample stored daily bars).
-- The one refusal is the no-high-frequency-trading boundary: sub-minute bars and tick, trade, quote or
-  order-book data raise `DataError` naming the owner's rule (`parse_timeframe`).
-- A stored bar's `ts` is the START of its interval in UTC; an intraday bar is known only at `ts + duration`.
-  Daily bars keep the session-date 00:00 UTC stamp. Every intraday bar start lies on one grid that restarts
-  at each UTC midnight (`BarTimeframe.is_aligned`).
-- Each timeframe has its own complete store root: `store` for daily, `store-<canonical>` (for example
-  `store-5m`) otherwise (`store_dir`). Receipts, quality, promotion and provenance work per root, so
-  intraday bars never mix with daily bars. A snapshot of a non-daily store records `"timeframe"` in its
-  manifest; daily manifests have no such key (`snapshot_timeframe` reads it, default `1D`).
-  `verify_snapshot` and `snapshot_manifest_hash` take the timeframe the caller will read, default `1D`, so
-  every daily consumer refuses an intraday snapshot instead of reading its bars as days.
-- Intraday stock pulls are bounded by exchange-local session dates (New York midnight to midnight), so the
-  "stored session missing from the new pull" check compares in that timezone: a winter after-hours bar
-  stamped after 00:00 UTC belongs to the earlier session.
-- `parse_timeframe` refuses `1M`, weeks and years rather than guess (`1M` is a month in pandas and CCXT).
-- Intraday stock/ETF quality: per exchange session (DST and half days from `exchange_calendars`), every
-  timeframe-aligned bar whose interval meets regular hours must be present (`intraday_gap`), a session with
-  none is a `calendar_gap`, and an off-grid bar is `misaligned_bar`; all critical. Pre-market and
-  after-hours bars are kept and counted (`extended_hours_rows`). Tests: `tests/unit/test_bar_timeframe.py`,
-  `tests/unit/test_ingest_pipeline_intraday.py`.
+  `DatasetIdentity` accepts raw-price datasets at any bar timeframe: [bar timeframes](data-bar-timeframes.md).
 
 ## Snapshots
 
@@ -150,8 +123,7 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
 
 - Tiingo EOD is the authority for stock/ETF daily history. yfinance, Stooq and the interim Alpaca source are
   comparison only and never replace qualified Tiingo history. Alpaca's rules (SIP only, raw bars plus actions,
-  split cross-check, byte-exact pages; intraday bars as Alpaca returns them, pre-market and after-hours
-  included, stamped at the bar start): [ADR-0047](../../adr/0047-alpaca-interim-stock-source.md), `test_alpaca_adapter.py`.
+  split cross-check, byte-exact pages): [ADR-0047](../../adr/0047-alpaca-interim-stock-source.md), `test_alpaca_adapter.py`.
 - Adapters return raw prices plus explicit actions. Yahoo serves split-adjusted OHLCV, so
   `parse_yfinance_history` reconstructs raw prices and fails loud if a split's ex-date jump is missing.
 - Tiingo parsing rejects naive or out-of-range dates, non-finite or non-positive prices, and adjusted/raw
@@ -164,9 +136,7 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
   No error message points to another source.
 - CCXT accepts only `coinbase` and `binance`, returns completed intervals only, never sends `since=0` (Coinbase
   answers it with the latest bars), and keeps venue-qualified `ccxt:<exchange>` provenance byte-compatible.
-  It paginates past per-call caps; `fetch(date, date)` delegates to `fetch_timeframe` at the adapter's
-  timeframe (daily by default). An intraday CCXT series must be a contiguous grid: a missing bar fails loud
-  (crypto trades 24/7). CCXT pulls keep no receipt or raw pages (legacy provenance).
+  It paginates past per-call caps; `fetch(date, date)` delegates to `fetch_timeframe` (daily by default).
 - `CCXTAdapter.first_bar` is a daily listing-date probe, never a history read: it checks `load_markets`,
   scans forward from 2009 in page-sized windows, and fails loud on an unknown market, no history, or a bar
   earlier than requested. It stores nothing.
