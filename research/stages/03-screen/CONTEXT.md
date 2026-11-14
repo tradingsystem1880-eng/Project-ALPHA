@@ -2,10 +2,11 @@
 owner: research pipeline
 sources:
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
+  - apps/alpha-cli/src/alpha_cli/_research_cmd_parts.py
   - apps/alpha-cli/src/alpha_cli/research_runtime.py
   - apps/alpha-cli/src/alpha_cli/research_d1.py
   - apps/alpha-cli/src/alpha_cli/research_analysis_plan.py
-verified: aa600e57932d
+verified: 9c40aa259c97
 ---
 
 # Stage 03 — screen: D0 pilot, then D1 discovery

@@ -3,7 +3,7 @@ owner: command line application
 sources:
   - apps/alpha-cli/src/**
   - apps/alpha-cli/pyproject.toml
-verified: aa600e57932d
+verified: 9c40aa259c97
 ---
 
 # alpha-cli workspace
@@ -42,14 +42,14 @@ did not give, and never route live capital.
 
 ## How to change it
 
-Code is flat in `apps/alpha-cli/src/alpha_cli/` (175 modules; `_name.py` = private helper,
+Code is flat in `apps/alpha-cli/src/alpha_cli/` (178 modules; `_name.py` = private helper,
 `*_cmds.py` = one Typer command group, wired in `main.py`). Where to look:
 
 | Sub-area | Modules (count) | Tests in `tests/unit/` |
 |---|---|---|
-| Research cases | `research_*` (22; `research_gate_packet`), `_research_artifact_io`, `_structural_digest`, `study_semantic` | `test_research_*` |
+| Research cases | `research_*` (22), `_research_cmd_parts`, `_research_artifact_io`, `_structural_digest`, `study_semantic` | `test_research_*` |
 | Control store | `control_store`, `_control_*`, `owner_auth*`, `durable_lease`, `job_capacity`, `project_*` | `test_control_*`, `test_owner_*` |
-| Runs, validation | `_artifacts`, `_identity`, `_seeds`, `_runner`, `_gauntlet`, `_optim`, `run_*`, `_suite` | `test_run*`, `test_gauntlet*`, `test_suite_*` |
+| Runs, validation | `_artifacts`, `_identity`, `_seeds`, `_runner`, `_gauntlet`, `_optim`, `run_*`, `_suite*` | `test_run*`, `test_gauntlet*`, `test_suite_*` |
 | Crypto, daily data | `_crypto_*` (15; incl. `_crypto_snapshot_members`), `crypto_*` (4), `data_cmds` | `test_crypto_*`, `test_tiingo_*` |
 | Native jobs | `_native_*` (20), `native_*` (6), `daily_*` (3) | `test_native_*`, `test_daily_*` |
 | Machine learning | `ml_*` (6), `_ml_*` (2), `_forecast*` (3), `forecast_cmds` | `test_ml_*`, `test_forecast_*` |

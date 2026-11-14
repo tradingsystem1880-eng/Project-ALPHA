@@ -2,6 +2,7 @@
 owner: command line research
 sources:
   - apps/alpha-cli/src/alpha_cli/research_*.py
+  - apps/alpha-cli/src/alpha_cli/_research_cmd_parts.py
   - apps/alpha-cli/src/alpha_cli/study_semantic.py
   - apps/alpha-cli/src/alpha_cli/strategy_candidate*.py
   - tests/unit/test_research_*.py
@@ -12,7 +13,8 @@ verified: 330acecce016
 # Command line research invariants
 
 What must not break when changing the governed Research Case commands (`alpha research ...`) and the
-`research_*` modules that capture ideas, freeze contracts, run the D0/D1/D2 phases and project gate packets.
+`research_*` modules (command bodies in `research_cmds.py`, shared helpers in `_research_cmd_parts.py`) that
+capture ideas, freeze contracts, run the D0/D1/D2 phases and project gate packets.
 The project-wide rule lives in [research integrity § Research before strategy](research-integrity.md#research-before-strategy);
 this file holds the command-line specifics.
 
@@ -25,7 +27,7 @@ this file holds the command-line specifics.
 - Gate 1 is the D0 gate. It runs only the contract-bound canonical `double_bottom` detector with
   `second_trough_confirmable` availability (`research_runtime.py`). Other contracts may be drafted but fail before execution.
 - A completed D0 routes to `deep_research` only when the contract carries an `analysis_plan`; a legacy contract without
-  one goes straight to `research_decision` (`research_cmds._post_d0_route`). `decide` may still close early from D1.
+  one goes straight to `research_decision` (`_research_cmd_parts._post_d0_route`). `decide` may still close early from D1.
 - Never let a runner read outside its assigned share. `research_d1.py` executes strictly inside D1; `research_d2.py`
   inside D2, and never materialises D3 into its data view. The 60/20/20 group-atomic split itself is owned by
   `alpha_research` and pinned by `tests/unit/test_research_d2_boundary.py`.
@@ -33,7 +35,7 @@ this file holds the command-line specifics.
 ## Contracts and approvals
 
 - Never approve a contract with unresolved material: approval requires schema `ResearchContractV1`,
-  `approval_ready=true`, zero `blocking_questions`, and no placeholder markers (`control_store.py`, `research_cmds.py`).
+  `approval_ready=true`, zero `blocking_questions`, and no placeholder markers (`control_store.py`; `_research_cmd_parts.py::_require_resolved_material`).
 - `run deep` executes only the approval-frozen `analysis_plan` (`ResearchAnalysisPlanV1`: registered families, bounded
   grids, one primary plus frozen Holm/falsification multiplicity; blanket batteries rejected).
   [ADR-0025](../../adr/0025-empirical-d1-research-runner-admission.md)

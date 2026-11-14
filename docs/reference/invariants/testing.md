@@ -14,7 +14,7 @@ sources:
   - scripts/claude_hooks.py
   - pyproject.toml
   - .semgrep/alpha.yml
-verified: aa600e57932d
+verified: 4b4bf23c209e
 ---
 
 # Testing invariants
@@ -129,6 +129,12 @@ this file holds the mechanics.
   deterministic mutant fragments in at most eight isolated jobs of two mutmut workers each and aggregates
   them exactly; `timeout` and `no_tests` mutants are never counted as kills. Its scores are report-only, and the
   0.90 minimum, 0.005 tolerance and baseline floors stay as above.
+- The staged tree runs mutmut 3 with `process_isolation = "forkserver"`. Its default fork mode runs the
+  suite in mutmut's own process, which starts Polars' thread pool there; every forked mutant that then
+  calls Polars waits forever, so such mutants were timeouts that measured nothing (run 43483950887:
+  2,983 of 15,066 `alpha_research` mutants). The staged tree also carries `docs/` and all of `scripts/`
+  so tests reading them run; a test that still fails only in staging is excluded, recorded in the
+  report and printed in the job log, and a failing sweep job prints its error and log tails.
 - `gate.py semgrep`: fail-closed Semgrep through `scripts/semgrep_runner.py`, which pins `SEMGREP_VERSION` and
   checks the installed version before every scan, with `.semgrep/alpha.yml` over
   `packages`, `apps`, `scripts` and `tests` (`--changed` for changed files). Rules ban silent `except: pass`,

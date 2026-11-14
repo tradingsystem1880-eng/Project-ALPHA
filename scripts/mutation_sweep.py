@@ -184,6 +184,46 @@ def run_module(
         raise
     finally:
         save()
+        print_fragment_diagnostics(record, output)
+
+
+def print_fragment_diagnostics(record: dict[str, Any], output: Path) -> None:
+    """Expose preflight exclusions and bounded command evidence in hosted job logs.
+
+    Runs in ``run_module``'s ``finally``: it must never raise and replace the exit status.
+    """
+    try:
+        _print_fragment_diagnostics(record, output)
+    except Exception as exc:  # diagnostics must never mask the measured result
+        print(f"[mutation-sweep] diagnostics unavailable: {exc!r}", file=sys.stderr)
+
+
+def _print_fragment_diagnostics(record: dict[str, Any], output: Path) -> None:
+    if record["state"] not in {"complete", "error"}:
+        return
+    module = record["module"]
+    label = module + (f" fragment {record['fragment']}" if "fragment" in record else "")
+    if record["state"] == "error":
+        print(f"[mutation-sweep] {label}: {record['error']}", file=sys.stderr)
+    report = record.get("report")
+    modules = report.get("modules") if isinstance(report, dict) else None
+    entry = modules.get(module) if isinstance(modules, dict) else None
+    entry = entry if isinstance(entry, dict) else {}
+    excluded = entry.get("excluded_tests")
+    if isinstance(excluded, list) and excluded:
+        print(f"[mutation-sweep] {label} excluded_tests:", file=sys.stderr)
+        for test in excluded:
+            print(test, file=sys.stderr)
+    if record["state"] != "error":
+        return
+    if "status" in entry:
+        print(f"status: {entry['status']}".replace("\r", "\n"), file=sys.stderr)
+    for timing in record["timings"]:
+        log = timing["log"]
+        text = (output / log).read_text(errors="replace").replace("\r", "\n")
+        tail = "\n".join(text.splitlines()[-40:])[-4000:]
+        print(f"[mutation-sweep] {log} (last 40 lines, at most 4000 characters):", file=sys.stderr)
+        print(tail, file=sys.stderr)
 
 
 def load_json(path: Path) -> dict[str, Any]:

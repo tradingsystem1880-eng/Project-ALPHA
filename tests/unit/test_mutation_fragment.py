@@ -94,7 +94,19 @@ def test_no_associated_tests_certificate_is_conservative() -> None:
 
 
 @pytest.mark.parametrize(
-    "mode", ["certified", "failed", "empty", "stale", "wrong_hits", "wrong_import", "unfinished"]
+    "mode",
+    [
+        "certified",
+        "failed",
+        "empty",
+        "stale",
+        "wrong_hits",
+        "wrong_import",
+        "unfinished",
+        "missing_origins",
+        "malformed_origins",
+        "wrong_isolation",
+    ],
 )
 def test_run_fragment_certifies_only_observed_fresh_collection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str
@@ -123,7 +135,7 @@ def test_run_fragment_certifies_only_observed_fresh_collection(
     imported.__file__ = str(tmp_path / "mutants/src/pkg.py")
     if mode == "wrong_import":
         imported.__file__ = str(source.resolve())
-    monkeypatch.setitem(sys.modules, "pkg", imported)
+    monkeypatch.delitem(sys.modules, "pkg", raising=False)
 
     def collect(_: object) -> int:
         if mode != "empty":
@@ -132,15 +144,36 @@ def test_run_fragment_certifies_only_observed_fresh_collection(
             observed._stats = {"wrong.f"}
         return 1 if mode == "failed" else 0
 
-    class ForkRunner(SimpleNamespace):
-        pass
+    class TestRunner:
+        def run_stats(self, tests: object) -> int:
+            sys.modules["pkg"] = imported
+            return collect(tests)
+
+    class ForkServerRunner:
+        test_runner_class = TestRunner
+
+        def collect_stats(self, tests: object) -> int:
+            try:
+                with monkeypatch.context() as child:
+                    child.chdir(tmp_path / "mutants")
+                    result = self.test_runner_class().run_stats(tests)
+                # Like the real fork server: the child's tracer hits never reach the parent.
+                observed._stats = set()
+                evidence = tmp_path / "mutation-import-origins.json"
+                if mode == "missing_origins":
+                    evidence.unlink(missing_ok=True)
+                elif mode == "malformed_origins":
+                    evidence.write_text("[]")
+                return result
+            finally:
+                sys.modules.pop("pkg", None)
 
     isolation = ModuleType("mutmut.workers.isolation")
-    isolation.__dict__["ForkRunner"] = ForkRunner
+    isolation.__dict__["ForkServerRunner"] = ForkServerRunner
     monkeypatch.setitem(sys.modules, "mutmut.workers.isolation", isolation)
-    runner = ForkRunner(collect_stats=collect)
+    runner = ForkServerRunner() if mode != "wrong_isolation" else SimpleNamespace()
 
-    def factory(_: int) -> SimpleNamespace:
+    def factory(_: int) -> ForkServerRunner | SimpleNamespace:
         return runner
 
     tool.__dict__["get_mutant_runner"] = factory
@@ -161,9 +194,21 @@ def test_run_fragment_certifies_only_observed_fresh_collection(
         assert run_fragment("src/pkg.py", keys, keys[:1], 2) == 0
         codes = read_object(Path("mutants/src/pkg.py.meta"))["exit_code_by_key"]
         assert codes == {keys[0]: 33, keys[1]: None}
-        assert read_object(Path("mutants/no-tests-proof.json"))["durations"] == {"test_public": 0.1}
+        proof = read_object(Path("mutants/no-tests-proof.json"))
+        assert proof["durations"] == {"test_public": 0.1}
+        assert proof["import_origins"] == {"pkg": "staged"}
+    elif mode in {"missing_origins", "malformed_origins", "wrong_import", "wrong_isolation"}:
+        token = (
+            "forkserver"
+            if mode == "wrong_isolation"
+            else ("certificate" if mode == "wrong_import" else "origins")
+        )
+        with pytest.raises(ValueError, match=token):
+            run_fragment("src/pkg.py", keys, keys[:1], 2)
+        assert not Path("mutants/no-tests-proof.json").exists()
     else:
         with pytest.raises((ValueError, SystemExit)):
             run_fragment("src/pkg.py", keys, keys[:1], 2)
         assert not Path("mutants/no-tests-proof.json").exists()
+    assert not (tmp_path / "mutation-import-origins.json").exists()
     assert tool.__dict__["get_mutant_runner"] is factory

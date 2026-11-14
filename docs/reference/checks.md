@@ -8,7 +8,7 @@ sources:
   - scripts/gate.py
   - scripts/gate_components.py
   - pyproject.toml
-verified: a9b265292d5a
+verified: 4b4bf23c209e
 ---
 
 # Checks
@@ -66,6 +66,8 @@ request only when its paths (or the workflow and gate files) change, and always 
 
 ## How to change it
 
+- `gh workflow run mutation-weekly.yml --ref <branch> -f module=<path>` runs one module's fragments
+  and skips `aggregate` (a partial sweep is not a sweep).
 - On CI the doctor's machine-readiness section (setup state of a development machine) is listed, never enforced.
 - A new CI job or pytest marker needs a row here; the unit test names what is missing.
 - Re-measure times from `gh run view <id> --json jobs` and update the column in the same change.
