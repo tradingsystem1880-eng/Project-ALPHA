@@ -64,7 +64,7 @@ the 34 waiting features, and its 18 oversized methods hold 3,599 of the 21,389 l
 
 ## Approvals: what a split invalidates
 
-- `control_store.py` is one of the 25 `DAILY_GUARD_FILES` (`_native_rule_environment.py:21`),
+- `control_store.py` is one of the 40 `DAILY_GUARD_FILES` (`_native_rule_environment.py:21`),
   bound by structure (ADR-0045; it reports mode `structure`, so comments and docstrings are free).
   Any move of code out of it changes its digest: **every pending daily-rule approval is invalidated
   once**. Research-lane approvals are not affected (control_store is not in the research hash).
@@ -72,16 +72,18 @@ the 34 waiting features, and its 18 oversized methods hold 3,599 of the 21,389 l
   flat file names (`Path(__file__).with_name(name)`; a subpackage path raises). Each new module must
   be added to `DAILY_GUARD_FILES`, an edit to `_native_rule_environment.py`, which is itself bound
   by exact bytes. That edit also invalidates every daily-rule approval.
-- Existing gap, independent of the split: `_control_schema.py` (the DDL control_store executes),
-  `_ml_observation_store.py` and `_native_daily_rule_history.py` are not in `DAILY_GUARD_FILES`
-  although control_store delegates to them. Closing it is an owner decision with the same one-time
-  cost.
+- The earlier gap (`_control_schema.py`, `_ml_observation_store.py`,
+  `_native_daily_rule_history.py` and twelve more files the lane runs through) was closed on
+  2026-11-14 ([ADR-0048](../../adr/0048-daily-rule-lane-binding-and-named-months.md)).
+  `tests/unit/test_daily_guard_boundary.py` now fails when a bound module imports an unbound
+  `alpha_cli` module without a reviewed reason, so every module this split creates must be added
+  to `DAILY_GUARD_FILES` in the same change (the test enforces it).
 
 ## Plan: small steps, each its own pull request
 
 0. **Owner decision (prerequisite).** Confirm the one-time renewal of daily-rule approvals, and
-   choose the binding: list each new `_control_*.py` module, plus the three uncovered modules, in
-   `DAILY_GUARD_FILES` in the same change that creates them. Without this, stop after step 1.
+   choose the binding: list each new `_control_*.py` module in `DAILY_GUARD_FILES` in the same
+   change that creates them (the three formerly uncovered modules are bound since ADR-0048). Without this, stop after step 1.
 1. **Characterisation, no product change.** A public-API snapshot test (every `ControlStore`
    public method name and signature, `__all__`, the private names product code imports); a test
    that each of the six patched module attributes is still read through `control_store`.

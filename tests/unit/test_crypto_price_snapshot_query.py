@@ -121,12 +121,14 @@ def _query(
 ) -> BinanceDailyPriceSnapshotQueryV1:
     options = {"start": START, "end": START + 3 * DAY, "available_by": START + 3 * DAY}
     options.update(kwargs)
-    return query_binance_daily_price_snapshot(
+    result = query_binance_daily_price_snapshot(
         snapshot,
         store,
-        normalized_manifest_id=manifest,
+        normalized_manifest_ids=(manifest,),
         **options,
     )
+    assert isinstance(result, BinanceDailyPriceSnapshotQueryV1)
+    return result
 
 
 def test_complete_query_is_pinned_and_explicitly_reconstructed(tmp_path: Path) -> None:
@@ -411,14 +413,16 @@ def _full_discovery_fixture(
 def _full_discovery_query(tmp_path: Path) -> BinanceDailyPriceSnapshotQueryV1:
     """Reusable artificial query for typed study binding; no real-market acceptance."""
     store, snapshot, manifest = _full_discovery_fixture(tmp_path)
-    return query_binance_daily_price_snapshot(
+    result = query_binance_daily_price_snapshot(
         snapshot,
         store,
-        normalized_manifest_id=manifest,
+        normalized_manifest_ids=(manifest,),
         start=START,
         end=datetime(2023, 1, 1, tzinfo=UTC),
         available_by=datetime(2023, 1, 1, tzinfo=UTC),
     )
+    assert isinstance(result, BinanceDailyPriceSnapshotQueryV1)
+    return result
 
 
 def test_full_discovery_query_has_two_realistic_bounded_pages(tmp_path: Path) -> None:
@@ -444,13 +448,45 @@ def test_independent_restored_store_reopens_exact_discovery_query(tmp_path: Path
         "available_by": datetime(2023, 1, 1, tzinfo=UTC),
     }
     before = query_binance_daily_price_snapshot(
-        snapshot, store, normalized_manifest_id=manifest, **options
+        snapshot, store, normalized_manifest_ids=(manifest,), **options
     )
     restored_root = tmp_path / "restored"
     shutil.copytree(original_root, restored_root)
     restored = _store(restored_root)
     after = query_binance_daily_price_snapshot(
-        snapshot, restored, normalized_manifest_id=manifest, **options
+        snapshot, restored, normalized_manifest_ids=(manifest,), **options
     )
     assert after.content_sha256 == before.content_sha256
     assert after.to_dict() == before.to_dict()
+
+
+def test_single_member_document_stays_byte_identical(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    snapshot, manifest = _publish(store)
+    result = _query(snapshot, store, manifest)
+    assert (
+        result.content_sha256 == "4498ebb46eac2887ef11509ffd3cee7eb94804282f3e17ed1536d2da6294e3ca"
+    )
+    assert list(result.to_dict()) == [
+        "schema",
+        "snapshot_id",
+        "normalized_manifest_id",
+        "dataset",
+        "dataset_sha256",
+        "artifact_sha256",
+        "quality_method_version",
+        "source_receipts",
+        "start",
+        "end_exclusive",
+        "available_by",
+        "requested_row_count",
+        "returned_row_count",
+        "coverage",
+        "availability_basis",
+        "availability_semantics",
+        "raw_capture_after_available_by",
+        "point_in_time_claim",
+        "claim_scope",
+        "execution_authority",
+        "rows",
+    ]
