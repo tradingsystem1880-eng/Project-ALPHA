@@ -50,7 +50,7 @@
         "apps/alpha-cli/src/alpha_cli/_research_cmd_parts.py",
         "tests/unit/test_rule_cli_approval_confirmation.py"
       ],
-      "status": "planned"
+      "status": "pending"
     }
   ],
   "tier_impact": [
