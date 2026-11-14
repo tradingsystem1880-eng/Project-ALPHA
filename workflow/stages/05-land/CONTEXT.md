@@ -4,7 +4,7 @@ sources:
   - .github/pull_request_template.md
   - scripts/handoff.py
   - scripts/status.py
-verified: aa600e57932d
+verified: af0137c5fd74
 ---
 
 # Stage 05 — land: pull request to merged and closed

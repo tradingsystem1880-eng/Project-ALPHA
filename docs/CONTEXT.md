@@ -6,7 +6,7 @@ sources:
   - scripts/roadmap_index.py
   - scripts/fs_stale.py
   - tests/unit/test_docs_links.py
-verified: 1a5804784ede
+verified: af0137c5fd74
 ---
 
 # docs workspace
@@ -14,8 +14,8 @@ verified: 1a5804784ede
 ## Purpose
 
 The project's documentation: the file system's reference material (`docs/reference/`), decision
-records (`docs/adr/`), the architecture reference, operations runbooks, governance records, plans
-and history. Documents describe the code; they never grant authority. Every fact has one home and
+records (`docs/adr/`), the architecture reference, operations runbooks, governance records and the
+roadmap. History is git log and pull requests. Documents describe the code; they never grant authority. Every fact has one home and
 other files link to it.
 
 ## Read first

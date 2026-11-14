@@ -3,7 +3,7 @@ owner: delivery pipeline
 sources:
   - scripts/status.py
   - scripts/roadmap_index.py
-verified: f89aa1bb78af
+verified: af0137c5fd74
 ---
 
 # Stage 01 — shape: idea to brief

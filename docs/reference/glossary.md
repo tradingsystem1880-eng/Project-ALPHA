@@ -3,7 +3,7 @@ owner: status page and roadmap
 sources:
   - scripts/capabilities.py
   - scripts/status.py
-verified: f89aa1bb78af
+verified: af0137c5fd74
 ---
 
 # Glossary
