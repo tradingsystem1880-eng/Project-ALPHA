@@ -125,3 +125,18 @@ The option text was written by the agent, so it is not quoted as the owner's wor
   guards, oracles, determinism) are not part of what is lightened. Main before the cut is
   tagged `pre-thin-2026-11-14`.
 - **Governs:** the whole project; the [overview](overview.md).
+
+### 2026-11-14 Keep the user interface
+
+- **Said:** "And of course the ui. Keep the ui."
+- **Context:** narrows the thinning above: the Workstation web app stays, as the window onto
+  the thinned system.
+- **Governs:** the Workstation web app (`apps/alpha-web`).
+
+### 2026-11-14 Never high-frequency trading
+
+- **Said:** "A HUGE RULE. This project will never do high frequency trading. Every. We can't
+  win in that regime. We focus on swing trading mostly and some intraday."
+- **Context:** a standing rule for every design choice: daily bars first, intraday (minutes to
+  hours) second; nothing is built for tick, order-book or latency-sensitive trading.
+- **Governs:** the whole project; the [overview](overview.md).
