@@ -41,7 +41,7 @@ ceiling admits no new live plan, and the work is finished in one sitting.
     "Text output changes break a caller that parses it: no code or test parses the text line; JSON output is unchanged apart from the new horizon_turnover field and caveat wording."
   ],
   "slices": [
-    {"title": "Horizon-matched turnover, honest caveats, readable text output", "verify": "uv run pytest -q tests/unit/test_hypothesis_scan_signals.py tests/integration/test_hypothesis_scan_cli.py tests/oracles/test_differential_hypothesis_screen.py", "expected": "all pass; the new known-answer and oracle tests fail on main", "rollback": "revert _hypothesis_scan.py, scan_cmds.py and the tests", "status": "pending"},
+    {"title": "Horizon-matched turnover, honest caveats, readable text output", "verify": "uv run pytest -q tests/unit/test_hypothesis_scan_signals.py tests/integration/test_hypothesis_scan_cli.py", "expected": "all pass; the new known-answer and oracle tests fail on main", "rollback": "revert _hypothesis_scan.py, scan_cmds.py and the tests", "status": "pending"},
     {"title": "Screening smoke check through the installed alpha", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_screening_smoke.py", "expected": "passed", "rollback": "delete tests/smoke/test_screening_smoke.py", "status": "pending"}
   ],
   "tier_impact": ["none"],
@@ -52,7 +52,6 @@ ceiling admits no new live plan, and the work is finished in one sitting.
     "apps/alpha-cli/src/alpha_cli/scan_cmds.py",
     "tests/unit/test_hypothesis_scan_signals.py",
     "tests/integration/test_hypothesis_scan_cli.py",
-    "tests/oracles/test_differential_hypothesis_screen.py",
     "tests/smoke/test_screening_smoke.py"
   ]
 }
@@ -118,7 +117,8 @@ Tests first; each must fail on main by assertion or missing attribute:
 - `tests/integration/test_hypothesis_scan_cli.py`: the text output of `scan hypotheses` (no
   `--json`) on the frozen equities contains the header, one line per trial naming `rev_1m`, and the
   footer; with a symbol absent from the snapshot it prints `missing from snapshot:` and the name.
-- `tests/oracles/test_differential_hypothesis_screen.py` (new, `pytestmark = pytest.mark.oracle`):
+- Written by the orchestrator, not the builder (`tests/oracles/` is a guarded path):
+  `tests/oracles/test_differential_hypothesis_screen.py` (new, `pytestmark = pytest.mark.oracle`):
   seed 7 names with `seed_store(n=330, seed=i, sigma=0.01 + 0.003 * i, drift=0.0005 * (i - 3))`,
   snapshot them, run `run_hypotheses` for all five equity signals at horizons 1, 5, 21 with
   `min_names=5, quantiles=5, cost_bps=7.5`, and recompute every row independently with pandas and
