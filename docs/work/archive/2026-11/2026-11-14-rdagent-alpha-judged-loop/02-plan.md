@@ -1,6 +1,6 @@
 # An RD-Agent loop that ALPHA judges: runtime, launcher, judge and evaluator
 
-**Delivery state:** Building — design accepted in ADR-0049 (with the trial ledger, locked period, two stages, candidates and feed-forward added the same day); code built from this plan.
+**Delivery state:** Completed — filed straight into the archive like the earlier RD-Agent tasks; built across three stacked pull requests (decision record, runtime, loop) and done when the last merges.
 **Build class:** hard — more than eight files and a bias-sensitive evaluation path.
 
 Filed straight into the archive, as the previous RD-Agent tasks were: the work-in-progress ceiling

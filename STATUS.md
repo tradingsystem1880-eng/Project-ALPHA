@@ -113,12 +113,13 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Offline price import from a local file — medium (M)
 - Options expression research (W16) — large (L)
 - RD-Agent autonomous native research and restart continuation (W08/W13, T07) — very large (XL)
+- RD-Agent factor loop under the command line's job supervisor — medium (M)
 
 ## Housekeeping
 
 - Live plans: 42
-- Archived plans: 127
-- Backlog items: 18
+- Archived plans: 128
+- Backlog items: 19
 - Staged refactors: 6
 
 ## Where things are
