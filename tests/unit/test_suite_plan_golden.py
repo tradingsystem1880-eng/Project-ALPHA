@@ -121,13 +121,17 @@ def _normalise(record: dict[str, object], generated: set[str], tmp_path: Path) -
     preserves identity both within plans and across actions and successive stage states.
     """
     path = str(tmp_path)
-    pattern = re.compile("|".join(re.escape(value) for value in sorted(generated | {path})))
+    repo = str(Path(__file__).resolve().parents[2])  # the Qlib worker lock lives in the checkout
+    values = sorted(generated | {path, repo}, key=lambda value: (-len(value), value))
+    pattern = re.compile("|".join(re.escape(value) for value in values))
     tokens: dict[str, str] = {}
 
     def replace(match: re.Match[str]) -> str:
         value = match.group()
         if value == path:
             return "<path>"
+        if value == repo:
+            return "<repo>"
         if value not in tokens:
             tokens[value] = f"<id-{len(tokens) + 1}>"
         return tokens[value]
