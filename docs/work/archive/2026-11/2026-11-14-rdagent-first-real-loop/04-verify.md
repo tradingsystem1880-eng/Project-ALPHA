@@ -31,7 +31,7 @@ therefore **not yet meaningful**; as plumbing it is complete.
 
 Backtest settings (environment variables RD-Agent passes to Qlib): train 2018-01-01 to
 2022-12-31, valid 2023, test 2024-01-01 to 2026-10-30. Qlib's own figures (it annualises with 252
-days a year; crypto trades 365, so its annual figures are understated):
+days a year; crypto trades 365, so the size of each annual figure, gain or loss, is understated):
 
 | Measure | Baseline (in the loop) | Four factors added |
 |---|---|---|
@@ -119,5 +119,9 @@ Records: `gateway/model-gateway/calls.jsonl` (no prompt or reply text), `logs/ga
 
 ## Checks run
 
-- `uv run python scripts/gate.py check`: see the pull request.
-- `uv run python scripts/fs.py stale`: 0.
+- `uv run python scripts/gate.py check`: all checks passed (fast tier).
+- `uv run python scripts/fs.py stale`: 0 stale. Plan-schema and file-system contract tests: pass.
+- Codex review of the documents (`handoff.py review`): three findings, all fixed — the side
+  check's target is the close-to-close return one to two days ahead, not "next-day"; no universe
+  size is claimed to be enough; the 252-day annualisation understates the size of figures, not
+  their sign.

@@ -99,8 +99,8 @@ Run on the Dell on 2026-11-14:
 2b. **A backtest that can see the idea — new, needs your choice.** The first full loop (see
    "What is real today") showed that RD-Agent's built-in Qlib backtest is tuned for about 300
    Chinese stocks: on 15 coins its model learns nothing, so its numbers are noise. Choose one:
-   a wider crypto universe (about 100 coins or more; needs item 3's data folder and a bigger
-   download); ALPHA judging RD-Agent's factors with Nautilus and its statistical checks (the
+   a wider crypto universe (how wide is enough is untested; needs item 3's data folder and a
+   bigger download); ALPHA judging RD-Agent's factors with Nautilus and its statistical checks (the
    intended design; engineering, overlaps item 6); or, as a calibration only, one run on Qlib's
    public Chinese-stock data (a download). RD-Agent's own settings files stay unmodified. Also
    engineering: pin the extra Python packages, the Qlib image and the launcher this run set up by

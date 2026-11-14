@@ -11,7 +11,8 @@
   stocks. On 15 coins its model learned nothing and gave every coin the same score every day, so
   the backtest's profit numbers are noise (two identical runs even gave different numbers), and the
   AI's verdict ("improved, keep it") rests on that noise. A side check outside the loop shows one
-  of the four signals (volatility) does line up with next-day returns across the coins, so there
+  of the four signals (volatility) does line up, across the coins, with the return Qlib tries to
+  predict (from the next day's close to the close after that), so there
   was something to find; the built-in model just could not use it. That side check is a lead, not
   a finding.
 - No code in the repository changed. The run and its records are in
@@ -20,7 +21,8 @@
 ## What stands between this and a routine real loop
 
 1. **A backtest that can see the idea (your decision).** Pick one:
-   a. a wider crypto universe (about 100 coins or more), so RD-Agent's built-in settings fit; this
+   a. a wider crypto universe, closer to the 300 names RD-Agent's built-in settings were made
+      for; whether, say, 100 coins is enough is untested and would have to be measured; this
       needs the data folder you choose in
       [storage settings](../../../../operations/storage-settings.md) and a bigger download;
    b. have ALPHA judge RD-Agent's factors with its own tools (Nautilus backtest plus the
