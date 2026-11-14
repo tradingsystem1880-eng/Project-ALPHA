@@ -361,3 +361,37 @@ class RecordedSchemaTests(unittest.TestCase):
                     self.assertRaises(DataError),
                 ):
                     read_recorded_profile(connection, JOB, events)
+
+
+def test_factor_profile_records_verifies_and_detects_mutation(tmp_path: Path) -> None:
+    import importlib.util
+    import json
+
+    import pytest
+
+    worker = Path(__file__).resolve().parents[2] / "workers/rdagent"
+    spec = importlib.util.spec_from_file_location(
+        "profile_helper", worker / "install_stock_profile.py"
+    )
+    assert spec is not None and spec.loader is not None
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    bundle = tmp_path / "bundle"
+    site = bundle / "venv/lib/python3.11/site-packages"
+    site.mkdir(parents=True)
+    (bundle / "venv/pyvenv.cfg").write_text("version = 3.11.14\n")
+    pins = helper.locked_pins((worker / "factor-requirements.lock").read_text())
+    assert len(pins) == 79
+    for name, version in pins.items():
+        dist = site / f"{name}-{version}.dist-info"
+        dist.mkdir()
+        (dist / "METADATA").write_text(f"Name: {name}\nVersion: {version}\n")
+    assert helper.main(["--profile", "factor", str(bundle)]) == 0
+    profile = json.loads((bundle / "factor-profile.json").read_bytes())
+    assert profile["schema"] == "AlphaFactorRuntimeProfileV1"
+    assert not (bundle / "stock-profile.json").exists()
+    assert helper.main(["--profile", "factor", "--verify", str(bundle)]) == 0
+    (site / "changed.py").write_text("changed")
+    assert helper.main(["--profile", "factor", "--verify", str(bundle)]) == 1
+    with pytest.raises(ValueError, match="differs from lock"):
+        helper.measure(bundle)  # the default is still the stock lock

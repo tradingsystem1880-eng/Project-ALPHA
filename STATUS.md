@@ -116,6 +116,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Options expression research (W16) — large (L)
 - Overlap-corrected t statistic for the quick screen — small (S)
 - RD-Agent autonomous native research and restart continuation (W08/W13, T07) — very large (XL)
+- RD-Agent factor loop under the command line's job supervisor — medium (M)
 - Risk stress scenarios that can move the drawdown — small (S)
 - Web-started downloads ignore proxy and certificate settings — small (S)
 
@@ -123,7 +124,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 
 - Live plans: 31
 - Archived plans: 147
-- Backlog items: 23
+- Backlog items: 24
 - Staged refactors: 6
 
 ## Where things are

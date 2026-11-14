@@ -34,6 +34,7 @@ OPTIONAL = [
     "RD-Agent source (pinned)",
     "RD-Agent rule and economics environments",
     "RD-Agent stock runtime (Python 3.11)",
+    "RD-Agent factor-loop runtime (Python 3.11, ADR-0049)",
     "Docker",
     "Daily-study Docker image (pinned)",
     "Codex CLI, signed in",
@@ -70,6 +71,8 @@ def tree(tmp_path: Path) -> Path:
     touch(root / "workers/literature/.venv/bin/python")
     (root / ".alpha/state/runtime/rdagent-source/rdagent").mkdir(parents=True)
     touch(root / ".alpha/state/runtime/rdagent-stock-py311/venv/bin/python")
+    touch(root / ".alpha/state/runtime/rdagent-factor-py311/venv/bin/python")
+    touch(root / ".alpha/state/runtime/rdagent-factor-py311/factor-profile.json")
     for profile in (".venv-rule-qualified", ".venv-economics-qualified"):
         touch(root / "workers/rdagent" / profile / "bin/python")
     touch(
@@ -120,7 +123,7 @@ def test_everything_present(tree: Path, fakes: Fakes) -> None:
     items = fakes.items(tree)
     assert list(items) == REQUIRED + OPTIONAL
     assert all(item["status"] == "present" and item["fix"] == "" for item in items.values())
-    assert [item["required"] for item in items.values()] == [True] * 5 + [False] * 7
+    assert [item["required"] for item in items.values()] == [True] * 5 + [False] * 8
     assert gate.machine_summary(list(items.values()), {})["ready"] is True
 
 
@@ -178,6 +181,9 @@ def test_missing_optional_items_do_not_make_the_machine_not_ready(tree: Path, fa
     fixes = {n: items[n]["fix"] for n in OPTIONAL}
     assert fixes["RD-Agent source (pinned)"] == "bash scripts/setup.sh --with-rdagent"
     assert fixes["RD-Agent stock runtime (Python 3.11)"].endswith("--with-stock-runtime")
+    assert fixes["RD-Agent factor-loop runtime (Python 3.11, ADR-0049)"].endswith(
+        "--with-factor-runtime"
+    )
     assert fixes["Codex CLI, signed in"].endswith("then run: codex login")
     assert "--storage-reserve-gb" in fixes["Free disk space above the storage reserve"]
     assert "needs Docker first" in items["Daily-study Docker image (pinned)"]["detail"]
