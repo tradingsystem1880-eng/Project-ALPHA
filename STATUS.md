@@ -4,7 +4,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 5 working, 26 partly working, 0 demo only, 5 shelved, 1 not started.
+- **Capabilities:** 6 working, 25 partly working, 0 demo only, 5 shelved, 1 not started.
 - **Work in progress:** 34 in progress (limit 3).
   - 3 being worked on
   - 31 built but not yet checked end to end
@@ -20,6 +20,7 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 ## What works today
 
 - **Workstation web app** — uv run alpha-web, then open http://localhost:8801
+- **Download crypto market data (W05)** — uv run alpha crypto-data catalog (a real run is recorded)
 - **Run a backtest** — uv run alpha backtest run SPY
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
 - **Machine-learning experiments with Qlib** — uv run alpha ml capabilities
@@ -44,7 +45,6 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 Tested piece by piece inside the test suite, but not yet run from start to finish through the installed program:
 
 - **Price charts with indicators and patterns** — tested in-process and in a browser against a test server (a real run is recorded).
-- **Download crypto market data (W05)** — tested in-process only (a real run is recorded).
 - **Crypto history download that resumes safely (backfill, Phase B)** — tested in-process only.
 - **"Are my downloaded daily bars complete?" check** — tested in-process and in a browser against a test server.
 - **Freeze crypto data into exact snapshots and check them (W05)** — tested in-process only.
@@ -112,12 +112,13 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Offline price import from a local file — medium (M)
 - Options expression research (W16) — large (L)
 - RD-Agent autonomous native research and restart continuation (W08/W13, T07) — very large (XL)
+- Web-started downloads ignore proxy and certificate settings — small (S)
 
 ## Housekeeping
 
 - Live plans: 42
-- Archived plans: 128
-- Backlog items: 17
+- Archived plans: 129
+- Backlog items: 18
 - Staged refactors: 6
 
 ## Where things are

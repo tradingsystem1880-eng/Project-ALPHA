@@ -9,7 +9,7 @@ sources:
   - tests/unit/test_crypto_defillama*.py
   - tests/bias_guards/test_defillama_availability.py
   - tests/bias_guards/test_crypto_profiles_future_poison.py
-verified: 1724a5befe5d
+verified: 1c2a00531591
 ---
 
 # Crypto provider invariants
@@ -32,6 +32,8 @@ the commands that drive these modules are in [command line crypto data](cli-cryp
 
 ## Binance
 
+- An HTTP error from the archive host names its status (`Binance archive request failed with HTTP 404`); only a
+  transport interruption says "rerun to resume".
 - Archives are checksum-first: the cache is keyed by the expected SHA-256, a resume uses an exact HTTP `Range`
   from verified resume metadata, and a mismatched checksum, unsafe path or refused range fails loud.
 - Kline parsing accepts millisecond and microsecond timestamps and keeps every native field. A REST tail joins

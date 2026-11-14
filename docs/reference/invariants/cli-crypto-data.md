@@ -8,7 +8,7 @@ sources:
   - tests/unit/test_crypto_*.py
   - tests/integration/test_crypto_*.py
   - tests/integration/test_data_*.py
-verified: 1a5804784ede
+verified: 8c67bef63ab9
 ---
 
 # Command line data invariants
