@@ -20,6 +20,15 @@ from alpha_core.config import AlphaSettings
 risk_app = typer.Typer(help="Risk & scenario analysis over stored runs.")
 
 
+def _snapshot_id(manifest: dict[str, object]) -> object:
+    if "snapshot_id" in manifest:
+        return manifest["snapshot_id"]
+    metadata = manifest.get("metadata")
+    if isinstance(metadata, dict) and isinstance(metadata.get("snapshot_id"), str):
+        return metadata["snapshot_id"]
+    return None
+
+
 @risk_app.command()
 def scenario(
     from_run: str = typer.Option(..., "--from-run", help="run id with an equity curve"),
@@ -77,7 +86,7 @@ def scenario(
             "source_command": manifest.get("command"),
             "source_artifact": "equity_curve.parquet",
             "source_artifact_sha256": sha256_file(rdir / "equity_curve.parquet"),
-            "snapshot_id": manifest.get("snapshot_id"),
+            "snapshot_id": _snapshot_id(manifest),
             "snapshot_hash": manifest.get("snapshot_hash"),
             "research_cutoff": manifest.get("research_cutoff"),
             "as_of": equity_rows[-1][0].isoformat() if equity_rows else None,
@@ -132,3 +141,11 @@ def scenario(
             f"{s.name:>10}: vol={s.annual_vol:.3f} maxdd={s.max_drawdown:.3f} "
             f"var={s.value_at_risk:.4f} cvar={s.expected_shortfall:.4f}"
         )
+    typer.echo(
+        "Shock scenarios append one day of -3 or -5 sample standard deviations after the last "
+        "recorded return; the drawdown changes only if that day deepens one."
+    )
+    typer.echo(
+        f"VaR and CVaR: historical, one period, {confidence:.0%} confidence, positive numbers are "
+        "losses; volatility scaling keeps the mean and scales every return, flat days included."
+    )

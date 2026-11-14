@@ -20,6 +20,10 @@ ENGINE_MONEY_ABS = 1e-6
 # parameter sweep (test_metamorphic_dsr.py).
 MONOTONE_SLACK = 1e-12
 
+# Absolute tolerance between a float64 statistic and an independent recomputation of the same
+# arithmetic in a different order (differential oracles of the hypothesis screen and path risk).
+DIFFERENTIAL_ABS = 1e-12
+
 _Z = 3.89  # two-sided alpha = 1e-4; see test_calibration_known_truth.py module docstring
 
 

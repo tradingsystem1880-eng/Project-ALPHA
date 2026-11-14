@@ -24,7 +24,7 @@ sources:
   - tests/unit/test_figure*.py
   - tests/integration/test_validate_*.py
   - tests/integration/test_backtest_*.py
-verified: 580c5a0fe478
+verified: 70f15b4e80c4
 ---
 
 # Command line runs invariants
@@ -134,6 +134,11 @@ and how it names and publishes immutable runs. Project-wide rules:
   Its universe is the symbols stored now (`universe_as_of` is wall-clock), so a scan is not survivorship-safe.
 - `scan run` writes nothing. `scan check` appends only changed signals to `scans/alerts.jsonl`. A scan is a screen,
   never evidence.
+- `scan hypotheses` screens a frozen snapshot (equity) or frozen crypto manifests, records every attempt under
+  `scans/hypotheses/` and has no authority. Its cost-adjusted spread charges `4 x horizon_turnover x` the one-way
+  cost, where `horizon_turnover` is the bucket replacement between dates one horizon apart (a book rebalanced every
+  horizon); `turnover` keeps the one-row figure. Equity outcomes are split-adjusted price returns without dividends.
+  Checked against pandas and SciPy by `tests/oracles/test_differential_hypothesis_screen.py`.
 - `alpha chart overlays` reads the same point-in-time window as `alpha data candles`, nulls warm-up values only at the
   head, filters patterns through their `*_known_by(last)` check, and fails loud on any other non-finite value.
   Only the indicators in `_NAN_AFTER_WARMUP` may null a legitimately undefined later window. Each indicator refuses

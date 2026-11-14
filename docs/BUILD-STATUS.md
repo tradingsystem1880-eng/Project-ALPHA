@@ -3304,7 +3304,7 @@ application code and the four original source-mounted browser assertions/config 
 unchanged. Independent final review and the dedicated browser run remain separate;
 default browser-suite routing is still unresolved. No full gate, protected tests,
 providers/models/owner data, installs, commits or publication. See
-[the capture plan](work/2026-11-10-risk-basis-fixture-capture/02-plan.md).
+[the capture plan](work/archive/2026-11/2026-11-10-risk-basis-fixture-capture/02-plan.md).
 
 ## 2026-11-10 — Bounded browser-lane routing successor
 
