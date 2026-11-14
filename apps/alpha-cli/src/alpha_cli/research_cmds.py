@@ -2095,7 +2095,13 @@ def _run_deep(project_id: str, *, json_out: bool) -> None:
             crypto_boundary,
         )
         attempt, case = _record_completed_d1(
-            store, project_id, contract_id, manifest, attempt_number, job_id
+            store,
+            project_id,
+            contract_id,
+            manifest,
+            attempt_number,
+            job_id,
+            data_dir=AlphaSettings().data_dir,  # looked up here, where tests patch it
         )
     _emit_stage_result(manifest, attempt, case, stage="d1", json_out=json_out)
 

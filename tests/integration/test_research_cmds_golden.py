@@ -132,7 +132,6 @@ _FLOWS: dict[str, Flow] = {
 # shorter hex substring inside a longer one. Preserve all surrounding literal text.
 _VARIABLE = re.compile(
     r"(?P<uuid>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
-    r"|(?P<ts>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))"
     r"|(?<![0-9a-f])(?P<sha>[0-9a-f]{64})(?![0-9a-f])"
     r"|(?<![0-9a-f])(?P<hex16>[0-9a-f]{16})(?![0-9a-f])"
 )
@@ -141,6 +140,23 @@ _VARIABLE = re.compile(
 # Wall-clock measurements of a run: the only literal values that differ between two runs of
 # the same code.
 _WALL_CLOCK_KEYS = frozenset({"elapsed_time_seconds"})
+# Keys whose timestamps are when the store recorded something (measured: the only timestamps
+# that differ between two runs). Every other timestamp, such as a point-in-time boundary,
+# stays literal so that a shifted boundary fails the golden.
+_RECORDED_AT_KEYS = frozenset(
+    {
+        "created_at",
+        "linked_at",
+        "occurred_at",
+        "recorded_at",
+        "registered_at",
+        "reserved_at",
+        "updated_at",
+    }
+)
+_TIMESTAMP = re.compile(
+    r"(?P<ts>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))"
+)
 
 
 class _Normalizer:
@@ -161,6 +177,8 @@ class _Normalizer:
     def _field(self, key: str, value: object) -> object:
         if key in _WALL_CLOCK_KEYS:
             return "<elapsed>"
+        if key in _RECORDED_AT_KEYS and isinstance(value, str):
+            return _TIMESTAMP.sub(self._replace, value)
         if key.endswith(".png") and isinstance(value, dict) and "size_bytes" in value:
             # PNG bytes depend on in-process Matplotlib state left by earlier tests in the same
             # worker; the image digest is already a token, so only the size is masked.

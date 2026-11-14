@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any, Final, Literal, NamedTuple, cast
 
 from alpha_cli._cli_json import emit as _emit
@@ -15,7 +16,6 @@ from alpha_cli.research_d2 import D2_EVIDENCE_ARTIFACT
 from alpha_cli.research_readiness import ReadinessProjection, derive_research_readiness
 from alpha_cli.research_runtime import registered_d0_material_choices, registered_d0_operator
 from alpha_core import DataError
-from alpha_core.config import AlphaSettings
 from alpha_research import (
     EqualDurationResearchBars,
     ResearchChartFingerprintV1,
@@ -769,11 +769,13 @@ def _record_completed_d1(
     manifest: Mapping[str, Any],
     attempt_number: int,
     job_id: str,
+    *,
+    data_dir: Path,
 ) -> tuple[dict[str, object], dict[str, object]]:
     # The run is published and immutable. As with D0, a store write failure past this
     # point must never fabricate a failed attempt.
     run_id = str(manifest["run_id"])
-    run_dir = AlphaSettings().data_dir / "runs" / run_id
+    run_dir = data_dir / "runs" / run_id
     analyses = json.loads((run_dir / D1_ANALYSES_ARTIFACT).read_text(encoding="utf-8"))
     variants_used = int(analyses["measurements"]["budget"]["variants_used"])
     try:
