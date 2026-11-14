@@ -12,12 +12,12 @@ import os
 import re
 import subprocess
 from dataclasses import asdict
-from datetime import timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pandas as pd
+import polars as pl
 
 from alpha_backtest.portfolio_replay import WeightTarget, run_weight_replay
 from alpha_cli.crypto_bulk_store import configured_crypto_bulk_store
@@ -119,30 +119,48 @@ def outside_git(path: Path) -> None:
         raise DataError("cannot determine trial ledger git location")
 
 
-def _dates(frame: pd.DataFrame, column: str = "date") -> pd.Series:
-    dates = pd.to_datetime(frame[column], utc=True)
-    if dates.isna().any() or not dates.eq(dates.dt.normalize()).all():
+RESERVED_DAY = date.fromisoformat(RESERVED_START)
+PRICE_COLUMNS = ("open", "high", "low", "close")
+PANEL_COLUMNS = ("date", "instrument", *PRICE_COLUMNS, "volume", "quote_volume")
+
+
+def _days(frame: pl.DataFrame, column: str = "date") -> pl.Series:
+    """The column as calendar days; a timestamp must be exactly UTC midnight."""
+    values = frame[column]
+    if values.dtype == pl.Date:
+        days = values
+    elif isinstance(values.dtype, pl.Datetime):
+        stamps = (
+            values.dt.replace_time_zone("UTC")
+            if values.dtype.time_zone is None
+            else values.dt.convert_time_zone("UTC")
+        )
+        if (stamps != stamps.dt.truncate("1d")).any():
+            raise DataError("panel dates must be UTC-midnight days")
+        days = stamps.dt.date()
+    else:
+        raise DataError(f"{column} must be a date or timestamp column")
+    if days.null_count():
         raise DataError("panel dates must be UTC-midnight days")
-    return dates
+    return days.alias(column)
 
 
-def validate_panel(frame: pd.DataFrame) -> pd.DataFrame:
-    if frame.empty:
+def validate_panel(frame: pl.DataFrame) -> pl.DataFrame:
+    if frame.is_empty():
         raise DataError("empty panel")
-    frame = frame.copy()
-    frame["date"] = _dates(frame)
-    if frame["date"].ge(pd.Timestamp(RESERVED_START, tz="UTC")).any():
+    frame = frame.with_columns(_days(frame)).sort(["date", "instrument"])
+    if (frame["date"] >= RESERVED_DAY).any():
         raise DataError("panel reaches reserved window")
-    if frame.duplicated(["date", "instrument"]).any():
+    if frame.select(["date", "instrument"]).is_duplicated().any():
         raise DataError("overlapping instrument-day artifacts")
-    for name, rows in frame.groupby("instrument", sort=True):
-        if (
-            not rows.date.is_monotonic_increasing
-            or not rows.date.diff().dropna().eq(pd.Timedelta(days=1)).all()
-        ):
+    gaps = frame.group_by("instrument").agg(
+        pl.col("date").diff().drop_nulls().dt.total_days().alias("step")
+    )
+    for name, steps in gaps.iter_rows():
+        if any(step != 1 for step in steps):
             raise DataError(f"disordered or gapped daily bars for {name}")
-    prices = frame[["open", "high", "low", "close"]].to_numpy(dtype=float)
-    volumes = frame[["volume", "quote_volume"]].to_numpy(dtype=float)
+    prices = frame.select(PRICE_COLUMNS).to_numpy().astype(float)
+    volumes = frame.select(["volume", "quote_volume"]).to_numpy().astype(float)
     if (
         not np.isfinite(prices).all()
         or (prices <= 0).any()
@@ -150,16 +168,16 @@ def validate_panel(frame: pd.DataFrame) -> pd.DataFrame:
         or (volumes < 0).any()
     ):
         raise DataError("invalid OHLC or volumes")
-    if (frame.low > frame[["open", "close"]].min(axis=1)).any() or (
-        frame.high < frame[["open", "close"]].max(axis=1)
-    ).any():
+    low, high, open_, close = (frame[c].to_numpy() for c in ("low", "high", "open", "close"))
+    if (low > np.minimum(open_, close)).any() or (high < np.maximum(open_, close)).any():
         raise DataError("inconsistent OHLC")
-    return frame.sort_values(["date", "instrument"]).reset_index(drop=True)
+    return frame
 
 
 def freeze(data_dir: Path, out: Path) -> dict[str, Any]:
     store = configured_crypto_bulk_store(data_dir)
-    frames, manifests, hashes = [], [], set()
+    frames: list[pl.DataFrame] = []
+    manifests, hashes = [], set()
     selector = {
         "family": "market_bars",
         "venue": "binance",
@@ -183,48 +201,66 @@ def freeze(data_dir: Path, out: Path) -> dict[str, Any]:
         if digest in hashes:
             continue
         hashes.add(digest)
-        frame = pd.read_parquet(io.BytesIO(payload))
-        frame["date"] = _dates(frame, "open_time")
-        frame = frame.loc[frame.date.lt(pd.Timestamp(RESERVED_START, tz="UTC"))].copy()
-        frame["instrument"] = dataset["instrument"]
-        frame = frame.rename(columns={"base_volume": "volume"})
-        frames.append(
-            frame[["date", "instrument", "open", "high", "low", "close", "volume", "quote_volume"]]
+        raw = pl.read_parquet(io.BytesIO(payload))
+        days = _days(raw, "open_time")
+        # Validate order within each artifact before merging chronological captures.
+        if not days.is_sorted():
+            raise DataError("disordered artifact")
+        frame = (
+            raw.with_columns(
+                days.alias("date"), pl.lit(str(dataset["instrument"])).alias("instrument")
+            )
+            .rename({"base_volume": "volume"})
+            .filter(pl.col("date") < RESERVED_DAY)
+            .select(PANEL_COLUMNS)
+            .with_columns(pl.col(PANEL_COLUMNS[2:]).cast(pl.Float64))
         )
+        frames.append(frame)
     if not frames:
         raise DataError("no qualified Binance spot daily bars")
-    # Validate order within each artifact before merging chronological captures.
-    for frame in frames:
-        if not frame.empty and not frame.date.is_monotonic_increasing:
-            raise DataError("disordered artifact")
-    panel = validate_panel(pd.concat(frames).sort_values(["date", "instrument"]))
+    panel = validate_panel(pl.concat(frames))
+    summary = panel.group_by("instrument").agg(
+        pl.len().alias("rows"),
+        pl.col("date").min().alias("first"),
+        pl.col("date").max().alias("last"),
+    )
     instruments = {
-        str(name): {
-            "rows": len(rows),
-            "first_day": rows.date.min().date().isoformat(),
-            "last_day": rows.date.max().date().isoformat(),
-        }
-        for name, rows in panel.groupby("instrument")
+        str(name): {"rows": int(rows), "first_day": first.isoformat(), "last_day": last.isoformat()}
+        for name, rows, first, last in summary.sort("instrument").iter_rows()
     }
-    panel["date"] = panel.date.dt.date
-    for column in ("open", "high", "low", "close", "volume", "quote_volume"):
-        panel[column] = panel[column].astype("float64")
     out.mkdir(parents=True, exist_ok=False)
-    payload = panel.to_parquet(index=False)
+    buffer = io.BytesIO()
+    panel.write_parquet(buffer)
+    payload = buffer.getvalue()
     exclusive(out / "panel.parquet", payload)
     receipt = {
         "schema": "AlphaRdagentFactorPanelV1",
         "manifests": manifests,
         "instruments": instruments,
-        "rows": len(panel),
+        "rows": panel.height,
         "panel_sha256": sha(payload),
     }
     exclusive(out / "panel-receipt.json", canonical(receipt))
     return receipt
 
 
-def screen(signal: pd.DataFrame, outcome: pd.DataFrame, digest: str) -> dict[str, Any]:
-    values = signal.to_numpy(dtype=float)
+def matrix(frame: pl.DataFrame, value: str, days: list[date], symbols: list[str]) -> np.ndarray:
+    """Dense days x symbols float matrix of one column; absent cells are NaN."""
+    wide = frame.select(["date", "instrument", value]).pivot(
+        on="instrument", index="date", values=value
+    )
+    grid = pl.DataFrame({"date": days}, schema={"date": pl.Date}).join(wide, on="date", how="left")
+    columns = [
+        grid[name].cast(pl.Float64).fill_null(float("nan")).to_numpy()
+        if name in grid.columns
+        else np.full(len(days), np.nan)
+        for name in symbols
+    ]
+    return np.column_stack(columns).astype(float)
+
+
+def screen(signal: np.ndarray, outcome: np.ndarray, digest: str) -> dict[str, Any]:
+    values = np.asarray(signal, dtype=float)
     finite = np.isfinite(values)
     coverage = float(finite.mean())
     ties = sum(
@@ -236,9 +272,7 @@ def screen(signal: pd.DataFrame, outcome: pd.DataFrame, digest: str) -> dict[str
         # thin_days: the canonical replay needs a full weight cross-section every day and
         # cannot hold cash, so a factor with any day under MIN_NAMES names cannot be replayed.
         return {**result, "status": "DEGENERATE", "p": 1.0}
-    ic = cross_sectional_ic(
-        np.where(finite, values, np.nan), outcome.to_numpy(), min_names=MIN_NAMES
-    )
+    ic = cross_sectional_ic(values, np.asarray(outcome, dtype=float), min_names=MIN_NAMES)
     daily = np.asarray([v for v in ic.values if v is not None], dtype=float)
     effective = autocorrelation_effective_size(daily)
     mean, sd = float(daily.mean()), float(daily.std(ddof=1))
@@ -278,38 +312,38 @@ def _return_metrics(values: np.ndarray) -> dict[str, float]:
 
 
 def replay(
-    panel: pd.DataFrame, signal: pd.DataFrame, direction: int
+    panel: pl.DataFrame, signal: np.ndarray, days: list[date], direction: int
 ) -> tuple[dict[str, Any], np.ndarray]:
-    start, end = signal.index[0], signal.index[-1] + pd.Timedelta(days=2)
-    rows = panel[panel.date.between(start, end)]
-    expected = pd.date_range(start, end, freq="D")
-    symbols = sorted(panel.instrument.unique())
+    sessions = [days[0] + timedelta(days=n) for n in range((days[-1] - days[0]).days + 3)]
+    rows = panel.filter(pl.col("date").is_between(sessions[0], sessions[-1]))
+    symbols = sorted(panel["instrument"].unique().to_list())
     bars = {}
     for name in symbols:
-        group = rows[rows.instrument.eq(name)]
-        if list(group.date) != list(expected):
+        group = rows.filter(pl.col("instrument") == name).sort("date")
+        if group["date"].to_list() != sessions:
             raise DataError("replay requires a complete daily session rectangle")
         bars[name] = [
             Bar(
                 symbol=name,
-                ts=pd.Timestamp(str(r.date)).to_pydatetime(),
-                open=r.open,
-                high=r.high,
-                low=r.low,
-                close=r.close,
-                volume=r.volume,
+                ts=datetime.combine(r["date"], time(), UTC),
+                open=r["open"],
+                high=r["high"],
+                low=r["low"],
+                close=r["close"],
+                volume=r["volume"],
             )
-            for r in group.itertuples()
+            for r in group.iter_rows(named=True)
         ]
     targets, missing, cash_days = [], 0, 0
-    for day, row in signal.iterrows():
-        available = [s for s in symbols if math.isfinite(float(row[s]))]
+    for day, row in zip(days, np.asarray(signal, dtype=float), strict=True):
+        values = dict(zip(symbols, map(float, row), strict=True))
+        available = [s for s in symbols if math.isfinite(values[s])]
         missing += len(symbols) - len(available)
         k = max(1, round(TOP_FRACTION * len(available)))
-        ranked = sorted(available, key=lambda s: (-direction * float(row[s]), s))
+        ranked = sorted(available, key=lambda s: (-direction * values[s], s))
         selected = set(ranked[:k]) if len(available) >= MIN_NAMES else set()
         cash_days += not selected
-        origin = pd.Timestamp(str(day)).to_pydatetime()
+        origin = datetime.combine(day, time(), UTC)
         for name in symbols:
             targets.append(
                 WeightTarget(
@@ -318,7 +352,7 @@ def replay(
                     available_at=origin + timedelta(hours=23),
                     target_ts=origin + timedelta(days=1),
                     target_weight=1 / k if name in selected else 0.0,
-                    score=direction * float(row[name]) if name in available else 0.0,
+                    score=direction * values[name] if name in available else 0.0,
                     fold=0,
                 )
             )
@@ -387,7 +421,7 @@ def _read_ledger(path: Path) -> list[dict[str, Any]]:
 
 def _inputs(
     run: Path, request_path: Path
-) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, dict[str, str]]:
+) -> tuple[dict[str, Any], pl.DataFrame, pl.DataFrame, dict[str, str]]:
     request_bytes = request_path.read_bytes()
     request = json.loads(request_bytes)
     if (
@@ -412,16 +446,17 @@ def _inputs(
         raise DataError("panel sha256 differs from receipt")
     if any(item["last_day"] >= RESERVED_START for item in receipt["instruments"].values()):
         raise DataError("panel receipt reaches reserved window")
-    panel = validate_panel(pd.read_parquet(io.BytesIO(panel_bytes)))
+    panel = validate_panel(pl.read_parquet(io.BytesIO(panel_bytes)))
     value_path = request_path.parent / request["values_file"]
     value_bytes = value_path.read_bytes()
-    values = pd.read_parquet(io.BytesIO(value_bytes))
-    values["date"] = _dates(values)
-    if values.date.ge(pd.Timestamp(RESERVED_START, tz="UTC")).any():
+    values = pl.read_parquet(io.BytesIO(value_bytes))
+    if values.height:
+        values = values.with_columns(_days(values))
+    if values.height and (values["date"] >= RESERVED_DAY).any():
         raise DataError("factor values reach reserved window")
-    if values.duplicated(["date", "instrument"]).any():
+    if values.height and values.select(["date", "instrument"]).is_duplicated().any():
         raise DataError("duplicate factor value keys")
-    if not set(values.instrument) <= set(panel.instrument):
+    if not set(values["instrument"].to_list()) <= set(panel["instrument"].to_list()):
         raise DataError("factor instruments outside panel")
     fingerprint = sha(
         Path(__file__).read_bytes() + (Path(__file__).resolve().parents[4] / "uv.lock").read_bytes()
@@ -443,8 +478,8 @@ def _inputs(
 def _evaluate_locked(
     run: Path,
     request: dict[str, Any],
-    panel: pd.DataFrame,
-    values: pd.DataFrame,
+    panel: pl.DataFrame,
+    values: pl.DataFrame,
     inputs: dict[str, str],
     ledger: Path,
 ) -> dict[str, Any]:
@@ -453,14 +488,16 @@ def _evaluate_locked(
     for row in history:
         if row["status"] != "REPEAT":
             family.setdefault(row["code_sha256"], row)
-    dates = pd.date_range(*EXPLORATION, tz="UTC")
-    symbols = sorted(panel.instrument.unique())
-    opens = panel.pivot(index="date", columns="instrument", values="open").reindex(
-        pd.date_range(EXPLORATION[0], pd.Timestamp(EXPLORATION[1]) + pd.Timedelta(days=2), tz="UTC")
+    first, last = (date.fromisoformat(d) for d in EXPLORATION)
+    days = [first + timedelta(days=n) for n in range((last - first).days + 1)]
+    symbols = sorted(panel["instrument"].unique().to_list())
+    # opens[i] is the open of day days[0] + i, for i up to len(days) + 1.
+    opens = matrix(
+        panel, "open", [first + timedelta(days=n) for n in range(len(days) + 2)], symbols
     )
-    outcome = (opens.shift(-2) / opens.shift(-1) - 1).reindex(index=dates, columns=symbols)
+    outcome = opens[2:] / opens[1:-1] - 1  # decision day d: open(d+2) / open(d+1) - 1
     rows: list[dict[str, Any]] = []
-    signals: dict[str, pd.DataFrame] = {}
+    signals: dict[str, np.ndarray] = {}
     for factor in request["factors"]:
         digest = factor["code_sha256"]
         row = {
@@ -488,11 +525,11 @@ def _evaluate_locked(
             row["p"] = family[digest]["p"]
         else:
             if factor["status"] == "OK":
-                signal = values.pivot(
-                    index="date", columns="instrument", values=factor["name"]
-                ).reindex(index=dates, columns=symbols)
-                signals[digest] = signal
                 try:
+                    if factor["name"] not in values.columns:
+                        raise DataError(f"no value column for factor {factor['name']!r}")
+                    signal = matrix(values, factor["name"], days, symbols)
+                    signals[digest] = signal
                     stats = screen(signal, outcome, digest)
                 except (DataError, ValueError, ZeroDivisionError, FloatingPointError) as error:
                     stats = {
@@ -516,7 +553,7 @@ def _evaluate_locked(
         row["status"] = "SCREEN_FAIL"
         if row["q"] < Q_THRESHOLD:
             try:
-                metrics, net = replay(panel, signals[digest], row["screen"]["direction"])
+                metrics, net = replay(panel, signals[digest], days, row["screen"]["direction"])
             except (DataError, ValueError, ZeroDivisionError, FloatingPointError) as error:
                 row.update(
                     stage="replay",
@@ -558,11 +595,14 @@ def _evaluate_locked(
                     "reason": "fewer than two replayed trials: no cross-trial variance",
                 }
         if row["status"] == "REPEAT":
-            first = family[row["code_sha256"]]
+            earliest = family[row["code_sha256"]]
             row["first_trial"] = {
-                k: first[k] for k in ("run_id", "iteration", "name", "status", "screen")
+                k: earliest[k] for k in ("run_id", "iteration", "name", "status", "screen")
             }
-    eligible = [row for row in rows if row["status"] != "REPEAT"]
+    # The lead is the best candidate when there is one, so RD-Agent's stored result matches the
+    # decision; otherwise the lowest q among this request's new factors.
+    candidates = [row for row in rows if row["status"] == "CANDIDATE"]
+    eligible = candidates or [row for row in rows if row["status"] != "REPEAT"]
     lead = min(eligible, key=lambda r: (r["q"], r["name"])) if eligible else None
     legacy = {"IC": lead["screen"].get("mean_ic", float("nan")) if lead else float("nan")}
     for cost, key in (("without", "gross"), ("with", "net")):

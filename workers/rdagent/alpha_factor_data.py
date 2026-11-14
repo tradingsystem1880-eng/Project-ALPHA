@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import math
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -146,7 +147,8 @@ def check_prefix_invariance(
             with tempfile.TemporaryDirectory(prefix="alpha-factor-cut-") as temporary:
                 work = Path(temporary)
                 (work / "factor.py").write_bytes(code)
-                (work / "daily_pv.h5").symlink_to(source.resolve(strict=True))
+                # A copy, not a symlink: resolving a link would lead the code to the full data.
+                shutil.copyfile(source.resolve(strict=True), work / "daily_pv.h5")
                 result = subprocess.run(
                     [python_bin, "factor.py"],
                     cwd=work,

@@ -119,11 +119,12 @@ def test_noise_never_replayed(tmp_path: Path, seed: int) -> None:
 def test_noise_screen_is_calibrated() -> None:
     # Pure noise passes a 10% screen about 10% of the time (seed 7 of the fixture is one such
     # chance pass, q 0.01); a much higher rate would mean the inference is anti-conservative.
-    dates = pd.date_range(*ev.EXPLORATION, tz="UTC")
-    outcome = pd.DataFrame(np.random.default_rng(42).normal(0, 0.02, (len(dates), 15)), dates)
+    first, last = (pd.Timestamp(d) for d in ev.EXPLORATION)
+    shape = ((last - first).days + 1, 15)
+    outcome = np.random.default_rng(42).normal(0, 0.02, shape)
     passes = 0
     for seed in range(80):
-        signal = pd.DataFrame(np.random.default_rng(1000 + seed).normal(size=outcome.shape), dates)
+        signal = np.random.default_rng(1000 + seed).normal(size=shape)
         passes += ev.screen(signal, outcome, f"{seed:064x}")["p"] < ev.Q_THRESHOLD
     assert passes / 80 <= 0.2
 
@@ -196,7 +197,7 @@ def test_one_failing_factor_is_recorded_as_error_and_the_rest_still_land(tmp_pat
     req.write_text(json.dumps(value))
     real = ev.screen
 
-    def flaky(signal: pd.DataFrame, outcome: pd.DataFrame, digest: str) -> dict[str, Any]:
+    def flaky(signal: np.ndarray, outcome: np.ndarray, digest: str) -> dict[str, Any]:
         if digest == "e" * 64:
             raise ZeroDivisionError("planted")
         return real(signal, outcome, digest)

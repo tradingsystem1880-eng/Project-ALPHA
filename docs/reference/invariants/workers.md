@@ -133,7 +133,8 @@ acquisition worker and the RD-Agent native-loop probe. The general rule is
   cross-run trial ledger (a repeat by code hash is not new evidence); `decision` is ALPHA's rule, never the model's;
   every record is `exploratory, not admitted, not yet confirmed` with all authority flags false and the survivorship
   disclosure. Its runtime is built only by `--with-factor-runtime` from `factor-requirements.lock` and recorded by
-  `install_stock_profile.py --profile factor`; generated factor code runs without the gateway's address and token.
+  `install_stock_profile.py --profile factor`; generated factor code runs without the gateway's address and token,
+  but as the same user: it is not isolated from the run folder, the ledger or other processes (trusted-mistake guard only).
   Tests: `tests/unit/test_rdagent_factor_{eval,judge,launch}.py`.
 - There is no gate component or CI job (`scripts/gate_components.py` lists none). Its checks are root tests
   such as `tests/unit/test_native_loop_conformance.py`; the source-dependent ones skip without

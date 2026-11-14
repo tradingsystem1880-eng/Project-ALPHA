@@ -138,5 +138,25 @@ Independent Claude review of the code diff (four high, four medium, four low):
   ledger are as of their time (later trials can only raise a q-value; the record says so); a factor
   that once failed is a repeat for ever (conservative). Low, disclosed: `scripts/gate.py` (a
   protected file) gained one doctor item, outside the builder's scope, built by Claude.
+Codex review of the same diff afterwards (two high, four medium):
+
+- High, fixed: the look-ahead check gave the truncated run a symlink, which code could resolve to
+  find the full data next to it; it now gets a copy.
+- High, disclosed, not fixable here: stripping the gateway variables does not isolate generated
+  factor code, which runs as the same user and could read other processes' environments or edit
+  the run folder and the ledger. This guards against mistakes, not hostile code (the worker
+  invariants say so).
+- Medium, fixed: the lead factor shown to RD-Agent is now the best candidate when there is one,
+  so its stored result matches ALPHA's decision; a factor whose value column is missing is now an
+  `ERROR` trial instead of aborting the request; the evaluator used pandas, against the project's
+  Polars rule (semgrep `alpha-pandas-outside-sanctioned-edges`) — rewritten with Polars and NumPy.
+  Re-evaluating the real run's three requests with the rewritten evaluator in a scratch folder
+  reproduced every number of every record exactly (only the run folder's name differed).
+- Medium, rejected: "feedback reads the evaluation even when the runner failed" — upstream
+  `RDLoop.feedback` (`rdagent/components/workflow/rd_loop.py`, lines 222–233) builds its own
+  feedback on an exception and never calls the summarizer then.
+- Flaky test seen twice in about fifteen combined runs of the judge and launcher tests on the Dell
+  (not reproduced in ten further runs; which test was not captured): to watch.
+
 - Earlier, on the decision record: two Codex review findings (look-ahead cut coverage; BH over an
   adaptive family claims no error control), both fixed in ADR-0049.
