@@ -552,10 +552,13 @@ entry_points = ["cli: alpha scan hypotheses", "cli: alpha scan replay"]
 proof_synthetic = [
   "tests/integration/test_hypothesis_scan_cli.py::test_frozen_screen_cli_and_replay",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+proof_smoke = [
+  "tests/smoke/test_screening_smoke.py::test_screen_is_recorded_replayed_and_recomputes_independently",
+  "tests/smoke/test_screening_smoke.py::test_screen_without_a_snapshot_is_refused_and_recorded",
+]
+real_data = "On 2026-11-14 the installed alpha screened the free Yahoo (16 symbols, 1990-2026) and Alpaca (15 symbols, 2016-2026) snapshots on the Dell; every IC, t statistic and spread matched an independent recomputation; not yet confirmed (docs/work/archive/2026-11/2026-11-14-prove-quick-screening/04-verify.md). The equity lane is proven end to end; the crypto lane (Bybit funding and open interest) is not."
 needs = []
-state = "Partial"
-missing = "tested in-process only; no end-to-end smoke check yet"
+state = "Working"
 plans = []
 
 [[capability]]

@@ -4,7 +4,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 11 working, 20 partly working, 0 demo only, 5 shelved, 1 not started.
+- **Capabilities:** 12 working, 19 partly working, 0 demo only, 5 shelved, 1 not started.
 - **Work in progress:** 23 in progress (limit 3).
   - 3 being worked on
   - 20 built but not yet checked end to end
@@ -28,6 +28,7 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
 - **Path-risk simulation (Monte Carlo)** — uv run alpha monte-carlo classical --from-run <run-id> (a real run is recorded)
 - **Risk numbers that state what they are based on (C04)** — uv run alpha risk scenario --from-run <run-id> --json --include-metric-basis (a real run is recorded)
+- **Quick idea screening (Phase C)** — uv run alpha scan hypotheses --as-of <date> (a real run is recorded)
 - **Machine-learning experiments with Qlib** — uv run alpha ml capabilities
 - **Upstream Alpha158 price features** — set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec
 
@@ -53,7 +54,6 @@ Tested piece by piece inside the test suite, but not yet run from start to finis
 - **Write trading rules and scan markets** — tested in-process and in a browser against a test server.
 - **Strategy development workspace** — tested in-process only.
 - **Prop-firm challenge check** — tested in-process only.
-- **Quick idea screening (Phase C)** — tested in-process only.
 - **Ask the AI assistant about a recorded run (Codex)** — tested in a browser against a test server only (a real run is recorded).
 - **Let an AI assistant use ALPHA's tools (MCP)** — tested in-process only.
 
@@ -113,6 +113,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Multi-agent specialist swarm / PydanticAI migration — large (L)
 - Offline price import from a local file — medium (M)
 - Options expression research (W16) — large (L)
+- Overlap-corrected t statistic for the quick screen — small (S)
 - RD-Agent autonomous native research and restart continuation (W08/W13, T07) — very large (XL)
 - Risk stress scenarios that can move the drawdown — small (S)
 - Web-started downloads ignore proxy and certificate settings — small (S)
@@ -120,8 +121,8 @@ Ideas not yet planned (no order recorded, so alphabetical):
 ## Housekeeping
 
 - Live plans: 31
-- Archived plans: 145
-- Backlog items: 21
+- Archived plans: 146
+- Backlog items: 22
 - Staged refactors: 6
 
 ## Where things are
