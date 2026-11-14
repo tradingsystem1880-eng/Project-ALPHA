@@ -833,28 +833,34 @@ def test_the_project_layer_is_routed_from_the_root_and_the_shape_stage() -> None
     assert not problems, "\n".join(problems)
 
 
-def test_owner_decisions_are_dated_quoted_and_say_what_they_govern() -> None:
-    lines = _section_lines(OWNER_DECISIONS, "Entries")
+def owner_decision_volumes() -> list[str]:
+    """The log and its continuation volumes (``owner-decisions-2.md``, ...)."""
+    stem = OWNER_DECISIONS.removesuffix(".md")
+    more = sorted(p.relative_to(ROOT).as_posix() for p in ROOT.glob(f"{stem}-*.md"))
+    return [OWNER_DECISIONS, *more]
+
+
+@pytest.mark.parametrize("volume", owner_decision_volumes())
+def test_owner_decisions_are_dated_quoted_and_say_what_they_govern(volume: str) -> None:
+    lines = _section_lines(volume, "Entries")
     entries: list[tuple[str, list[str]]] = []
     for line in lines:
         if line.startswith("### "):
             entries.append((line[4:], []))
         elif entries:
             entries[-1][1].append(line)
-    assert entries, f"{OWNER_DECISIONS}: '## Entries' has no '### yyyy-mm-dd <title>' entries"
+    assert entries, f"{volume}: '## Entries' has no '### yyyy-mm-dd <title>' entries"
     problems = []
     for title, body in entries:
         text = "\n".join(body)
         if not _DATED.match(title):
-            problems.append(
-                f"{OWNER_DECISIONS}: entry {title!r} must start with its date yyyy-mm-dd"
-            )
+            problems.append(f"{volume}: entry {title!r} must start with its date yyyy-mm-dd")
         quoted = '"' in text or "exact words not recorded" in text
         if "**Said" not in text or not quoted:
             problems.append(
-                f"{OWNER_DECISIONS}: entry {title!r} needs a '**Said' line quoting the owner, "
+                f"{volume}: entry {title!r} needs a '**Said' line quoting the owner, "
                 "or saying 'exact words not recorded'"
             )
         if "**Governs:**" not in text:
-            problems.append(f"{OWNER_DECISIONS}: entry {title!r} needs a '**Governs:**' line")
+            problems.append(f"{volume}: entry {title!r} needs a '**Governs:**' line")
     assert not problems, "\n".join(problems)
