@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 import polars as pl
 
@@ -307,6 +308,9 @@ def _quality_report(
     timeframe = parse_timeframe(identity.timeframe)
     intraday_stock = not timeframe.is_daily and identity.asset_class in {"stock", "etf"}
     extended_hours_rows = 0
+    # Intraday requests are bounded by exchange-local session dates (an after-hours bar on a
+    # winter evening is stamped after 00:00 UTC of the next day), so compare in that timezone.
+    session_zone: ZoneInfo | None = None
     if identity.asset_class in {"stock", "etf"}:
         try:
             import exchange_calendars as xcals  # type: ignore[import-untyped]  # noqa: PLC0415
@@ -320,6 +324,7 @@ def _quality_report(
             )
             expected_sessions = {timestamp.date() for timestamp in sessions}
             if intraday_stock:
+                session_zone = ZoneInfo(str(calendar.tz))
                 intervals = [
                     (
                         session.date(),
@@ -340,13 +345,18 @@ def _quality_report(
                 for missing in sorted(expected_sessions - incoming_dates):
                     critical.append(f"calendar_gap:{missing.isoformat()}")
     current_rows = _rows_by_ts(current_bars) if current_bars is not None else {}
+
+    def request_day(timestamp: datetime) -> date:
+        return timestamp.astimezone(session_zone).date() if session_zone else timestamp.date()
+
     requested_current = {
         timestamp: row
         for timestamp, row in current_rows.items()
-        if receipt.requested_start <= timestamp.date() <= receipt.requested_end
+        if receipt.requested_start <= request_day(timestamp) <= receipt.requested_end
     }
     for timestamp in sorted(set(requested_current) - set(incoming_rows)):
-        critical.append(f"missing_existing_session:{timestamp.date().isoformat()}")
+        label = timestamp.isoformat() if not timeframe.is_daily else timestamp.date().isoformat()
+        critical.append(f"missing_existing_session:{label}")
 
     action_dates = {action.ex_date for action in [*current_actions, *result.actions]}
     changed: list[str] = []

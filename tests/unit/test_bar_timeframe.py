@@ -130,3 +130,10 @@ def test_identity_requires_canonical(text: str, valid: bool) -> None:
     else:
         with pytest.raises(DataError):
             DatasetIdentity(asset_class="etf", price_basis="raw", **kwargs)
+
+
+@pytest.mark.parametrize("text", ["1M", "3M", "1Month", "1W", "2weeks", "1Y"])
+def test_month_week_year_spellings_are_refused_not_guessed(text: str) -> None:
+    # "1M" is one month in pandas and CCXT; it must never silently become one minute.
+    with pytest.raises(DataError, match="accepted forms"):
+        parse_timeframe(text)

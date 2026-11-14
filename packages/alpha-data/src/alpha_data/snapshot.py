@@ -220,8 +220,12 @@ def create_snapshot(
     return manifest
 
 
-def verify_snapshot(snapshot_dir: Path) -> None:
-    """Re-hash every file and compare to the manifest. Raises DataError on any mismatch."""
+def verify_snapshot(snapshot_dir: Path, *, timeframe: str = "1D") -> None:
+    """Re-hash every file and compare to the manifest. Raises DataError on any mismatch.
+
+    ``timeframe`` is the bar timeframe the caller will read. It defaults to daily, so every
+    daily consumer refuses an intraday snapshot instead of reading 5-minute bars as days.
+    """
     manifest_path = snapshot_dir / "manifest.json"
     if not manifest_path.exists():
         raise DataError(f"no manifest in {snapshot_dir}")
@@ -231,7 +235,12 @@ def verify_snapshot(snapshot_dir: Path) -> None:
         raise DataError(f"corrupt snapshot manifest at {manifest_path}") from exc
     if not isinstance(manifest, dict) or not isinstance(manifest.get("symbols"), dict):
         raise DataError(f"invalid snapshot manifest at {manifest_path}")
-    _manifest_timeframe(manifest)
+    held = _manifest_timeframe(manifest)
+    wanted = parse_timeframe(timeframe).canonical
+    if held != wanted:
+        raise DataError(
+            f"snapshot {snapshot_dir.name} holds {held} bars, but this read expects {wanted} bars"
+        )
     for sym, entry in manifest["symbols"].items():
         if not isinstance(sym, str) or not isinstance(entry, dict):
             raise DataError(f"invalid snapshot symbol entry for {sym!r}")
@@ -250,14 +259,14 @@ def verify_snapshot(snapshot_dir: Path) -> None:
                 )
 
 
-def snapshot_manifest_hash(snapshot_dir: Path) -> str:
+def snapshot_manifest_hash(snapshot_dir: Path, *, timeframe: str = "1D") -> str:
     """Return the SHA-256 of a fully verified frozen-snapshot manifest.
 
     The manifest already contains the digest of every bars, actions, and provenance file.  Hashing
     its exact bytes therefore gives run identity one stable, bounded fingerprint for the complete
     snapshot contract while still failing loudly if any referenced content has been modified.
     """
-    verify_snapshot(snapshot_dir)
+    verify_snapshot(snapshot_dir, timeframe=timeframe)
     return _sha256(snapshot_dir / "manifest.json")
 
 

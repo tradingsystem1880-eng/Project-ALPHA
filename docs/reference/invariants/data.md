@@ -118,6 +118,12 @@ Owner decision 2026-11-15: there is no daily-only rule. Daily (`1D`) is the defa
   `store-5m`) otherwise (`store_dir`). Receipts, quality, promotion and provenance work per root, so
   intraday bars never mix with daily bars. A snapshot of a non-daily store records `"timeframe"` in its
   manifest; daily manifests have no such key (`snapshot_timeframe` reads it, default `1D`).
+  `verify_snapshot` and `snapshot_manifest_hash` take the timeframe the caller will read, default `1D`, so
+  every daily consumer refuses an intraday snapshot instead of reading its bars as days.
+- Intraday stock pulls are bounded by exchange-local session dates (New York midnight to midnight), so the
+  "stored session missing from the new pull" check compares in that timezone: a winter after-hours bar
+  stamped after 00:00 UTC belongs to the earlier session.
+- `parse_timeframe` refuses `1M`, weeks and years rather than guess (`1M` is a month in pandas and CCXT).
 - Intraday stock/ETF quality: per exchange session (DST and half days from `exchange_calendars`), every
   timeframe-aligned bar whose interval meets regular hours must be present (`intraday_gap`), a session with
   none is a `calendar_gap`, and an off-grid bar is `misaligned_bar`; all critical. Pre-market and

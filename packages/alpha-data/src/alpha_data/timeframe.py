@@ -102,6 +102,9 @@ def parse_timeframe(text: str) -> BarTimeframe:
     """Parse a time-bar spelling, enforcing the owner's no-HFT boundary."""
     if not isinstance(text, str):
         raise DataError(f"{text}: {_ACCEPTED}")
+    if re.fullmatch(r"\d+M(?:onths?)?|\d+(?:w|W|weeks?)|\d+(?:y|Y|years?)", text.strip()):
+        # "1M" is one month in pandas and CCXT, never one minute: refuse rather than guess.
+        raise DataError(f"{text}: {_ACCEPTED}")
     value = text.strip().lower()
     if value in _EXCLUDED or re.fullmatch(
         r"(?:\d+(?:\.\d+)?(?:s|sec(?:ond)?s?|ms|milliseconds?)|(?:s|ms)\d+)", value

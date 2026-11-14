@@ -751,7 +751,7 @@ def test_intraday_pull_store_snapshot_and_status(
     root = tmp_path / "snapshots" / "five"
     assert json.loads((root / "manifest.json").read_text())["timeframe"] == "5m"
     assert snapshot_timeframe(root) == "5m"
-    verify_snapshot(root)
+    verify_snapshot(root, timeframe="5m")
     provenance = data_cmds._candle_provenance(
         "SPY", snapshot_id="five", knowledge_cutoff=None, timeframe=parse_timeframe("5m")
     )

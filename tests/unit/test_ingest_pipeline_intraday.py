@@ -105,3 +105,22 @@ def test_daily_quality_report_unchanged(tmp_path: Path) -> None:
         "canonical_rows_after_merge",
     }
     assert report["status"] == "passed" and report["incoming_rows"] == 2
+
+
+def test_adjacent_winter_pulls_keep_after_hours_bars_stamped_after_utc_midnight(
+    tmp_path: Path,
+) -> None:
+    """A 19:30 New York bar on 2026-11-24 is stamped 00:30 UTC on 2026-11-25.
+
+    The next pull (2026-11-25..) starts at New York midnight and rightly does not contain it, so it
+    must not be reported as a missing stored session (regression: UTC-date comparison).
+    """
+    store = ParquetStore(store_dir(tmp_path, parse_timeframe("5m")))
+    day_one, day_two = date(2026, 11, 24), date(2026, 11, 25)
+    first = intraday_result([*session_stamps(day_one), "2026-11-25T00:30:00Z"], day_one, day_one)
+    stage_and_promote(store, first, authoritative_source="alpaca")
+    second = intraday_result(session_stamps(day_two), day_two, day_two)
+    outcome = stage_and_promote(store, second, authoritative_source="alpaca")
+    report = json.loads(outcome.quality_path.read_text())
+    assert report["status"] == "passed", report["critical_errors"]
+    assert store.read_bars("SPY").height == 78 * 2 + 1

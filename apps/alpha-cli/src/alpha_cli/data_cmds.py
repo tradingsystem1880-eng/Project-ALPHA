@@ -28,6 +28,7 @@ from alpha_data.snapshot import (
     create_snapshot,
     resolve_snapshot_dir,
     snapshot_manifest_hash,
+    snapshot_timeframe,
     verify_snapshot,
 )
 from alpha_data.store import ParquetStore
@@ -648,7 +649,8 @@ def snapshots(json_out: bool = typer.Option(False, "--json", help="emit JSON")) 
 def verify(snapshot_id: str) -> None:
     """Re-hash a snapshot and confirm it matches its manifest."""
     try:
-        verify_snapshot(_snaps_root() / snapshot_id)
+        snapshot_dir = _snaps_root() / snapshot_id
+        verify_snapshot(snapshot_dir, timeframe=snapshot_timeframe(snapshot_dir))
     except DataError as exc:  # missing snapshot or a hash mismatch (corruption)
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(f"snapshot {snapshot_id}: integrity OK")
