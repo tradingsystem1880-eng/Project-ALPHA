@@ -332,8 +332,20 @@ def test_actions_sum_dividends_and_reject_wrong_symbol_or_duplicate_split() -> N
     actions = responses[3]["corporate_actions"]
     actions["cash_dividends"].append(dict(actions["cash_dividends"][0]))
     result = adapter(FakeTransport(responses)).fetch("SPY", START, END)
-    assert result.actions[0].amount == 1
-    actions["forward_splits"].append(dict(actions["forward_splits"][0]))
+    assert result.actions[0].amount == 0.5  # an identical repeated record counts once
+    actions["cash_dividends"][1] = dict(actions["cash_dividends"][0], rate=0.25, special=True)
+    result = adapter(FakeTransport(responses)).fetch("SPY", START, END)
+    assert result.actions[0].amount == 0.75  # a distinct special dividend adds to the regular one
+    actions["cash_dividends"][1]["payable_date"] = "2024-02-01"
+    with pytest.raises(DataError, match="record or pay date"):
+        adapter(FakeTransport(responses)).fetch("SPY", START, END)
+    del actions["cash_dividends"][1]
+    with_id = dict(actions["cash_dividends"][0], id="ca-1")
+    actions["cash_dividends"][:] = [with_id, dict(with_id, rate=0.6)]
+    with pytest.raises(DataError, match="listed twice, differently"):
+        adapter(FakeTransport(responses)).fetch("SPY", START, END)
+    actions["cash_dividends"][:] = [dict(with_id, id="ca-1", rate=0.5)]
+    actions["forward_splits"].append(dict(actions["forward_splits"][0], new_rate=3))
     with pytest.raises(DataError, match="two splits"):
         adapter(FakeTransport(responses)).fetch("SPY", START, END)
     actions["forward_splits"].pop()
@@ -468,7 +480,7 @@ def test_malformed_series_is_a_data_error(series: Any) -> None:
         parse(value)
 
 
-def test_action_pagination_filters_ex_dates_and_clamps_process_end() -> None:
+def test_action_pagination_filters_ex_dates_and_looks_90_days_past_the_end() -> None:
     responses = bodies()
     responses[3]["next_page_token"] = "actions-next"
     responses.append(
@@ -487,7 +499,9 @@ def test_action_pagination_filters_ex_dates_and_clamps_process_end() -> None:
     )
     result = instance.fetch("SPY", START, END)
     assert len(result.actions) == 2
-    assert dict(parse_qsl(urlsplit(transport.calls[-1][0]).query))["end"] == "2024-01-03"
+    # Not capped at the latest session: a dividend's process (pay) date can be weeks after its
+    # ex-date, and ex-dates after the requested end are dropped by the parser.
+    assert dict(parse_qsl(urlsplit(transport.calls[-1][0]).query))["end"] == "2024-04-02"
     assert dict(parse_qsl(urlsplit(transport.calls[-1][0]).query))["page_token"] == "actions-next"
     assert result.raw_response is not None
     assert parse(json.loads(result.raw_response)).actions == result.actions
@@ -648,3 +662,48 @@ def test_submicrosecond_timestamp_is_not_exact_midnight() -> None:
     responses[0]["bars"]["SPY"][0]["t"] = "2024-01-02T05:00:00.0000001Z"
     with pytest.raises(DataError, match="midnight"):
         adapter(FakeTransport(responses)).fetch("SPY", START, END)
+
+
+@pytest.mark.parametrize(
+    "secret", ["sentinel private", "sentinel\rprivate", "sentinel\nx", "séntinel"]
+)
+def test_credentials_with_inner_breaks_spaces_or_non_ascii_fail_without_echoing(
+    secret: str,
+) -> None:
+    transport = FakeTransport()
+    with pytest.raises(DataError, match="APCA_API_SECRET_KEY holds characters") as caught:
+        AlpacaAdapter(
+            api_key_id=KEY, api_secret_key=secret, transport=transport, clock=lambda: NOW
+        ).fetch("SPY", START, END)
+    assert "sentinel" not in str(caught.value).replace("Alpaca", "")
+    assert transport.calls == []
+
+
+def test_credentials_are_stripped_before_use() -> None:
+    transport = FakeTransport()
+    AlpacaAdapter(
+        api_key_id=KEY + "\n",
+        api_secret_key=SECRET + "\r\n",
+        transport=transport,
+        sleep=lambda _: None,
+        clock=lambda: NOW,
+    ).fetch("SPY", START, END)
+    assert transport.calls[0][1]["APCA-API-SECRET-KEY"] == SECRET
+    assert transport.calls[0][1]["APCA-API-KEY-ID"] == KEY
+
+
+def test_header_value_errors_become_redacted_data_errors() -> None:
+    def refusing(
+        url: str, headers: Mapping[str, str], timeout: float
+    ) -> tuple[int, dict[str, str], bytes]:
+        raise ValueError(f"Invalid header value {headers['APCA-API-SECRET-KEY']!r}")
+
+    with pytest.raises(DataError, match="transport failed: ValueError") as caught:
+        AlpacaAdapter(
+            api_key_id=KEY,
+            api_secret_key=SECRET,
+            transport=refusing,
+            sleep=lambda _: None,
+            clock=lambda: NOW,
+        ).fetch("SPY", START, END)
+    assert SECRET not in str(caught.value) and caught.value.__cause__ is None

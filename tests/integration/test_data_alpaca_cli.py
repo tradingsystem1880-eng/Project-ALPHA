@@ -193,3 +193,54 @@ def test_alpaca_never_merges_into_a_series_held_from_another_source(store: Parqu
     assert store.read_bars("SPY").equals(before)
     provenance = store.read_provenance("SPY")
     assert provenance is not None and provenance["source"] == "yfinance"
+
+
+def test_alpaca_refuses_bars_without_a_source_label(store: ParquetStore) -> None:
+    assert pull().exit_code == 0
+    store.clear_provenance("SPY")
+    before = store.read_bars("SPY")
+    result = pull()
+    assert result.exit_code == 2, result.output
+    assert "already holds unlabelled data" in " ".join(result.output.replace("│", " ").split())
+    assert store.read_bars("SPY").equals(before)
+
+
+def test_other_sources_never_write_into_an_alpaca_series(
+    store: ParquetStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert pull().exit_code == 0
+    before = store.read_bars("SPY")
+
+    class OtherSource:
+        name = "yfinance"
+        version = "1"
+        parser_version = "2"
+
+        def fetch(self, symbol: str, start: Any, end: Any) -> Any:
+            return AlpacaAdapter(
+                asset_class="etf",
+                api_key_id="sentinel-key",
+                api_secret_key="sentinel-secret",
+                transport=fake_transport,
+                sleep=lambda _: None,
+                clock=lambda: NOW,
+            ).fetch(symbol, start, end)
+
+    monkeypatch.setitem(data_cmds._ADAPTERS, "yfinance", lambda **_: OtherSource())
+    result = runner.invoke(
+        app,
+        [
+            "data",
+            "pull",
+            "SPY",
+            "--source",
+            "yfinance",
+            "--start",
+            "2024-01-02",
+            "--end",
+            "2024-01-04",
+        ],
+    )
+    assert result.exit_code == 2, result.output
+    assert "holds Alpaca data here" in " ".join(result.output.replace("│", " ").split())
+    assert store.read_bars("SPY").equals(before)

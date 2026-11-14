@@ -270,12 +270,19 @@ def pull(
                 f"{adapter.name} is audit-only for {result.symbol}; canonical Tiingo data "
                 "cannot be silently replaced"
             )
+        # Alpaca (ADR-0047) never shares a price series with another source, in either direction.
         held_by = existing.get("source") if existing is not None else None
-        if adapter.name == "alpaca" and held_by is not None and held_by != "alpaca":
+        has_bars = result.symbol in store.list_symbols()
+        if adapter.name == "alpaca" and has_bars and held_by != "alpaca":
             raise DataError(
-                f"{result.symbol} already holds {held_by} data here; ALPHA never mixes two "
-                "sources in one price series, so use a separate ALPHA_DATA_DIR for Alpaca "
-                "(docs/operations/alpaca-stock-data.md)"
+                f"{result.symbol} already holds {held_by or 'unlabelled'} data here; ALPHA never "
+                "mixes two sources in one price series, so use a separate ALPHA_DATA_DIR for "
+                "Alpaca (docs/operations/alpaca-stock-data.md)"
+            )
+        if held_by == "alpaca" and adapter.name != "alpaca":
+            raise DataError(
+                f"{result.symbol} holds Alpaca data here; ALPHA never mixes two sources in one "
+                f"price series, so pull {adapter.name} into a separate ALPHA_DATA_DIR"
             )
         if (
             result.identity is not None

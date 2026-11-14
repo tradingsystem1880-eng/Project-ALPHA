@@ -158,6 +158,8 @@ def _pages(
         fixed = {**_FIXED_QUERY[series], "symbols": provider_symbol, "start": str(start)}
         if series != "actions":
             fixed.update(end=str(end), asof=str(end))
+        else:
+            fixed["end"] = str(end + timedelta(days=90))
         if any(params.get(name) != value for name, value in fixed.items()):
             raise DataError(f"Alpaca envelope query for {series} is not the adapter's request")
         if params.get("page_token") != expected[series] or (
@@ -254,6 +256,7 @@ def _actions(
     pages: list[dict[str, Any]], symbol: str, provider_symbol: str, start: date, end: date
 ) -> list[CorporateAction]:
     actions: dict[tuple[date, ActionType], CorporateAction] = {}
+    seen_ids: dict[str, dict[str, Any]] = {}
     supported = {"forward_splits", "reverse_splits", "cash_dividends"}
     unsupported = {"stock_dividends", "spin_offs", "unit_splits"}
     for page in pages:
@@ -275,6 +278,19 @@ def _actions(
                     continue
                 if kind == "spin_offs" and item.get("source_symbol") != provider_symbol:
                     continue  # the queried symbol is the new company; its prices are unaffected
+                # One record per Alpaca id (else per identical content): a record repeated,
+                # e.g. across pages, counts once; one id with two different bodies fails.
+                action_id = item.get("id")
+                identity_key = (
+                    f"id:{action_id}"
+                    if isinstance(action_id, str) and action_id
+                    else "body:" + json.dumps(item, sort_keys=True)
+                )
+                if identity_key in seen_ids:
+                    if seen_ids[identity_key] != item:
+                        raise DataError(f"Alpaca action {action_id} listed twice, differently")
+                    continue
+                seen_ids[identity_key] = item
                 if kind in unsupported:
                     raise DataError(
                         f"Alpaca {kind} on {ex_date}: ALPHA cannot adjust it; symbol refused"
@@ -299,7 +315,12 @@ def _actions(
                         raise DataError("Alpaca dividend rate must be positive")
                     prior = actions.get((ex_date, action_type))
                     if prior is not None:
+                        # Two distinct records (e.g. regular plus special) on one ex-date: sum.
                         assert prior.amount is not None
+                        if (prior.record_date, prior.pay_date) != (record, pay):
+                            raise DataError(
+                                f"Alpaca dividends on {ex_date} disagree on record or pay date"
+                            )
                         amount += prior.amount
                 else:
                     action_type = ActionType.SPLIT
@@ -365,7 +386,8 @@ def parse_alpaca_daily(
         if (
             not math.isfinite(relative)
             or not math.isfinite(expected)
-            or not math.isclose(relative, expected, rel_tol=1e-3)
+            # Alpaca rounds adjusted prices (about four decimals): allow that rounding on top.
+            or not math.isclose(relative, expected, rel_tol=1e-3 + 1e-4 / split_bar.close)
         ):
             raise DataError(
                 f"Alpaca split cross-check failed for {symbol} on {raw_bar.ts.date()}: "
@@ -492,6 +514,8 @@ class AlpacaAdapter:
             try:
                 status, response_headers, body = self._transport(url, headers, 30)
             except (
+                ValueError,
+                http.client.HTTPException,
                 urllib.error.URLError,
                 TimeoutError,
                 OSError,
@@ -536,12 +560,19 @@ class AlpacaAdapter:
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
         key = os.environ.get("APCA_API_KEY_ID", "") if self._key is None else self._key
         secret = os.environ.get("APCA_API_SECRET_KEY", "") if self._secret is None else self._secret
-        if not key.strip() or not secret.strip():
+        key, secret = key.strip(), secret.strip()
+        if not key or not secret:
             raise DataError(
                 "Alpaca requires APCA_API_KEY_ID and APCA_API_SECRET_KEY: "
                 "create a free Alpaca account, generate a key, and set both variables "
                 "in your own terminal; see docs/operations/alpaca-stock-data.md"
             )
+        for name, value in (("APCA_API_KEY_ID", key), ("APCA_API_SECRET_KEY", secret)):
+            if not re.fullmatch(r"[\x21-\x7e]+", value):
+                raise DataError(
+                    f"{name} holds characters a key cannot contain (spaces, line breaks or "
+                    "non-ASCII); set it again from Alpaca's dashboard"
+                )
         if end < start:
             raise DataError(f"Alpaca end {end} precedes start {start}")
         if start < date(2016, 1, 1):
@@ -566,7 +597,9 @@ class AlpacaAdapter:
                     "symbols": symbol,
                     "types": _ACTION_TYPES,
                     "start": str(start),
-                    "end": str(min(end + timedelta(days=90), latest)),
+                    # Filtered on process date (a dividend's is its pay date, weeks after the
+                    # ex-date), so look 90 days past the end; ex-dates after `end` are dropped.
+                    "end": str(end + timedelta(days=90)),
                     "limit": "1000",
                     "sort": "asc",
                 }
