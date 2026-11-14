@@ -4,7 +4,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 8 working, 23 partly working, 0 demo only, 5 shelved, 1 not started.
+- **Capabilities:** 9 working, 22 partly working, 0 demo only, 5 shelved, 1 not started.
 - **Known defects:** 0.
 - **Decisions waiting for you:** 0.
 
@@ -17,6 +17,7 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Workstation web app** — uv run alpha-web, then open http://localhost:8801
 - **Download crypto market data (W05)** — uv run alpha crypto-data catalog (a real run is recorded)
 - **Crypto history download that resumes safely (backfill, Phase B)** — uv run alpha crypto-data backfill bybit <family> --symbols BTCUSDT --quote USDT --start … --end … --ledger <name> --dry-run
+- **"Are my downloaded daily bars complete?" check** — uv run alpha crypto-data quality <manifest-id> --coverage-start … --coverage-end … --as-of …
 - **Freeze crypto data into exact snapshots and check them (W05)** — uv run alpha crypto-data snapshot-create …, then uv run alpha crypto-data snapshot-verify <snapshot-id>
 - **Run a backtest** — uv run alpha backtest run SPY
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
@@ -42,7 +43,6 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 Tested piece by piece inside the test suite, but not yet run from start to finish through the installed program:
 
 - **Price charts with indicators and patterns** — tested in-process and in a browser against a test server (a real run is recorded).
-- **"Are my downloaded daily bars complete?" check** — tested in-process and in a browser against a test server.
 - **Write trading rules and scan markets** — tested in-process and in a browser against a test server.
 - **Strategy development workspace** — tested in-process only.
 - **Path-risk simulation (Monte Carlo)** — tested in-process only.
@@ -87,6 +87,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - A route for new daily-bar research ideas — large (L)
 - Autonomous research agent programme — very large (XL)
 - Catalyst, expectations and fundamentals research (W15) — large (L)
+- Check a coin's whole downloaded daily history in one step — medium (M)
 - ControlStore-owned durable acquisition journal — large (L)
 - Data-directory naming migration — medium (M)
 - Freeze a crypto snapshot by coin and date range — medium (M)
@@ -106,7 +107,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 
 ## Housekeeping
 
-- Backlog items: 19
+- Backlog items: 20
 - Staged refactors: 6
 
 ## Where things are
