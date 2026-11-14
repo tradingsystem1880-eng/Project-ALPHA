@@ -98,7 +98,8 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
   model `deepseek/deepseek-v4.1-flash-1017` at USD 0.038 / 0.50 per million input / output tokens
   (OpenRouter's list, read 2026-11-14). Codex stays the default and the fallback; how to choose:
   [worker README](../../../../workers/rdagent/README.md#alpha-judged-factor-loop-2026-11-14).
-  Open: no call has been made on it yet, so the comparison with the Codex route is not measured.
+  First run 2026-11-14 (3 rounds, 54 calls of 60, about USD 0.04): nine factors tried, no candidate;
+  one run per route is not a quality comparison (numbers in the worker README).
 - Decided: the first goal after the clean-up is one real RD-Agent loop, connected to a model through Codex
   ([log](../owner-decisions-2.md#2026-11-14-first-goal-one-real-rd-agent-loop)). First run,
   2026-11-14: every step ran on real crypto bars, but RD-Agent's built-in Qlib backtest learned
