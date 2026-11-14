@@ -56,7 +56,8 @@ Gate outcomes are built by `build_outcomes` in `tearsheet.py` (called from `_gau
   when DSR is at least `dsr_threshold`.
 - `cpcv_oos`: passes when the mean OOS Sharpe across CPCV folds of the OOS stream is above 0.
 - A flat or zero-variance OOS short-circuits every gate to a clean FAIL, never an undefined-Sharpe crash
-  (`tests/integration/test_gauntlet_degenerate.py`).
+  (`tests/integration/test_gauntlet_degenerate.py`). A zero-variance bootstrap resample scores 0.0 through the one
+  statistic `_gauntlet.safe_sharpe_statistic`; the portfolio and cross-sectional runs import it rather than copy it.
 - Multi-trial statistics (DSR deflated by trial-Sharpe variance, PBO, Reality Check, SPA) judge a parameter
   sweep and belong to `alpha optim` (`_optim.py`), never the single-run gauntlet.
 

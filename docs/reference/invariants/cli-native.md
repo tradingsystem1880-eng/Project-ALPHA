@@ -33,8 +33,9 @@ project-wide rule is [research integrity § Models and isolated workers](researc
 - A stock RDLoop invocation is consumed once, atomically, in the control store before spawn
   (`_native_stock_launch.consume_before_spawn`); there is no refund or usage ledger, and a stopped, cancelled or
   re-measured owner cannot consume.
-- The synthetic Qlib qrun → `SignalReplay` → Nautilus pipeline (`native_qlib_pipeline.py`) saves results marked
-  `admission: not_admitted`; they are never approved research.
+- The synthetic Qlib qrun → `SignalReplay` → Nautilus pipeline (`native_qlib_pipeline.py`) is a labelled demo on fabricated
+  data (no CLI command or web route, machine paths removed from its recorded JSON). Its results are marked
+  `admission: not_admitted`; they are never approved research and it is not ALPHA's Qlib integration (see `cli-ml.md`).
 
 ## Launch identity
 
@@ -51,14 +52,17 @@ project-wide rule is [research integrity § Models and isolated workers](researc
 ## Approval fingerprints
 
 - Rule approvals bind `rule_implementation_fingerprints` (`_native_rule_environment.py`): worker files, the worker
-  requirements lock, the measured isolated runtime, the probe evaluator, and the data or query hash.
-- For daily studies the `code` hash also covers the bytes of `DAILY_GUARD_FILES`: every `_native_daily_rule_*` guard,
+  requirements lock, the measured isolated runtime, the probe evaluator, and the data or query hash. The `code` and
+  `evaluator` hashes bind code structure, not bytes ([ADR-0045](../../adr/0045-approvals-bind-code-structure.md),
+  `_structural_digest.py`); locks, the measured runtime and non-Python files stay bound by bytes.
+- For daily studies the `code` hash also covers `DAILY_GUARD_FILES`: every `_native_daily_rule_*` guard,
   `_native_loop_admission.py`, `_native_rule_*` modules, `_native_fixture_store.py`, `native_supervisor.py`,
   `control_store.py`, `_control_json.py`, `owner_auth.py`, `_artifacts.py`, `artifact_contract.py`, `durable_lease.py`,
   `research_analysis_plan.py`, `crypto_price_snapshot_query.py`, `crypto_bulk_store.py`, `daily_native_cmds.py`, and
   the worker `daily_container_entry.py`.
-- Any byte edit to those files, even a comment, invalidates every existing daily rule approval. Treat such an edit as
-  requiring re-approval and say so in the change description. See also
+- A comment, formatting or unread-docstring edit to those files keeps an approval valid; any change to what they do
+  invalidates every existing daily rule approval, so say so in the change description. Rule approvals made before
+  ADR-0045 no longer verify and must be re-drafted and re-approved by the owner. See also
   [engineering § Hash-bound source bytes](engineering.md#hash-bound-source-bytes).
 - Symlinked guard files, runtime roots, metadata or packages, and stray bytecode in the runtime, fail closed.
 - The measured runtime also pins the root `uv.lock` and the source bytes of the packages in its profile; changing

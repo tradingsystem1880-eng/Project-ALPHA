@@ -36,6 +36,8 @@ registry, and the blind semantic-read contract. The package is a projection laye
 - `authority.py` references (`OperatorRegistrationV1`, `DetectorValidationV1`, `ExplorationMandateV1`)
   are permanently `not_checked`. They perform no live lookup and create no D1 reservation, verdict or
   launch authority. `tests/unit/study/test_authority.py`.
+- The id checks (`_project_id` canonical UUID, `_content_id` prefix plus hash) live once in `_contracts.py`; `authority.py` and
+  `projections.py` import them, so the two cannot drift.
 - `projections.py` vocabularies (finding ids, statuses, relationship and action kinds) are closed sets;
   advisor proposals are non-executable.
 

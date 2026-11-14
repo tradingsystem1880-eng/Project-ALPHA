@@ -29,7 +29,8 @@ acquisition worker and the RD-Agent native-loop probe. The general rule is
   same name). From `workers/<name>/` they run: `uv lock --check`, `uv sync --locked`,
   `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy`, `uv run pytest -q -m "not network"`.
   `gate.py check` does not run worker tests.
-- Workers target CPython 3.12 only (`>=3.12,<3.13`); qlib and literature run strict mypy.
+- Workers target CPython 3.12 only (`>=3.12,<3.13`); qlib and literature run strict mypy. The one exception is RD-Agent's stock
+  runtime bundle, CPython 3.11 (see below).
 
 ## Qlib worker
 
@@ -104,7 +105,7 @@ acquisition worker and the RD-Agent native-loop probe. The general rule is
 - The project is `package = false` with its own `uv.lock`, a focused import subset, not upstream's full
   environment. Rule and economics profiles are fresh-only venvs (`.venv-rule-qualified`,
   `.venv-economics-qualified`) built from hash-pinned requirement locks; list them in the clone's
-  `.git/info/exclude` and never rerun the installer over a preserved profile.
+  `.git/info/exclude` (`.gitignore` already covers `.venv-*/`) and never rerun the installer over a preserved profile.
 - `measure_rule_environment` hashes the installed profile, the source and `pyproject.toml` of `alpha-core`,
   `alpha-patterns`, `alpha-strategies` (plus `alpha-backtest`, `alpha-data` for the costed profile), the
   requirement lock and the root `uv.lock`. Any byte change in those raises `DataError` until profiles are
@@ -114,6 +115,16 @@ acquisition worker and the RD-Agent native-loop probe. The general rule is
   `LoopBase` that never overrides `run`, `_run_step`, `dump` or `load`, so upstream's own loop drives it.
   Every executed stage is charged to the fixture owner, and interrupted admitted work stays charged
   (`conformance.py`).
+- Stock RDLoop runtime: built only by `scripts/setup_rdagent.sh --with-stock-runtime` from the hash-pinned
+  `stock-requirements.lock` on CPython 3.11 (`--require-hashes --no-deps`); `install_stock_profile.py` proves the installed
+  distributions are exactly the locked ones and records an inventory digest. It measures a runtime and grants no authority.
+- Model gateway ([ADR-0044](../../adr/0044-rdagent-model-gateway.md), `model_gateway.py`): the one route from RD-Agent to a
+  model. Standard library only; it listens on `127.0.0.1` and imports neither ALPHA nor RD-Agent. Chat is the confined Codex
+  program (read-only, no tools, no web search), embeddings are local Ollama, and the paid route is off unless the owner
+  configures it. A request parameter it cannot honour is refused or recorded as waived, never dropped silently. Call and
+  dollar budgets (monthly dollars capped at 50, not raisable) are checked before every attempt and fail closed. There is
+  no automatic switch between routes, and the call log holds hashes and lengths, not text. The fixture loops still clear
+  all model settings. `tests/unit/test_rdagent_model_gateway.py`.
 - There is no gate component or CI job (`scripts/gate_components.py` lists none). Its checks are root tests
   such as `tests/unit/test_native_loop_conformance.py`; the source-dependent ones skip without
   `ALPHA_RDAGENT_SOURCE`, and a skipped run confers no native qualification.

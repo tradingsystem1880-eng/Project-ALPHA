@@ -39,9 +39,11 @@ grants authority.
 ## How to change it
 
 - Backend code: `apps/alpha-web/src/alpha_web/` (routes in `api/`; copy a sibling such as
-  `api/native_results.py` with its adapter `_native_results.py`). Frontend: `frontend/src/`
+  `api/native_results.py` with its adapter `_native_results.py`; response models are one module per area in `api/models/`,
+  not one big file). Frontend: `frontend/src/`
   (`panels/`, `shell/`, `components/`, `api/`). The built bundle `src/alpha_web/static/app` is
-  build output, not committed; `npm run build` writes it. Never edit it by hand.
+  build output, not committed; `npm ci && npm run build` writes it, and must run before serving or building the wheel.
+  Never edit it by hand.
 - Backend tests: `tests/unit/test_web_*.py`, `tests/integration/test_web_api_*.py`,
   `tests/integration/test_openapi_safe_routes.py`. Frontend unit tests sit next to the code as
   `frontend/src/**/*.test.ts` (vitest); browser tests in `frontend/e2e/` (Playwright).

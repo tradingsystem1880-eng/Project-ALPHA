@@ -39,7 +39,10 @@ the status page and roadmap tell the truth.
 4. The orchestrating session merges once `ci-ok` is green and the branch is up to date:
    `gh pr merge <n> --merge` (a merge commit, never squash or rebase: documents pin `verified:`
    commits). The owner delegated routine merging on 2026-11-14. It grants nothing else: research
-   approvals, branch protection, required checks and credentials stay with the owner.
+   approvals, branch protection, required checks and credentials stay with the owner. When a second
+   branch merges after another, `git merge origin/main` usually needs `STATUS.md` and `docs/roadmap/README.md`
+   regenerated (`uv run python scripts/status.py`, `uv run python scripts/roadmap_index.py`): both are
+   generated from the task folders.
 5. After the merge, on a new branch: set the plan's line to `**Delivery state:** Completed — PR
    #<n>`; `git mv docs/work/<task> docs/work/archive/<yyyy-mm>/`; remove the task from
    `docs/roadmap/capabilities.toml`; lower `ceiling` in `docs/roadmap/wip-limit.json` when the

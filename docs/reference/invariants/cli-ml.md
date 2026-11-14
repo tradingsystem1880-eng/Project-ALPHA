@@ -43,6 +43,10 @@ Kronos forecast composition (`alpha forecast ...`, `_forecast*` modules). Projec
 - Frozen legacy point-in-time results stay readable as `declared_unverified`; training and replay-signal generation
   refuse them.
 - Request bytes are canonical; unsafe paths, hash drift and non-canonical JSON fail loud.
+- The `alpha158` feature recipe is version 1, 2 or 3 (3 is opt-in; 1 stays the default). Version 3 takes all 158 columns and the fold
+  processors from upstream Qlib and needs the worker's ten-file source inventory (`ml_refit.py`). Frozen inventories of 7 and 9 files
+  are never reinterpreted, and a partly present tier fails. [ADR-0042](../../adr/0042-qlib-worker-delegates-data-layer-to-upstream.md)
+- `native_qlib_pipeline.py` is a demo on fabricated data, not this exchange: research ML goes only through `alpha ml ...`.
 
 ## Replay is authoritative
 

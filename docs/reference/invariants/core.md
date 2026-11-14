@@ -69,6 +69,11 @@ errors, settings and structural protocols that every other package imports. Proj
   hashes; payloads are flat JSON scalars so no engine object, credential, tick or bar crosses it.
   [ADR-0012](../../adr/0012-operational-paper-sessions.md).
 
+## Atomic publication
+
+- `atomic.py` (`publish`, `write_text`) is the one place that writes a file by temp-file-then-replace, for every package
+  above core; do not keep a private copy. A failed writer leaves the target untouched. `tests/unit/test_core_atomic.py`.
+
 ## Costs
 
 - Convert basis points with `costs.py::bps_rate`: it rejects a non-finite or negative fee and divides by

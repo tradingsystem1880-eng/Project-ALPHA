@@ -13,9 +13,10 @@ verified: 1ac86fc02443
 
 Flat entry scripts and pinned locks that run Microsoft RD-Agent's native loops (synthetic
 fixtures, rule and costed probes, the stock RDLoop) in their own environments for the CLI's
-native job supervisor. It is a separate uv project (`package = false`) with its own lock; no ALPHA
-package imports it, though its probes import ALPHA packages inside qualified profile
-environments. It has no market, inference or evidence authority.
+native job supervisor, plus `model_gateway.py`, the local program through which RD-Agent reaches
+a model. It is a separate uv project (`package = false`) with its own lock; no ALPHA package
+imports it, though its probes import ALPHA packages inside qualified profile environments. It has
+no market, inference or evidence authority.
 
 ## Read first
 
@@ -29,9 +30,11 @@ environments. It has no market, inference or evidence authority.
 
 ## How to change it
 
-- Code: the scripts in `workers/rdagent/` and the lock files beside them.
-- Tests live in the root suite: `tests/unit/test_native_*.py`. Tests that need the RD-Agent source
-  skip unless `ALPHA_RDAGENT_SOURCE` (and, for stock lanes, `ALPHA_STOCK_PYTHON`) is set.
+- Code: the scripts in `workers/rdagent/` and the lock files beside them (`model_gateway.py` is standard library only and
+  imports neither ALPHA nor RD-Agent; `install_stock_profile.py` and `stock-requirements.lock` build the Python 3.11
+  stock runtime).
+- Tests live in the root suite: `tests/unit/test_native_*.py`, `test_rdagent_model_gateway.py`,
+  `test_setup_rdagent.py`. Tests that need the RD-Agent source skip unless `ALPHA_RDAGENT_SOURCE` (and, for stock lanes, `ALPHA_STOCK_PYTHON`) is set.
 - There is no CI gate component for this worker; run `uv run python scripts/gate.py check` from
   the repository root.
 - Editing `alpha_core`, `alpha_patterns` or `alpha_strategies` source changes the installed rule
@@ -39,5 +42,5 @@ environments. It has no market, inference or evidence authority.
 
 ## Outputs
 
-- Root tests under `tests/unit/test_native_*.py`.
+- Root tests under `tests/unit/test_native_*.py` and `tests/unit/test_rdagent_model_gateway.py`.
 - The owning document: `docs/reference/invariants/workers.md` § RD-Agent worker.

@@ -37,6 +37,9 @@ workspaces. [ADR-0014](../../adr/0014-cli-owned-development-control-plane.md)
   transaction so they see one snapshot.
 - `_control_json.py` is a pure codec and `_control_schema.py` is static historical SQL; transactions, migrations and
   authority stay in `control_store.py`.
+- The public surface of `control_store` is pinned by `tests/unit/test_control_store_interface.py` (golden file
+  `tests/fixtures/control_store_interface.json`) while the store is split: code that reads a patched module attribute must
+  stay in `control_store.py`, and any interface change is made deliberately (`--write`), never by accident.
 - WAL negotiation (`_enable_wal`) retries only `SQLITE_BUSY`, outside a transaction, within the connection's
   existing `busy_timeout`, then restores it; any other error or an exhausted budget raises.
 

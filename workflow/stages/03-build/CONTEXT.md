@@ -30,6 +30,7 @@ Make the plan true, one slice at a time, test first, in small commits on a branc
 | [engineering rules](../../../docs/reference/invariants/engineering.md) | Errors | always |
 | [testing invariants](../../../docs/reference/invariants/testing.md) | Bias guards | data access, a strategy or point-in-time semantics change |
 | [engineering rules](../../../docs/reference/invariants/engineering.md) | Hash-bound source bytes | a file in `packages/alpha-research/src` changes |
+| [engineering rules](../../../docs/reference/invariants/engineering.md) | Code size | the change adds lines to a large file or function |
 | [development loop](../../../docs/operations/development-loop.md) | Evidence and recovery | a run failed and you are about to retry |
 | [model routing](../../../docs/reference/model-routing.md) | Task classes | choosing the builder |
 
@@ -48,9 +49,9 @@ Make the plan true, one slice at a time, test first, in small commits on a branc
    Add that test if it is cheap.
 5. Run `uv run python scripts/gate.py check`, commit (`type(scope): summary`), and mark the slice
    `done` in the front block. A slice that deviates is reported in the plan, not hidden.
-6. No cosmetic edits to hash-bound source: change those bytes only when behaviour must change,
-   and say in the plan that owner approvals will need renewing. Changing a quant-tier file makes
-   CI add the slow oracles and the mutation gate for the touched modules.
+6. Hash-bound source: approvals made since ADR-0045 survive comments and formatting, older ones need
+   exact bytes (no cosmetic edits; say in the plan that approvals will need renewing). Changing a
+   quant-tier file makes CI add the slow oracles and the mutation gate for the touched modules.
 7. Update the one owning document of every fact you changed, in the same branch.
 8. Agents never run owner actions (approvals, decisions, D2, promotion, holdout reveal, paper or
    orders); stop and hand them to the owner.

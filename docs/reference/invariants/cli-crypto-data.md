@@ -45,6 +45,10 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
 
 - The external bulk store opens only from explicit operator configuration (`crypto_bulk_store.py`); no storage is
   provisioned and no durability is assumed. Configured volume identity and free-space reserve are checked first.
+- The free-space reserve defaults to the larger of 15% of the disk and 100 GB. Only the owner may lower it, through an
+  optional `free_space_reserve` object in the storage settings file (never below 10 GB; the code validates it and never
+  supplies it). A write that would leave less than the reserve is refused before any byte is written; below the advisory
+  threshold `crypto-data storage` prints a low-space notice but never refuses. [ADR-0043](../../adr/0043-storage-reserve-is-owner-set.md)
 - The storage config path must contain no symlink component and stay under 8 KiB.
 - Inventory and verification output show counts and hashes, never private absolute paths.
 - `cache-clean` needs `--confirm`, deletes only `bulk/cache`, and reports zero immutable artifacts removed. Staging, raw,
@@ -96,5 +100,7 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
 
 ## Crypto research edge
 
+- `snapshot-create` and every verification (`snapshot-verify`, `storage-verify`, research registration) resolve a member through
+  one rule in `_crypto_snapshot_members.py`; the rule itself is in [data § Crypto storage](data.md#crypto-storage).
 - Research may consume crypto data only through a registered snapshot re-verified at use; see
   [command line research § Research data and crypto research](cli-research.md#research-data-and-crypto-research).
