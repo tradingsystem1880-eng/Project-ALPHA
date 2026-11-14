@@ -21,7 +21,7 @@ exceed the `ceiling` in [wip-limit.json](wip-limit.json), and the ceiling must b
 lowered each time work closes. Once it reaches the `limit` of 3, at most 3 pieces of
 work may be open.
 
-## Live plans (41)
+## Live plans (42)
 
 | Plan | Title | Delivery state | Month |
 | --- | --- | --- | --- |
@@ -66,6 +66,7 @@ work may be open.
 | [2026-11-08-accounted-http-attempts](../work/2026-11-08-accounted-http-attempts/02-plan.md) | Opt-in synthetic per-HTTP accounting integration | Blocked | 2026-11 |
 | [2026-11-08-bound-http-retained-resume](../work/2026-11-08-bound-http-retained-resume/02-plan.md) | Versioned accounted retained completed-window resume | Blocked | 2026-11 |
 | [2026-11-08-complete-http-response-evidence](../work/2026-11-08-complete-http-response-evidence/02-plan.md) | Strict complete-response evidence before replay | Blocked | 2026-11 |
+| [2026-11-14-approval-by-structure](../work/2026-11-14-approval-by-structure/02-plan.md) | Approvals bind code structure, not bytes | Planned | 2026-11 |
 
 ## Backlog (17)
 
