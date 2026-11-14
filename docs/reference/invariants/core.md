@@ -7,7 +7,7 @@ sources:
   - tests/unit/test_corporate_actions.py
   - tests/unit/test_universe_store.py
   - tests/unit/test_forecast_settings.py
-verified: 1ac86fc02443
+verified: aa600e57932d
 ---
 
 # Core invariants
@@ -68,6 +68,11 @@ errors, settings and structural protocols that every other package imports. Proj
 - `ExecutionEventSink` is for paper execution only. Keep it out of deterministic run specifications and
   hashes; payloads are flat JSON scalars so no engine object, credential, tick or bar crosses it.
   [ADR-0012](../../adr/0012-operational-paper-sessions.md).
+
+## Atomic publication
+
+- `atomic.py` (`publish`, `write_text`) is the one place that writes a file by temp-file-then-replace, for every package
+  above core; do not keep a private copy. A failed writer leaves the target untouched. `tests/unit/test_core_atomic.py`.
 
 ## Costs
 

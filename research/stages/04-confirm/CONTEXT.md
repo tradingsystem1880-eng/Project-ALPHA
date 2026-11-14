@@ -4,7 +4,7 @@ sources:
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
   - apps/alpha-cli/src/alpha_cli/research_d2.py
   - apps/alpha-cli/src/alpha_cli/control_store.py
-verified: f89aa1bb78af
+verified: aa600e57932d
 ---
 
 # Stage 04 — confirm: one sealed D2 test
@@ -37,7 +37,8 @@ nothing about it is chosen after seeing D2.
 3. Stop. The owner approves or rejects the confirmation contract (checkpoint below).
 4. After approval (phase `sealed_confirmation`): `uv run alpha research run confirm <case>
    --json`. D2 is read exactly once; a failed attempt may be retried at most twice under the
-   same run id. A changed implementation fingerprint marks D2 contaminated (outcome INVALID).
+   same run id. A changed implementation fingerprint (a change to what the research code does, not a
+   comment or formatting edit; ADR-0045) marks D2 contaminated (outcome INVALID).
 5. Read `status`: a successful run consumes D2 and moves the case to `research_decision`.
 
 ## Outputs

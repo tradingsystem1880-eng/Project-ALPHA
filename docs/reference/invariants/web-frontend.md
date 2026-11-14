@@ -11,7 +11,7 @@ sources:
   - scripts/run_frontend_browser_lanes.py
   - tests/integration/test_web_spa_assets.py
   - tests/unit/test_web_menu_groups.py
-verified: 1724a5befe5d
+verified: aa600e57932d
 ---
 
 # Web frontend invariants
@@ -150,6 +150,8 @@ Lightweight Charts). The backend it talks to is covered in [web-api.md](web-api.
   `scripts/run_frontend_browser_lanes.py`: `risk-metric-basis`, `risk-live`, `native-result-real`. Do not run them under
   the default config or add filters to the lane command.
 - Browser lanes run against a fresh build: `npm run build` before `npm run test:e2e:built` (the frontend gate's order).
+  `--viewports reference` runs the default lane at the reference viewport only (pull-request CI, `gate.py component
+  frontend`); `--viewports all`, the default, runs all four (nightly, `component frontend-full`).
 
 ## Adding a panel
 

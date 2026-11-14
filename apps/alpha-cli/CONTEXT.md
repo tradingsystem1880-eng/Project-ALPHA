@@ -3,7 +3,7 @@ owner: command line application
 sources:
   - apps/alpha-cli/src/**
   - apps/alpha-cli/pyproject.toml
-verified: 1724a5befe5d
+verified: aa600e57932d
 ---
 
 # alpha-cli workspace
@@ -42,27 +42,30 @@ did not give, and never route live capital.
 
 ## How to change it
 
-Code is flat in `apps/alpha-cli/src/alpha_cli/` (173 modules; `_name.py` = private helper,
+Code is flat in `apps/alpha-cli/src/alpha_cli/` (175 modules; `_name.py` = private helper,
 `*_cmds.py` = one Typer command group, wired in `main.py`). Where to look:
 
 | Sub-area | Modules (count) | Tests in `tests/unit/` |
 |---|---|---|
-| Research cases | `research_*` (23; packets: `research_gate_packet`), `study_semantic` | `test_research_*` (+ integration) |
+| Research cases | `research_*` (22; `research_gate_packet`), `_research_artifact_io`, `_structural_digest`, `study_semantic` | `test_research_*` |
 | Control store | `control_store`, `_control_*`, `owner_auth*`, `durable_lease`, `job_capacity`, `project_*` | `test_control_*`, `test_owner_*` |
 | Runs, validation | `_artifacts`, `_identity`, `_seeds`, `_runner`, `_gauntlet`, `_optim`, `run_*`, `_suite` | `test_run*`, `test_gauntlet*`, `test_suite_*` |
-| Crypto, daily data | `_crypto_*` (15; reports: `_crypto_bar_coverage`), `crypto_*` (4), `data_cmds` | `test_crypto_*`, `test_tiingo_*` |
+| Crypto, daily data | `_crypto_*` (15; incl. `_crypto_snapshot_members`), `crypto_*` (4), `data_cmds` | `test_crypto_*`, `test_tiingo_*` |
 | Native jobs | `_native_*` (20), `native_*` (6), `daily_*` (3) | `test_native_*`, `test_daily_*` |
 | Machine learning | `ml_*` (6), `_ml_*` (2), `_forecast*` (3), `forecast_cmds` | `test_ml_*`, `test_forecast_*` |
 | Paper, providers | `paper_*` (5), `_paper`, `_ibkr_paper`, `ibkr_what_if`, `provider*` (3) | `test_paper_*`, `test_provider_*` |
 | Advisory models | `assistant_*` (6), `codex_*` (5), `investigation_*` (8), `comparison_acquisition*` | `test_assistant_*`, `test_codex_*` |
 
-Many integration tests in `tests/integration/` use the same prefixes.
+Many integration tests in `tests/integration/` use the same prefixes. Shared helpers live once: `_cli_json` (JSON emit and
+option parsing), `_research_artifact_io` (D1/D2 artifact publication and reads) and `alpha_core.atomic` (atomic file writes);
+do not add a private copy.
 
 - Check: `uv run python scripts/gate.py check`. Engine imports stay lazy; keep `import alpha_cli`
   light (`tests/unit/test_public_seams.py`).
-- Editing `research_intake.py`, `research_runtime.py`, `research_crypto_data.py` or
-  `research_crypto_runtime.py` invalidates owner approvals; control-store and owner-auth files feed
-  daily native rule approvals (see the native file).
+- Owner approvals bind code structure, not bytes ([ADR-0045](../../docs/adr/0045-approvals-bind-code-structure.md)): editing
+  `research_intake.py`, `research_runtime.py`, `research_crypto_data.py` or `research_crypto_runtime.py` invalidates them only
+  when behaviour changes (comments and formatting are free); control-store and owner-auth files feed daily native rule
+  approvals the same way (see the native file). `_structural_digest.py` itself is guarded: any edit invalidates every approval.
 - A new or changed command: run `uv run python scripts/commands_reference.py` and commit the page.
   If the web or MCP surface exposes it, also run `uv run python scripts/check_openapi_operations.py --write`.
 

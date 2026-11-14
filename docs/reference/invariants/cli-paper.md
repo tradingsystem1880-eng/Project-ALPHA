@@ -11,7 +11,7 @@ sources:
   - tests/unit/test_daily_scheduler.py
   - tests/integration/test_paper.py
   - tests/integration/test_provider_cli.py
-verified: 1724a5befe5d
+verified: aa600e57932d
 ---
 
 # Command line paper invariants

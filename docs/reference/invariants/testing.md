@@ -14,7 +14,7 @@ sources:
   - scripts/claude_hooks.py
   - pyproject.toml
   - .semgrep/alpha.yml
-verified: 7c56ea0941ce
+verified: aa600e57932d
 ---
 
 # Testing invariants
@@ -63,7 +63,9 @@ this file holds the mechanics.
   - `network` tests never run in CI.
 - `gate_select.py` always runs `tests/bias_guards`, `tests/oracles` and `tests/acceptance`, plus changed
   test files, test files whose text imports a changed module (a text search, not an import graph), and
-  last failures. Over 400 mapped tests it keeps only files named after the changed modules; a changed
+  last failures (each recorded id is cut back to `file::function` and kept only while the file still defines that
+  function, because a renamed parametrised case would make pytest refuse the whole run).
+  Over 400 mapped tests it keeps only files named after the changed modules; a changed
   `conftest.py` is left to CI. CI still runs everything on the pull request.
 
 ## Bias guards

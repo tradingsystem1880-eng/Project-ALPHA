@@ -22,7 +22,7 @@ sources:
   - apps/alpha-web/frontend/src/panels/ResearchBacklog.tsx
   - apps/alpha-web/frontend/src/panels/V3Workbenches.tsx
   - apps/alpha-web/frontend/src/panels/actions.ts
-verified: d0fffa796f8e
+verified: aa600e57932d
 ---
 
 # Web research surfaces
@@ -96,6 +96,8 @@ the advisory surfaces in [cli-assistant.md](cli-assistant.md).
   estimates them, and a projection the server marks unavailable or stale is shown as such.
 - `ResearchStudyStatusV1` and the projection carry `authority: none`. Owner steps the case waits on are offered only as
   owner confirmation buttons; masked and blocked text from the server is shown verbatim.
+- The Workstation records research captures and proposals as created by `workstation` (`--created-by workstation`); the
+  command's own default actor stays `codex`.
 - New Idea capture asks for no trading-rule inputs. Scorecard and checklist semantics come from Python projections.
 
 ## Project workspace
