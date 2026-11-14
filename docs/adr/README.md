@@ -52,6 +52,7 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0044](0044-rdagent-model-gateway.md) | RD-Agent reaches its models through a local ALPHA gateway; Codex first | Accepted | 2026-11-14 |
 | [0045](0045-approvals-bind-code-structure.md) | Research approvals bind what the code does, not its exact bytes (structural digest as scheme 2; byte-bound scheme-1 approvals keep verifying) | Accepted | 2026-11-14 |
 | [0046](0046-crypto-snapshot-members-are-content-addressed.md) | A crypto snapshot member is its content; equal recaptures count as one, any difference fails loud | Accepted | 2026-11-14 |
+| [0049](0049-alpha-judges-rdagent-factors.md) | ALPHA, not RD-Agent's built-in Qlib backtest, judges RD-Agent's factors (ALPHA classes through RD-Agent's settings; reserved 2024+ window) | Accepted | 2026-11-14 |
 
 ## Conventions
 
