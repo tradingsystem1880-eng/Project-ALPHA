@@ -71,7 +71,7 @@ Provider-native crypto acquisition, qualification, snapshots, and storage.
 - `alpha crypto-data profile-show <PROFILE_ID>` — Inspect a bounded page of one immutable coverage profile. Options: `--offset`, `--limit`, +6 more
 - `alpha crypto-data profiles` — List immutable coverage profiles without exposing their full task membership. Options: `--json`
 - `alpha crypto-data quality <MANIFEST_ID>` — Reverify and display one normalized artifact's mechanical quality report. Options: `--json`, +9 more
-- `alpha crypto-data snapshot-create` — Freeze exact ordered qualified membership; source and quote identities remain d…
+- `alpha crypto-data snapshot-create` — Freeze qualified membership in canonical order; the id is independent of option…
 - `alpha crypto-data snapshot-query <SNAPSHOT_ID>` — Read one bounded DefiLlama TVL page from an exact frozen snapshot… Options: `--limit`, `--offset`, +3 more
 - `alpha crypto-data snapshot-verify <SNAPSHOT_ID>` — Reverify every external byte and current qualification before res… Options: `--required-family`, +2 more
 - `alpha crypto-data snapshot-verify-crowding <SNAPSHOT_ID>` — Verify exact Bybit BTCUSDT crowding-research compatibili… Options: `--json`
