@@ -112,7 +112,8 @@ as JSON and SSE (server-sent events, a one-way live stream) and serves the built
 ## API contract
 
 - Give every `/api/` JSON route a `response_model`. Only `/stream` (SSE) and `/tearsheet` routes are exempt. Models live
-  in `api/models.py` and use `StrictModel` (`extra="forbid"`). Enforced by `tests/unit/test_web_contracts.py`.
+  in the `api/models/` package (one module per area, all re-exported from `alpha_web.api.models`) and
+  use its one `StrictModel` (`extra="forbid"`). Enforced by `tests/unit/test_web_contracts.py`.
 - The committed `apps/alpha-web/frontend/openapi.json` must equal `create_app().openapi()`. Regenerate with
   `uv run python scripts/generate_web_openapi.py`; the gate runs it with `--check`. Enforced by
   `tests/unit/test_web_contracts.py::test_committed_openapi_matches_runtime`.

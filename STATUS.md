@@ -118,7 +118,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Live plans: 42
 - Archived plans: 120
 - Backlog items: 17
-- Staged refactors: 7
+- Staged refactors: 6
 
 ## Where things are
 

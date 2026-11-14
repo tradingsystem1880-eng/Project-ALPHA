@@ -90,7 +90,7 @@ work may be open.
 | [RD-Agent autonomous native research and restart continuation (W08/W13, T07)](backlog/rdagent-autonomous-research.md) | Scoped | XL |
 | [Make the weekly mutation sweep pass on main](backlog/weekly-mutation-sweep.md) | Scoped | S |
 
-## Staged refactors (7)
+## Staged refactors (6)
 
 | Refactor | Risk |
 | --- | --- |
@@ -100,7 +100,6 @@ work may be open.
 | [Wire in or remove the test-only funding modules](refactors/funding-test-only-modules.md) | L |
 | [Break up oversized CLI functions](refactors/oversized-functions.md) | M |
 | [Reduce `# type: ignore` suppressions](refactors/type-ignore-reduction.md) | L |
-| [Split alpha_web/api/models.py per router and unify StrictModel](refactors/web-api-models-split.md) | M |
 
 ## Archived plans (120)
 
