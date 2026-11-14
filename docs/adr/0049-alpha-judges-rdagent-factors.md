@@ -77,18 +77,27 @@ What the pinned source offers, read file by file:
    2023-12-31, where all 15 coins trade (the replay needs a full rectangle).
 4. **Look-ahead guard.** RD-Agent's generated code sees the whole debug and full frames, so it is
    not point-in-time by construction within the exploration window. The runner catches look-ahead
-   by prefix invariance: it re-runs each `factor.py` on the frame truncated at three fixed cut
-   dates and requires that every value at or before a cut is unchanged; a factor that fails is
-   marked `LOOKAHEAD`, is not evaluated and counts as a test. The reserved window is protected by
-   construction (point 3).
+   by prefix invariance: it re-runs each `factor.py` on the frame truncated at fixed cut dates (the
+   last day of every quarter from 2020-12-31, plus 2023-12-24) and requires that every value at or
+   before each cut is unchanged. A factor that fails is marked `LOOKAHEAD`, is not evaluated and
+   counts as a test. Only dates at or before the last cut are evaluated. This is a check, not a
+   proof: it catches any look-ahead that changes a value at or before some cut (a shift into the
+   future, a whole-sample normalisation, a forward-filled future value); code that peeks ahead
+   only for particular dates and never across a cut could pass. The reserved window is protected
+   by construction (point 3).
 5. **Multiple testing.** Every factor RD-Agent produces in a run enters one family, in order:
    evaluated, failed and `LOOKAHEAD` factors alike (the last two with p = 1). Each result carries
    the family size so far, Benjamini–Hochberg q-values over the whole family
    (`alpha_validation.proportion.benjamini_hochberg`) and the Deflated Sharpe of the replay with
-   all the family's Sharpe ratios as trials (`alpha_validation.dsr.deflated_sharpe`).
-6. **ALPHA's decision rule, fixed before the first run.** `decision = True` only when a factor has
-   BH q < 0.10 on mean rank IC, passed the look-ahead check and has positive net excess return in
-   the replay. Otherwise `False`, whatever the model says.
+   all the family's Sharpe ratios as trials (`alpha_validation.dsr.deflated_sharpe`). These are
+   **screening values only**: the family grows adaptively, each new factor is proposed after
+   feedback on the same exploration data, so no false-discovery or error rate is claimed. They
+   show the size of the search and rank leads; confirming a lead needs a small family fixed in
+   advance and tested once on the reserved window, outside the loop and approved by the owner.
+6. **ALPHA's decision rule, fixed before the first run.** `decision = True` (RD-Agent carries the
+   factors forward as an exploratory lead) only when a factor has BH q < 0.10 on mean rank IC,
+   passed the look-ahead check and has positive net excess return in the replay. Otherwise
+   `False`, whatever the model says. It steers the search; it is not a finding.
 7. **Records and labels.** Each iteration appends one JSON record to the run's
    `evaluations.jsonl`: input hashes (panel, factor values, `factor.py`, evaluator source
    fingerprint, configuration), the metrics, the look-ahead result, the family size and q-values,
