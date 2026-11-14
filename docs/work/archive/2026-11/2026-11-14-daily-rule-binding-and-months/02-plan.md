@@ -56,7 +56,7 @@ work-in-progress ceiling admits no new live plan, and the work is finished in on
   "tier_impact": ["protected", "bias", "determinism"],
   "docs_to_update": [
     "docs/adr/0045-approvals-bind-code-structure.md",
-    "docs/adr/0047-daily-price-query-reads-named-months.md",
+    "docs/adr/0047-daily-rule-lane-binding-and-named-months.md",
     "docs/adr/README.md",
     "docs/reference/invariants/cli-native.md",
     "docs/reference/invariants/cli-crypto-data.md",
@@ -109,7 +109,7 @@ work-in-progress ceiling admits no new live plan, and the work is finished in on
     "tests/unit/test_native_rule_authority.py",
     "tests/integration/test_daily_rule_report.py",
     "docs/adr/0045-approvals-bind-code-structure.md",
-    "docs/adr/0047-daily-price-query-reads-named-months.md",
+    "docs/adr/0047-daily-rule-lane-binding-and-named-months.md",
     "docs/adr/README.md",
     "docs/reference/invariants/cli-native.md",
     "docs/reference/invariants/cli-crypto-data.md",
@@ -145,8 +145,10 @@ work-in-progress ceiling admits no new live plan, and the work is finished in on
 ## Slices
 
 The orchestrator writes the documents (slice 4); Codex builds slices 1-3 in one build. Never
-edit `control_store.py`, `workers/rdagent/` or `.claude/code-size-baseline.json`; keep every
-new or changed function at or under 150 lines and every file under 1,500.
+edit `control_store.py`, `workers/rdagent/` or `.claude/code-size-baseline.json`. Size
+ratchet (`tests/unit/test_code_size.py`): every new file stays under 1,500 lines and every new or
+changed function at or under 150; a file already in the baseline (`research_cmds.py`, 3,539
+lines) must keep exactly its line count, so its edit below is line-neutral.
 
 ### Slice 1 — bind the lane's control code
 
@@ -170,7 +172,7 @@ new or changed function at or under 150 lines and every file under 1,500.
      `from importlib import …`, or any call to `import_module` or `__import__` in a bound file
      fails the test (static tracing would be incomplete).
    - `REVIEWED_OUTSIDE: dict[tuple[str, str], str]`, keyed `(importer, imported)`, exactly these
-     17 edges, each with a one-line reason naming the call site:
+     18 edges, each with a one-line reason naming the call site:
      `_artifacts.py → _native_tearsheet.py` (only `write_native_tearsheet` uses it; daily
      artifacts call `publish_artifact`, `run_dir`, `write_manifest`, `read_manifest`);
      `_ml_observation_store.py → ml_contract.py`, `_ml_observation_store.py → ml_native_plan.py`,
@@ -304,8 +306,10 @@ In `crypto_price_snapshot_query.py`:
   `{"normalized_manifest_id", "normalized_artifact_sha256"}` in member order; all other keys and
   values as V1.
 - `daily_native_cmds.draft_daily_request(..., normalized_manifest_ids: Sequence[str])` passes them
-  through as a tuple. `research_cmds.draft_daily`: `--normalized-manifest-id` becomes repeatable
-  (a required `list[str]` option, same flag), help text "one per month member, repeatable".
+  through as a tuple. `research_cmds.draft_daily`, line-neutral: the parameter line becomes
+  `normalized_manifest_id: list[str] = typer.Option(...),  # noqa: B008` (same flag, now
+  repeatable, one per month member) and the call passes
+  `normalized_manifest_ids=tuple(normalized_manifest_id),`; no other line in that file changes.
 - Rename the keyword in the existing daily tests listed in `files` (no assertion changes). New
   `tests/unit/test_daily_rule_months_study.py`: a 2020-2022 study bound from a thirty-six-month
   archive snapshot validates, `reopen_daily_study` reproduces it from a restored copy of the
