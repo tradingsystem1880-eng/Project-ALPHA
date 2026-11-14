@@ -207,7 +207,9 @@ def add(ledger: Path, source: Path) -> list[dict[str, Any]]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description="Exposure log beside the RD-Agent trial ledger; read-only listing and append."
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     adding = sub.add_parser("add")
     adding.add_argument("--ledger", type=Path, required=True)
