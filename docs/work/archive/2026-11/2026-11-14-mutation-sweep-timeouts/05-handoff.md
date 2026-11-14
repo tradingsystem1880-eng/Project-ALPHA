@@ -22,7 +22,7 @@
 
 ## How to see it
 
-The proof run on this branch: see "Checks run".
+`gh run view 43563791459`: three `rendering.py` fragments, `aggregate` skipped.
 
 ## Checks run
 
@@ -35,7 +35,12 @@ The proof run on this branch: see "Checks run".
   `group_by` in the child hangs. The same test without the parent call does not.
 - Local preflight of the staged copy: before, 4 failed, 1134 passed, 1 error; after, 1174 passed.
 - `uv run python scripts/gate.py check --all`: all checks passed (whole fast tier).
-- Remote proof: PENDING (filled in after CI is green).
+- Remote proof, run 43563791459 (one-module dispatch on this branch): success.
+  - 283 mutants: 145 killed, 138 survived, 0 timed out.
+  - Fragments took 42, 24 and 32 minutes, against 91 (failed), 68 and 86 minutes before, when
+    38, 45 and 56 mutants timed out.
+  - The table is in `04-verify.md`.
+- CI on this pull request: `ci-ok` green.
 
 ## Who built and who reviewed
 
@@ -61,8 +66,9 @@ note stays open until two scheduled weekly runs pass.
 
 ## What I am unsure about
 
-- Whether forkserver mode is slower per mutant on GitHub's runners than fork mode would have been
-  without the deadlock. The one-module run measures it.
+- Local and GitHub results for fragment 0 disagree on 8 of 95 verdicts, in both directions. Some
+  `rendering.py` kills depend on the machine. This change did not cause that, and it is not
+  investigated here.
 - The whole sweep has not been rerun, so the change in kill rates across all modules is not yet
   measured.
 
