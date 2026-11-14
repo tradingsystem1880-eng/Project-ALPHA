@@ -1,4 +1,4 @@
-**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+**Delivery state:** Completed — proven end to end by `tests/smoke/test_risk_smoke.py` (2026-11-14, `m8/prove-risk-numbers`); done when that pull request merges.
 
 ```json
 {
@@ -164,7 +164,7 @@
 
 ## C04 and preserved baseline
 
-[C04](../../context/feature-readiness-checklist-2026-10-27.md) covers independent Qlib accumulation/annualization/benchmark/drawdown conventions and initial wealth, without universal zero-return padding. The Git mirror identifies version3; full canonicalv9 parity is not claimed. This successor uses actual source present locally, reproducing preserved35c4efcb706d9cae4dceaad7172d856cd9d73c55 exactly before edits on main snapshot3f7b23185c29b2542605bd41b9485016c2ef3e79. It does not reconstruct or compose unavailable owner candidates.
+[C04](../../../../context/feature-readiness-checklist-2026-10-27.md) covers independent Qlib accumulation/annualization/benchmark/drawdown conventions and initial wealth, without universal zero-return padding. The Git mirror identifies version3; full canonicalv9 parity is not claimed. This successor uses actual source present locally, reproducing preserved35c4efcb706d9cae4dceaad7172d856cd9d73c55 exactly before edits on main snapshot3f7b23185c29b2542605bd41b9485016c2ef3e79. It does not reconstruct or compose unavailable owner candidates.
 
 ## Actual production chain and compatibility
 
