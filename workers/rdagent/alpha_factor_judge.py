@@ -192,7 +192,10 @@ class AlphaFactorHypothesisGen(QlibFactorHypothesisGen):
                 )
                 lines, seen = [], set()
                 for row in reversed(rows):
-                    if row.get("schema") != "AlphaRdagentFactorTrialV1":
+                    if row.get("schema") not in {
+                        "AlphaRdagentFactorTrialV1",
+                        "AlphaRdagentFactorTrialV2",
+                    }:
                         raise ValueError("invalid ALPHA trial ledger schema")
                     if row["code_sha256"] in seen or row["status"] == "REPEAT":
                         continue
@@ -202,6 +205,11 @@ class AlphaFactorHypothesisGen(QlibFactorHypothesisGen):
                         f"mean rank IC {row['screen'].get('mean_ic')}; "
                         f"q {row['q']}; run {row['run_id']}"
                     )
+                    if (
+                        row["schema"] == "AlphaRdagentFactorTrialV2"
+                        and row["exposure"]["previously_exposed"] is True
+                    ):
+                        lines[-1] += "; protected window previously exposed"
                     if len(lines) == 30:
                         break
                 context["hypothesis_and_feedback"] += (heading + "\n".join(lines))[:4000]

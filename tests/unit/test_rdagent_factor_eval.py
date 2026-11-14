@@ -360,3 +360,206 @@ def test_validate_panel_refuses_invalid_prices_and_reserved_dates() -> None:
         ev.validate_panel(base.with_columns(pl.lit(date(2024, 1, 1)).alias("date")))
     with pytest.raises(DataError):
         ev.validate_panel(base.head(0))
+
+
+def historical(tmp_path: Path, *, code: bytes = b"42") -> tuple[Path, dict[str, Any]]:
+    path = tmp_path / "factor.py"
+    path.write_bytes(code)
+    return path, {
+        "name": "historical",
+        "code_path": str(path),
+        "run_id": "old-run",
+        "iteration": 2,
+        "windows": ev.WINDOWS,
+        "evaluated_by": "external judge",
+        "result_summary": "The result was previously viewed",
+        "source": "/old/run/result.json",
+    }
+
+
+def import_command(ledger: Path, source: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "rdagent_factor_eval",
+            "import-historical",
+            "--ledger",
+            str(ledger),
+            "--file",
+            str(source),
+        ],
+    )
+    ev.main()
+
+
+def test_evaluation_exposure_and_mixed_schema_ledger(tmp_path: Path) -> None:
+    from alpha_cli import rdagent_exposure as ex
+
+    ledger = tmp_path / "trials.jsonl"
+    # A legacy line remains byte-for-byte valid before newly evaluated V2 lines.
+    legacy = {
+        "schema": "AlphaRdagentFactorTrialV1",
+        "trial_index": 1,
+        "name": "legacy",
+        "code_sha256": "a" * 64,
+        "run_id": "old",
+        "iteration": 0,
+        "panel_sha256": "0" * 64,
+        "windows": ev.WINDOWS,
+        "stage": "none",
+        "status": "FAILED",
+        "p": 1.0,
+        "q": 1.0,
+        "family_size": 1,
+        "total_trials": 1,
+        "screen": {},
+        "replay": {},
+        "label": ev.LABEL,
+        "survivorship": ev.SURVIVORSHIP,
+        "authority": ev.AUTHORITY,
+    }
+    original = ev.canonical(legacy)
+    ledger.write_bytes(original)
+    entry = {
+        "schema": "AlphaExposureEntryV1",
+        "entry_index": 1,
+        "family": {"id": "xs-range", "definition": "Cross-sectional differences in trading range"},
+        "match": {"name_regex": "factor", "instruments": ["*"]},
+        "instruments": ["BTCUSDT"],
+        "window": {"start": "2024-01-01", "end": "2024-04-01"},
+        "statistic_released": "Rank correlation",
+        "seen_by": ["owner"],
+        "seen_on": "2026-11-14",
+        "source": "/old/result.json",
+        "status": "known",
+        "note": "",
+        "label": ev.LABEL,
+    }
+    log_bytes = ev.canonical(entry)
+    ex.exposure_log_path(ledger).write_bytes(log_bytes)
+    run = tmp_path / "run"
+    result = evaluate(run, fixture(run), ledger)
+    row = result["factors"][0]
+    assert row["schema"] == "AlphaRdagentFactorTrialV2"
+    assert row["instruments"] == [f"C{i:02}USDT" for i in range(15)]
+    assert row["exposure"]["previously_exposed"] is True
+    assert result["inputs"]["exposure_log_sha256"] == ev.sha(log_bytes)
+    assert (
+        "factor: protected window 2024-01-01+ previously exposed for family xs-range (known); "
+        "it cannot give fresh confirmation." in result["feedback_text"]
+    )
+    assert ledger.read_bytes().startswith(original)
+    assert ev._read_ledger(ledger) == [legacy, row]
+    for key in ("instruments", "exposure"):
+        broken = dict(row)
+        del broken[key]
+        ledger.write_bytes(original + ev.canonical(broken))
+        with pytest.raises(DataError):
+            ev._read_ledger(ledger)
+
+
+def test_imported_identity_is_never_re_evaluated(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ledger, source = tmp_path / "trials.jsonl", tmp_path / "import.json"
+    code_path, item = historical(tmp_path)
+    source.write_text(json.dumps([item]))
+    import_command(ledger, source, monkeypatch)
+    before = ledger.read_bytes()
+    row = ev._read_ledger(ledger)[0]
+    assert row["schema"] == "AlphaRdagentFactorTrialV2"
+    assert row["code_sha256"] == ev.sha(code_path.read_bytes())
+    assert row["status"] == "IMPORTED" and row["stage"] == "none"
+    assert row["p"] == row["q"] == 1.0
+    assert row["screen"] == row["replay"] == {}
+    assert row["panel_sha256"] == "0" * 64
+    assert row["instruments"] == list(ev.LOOP_UNIVERSE)
+    assert row["imported"] == {
+        k: item[k] for k in ("evaluated_by", "result_summary", "source", "code_path")
+    }
+    assert row["authority"] == ev.AUTHORITY
+    assert row["exposure"] == {
+        "previously_exposed": None,
+        "worst_status": "no exposure log",
+        "matches": [],
+    }
+    run = tmp_path / "repeat"
+    req = fixture(run)
+    with (
+        patch.object(ev, "screen", side_effect=AssertionError("import screened")),
+        patch.object(ev, "replay", side_effect=AssertionError("import replayed")),
+    ):
+        result = evaluate(run, req, ledger)
+    assert ledger.read_bytes().startswith(before)
+    assert result["inputs"]["exposure_log_sha256"] is None
+    assert result["factors"][0]["status"] == "REPEAT"
+    assert result["factors"][0]["first_trial"]["status"] == "IMPORTED"
+    assert result["family_size"] == 1
+    assert result["replayed_trials"] == 0
+    assert not result["decision"]
+    del row["imported"]
+    ledger.write_bytes(ev.canonical(row))
+    with pytest.raises(DataError):
+        ev._read_ledger(ledger)
+
+
+@pytest.mark.parametrize("defect", ["existing", "batch_duplicate", "missing", "invalid_metadata"])
+def test_import_refuses_whole_batch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, defect: str
+) -> None:
+    ledger, source = tmp_path / "trials.jsonl", tmp_path / "import.json"
+    _, item = historical(tmp_path)
+    source.write_text(json.dumps([item]))
+    import_command(ledger, source, monkeypatch)
+    before = ledger.read_bytes()
+    different = tmp_path / "different.py"
+    different.write_bytes(b"different")
+    new = {**item, "code_path": str(different)}
+    bad = {**new}
+    if defect == "existing":
+        bad = item
+    elif defect == "missing":
+        bad["code_path"] = str(tmp_path / "missing.py")
+    elif defect == "invalid_metadata":
+        bad["evaluated_by"] = ""
+    source.write_text(json.dumps([new, bad]))
+    with pytest.raises(DataError):
+        import_command(ledger, source, monkeypatch)
+    assert ledger.read_bytes() == before
+
+
+def test_imported_rows_count_in_bh_family(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger, source = tmp_path / "trials.jsonl", tmp_path / "import.json"
+    _, item = historical(tmp_path, code=b"older code")
+    other_path = tmp_path / "other.py"
+    other_path.write_bytes(b"other code")
+    source.write_text(json.dumps([item, {**item, "code_path": str(other_path)}]))
+    import_command(ledger, source, monkeypatch)
+    imported = ev._read_ledger(ledger)
+    assert [r["trial_index"] for r in imported] == [1, 2]
+    assert all(r["family_size"] == r["total_trials"] == 2 for r in imported)
+    before = ledger.read_bytes()
+    run = tmp_path / "new-run"
+    req = fixture(run)
+    with (
+        patch.object(ev, "screen", return_value={"status": "OK", "p": 0.05, "direction": 1}),
+        patch.object(ev, "replay", side_effect=AssertionError("BH should prevent replay")),
+    ):
+        result = evaluate(run, req, ledger)
+    assert result["family_size"] == result["total_trials"] == 3
+    assert result["factors"][0]["q"] == pytest.approx(0.15)
+    assert result["factors"][0]["status"] == "SCREEN_FAIL"
+    assert ledger.read_bytes().startswith(before)
+
+
+def test_import_refuses_a_different_reserved_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The exposure label is computed from reserved_start, so it must be the ledger's own.
+    _, item = historical(tmp_path)
+    item["windows"] = {**ev.WINDOWS, "reserved_start": "2030-01-01"}
+    source, ledger = tmp_path / "items.json", tmp_path / "trials.jsonl"
+    source.write_text(json.dumps([item]))
+    with pytest.raises(DataError):
+        import_command(ledger, source, monkeypatch)
+    assert not ledger.exists() or not ledger.read_bytes()

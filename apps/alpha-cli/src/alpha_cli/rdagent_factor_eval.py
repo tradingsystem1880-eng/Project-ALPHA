@@ -70,7 +70,24 @@ CONFIG = {
     "q_threshold": Q_THRESHOLD,
     "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
 }
-TRIAL_SCHEMA = "AlphaRdagentFactorTrialV1"
+TRIAL_SCHEMA = "AlphaRdagentFactorTrialV2"
+LOOP_UNIVERSE = (
+    "ADAUSDT",
+    "ATOMUSDT",
+    "AVAXUSDT",
+    "BCHUSDT",
+    "BNBUSDT",
+    "BTCUSDT",
+    "DOGEUSDT",
+    "DOTUSDT",
+    "ETHUSDT",
+    "LINKUSDT",
+    "LTCUSDT",
+    "SOLUSDT",
+    "TRXUSDT",
+    "XLMUSDT",
+    "XRPUSDT",
+)
 STATUSES = frozenset(
     {
         "FAILED",
@@ -81,6 +98,7 @@ STATUSES = frozenset(
         "REPLAY_FAIL",
         "CANDIDATE",
         "REPEAT",
+        "IMPORTED",
     }
 )
 
@@ -384,7 +402,7 @@ def _read_ledger(path: Path) -> list[dict[str, Any]]:
         try:
             row = json.loads(line)
             if (
-                row["schema"] != TRIAL_SCHEMA
+                row["schema"] not in {"AlphaRdagentFactorTrialV1", TRIAL_SCHEMA}
                 or row["trial_index"] != index
                 or not re.fullmatch("[0-9a-f]{64}", row["code_sha256"])
             ):
@@ -413,10 +431,137 @@ def _read_ledger(path: Path) -> list[dict[str, Any]]:
                 raise ValueError("invalid trial metrics or authority")
             if row["status"] not in STATUSES or row["stage"] not in {"none", "screen", "replay"}:
                 raise ValueError("invalid trial status or stage")
+            if row["schema"] == TRIAL_SCHEMA and (
+                not isinstance(row["instruments"], list)
+                or not row["instruments"]
+                or any(not isinstance(s, str) or not s.strip() for s in row["instruments"])
+                or not isinstance(row["exposure"], dict)
+                or not {"previously_exposed", "worst_status", "matches"} <= row["exposure"].keys()
+            ):
+                raise ValueError("invalid V2 instruments or exposure")
+            if row["status"] == "IMPORTED":
+                _validate_imported(row["imported"])
+                if row["schema"] != TRIAL_SCHEMA or row["stage"] != "none" or row["p"] != 1.0:
+                    raise ValueError("invalid imported trial")
         except (ValueError, TypeError, KeyError) as error:
             raise DataError(f"invalid trial ledger line {index}: {error}") from error
         records.append(row)
     return records
+
+
+def _validate_imported(value: Any) -> None:
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"evaluated_by", "result_summary", "source", "code_path"}
+        or any(not isinstance(v, str) or not v.strip() for v in value.values())
+        or not Path(value["code_path"]).is_absolute()
+    ):
+        raise ValueError("invalid imported provenance")
+
+
+def _historical_item(item: Any) -> dict[str, Any]:
+    if not isinstance(item, dict) or set(item) != {
+        "name",
+        "code_path",
+        "run_id",
+        "iteration",
+        "windows",
+        "evaluated_by",
+        "result_summary",
+        "source",
+    }:
+        raise ValueError("invalid historical item fields")
+    provenance = {k: item[k] for k in ("evaluated_by", "result_summary", "source", "code_path")}
+    _validate_imported(provenance)
+    if (
+        any(not isinstance(item[k], str) or not item[k].strip() for k in ("name", "run_id"))
+        or type(item["iteration"]) is not int
+        or item["iteration"] < 0
+        or not isinstance(item["windows"], dict)
+        or set(item["windows"]) != set(WINDOWS)
+    ):
+        raise ValueError("invalid historical trial metadata")
+    windows = item["windows"]
+    for key in ("history", "exploration"):
+        bounds = windows[key]
+        if not isinstance(bounds, list) or len(bounds) != 2:
+            raise ValueError("invalid historical window bounds")
+        if any(
+            not isinstance(d, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", d)
+            for d in bounds
+        ):
+            raise ValueError("invalid historical window date")
+        if date.fromisoformat(bounds[0]) > date.fromisoformat(bounds[1]):
+            raise ValueError("reversed historical window")
+    for key in ("panel_end", "reserved_start"):
+        if not isinstance(windows[key], str) or not re.fullmatch(
+            r"[0-9]{4}-[0-9]{2}-[0-9]{2}", windows[key]
+        ):
+            raise ValueError("invalid historical window date")
+        date.fromisoformat(windows[key])
+    if windows["reserved_start"] != RESERVED_START:
+        # The exposure label is computed from this date; it must be the ledger's protected start.
+        raise ValueError(f"historical reserved_start must be {RESERVED_START}")
+    return provenance
+
+
+def import_historical(ledger: Path, source: Path) -> list[dict[str, Any]]:
+    from alpha_cli.rdagent_exposure import label_for, read_entries
+
+    outside_git(ledger)
+    try:
+        items = json.loads(source.read_bytes())
+    except (ValueError, UnicodeError) as error:
+        raise DataError(f"invalid historical input: {error}") from error
+    if not isinstance(items, list):
+        raise DataError("historical input must be a list")
+    with Path(str(ledger) + ".lock").open("a+b") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        history = _read_ledger(ledger)
+        identities = {r["code_sha256"] for r in history}
+        entries = read_entries(ledger)
+        rows: list[dict[str, Any]] = []
+        for item in items:
+            try:
+                provenance = _historical_item(item)
+                digest = sha(Path(item["code_path"]).read_bytes())
+                if digest in identities:
+                    raise ValueError("historical code hash already in trial ledger or batch")
+            except (ValueError, TypeError, KeyError, OSError) as error:
+                raise DataError(f"invalid historical item {len(rows) + 1}: {error}") from error
+            row = {
+                "schema": TRIAL_SCHEMA,
+                "trial_index": len(history) + len(rows) + 1,
+                "name": item["name"],
+                "code_sha256": digest,
+                "run_id": item["run_id"],
+                "iteration": item["iteration"],
+                "windows": item["windows"],
+                "status": "IMPORTED",
+                "stage": "none",
+                "p": 1.0,
+                "q": 1.0,
+                "screen": {},
+                "replay": {},
+                "panel_sha256": "0" * 64,
+                "instruments": list(LOOP_UNIVERSE),
+                "imported": provenance,
+                "label": LABEL,
+                "survivorship": SURVIVORSHIP,
+                "authority": AUTHORITY,
+            }
+            row["exposure"] = label_for(row, entries)
+            rows.append(row)
+            identities.add(digest)
+        for row in rows:
+            row.update(family_size=len(identities), total_trials=len(history) + len(rows))
+        with ledger.open("ab", buffering=0) as stream:
+            for row in rows:
+                line = canonical(row)
+                if stream.write(line) != len(line):
+                    raise DataError("short trial ledger write")
+                os.fsync(stream.fileno())
+    return rows
 
 
 def _inputs(
@@ -562,6 +707,14 @@ def _report(
         f"{r['replay'].get('net', {}).get('annualized_return')}."
         for r in rows
     )
+    for row in rows:
+        exposure = row["exposure"]
+        if exposure["previously_exposed"]:
+            families = ", ".join(f"{m['family_id']} ({m['status']})" for m in exposure["matches"])
+            feedback += (
+                f" {row['name']}: protected window {exposure['protected_window_start']}+ "
+                f"previously exposed for family {families}; it cannot give fresh confirmation."
+            )
     feedback += f" ALPHA decision: {decision}; admitted/evidence/approval/promotion all false."
     return lead, legacy, disclosures, decision, feedback
 
@@ -574,6 +727,13 @@ def _evaluate_locked(
     inputs: dict[str, str],
     ledger: Path,
 ) -> dict[str, Any]:
+    from alpha_cli.rdagent_exposure import label_for, snapshot
+
+    entries, exposure_bytes = snapshot(ledger)
+    record_inputs: dict[str, Any] = {
+        **inputs,
+        "exposure_log_sha256": sha(exposure_bytes) if exposure_bytes is not None else None,
+    }
     history = _read_ledger(ledger)
     family: dict[str, dict[str, Any]] = {}
     for row in history:
@@ -599,6 +759,7 @@ def _evaluate_locked(
             "iteration": request["iteration"],
             "panel_sha256": inputs["panel_sha256"],
             "windows": WINDOWS,
+            "instruments": symbols,
             "stage": "none",
             "p": 1.0,
             "q": 1.0,
@@ -608,6 +769,7 @@ def _evaluate_locked(
             "survivorship": SURVIVORSHIP,
             "authority": AUTHORITY,
         }
+        row["exposure"] = label_for(row, entries)
         if digest in family:
             row["status"] = "REPEAT"
             row["first_trial"] = {
@@ -666,7 +828,7 @@ def _evaluate_locked(
         "label": LABEL,
         "authority": AUTHORITY,
         "disclosures": disclosures,
-        "inputs": inputs,
+        "inputs": record_inputs,
         "factors": rows,
         "family_size": len(family),
         "total_trials": len(history) + len(rows),
@@ -714,9 +876,14 @@ def main() -> None:
     evaluating = sub.add_parser("evaluate")
     for name in ("run-dir", "request", "out", "ledger"):
         evaluating.add_argument(f"--{name}", type=Path, required=True)
+    importing = sub.add_parser("import-historical")
+    importing.add_argument("--ledger", type=Path, required=True)
+    importing.add_argument("--file", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "freeze":
         freeze(args.data_dir, args.out)
+    elif args.command == "import-historical":
+        import_historical(args.ledger, args.file)
     else:
         evaluate(args.run_dir, args.request, args.out, args.ledger)
 
