@@ -8,7 +8,7 @@ sources:
   - tests/unit/test_crypto_*.py
   - tests/integration/test_crypto_*.py
   - tests/integration/test_data_*.py
-verified: 841eb50dcc89
+verified: b4b36f41caa0
 ---
 
 # Command line data invariants
@@ -18,7 +18,7 @@ What must not break when changing `alpha data` and the governed crypto data hous
 that `alpha_data` owns. Project-wide rules: [research integrity § Point-in-time reads](research-integrity.md#point-in-time-reads)
 and [research integrity § Invalid data fails loud](research-integrity.md#invalid-data-fails-loud).
 
-## Daily market data
+## Stock and CCXT market data
 
 - Tiingo bytes become receipt, candidate, quality report and only then canonical promotion
   (`stage_and_promote`). [ADR-0017](../../adr/0017-authoritative-daily-data-and-broker-paper-boundary.md)
@@ -30,6 +30,9 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
   `tests/integration/test_data_alpaca_cli.py`.
 - `data pull` rejects `--end` before `--start`, normalises the symbol (ambiguous input fails with the accepted forms), and
   for CCXT refuses a start before the first listed bar with a "Start there?" hint. Never clamp silently.
+- `--timeframe` (default `1D`) selects the bar size on `data pull`, `snapshot`, `symbols`, `source-status`,
+  `audit`, `repair` and `rollback-promotion`; each bar size has its own store root. Only Alpaca and CCXT serve
+  intraday bars; other sources refuse a non-daily `--timeframe`. Rules: [bar timeframes](data-bar-timeframes.md).
 - `data candles` and `data symbols` read through the same point-in-time loader a backtest uses (`_runner.load_bars`).
 - `data universe` and `--with-actions` are read projections with no authority; the plain `--json` picker output stays
   unchanged.

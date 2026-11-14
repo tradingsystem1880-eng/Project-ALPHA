@@ -4,7 +4,7 @@ sources:
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
   - apps/alpha-cli/src/alpha_cli/research_data_audit.py
   - apps/alpha-cli/src/alpha_cli/data_cmds.py
-verified: 1a5804784ede
+verified: b4b36f41caa0
 ---
 
 # Stage 02 — data: case to approved exploration contract
@@ -36,7 +36,8 @@ A synthetic-only bundle needs no dataset and goes straight to the draft.
    stock source is `--source alpaca` with the owner's Alpaca key, into its own data folder
    ([Alpaca runbook](../../../docs/operations/alpaca-stock-data.md)). Then freeze and check
    them: `uv run alpha data snapshot <snapshot-id> <SYMBOL>` and `uv run alpha data verify
-   <snapshot-id>`.
+   <snapshot-id>`. Intraday bars (`--timeframe 5m`, `1h`, ...) have their own store and snapshots; the
+   research registration and audit below read daily snapshots only for now.
 2. Register the research copy: `uv run alpha research data register <SYMBOL> --kind snapshot
    --snapshot-id <id> --start <date> --end <date> --bar-minutes 1440 --json` (crypto:
    `research data register-crypto`). Note the `rd_` id; `research data list` shows them all.

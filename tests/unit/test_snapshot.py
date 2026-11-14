@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
+import polars as pl
 import pytest
 
 from alpha_core import DataError
@@ -262,3 +263,49 @@ def test_malformed_symbol_manifest_entries_are_typed(tmp_path: Path, entry: obje
 
     with pytest.raises(DataError, match="invalid snapshot"):
         verify_snapshot(snapshot)
+
+
+def test_daily_readers_refuse_an_intraday_snapshot(tmp_path: Path) -> None:
+    """``verify_snapshot`` defaults to daily: 5-minute bars can never be read as days."""
+    from alpha_data.snapshot import snapshot_timeframe
+
+    store = ParquetStore(tmp_path / "store-5m")
+    stamps = pl.datetime_range(
+        datetime(2026, 11, 2, 14, 30, tzinfo=UTC),
+        datetime(2026, 11, 2, 15, 0, tzinfo=UTC),
+        "5m",
+        eager=True,
+    )
+    store.write_bars(
+        "SPY",
+        pl.DataFrame(
+            {
+                "ts": stamps,
+                "open": 1.0,
+                "high": 1.0,
+                "low": 1.0,
+                "close": 1.0,
+                "volume": 1.0,
+            }
+        ),
+    )
+    store.write_provenance("SPY", source="alpaca", adapter_version="1", parser_version="1")
+    create_snapshot(
+        store,
+        tmp_path / "snapshots",
+        "five",
+        ["SPY"],
+        source="alpaca",
+        adapter_version="1",
+        parser_version="1",
+        created_at=datetime(2026, 11, 3, tzinfo=UTC),
+        timeframe="5m",
+    )
+    snap = tmp_path / "snapshots" / "five"
+    assert snapshot_timeframe(snap) == "5m"
+    with pytest.raises(DataError, match="holds 5m bars, but this read expects 1D"):
+        verify_snapshot(snap)
+    with pytest.raises(DataError, match="holds 5m bars"):
+        snapshot_manifest_hash(snap)
+    verify_snapshot(snap, timeframe="5m")
+    assert len(snapshot_manifest_hash(snap, timeframe="5m")) == 64

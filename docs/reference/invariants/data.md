@@ -10,7 +10,7 @@ sources:
   - tests/bias_guards/test_pit_*.py
   - tests/bias_guards/test_source_future_poison.py
   - tests/bias_guards/test_universe_survivorship.py
-verified: 841eb50dcc89
+verified: b4b36f41caa0
 ---
 
 # Data layer invariants
@@ -52,7 +52,7 @@ General rule: [research integrity § Point-in-time reads](research-integrity.md#
   Validation happens at ingest and at the typed read.
 - `write_bars` replaces a symbol wholesale and atomically (temp sibling, then `os.replace`). It rejects missing
   columns, a tz-naive `ts`, and duplicate timestamps, and sorts by `ts` — positional readers rely on one
-  sorted, tz-aware row per session.
+  sorted, tz-aware row per bar.
 - Store paths reject empty, `..`, backslash and absolute names. A slash symbol (`BTC/USD`) becomes a
   subdirectory, so it never collides with `BTC_USD`.
 
@@ -83,7 +83,7 @@ General rule: [research integrity § Corporate actions: two clocks](research-int
 
 ## Vendor receipts and promotion
 
-[ADR-0017](../../adr/0017-authoritative-daily-data-and-broker-paper-boundary.md). Path for every daily pull:
+[ADR-0017](../../adr/0017-authoritative-daily-data-and-broker-paper-boundary.md). Path for every receipt-backed pull:
 provider → immutable receipt → candidate → quality gate → canonical Parquet → snapshot.
 
 - `stage_and_promote` refuses a `FetchResult` without identity, receipt and raw response, or whose symbol or
@@ -101,7 +101,7 @@ provider → immutable receipt → candidate → quality gate → canonical Parq
   and every read of that symbol raises until `rollback_interrupted_promotion(..., acknowledge=True)`.
 - Immutable receipt, candidate and quarantine directories may be republished only with identical bytes.
 - Provenance v2 embeds `DatasetIdentity` and `FetchReceipt`; three-field legacy provenance stays readable.
-  `DatasetIdentity` accepts only daily (`1D`) raw-price datasets.
+  `DatasetIdentity` accepts raw-price datasets at any bar timeframe: [bar timeframes](data-bar-timeframes.md).
 
 ## Snapshots
 
@@ -136,8 +136,8 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
   No error message points to another source.
 - CCXT accepts only `coinbase` and `binance`, returns completed intervals only, never sends `since=0` (Coinbase
   answers it with the latest bars), and keeps venue-qualified `ccxt:<exchange>` provenance byte-compatible.
-  It paginates past per-call caps; the daily `fetch(date, date)` contract delegates to `fetch_timeframe`.
-- `CCXTAdapter.first_bar` is a daily-only listing-date probe, never a history read: it checks `load_markets`,
+  It paginates past per-call caps; `fetch(date, date)` delegates to `fetch_timeframe` (daily by default).
+- `CCXTAdapter.first_bar` is a daily listing-date probe, never a history read: it checks `load_markets`,
   scans forward from 2009 in page-sized windows, and fails loud on an unknown market, no history, or a bar
   earlier than requested. It stores nothing.
 - QuantPad is no longer a provider: its adapter and archive code were removed on 2026-11-14

@@ -1,21 +1,26 @@
-"""ccxt crypto adapter: raw daily OHLCV (UTC-native, no corporate actions)."""
+"""ccxt crypto adapter: raw time bars (UTC-native, no corporate actions)."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import polars as pl
 from pydantic import ValidationError
 
 from alpha_core import Bar, DataError
 from alpha_data.adapters.base import FetchResult
+from alpha_data.timeframe import DAILY, BarTimeframe, parse_timeframe
 
 _VERSION = "2"
 PARSER_VERSION = "1"
 _DAY_MS = 86_400_000
 _PAGE_LIMIT = 300  # coinbase caps fetch_ohlcv at 300 candles/call; page forward past it
-_TIMEFRAME_MS = {"1m": 60_000, "5m": 300_000, "1h": 3_600_000, "1d": _DAY_MS}
+_TIMEFRAME_MS = {
+    tf.ccxt: tf.seconds * 1000
+    for minutes in (*range(1, 60), *range(60, 1441, 60))
+    for tf in (BarTimeframe(minutes),)
+}
 SUPPORTED_CCXT_EXCHANGES = ("coinbase", "binance")
 # 2009-01-03 (Bitcoin genesis): no venue serves bars before it, so the listing scan starts here.
 _FIRST_BAR_FLOOR_MS = 1_230_940_800_000
@@ -33,8 +38,9 @@ def _paginate_ohlcv(
 
     A single ``fetch_ohlcv`` call returns at most ``page_limit`` candles, so for any range wider
     than that a lone call silently drops the tail. We advance the cursor past the last bar of each
-    page (``last_ts + step_ms``) and re-request until we pass ``end_ms`` or the exchange stops
-    yielding new data. The forward-progress guard (``last_ts <= prev_last``) ensures a broken
+    page (``last_ts + step_ms``, or UTC midnight if sooner for intraday grids) and re-request
+    until we pass ``end_ms`` or the exchange stops yielding new data. The forward-progress guard
+    (``last_ts <= prev_last``) ensures a broken
     exchange that ignores ``since`` terminates instead of looping forever. Returns bars ascending;
     page seams may overlap, so the caller dedupes by timestamp.
     """
@@ -51,6 +57,8 @@ def _paginate_ohlcv(
         out.extend(page)
         prev_last = last_ts
         cursor = last_ts + step_ms
+        if step_ms < _DAY_MS:
+            cursor = min(cursor, (last_ts // _DAY_MS + 1) * _DAY_MS)
     return out
 
 
@@ -83,7 +91,8 @@ def clip_ohlcv_period(
     by_ts = {
         int(row[0]): row
         for row in raw
-        if since_ms <= row[0] <= end_ms and row[0] < current_period_start
+        if since_ms <= row[0] <= end_ms
+        and (row[0] < current_period_start if step_ms == _DAY_MS else row[0] + step_ms <= now_ms)
     }
     return [by_ts[ts] for ts in sorted(by_ts)]
 
@@ -139,7 +148,7 @@ class CCXTAdapter:
     version = _VERSION
     parser_version = PARSER_VERSION
 
-    def __init__(self, exchange: str = "coinbase") -> None:
+    def __init__(self, exchange: str = "coinbase", timeframe: BarTimeframe = DAILY) -> None:
         # coinbase: US-accessible, key-free public OHLCV, accepts the unified ``BTC/USD``,
         # and honours ``since`` for historical ranges (kraken's OHLC endpoint ignores
         # ``since`` and returns only a recent ~720-bar window, breaking dated fetches).
@@ -147,16 +156,20 @@ class CCXTAdapter:
             raise DataError(
                 f"unsupported CCXT exchange {exchange!r}; known: {list(SUPPORTED_CCXT_EXCHANGES)}"
             )
+        self._timeframe = timeframe
         self._exchange = exchange
         # Venue-qualified source id is copied into immutable snapshot provenance.
         self.name = f"ccxt:{self._exchange}"
 
     def fetch(self, symbol: str, start: date, end: date) -> FetchResult:
+        end_instant = datetime(end.year, end.month, end.day, tzinfo=UTC)
+        if not self._timeframe.is_daily:
+            end_instant += timedelta(days=1, milliseconds=-1)
         return self.fetch_timeframe(
             symbol,
             datetime(start.year, start.month, start.day, tzinfo=UTC),
-            datetime(end.year, end.month, end.day, tzinfo=UTC),
-            timeframe="1d",
+            end_instant,
+            timeframe=self._timeframe.ccxt,
         )
 
     def fetch_timeframe(
@@ -165,9 +178,8 @@ class CCXTAdapter:
         """Fetch one bounded completed-interval OHLCV series through the unified CCXT seam."""
         import ccxt  # type: ignore[import-untyped]  # ccxt has no stubs
 
-        step_ms = _TIMEFRAME_MS.get(timeframe)
-        if step_ms is None:
-            raise DataError("CCXT timeframe must be 1m, 5m, 1h, or 1d")
+        tf = parse_timeframe(timeframe)
+        step_ms = tf.seconds * 1000
         if (
             start.tzinfo is None
             or start.utcoffset() is None
@@ -186,7 +198,7 @@ class CCXTAdapter:
         end_ms = int(end.timestamp() * 1000)
 
         raw = _paginate_ohlcv(
-            lambda cur: ex.fetch_ohlcv(symbol, timeframe=timeframe, since=cur, limit=_PAGE_LIMIT),
+            lambda cur: ex.fetch_ohlcv(symbol, timeframe=tf.ccxt, since=cur, limit=_PAGE_LIMIT),
             since_ms=since,
             end_ms=end_ms,
             step_ms=step_ms,
@@ -201,6 +213,20 @@ class CCXTAdapter:
         )
         if not clipped:
             raise DataError(f"ccxt returned no data for {symbol} {start}..{end}")
+        if not tf.is_daily:
+            previous: int | None = None
+            for row in clipped:
+                stamp = datetime.fromtimestamp(row[0] / 1000, tz=UTC)
+                if not tf.is_aligned(stamp):
+                    raise DataError(f"ccxt bar is not timeframe-aligned: {stamp.isoformat()}")
+                if previous is not None:
+                    expected = min(previous + step_ms, (previous // _DAY_MS + 1) * _DAY_MS)
+                    if row[0] != expected:
+                        missing = datetime.fromtimestamp(expected / 1000, tz=UTC)
+                        raise DataError(
+                            f"ccxt missing bar start {missing.isoformat()} for {symbol}"
+                        )
+                previous = int(row[0])
         return parse_ccxt_ohlcv(clipped, symbol)
 
     def ticker(self, symbol: str) -> tuple[float, datetime]:
@@ -231,8 +257,8 @@ class CCXTAdapter:
         from 2009 until the exchange yields a bar. Binance answers the first window with bars
         from the listing date; Coinbase windows ``since`` and needs ~13 requests. ``since=0`` is
         deliberately never sent -- it is falsy and some venues then return the *latest* bars.
-        Fails loud on an unknown pair, a bar earlier than requested, or no history; daily only
-        so the scan stays bounded (~22 requests).
+        Fails loud on an unknown pair, a bar earlier than requested, or no history. Daily
+        probes keep the scan bounded (~22 requests).
         """
         import ccxt
 
