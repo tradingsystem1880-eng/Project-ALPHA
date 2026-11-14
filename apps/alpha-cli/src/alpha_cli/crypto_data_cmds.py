@@ -4622,7 +4622,7 @@ def backfill(
             end=end_date,
             ledger_path=ledger_path,
             acquire=_backfill_acquire,
-            now=_now(),
+            now=(started := _now()),
             dry_run=dry_run,
             log=None if json_out else lambda line: typer.echo(line, err=True),
             verify_completed=verify_completed,
@@ -4630,7 +4630,7 @@ def backfill(
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     summary.update(
-        not_published_yet=list(unpublished_binance_periods(start_date, end_date, _now()))
+        not_published_yet=list(unpublished_binance_periods(start_date, end_date, started))
         if provider == "binance"
         else [],
         verification_artifact_byte_limit=max_verify_artifact_bytes,
@@ -4668,6 +4668,7 @@ def backfill_status(
     json_out: bool = typer.Option(False, "--json", help="emit structured inspection receipt"),
 ) -> None:
     """Inspect retained progress/evidence without writes or provider calls; grants no authority."""
+    from alpha_cli._crypto_backfill import unpublished_binance_periods
     from alpha_cli._crypto_backfill_inspection import inspect_backfill
 
     try:
@@ -4686,12 +4687,17 @@ def backfill_status(
         start=start_date,
         end=end_date,
         ledger_path=AlphaSettings().data_dir / "crypto" / "backfill" / f"{ledger}.json",
-        now=_now(),
+        now=(started := _now()),
         max_ledger_bytes=max_ledger_bytes,
         max_windows=max_windows,
         max_verify_artifact_bytes=max_verify_artifact_bytes,
         max_verify_metadata_bytes=max_verify_metadata_bytes,
         load_store=_bulk_store,
+    )
+    summary["not_published_yet"] = (
+        list(unpublished_binance_periods(start_date, end_date, started))
+        if provider == "binance"
+        else []
     )
     _emit(summary, json_out=json_out)
     if summary["inspection_state"] != "complete":

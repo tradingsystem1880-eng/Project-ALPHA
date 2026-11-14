@@ -226,3 +226,19 @@ def test_closed_ranges_reject_touching_overlap_and_missing(
 
 def test_disjoint_ranges_and_distinct_datasets_are_accepted(members: ModuleType) -> None:
     members.check_dataset_ranges([_pair(3, 4), _pair(), _pair(instrument="ETHUSDT")])
+
+
+@pytest.mark.parametrize(
+    ("artifact_key", "accepted"), [("raw/legacy/archive.zip", True), ("other/archive.zip", False)]
+)
+def test_signature_accepts_legacy_raw_inputs_like_publication(
+    members: ModuleType, artifact_key: str, accepted: bool
+) -> None:
+    manifest, raws = _capture()
+    del raws["r1"]["artifact_kind"]
+    raws["r1"]["artifact_key"] = artifact_key
+    if accepted:
+        assert members.capture_signature(manifest, raws)["raw_inputs"]
+    else:
+        with pytest.raises(DataError, match="raw lineage is missing or invalid"):
+            members.capture_signature(manifest, raws)

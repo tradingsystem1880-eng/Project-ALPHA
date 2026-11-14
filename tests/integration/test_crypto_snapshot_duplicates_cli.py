@@ -15,7 +15,12 @@ from typer.testing import CliRunner
 
 from alpha_cli import crypto_data_cmds
 from alpha_cli.main import app
-from alpha_data.crypto.contracts import CryptoDatasetIdentityV1, CryptoQualityReportV1
+from alpha_data.crypto.contracts import (
+    CryptoDatasetIdentityV1,
+    CryptoQualityReportV1,
+    CryptoSnapshotMemberV1,
+    CryptoSnapshotV1,
+)
 from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
 runner = CliRunner()
@@ -234,3 +239,84 @@ def test_current_month_backfill_reports_unpublished_and_succeeds(
     assert calls == []
     assert result["not_published_yet"] == ["2026-08"]
     assert result["windows_total"] == result["failed"] == result["done"] == 0
+
+
+def _store_snapshot_directly(store: CryptoBulkStore, ids: list[str]) -> str:
+    """Write a snapshot in the given member order, bypassing snapshot-create's rules."""
+    members = []
+    for manifest_id in ids:
+        manifest = store.verify_manifest(manifest_id)
+        members.append(
+            CryptoSnapshotMemberV1(
+                dataset=CryptoDatasetIdentityV1.from_dict(manifest["dataset"]),
+                artifact_key=str(manifest["artifact_key"]),
+                artifact_sha256=str(manifest["artifact_sha256"]),
+            )
+        )
+    snapshot = CryptoSnapshotV1.create(
+        members=tuple(members),
+        asset_master_version="reviewed-native-v1",
+        qualification_versions=("crypto-quality-v1",),
+    )
+    crypto_data_cmds._write_snapshot(snapshot)
+    return snapshot.snapshot_id
+
+
+def test_stored_snapshot_in_any_member_order_still_verifies(
+    store: CryptoBulkStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ids = [_acquire(monkeypatch, month) for month in (1, 2)]
+    reversed_snapshot = _store_snapshot_directly(store, list(reversed(ids)))
+    assert reversed_snapshot != _create(*ids)
+    assert _ok("snapshot-verify", reversed_snapshot)["eligible"] is True
+
+
+def test_stored_snapshot_with_overlapping_members_fails_verification(
+    store: CryptoBulkStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive, tail = _acquire(monkeypatch, 1), _acquire(monkeypatch, 1, tail=True)
+    snapshot = _store_snapshot_directly(store, [archive, tail])
+    _refused("snapshot-verify", snapshot, message="disjoint observed ranges")
+    _refused("storage-verify", message="disjoint observed ranges")
+
+
+def test_backfill_status_lists_months_that_have_not_ended(
+    store: CryptoBulkStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(crypto_data_cmds, "_now", lambda: datetime(2026, 8, 15, tzinfo=UTC))
+    monkeypatch.setattr(
+        crypto_data_cmds,
+        "_backfill_acquire",
+        lambda *args, **kwargs: {"normalized_manifest_id": "unused", "state": "qualified"},
+    )
+    common = ("--symbols", "BTCUSDT", "--quote", "USDT", "--start", "2026-08-01")
+    _ok("backfill", "binance", "market_bars", *common, "--end", "2026-08-15", "--ledger", "now")
+    result = runner.invoke(
+        app,
+        [
+            "crypto-data",
+            "backfill-status",
+            "binance",
+            "market_bars",
+            *common,
+            "--end",
+            "2026-08-15",
+            "--ledger",
+            "now",
+            "--max-ledger-bytes",
+            "100000",
+            "--max-windows",
+            "10",
+            "--max-verify-artifact-bytes",
+            "1000000",
+            "--json",
+        ],
+    )
+    status = json.loads(result.stdout)
+    # A run with no published month writes no ledger, so inspection stays blocked (exit 1);
+    # the unfinished month must still be named, never silently dropped.
+    assert status["reason"] == "LEDGER_MISSING"
+    assert status["not_published_yet"] == ["2026-08"]

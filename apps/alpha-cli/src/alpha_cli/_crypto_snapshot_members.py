@@ -33,7 +33,12 @@ def capture_signature(
     raw_inputs: list[dict[str, object]] = []
     for raw_id in _raw_ids(manifest):
         raw = raw_by_id.get(raw_id)
-        if raw is None or raw.get("artifact_kind") != "raw":
+        legacy_raw = raw is not None and raw.get("artifact_kind") is None
+        if raw is None or not (
+            raw.get("artifact_kind") == "raw"
+            or (legacy_raw and str(raw.get("artifact_key", "")).startswith("raw/"))
+        ):
+            # Same raw-input test as CryptoBulkStore.publish_normalized, legacy raw keys included.
             raise DataError(_RAW_LINEAGE_ERROR)
         retained = {
             key: value
