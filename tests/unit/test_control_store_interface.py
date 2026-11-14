@@ -16,6 +16,8 @@ from alpha_cli import control_store
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests/fixtures/control_store_interface.json"
 PRODUCT_ROOTS = ("apps", "packages", "workers", "tools", "scripts")
+# Module attributes tests patch (or call through the module object); code reading them must stay
+# in control_store.py, or a monkeypatch silently stops taking effect.
 PATCHED_MODULE_ATTRIBUTES = [
     "_SCHEMA_V2",
     "_SCHEMA_V5",
@@ -35,18 +37,27 @@ class InterfaceSnapshot(TypedDict):
 
 
 def imported_names(tree: ast.AST) -> set[str]:
-    """Collect direct imports and attribute uses of module import aliases."""
+    """Names taken from control_store: ``from`` imports (absolute or relative) and attribute uses
+    of a module alias (``from alpha_cli import control_store``, ``import alpha_cli.control_store
+    as cs``, ``from . import control_store``)."""
     names: set[str] = set()
     module_aliases: set[str] = set()
     for node in ast.walk(tree):
-        if not isinstance(node, ast.ImportFrom) or node.level:
-            continue
-        if node.module == "alpha_cli.control_store":
-            names.update(alias.name for alias in node.names)
-        elif node.module == "alpha_cli":
-            module_aliases.update(
-                alias.asname or alias.name for alias in node.names if alias.name == "control_store"
-            )
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if module == "alpha_cli.control_store" or (node.level and module == "control_store"):
+                names.update(alias.name for alias in node.names)
+            elif module == "alpha_cli" or (node.level and not module):
+                module_aliases.update(
+                    alias.asname or alias.name
+                    for alias in node.names
+                    if alias.name == "control_store"
+                )
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "alpha_cli.control_store":
+                    assert alias.asname, "bare `import alpha_cli.control_store` is not scanned"
+                    module_aliases.add(alias.asname)
     names.update(
         node.attr
         for node in ast.walk(tree)
@@ -133,7 +144,9 @@ def test_patched_module_attributes_are_still_read_here() -> None:
     tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
     loads = {
         node.id
-        for node in ast.walk(tree)
+        for function in ast.walk(tree)
+        if isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef))
+        for node in ast.walk(function)
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
     }
     missing = [name for name in PATCHED_MODULE_ATTRIBUTES if not hasattr(control_store, name)]
