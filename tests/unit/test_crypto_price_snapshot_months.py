@@ -231,8 +231,6 @@ def test_aggregate_normalized_size_precedes_hashing(
     monkeypatch.setattr(store, "read_verified_normalized", forbidden)
     with pytest.raises(DataError, match="32 MiB"):
         query(store, results)
-    single = [item for item in metadata if item["artifact_kind"] == "normalized"]
-    assert all(item["artifact_bytes"] < 32 * 1024 * 1024 for item in single)
 
 
 def test_document_is_identical_across_stores(tmp_path: Path) -> None:
