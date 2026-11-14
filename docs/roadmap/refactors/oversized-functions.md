@@ -45,10 +45,11 @@ parameters (`crypto_data_cmds.py::_acquire_result` takes 22).
 
 ## Plan
 
-1. **`build_suite_plan` (889 lines)** first, on its own: a characterisation test over the suite
+1. **Done in #153.** **`build_suite_plan` (889 lines)** first, on its own: a characterisation test over the suite
    specs in the tests, then extract one stage at a time. It is 889 of the unbound group's 12,700 lines and
    touches no approval.
-2. **`research_cmds.py`'s six** (`_run_confirm`, `_run_deep`, `run_research`, `_approval_payload`,
+2. **Done on branch `m6/research-cmds-split` (golden `tests/integration/test_research_cmds_golden.py`).**
+   **`research_cmds.py`'s six** (`_run_confirm`, `_run_deep`, `run_research`, `_approval_payload`,
    `draft_confirmation`, `draft`): share the confirm and deep scaffolding; covered by the existing
    research CLI tests. `research_cmds.py` is not itself hashed: it computes the research binding
    of `alpha_research` and four other modules. Leave `_research_code_paths`,
