@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import signal
 from typing import cast
 
 import typer
 
+from alpha_cli._cli_json import emit as _emit
 from alpha_cli._suite import (
     SUITE_ACTIONS,
     SuiteAction,
@@ -27,13 +27,6 @@ suite_app = typer.Typer(
 def _context() -> tuple[ControlStore, AlphaSettings]:
     settings = AlphaSettings()
     return ControlStore(settings.data_dir), settings
-
-
-def _emit(value: object, *, json_out: bool, fallback: str) -> None:
-    if json_out:
-        typer.echo(json.dumps(value, sort_keys=True, allow_nan=False))
-    else:
-        typer.echo(fallback)
 
 
 @suite_app.command("actions")

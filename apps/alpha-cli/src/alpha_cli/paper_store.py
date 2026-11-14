@@ -19,8 +19,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final, Literal
 
-from alpha_cli._atomic import write_text
 from alpha_core import DataError
+from alpha_core.atomic import write_text
 
 type JsonScalar = str | int | float | bool | None
 type SessionStatus = Literal["starting", "running", "stopping", "completed", "cancelled", "failed"]

@@ -17,8 +17,8 @@ from pathlib import Path
 from typing import Any
 
 from alpha_cli import _ibkr_paper, _runner
-from alpha_cli._atomic import write_text
 from alpha_core import DataError
+from alpha_core.atomic import write_text
 from alpha_data.adapters.base import FetchReceipt
 from alpha_data.adapters.tiingo_adapter import TiingoAdapter
 from alpha_data.pipeline import stage_and_promote

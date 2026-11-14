@@ -25,9 +25,9 @@ import polars as pl
 
 from alpha_cli import _forecast
 from alpha_cli._artifacts import sanitize
-from alpha_cli._atomic import publish, write_text
 from alpha_cli._runner import RunSpec
 from alpha_core import Bar, DataError
+from alpha_core.atomic import publish, write_text
 from alpha_core.config import AlphaSettings
 from alpha_forecast import close_quantiles, kronos_signal
 

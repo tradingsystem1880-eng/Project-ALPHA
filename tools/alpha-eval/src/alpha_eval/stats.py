@@ -30,13 +30,6 @@ def pass_hat_k(successes: int, n: int, k: int) -> float:
     return math.comb(successes, k) / math.comb(n, k)
 
 
-def zero_failure_upper_bound(n: int, confidence: float = 0.95) -> float:
-    """One-sided exact upper bound on a failure rate after n trials with zero failures."""
-    if n <= 0:
-        raise ValueError("n must be positive")
-    return float(1.0 - (1.0 - confidence) ** (1.0 / n))
-
-
 def mean_ci(values: Sequence[float], z: float = _Z95) -> tuple[float, float, float]:
     """Mean with a normal-approximation CI; degenerate (n<2) gives a zero-width interval."""
     if not values:

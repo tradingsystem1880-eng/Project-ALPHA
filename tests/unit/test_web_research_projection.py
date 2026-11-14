@@ -169,7 +169,20 @@ def test_research_projection_uses_only_the_bounded_cli_vocabulary(
     assert _research.datasets(data_dir=tmp_path, symbol="AAPL", limit=10, offset=0) == {"ok": True}
 
     assert calls == [
-        (["research", "capture", "idea", "--json", "--name", "case"], tmp_path, 60.0),
+        (
+            [
+                "research",
+                "capture",
+                "idea",
+                "--created-by",
+                "workstation",
+                "--json",
+                "--name",
+                "case",
+            ],
+            tmp_path,
+            60.0,
+        ),
         (["research", "status", "project", "--json"], tmp_path, 60.0),
         (["research", "proposal-options", "project", "--json"], tmp_path, 60.0),
         (
@@ -183,6 +196,8 @@ def test_research_projection_uses_only_the_bounded_cli_vocabulary(
                 "synthetic_spy_60m_four_hour_v1",
                 "--expected-case-revision",
                 "a" * 64,
+                "--created-by",
+                "workstation",
                 "--json",
             ],
             tmp_path,

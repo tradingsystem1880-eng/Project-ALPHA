@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import json
-from collections.abc import Mapping
 from typing import cast
 
 import typer
 
+from alpha_cli._cli_json import emit as _emit
+from alpha_cli._cli_json import json_object_option as _object
 from alpha_cli.control_store import (
     AuthorKind,
     ControlStore,
@@ -22,23 +22,6 @@ evidence_app = typer.Typer(help="Append-only cited findings and negative-result 
 
 def _store() -> ControlStore:
     return ControlStore(AlphaSettings().data_dir)
-
-
-def _object(raw: str, label: str) -> Mapping[str, object]:
-    try:
-        value: object = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise typer.BadParameter(f"{label} must be a valid JSON object") from exc
-    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
-        raise typer.BadParameter(f"{label} must be a valid JSON object")
-    return cast(dict[str, object], value)
-
-
-def _emit(value: object, *, json_out: bool, fallback: str) -> None:
-    if json_out:
-        typer.echo(json.dumps(value, sort_keys=True, allow_nan=False))
-    else:
-        typer.echo(fallback)
 
 
 @evidence_app.command("add")

@@ -55,7 +55,7 @@ def compare(
 
 def capture(*, data_dir: Path, idea: str, name: str | None = None) -> dict[str, Any]:
     """Capture exact owner wording without approving a contract or launching compute."""
-    args = ["research", "capture", idea, "--json"]
+    args = ["research", "capture", idea, "--created-by", "workstation", "--json"]
     if name is not None:
         args += ["--name", name]
     return _object(_run_json(args, data_dir=data_dir), "research capture")
@@ -92,7 +92,7 @@ def propose(
     ]
     if dataset_ref_id is not None:
         args += ["--dataset", dataset_ref_id]
-    args += ["--json"]
+    args += ["--created-by", "workstation", "--json"]
     return _object(_run_json(args, data_dir=data_dir), "research proposal")
 
 
