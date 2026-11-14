@@ -11,6 +11,7 @@
 # Optional, off by default (they download more):
 #   --with-rdagent          also run scripts/setup_rdagent.sh (pinned RD-Agent source and runtimes)
 #   --with-stock-runtime    also build the RD-Agent stock runtime (implies --with-rdagent)
+#   --with-factor-runtime   also build the RD-Agent factor-loop runtime (implies --with-rdagent)
 #   --with-daily-container  also pull the pinned daily-study Docker image (implies --with-rdagent)
 #   --data-dir DIR --storage-reserve-gb N
 #                           record the owner's free-space reserve for the data folder DIR with
@@ -40,6 +41,7 @@ die() {
 
 with_rdagent=0
 with_stock=0
+with_factor=0
 with_daily=0
 dry_run=0
 data_dir=''
@@ -50,6 +52,7 @@ while [ "$#" -gt 0 ]; do
         -h|--help) usage; exit 0 ;;
         --with-rdagent) with_rdagent=1 ;;
         --with-stock-runtime) with_rdagent=1; with_stock=1 ;;
+        --with-factor-runtime) with_rdagent=1; with_factor=1 ;;
         --with-daily-container) with_rdagent=1; with_daily=1 ;;
         --dry-run) dry_run=1 ;;
         --data-dir)
@@ -164,6 +167,7 @@ if [ "$with_rdagent" = 1 ]; then
     rdagent_args=()
     [ "$with_daily" = 1 ] && rdagent_args+=(--with-daily-container)
     [ "$with_stock" = 1 ] && rdagent_args+=(--with-stock-runtime)
+    [ "$with_factor" = 1 ] && rdagent_args+=(--with-factor-runtime)
     step 'RD-Agent (scripts/setup_rdagent.sh): pinned source and runtimes'
     run_in "$root" bash scripts/setup_rdagent.sh ${rdagent_args[@]+"${rdagent_args[@]}"}
     done_steps+=('RD-Agent source and runtimes')

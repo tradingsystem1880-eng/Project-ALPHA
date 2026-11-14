@@ -655,6 +655,25 @@ def machine_readiness(
             f"{SETUP_COMMAND} --with-stock-runtime",
         )
     )
+    factor_bundle = runtime / "rdagent-factor-py311"
+    factor = Path(env.get("ALPHA_FACTOR_PYTHON") or factor_bundle / "venv" / "bin" / "python")
+    factor_profile = factor_bundle / "factor-profile.json"
+    factor_ok = factor.is_file() and factor_profile.is_file()
+    items.append(
+        _item(
+            "RD-Agent factor-loop runtime (Python 3.11, ADR-0049)",
+            False,
+            factor_ok,
+            f"found at {factor}, profile recorded"
+            if factor_ok
+            else (
+                f"profile not recorded at {factor_profile}"
+                if factor.is_file()
+                else f"not found at {factor}"
+            ),
+            f"{SETUP_COMMAND} --with-factor-runtime",
+        )
+    )
 
     docker_fix = "install Docker (https://docs.docker.com/engine/install/) and start it"
     if which("docker") is None:

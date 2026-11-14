@@ -176,7 +176,12 @@ the receipt. For each OK factor, on decision dates d in `EXPLORATION`:
   the top k = round(TOP_FRACTION × names) by score (ties broken by instrument name, recorded) and
   0 otherwise, origin d's session, target d+1's session, available_at as the engine requires
   (state its close-stamp convention in the record; do not change the engine), fee and slippage
-  as above; from `ReplayPeriod`: net and gross excess daily returns; annualised mean × 365,
+  as above. Missing factor values: a coin whose factor value is not finite on day d is excluded
+  from that day's ranking and gets weight 0 with placeholder score 0.0 (count these coin-days in
+  the record); k = max(1, round(TOP_FRACTION × available names)) over the available names only;
+  on a day with fewer than `MIN_NAMES` available names every weight is 0 (the book holds cash;
+  count these days); if the engine refuses an all-zero day, fail loud rather than invent weights.
+  From `ReplayPeriod`: net and gross excess daily returns; annualised mean × 365,
   compounded, Sharpe × sqrt(365), max drawdown of the compounded excess curve, mean turnover;
 - family: the run ledger `RUN/evaluations.jsonl` (all prior records) plus this request; every
   factor of every iteration in order, FAILED/LOOKAHEAD/DEGENERATE with p = 1; q-values by
