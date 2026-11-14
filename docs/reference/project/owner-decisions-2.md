@@ -86,3 +86,24 @@ The option text was written by the agent, so it is not quoted as the owner's wor
 - **Said:** "Yes" (to: let the daily rule's price reader read every month in a crypto snapshot
   instead of one month per snapshot).
 - **Governs:** the [data layer](components/data-layer.md).
+
+### 2026-11-14 Prove all 31 unproven features, one by one
+
+- **Said:** "All 31 unproven features. Prove, built, implement, improve all of them. 1 by 1.
+  You have must be agentic and austomusl. If you can improve then or have better suggestions act
+  on it. Remember the purpose of this project and what the end goal is. Make profit trading
+  financial products. Find alpha and edges l. Build trading models and systsem. Reserash. I wbat
+  to domiate in trading and investing."
+- **Context:** the status page listed 31 features as built but never run from start to finish
+  through the installed program. None is to be shelved by default; each is proven end to end,
+  finished or improved, in turn. The assistant may act on improvements without asking.
+- **Governs:** every capability in `docs/roadmap/capabilities.toml`; the
+  [overview](overview.md).
+
+### 2026-11-14 Any free stock source now; Alpaca account to follow
+
+- **Said:** "Just use any free api. I can make an alpaca account in a few hours whej I have
+  time tho"
+- **Context:** widens the entry above: a free source that needs no key may be used now. The
+  owner was told on 2026-11-14 that Yahoo's terms forbid automated collection.
+- **Governs:** the [data layer](components/data-layer.md).
