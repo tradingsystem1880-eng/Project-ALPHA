@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import subprocess
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -26,7 +27,7 @@ def draft_daily_request(
     data_dir: Path,
     source_pack_id: str,
     snapshot_id: str,
-    normalized_manifest_id: str,
+    normalized_manifest_ids: Sequence[str],
 ) -> dict[str, object]:
     """Freeze the approved bounded recipe over one already-acquired qualified snapshot."""
     from alpha_cli._native_daily_rule_container import daily_container_profile
@@ -68,7 +69,7 @@ def draft_daily_request(
     query = query_binance_daily_price_snapshot(
         snapshot,
         bulk,
-        normalized_manifest_id=normalized_manifest_id,
+        normalized_manifest_ids=tuple(normalized_manifest_ids),
         start=datetime(2020, 1, 1, tzinfo=UTC),
         end=end,
         available_by=end,

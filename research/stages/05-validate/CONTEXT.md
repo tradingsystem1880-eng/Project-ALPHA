@@ -5,7 +5,7 @@ sources:
   - apps/alpha-cli/src/alpha_cli/research_gate_packet.py
   - apps/alpha-cli/src/alpha_cli/research_readiness.py
   - apps/alpha-cli/src/alpha_cli/research_dossier.py
-verified: 9c40aa259c97
+verified: bdd1a2a989f8
 ---
 
 # Stage 05 — validate: check the evidence before the owner decides

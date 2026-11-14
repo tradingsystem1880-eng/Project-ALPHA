@@ -1,6 +1,6 @@
 # Refuse ambiguous retained captures at frozen snapshot verification
 
-**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+**Delivery state:** Superseded by ../2026-11-14-crypto-snapshot-duplicates/02-plan.md — ADR-0046 replaced its refuse-every-repeat rule (equal captures count as one, divergent ones refuse); its tamper refusals are proven end to end by `tests/smoke/test_crypto_snapshots_smoke.py` (2026-11-14).
 
 **Historical delivery state (as first recorded):** Completed
 

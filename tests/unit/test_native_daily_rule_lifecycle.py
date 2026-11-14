@@ -90,7 +90,7 @@ def _case(
         query = query_binance_daily_price_snapshot(
             snapshot,
             bulk,
-            normalized_manifest_id=manifest_id,
+            normalized_manifest_ids=(manifest_id,),
             start=datetime(2020, 1, 1, tzinfo=UTC),
             end=end,
             available_by=end,
