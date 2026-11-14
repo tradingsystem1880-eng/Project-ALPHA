@@ -9,8 +9,8 @@ work-in-progress ceiling admits no new live plan, and the work is finished in on
 ## For the owner
 
 - Every program file the daily rule study runs through is now tied to your approval of that
-  study; before, nine were not (three known, six found here). A test now fails if a new one
-  appears untied without a written reason.
+  study; before, fifteen were not (three known, six found while planning, six more found by the
+  review). A test now fails if a new one appears untied without a written reason.
 - A daily-rule study can now be drafted on a snapshot of many monthly Binance files (the kind on
   the Dell): name one stored copy per month. Missing, overlapping or repeated months, and other
   coins, are refused loudly. A one-month snapshot gives exactly the same result as before.
