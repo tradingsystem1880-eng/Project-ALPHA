@@ -30,6 +30,52 @@ LEGACY_KEYS = ["IC"] + [
 ]
 
 
+def record_code(run: Path, digest: str, code: bytes) -> None:
+    folder = run / "code"
+    folder.mkdir(exist_ok=True)
+    path = folder / f"{digest}.py"
+    try:
+        with path.open("xb") as stream:
+            stream.write(code)
+    except FileExistsError:
+        if path.read_bytes() != code:
+            raise ValueError(f"conflicting factor code archive: {digest}") from None
+
+
+def record_round(run: Path, exp: Any, feedback: Any, row: dict[str, Any]) -> None:
+    hashes = {f["name"]: f["code_sha256"] for f in exp.alpha_evaluation.get("factors", [])}
+    record = {
+        "schema": "AlphaRdagentRoundV1",
+        **row,
+        "hypothesis": {
+            key: getattr(exp.hypothesis, key, None)
+            for key in (
+                "hypothesis",
+                "reason",
+                "concise_reason",
+                "concise_observation",
+                "concise_justification",
+                "concise_knowledge",
+            )
+        },
+        "tasks": [
+            {
+                "name": task.factor_name,
+                **{key: getattr(task, key, None) for key in ("description", "variables")},
+                "formulation": getattr(task, "factor_formulation", None),
+                "code_sha256": hashes[task.factor_name],
+            }
+            for task in exp.sub_tasks
+        ],
+        "feedback": {
+            key: getattr(feedback, key)
+            for key in ("observations", "hypothesis_evaluation", "new_hypothesis", "reason")
+        },
+    }
+    with (run / "rounds.jsonl").open("a") as stream:
+        stream.write(json.dumps(record, sort_keys=True) + "\n")
+
+
 class AlphaFactorScenario(QlibFactorScenario):
     def get_runtime_environment(self) -> str:
         # Upstream runs `python runtime_info.py` through a conda-derived PATH; without conda that
@@ -108,6 +154,8 @@ class AlphaFactorRunner(Developer):
                 "status": "FAILED",
                 "lookahead": {"status": "NOT_RUN"},
             }
+            if code:
+                record_code(run, str(factor["code_sha256"]), code)
             if code and feedback:
                 execution, values = workspace.execute("All")
                 if values is not None:
@@ -255,4 +303,5 @@ class AlphaFactorFeedback(Experiment2Feedback):
         }
         with (Path(os.environ["ALPHA_FACTOR_RUN_DIR"]) / "feedback.jsonl").open("a") as stream:
             stream.write(json.dumps(row, sort_keys=True) + "\n")
+        record_round(Path(os.environ["ALPHA_FACTOR_RUN_DIR"]), exp, feedback, row)
         return feedback

@@ -45,6 +45,35 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def label_calls(calls: list[dict[str, Any]], steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Copy calls with the latest-starting completed step that contains each timestamp."""
+    active: dict[tuple[int, int, str], list[dict[str, Any]]] = {}
+    intervals = []
+    for row in steps:
+        key = (row["loop"], row["step_index"], row["step"])
+        if row["event"] == "start":
+            active.setdefault(key, []).append(row)
+        elif row["event"] == "end" and active.get(key):
+            start = active[key].pop()
+            intervals.append(
+                (datetime.fromisoformat(start["ts"]), datetime.fromisoformat(row["ts"]), start)
+            )
+    labelled = []
+    for call in calls:
+        ts = datetime.fromisoformat(call["ts"])
+        matching = [(start, row) for start, end, row in intervals if start <= ts <= end]
+        step = max(matching, key=lambda item: item[0])[1] if matching else None
+        labelled.append(
+            {
+                **call,
+                "schema": "AlphaRdagentCallLabelV1",
+                "loop": step["loop"] if step else None,
+                "step": step["step"] if step else "outside-step",
+            }
+        )
+    return labelled
+
+
 def _inside_git(path: Path) -> bool:
     probe = path
     while not probe.exists():
@@ -158,7 +187,9 @@ class Launch:
             "started_at": _now(),
         }
 
-    def log(self, step: str, **fields: Any) -> None:
+    def log(self, step: str, event: str | None = None, **fields: Any) -> None:
+        if event is not None:
+            fields["event"] = event
         line = json.dumps({"ts": _now(), "step": step, **fields}, sort_keys=True)
         with (self.run / "launch.jsonl").open("a") as stream:
             stream.write(line + "\n")
@@ -179,6 +210,7 @@ class Launch:
         return result.stdout.strip()
 
     def verify(self) -> None:
+        self.log("verify", event="start")
         self.receipt["factor_runtime_identity"] = self.check(
             "verify-runtime",
             [
@@ -205,6 +237,7 @@ class Launch:
         )
 
     def prepare(self) -> None:
+        self.log("prepare", event="start")
         panel = self.run / "panel"
         self.check(
             "freeze",
@@ -254,6 +287,7 @@ class Launch:
         return child
 
     def gateway(self) -> tuple[str, str]:
+        self.log("gateway", event="start")
         self.args.gateway_data_dir.mkdir(parents=True, exist_ok=True)
         state = self.args.gateway_data_dir / "model-gateway"
         command = [
@@ -313,6 +347,7 @@ class Launch:
         raise LaunchError("model gateway did not write its session within 30 s")
 
     def loop(self, base_url: str, token: str) -> int:
+        self.log("loop", event="start")
         work = self.run / "work"
         work.mkdir()
         environment = loop_environment(
@@ -392,6 +427,29 @@ class Launch:
             "months": state.get("months"),
         }
 
+    def write_call_labels(self) -> dict[str, Any]:
+        output = self.run / "calls-labelled.jsonl"
+        paths = (self.args.gateway_data_dir / "model-gateway/calls.jsonl", self.run / "steps.jsonl")
+        try:
+            missing = [str(p) for p in paths if not p.exists()]
+            if missing:
+                output.write_bytes(b"")
+                return {"calls": 0, "reason": "missing files: " + ", ".join(missing)}
+            calls, steps = (
+                [json.loads(line) for line in p.read_text().splitlines()] for p in paths
+            )
+            calls = [row for row in calls if row["run_id"] == self.args.run_id]
+            labelled = label_calls(calls, steps)
+            output.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in labelled))
+            return {"calls": len(labelled)}
+        except Exception as error:  # noqa: BLE001 - labelling is best effort, with receipt diagnostics
+            note = f"{type(error).__name__}: {error}"
+            try:
+                output.write_bytes(b"")
+            except OSError as write_error:
+                note += f"; empty output: {type(write_error).__name__}: {write_error}"
+            return {"calls": 0, "reason": note}
+
     def finish(self, exit_status: int, reason: str) -> int:
         evaluations = self.run / "evaluations.jsonl"
         self.receipt.update(
@@ -399,6 +457,7 @@ class Launch:
             exit_status=exit_status,
             loop_reason=self.receipt.get("loop_reason", reason),
             gateway_status=self.gateway_status(),
+            calls_labelled=self.write_call_labels(),
             evaluations_sha256=hashlib.sha256(evaluations.read_bytes()).hexdigest()
             if evaluations.exists()
             else None,

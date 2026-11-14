@@ -203,10 +203,16 @@ def test_one_failing_factor_is_recorded_as_error_and_the_rest_still_land(tmp_pat
     req.write_text(json.dumps(value))
     real = ev.screen
 
-    def flaky(signal: np.ndarray, outcome: np.ndarray, digest: str) -> dict[str, Any]:
+    def flaky(
+        signal: np.ndarray,
+        outcome: np.ndarray,
+        digest: str,
+        *,
+        series: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if digest == "e" * 64:
             raise ZeroDivisionError("planted")
-        return real(signal, outcome, digest)
+        return real(signal, outcome, digest, series=series)
 
     ledger = tmp_path / "ledger.jsonl"
     with patch.object(ev, "screen", flaky):
@@ -563,3 +569,228 @@ def test_import_refuses_a_different_reserved_start(
     with pytest.raises(DataError):
         import_command(ledger, source, monkeypatch)
     assert not ledger.exists() or not ledger.read_bytes()
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("range_fraction_7d", "Range fraction over 7 days"),
+        ("VOL_ret_21d", "Volatility return over 21 days"),
+        (
+            "vwap_ic_xs_ma_sma_std_atr_pct_zscore",
+            "Volume-weighted average price information coefficient cross-sectional "
+            "moving average moving average standard deviation average true range percent z-score",
+        ),
+        ("7d_ret", "7d return"),
+    ],
+)
+def test_plain_names(name: str, expected: str) -> None:
+    assert ev.plain_name(name) == expected
+
+
+def trial_series(run: Path) -> tuple[Path, dict[str, Any]]:
+    folder = run / "evaluations/iter-0/series"
+    return folder, json.loads((folder / "series.json").read_bytes())
+
+
+def test_series_reproduce_metrics_hashes_and_are_byte_identical(tmp_path: Path) -> None:
+    run = tmp_path / "run"
+    result = evaluate(run, fixture(run), tmp_path / "ledger.jsonl")
+    factor = result["factors"][0]
+    digest = factor["code_sha256"]
+    folder, manifest = trial_series(run)
+    assert manifest["schema"] == "AlphaRdagentTrialSeriesV1"
+    assert manifest["factors"][0]["code_sha256"] == digest
+    assert {f["name"] for f in manifest["factors"][0]["files"]} == {
+        f"{digest}.{kind}.parquet"
+        for kind in ("screen", "buckets", "buckets_daily", "replay", "holdings")
+    }
+    for item in manifest["factors"][0]["files"]:
+        assert ev.sha((folder / item["name"]).read_bytes()) == item["sha256"]
+    expected_hash = ev.sha((folder / "series.json").read_bytes())
+    assert result["inputs"]["series_sha256"] == expected_hash
+    assert factor["evidence"] == {
+        "series_manifest": "evaluations/iter-0/series/series.json",
+        "sha256": expected_hash,
+    }
+    ledger_row = json.loads((tmp_path / "ledger.jsonl").read_bytes())
+    assert ledger_row["evidence"] == factor["evidence"]
+    assert ledger_row["plain_name"] == "Factor"
+    screen = pl.read_parquet(folder / f"{digest}.screen.parquet")
+    assert screen.columns == ["clock", "date", "rank_ic", "names"]
+    assert screen["clock"].unique().to_list() == ["daily"]
+    assert screen["names"].to_list() == [15] * screen.height
+    assert screen["rank_ic"].mean() == pytest.approx(factor["screen"]["mean_ic"])
+    buckets = pl.read_parquet(folder / f"{digest}.buckets.parquet")
+    daily = pl.read_parquet(folder / f"{digest}.buckets_daily.parquet")
+    assert buckets.columns == ["clock", "bucket", "mean_outcome", "observations"]
+    assert daily.columns == ["clock", "date", "bucket", "mean_outcome"]
+    assert buckets["observations"].sum() == screen.height * 15
+    for row in buckets.iter_rows(named=True):
+        assert daily.filter(pl.col("bucket") == row["bucket"])[
+            "mean_outcome"
+        ].mean() == pytest.approx(row["mean_outcome"])
+    replay = pl.read_parquet(folder / f"{digest}.replay.parquet")
+    assert replay.columns == [
+        "clock",
+        "target_ts",
+        "exit_ts",
+        "gross_return",
+        "net_return",
+        "benchmark_return",
+        "excess_return",
+        "turnover",
+        "fees",
+        "slippage_cost",
+    ]
+    mean_excess = replay["excess_return"].mean()
+    assert isinstance(mean_excess, float)
+    assert mean_excess * 365 == pytest.approx(factor["replay"]["net"]["annualized_return"])
+    assert replay["turnover"].mean() == pytest.approx(factor["replay"]["mean_turnover"])
+    assert replay["excess_return"].to_numpy() == pytest.approx(
+        (replay["net_return"] - replay["benchmark_return"]).to_numpy()
+    )
+    holdings = pl.read_parquet(folder / f"{digest}.holdings.parquet")
+    assert holdings.columns == ["clock", "date", "instrument", "target_weight", "score"]
+    assert holdings.group_by("date").agg(pl.col("target_weight").sum())[
+        "target_weight"
+    ].to_numpy() == pytest.approx(np.ones(screen.height))
+    panel = pl.read_parquet(run / "panel/panel.parquet")
+    outcomes = (
+        panel.select("date", "instrument", "open")
+        .sort(["instrument", "date"])
+        .with_columns(
+            (
+                pl.col("open").shift(-2).over("instrument")
+                / pl.col("open").shift(-1).over("instrument")
+                - 1
+            ).alias("outcome")
+        )
+    )
+    top = (
+        holdings.filter(pl.col("target_weight") > 0)
+        .join(outcomes, on=["date", "instrument"])
+        .group_by("date")
+        .agg(pl.col("outcome").mean())
+        .sort("date")
+    )
+    assert top["outcome"].to_numpy() == pytest.approx(
+        daily.filter(pl.col("bucket") == 3)["mean_outcome"].to_numpy()
+    )
+    fresh = tmp_path / "fresh" / "run"
+    evaluate(fresh, fixture(fresh), tmp_path / "fresh-ledger.jsonl")
+    other_folder, _ = trial_series(fresh)
+    assert {p.name: p.read_bytes() for p in folder.iterdir()} == {
+        p.name: p.read_bytes() for p in other_folder.iterdir()
+    }
+
+
+def test_series_failure_changes_no_metrics_or_decisions(tmp_path: Path) -> None:
+    run = tmp_path / "run"
+    req = fixture(run)
+    good = evaluate(run, req, tmp_path / "good.jsonl")
+    with patch.object(ev, "_write_series", side_effect=OSError("evidence disk unavailable")):
+        failed = ev.evaluate(run, req, run / "other.json", tmp_path / "failed.jsonl")
+    assert "evidence disk unavailable" in failed["series_note"]
+    good["inputs"].pop("series_sha256")
+    for row in good["factors"]:
+        row.pop("evidence", None)
+    failed.pop("series_note")
+    assert ev.canonical(good) == ev.canonical(failed)
+
+
+def test_degenerate_and_unscreened_factors_have_no_series(tmp_path: Path) -> None:
+    run = tmp_path / "run"
+    req = fixture(run)
+    frame = pl.read_parquet(run / "factors.parquet").with_columns(pl.lit(1.0).alias("factor"))
+    frame.write_parquet(run / "factors.parquet")
+    result = evaluate(run, req, tmp_path / "ledger.jsonl")
+    folder, manifest = trial_series(run)
+    assert manifest["factors"] == []
+    assert [p.name for p in folder.iterdir()] == ["series.json"]
+    assert "evidence" not in result["factors"][0]
+
+
+def test_same_request_repeat_has_no_evidence(tmp_path: Path) -> None:
+    run = tmp_path / "run"
+    req = fixture(run)
+    request = json.loads(req.read_bytes())
+    request["factors"].append({**request["factors"][0], "name": "repeat"})
+    req.write_text(json.dumps(request))
+    record = evaluate(run, req, tmp_path / "ledger.jsonl")
+    assert record["factors"][1]["status"] == "REPEAT"
+    assert "evidence" not in record["factors"][1]
+    _, manifest = trial_series(run)
+    assert len(manifest["factors"]) == 1
+
+
+def test_screen_error_retains_computed_daily_ic_only(tmp_path: Path) -> None:
+    run = tmp_path / "run"
+    req = fixture(run)
+    with patch.object(ev, "block_bootstrap_ci", side_effect=DataError("inference failed")):
+        record = evaluate(run, req, tmp_path / "ledger.jsonl")
+    factor = record["factors"][0]
+    assert factor["status"] == "ERROR"
+    folder, manifest = trial_series(run)
+    files = manifest["factors"][0]["files"]
+    assert [f["name"] for f in files] == [f"{factor['code_sha256']}.screen.parquet"]
+    assert pl.read_parquet(folder / files[0]["name"])["rank_ic"].null_count() == 0
+
+
+def test_partial_series_write_failure_is_not_a_scoring_failure(tmp_path: Path) -> None:
+    run = tmp_path / "run"
+    req = fixture(run)
+    original = ev._series_file
+
+    def fail_buckets(path: Path, payload: bytes) -> None:
+        if path.name.endswith(".buckets.parquet"):
+            raise OSError("bucket write failed")
+        original(path, payload)
+
+    with patch.object(ev, "_series_file", fail_buckets):
+        record = evaluate(run, req, tmp_path / "ledger.jsonl")
+    factor = record["factors"][0]
+    assert factor["status"] == "CANDIDATE" and record["decision"] is True
+    assert "bucket write failed" in factor["series_note"]
+    folder, manifest = trial_series(run)
+    assert [f["name"] for f in manifest["factors"][0]["files"]] == [
+        f"{factor['code_sha256']}.screen.parquet"
+    ]
+    assert len(list(folder.iterdir())) == 2
+
+
+@pytest.mark.parametrize("direction", [1, -1])
+def test_bucket_three_matches_replay_ties_and_direction(tmp_path: Path, direction: int) -> None:
+    run = tmp_path / "run"
+    req = fixture(run)
+    request, panel, values, _ = ev._inputs(run, req)
+    days = [date(2021, 1, 1) + timedelta(days=n) for n in range(4)]
+    symbols = sorted(panel["instrument"].unique().to_list())
+    signal = np.zeros((len(days), len(symbols)))
+    signal[:, :7] = 1
+    data: dict[str, Any] = {}
+    ev.replay(panel, signal, days, direction, series=data)
+    outcomes = ev.matrix(panel, "open", [days[0] + timedelta(days=n) for n in range(6)], symbols)
+    outcomes = outcomes[2:] / outcomes[1:-1] - 1
+    buckets, daily = ev._bucket_frames(signal, outcomes, days, symbols, direction)
+    assert buckets["observations"].sum() == len(days) * len(symbols)
+    selected = [
+        t.symbol for t in data["targets"] if t.origin_ts.date() == days[0] and t.target_weight > 0
+    ]
+    assert selected == symbols[:5] if direction == 1 else selected == symbols[7:12]
+    for i, day in enumerate(days):
+        weights = np.array([t.target_weight for t in data["targets"] if t.origin_ts.date() == day])
+        assert daily.filter((pl.col("date") == day) & (pl.col("bucket") == 3))["mean_outcome"][
+            0
+        ] == pytest.approx(float(weights @ outcomes[i]))
+
+
+def test_bucket_table_keeps_empty_days_and_null_means() -> None:
+    days = [date(2021, 1, 1), date(2021, 1, 2)]
+    scores = np.tile(np.arange(6), (2, 1)).astype(float)
+    outcomes = np.ones((2, 6))
+    outcomes[1] = np.nan
+    summary, daily = ev._bucket_frames(scores, outcomes, days, list("ABCDEF"), 1)
+    assert daily.height == 6
+    assert daily.filter(pl.col("date") == days[1])["mean_outcome"].to_list() == [None] * 3
+    assert summary["observations"].to_list() == [2, 2, 2]

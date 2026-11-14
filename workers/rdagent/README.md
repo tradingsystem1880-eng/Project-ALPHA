@@ -450,6 +450,22 @@ export ALPHA_RDAGENT_SOURCE=... ALPHA_FACTOR_PYTHON=...   # as printed by the se
   `logs/` and `receipt.json`. The trial ledger is shared by all runs and append-only.
 - Generated factor code runs with the gateway's address and token removed from its environment.
 
+### Evidence recorded per trial
+
+All files below live under the run directory, outside git; they remain exploratory, not admitted.
+
+- `evaluations/iter-<n>/series/<code_sha256>.screen.parquet`: daily rank IC and finite-name counts.
+- `evaluations/iter-<n>/series/<code_sha256>.buckets.parquet`: direction-adjusted tercile outcomes and observation counts.
+- `evaluations/iter-<n>/series/<code_sha256>.buckets_daily.parquet`: outcomes per day and tercile (bucket 3 is the replay's top third).
+- `evaluations/iter-<n>/series/<code_sha256>.replay.parquet`: canonical period returns, turnover, fees and slippage.
+- `evaluations/iter-<n>/series/<code_sha256>.holdings.parquet`: decision-day instruments, target weights and scores.
+- `evaluations/iter-<n>/series/series.json`: factor hashes and file hashes, bound into evaluation inputs and trial-ledger evidence references; unavailable series carry `series_note`.
+- `code/<code_sha256>.py`: the exact factor code, written once and checked on reuse.
+- `rounds.jsonl`: RD-Agent's hypothesis, tasks and feedback words linked to factor hashes and both decisions; `feedback.jsonl` stays unchanged.
+- `steps.jsonl`: UTC start/end records for each loop step, including error types.
+- `calls-labelled.jsonl`: this run's gateway calls labelled by loop and step; `launch.jsonl` also records launcher step starts.
+- New trial-ledger rows carry a deterministic plain-English `plain_name` beside the original name.
+
 ### Exposure log and imported trials
 
 ```sh

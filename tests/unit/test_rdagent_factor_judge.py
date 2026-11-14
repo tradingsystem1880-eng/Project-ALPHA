@@ -8,6 +8,7 @@ import importlib.util
 import os
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -106,6 +107,11 @@ with patch.object(j,'APIBackend') as backend:
 row=json.loads((Path(sys.argv[3])/'feedback.jsonl').read_text())
 assert row['model_decision'] is True and row['alpha_decision'] is False
 assert 'reply' not in row
+round_row=json.loads((Path(sys.argv[3])/'rounds.jsonl').read_text())
+assert round_row['schema']=='AlphaRdagentRoundV1'
+assert round_row['hypothesis']['hypothesis']=='test'
+assert round_row['hypothesis']['concise_reason'] is None
+assert round_row['model_decision'] is True and round_row['alpha_decision'] is False
 runner=j.AlphaFactorRunner(scen)
 base=SimpleNamespace(based_experiments=[],sub_tasks=[],result=None,stdout='')
 runner.develop(base)
@@ -199,3 +205,132 @@ def test_hypothesis_context_shows_imported_and_exposed_v2_rows(
     )
     assert "old: FAILED; mean rank IC None; q 1.0; run old-run" in summary
     assert "repeat:" not in summary
+
+
+def judge_parts(*names: str) -> dict[str, Any]:
+    import ast
+    import hashlib
+    import json
+    from typing import Any
+
+    tree = ast.parse((WORKER / "alpha_factor_judge.py").read_text())
+    nodes: list[ast.stmt] = [
+        n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.name in names
+    ]
+    namespace = {
+        "Any": Any,
+        "Path": Path,
+        "hashlib": hashlib,
+        "os": os,
+        "json": json,
+        "pd": pd,
+        "subprocess": subprocess,
+        "Developer": object,
+        "FactorEmptyError": ValueError,
+        "LEGACY_KEYS": ["IC"],
+    }
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), "<judge-evidence>", "exec"), namespace)
+    return namespace
+
+
+def test_runner_archives_code_exclusively_and_refuses_conflicts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import hashlib
+    import json
+    from types import SimpleNamespace
+
+    namespace = judge_parts("record_code", "AlphaFactorRunner")
+    monkeypatch.setenv("ALPHA_FACTOR_RUN_DIR", str(tmp_path))
+    monkeypatch.setenv("ALPHA_FACTOR_EVAL_PYTHON", "unused-python")
+    monkeypatch.setenv("ALPHA_FACTOR_TRIAL_LEDGER", "unused-ledger")
+    code = 'print("factor bytes")\n'
+    digest = hashlib.sha256(code.encode()).hexdigest()
+
+    def evaluator(command: list[str], **kwargs: object) -> SimpleNamespace:
+        path = Path(command[command.index("--out") + 1])
+        path.write_text(json.dumps({"legacy_result": {"IC": 0}, "feedback_text": "test"}))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", evaluator)
+    task = SimpleNamespace(factor_name="test", get_task_information=lambda: "proposal")
+    workspace = SimpleNamespace(file_dict={"factor.py": code})
+    exp = SimpleNamespace(
+        based_experiments=[],
+        sub_tasks=[task],
+        sub_workspace_list=[workspace],
+        prop_dev_feedback=[False],
+        hypothesis="test",
+    )
+    runner = namespace["AlphaFactorRunner"]()
+    with pytest.raises(ValueError, match="every factor as FAILED"):
+        runner.develop(exp)
+    archive = tmp_path / "code" / f"{digest}.py"
+    assert archive.read_bytes() == code.encode()
+    before = archive.stat().st_mtime_ns
+    with pytest.raises(ValueError, match="every factor as FAILED"):
+        runner.develop(exp)
+    assert archive.stat().st_mtime_ns == before
+    archive.write_bytes(b"conflict")
+    with pytest.raises(ValueError, match="conflict"):
+        runner.develop(exp)
+    assert archive.read_bytes() == b"conflict"
+    workspace.file_dict = {}
+    with pytest.raises(ValueError, match="every factor as FAILED"):
+        runner.develop(exp)
+    assert list((tmp_path / "code").iterdir()) == [archive]
+
+
+def test_round_text_retains_words_and_factor_hashes(tmp_path: Path) -> None:
+    import json
+    from types import SimpleNamespace
+
+    namespace = judge_parts("record_round")
+    exp = SimpleNamespace(
+        hypothesis=SimpleNamespace(hypothesis="  exact\nidea ", reason="why"),
+        sub_tasks=[
+            SimpleNamespace(
+                factor_name="vol_7d",
+                description="  RD words\n",
+                factor_formulation="x / y",
+                variables={"x": "price"},
+            )
+        ],
+        alpha_evaluation={"factors": [{"name": "vol_7d", "code_sha256": "a" * 64}]},
+    )
+    feedback = SimpleNamespace(
+        observations="unchanged\n",
+        hypothesis_evaluation="maybe",
+        new_hypothesis="next",
+        reason="because",
+    )
+    row = {
+        "iteration": 4,
+        "model_decision": True,
+        "alpha_decision": False,
+        "reply_sha256": "b" * 64,
+    }
+    namespace["record_round"](tmp_path, exp, feedback, row)
+    raw = (tmp_path / "rounds.jsonl").read_text()
+    record = json.loads(raw)
+    assert record["schema"] == "AlphaRdagentRoundV1"
+    assert all(record[k] == v for k, v in row.items())
+    assert record["hypothesis"] == {
+        "hypothesis": "  exact\nidea ",
+        "reason": "why",
+        "concise_reason": None,
+        "concise_observation": None,
+        "concise_justification": None,
+        "concise_knowledge": None,
+    }
+    assert record["tasks"] == [
+        {
+            "name": "vol_7d",
+            "description": "  RD words\n",
+            "formulation": "x / y",
+            "variables": {"x": "price"},
+            "code_sha256": "a" * 64,
+        }
+    ]
+    assert record["feedback"] == vars(feedback)
+    assert raw == json.dumps(record, sort_keys=True) + "\n"
