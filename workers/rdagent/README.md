@@ -449,6 +449,38 @@ export ALPHA_RDAGENT_SOURCE=... ALPHA_FACTOR_PYTHON=...   # as printed by the se
   iteration), `feedback.jsonl` (the model's suggestion beside ALPHA's decision), `launch.jsonl`,
   `logs/` and `receipt.json`. The trial ledger is shared by all runs and append-only.
 - Generated factor code runs with the gateway's address and token removed from its environment.
+
+Choosing the model route (owner decision 2026-11-14: DeepSeek through OpenRouter is allowed for
+RD-Agent, with temperature control; caps unchanged at 60 calls and 10 USD a run, 50 USD a month):
+
+- **Codex (default, no cost):** as above. `temperature` is waived and recorded on every call.
+- **DeepSeek through OpenRouter (paid, honours temperature):** model
+  `deepseek/deepseek-v4.1-flash-1017` (DeepSeek V4.1 Flash, 17 October 2026 snapshot served by
+  DeepSeek; 1,048,576-token context; OpenRouter lists `response_format`, `structured_outputs`,
+  `temperature` and optional `reasoning` for it), USD 0.038 per million input and 0.50 per
+  million output tokens (cache reads 0.01), read from https://openrouter.ai/api/v1/models on
+  2026-11-14 12:35 UTC. Chosen over the undated `deepseek/deepseek-v4.1-flash` (0.0507 / 0.2028)
+  because a dated snapshot cannot change under a run; re-read the prices before each use.
+  `--api-openrouter` makes OpenRouter route only to providers that honour every parameter sent
+  (`provider.require_parameters`) and settles the budget with the cost OpenRouter reports
+  (`usage.cost`, recorded beside the gateway's own estimate as `estimated_usd`). The key reaches
+  only the gateway process: load the owner's file inside the same command, never print it.
+
+```sh
+bash -c 'set -a; . ~/.config/alpha/openrouter.env; set +a; exec .venv/bin/python \
+  workers/rdagent/factor_loop_launch.py run --chat-route api --api-openrouter \
+  --api-model deepseek/deepseek-v4.1-flash-1017 \
+  --api-price-in-per-mtok 0.038 --api-price-out-per-mtok 0.5 \
+  --data-dir ... --run-dir ... --gateway-data-dir ... --trial-ledger ... --run-id ... --loop-n 2'
+```
+
+  First run 2026-11-14 13:04-13:13 UTC (run `rdloop-deepseek-20261114-1`, 3 iterations): 54
+  calls of 60, USD 0.044 as reported by OpenRouter (gateway estimate 0.039), every reply valid
+  on the first attempt, temperature honoured. Nine factors entered the ledger (trials 6-14),
+  mostly short-term reversal: five failed the screen, one failed to run, three passed the screen
+  and failed the replay after costs (daily turnover 0.52-0.79). No candidate. One run per route
+  is not a quality comparison.
+- Embeddings stay on local Ollama on both routes.
 - Not yet: supervision by `alpha`'s native job supervisor
   ([backlog](../../docs/roadmap/backlog/rdagent-factor-loop-supervision.md)); a Nautilus replay;
   the candidate-to-research-case hand-off

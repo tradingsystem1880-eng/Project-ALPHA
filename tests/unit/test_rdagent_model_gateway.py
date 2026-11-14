@@ -690,3 +690,96 @@ def test_codex_notice_items_are_not_tools(mod: ModuleType, tmp_path: Path) -> No
     gw = mod.Gateway(mod.Settings(data_dir=tmp_path, run_id="x", codex_bin=str(exe)))
     gw.chat(request())
     assert logged(gw)[-1]["tool_events"] == 0
+
+
+def test_openrouter_requires_parameters_and_settles_the_charged_cost(
+    mod: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_GATEWAY_API_KEY", "sk-test-not-real")
+    monkeypatch.setenv("ALPHA_GATEWAY_API_BASE", "https://example.com/api/v1")
+    settings = mod.Settings(
+        data_dir=tmp_path,
+        run_id="x",
+        api_model="deepseek/test-model",
+        api_price_in_per_mtok=1,
+        api_price_out_per_mtok=2,
+        api_openrouter=True,
+    )
+    bodies: list[dict[str, Any]] = []
+    usage: dict[str, Any] = {"prompt_tokens": 1000, "completion_tokens": 100, "cost": 0.0007}
+
+    def provider(url: str, body: dict[str, Any], api_key: str | None) -> dict[str, Any]:
+        bodies.append(body)
+        return {"choices": [{"message": {"content": '{"ok": true}'}}], "usage": dict(usage)}
+
+    monkeypatch.setattr(mod, "post_json", provider)
+    payload = request(temperature=0.5, response_format={"type": "json_object"})
+    result = mod.ApiChat(settings).complete(payload, "p", "s", "medium", None)
+    assert bodies[0]["provider"] == {"require_parameters": True}
+    assert bodies[0]["usage"] == {"include": True}
+    assert bodies[0]["temperature"] == 0.5
+    assert result.usd == pytest.approx(0.0007)
+    assert result.estimated_usd == pytest.approx(0.0012)
+    usage.pop("cost")
+    with pytest.raises(mod.GatewayError):
+        mod.ApiChat(settings).complete(payload, "p", "s", "medium", None)
+
+
+def test_plain_api_route_adds_no_openrouter_fields(
+    mod: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_GATEWAY_API_KEY", "sk-test-not-real")
+    monkeypatch.setenv("ALPHA_GATEWAY_API_BASE", "https://example.com/v1")
+    settings = mod.Settings(
+        data_dir=tmp_path,
+        run_id="x",
+        api_model="m",
+        api_price_in_per_mtok=1,
+        api_price_out_per_mtok=1,
+    )
+    bodies: list[dict[str, Any]] = []
+
+    def provider(url: str, body: dict[str, Any], api_key: str | None) -> dict[str, Any]:
+        bodies.append(body)
+        return {
+            "choices": [{"message": {"content": "x"}}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+        }
+
+    monkeypatch.setattr(mod, "post_json", provider)
+    mod.ApiChat(settings).complete(request(), "p", "s", "medium", None)
+    assert "provider" not in bodies[0] and "usage" not in bodies[0]
+
+
+def test_gateway_settles_the_budget_on_openrouter_cost_and_logs_the_estimate(
+    mod: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_GATEWAY_API_KEY", "sk-test-not-real")
+    monkeypatch.setenv("ALPHA_GATEWAY_API_BASE", "https://example.com/api/v1")
+
+    def provider(url: str, body: dict[str, Any], api_key: str | None) -> dict[str, Any]:
+        return {
+            "choices": [{"message": {"content": '{"ok": true}'}}],
+            "usage": {"prompt_tokens": 1000, "completion_tokens": 100, "cost": 0.0007},
+        }
+
+    monkeypatch.setattr(mod, "post_json", provider)
+    gw = mod.Gateway(
+        mod.Settings(
+            data_dir=tmp_path,
+            run_id="r",
+            chat_route="api",
+            embedding_route="fake",
+            api_model="deepseek/test-model",
+            api_price_in_per_mtok=1,
+            api_price_out_per_mtok=2,
+            api_openrouter=True,
+        )
+    )
+    gw.chat(request(temperature=0.5, response_format={"type": "json_object"}))
+    budget = json.loads((tmp_path / "model-gateway" / "budget.json").read_text())
+    assert budget["runs"]["r"]["usd"] == pytest.approx(0.0007)
+    row = json.loads((tmp_path / "model-gateway" / "calls.jsonl").read_text().splitlines()[-1])
+    assert row["usd"] == pytest.approx(0.0007)
+    assert row["estimated_usd"] == pytest.approx(0.0012)
+    assert "temperature" in row["honoured"] and "temperature" not in row["waived"]

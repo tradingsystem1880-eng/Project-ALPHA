@@ -42,7 +42,36 @@ Each run spends real model calls (about 40; never more than 60) and adds to the 
    without real model calls): the model gateway's fake route returns text RD-Agent cannot parse.
 6. Already listed elsewhere: restart after a crash; CI coverage of RD-Agent.
 
+## For a "Research loop" screen in the Workstation
+
+Everything it needs is in files, read only:
+
+- The trial ledger (`rdagent-factor-trials.jsonl`, one JSON line per trial, schema
+  `AlphaRdagentFactorTrialV1`): `trial_index`, `name`, `code_sha256`, `run_id`, `iteration`,
+  `status` (`CANDIDATE`, `SCREEN_FAIL`, `REPLAY_FAIL`, `FAILED`, `LOOKAHEAD`, `DEGENERATE`,
+  `ERROR`, `REPEAT`), `stage`, `p`, `q`, `family_size`, `total_trials`, `screen` (`mean_ic`,
+  `mean_ci_95`, `z`, `n`, `effective_n`, `coverage`, `tie_share`), `replay` (`net` and `gross`
+  annualised and compounded excess, Sharpe, max drawdown, turnover, Deflated Sharpe),
+  `lookahead`, `first_trial` for repeats, `label`, `survivorship`, `authority` (all false).
+- Per run: `receipt.json` (route and model, start and end, exit reason, this run's model calls and
+  dollars, panel and runtime identities), `evaluations.jsonl` (one record per iteration, with
+  `decision`, `lead_factor` and the plain `feedback_text` RD-Agent saw), `feedback.jsonl` (the
+  model's own suggestion beside ALPHA's decision), `launch.jsonl` (steps with times).
+- Model calls: the gateway's `calls.jsonl` (route, model, tokens, dollars, JSON validity, time;
+  no text).
+- The factor code itself: `work/git_ignore_folder/RD-Agent_workspace/<id>/factor.py`, matched by
+  `code_sha256`.
+
+A first screen could list runs, then a run's iterations and factors with status, rank IC and
+error bars, replay result, and the labels; it must show "exploratory, not admitted" and the
+survivorship sentence on every view, and offer no approve or promote action. Nothing in the
+existing screens was changed.
+
 ## Anything only you can decide
+
+- The DeepSeek route is built but was not run: loading the key file needs a permission this agent
+  was refused. Either allow it for the agent, or run the one command in the worker README
+  yourself; the comparison with the Codex route is then the next measurement.
 
 - Whether more runs should spend model calls on this 15-coin universe now, knowing each idea
   tried is added to the ledger for good and makes later findings harder to pass, or wait for a

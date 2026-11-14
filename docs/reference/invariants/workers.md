@@ -8,7 +8,7 @@ sources:
   - tests/unit/test_qlib_isolation.py
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
   - apps/alpha-cli/src/alpha_cli/_native_rule_environment.py
-verified: ece43e45fa04
+verified: ec6d827da973
 ---
 
 # Worker invariants
@@ -121,7 +121,8 @@ acquisition worker and the RD-Agent native-loop probe. The general rule is
 - Model gateway ([ADR-0044](../../adr/0044-rdagent-model-gateway.md), `model_gateway.py`): the one route from RD-Agent to a
   model. Standard library only; it listens on `127.0.0.1` and imports neither ALPHA nor RD-Agent. Chat is the confined Codex
   program (read-only, no tools, no web search), embeddings are local Ollama, and the paid route is off unless the owner
-  configures it. A request parameter it cannot honour is refused or recorded as waived, never dropped silently. Call and
+  configures it (`--chat-route api`; `--api-openrouter` requires every parameter to be honoured and settles on the
+  provider's charged cost). A request parameter it cannot honour is refused or recorded as waived, never dropped silently. Call and
   dollar budgets (monthly dollars capped at 50, not raisable) are checked before every attempt and fail closed. There is
   no automatic switch between routes, and the call log holds hashes and lengths, not text. The fixture loops still clear
   all model settings. `tests/unit/test_rdagent_model_gateway.py`.

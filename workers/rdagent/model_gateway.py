@@ -136,6 +136,7 @@ class Settings:
     api_price_in_per_mtok: float | None = None
     api_price_out_per_mtok: float | None = None
     api_reserve_output_tokens: int = 4096
+    api_openrouter: bool = False
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_embed_model: str = "nomic-embed-text"
     run_max_calls: int = 60
@@ -321,6 +322,7 @@ class ChatResult:
     tool_events: int = 0
     usd: float = 0.0
     response: dict[str, Any] | None = None
+    estimated_usd: float | None = None
 
 
 @dataclass
@@ -592,6 +594,14 @@ class ApiChat:
                 **{k: v for k, v in request.items() if k != "stream_options"},
                 "model": s.api_model,
                 "stream": False,
+                # OpenRouter: route only to providers that honour every parameter sent (so
+                # temperature and response_format are not dropped silently) and return the
+                # charged cost in usage.
+                **(
+                    {"provider": {"require_parameters": True}, "usage": {"include": True}}
+                    if s.api_openrouter
+                    else {}
+                ),
             },
             self.key,
         )
@@ -607,7 +617,16 @@ class ApiChat:
             ):
                 raise ValueError("invalid usage or text")
             assert s.api_price_in_per_mtok is not None and s.api_price_out_per_mtok is not None
-            cost = (incoming * s.api_price_in_per_mtok + outgoing * s.api_price_out_per_mtok) / 1e6
+            estimate = (
+                incoming * s.api_price_in_per_mtok + outgoing * s.api_price_out_per_mtok
+            ) / 1e6
+            cost = estimate
+            charged = usage.get("cost")
+            if s.api_openrouter:
+                # The provider's charged cost settles the budget; a missing or invalid one fails.
+                if type(charged) not in (int, float) or not math.isfinite(charged) or charged < 0:
+                    raise ValueError("provider omitted its charged cost")
+                cost = float(charged)
         except (KeyError, IndexError, TypeError, ValueError) as exc:
             raise GatewayError(
                 502, "invalid_provider_response", "provider omitted text or usage"
@@ -622,6 +641,7 @@ class ApiChat:
             (usage.get("completion_tokens_details") or {}).get("reasoning_tokens"),
             usd=cost,
             response=response,
+            estimated_usd=estimate,
         )
 
 
@@ -724,6 +744,7 @@ class Gateway:
             completion_tokens=None,
             reasoning_tokens=None,
             usd=0.0,
+            estimated_usd=None,
             queue_ms=0.0,
             latency_ms=0.0,
             status=200,
@@ -941,6 +962,8 @@ class Gateway:
                     )
                     self.budget.settle(ticket, result.usd)
                     row["usd"] += result.usd - reserve
+                    if result.estimated_usd is not None:
+                        row["estimated_usd"] = (row["estimated_usd"] or 0.0) + result.estimated_usd
                 reply = result.text
                 row.update(
                     model_used=result.model,
@@ -1211,6 +1234,7 @@ def parser() -> argparse.ArgumentParser:
         p.add_argument("--api-price-in-per-mtok", type=float)
         p.add_argument("--api-price-out-per-mtok", type=float)
         p.add_argument("--api-reserve-output-tokens", type=int, default=4096)
+        p.add_argument("--api-openrouter", action="store_true")
         p.add_argument("--ollama-url", default="http://127.0.0.1:11434")
         p.add_argument("--ollama-embed-model", default="nomic-embed-text")
         p.add_argument("--max-concurrency", type=int, default=2)
