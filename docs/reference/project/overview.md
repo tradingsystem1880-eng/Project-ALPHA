@@ -35,7 +35,7 @@ This is where the project is going; [STATUS.md](../../../STATUS.md) says what wo
 |---|---|---|
 | Partner | Claude or ChatGPT, in an app or a terminal | Thinks, suggests, interprets, learns; guided by a playbook and tool cards |
 | Toolbox | ALPHA, kept thin | Data, backtests with costs, overfit tests, diagnostics, records, lessons |
-| Engines | [RD-Agent](components/rd-agent.md), [Qlib](components/qlib.md), [Nautilus](components/nautilus.md) | Called at pinned versions; RD-Agent keeps its own memory |
+| Engines | [RD-Agent](components/rd-agent.md), [Qlib](components/qlib.md), [Nautilus](components/nautilus.md) | Called at pinned versions |
 | Screens | The [Workstation](components/web-workstation.md) | How the owner sees and understands; never the place the AI is driven from |
 
 One pipeline serves every idea, at any bar timeframe except high-frequency trading:
