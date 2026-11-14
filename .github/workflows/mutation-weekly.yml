@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: "17 4 * * 0"
   workflow_dispatch:
+    inputs:
+      module:
+        description: "Optional source module path; empty runs the complete sweep"
+        type: string
+        default: ""
   workflow_call:
 
 concurrency:
@@ -33,12 +38,28 @@ jobs:
           enable-cache: true
       - id: list
         name: Freeze complete source inventory and run identity
+        env:
+          MUTATION_MODULE: ${{ github.event_name == 'workflow_dispatch' && inputs.module || '' }}
         run: |
           # Preserve expected source/identity even if tool setup or generation fails.
           python scripts/mutation_sweep.py plan --commit "$GITHUB_SHA" --run-id "$SWEEP_RUN_ID" > /dev/null
           uv run --with mutmut==3.8.0 python scripts/mutation_fragment.py inventory
-          list=$(python scripts/mutation_sweep.py plan --commit "$GITHUB_SHA" --run-id "$SWEEP_RUN_ID" --mutants mutation-keys.json)
-          echo "list=$list" >> "$GITHUB_OUTPUT"
+          python scripts/mutation_sweep.py plan --commit "$GITHUB_SHA" --run-id "$SWEEP_RUN_ID" --mutants mutation-keys.json > /dev/null
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          jobs = json.loads(Path("mutation-inventory.json").read_text())["jobs"]
+          module = os.environ["MUTATION_MODULE"]
+          if module:
+              jobs = [job for job in jobs if job["module"] == module]
+              if not jobs:
+                  raise SystemExit(f"No mutation fragments match module: {module}")
+          matrix = [{key: value for key, value in job.items() if key != "mutants"} for job in jobs]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"list={json.dumps(matrix)}\n")
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -82,8 +103,9 @@ jobs:
           if-no-files-found: error
 
   aggregate:
+    # A one-module dispatch is not a sweep; workflow_call and schedule leave inputs.module unset.
     needs: [modules, mutate]
-    if: always()
+    if: always() && !(github.event_name == 'workflow_dispatch' && (inputs.module || '') != '')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
