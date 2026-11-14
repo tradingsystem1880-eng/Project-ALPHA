@@ -4,16 +4,22 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
+import polars as pl
 import pytest
 
 from alpha_cli import rdagent_factor_eval as ev
 from alpha_core import DataError
+from alpha_data.crypto.contracts import CryptoDatasetIdentityV1
+from alpha_data.crypto.ingestion import ingest_provider_payload
+from alpha_data.crypto.providers.binance import parse_binance_klines
+from alpha_data.crypto.storage import Capacity, CryptoBulkStore
 
 
 def fixture(run: Path, *, seed: int = 42, noise: bool = False) -> Path:
@@ -222,3 +228,135 @@ def test_a_day_with_too_few_names_is_degenerate_not_a_crash(tmp_path: Path) -> N
     factor = result["factors"][0]
     assert factor["status"] == "DEGENERATE"
     assert factor["screen"]["thin_days"] == 1
+
+
+# --- freeze: real store API on synthetic provider payloads (no market data) ------------------
+
+FREEZE_START = datetime(2023, 12, 26, tzinfo=UTC)
+UUID = "758CBD77-1003-3BA3-AD28-1D647F5E2A08"
+
+
+def _bulk_store(root: Path) -> CryptoBulkStore:
+    (root / "bulk").mkdir(parents=True, exist_ok=True)
+    return CryptoBulkStore(
+        bulk_root=root / "bulk",
+        manifest_root=root / "control" / "crypto" / "manifests",
+        expected_volume_uuid=UUID,
+        volume_uuid=lambda _: UUID,
+        capacity=lambda _: Capacity(total_bytes=20_000_000, free_bytes=10_000_000),
+        minimum_free_bytes=100,
+    )
+
+
+def _publish(
+    store: CryptoBulkStore,
+    instrument: str,
+    closes: tuple[float, ...],
+    *,
+    start: datetime = FREEZE_START,
+    skip: int | None = None,
+    fetched: datetime | None = None,
+) -> None:
+    day = timedelta(days=1)
+    dataset = CryptoDatasetIdentityV1(
+        provider="binance",
+        venue="binance",
+        market_type="spot",
+        family="market_bars",
+        instrument=instrument,
+        base_asset=instrument.removesuffix("USDT"),
+        quote_asset="USDT",
+        frequency="1d",
+        units="provider_native_ohlcv",
+        timestamp_convention="interval_start_utc",
+    )
+    rows = [
+        [
+            int((start + i * day).timestamp() * 1000),
+            c,
+            c + 1,
+            c - 1,
+            c,
+            100.0,
+            int((start + (i + 1) * day).timestamp() * 1000) - 1,
+            1000.0,
+            10,
+            50.0,
+            500.0,
+            0,
+        ]
+        for i, c in enumerate(closes)
+        if i != skip
+    ]
+    ingest_provider_payload(
+        store,
+        dataset=dataset,
+        payload=json.dumps(rows).encode(),
+        request=(("symbol", instrument), ("interval", "1d"), ("startTime", str(rows[0][0]))),
+        fetched_at=fetched or datetime(2026, 1, 1, tzinfo=UTC),
+        provider_schema="binance-public-rest-v1",
+        parser_version="binance-archive-rest-v1",
+        logical_name="daily.json",
+        parser=lambda raw: parse_binance_klines(raw, source="rest_json"),
+        observed_column="open_time",
+        key_columns=("open_time",),
+    )
+
+
+def _freeze(tmp_path: Path, store: CryptoBulkStore) -> dict[str, Any]:
+    with patch.object(ev, "configured_crypto_bulk_store", lambda _: store):
+        return ev.freeze(tmp_path / "control", tmp_path / "out")
+
+
+def test_freeze_two_coins_stops_before_the_reserved_window(tmp_path: Path) -> None:
+    store = _bulk_store(tmp_path)
+    _publish(store, "BTCUSDT", (10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0))
+    _publish(store, "ETHUSDT", (5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0))
+    _publish(  # an equal recapture counts once
+        store,
+        "ETHUSDT",
+        (5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0),
+        fetched=datetime(2026, 2, 1, tzinfo=UTC),
+    )
+    receipt = _freeze(tmp_path, store)
+    panel = pd.read_parquet(tmp_path / "out/panel.parquet")
+    assert receipt["rows"] == len(panel) == 12  # 2023-12-26..31 for two coins; 2024 dropped
+    assert {i["last_day"] for i in receipt["instruments"].values()} == {"2023-12-31"}
+    assert len(receipt["manifests"]) == 3
+    digest = hashlib.sha256((tmp_path / "out/panel.parquet").read_bytes()).hexdigest()
+    assert receipt["panel_sha256"] == digest
+
+
+@pytest.mark.parametrize("defect", ["gap", "overlap", "empty"])
+def test_freeze_refuses_gaps_overlaps_and_nothing(tmp_path: Path, defect: str) -> None:
+    store = _bulk_store(tmp_path)
+    if defect == "gap":
+        _publish(store, "BTCUSDT", (10.0, 11.0, 12.0, 13.0), skip=1)
+    elif defect == "overlap":
+        _publish(store, "BTCUSDT", (10.0, 11.0, 12.0))
+        _publish(store, "BTCUSDT", (10.0, 11.5, 12.0), fetched=datetime(2026, 3, 1, tzinfo=UTC))
+    with pytest.raises(DataError):
+        _freeze(tmp_path, store)
+
+
+def test_validate_panel_refuses_invalid_prices_and_reserved_dates() -> None:
+    base = pl.DataFrame(
+        {
+            "date": [date(2023, 1, 1), date(2023, 1, 2)],
+            "instrument": ["A", "A"],
+            "open": [1.0, 1.0],
+            "high": [2.0, 2.0],
+            "low": [0.5, 0.5],
+            "close": [1.5, 1.5],
+            "volume": [1.0, 1.0],
+            "quote_volume": [1.0, 1.0],
+        }
+    )
+    assert ev.validate_panel(base).height == 2
+    for column, value in (("open", -1.0), ("high", 0.6), ("volume", float("nan"))):
+        with pytest.raises(DataError):
+            ev.validate_panel(base.with_columns(pl.lit(value).alias(column)))
+    with pytest.raises(DataError):
+        ev.validate_panel(base.with_columns(pl.lit(date(2024, 1, 1)).alias("date")))
+    with pytest.raises(DataError):
+        ev.validate_panel(base.head(0))
