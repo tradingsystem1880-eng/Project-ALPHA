@@ -31,8 +31,10 @@ bottleneck.
 - Snapshots are immutable and identified by a hash of their content.
 - Crypto data has its own governed store ([ADR-0032](../../../adr/0032-governed-crypto-data-house.md));
   daily stock data has one authoritative source ([ADR-0017](../../../adr/0017-authoritative-daily-data-and-broker-paper-boundary.md)).
-- Development on the Dell uses synthetic data plus free, keyless real data (below); keyed
-  providers and confirmation of real data wait for the Mac
+- Development on the Dell uses synthetic data plus free real data (below), with Alpaca's free
+  plan as the interim stock source
+  ([ADR-0047](../../../adr/0047-alpaca-interim-stock-source.md)); other keyed providers and
+  confirmation of real data wait for the Mac
   ([owner decisions](../owner-decisions.md#2026-11-14-dell-now-mac-later),
   [free real data](../owner-decisions-2.md#2026-11-14-free-real-data-on-the-dell-now)).
 
@@ -47,7 +49,8 @@ ADR-0017, not checked against an independent source, and usable for personal res
 only. Each capability's real-data line on [STATUS.md](../../../../STATUS.md) starts with
 "not yet confirmed"; on the data itself the existing labels say the same (crypto archives:
 `state: qualified`, which means only that the mechanical checks passed; the CCXT copy in the
-stock store: `quality_status: legacy_unqualified`).
+stock store and the Yahoo stock prices: `quality_status: legacy_unqualified`; an Alpaca
+download shows `quality_status: passed`, which means only that the mechanical checks passed).
 
 - **Where:** `/home/hunta/alpha-clean-base/data`, outside any git tree, set up with
   `bash scripts/setup.sh --data-dir /home/hunta/alpha-clean-base/data --storage-reserve-gb 10`.
@@ -63,11 +66,22 @@ stock store: `quality_status: legacy_unqualified`).
   free under CC BY-NC-SA 4.0 for, among other uses, "algorithmic historical backtesting for
   purely personal non-production research"; live trading on the data is not allowed. Raw files
   must never be published or shared.
-- **Stocks: none yet.** Yahoo's terms forbid collecting data "using any automated means" without
-  Yahoo's prior permission, and its data host's `robots.txt` disallows every path; Stooq answers
-  automated requests with a "verify your browser" check, and its `robots.txt` disallows all but
-  two search engines. ALPHA's `yfinance` and `stooq` adapters exist but were not used. Free stock
-  history needs an owner decision (see the verification record).
+- **Stocks, 2026-11-14:** daily bars from Yahoo through `alpha data pull --source yfinance` for
+  SPY, QQQ, IWM, DIA, TLT, IEF, GLD, AAPL, MSFT, AMZN, GOOGL, NVDA, META, JPM, XOM and JNJ, each
+  from its first day on Yahoo (1990 at the earliest) to 13 November 2026: 117,229 bars, with
+  splits and dividends, frozen in snapshot `free-yfinance-stocks-2026-11-14`. These are today's
+  large companies, so the set is survivor-biased; use it for plumbing and exploration, not for
+  claims about a universe. Totals and commands:
+  [verification record](../../../work/archive/2026-11/2026-11-14-alpaca-stock-data/04-verify.md).
+- **Stocks from Alpaca, 2026-11-14:** `alpha data pull --source alpaca` (Alpaca's free plan,
+  consolidated SIP daily history, raw prices plus splits and dividends,
+  [ADR-0047](../../../adr/0047-alpaca-interim-stock-source.md)) for the same set minus QQQ,
+  2016-01-04 to 2026-11-13: 15 symbols, 40,995 bars, snapshot `alpaca-starter-2026-11-14`, in
+  its own folder `/home/hunta/alpha-clean-base/data-alpaca` (one source per price series). QQQ
+  was refused: Alpaca lists one 2022 dividend twice with different pay dates. Against Yahoo,
+  prices match almost everywhere; the differences (March 2020 closes, a few stray highs and
+  lows in Alpaca, volume, missing ETF dividends in Alpaca) are in the verification record.
+  Owner steps: [Alpaca runbook](../../../operations/alpaca-stock-data.md).
 
 ### Limits
 
@@ -76,9 +90,23 @@ stock store: `quality_status: legacy_unqualified`).
   bot check is not acceptable here). It now sends one request under a generic client name and, when
   challenged, refuses with a clear message. Stooq data already stored stays readable.
 - **Yahoo (`yfinance`):** Yahoo's terms forbid collecting data from its services "using any
-  automated means" without Yahoo's express prior permission. The `yfinance` downloader must not be
-  used unless Yahoo has given that permission. It is kept, not deleted, because the owner has not
-  decided its future (see the [verification record](../../../work/archive/2026-11/2026-11-14-free-real-data-dell/05-handoff.md)).
+  automated means" without Yahoo's express prior permission, and Yahoo has not given it. The owner
+  was told this on 2026-11-14 and decided to use the `yfinance` downloader for now, for personal
+  research only, until Alpaca or the Mac is ready
+  ([owner decisions](../owner-decisions-2.md#2026-11-14-any-free-stock-source-now-alpaca-account-to-follow)).
+  One modest sequential download was made (above). The owner's Alpaca key was set the same day,
+  so Alpaca replaces Yahoo for new stock downloads; the Yahoo copy stays for comparison. Yahoo's prices are rebuilt from its split-adjusted series
+  (the adapter multiplies the splits back), so they carry small rounding.
+- **Alpaca:** free Basic plan only: history since 2016; the latest 15 minutes are not available,
+  so ALPHA asks only for completed sessions; 200 calls a minute; personal, non-commercial use, and
+  the data must never be published, shared or committed. The corporate-actions list has no
+  announcement date, so an action is treated as known only from its ex-date. A symbol with a stock
+  dividend, spin-off or unit split in the requested window is refused, and a split the price
+  series contradicts fails loud; dividends have no such cross-check, and Alpaca misses some older
+  ETF dividends (SPY 2016-03-18 and 2018-06-15, for example). Daily highs and lows are built from
+  trades and can carry a stray print (NVDA 2024-06-10 high 195.95). An Alpaca download never
+  replaces Tiingo data and never shares a series with another source, either way (hence its own
+  data folder).
 - **Binance monthly archives:** a month's file exists only after the month ends, so a backfill
   lists the current month as "not published yet" rather than failing; the current month comes from
   the bounded live-service tail. A governed crypto snapshot may hold many months of many coins;
@@ -100,7 +128,8 @@ stock store: `quality_status: legacy_unqualified`).
 - Decision records: [ADR-0004](../../../adr/0004-two-clock-corporate-actions.md),
   [ADR-0005](../../../adr/0005-point-in-time-firewall.md), [ADR-0017](../../../adr/0017-authoritative-daily-data-and-broker-paper-boundary.md),
   [ADR-0032](../../../adr/0032-governed-crypto-data-house.md),
-  [ADR-0046](../../../adr/0046-crypto-snapshot-members-are-content-addressed.md).
+  [ADR-0046](../../../adr/0046-crypto-snapshot-members-are-content-addressed.md),
+  [ADR-0047](../../../adr/0047-alpaca-interim-stock-source.md).
 
 ## Decisions and open questions
 
