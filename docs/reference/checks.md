@@ -42,6 +42,7 @@ request only when its paths (or the workflow and gate files) change, and always 
 | `tests/acceptance` (inside `tests`, no marker) | the gauntlet, threshold and execution contracts break | PR | in `tests` |
 | `smoke` marker (inside `tests`) | the installed `alpha` and `alpha-web` programs break end to end | PR | in `tests` |
 | `platform` marker (inside `tests`) | nothing extra: it only moves files out of the fast local check | PR | in `tests` |
+| code size (`tests/unit/test_code_size.py`, inside `tests`) | a new file over 1,500 lines or function over 150, an oversized one growing, or a stale baseline entry | PR | 3 s, in `tests` |
 | determinism, identity and golden tests (inside `tests`) | a result that is not byte-stable across fresh processes | PR | in `tests` |
 | `coverage` job: changed product lines (`packages/*/src`, `apps/*/src`) | new or changed code shipped without tests (below 85% of changed lines) | PR | 30 s |
 | `coverage`: whole-suite line coverage | nothing (reported in the job summary, never gated) | PR | in `coverage` |

@@ -112,6 +112,16 @@ Project-wide coding rules. Area files add their own detail and link here. The re
   (`alpha-negative-shift`, it reads the future).
 - Semgrep runs fail-closed at a pinned version: `uv run python scripts/gate.py semgrep`.
 
+## Code size
+
+- No product source file (`packages`, `apps`, `workers`, `tools`, `scripts`; tests are not
+  measured) over 1,500 lines, and no function over 150 lines (`def` line to last line), so an
+  agent can hold any file or function in its head.
+- The offenders of 2026-11-14 (10 files, 98 functions) are capped at their size then in
+  `.claude/code-size-baseline.json`. The baseline only shrinks: an entry that is higher than
+  needed, gone or no longer over the limit fails until it is lowered or removed, and it never
+  takes a new entry; split the code instead. Enforced by `tests/unit/test_code_size.py`.
+
 ## Working style
 
 - Think before coding: state assumptions, surface trade-offs and competing readings, push back when a
