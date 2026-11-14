@@ -166,10 +166,15 @@ def test_control_store_interface_matches_golden() -> None:
 def test_imported_module_names_still_exist() -> None:
     missing = [
         name
-        for name in interface_snapshot()["module_names_imported_elsewhere"]
+        for name in (
+            *interface_snapshot()["module_names_imported_elsewhere"],
+            *control_store.__all__,
+        )
         if not hasattr(control_store, name)
     ]
-    assert not missing, f"Imported module attributes removed: {missing}. {DELIBERATE_CHANGE}"
+    assert not missing, (
+        f"Imported or exported module attributes removed: {missing}. {DELIBERATE_CHANGE}"
+    )
 
 
 def test_patched_module_attributes_are_still_read_here() -> None:
