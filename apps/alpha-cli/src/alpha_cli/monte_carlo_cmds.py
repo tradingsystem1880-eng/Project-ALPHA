@@ -42,6 +42,24 @@ monte_carlo_app = typer.Typer(
 # Monkeypatchable seam for offline integration tests. Real runs resolve the pinned Kronos facade.
 _forecaster_factory = _forecast._forecaster_factory
 
+MIN_STATE_SHARE = 0.10
+
+
+def _regime_caveats(state_observations: tuple[int, int], horizon: int) -> tuple[str, ...]:
+    n0, n1 = state_observations
+    p0, p1 = n0 / horizon, n1 / horizon
+    caveats: tuple[str, ...] = (
+        f"Causal states: calm {n0} of {horizon} OOS returns ({p0:.1%}), "
+        f"volatile {n1} ({p1:.1%}); the boundary is frozen from the first training prefix.",
+    )
+    if min(p0, p1) < MIN_STATE_SHARE:
+        caveats += (
+            f"One state holds under {MIN_STATE_SHARE:.0%} of OOS returns, so this family "
+            "is close to the IID empirical family; the frozen boundary may not describe "
+            "the OOS period.",
+        )
+    return caveats
+
 
 def _verified_validation_source(data_dir: Path, run_id: str) -> tuple[Path, dict[str, Any]]:
     rdir = _artifacts.find_run_dir(data_dir, run_id)
@@ -322,6 +340,7 @@ def _report_text(
     summaries: Sequence[MonteCarloFamilySummaryV1],
     n_paths: int,
     horizon: int,
+    regime_caveats: tuple[str, ...],
 ) -> str:
     rows = "\n".join(
         f"| {row.family} | {row.status} | {row.risk_grade} | "
@@ -339,6 +358,7 @@ def _report_text(
         "95th percentile max drawdown | Ruin probability |\n"
         "|---|---:|---:|---:|---:|---:|\n"
         f"{rows}\n\n"
+        f"Regime states: {' '.join(regime_caveats)}\n\n"
         "Interpretation: these simulations measure path and scenario risk. They do not establish "
         "edge, replace randomized-price null tests, authorize holdout access, or confer execution "
         "authority. Uncertainty for loss and ruin probabilities is reported with Wilson "
@@ -415,8 +435,15 @@ def classical(
         if regime is not None:
             simulated_families.append(("regime_switching", regime.paths))
         simulated_families.append(("student_t", t_paths))
+        state_observations = (int(np.sum(states == 0)), int(np.sum(states == 1)))
+        regime_caveats = _regime_caveats(state_observations, int(account_returns.size))
         summaries_by_family = {
-            name: summarize_path_family(name, values, confidence=confidence)
+            name: summarize_path_family(
+                name,
+                values,
+                confidence=confidence,
+                caveats=regime_caveats if name == "regime_switching" else (),
+            )
             for name, values in simulated_families
         }
         if regime is None:
@@ -444,7 +471,7 @@ def classical(
                 ruin_probability=unavailable_interval,
                 risk_grade="F",
                 explanation="The declared causal two-state support floor was not met.",
-                caveats=(str(regime_failure),),
+                caveats=(str(regime_failure), *regime_caveats),
             )
         summaries = tuple(
             summaries_by_family[name] for name in ("iid_empirical", "regime_switching", "student_t")
@@ -484,7 +511,6 @@ def classical(
         transition_counts = np.zeros((2, 2), dtype=np.int64)
         for current, following in zip(states[:-1], states[1:], strict=True):
             transition_counts[int(current), int(following)] += 1
-        state_observations = (int(np.sum(states == 0)), int(np.sum(states == 1)))
         state_outbound = (
             int(np.sum(transition_counts[0])),
             int(np.sum(transition_counts[1])),
@@ -545,6 +571,7 @@ def classical(
             summaries=summaries,
             n_paths=paths,
             horizon=int(account_returns.size),
+            regime_caveats=regime_caveats,
         )
         _artifacts.publish_artifact(
             rdir / "report.md", lambda path: path.write_text(report, encoding="utf-8")
@@ -573,6 +600,7 @@ def classical(
                 "status": "not_estimable" if regime is None else "estimable",
                 "failure": regime_failure,
                 "state_observations": state_observations,
+                "state_shares": [count / int(account_returns.size) for count in state_observations],
                 "state_outbound_transitions": state_outbound,
                 "transition_matrix": None if regime is None else regime.transition_matrix.tolist(),
                 "causal_window": regime_window,
@@ -592,6 +620,23 @@ def classical(
         + ", ".join(f"{row.family}={row.status}/{row.risk_grade}" for row in summaries)
         + f"; manifest at {rdir / 'manifest.json'}"
     )
+    for row in summaries:
+        if row.status == "not_estimable":
+            typer.echo(f"  {row.family}: not estimable; {row.caveats[0]}")
+        else:
+            typer.echo(
+                f"  {row.family}: {row.status}/{row.risk_grade} "
+                f"median terminal {row.terminal_return_q50:+.4f} "
+                f"(5%-95% {row.terminal_return_q05:+.4f} to {row.terminal_return_q95:+.4f}), "
+                f"drawdown median {row.maximum_drawdown_q50:.4f} "
+                f"95th {row.maximum_drawdown_q95:.4f}, "
+                f"P(loss) {row.loss_probability.point:.3f} "
+                f"[{row.loss_probability.lower:.3f}, {row.loss_probability.upper:.3f}], "
+                f"P(ruin, drawdown >= 50%) {row.ruin_probability.point:.3f} "
+                f"[{row.ruin_probability.lower:.3f}, {row.ruin_probability.upper:.3f}]"
+            )
+    if len(regime_caveats) > 1:
+        typer.echo(f"regime_switching warning: {regime_caveats[1]}")
 
 
 @monte_carlo_app.command("kronos")

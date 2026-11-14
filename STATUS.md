@@ -4,7 +4,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 6 working, 25 partly working, 0 demo only, 5 shelved, 1 not started.
+- **Capabilities:** 7 working, 24 partly working, 0 demo only, 5 shelved, 1 not started.
 - **Work in progress:** 34 in progress (limit 3).
   - 3 being worked on
   - 31 built but not yet checked end to end
@@ -23,6 +23,7 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Download crypto market data (W05)** — uv run alpha crypto-data catalog (a real run is recorded)
 - **Run a backtest** — uv run alpha backtest run SPY
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
+- **Path-risk simulation (Monte Carlo)** — uv run alpha monte-carlo classical --from-run <run-id> (a real run is recorded)
 - **Machine-learning experiments with Qlib** — uv run alpha ml capabilities
 - **Upstream Alpha158 price features** — set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec
 
@@ -50,7 +51,6 @@ Tested piece by piece inside the test suite, but not yet run from start to finis
 - **Freeze crypto data into exact snapshots and check them (W05)** — tested in-process only.
 - **Write trading rules and scan markets** — tested in-process and in a browser against a test server.
 - **Strategy development workspace** — tested in-process only.
-- **Path-risk simulation (Monte Carlo)** — tested in-process only.
 - **Risk numbers that state what they are based on (C04)** — tested in-process and in a browser against a test server.
 - **Prop-firm challenge check** — tested in-process only.
 - **Quick idea screening (Phase C)** — tested in-process only.
@@ -117,7 +117,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 ## Housekeeping
 
 - Live plans: 42
-- Archived plans: 129
+- Archived plans: 130
 - Backlog items: 18
 - Staged refactors: 6
 
