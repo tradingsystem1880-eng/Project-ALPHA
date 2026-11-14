@@ -135,9 +135,13 @@ def test_baseline_never_grows_against_main() -> None:
         f"cannot find the merge base with {MAIN_REF} (run `git fetch origin`): "
         + base.stderr.decode(errors="replace")
     )
-    shown = _git("show", f"{base.stdout.decode().strip()}:{BASELINE_REL}")
-    if shown.returncode != 0:
+    commit = base.stdout.decode().strip()
+    listed = _git("ls-tree", commit, "--", BASELINE_REL)
+    assert listed.returncode == 0, listed.stderr.decode(errors="replace")
+    if not listed.stdout.strip():
         return  # main has no baseline yet: this change introduces it
+    shown = _git("show", f"{commit}:{BASELINE_REL}")
+    assert shown.returncode == 0, shown.stderr.decode(errors="replace")
     previous = cast(Baseline, json.loads(shown.stdout))
     errors = baseline_growth(previous, read_baseline())
     assert not errors, "\n".join(errors)
