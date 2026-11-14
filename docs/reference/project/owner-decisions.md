@@ -2,7 +2,7 @@
 owner: project layer
 sources:
   - docs/reference/model-routing.md
-verified: a79d832d
+verified: ccf5b56ad3eb
 ---
 
 # Owner decisions log
@@ -182,3 +182,13 @@ for the RD-Agent entry (dated on the triage sheet), the exact day of each was no
 - **Governs:** this project layer and every `CONTEXT.md`: a reader starting at `CLAUDE.md` must be
   able to learn what a part is for, why, the plan, where it lives and what must not be done.
 
+
+### 2026-11-14 Free real market data on the Dell
+
+- **Said** (a selection from options an agent offered, not the owner's own words): "The Dell
+  should download FREE real market data now (Yahoo, Stooq, crypto exchanges); paid or keyed
+  providers still wait for the Mac; results stay labelled not yet confirmed."
+- **Context:** until then the Dell used only made-up data. What was downloaded, and why Yahoo and
+  Stooq were not, is in the [data layer](components/data-layer.md#real-data-on-the-dell).
+- **Governs:** the [data layer](components/data-layer.md); it amends
+  [Dell now, Mac later](#2026-11-14-dell-now-mac-later) for free, keyless sources only.
