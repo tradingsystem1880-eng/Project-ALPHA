@@ -7,7 +7,7 @@ sources:
   - scripts/gate_components.py
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
   - apps/alpha-cli/src/alpha_cli/_structural_digest.py
-verified: 9c40aa259c97
+verified: bdd1a2a989f8
 ---
 
 # Engineering rules
@@ -76,7 +76,8 @@ Project-wide coding rules. Area files add their own detail and link here. The re
   `uv.lock` feed the research implementation hash, computed by
   `apps/alpha-cli/src/alpha_cli/research_cmds.py::_implementation_hashes` and checked against
   owner-approved research contracts. The fixed and daily rule lanes bind the rdagent worker files
-  and `DAILY_GUARD_FILES` the same way (`_native_rule_environment.py::rule_implementation_fingerprints`).
+  and `DAILY_GUARD_FILES` the same way (`_native_rule_environment.py::rule_implementation_fingerprints`);
+  which files the daily lane must bind is tested ([ADR-0047](../../adr/0047-daily-rule-lane-binding-and-named-months.md)).
 - Approvals bind code structure ([ADR-0045](../../adr/0045-approvals-bind-code-structure.md),
   `apps/alpha-cli/src/alpha_cli/_structural_digest.py`): an approval made since ADR-0045 (scheme 2)
   survives comments, blank lines, formatting and unread docstrings, and is invalidated by any change

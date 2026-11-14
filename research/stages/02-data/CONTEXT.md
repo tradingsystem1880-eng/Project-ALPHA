@@ -4,7 +4,7 @@ sources:
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
   - apps/alpha-cli/src/alpha_cli/research_data_audit.py
   - apps/alpha-cli/src/alpha_cli/data_cmds.py
-verified: 9c40aa259c97
+verified: bdd1a2a989f8
 ---
 
 # Stage 02 — data: case to approved exploration contract
