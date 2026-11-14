@@ -1,6 +1,6 @@
 # Inspect retained native daily bars against an explicit grid
 
-**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+**Delivery state:** Completed — proven end to end by `tests/smoke/test_retained_coverage_smoke.py` (2026-11-14, `m8/prove-retained-coverage`); done when that pull request merges.
 
 Canonical v9 W05 and the market-data amendment's page42 coverage/gap interface
 require truthful retained coverage evidence. The existing quality command reverifies
