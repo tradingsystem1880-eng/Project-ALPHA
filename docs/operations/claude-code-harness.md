@@ -8,7 +8,7 @@ authorization, scientific verification and sandbox boundaries are unchanged.
 ## Verification and discovery
 
 `uv run python scripts/gate.py check` is the fast local check; `gate.py component NAME` runs one
-CI job's steps (`backend`, `frontend`, `literature`, `qlib`, `eval`) exactly as CI does.
+CI job's steps (`backend`, `frontend`, `literature`, `qlib`) exactly as CI does.
 The [development loop](development-loop.md) describes both. Nothing local records that a tree
 passed: there are no stamps, receipts, attestations, override tokens or audit journal.
 
@@ -114,13 +114,13 @@ approval, promotion, sealed-data or trading authority.
 
 For interactive inspection, project the large JSON response with `jq` while preserving
 the CLI exit status (`set -o pipefail`); full per-date data remains in the immutable
-attempt artifacts. The [closure record](../work/archive/2026-09/2026-09-19-research-walkthrough-closure.md)
+attempt artifacts. The [closure record](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-09/2026-09-19-research-walkthrough-closure.md)
 tracks acceptance checks and limitations.
 
 ### Missing-suite exceptions (2026-09-17 to 2026-11-04)
 
 The per-delivery owner exceptions for the absent hidden suite are kept, verbatim, in
-[one historical record](../records/2026-11-hidden-suite-exceptions.md); ADR-0041 ended the
+[one historical record](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/2026-11-hidden-suite-exceptions.md); ADR-0041 ended the
 requirement.
 
 ## Checkpointed weekly mutation execution (2026-10-10)

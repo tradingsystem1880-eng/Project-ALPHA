@@ -20,5 +20,5 @@ A qualified intraday equity data source (W05).
 
 ## Sources
 
-- [Edge-first Phase B plan, out of scope](../../work/2026-09-10-edge-first-phase-b-feed-the-machine/02-plan.md)
-- [Checklist: Explicit exclusions and boundaries](../../context/feature-readiness-checklist-2026-10-27.md#explicit-exclusions-and-boundaries)
+- [Edge-first Phase B plan, out of scope](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/2026-09-10-edge-first-phase-b-feed-the-machine/02-plan.md)
+- [Checklist: Explicit exclusions and boundaries](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#explicit-exclusions-and-boundaries)

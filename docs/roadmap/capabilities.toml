@@ -31,13 +31,11 @@
 #                    proof_synthetic exists (the page lists those together)
 #   triage           {card, recommendation, owner_decision} for items on the triage sheet;
 #                    owner_decision is "undecided" until the owner answers (TOML has no null)
-#   plans            live plans (docs/work/<task> folder names) that belong to it
 #   docs             plain-English documents for the owner (repo-relative .md paths; optional)
 #
-# [[decision]] holds triage cards that are not a workflow of their own; [[unassigned_plan]] holds
-# live plans that belong to no workflow; [[plan_summary]] gives every "In progress" plan a plain
-# title and one line for STATUS.md. [[known_defect]] lists each strict-xfail smoke check with a
-# plain title, its node and how to see the defect; every xfail under tests/smoke/ must be listed.
+# [[decision]] holds triage cards that are not a workflow of their own. [[known_defect]] lists each
+# strict-xfail smoke check with a plain title, its node and how to see the defect; every xfail
+# under tests/smoke/ must be listed.
 
 [[capability]]
 id = "workstation"
@@ -58,7 +56,6 @@ proof_smoke = [
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Working"
-plans = []
 
 [[capability]]
 id = "price-charts"
@@ -83,7 +80,6 @@ real_data = "Recorded: on 2026-10-02 a live AAVEUSDT 1-hour chart opened 41,113 
 needs = []
 state = "Partial"
 missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
-plans = []
 
 [[capability]]
 id = "stock-data"
@@ -112,7 +108,6 @@ real_data_needs = "A Tiingo key for the authoritative source, and confirmation o
 needs = []
 state = "Partial"
 missing = "no offline way to get prices in; snapshot, verify and as-of read are proven end to end"
-plans = []
 
 [[capability]]
 id = "crypto-data"
@@ -141,7 +136,6 @@ proof_smoke = [
 real_data = "Recorded: on 2026-10-02 live DefiLlama downloads (Aave TVL, stablecoin supply, yield pools) passed their checks, and a Binance spot listing was downloaded on 2026-10-01 (docs/BUILD-STATUS.md, 2026-10-02 entries). On 2026-11-14 the Dell downloaded free Binance spot daily history for 15 USDT pairs and a spot market list, and the installed alpha downloaded a live Binance REST tail of November 2026 on a copy of that folder; not yet confirmed (docs/reference/project/components/data-layer.md). The end-to-end check covers Binance only; Bybit, CoinGecko, DefiLlama, GeckoTerminal and Coin Metrics are not run end to end."
 needs = []
 state = "Working"
-plans = []
 
 [[capability]]
 id = "crypto-backfill"
@@ -169,9 +163,6 @@ needs = []
 state = "Working"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; needs one real download run
 triage = { card = "1", recommendation = "KEEP", owner_decision = "KEEP" }
-plans = [
-  "2026-09-10-edge-first-phase-b-feed-the-machine",
-]
 
 [[capability]]
 id = "download-bookkeeping"
@@ -191,13 +182,6 @@ state = "Shelved"
 missing = "shelved 2026-11-14: not wired into any command; kept for a future download-budget policy and durable acquisition journal"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept for a future download-budget policy
 triage = { card = "2", recommendation = "SHELVE", owner_decision = "SHELVE" }
-plans = [
-  "2026-11-07-acquisition-disposable-transactions",
-  "2026-11-08-accounted-backfill-dispatch",
-  "2026-11-08-accounted-http-attempts",
-  "2026-11-08-complete-http-response-evidence",
-  "2026-11-08-bound-http-retained-resume",
-]
 
 [[capability]]
 id = "funding-download"
@@ -216,7 +200,6 @@ state = "Shelved"
 missing = "shelved 2026-11-14: not wired into any command (real downloads refused on purpose); kept for funding-event research"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept for funding-event research
 triage = { card = "B", recommendation = "SHELVE", owner_decision = "SHELVE" }
-plans = []
 
 [[capability]]
 id = "retained-coverage"
@@ -242,12 +225,6 @@ state = "Partial"
 missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; needs one real dataset
 triage = { card = "3", recommendation = "KEEP", owner_decision = "KEEP" }
-plans = [
-  "2026-11-08-retained-daily-bar-grid",
-  "2026-11-08-retained-bar-quality-ui",
-  "2026-11-08-retained-bar-production-assembly",
-  "2026-11-08-retained-project-production-smoke",
-]
 
 [[capability]]
 id = "crypto-snapshots"
@@ -279,9 +256,6 @@ needs = []
 state = "Working"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; small and built into existing commands
 triage = { card = "4", recommendation = "KEEP", owner_decision = "KEEP" }
-plans = [
-  "2026-11-08-asset-master-source-provenance",
-]
 
 [[capability]]
 id = "backtest"
@@ -308,7 +282,6 @@ proof_smoke = [
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Working"
-plans = []
 
 [[capability]]
 id = "run-reports"
@@ -338,7 +311,6 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "the text and JSON (--json) reports are proven end to end; figures and run comparison are tested in-process only"
-plans = []
 
 [[capability]]
 id = "rules-and-scans"
@@ -365,7 +337,6 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
-plans = []
 
 [[capability]]
 id = "strategy-development"
@@ -389,7 +360,6 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"
-plans = []
 
 [[capability]]
 id = "validation-gauntlet"
@@ -417,7 +387,6 @@ proof_smoke = [
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Working"
-plans = []
 
 [[capability]]
 id = "monte-carlo"
@@ -435,7 +404,6 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"
-plans = []
 
 [[capability]]
 id = "risk-numbers"
@@ -463,12 +431,6 @@ state = "Partial"
 missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; closest to working
 triage = { card = "5", recommendation = "KEEP", owner_decision = "KEEP" }
-plans = [
-  "2026-11-08-c04-risk-anchor-disclosure",
-  "2026-11-08-risk-equity-clocks",
-  "2026-11-08-risk-strict-json",
-  "2026-11-10-risk-basis-fixture-capture",
-]
 
 [[capability]]
 id = "prop-firm-check"
@@ -483,7 +445,6 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"
-plans = []
 
 [[capability]]
 id = "price-forecasts"
@@ -506,7 +467,6 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = ["the Kronos model files (downloaded on first use; not on this computer)"]
 state = "Partial"
 missing = "proved only with a stand-in model"
-plans = []
 
 [[capability]]
 id = "research-cases"
@@ -535,7 +495,6 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "proven up to the owner-approval boundary; a full case needs provider data and your approval"
-plans = ["2026-11-14-approval-by-structure"]
 
 [[capability]]
 id = "quick-screening"
@@ -551,7 +510,6 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"
-plans = []
 
 [[capability]]
 id = "literature"
@@ -576,7 +534,6 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = ["the literature worker setup (not installed on this computer)"]
 state = "Partial"
 missing = "paper download tested only with a stand-in worker"
-plans = []
 
 [[capability]]
 id = "paper-to-experiment"
@@ -602,7 +559,6 @@ state = "Partial"
 missing = "no test takes one paper all the way to an experiment"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; fits how research is done
 triage = { card = "6", recommendation = "KEEP", owner_decision = "KEEP" }
-plans = ["2026-11-07-paper-to-experiment-provenance"]
 
 [[capability]]
 id = "ai-investigations"
@@ -628,7 +584,6 @@ real_data_needs = "A signed-in Codex command-line tool."
 needs = []
 state = "Partial"
 missing = "tested in a browser against a test server only; no end-to-end smoke check yet"
-plans = []
 
 [[capability]]
 id = "ai-tools-connection"
@@ -645,7 +600,6 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"
-plans = []
 
 [[capability]]
 id = "providers-and-jobs"
@@ -672,7 +626,6 @@ real_data_needs = "Provider credentials (for example a Tiingo key)."
 needs = []
 state = "Partial"
 missing = "job list tested only with a stand-in command; provider checks need real providers"
-plans = []
 
 [[capability]]
 id = "paper-trading"
@@ -695,7 +648,6 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = ["an opt-in setting, live Binance public data, and an IBKR practice account and gateway for stocks"]
 state = "Partial"
 missing = "no end-to-end test; parts tested with stand-ins"
-plans = []
 
 [[capability]]
 id = "ml-lab"
@@ -721,7 +673,6 @@ proof_smoke = [
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Working"
-plans = []
 
 [[capability]]
 id = "alpha158-v2"
@@ -739,7 +690,6 @@ state = "Partial"
 missing = "no ML run with version 2; superseded by version 3 (kept for stored results)"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; opt-in correctness fix
 triage = { card = "11", recommendation = "KEEP", owner_decision = "KEEP" }
-plans = ["2026-11-09-alpha158-versioned-correction"]
 
 [[capability]]
 id = "alpha158-v3"
@@ -761,7 +711,6 @@ proof_smoke = [
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Working"
-plans = []
 
 [[capability]]
 id = "qlib-refit"
@@ -777,7 +726,6 @@ state = "Shelved"
 missing = "shelved 2026-11-14: not wired into any fit; kept for Qlib fold retraining once the reviewed statistics modules exist"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept for Qlib fold retraining
 triage = { card = "10", recommendation = "SHELVE", owner_decision = "SHELVE" }
-plans = ["2026-10-26-qlib-w11-refit"]
 
 [[capability]]
 id = "qlib-in-research-cases"
@@ -796,7 +744,6 @@ state = "Shelved"
 missing = "shelved 2026-11-14: unused groundwork, not wired in; kept for routing Qlib models through RD-Agent research cases after the daily rule study"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve, not delete: it routes Qlib through RD-Agent, which the owner declared core after the sheet was written
 triage = { card = "A", recommendation = "DELETE", owner_decision = "SHELVE" }
-plans = []
 
 [[capability]]
 id = "native-engine-demos"
@@ -817,7 +764,6 @@ state = "Shelved"
 missing = "shelved 2026-11-14: made-up prices only, not a production path; kept as a demonstration that Qlib and Nautilus connect (it re-ran on this computer on 2026-11-14)"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept as a made-up-data demonstration
 triage = { card = "F", recommendation = "SHELVE", owner_decision = "SHELVE" }
-plans = []
 
 [[capability]]
 id = "ai-stock-research"
@@ -848,17 +794,6 @@ missing = "an AI model connection now exists (local gateway to the signed-in Cod
 # owner, 2026-11-14: RD-Agent is a key component of how the project works
 triage = { card = "7", recommendation = "KEEP", owner_decision = "KEEP" }
 docs = ["docs/roadmap/rd-agent-in-alpha.md"]
-plans = [
-  "2026-11-07-stock-rdloop-continuation",
-  "2026-11-07-stock-retained-dispatch",
-  "2026-11-08-native-stock-inspection",
-  "2026-11-08-native-stock-operator-command",
-  "2026-11-08-native-stock-profile-verification",
-  "2026-11-08-native-stock-result-recovery",
-  "2026-11-08-native-stock-snapshot-validation",
-  "2026-11-08-native-stock-worker-hardening",
-  "2026-11-08-native-cumulative-regression",
-]
 
 [[capability]]
 id = "native-job-result"
@@ -883,10 +818,6 @@ missing = "its smoke check now passes here: alpha and the web app read a made-up
 # owner, 2026-11-14: RD-Agent is a key component of how the project works
 triage = { card = "8", recommendation = "SHELVE", owner_decision = "KEEP" }
 docs = ["docs/roadmap/rd-agent-in-alpha.md"]
-plans = [
-  "2026-11-08-native-job-result-api",
-  "2026-11-08-native-job-result-view",
-]
 
 [[capability]]
 id = "daily-rule-study"
@@ -916,10 +847,6 @@ missing = "with its Docker image now qualified here, the full daily study's test
 # owner, 2026-11-14: RD-Agent is a key component of how the project works
 triage = { card = "9", recommendation = "KEEP", owner_decision = "KEEP" }
 docs = ["docs/roadmap/rd-agent-in-alpha.md", "docs/operations/storage-settings.md"]
-plans = [
-  "2026-10-31-packet3-daily-rule",
-  "2026-10-26-native-rule-study-boundary",
-]
 
 [[capability]]
 id = "ai-research-team"
@@ -935,7 +862,6 @@ missing = "a backlog item only (moved from a plan 2026-11-14); one advisory slic
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep as a backlog item; RD-Agent is core
 triage = { card = "15", recommendation = "YOUR CALL", owner_decision = "KEEP" }
 docs = ["docs/roadmap/backlog/agentic-research-programme.md"]
-plans = []
 
 [[capability]]
 id = "mac-real-data"
@@ -950,7 +876,6 @@ state = "Partial"
 missing = "one final review and a run on your Mac"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; the two plans merged into one
 triage = { card = "13", recommendation = "KEEP", owner_decision = "KEEP" }
-plans = ["2026-10-26-mac-portability-qualification"]
 
 # Triage cards that are not a user-facing workflow of their own.
 [[decision]]
@@ -994,32 +919,3 @@ name = "QuantPad code"
 recommendation = "DELETE"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): delete: command, adapter and archive code removed; registered QuantPad datasets stay readable
 owner_decision = "DELETE"
-
-# Live plans that belong to no single workflow.
-[[unassigned_plan]]
-plan = "2026-11-09-selector-error-test-correction"
-reason = "Test correction only, no change for the owner (triage card 12)."
-
-[[unassigned_plan]]
-plan = "2026-11-09-web-matplotlib-environment"
-reason = "Web app plumbing for chart settings, nothing new to see (triage card 12)."
-
-[[unassigned_plan]]
-plan = "2026-11-10-browser-lane-routing"
-reason = "Browser test tooling, nothing new to see (triage card 12)."
-
-# Plain-English titles for plans that are "In progress", shown on STATUS.md.
-[[plan_summary]]
-plan = "2026-09-10-edge-first-phase-b-feed-the-machine"
-title = "Get real crypto history into ALPHA"
-line = "Resumable crypto history download is built; the real download of the top 50 Bybit contracts has not been done."
-
-[[plan_summary]]
-plan = "2026-10-26-mac-portability-qualification"
-title = "Make ALPHA run on your Mac with real data providers"
-line = "Five of six Mac steps done; one final review is left, and the real-provider steps (merged in 2026-11-14) wait on provider access."
-
-[[plan_summary]]
-plan = "2026-10-31-packet3-daily-rule"
-title = "AI-run daily trading-rule study (Packet 3)"
-line = "Works on made-up data, including its Docker image on the Dell; the real-market run has not begun and needs your storage settings and real data."

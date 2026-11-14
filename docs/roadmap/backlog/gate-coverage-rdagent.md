@@ -5,7 +5,7 @@
 
 ## Problem / why
 
-CI runs five gate components (backend, frontend, literature, qlib, eval). `workers/rdagent` has
+CI runs four gate components (backend, frontend, literature, qlib). `workers/rdagent` has
 its own lock and project but no tests directory and no gate component, so nothing checks it on a
 pull request.
 

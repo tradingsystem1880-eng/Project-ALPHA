@@ -20,7 +20,6 @@ COMPONENTS = (
     "frontend-full",
     "literature",
     "qlib",
-    "eval",
 )
 Step = tuple[str, Path, list[str]]
 GitOutputRunner = Callable[..., str]
@@ -44,8 +43,6 @@ PATH_FILTERS: dict[str, tuple[str, ...]] = {
         "uv.lock",
     ),
     "literature": ("workers/literature/",),
-    # Benchmark worlds run in the platform environment and its tests read repository paths.
-    "eval": ("tools/alpha-eval/", "packages/", "apps/", "docs/", "pyproject.toml", "uv.lock"),
 }
 
 
@@ -273,8 +270,8 @@ def component_steps(
             ("API freshness", cwd, ["git", "diff", "--exit-code", "--", "src/api/generated.ts"]),
             ("browser", cwd, ["npm", "run", "test:e2e:built", "--", "--viewports", viewports]),
         ]
-    if component in {"literature", "qlib", "eval"}:
-        cwd = root / ("tools/alpha-eval" if component == "eval" else f"workers/{component}")
+    if component in {"literature", "qlib"}:
+        cwd = root / f"workers/{component}"
         return [
             ("lock", cwd, ["uv", "lock", "--check"]),
             ("install", cwd, ["uv", "sync", "--locked"]),

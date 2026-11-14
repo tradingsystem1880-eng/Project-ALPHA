@@ -957,7 +957,6 @@ def build_parser() -> argparse.ArgumentParser:
             "frontend-full",
             "literature",
             "qlib",
-            "eval",
         ),
     )
     component_p.add_argument(

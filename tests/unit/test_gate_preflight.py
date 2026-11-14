@@ -44,7 +44,7 @@ def _synthetic_repo(root: Path) -> Path:
             "scripts/generate_web_openapi.py",
             "scripts/wheel_smoke.py",
             "tests/unit/test_claude_md_relocation.py",
-            "tools/alpha-eval/tests/test_synthetic.py",
+            ".githooks/synthetic-hook",
             *QUANT_PATHS,
             API_OUTPUT,
             SPA_OUTPUT,
@@ -123,7 +123,7 @@ class TestGatePreflight(unittest.TestCase):
                 root / ".github" / "workflows" / "nightly.yml",
                 root / "pyproject.toml",
                 root / "uv.lock",
-                root / "tools" / "alpha-eval" / "tests" / "test_synthetic.py",
+                root / ".githooks" / "synthetic-hook",
             )
             for path in missing_paths:
                 path.unlink()
@@ -133,7 +133,7 @@ class TestGatePreflight(unittest.TestCase):
             self.assertIn(".github/workflows/nightly.yml", result["missing"])
             self.assertIn("pyproject.toml", result["missing"])
             self.assertIn("uv.lock", result["missing"])
-            self.assertIn("tools/alpha-eval/tests/test_synthetic.py", result["missing"])
+            self.assertIn(".githooks/synthetic-hook", result["missing"])
             self.assertGreater(result["tracked_file_count"], 0)
 
     def test_temporary_and_missing_git_alternates_are_blockers(self) -> None:

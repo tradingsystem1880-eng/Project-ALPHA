@@ -3,7 +3,7 @@
 **Last reviewed:** 2026-10-08
 **Status:** Living (terminal-style Workstation and governed D0/D1/D2 research flow implemented;
 private single-owner local-device scope; no production or distribution target)
-**Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual) · [`docs/records/specs/2026-06-14-project-alpha-v1-design.md`](records/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](records/specs/2026-08-06-research-scientist-program-design.md) · [`archive/2026-06-research-notes/00-SYNTHESIS.md`](archive/2026-06-research-notes/00-SYNTHESIS.md) (June 2026 research synthesis, historical) · [`adr/`](adr/) (decision records)
+**Companion docs:** [`CLAUDE.md`](../CLAUDE.md) (agent operating manual) · [`docs/records/specs/2026-06-14-project-alpha-v1-design.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-06-14-project-alpha-v1-design.md) (original v1 design) · [Workstation v3 specifications](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) · [Research Scientist specification](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-08-06-research-scientist-program-design.md) · [`archive/2026-06-research-notes/00-SYNTHESIS.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/archive/2026-06-research-notes/00-SYNTHESIS.md) (June 2026 research synthesis, historical) · [`adr/`](adr/) (decision records)
 
 ---
 
@@ -11,7 +11,7 @@ private single-owner local-device scope; no production or distribution target)
 
 Project ALPHA is a **private, local, Python** quantitative research platform — point-in-time data, event-driven backtesting, and a heavy-tailed statistical **validation gauntlet**. The platform's value is not a strategy; it is **machinery you can audit**: a backtest is only believable once it survives walk-forward out-of-sample testing, a randomized-price null, bootstrap confidence intervals, the Deflated Sharpe Ratio, and CPCV.
 
-This document is the **current-state architecture reference**: the enforced dependency DAG, each layer's charter, the end-to-end data flow, and the cross-cutting invariants. It is the stable map; the **"why" behind the load-bearing decisions** lives in the linked [ADRs](adr/). It is deliberately *not* a build history — the dated specs and plans under [`docs/work/`](work/) and [`docs/records/specs/`](records/specs/) remain the point-in-time record of how the platform was constructed. Audience: an engineer (human or agent) who needs to place a change correctly and not violate the architecture.
+This document is the **current-state architecture reference**: the enforced dependency DAG, each layer's charter, the end-to-end data flow, and the cross-cutting invariants. It is the stable map; the **"why" behind the load-bearing decisions** lives in the linked [ADRs](adr/). It is deliberately *not* a build history — the dated specs and plans under [`docs/work/`](https://github.com/tradingsystem1880-eng/Project-ALPHA/tree/pre-thin-2026-11-14/docs/work) and [`docs/records/specs/`](https://github.com/tradingsystem1880-eng/Project-ALPHA/tree/pre-thin-2026-11-14/docs/records/specs) remain the point-in-time record of how the platform was constructed. Audience: an engineer (human or agent) who needs to place a change correctly and not violate the architecture.
 
 ## 2. The Layered DAG
 
@@ -500,18 +500,18 @@ Options and screener functionality are CLI modules, not separate workspace packa
 ## 7. References
 
 - [`CLAUDE.md`](../CLAUDE.md) — agent operating manual and invariants; path-scoped rules retain module maps.
-- [`docs/records/specs/2026-06-14-project-alpha-v1-design.md`](records/specs/2026-06-14-project-alpha-v1-design.md) — the original v1 design spec (pre-build).
-- [`archive/2026-06-research-notes/00-SYNTHESIS.md`](archive/2026-06-research-notes/00-SYNTHESIS.md) — June 2026 research synthesis + decision table (historical, archived).
-- [`archive/2026-06-research-notes/07-architecture-ai-workflow.md`](archive/2026-06-research-notes/07-architecture-ai-workflow.md) — June 2026 repo layout, tooling, and AI build-workflow rationale (historical, archived).
-- [`audit/2026-07-19-post-v2-architecture-audit.md`](records/audits/2026-07-19-post-v2-architecture-audit.md) — post-v2 capability/gap audit and track decision.
-- [`records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md`](records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md) — approved Recommended-track implementation contract.
-- [`records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md`](records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md) — implemented Tiingo qualification, scheduler, and IBKR Paper safety boundary.
-- [`records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md`](records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) — professional workstation, causal chart, and native analytics contract.
-- [`records/specs/2026-07-19-workstation-v3-development-control-plane-design.md`](records/specs/2026-07-19-workstation-v3-development-control-plane-design.md) — durable lifecycle, suites, jobs, and sealed-holdout contract.
-- [`records/specs/2026-07-19-workstation-v3-evidence-agent-design.md`](records/specs/2026-07-19-workstation-v3-evidence-agent-design.md) — cited evidence ledger and bounded agent interface contract.
-- [`records/specs/2026-07-19-workstation-v3-qlib-worker-design.md`](records/specs/2026-07-19-workstation-v3-qlib-worker-design.md) — isolated Qlib exchange and replay contract.
-- [`records/specs/2026-08-06-research-scientist-program-design.md`](records/specs/2026-08-06-research-scientist-program-design.md) — finite Research Case, evidence-firewall, and owner-workflow contract.
-- [`records/specs/2026-08-12-four-family-monte-carlo-validation.md`](records/specs/2026-08-12-four-family-monte-carlo-validation.md) — required four-family path-risk stage, immutable evidence, and owner-review contract.
+- [`docs/records/specs/2026-06-14-project-alpha-v1-design.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-06-14-project-alpha-v1-design.md) — the original v1 design spec (pre-build).
+- [`archive/2026-06-research-notes/00-SYNTHESIS.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/archive/2026-06-research-notes/00-SYNTHESIS.md) — June 2026 research synthesis + decision table (historical, archived).
+- [`archive/2026-06-research-notes/07-architecture-ai-workflow.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/archive/2026-06-research-notes/07-architecture-ai-workflow.md) — June 2026 repo layout, tooling, and AI build-workflow rationale (historical, archived).
+- [`audit/2026-07-19-post-v2-architecture-audit.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/audits/2026-07-19-post-v2-architecture-audit.md) — post-v2 capability/gap audit and track decision.
+- [`records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md) — approved Recommended-track implementation contract.
+- [`records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md) — implemented Tiingo qualification, scheduler, and IBKR Paper safety boundary.
+- [`records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-07-19-workstation-v3-chart-artifacts-design.md) — professional workstation, causal chart, and native analytics contract.
+- [`records/specs/2026-07-19-workstation-v3-development-control-plane-design.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-07-19-workstation-v3-development-control-plane-design.md) — durable lifecycle, suites, jobs, and sealed-holdout contract.
+- [`records/specs/2026-07-19-workstation-v3-evidence-agent-design.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-07-19-workstation-v3-evidence-agent-design.md) — cited evidence ledger and bounded agent interface contract.
+- [`records/specs/2026-07-19-workstation-v3-qlib-worker-design.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-07-19-workstation-v3-qlib-worker-design.md) — isolated Qlib exchange and replay contract.
+- [`records/specs/2026-08-06-research-scientist-program-design.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-08-06-research-scientist-program-design.md) — finite Research Case, evidence-firewall, and owner-workflow contract.
+- [`records/specs/2026-08-12-four-family-monte-carlo-validation.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-08-12-four-family-monte-carlo-validation.md) — required four-family path-risk stage, immutable evidence, and owner-review contract.
 - [`governance/2026-07-19-dependency-license-matrix.md`](governance/2026-07-19-dependency-license-matrix.md) — direct dependency and upstream-candidate license disposition.
 - [`governance/2026-07-19-post-v2-risk-register.md`](governance/2026-07-19-post-v2-risk-register.md) — live risk ownership and acceptance evidence.
 
@@ -521,9 +521,9 @@ ChartWorkspace separates presentation state from research context and immutable 
 A workspace-local imperative registry links UTC ranges/cursors without cursor-driven workspace
 renders. PriceChartCanvas maintains its chart instance across composition/options/selection updates.
 RecordedSeries defaults to local BokehJS for backend points and gaps, with optional Lightweight mode. ScientificPlots uses Bokeh for backend histogram/QQ and SVG for calendar/correlation matrices, with exact tables. Bokeh documents are released on renderer disposal. FigureSurface preserves backend figure metadata/export contracts.
-No endpoint, statistical estimator or authority was added. See the [delivery report](records/2026-10-03-reference-quant-workstation.md).
+No endpoint, statistical estimator or authority was added. See the [delivery report](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/2026-10-03-reference-quant-workstation.md).
 
-Owner correction: [scientific research renderer and project-free browsing](records/2026-10-03-scientific-research-workstation.md). No backend or statistical changes.
+Owner correction: [scientific research renderer and project-free browsing](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/2026-10-03-scientific-research-workstation.md). No backend or statistical changes.
 
 ## Bounded CLI persistence seams
 
@@ -534,7 +534,7 @@ Owner correction: [scientific research renderer and project-free browsing](recor
 Prefer pinned Qlib native workflows, RD-Agent native loops and NautilusTrader primitives over
 reimplementing their internals. Current main already uses native models/recorders, actual
 LoopBase/LoopMeta fixtures and Nautilus BacktestEngine. The
-[source-bound crosswalk](archive/2026-11-context-maps/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+[source-bound crosswalk](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/archive/2026-11-context-maps/alpha-quant-platform.md#native-upstream-first--2026-11-06)
 separates the demonstrated Alpha158 feature duplication from suspected orchestration overlap
 and required ALPHA integration. It records supplied unmerged synthetic/UI evidence separately
 from inspected main and defines parity, license, migration and rollback prerequisites for any

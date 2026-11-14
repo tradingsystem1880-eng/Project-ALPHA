@@ -153,11 +153,11 @@ references grant no launch authority; this fixture is not a new registration in 
 scientific operator registry. It exercises existing reservation exposure, not generic study/trial
 admission or scientific acceptance. Full resource metering, durable scientific artifact admission,
 cross-owner recovery and production activation remain W08 gaps. See
-[`2026-10-26-native-w04-admission.md`](../../docs/work/archive/2026-10/2026-10-26-native-w04-admission.md).
+[`2026-10-26-native-w04-admission.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-10/2026-10-26-native-w04-admission.md).
 
 ## Closed frozen-rule authority profiles (2026-10-26)
 
-See the [current handoff plan](../../docs/work/archive/2026-10/2026-10-26-native-rule-authority.md).
+See the [current handoff plan](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-10/2026-10-26-native-rule-authority.md).
 The old `.venv` and `uv.lock` above remain the W04 conformance environment. Two **fresh-only**
 environments add closed position and costed synthetic profiles, with hash-pinned requirements
 reusing already approved root/worker versions. Root `uv.lock` is unchanged. The economics profile
@@ -258,7 +258,7 @@ The report always grants no authority to initialize, migrate or switch roots. Re
 and unknown records first; do not import artificial ledgers, copy stale authority over later
 state, or reset consumption. Actual activation still requires qualified Linux process/container
 boundaries, retained storage, real input bindings and exact local owner confirmation. See the
-[implementation record](../../docs/work/archive/2026-10/2026-10-31-linux-storage-history.md).
+[implementation record](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-10/2026-10-31-linux-storage-history.md).
 
 ## Stock RDLoop continuation diagnostic
 
@@ -411,6 +411,6 @@ Checks: `uv run pytest -q tests/unit/test_rdagent_model_gateway.py` (no sockets,
 `uv run python scripts/run_owned_test.py -- uv run pytest -q -m smoke -n 0
 tests/smoke/test_rdagent_model_gateway_smoke.py` (loopback only; with `ALPHA_RDAGENT_SOURCE` and
 `ALPHA_STOCK_PYTHON` set it also drives RD-Agent's own `APIBackend` through LiteLLM against the
-fake route). Measurements: [the task's verification](../../docs/work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md).
+fake route). Measurements: [the task's verification](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md).
 It is not part of `scripts/setup.sh` or `gate.py doctor`: it needs no install, and whether Codex is
 signed in is already what `codex login status` reports.

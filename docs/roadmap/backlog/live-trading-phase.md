@@ -26,8 +26,8 @@ ADR and threat/risk review (the crypto readiness plan lists live capital as expl
 
 ## Sources
 
-- [Checklist: Definite later live trading phase](../../context/feature-readiness-checklist-2026-10-27.md#definite-later-live-trading-phase)
-- [Checklist: Explicit exclusions and boundaries](../../context/feature-readiness-checklist-2026-10-27.md#explicit-exclusions-and-boundaries)
-- [Checklist W17](../../context/feature-readiness-checklist-2026-10-27.md#w17-qualify-the-whole-research-process-and-paper-boundary)
-- [Crypto operational readiness plan, deferral table](../../work/archive/2026-08/2026-08-30-crypto-operational-readiness/02-plan.md)
+- [Checklist: Definite later live trading phase](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#definite-later-live-trading-phase)
+- [Checklist: Explicit exclusions and boundaries](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#explicit-exclusions-and-boundaries)
+- [Checklist W17](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#w17-qualify-the-whole-research-process-and-paper-boundary)
+- [Crypto operational readiness plan, deferral table](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-08/2026-08-30-crypto-operational-readiness/02-plan.md)
 - [README: Implemented scope and limits](../../../README.md#implemented-scope-and-limits)

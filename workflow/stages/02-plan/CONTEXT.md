@@ -3,8 +3,6 @@ owner: delivery pipeline
 sources:
   - scripts/harness_models.py
   - scripts/harness_awareness.py
-  - scripts/capabilities.py
-  - tests/unit/test_plan_schema.py
 verified: aa600e57932d
 ---
 
@@ -27,7 +25,7 @@ sections to read first.
 | [documentation invariants](../../../docs/reference/invariants/documentation.md) | Feature plans | always |
 | [root routing](../../../CONTEXT.md) | Read first | always: find the workspace each change lands in |
 | [component files](../../../docs/reference/project/overview.md) | Components | always: read the file of each part the plan changes |
-| [capability map](../../../docs/roadmap/capabilities.toml) | — | always: the plan joins one capability or `[[unassigned_plan]]` |
+| [capability map](../../../docs/roadmap/capabilities.toml) | — | the plan changes what a capability can do |
 | [engineering rules](../../../docs/reference/invariants/engineering.md) | Quant tier | a file in the quant tier changes |
 | [engineering rules](../../../docs/reference/invariants/engineering.md) | Hash-bound source bytes | `packages/alpha-research/src` would change |
 
@@ -46,10 +44,7 @@ sections to read first.
    name protected files the change touches. State the task class ([model
    routing](../../../docs/reference/model-routing.md#task-classes)) as a `**Build class:**` line.
 5. Name the one owning document each changed fact lives in (`docs_to_update`).
-6. Add the task to `docs/roadmap/capabilities.toml` (the capability's `plans` list, or an
-   `[[unassigned_plan]]` with a reason), then run `uv run python scripts/capabilities.py`,
-   `uv run python scripts/roadmap_index.py` and `uv run python scripts/status.py`.
-7. Check the plan: `uv run python scripts/gate.py plan-check docs/work/<task>/02-plan.md`, and fix
+6. Check the plan: `uv run python scripts/gate.py plan-check docs/work/<task>/02-plan.md`, and fix
    the front block until it passes. Never weaken the schema to make a plan pass.
 
 ## Outputs
@@ -57,8 +52,7 @@ sections to read first.
 `docs/work/<task>/02-plan.md`, in this order:
 
 1. `# <title>`, then within the first 12 lines one `**Delivery state:** Planned — <note>` line
-   (vocabulary in the Feature plans rules; `In progress` only once stage 03 starts and the
-   work-in-progress cap allows it), and one `**Build class:** small|standard|hard — <reason>` line.
+   (vocabulary in the Feature plans rules; `In progress` once stage 03 starts), and one `**Build class:** small|standard|hard — <reason>` line.
 2. `## For the owner` — at most 10 plain-English lines: what will change for them, how they will
    see it, what it will not do, anything they must decide.
 3. The first fenced `json` block: a `FeaturePlan` (`scripts/harness_models.py`).

@@ -24,7 +24,6 @@ jobs:
     outputs:
       qlib: ${{ steps.select.outputs.qlib }}
       literature: ${{ steps.select.outputs.literature }}
-      eval: ${{ steps.select.outputs.eval }}
       quant: ${{ steps.select.outputs.quant }}
     steps:
       - uses: actions/checkout@v6.0.3
@@ -184,22 +183,11 @@ jobs:
       - name: Shared literature gate
         run: uv run python scripts/gate.py component literature
 
-  eval:
-    needs: changes
-    if: needs.changes.outputs.eval == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6.0.3
-      - uses: ./.github/actions/setup
-      - name: Shared benchmark (alpha-eval) gate
-        run: uv run python scripts/gate.py component eval
-
   ci-ok:
     # The one check branch protection requires. Add every new job to `needs`; then
     # jobs can be added, removed or renamed without touching repository settings.
     if: always()
-    needs: [changes, static, tests, coverage, quant, frontend, qlib-worker, literature-worker, eval]
+    needs: [changes, static, tests, coverage, quant, frontend, qlib-worker, literature-worker]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -209,8 +197,7 @@ jobs:
           # Conditional job -> the `changes` output that decides it. Only these may be skipped,
           # and only when `changes` succeeded and said the job was not needed.
           CONDITIONAL: >-
-            {"quant": "quant", "qlib-worker": "qlib", "literature-worker": "literature",
-            "eval": "eval"}
+            {"quant": "quant", "qlib-worker": "qlib", "literature-worker": "literature"}
         run: |
           echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
           failed=$(echo "$RESULTS" | jq -r --argjson conditional "$CONDITIONAL" '

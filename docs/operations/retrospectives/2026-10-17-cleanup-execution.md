@@ -61,7 +61,7 @@ The old pending-upload CONNECT 403 remains a separate reported unresolved platfo
 support case; no internal-service cause or repair is established here. The first
 PR75 review found historical-plan consistency issues; its original head and receipts
 remain preserved alongside the later correction. See
-[current foundation status](../../BUILD-STATUS.md#2026-10-18-foundation-status)
+[current foundation status](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/BUILD-STATUS.md#2026-10-18-foundation-status)
 for current delivery and acceptance boundaries rather than treating this dated
 record as another inventory.
 

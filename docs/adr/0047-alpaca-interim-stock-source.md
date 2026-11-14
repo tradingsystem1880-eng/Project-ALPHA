@@ -15,7 +15,7 @@ free stock source until the Mac
 Alpaca's free Basic plan offers consolidated (SIP) daily history since 2016 once it is at least
 15 minutes old, 200 calls a minute, for personal, non-commercial use (documentation and terms read
 2026-11-14; quotes in the
-[verification record](../work/archive/2026-11/2026-11-14-alpaca-stock-data/04-verify.md)).
+[verification record](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-alpaca-stock-data/04-verify.md)).
 
 ## Decision
 

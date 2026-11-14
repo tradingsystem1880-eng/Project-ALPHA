@@ -23,7 +23,7 @@ W01–W04 for design; W05 qualified fixtures for numerical acceptance.
 
 ## Sources
 
-- [Checklist W19](../../context/feature-readiness-checklist-2026-10-27.md#w19-qualify-data-storage-and-governed-queries)
-- [Checklist: Governed storage subpackets](../../context/feature-readiness-checklist-2026-10-27.md#governed-storage-subpackets)
-- [Checklist Packet 3](../../context/feature-readiness-checklist-2026-10-27.md#packet-3-complete-one-real-native-rule-and-control-study)
-- [Packet 3 daily rule plan](../../work/2026-10-31-packet3-daily-rule/02-plan.md)
+- [Checklist W19](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#w19-qualify-data-storage-and-governed-queries)
+- [Checklist: Governed storage subpackets](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#governed-storage-subpackets)
+- [Checklist Packet 3](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/context/feature-readiness-checklist-2026-10-27.md#packet-3-complete-one-real-native-rule-and-control-study)
+- [Packet 3 daily rule plan](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/2026-10-31-packet3-daily-rule/02-plan.md)

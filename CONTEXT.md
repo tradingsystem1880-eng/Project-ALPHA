@@ -4,7 +4,6 @@ sources:
   - packages/*/pyproject.toml
   - apps/*/pyproject.toml
   - workers/*/pyproject.toml
-  - tools/*/pyproject.toml
 verified: aa600e57932d
 ---
 
@@ -36,7 +35,6 @@ it points to, never here.
 | [workers/qlib/CONTEXT.md](workers/qlib/CONTEXT.md) | — | the isolated Qlib machine-learning worker |
 | [workers/literature/CONTEXT.md](workers/literature/CONTEXT.md) | — | the literature acquisition worker |
 | [workers/rdagent/CONTEXT.md](workers/rdagent/CONTEXT.md) | — | the RD-Agent native-loop worker |
-| [tools/alpha-eval/CONTEXT.md](tools/alpha-eval/CONTEXT.md) | — | the agent benchmark and evaluation tool |
 | [scripts/CONTEXT.md](scripts/CONTEXT.md) | — | the gate, CI steps, file-system tools, generators |
 | [tests/CONTEXT.md](tests/CONTEXT.md) | — | test layout, markers, bias guards, oracles |
 | [docs/CONTEXT.md](docs/CONTEXT.md) | — | documentation, ADRs, plans, this file system |
@@ -67,7 +65,7 @@ When a fact changes, update its one home and link to it from elsewhere; never co
 ## Finding anything else
 
 - `uv run python scripts/fs.py orient` lists the areas and their module counts.
-- `uv run python scripts/fs.py search "<words>"` finds ranked excerpts, live documents first.
+- `uv run python scripts/fs.py search "<words>"` finds ranked excerpts of the documentation.
 - `uv run python scripts/fs.py stale` lists documents whose sources changed since they were verified.
 
 ## How to change it

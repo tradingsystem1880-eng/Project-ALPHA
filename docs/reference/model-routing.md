@@ -188,7 +188,8 @@ and `fallback`, and the pull request's "Who built and who reviewed".
 
 `handoff.py` writes a JSON build record for every run under its home (default
 `<parent of the main checkout>/tmp/handoff/records/`, or `ALPHA_HANDOFF_HOME`); for a task folder
-it also writes `docs/work/<task>/03-build.json`, committed with the build. On the small route the
+it also writes `docs/work/<task>/03-build.json` on the task branch (removed with the folder before
+merge; its numbers go into the pull request). On the small route the
 record stays outside the tree and its numbers go into the pull request under "Who built and who
 reviewed". Worktrees are `<home>/wt/<name>` on branch `build/<name>`; `handoff.py status` lists
 them and `handoff.py clean` removes merged ones (only those it created). A later run on the same

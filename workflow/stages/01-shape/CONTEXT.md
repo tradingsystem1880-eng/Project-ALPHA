@@ -3,7 +3,6 @@ owner: delivery pipeline
 sources:
   - scripts/status.py
   - scripts/roadmap_index.py
-  - tests/unit/test_status_page.py
 verified: f89aa1bb78af
 ---
 
@@ -17,13 +16,13 @@ Nothing is designed or built here; the job is to agree what "done" means before 
 ## Inputs
 
 - The owner's request, quoted exactly as they gave it (chat, issue, triage card).
-- `STATUS.md` line "Work in progress", to see whether a new task may start.
+- The open pull requests (`gh pr list`), to see what is already in flight.
 
 ## Read first
 
 | Read | Section | When |
 |---|---|---|
-| [STATUS.md](../../../STATUS.md) | At a glance | always: the work-in-progress count and what is allowed |
+| [STATUS.md](../../../STATUS.md) | At a glance | always: what works and what waits for the owner |
 | [component files](../../../docs/reference/project/overview.md) | Components | the request touches a part: read its file and the owner decisions log |
 | [roadmap index](../../../docs/roadmap/README.md) | — | `fs.py search` finds a plan or backlog item that may cover it |
 | [documentation invariants](../../../docs/reference/invariants/documentation.md) | Roadmap index | writing a backlog file |
@@ -32,22 +31,17 @@ Nothing is designed or built here; the job is to agree what "done" means before 
 ## Process
 
 1. Restate the request in one sentence and search for it: `uv run python scripts/fs.py search
-   "<words>"` (live plans and backlog items rank first). If a live plan covers it, stop and say so.
+   "<words>"`. If a backlog item or an open pull request covers it, stop and say so.
 2. Decide the size: the small route in [the pipeline](../../CONTEXT.md#the-task-folder) needs no
-   task folder and is not counted against the cap. When unsure, ask the owner; say which you chose.
-3. Check the work-in-progress limit. Count = live plans `In progress` or
-   `Implemented – qualification pending`; the cap is `ceiling` in `docs/roadmap/wip-limit.json`
-   (it falls toward `limit` as work closes; the generated roadmap index states both). When the
-   count is at the cap, a new task may not start: write a backlog file instead and tell the
-   owner which open work blocks it.
-4. Ask at most three questions, and only ones that change what gets built; give your
+   task folder. When unsure, ask the owner; say which you chose.
+3. Ask at most three questions, and only ones that change what gets built; give your
    recommended answer with each. Record every other default in the brief.
-5. A request to shelve, delete or cut a part starts from its component file and the owner
+4. A request to shelve, delete or cut a part starts from its component file and the owner
    decisions log ([rule](../../../docs/reference/project/overview.md#before-you-recommend-removing-anything)).
    Being uninstalled, skipped or unfinished is a task to finish, not a reason to shelve.
-6. A market idea is research, not a feature: it goes to the research pipeline (a research case),
+5. A market idea is research, not a feature: it goes to the research pipeline (a research case),
    never straight to strategy code.
-7. Write the output below in plain English the owner can read without the code.
+6. Write the output below in plain English the owner can read without the code.
 
 ## Outputs
 

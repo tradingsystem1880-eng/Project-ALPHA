@@ -14,7 +14,7 @@ verified: 1724a5befe5d
 
 The root test suite for every package and app: unit, integration, bias guards (look-ahead
 detectors), oracles (statistical correctness checks), fixtures and visible acceptance tests. The
-isolated workers and `tools/alpha-eval` keep their own suites. Tests must never read the guarded
+isolated workers keep their own suites. Tests must never read the guarded
 `tests/holdout/` path, and guards and oracles must never be weakened to make a change pass.
 
 ## Read first

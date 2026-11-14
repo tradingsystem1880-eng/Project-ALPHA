@@ -17,12 +17,6 @@ def test_committed_capability_map_is_valid() -> None:
     assert capabilities.main([]) == 0
 
 
-def test_every_live_plan_is_assigned_exactly_once() -> None:
-    cmap = capabilities.load(ROOT)
-    owned = [plan for cap in cmap.capabilities for plan in cap.plans] + list(cmap.unassigned_plans)
-    assert sorted(owned) == sorted(plan.name for plan in cmap.live_plans)
-
-
 def test_map_and_triage_sheet_list_the_same_cards_and_recommendations() -> None:
     sheet = (ROOT / "docs/roadmap/triage-2026-11.md").read_text(encoding="utf-8")
     table = sheet.split("## Your decisions", 1)[1].split("\n---", 1)[0]
@@ -37,7 +31,6 @@ def test_map_and_triage_sheet_list_the_same_cards_and_recommendations() -> None:
 # --- schema checks on a minimal synthetic tree --------------------------------------------
 
 
-_PLAN = "# Live plan\n\n**Delivery state:** In progress — evidence\n"
 _TEST = "def test_round_trip() -> None:\n    pass\n"
 _SMOKE = """import pytest
 
@@ -83,20 +76,11 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = {needs}
 state = "{state}"
 {extra}
-plans = {plans}
-"""
-
-_SUMMARY = """
-[[plan_summary]]
-plan = "2026-11-01-live"
-title = "Live work"
-line = "One line."
 """
 
 
 def _tree(tmp_path: Path, toml: str, *, defects: bool = False) -> Path:
     files = {
-        "docs/work/2026-11-01-live/02-plan.md": _PLAN,
         "tests/integration/test_x.py": _TEST,
         "tests/smoke/test_s.py": _SMOKE,
         "apps/alpha-cli/src/alpha_cli/main.py": _MAIN,
@@ -110,7 +94,6 @@ def _tree(tmp_path: Path, toml: str, *, defects: bool = False) -> Path:
         target = tmp_path / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding="utf-8")
-    (tmp_path / "docs/work/archive").mkdir(parents=True, exist_ok=True)
     return tmp_path
 
 
@@ -123,64 +106,58 @@ def _cap(**overrides: str) -> str:
         "needs": "[]",
         "state": "Working",
         "extra": "",
-        "plans": '["2026-11-01-live"]',
     }
     fields.update(overrides)
     return _CAP.format(**fields)
 
 
 def test_minimal_valid_map_loads(tmp_path: Path) -> None:
-    cmap = capabilities.load(_tree(tmp_path, _cap() + _SUMMARY))
+    cmap = capabilities.load(_tree(tmp_path, _cap()))
     assert [c.id for c in cmap.capabilities] == ["data-download"]
-    assert cmap.plan_summaries["2026-11-01-live"].title == "Live work"
 
 
 @pytest.mark.parametrize(
     ("toml", "message"),
     [
-        (_cap(id="Data_Download") + _SUMMARY, "kebab-case"),
-        (_cap() + _cap() + _SUMMARY, "assigned 2 times|duplicate"),
-        (_cap(state="Done") + _SUMMARY, "state must be one of"),
-        (_cap(smoke="[]") + _SUMMARY, "Working needs proof_smoke"),
-        (_cap(needs='["a GPU"]') + _SUMMARY, "Working needs proof_smoke"),
+        (_cap(id="Data_Download"), "kebab-case"),
+        (_cap() + _cap(), "duplicate"),
+        (_cap(state="Done"), "state must be one of"),
+        (_cap(smoke="[]"), "Working needs proof_smoke"),
+        (_cap(needs='["a GPU"]'), "Working needs proof_smoke"),
         (
-            _cap(smoke='["tests/smoke/test_s.py::test_skipped_in_body"]') + _SUMMARY,
+            _cap(smoke='["tests/smoke/test_s.py::test_skipped_in_body"]'),
             "not skipped or xfailed by design",
         ),
         (
-            _cap(smoke='["tests/smoke/test_s.py::test_skipped_by_mark"]') + _SUMMARY,
+            _cap(smoke='["tests/smoke/test_s.py::test_skipped_by_mark"]'),
             "not skipped or xfailed by design",
         ),
-        (_cap(smoke='["tests/integration/test_x.py::test_round_trip"]') + _SUMMARY, "tests/smoke/"),
-        (_cap(smoke='["tests/smoke/test_gone.py::test_end_to_end"]') + _SUMMARY, "does not exist"),
-        (_cap(smoke='["tests/smoke/test_s.py::test_absent"]') + _SUMMARY, "not found"),
+        (_cap(smoke='["tests/integration/test_x.py::test_round_trip"]'), "tests/smoke/"),
+        (_cap(smoke='["tests/smoke/test_gone.py::test_end_to_end"]'), "does not exist"),
+        (_cap(smoke='["tests/smoke/test_s.py::test_absent"]'), "not found"),
         (
-            _cap(state="Partial", extra=f'missing = "tested in-process only; {_NO_SMOKE}"')
-            + _SUMMARY,
+            _cap(state="Partial", extra=f'missing = "tested in-process only; {_NO_SMOKE}"'),
             "but lists proof_smoke",
         ),
-        (_cap(state="Partial") + _SUMMARY, "must say what is 'missing'"),
-        (_cap(proof='["tests/integration/test_missing.py::test_round_trip"]') + _SUMMARY, "file"),
-        (_cap(proof='["tests/integration/test_x.py::test_absent"]') + _SUMMARY, "not found"),
-        (_cap(entries='["cli: alpha nonsense run"]') + _SUMMARY, "registered alpha command"),
-        (_cap(entries='["api: GET /api/nowhere"]') + _SUMMARY, "not a route"),
-        (_cap(entries='["panel: apps/x/Missing.tsx"]') + _SUMMARY, "does not exist"),
-        (_cap(entries='["script: alpha-nothing"]') + _SUMMARY, "console script"),
-        (_cap(plans='["2026-01-01-gone"]') + _SUMMARY, "not a live task"),
-        (_cap(plans="[]") + _SUMMARY, "assigned to no capability"),
-        (_cap(extra='docs = ["docs/nowhere.md"]') + _SUMMARY, "not a Markdown file"),
-        (_cap(), "plan_summary"),
+        (_cap(state="Partial"), "must say what is 'missing'"),
+        (_cap(proof='["tests/integration/test_missing.py::test_round_trip"]'), "file"),
+        (_cap(proof='["tests/integration/test_x.py::test_absent"]'), "not found"),
+        (_cap(entries='["cli: alpha nonsense run"]'), "registered alpha command"),
+        (_cap(entries='["api: GET /api/nowhere"]'), "not a route"),
+        (_cap(entries='["panel: apps/x/Missing.tsx"]'), "does not exist"),
+        (_cap(entries='["script: alpha-nothing"]'), "console script"),
+        (_cap(extra='docs = ["docs/nowhere.md"]'), "not a Markdown file"),
         (
-            _cap(extra='triage = {card = "1", recommendation = "MAYBE", owner_decision = "no"}')
-            + _SUMMARY,
+            _cap(extra='triage = {card = "1", recommendation = "MAYBE", owner_decision = "no"}'),
             "recommendation must be one of",
         ),
         (
-            _cap(extra='triage = { card = "1", recommendation = "KEEP", owner_decision = "later" }')
-            + _SUMMARY,
+            _cap(
+                extra='triage = { card = "1", recommendation = "KEEP", owner_decision = "later" }'
+            ),
             "owner_decision must be one of",
         ),
-        (_cap() + _SUMMARY + "\n[surprise]\nkey = 1\n", "unknown top-level"),
+        (_cap() + "\n[surprise]\nkey = 1\n", "unknown top-level"),
     ],
 )
 def test_map_violations_are_rejected(tmp_path: Path, toml: str, message: str) -> None:
@@ -188,25 +165,15 @@ def test_map_violations_are_rejected(tmp_path: Path, toml: str, message: str) ->
         capabilities.load(_tree(tmp_path, toml))
 
 
-def test_unassigned_plan_counts_as_assigned(tmp_path: Path) -> None:
-    toml = (
-        _cap(plans="[]")
-        + _SUMMARY
-        + '\n[[unassigned_plan]]\nplan = "2026-11-01-live"\nreason = "Clean-up only."\n'
-    )
-    cmap = capabilities.load(_tree(tmp_path, toml))
-    assert cmap.unassigned_plans == {"2026-11-01-live": "Clean-up only."}
-
-
 def test_hidden_tests_cannot_be_named_as_proof(tmp_path: Path) -> None:
-    root = _tree(tmp_path, _cap(proof='["tests/holdout/test_x.py::test_round_trip"]') + _SUMMARY)
+    root = _tree(tmp_path, _cap(proof='["tests/holdout/test_x.py::test_round_trip"]'))
     with pytest.raises(capabilities.CapabilityError, match="hidden test"):
         capabilities.load(root)
 
 
 def test_working_requires_a_smoke_check_not_just_in_process_tests(tmp_path: Path) -> None:
     in_process_only = _cap(smoke="[]", state="Partial", extra=f'missing = "tested; {_NO_SMOKE}"')
-    cap = capabilities.load(_tree(tmp_path, in_process_only + _SUMMARY)).capabilities[0]
+    cap = capabilities.load(_tree(tmp_path, in_process_only)).capabilities[0]
     assert cap.state == "Partial"
     assert cap.proof_synthetic
     assert cap.proof_smoke == ()
@@ -216,7 +183,7 @@ def test_working_counts_only_smoke_checks_that_really_run(tmp_path: Path) -> Non
     smoke = (
         '["tests/smoke/test_s.py::test_skipped_in_body", "tests/smoke/test_s.py::test_end_to_end"]'
     )
-    cap = capabilities.load(_tree(tmp_path, _cap(smoke=smoke) + _SUMMARY)).capabilities[0]
+    cap = capabilities.load(_tree(tmp_path, _cap(smoke=smoke))).capabilities[0]
     assert cap.state == "Working"
 
 
@@ -229,7 +196,7 @@ def _defect(node: str) -> str:
 
 
 def test_known_defects_load_when_each_xfail_smoke_check_is_listed(tmp_path: Path) -> None:
-    toml = _cap() + _SUMMARY + _defect(_STRICT)
+    toml = _cap() + _defect(_STRICT)
     with pytest.raises(capabilities.CapabilityError, match="test_loose_defect is not listed"):
         capabilities.load(_tree(tmp_path, toml, defects=True))
     (tmp_path / "tests/smoke/test_defects.py").write_text(
@@ -252,6 +219,6 @@ def test_known_defects_load_when_each_xfail_smoke_check_is_listed(tmp_path: Path
 def test_known_defect_must_be_a_strict_xfail_smoke_check(
     tmp_path: Path, node: str, message: str
 ) -> None:
-    toml = _cap() + _SUMMARY + _defect(node)
+    toml = _cap() + _defect(node)
     with pytest.raises(capabilities.CapabilityError, match=message):
         capabilities.load(_tree(tmp_path, toml, defects=True))

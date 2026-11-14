@@ -5,11 +5,6 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 ## At a glance
 
 - **Capabilities:** 8 working, 23 partly working, 0 demo only, 5 shelved, 1 not started.
-- **Work in progress:** 28 in progress (limit 3).
-  - 3 being worked on
-  - 25 built but not yet checked end to end
-  - Not counted: 7 blocked, 1 planned, not started.
-  - Allowed for now: 28. This number only goes down, until it reaches 3.
 - **Known defects:** 0.
 - **Decisions waiting for you:** 0.
 
@@ -79,12 +74,6 @@ Found by running the installed program; each has a check that will fail once it 
 
 - **Autonomous AI research team** — a backlog item only (moved from a plan 2026-11-14); one advisory slice shipped.
 
-## In progress now
-
-- **Get real crypto history into ALPHA** — Resumable crypto history download is built; the real download of the top 50 Bybit contracts has not been done.
-- **Make ALPHA run on your Mac with real data providers** — Five of six Mac steps done; one final review is left, and the real-provider steps (merged in 2026-11-14) wait on provider access.
-- **AI-run daily trading-rule study (Packet 3)** — Works on made-up data, including its Docker image on the Dell; the real-market run has not begun and needs your storage settings and real data.
-
 ## Waiting for your decision
 
 The full triage sheet, with what each item does and why: [docs/roadmap/triage-2026-11.md](docs/roadmap/triage-2026-11.md). Write your answer in its "Your decisions" table.
@@ -117,8 +106,6 @@ Ideas not yet planned (no order recorded, so alphabetical):
 
 ## Housekeeping
 
-- Live plans: 36
-- Archived plans: 137
 - Backlog items: 19
 - Staged refactors: 6
 

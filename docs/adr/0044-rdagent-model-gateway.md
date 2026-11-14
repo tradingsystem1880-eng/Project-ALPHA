@@ -94,7 +94,7 @@ Routes considered, checked against OpenAI's own documentation on 2026-11-14:
 
 - RD-Agent can run model-driven steps on the owner's ChatGPT allowance with no key on disk.
   Quality, latency and how far a real loop step gets are measured in
-  [`04-verify.md`](../work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md); model output stays data,
+  [`04-verify.md`](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md); model output stays data,
   never evidence.
 - Sampling diversity that RD-Agent expects from temperature 0.5 is not available on route A;
   the model's own sampling applies. This is visible in every log line.
