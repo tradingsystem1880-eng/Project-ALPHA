@@ -7,7 +7,7 @@ sources:
   - docs/CONTEXT.md
   - tools/alpha-eval/CONTEXT.md
   - docs/reference/model-routing.md
-verified: a79d832d
+verified: fbfecd65355d
 ---
 
 # Delivery and agent tooling
