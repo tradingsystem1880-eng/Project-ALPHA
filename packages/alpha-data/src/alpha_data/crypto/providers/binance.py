@@ -563,6 +563,7 @@ def _fetch_archive_resource(
         max_bytes=max_bytes,
         timeout_seconds=timeout_seconds,
         mime_message="response MIME is invalid",
+        report_http_code=True,
     )
 
 
@@ -717,9 +718,10 @@ def _resume_binance_archive(
                     os.fsync(stream.fileno())
     except DataError:
         raise
+    except urllib.error.HTTPError as exc:
+        raise DataError(f"Binance archive request failed with HTTP {exc.code}") from exc
     except (
         http.client.HTTPException,
-        urllib.error.HTTPError,
         urllib.error.URLError,
         TimeoutError,
         OSError,

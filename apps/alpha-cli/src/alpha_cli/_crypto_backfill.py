@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError
 
 from alpha_cli._crypto_backfill_accounting import (
     FixtureAccountingBlocked,
@@ -46,6 +47,10 @@ _BYBIT_SPAN_DAYS: Mapping[str, Mapping[str, int]] = {
     "premium_bars": {"1h": 40, "1d": 900, "5m": 3},
 }
 _BINANCE_MONTHLY_FAMILIES = frozenset({"market_bars"})
+# Binance Vision BTCUSDT 1d monthly Last-Modified dates, measured 2026-11-14:
+# 2025-11 through 2026-10 lagged 1–7 days; 2024-02 lagged 12 days.
+# Source: docs/work/archive/2026-11/2026-11-14-prove-crypto-backfill/02-plan.md.
+BINANCE_PUBLICATION_GRACE = timedelta(days=14)
 
 
 class BackfillInspectionLimit(DataError):
@@ -69,15 +74,22 @@ def _iso(instant: datetime) -> str:
     return instant.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _binance_months(start: date, end: date) -> Iterator[tuple[int, int]]:
+    """Walk months intersecting the exclusive requested date range."""
+    final = end - timedelta(days=1)
+    year, month = start.year, start.month
+    while (year, month) <= (final.year, final.month):
+        yield year, month
+        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+
+
 def unpublished_binance_periods(start: date, end: date, now: datetime) -> tuple[str, ...]:
     """Return requested monthly archives whose month has not ended at ``now``."""
     periods: list[str] = []
-    year, month = start.year, start.month
-    while (year, month) <= (end.year, end.month):
+    for year, month in _binance_months(start, end):
         next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
         if datetime(next_year, next_month, 1, tzinfo=UTC) > now:
             periods.append(f"{year:04d}-{month:02d}")
-        year, month = next_year, next_month
     return tuple(periods)
 
 
@@ -101,14 +113,12 @@ def plan_windows(
             raise DataError(f"backfill supports Binance market_bars monthly archives, not {family}")
         unpublished = set(unpublished_binance_periods(start, end, now))
         periods: list[BackfillWindow] = []
-        year, month = start.year, start.month
-        while (year, month) <= (end.year, end.month):
+        for year, month in _binance_months(start, end):
             period = f"{year:04d}-{month:02d}"
             if period not in unpublished:
                 if max_windows is not None and len(periods) >= max_windows:
                     raise BackfillInspectionLimit("backfill inspection window limit reached")
                 periods.append(BackfillWindow(start=None, end=None, period=period))
-            year, month = (year + 1, 1) if month == 12 else (year, month + 1)
         return tuple(periods)
     if provider != "bybit":
         raise DataError(f"backfill supports bybit and binance, not {provider}")
@@ -432,6 +442,7 @@ def run_backfill(
     with ledger.exclusive(refresh=True) if not dry_run else nullcontext():
         counts = {"windows_total": 0, "done": 0, "failed": 0, "skipped": 0, "split": 0}
         failures: list[dict[str, str]] = []
+        awaiting_publication: list[str] = []
         identities = [(symbol, *split_symbol(symbol, quote=quote)) for symbol in symbols]
         verified: set[str] = set()
 
@@ -533,6 +544,12 @@ def run_backfill(
                 # exceptions, or continue into another potentially effectful window.
                 raise
             except DataError as exc:
+                if provider == "binance" and _awaits_publication(window, now, exc):
+                    assert window.period is not None
+                    awaiting_publication.append(window.period)
+                    if log is not None:
+                        log(f"not published yet {key}")
+                    return
                 halves = split_window(window) if _fills_a_page(exc) else None
                 if halves is not None:
                     # A denser-than-planned series (e.g. hourly funding): halve and retry both.
@@ -578,20 +595,62 @@ def run_backfill(
             for window in windows:
                 counts["windows_total"] += 1
                 _acquire_window(symbol, base, quote_asset, window)
-        return {
-            **counts,
-            "dry_run": dry_run,
-            "ledger": str(ledger_path),
-            "failures": failures,
-            "windows": [window.key for window in windows],
-            "execution_authority": False,
-            "verified_completed": len(verified),
-            "resume_verification": "not_run_dry_run"
-            if dry_run
-            else "verified"
-            if verified
-            else "not_needed",
-        }
+        return _summary(
+            counts, dry_run, ledger_path, failures, awaiting_publication, windows, verified
+        )
+
+
+def _summary(
+    counts: Mapping[str, int],
+    dry_run: bool,
+    ledger_path: Path,
+    failures: list[dict[str, str]],
+    awaiting_publication: list[str],
+    windows: Sequence[BackfillWindow],
+    verified: set[str],
+) -> dict[str, object]:
+    return {
+        **counts,
+        "dry_run": dry_run,
+        "ledger": str(ledger_path),
+        "failures": failures,
+        "awaiting_publication": awaiting_publication,
+        "windows": [window.key for window in windows],
+        "execution_authority": False,
+        "verified_completed": len(verified),
+        "resume_verification": "not_run_dry_run"
+        if dry_run
+        else "verified"
+        if verified
+        else "not_needed",
+    }
+
+
+def _awaits_publication(window: BackfillWindow, now: datetime, exc: DataError) -> bool:
+    if window.period is None:
+        return False
+    year, month = (int(part) for part in window.period.split("-"))
+    next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
+    elapsed = now - datetime(next_year, next_month, 1, tzinfo=UTC)
+    if not timedelta(0) <= elapsed < BINANCE_PUBLICATION_GRACE:
+        return False
+    pending: list[BaseException] = [exc]
+    seen: set[int] = set()
+    # Visit causes before contexts; cap even an unusually large exception graph.
+    for _ in range(64):
+        if not pending:
+            break
+        error = pending.pop()
+        if id(error) in seen:
+            continue
+        seen.add(id(error))
+        if isinstance(error, HTTPError) and error.code == 404:
+            return True
+        if error.__context__ is not None:
+            pending.append(error.__context__)
+        if error.__cause__ is not None:
+            pending.append(error.__cause__)
+    return False
 
 
 def _fills_a_page(exc: DataError) -> bool:

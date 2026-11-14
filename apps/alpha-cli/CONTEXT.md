@@ -65,8 +65,10 @@ do not add a private copy.
   light (`tests/unit/test_public_seams.py`).
 - Owner approvals bind code structure, not bytes ([ADR-0045](../../docs/adr/0045-approvals-bind-code-structure.md)): editing
   `research_intake.py`, `research_runtime.py`, `research_crypto_data.py` or `research_crypto_runtime.py` invalidates them only
-  when behaviour changes (comments and formatting are free); control-store and owner-auth files feed daily native rule
-  approvals the same way (see the native file). `_structural_digest.py` itself is guarded: any edit invalidates every approval.
+  when behaviour changes (comments and formatting are free); every `alpha_cli` file the daily rule lane runs through
+  (control store, owner auth, `research_runtime.py` and more; see the native file) feeds daily native rule approvals
+  the same way, and `tests/unit/test_daily_guard_boundary.py` fails when a bound file imports an unbound one.
+  `_structural_digest.py` itself is guarded: any edit invalidates every approval.
 - A new or changed command: run `uv run python scripts/commands_reference.py` and commit the page.
   If the web or MCP surface exposes it, also run `uv run python scripts/check_openapi_operations.py --write`.
 

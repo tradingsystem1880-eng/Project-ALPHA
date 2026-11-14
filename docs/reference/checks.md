@@ -40,7 +40,7 @@ request only when its paths (or the workflow and gate files) change, and always 
 | `bias_guard` marker (inside `tests`) | look-ahead: output before the cutoff changes when later data is poisoned | PR | in `tests` |
 | `oracle` marker (inside `tests`) | wrong statistics: metamorphic and differential checks fail | PR | in `tests` |
 | `tests/acceptance` (inside `tests`, no marker) | the gauntlet, threshold and execution contracts break | PR | in `tests` |
-| `smoke` marker (inside `tests`) | the installed `alpha` and `alpha-web` programs break end to end | PR | in `tests` |
+| `smoke` marker (inside `tests`) | the installed `alpha` and `alpha-web` programs break end to end (crypto: offline recorded provider) | PR | in `tests` |
 | `platform` marker (inside `tests`) | nothing extra: it only moves files out of the fast local check | PR | in `tests` |
 | code size (`tests/unit/test_code_size.py`, in `tests`) | a new file over 1,500 lines or function over 150, growth, a baseline entry added | PR | 3 s |
 | determinism, identity and golden tests (inside `tests`) | a result that is not byte-stable across fresh processes | PR | in `tests` |

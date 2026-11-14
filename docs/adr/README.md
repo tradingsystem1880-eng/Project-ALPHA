@@ -50,9 +50,10 @@ This folder records the **load-bearing decisions** behind Project ALPHA's archit
 | [0042](0042-qlib-worker-delegates-data-layer-to-upstream.md) | The Qlib worker delegates its data layer to upstream Qlib (opt-in Alpha158 feature recipe v3; v1 stays default) | Accepted | 2026-11-14 |
 | [0043](0043-storage-reserve-is-owner-set.md) | Storage reserve is an owner-set value; the default stays 100 GB / 15% | Accepted | 2026-11-14 |
 | [0044](0044-rdagent-model-gateway.md) | RD-Agent reaches its models through a local ALPHA gateway; Codex first | Accepted | 2026-11-14 |
-| [0045](0045-approvals-bind-code-structure.md) | Research approvals bind what the code does, not its exact bytes (structural digest as scheme 2; byte-bound scheme-1 approvals keep verifying) | Accepted | 2026-11-14 |
-| [0046](0046-crypto-snapshot-members-are-content-addressed.md) | A crypto snapshot member is its content; equal recaptures count as one, any difference fails loud | Accepted | 2026-11-14 |
+| [0045](0045-approvals-bind-code-structure.md) | Research approvals bind what the code does, not its exact bytes (structural digest as scheme 2; byte-bound scheme-1 approvals keep verifying) | Accepted; daily-rule bound set extended by 0048 | 2026-11-14 |
+| [0046](0046-crypto-snapshot-members-are-content-addressed.md) | A crypto snapshot member is its content; equal recaptures count as one, any difference fails loud | Accepted; daily query over many members by 0048 | 2026-11-14 |
 | [0047](0047-alpaca-interim-stock-source.md) | Alpaca's free plan is an interim, not-yet-confirmed stock source (SIP feed, raw prices plus actions, split cross-check; never replaces Tiingo) | Accepted | 2026-11-14 |
+| [0048](0048-daily-rule-lane-binding-and-named-months.md) | Daily-rule approvals bind every module the lane runs through; the daily price query reads named months | Accepted | 2026-11-14 |
 | [0049](0049-alpha-judges-rdagent-factors.md) | ALPHA, not RD-Agent's built-in Qlib backtest, judges RD-Agent's factors (ALPHA classes through RD-Agent's settings; reserved 2024+ window) | Accepted | 2026-11-14 |
 
 ## Conventions
