@@ -107,8 +107,8 @@ proof_synthetic = [
 proof_smoke = [
   "tests/smoke/test_data_smoke.py::test_snapshot_verifies_and_reads_back_as_of_a_date",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
-real_data_needs = "A Tiingo API key (the main stock source)."
+real_data = "not yet confirmed (to check on the Mac later); on 2026-11-14 no free stock source could be used on the Dell: Yahoo's terms forbid automated collection and Stooq blocks automated requests (docs/reference/project/components/data-layer.md)"
+real_data_needs = "A Tiingo API key (the main stock source), or an owner decision on another free stock source."
 needs = []
 state = "Partial"
 missing = "no offline way to get prices in; snapshot, verify and as-of read are proven end to end"
@@ -134,7 +134,7 @@ entry_points = [
 proof_synthetic = [
   "tests/integration/test_crypto_data_native_acquisition.py::test_binance_trade_archive_families_acquire_with_exact_native_identity",
 ]
-real_data = "Recorded: on 2026-10-02 live DefiLlama downloads (Aave TVL, stablecoin supply, yield pools) passed their checks, and a Binance spot listing was downloaded on 2026-10-01 (docs/BUILD-STATUS.md, 2026-10-02 entries)."
+real_data = "Recorded: on 2026-10-02 live DefiLlama downloads (Aave TVL, stablecoin supply, yield pools) passed their checks, and a Binance spot listing was downloaded on 2026-10-01 (docs/BUILD-STATUS.md, 2026-10-02 entries). On 2026-11-14 the Dell downloaded free Binance spot daily history for 15 USDT pairs and a spot market list; not yet confirmed (docs/reference/project/components/data-layer.md)."
 needs = []
 state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"
@@ -144,7 +144,7 @@ plans = []
 id = "crypto-backfill"
 name = "Crypto history download that resumes safely"
 codes = ["backfill", "Phase B"]
-what = "Download years of Bybit price history in chunks, pick up where it stopped, and ask what is done or missing without downloading."
+what = "Download years of Bybit or Binance price history in chunks, pick up where it stopped, and ask what is done or missing without downloading."
 see_it = [
   "uv run alpha crypto-data backfill bybit <family> --symbols BTCUSDT --quote USDT --start … --end … --ledger <name> --dry-run",
   "uv run alpha crypto-data backfill-status bybit <family> … (read-only)",
@@ -157,7 +157,7 @@ proof_synthetic = [
   "tests/integration/test_crypto_backfill_resume_cli.py::test_cli_reopens_completed_bytes_and_retries_only_unfinished_instrument",
   "tests/integration/test_crypto_backfill_status_cli.py::test_status_verifies_completion_and_pending_without_writes",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+real_data = "not yet confirmed: on 2026-11-14 a free Binance spot daily backfill of 15 USDT pairs ran on the Dell; Bybit not yet run (docs/reference/project/components/data-layer.md)"
 real_data_needs = "Network access to Bybit and a storage volume for years of data."
 needs = []
 state = "Partial"
@@ -270,7 +270,7 @@ proof_synthetic = [
   "tests/integration/test_crypto_snapshot_query_cli.py::test_snapshot_query_reopens_exact_id_and_preserves_frozen_files",
   "tests/integration/test_asset_master_provenance.py::test_valid_sources_contract_and_snapshot_reopen_without_rebuilding_identity",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+real_data = "not yet confirmed: on 2026-11-14 one month of real Binance BTCUSDT bars was frozen and verified on the Dell; a repeated download of an already-frozen month makes its snapshot fail verification (docs/work/archive/2026-11/2026-11-14-free-real-data-dell/04-verify.md)"
 needs = []
 state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"
