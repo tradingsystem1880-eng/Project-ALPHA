@@ -11,7 +11,7 @@ run checked on 2026-11-14 (25 October, 1 and 8 November). A full dispatch on 14 
 5,400-second budget with half its mutants timed out, so the aggregate failed. The cause was
 measured: mutmut's default fork mode deadlocks mutants whose tests call Polars (2,983 of 15,066
 `alpha_research` mutants were such timeouts). The fix, forkserver isolation plus a complete staged
-copy, is in [the task folder](../../work/archive/2026-11/2026-11-14-mutation-sweep-timeouts/02-plan.md).
+copy, is in [the task folder](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-mutation-sweep-timeouts/02-plan.md).
 
 ## What "done" looks like
 
@@ -26,5 +26,5 @@ harness, never in those bytes.
 
 ## Sources
 
-- [Closed tidy-up programme](../../work/archive/2026-10/2026-10-08-repository-hygiene/02-plan.md) (slice "Validate and finish weekly mutation workflow")
+- [Closed tidy-up programme](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-10/2026-10-08-repository-hygiene/02-plan.md) (slice "Validate and finish weekly mutation workflow")
 - [Triage sheet, card 14](../triage-2026-11.md#14-old-clean-up-programmes)

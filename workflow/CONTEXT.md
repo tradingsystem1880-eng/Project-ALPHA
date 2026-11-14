@@ -4,9 +4,8 @@ sources:
   - workflow/stages/*/CONTEXT.md
   - scripts/roadmap_index.py
   - scripts/handoff.py
-  - tests/unit/test_plan_schema.py
   - tests/unit/test_filesystem_contract.py
-verified: aa600e57932d
+verified: af0137c5fd74
 ---
 
 # Delivery pipeline — how a change gets made
@@ -41,19 +40,20 @@ all `done`: 03. Slices done but no `04-verify.md`: 04. Otherwise: 05.
 ## The task folder
 
 - One folder per task: `docs/work/<yyyy-mm-dd>-<slug>/`, named after the day it was shaped and a
-  few lowercase words (`2026-11-14-coverage-source-column`).
+  few lowercase words (`2026-11-14-coverage-source-column`). It lives only on the task's branch
+  while its pull request is open; `main` never holds one.
 - It holds only the stage files `01-brief.md`, `02-plan.md`, `03-build.json` (the build record
   `scripts/handoff.py` writes), `04-verify.md` and `05-handoff.md`. A folder is committed only once it has a `02-plan.md`
   (the contract test checks this); an idea that must wait goes to the backlog instead.
 - The owner may edit any stage file between stages; the next stage reads the edited file, not
   the agent's memory of it.
-- Finished folders move to `docs/work/archive/<yyyy-mm>/` (stage 05). Plans finished before
-  2026-11-14 are single files there.
+- The pull-request description is the hand-off record: stage 05 puts the verification and
+  hand-off into it and removes the folder before merge. History is git log and pull requests.
 - The small route skips the folder: a fix confined to one module and its tests, with an obvious
   test, or a documentation-only change. It runs stages 03–05 on a branch: 03 builds from a
   short brief (stage 03 names its headings) and the code area's `CONTEXT.md` in place of a plan,
   04's results go under `## Checks run` in the pull request, and 05 fills the template directly
-  (no `05-handoff.md`, no close-out).
+  (no `05-handoff.md`).
 
 ## How to change it
 
@@ -65,5 +65,5 @@ all `done`: 03. Slices done but no `04-verify.md`: 04. Otherwise: 05.
 
 ## Outputs
 
-- The stage files of each task under `docs/work/`, and the pull request.
+- The stage files of each task on its branch, and the pull request (the lasting record).
 - The owning document for the plan and roadmap rules: `docs/reference/invariants/documentation.md`.

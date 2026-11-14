@@ -21,5 +21,5 @@ Owner direction to revisit; the specialist adoption rule; host resource qualific
 
 ## Sources
 
-- [Codex research runtime plan, alternatives](../../work/archive/2026-10/2026-10-03-codex-research-runtime.md)
-- [Checklist: Optional language and extraction model catalog](../../context/feature-readiness-checklist-2026-10-27.md#optional-language-and-extraction-model-catalog)
+- [Codex research runtime plan, alternatives](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-10/2026-10-03-codex-research-runtime.md)
+- [Checklist: Optional language and extraction model catalog](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#optional-language-and-extraction-model-catalog)

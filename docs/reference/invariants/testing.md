@@ -14,13 +14,13 @@ sources:
   - scripts/claude_hooks.py
   - pyproject.toml
   - .semgrep/alpha.yml
-verified: 5ab7a63760d8
+verified: 3a0098cd96e3
 ---
 
 # Testing invariants
 
-How the root test suite under `tests/` is laid out, marked, tiered and swept. The isolated workers and
-`tools/alpha-eval` have their own suites ([workers](workers.md), [eval](eval.md)). The general rule on
+How the root test suite under `tests/` is laid out, marked, tiered and swept. The isolated workers have
+their own suites ([workers](workers.md)). The general rule on
 protected and hidden tests is [research integrity § Protected and hidden tests](research-integrity.md#protected-and-hidden-tests);
 this file holds the mechanics.
 

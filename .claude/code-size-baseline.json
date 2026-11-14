@@ -93,8 +93,6 @@
     "scripts/harness_quant.py::mutate": 180,
     "scripts/mutation_sweep.py::aggregate": 158,
     "scripts/run_frontend_browser_lanes.py::run": 156,
-    "tools/alpha-eval/src/alpha_eval/runner.py::score_all": 162,
-    "tools/alpha-eval/src/alpha_eval/score.py::score_trial": 171,
     "workers/qlib/src/alpha_qlib_worker/real.py::_diagnostic_signal_analysis": 168,
     "workers/qlib/src/alpha_qlib_worker/real.py::_fold_model": 394,
     "workers/qlib/src/alpha_qlib_worker/real.py::_run_real": 169,

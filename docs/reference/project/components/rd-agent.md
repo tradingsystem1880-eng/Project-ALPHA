@@ -3,7 +3,7 @@ owner: project layer
 sources:
   - workers/rdagent/CONTEXT.md
   - workers/rdagent/README.md
-verified: ec6d827da973
+verified: 3a0098cd96e3
 ---
 
 # RD-Agent
@@ -89,7 +89,7 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
   month ([log](../owner-decisions.md#2026-11-14-api-spending-limit-for-rd-agents-models)). Built as
   the model gateway ([ADR-0044](../../../adr/0044-rdagent-model-gateway.md)); measured quality and
   how far a real step got are in the
-  [task's verification](../../../work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md).
+  [task's verification][gateway-verify].
 - Decided, for now: accept losing RD-Agent's "temperature" setting on the Codex route; launch the
   gateway with `--accept-unhonoured temperature`
   ([log](../owner-decisions-2.md#2026-11-14-accept-losing-temperature-on-the-codex-route-for-now)).
@@ -98,12 +98,13 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
   model `deepseek/deepseek-v4.1-flash-1017` at USD 0.038 / 0.50 per million input / output tokens
   (OpenRouter's list, read 2026-11-14). Codex stays the default and the fallback; how to choose:
   [worker README](../../../../workers/rdagent/README.md#alpha-judged-factor-loop-2026-11-14).
-  Open: no call has been made on it yet, so the comparison with the Codex route is not measured.
+  First run 2026-11-14 (3 rounds, 54 calls of 60, about USD 0.04): nine factors tried, no candidate;
+  one run per route is not a quality comparison (numbers in the worker README).
 - Decided: the first goal after the clean-up is one real RD-Agent loop, connected to a model through Codex
   ([log](../owner-decisions-2.md#2026-11-14-first-goal-one-real-rd-agent-loop)). First run,
   2026-11-14: every step ran on real crypto bars, but RD-Agent's built-in Qlib backtest learned
   nothing on 15 coins, so the loop is not yet meaningful
-  ([verification](../../../work/archive/2026-11/2026-11-14-rdagent-first-real-loop/04-verify.md)).
+  ([verification][loop-verify]).
 - Open, for the owner: how RD-Agent's ideas get a backtest that can see them (a wider universe,
   ALPHA's own Nautilus and statistical checks, or a calibration run on Qlib's public data)
   ([roadmap item 2b](../../../roadmap/rd-agent-in-alpha.md#what-stands-between-today-and-rd-agent-researching-real-ideas)).
@@ -125,3 +126,8 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
   paid route by itself.
 - The worker rules: [RD-Agent worker](../../invariants/workers.md#rd-agent-worker) and
   [command line native](../../invariants/cli-native.md).
+
+[gateway-verify]:
+  https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md
+[loop-verify]:
+  https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-rdagent-first-real-loop/04-verify.md

@@ -49,7 +49,7 @@ Gate outcomes are built by `build_outcomes` in `tearsheet.py` (called from `_gau
   passed and the measured close-fill vs next-open-fill `convention_divergence` exceeds `tier1_divergence_tol`
   (default 0.25). The flag is computed only for Tier 1 (`_tier1_summary`); a Tier-2 or Tier-3 FAIL is never
   rescued. Reason: the close-fill surrogate structurally over-credits high-turnover strategies
-  ([investigation](../../records/investigations/2026-06-23-tier1-surrogate-crediting-bias.md)).
+  ([investigation](../../archive/research-notes/2026-06-23-tier1-surrogate-crediting-bias.md)).
   Tests: `tests/unit/test_gauntlet_tier1.py`.
 - `bootstrap_ci` (gate 4): passes when the Sharpe BCa lower bound is above 0; the interval is always reported.
 - `deflated_sharpe`: PSR/DSR of the OOS stream; a single run has `n_trials = 1`, so DSR equals PSR. Passes

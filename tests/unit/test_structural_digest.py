@@ -656,9 +656,6 @@ _REVIEWED_READERS = {
     "apps/alpha-cli/src/alpha_cli/codex_investigation.py",
     "apps/alpha-cli/src/alpha_cli/native_qlib_pipeline.py",
     "apps/alpha-cli/src/alpha_cli/native_stock_inspect.py",
-    "tools/alpha-eval/src/alpha_eval/investigation_codex.py",
-    "tools/alpha-eval/worlds/build.py",
-    "tools/alpha-eval/worlds/investigation_worker.py",
     "workers/rdagent/install_stock_profile.py",
     "workers/rdagent/qualify_daily_container.py",
     "workers/rdagent/model_gateway.py",  # own module docstring as argparse help; vars(args)
@@ -667,7 +664,6 @@ _REVIEWED_READERS = {
     "apps/alpha-cli/src/alpha_cli/optim_cmds.py",
     "apps/alpha-cli/src/alpha_cli/propfirm_cmds.py",
     "apps/alpha-cli/src/alpha_cli/validate_cmds.py",
-    "tools/alpha-eval/src/alpha_eval/probes.py",
     # Registers typer commands (typer reads their docstrings) from local_pdf_cmds,
     # native_stock_cmds, validate_cmds and report_cmds; none of them is bound.
     "apps/alpha-cli/src/alpha_cli/main.py",
@@ -678,7 +674,7 @@ _REVIEWED_READERS = {
 
 def test_no_unreviewed_code_reads_docstrings_or_source_of_other_modules() -> None:
     found = set()
-    for top in ("apps", "packages", "workers", "tools"):
+    for top in ("apps", "packages", "workers"):
         for path in (ROOT / top).rglob("*.py"):
             parts = path.relative_to(ROOT).parts
             if any(part in {"tests", ".venv", "node_modules", "__pycache__"} for part in parts):

@@ -6,7 +6,7 @@ sources:
   - scripts/gate.py
   - tests/_tiers.py
   - .codex/config.toml
-verified: 5ab7a63760d8
+verified: 3a0098cd96e3
 ---
 
 # Stage 03 — build: plan to code
@@ -37,7 +37,7 @@ Make the plan true, one slice at a time, test first, in small commits on a branc
 ## Process
 
 1. Work on a branch (`handoff.py` makes `build/<task>` in its own worktree). Set the plan's state
-   to `In progress` only if the work-in-progress count is below the cap (stage 01, step 3).
+   to `In progress`.
 2. Per slice: write its failing test and run it; it must fail for the expected reason (an
    assertion, not an import error). Write the least code that makes it pass, then run the slice's
    `verify` and compare with its `expected`.

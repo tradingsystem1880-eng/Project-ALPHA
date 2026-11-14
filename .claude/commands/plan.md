@@ -1,5 +1,5 @@
 ---
-description: "Stage 02: turn a confirmed brief into docs/work/<task>/02-plan.md"
+description: "Stage 02: turn a confirmed brief into docs/work/<task>/02-plan.md on the task branch"
 argument-hint: "<task folder or brief path>"
 ---
 

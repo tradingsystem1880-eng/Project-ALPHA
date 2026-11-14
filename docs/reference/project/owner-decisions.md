@@ -22,7 +22,8 @@ Each entry links to the parts it governs. Component files link here instead of r
 - An agent's reading of what the owner meant is marked "Recorded understanding, not yet confirmed
   by the owner" until the owner confirms the wording.
 - Decisions about how code is built are in [decision records](../../adr/README.md); one-off
-  exceptions are in [`docs/records/`](../../records/README.md). This log starts on 2026-11-13.
+  exceptions were in `docs/records/` (git tag `pre-thin-2026-11-14`). This log starts on
+  2026-11-13.
 
 ## Entries
 

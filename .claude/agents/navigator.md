@@ -16,8 +16,8 @@ Method:
 1. Route first. Read the root `CONTEXT.md`, pick the workspace that owns the question and read its
    `CONTEXT.md`; its Read first table names the exact rule files and sections for that area.
 2. Search second. `uv run python scripts/fs.py orient` lists the areas and module counts;
-   `uv run python scripts/fs.py search "<words>"` returns ranked excerpts, live documents before
-   history (records, archives and archived plans are history, not current rules).
+   `uv run python scripts/fs.py search "<words>"` returns ranked excerpts; history is git log and pull
+   requests, not current rules.
 3. Confirm in the code with Grep and Glob before asserting anything.
 
 Answer with:

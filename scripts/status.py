@@ -1,8 +1,7 @@
-"""Generate/check STATUS.md: one plain-English page saying what works, what is in progress, what
-waits for the owner and what is next.
+"""Generate/check STATUS.md: one plain-English page saying what works, what waits for the owner
+and what is next.
 
 Sources (read-only, all tracked): ``docs/roadmap/capabilities.toml`` (via scripts/capabilities.py),
-``docs/roadmap/wip-limit.json``, live and archived plans in ``docs/work/``, and
 ``docs/roadmap/backlog`` and ``docs/roadmap/refactors``. Nothing else: no git history, network or
 clock, so the page is identical on every machine.
 
@@ -13,32 +12,20 @@ committed page is stale (``tests/unit/test_status_page.py`` runs the same compar
 from __future__ import annotations
 
 import argparse
-import json
 import sys
-from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
 
 import capabilities
 import roadmap_index
-from capabilities import Capability, CapabilityError, CapabilityMap
+from capabilities import Capability, CapabilityError
 
 ROOT = Path(__file__).parents[1]
 PAGE = Path("STATUS.md")
-WIP_FILE = Path("docs/roadmap/wip-limit.json")
 TRIAGE_SHEET = "docs/roadmap/triage-2026-11.md"
 COMMAND = "uv run python scripts/status.py"
 MERGED_PRS = "https://github.com/tradingsystem1880-eng/Project-ALPHA/pulls?q=is%3Apr+is%3Amerged"
 
-# Plan states that count as work in progress against the limit.
-WIP_STATES = ("In progress", "Implemented – qualification pending")
-_PLAIN_PLAN_STATE = {
-    "In progress": "being worked on",
-    "Implemented – qualification pending": "built but not yet checked end to end",
-    "Blocked": "blocked",
-    "Planned": "planned, not started",
-}
 _SIZE = {"S": "small", "M": "medium", "L": "large", "XL": "very large"}
 _GROUPS = (
     ("KEEP", "Keep (finish and check it)"),
@@ -53,35 +40,9 @@ class StatusError(ValueError):
 
 
 @dataclass(frozen=True)
-class WipLimit:
-    limit: int
-    ceiling: int
-
-
-@dataclass(frozen=True)
 class BacklogItem:
     title: str
     size: str
-
-
-def read_wip_limit(root: Path) -> WipLimit:
-    try:
-        raw = json.loads((root / WIP_FILE).read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        raise StatusError(f"{WIP_FILE}: cannot read: {exc}") from exc
-    if not isinstance(raw, dict) or set(raw) != {"limit", "ceiling"}:
-        raise StatusError(f"{WIP_FILE}: must be an object with exactly 'limit' and 'ceiling'")
-    data = cast(dict[str, object], raw)
-    limit, ceiling = data["limit"], data["ceiling"]
-    if not (isinstance(limit, int) and isinstance(ceiling, int)) or isinstance(limit, bool):
-        raise StatusError(f"{WIP_FILE}: 'limit' and 'ceiling' must be whole numbers")
-    if limit < 0 or ceiling < limit:
-        raise StatusError(f"{WIP_FILE}: need 0 <= limit <= ceiling")
-    return WipLimit(limit, ceiling)
-
-
-def wip_count(cmap: CapabilityMap) -> int:
-    return sum(1 for plan in cmap.live_plans if plan.state in WIP_STATES)
 
 
 def _backlog(root: Path) -> list[BacklogItem]:
@@ -94,10 +55,6 @@ def _backlog(root: Path) -> list[BacklogItem]:
         items.append(BacklogItem(roadmap_index._title(rel, text), fields["Rough size"]))
     # No priority order is recorded in the backlog, so list alphabetically.
     return sorted(items, key=lambda item: item.title.casefold())
-
-
-def _archived(root: Path) -> int:
-    return len(roadmap_index.archived_plans(root))
 
 
 def _card_order(card: str) -> tuple[int, int, str]:
@@ -133,12 +90,9 @@ def render(root: Path = ROOT) -> str:
         cmap = capabilities.load(root)
     except CapabilityError as exc:
         raise StatusError(str(exc)) from exc
-    wip = read_wip_limit(root)
     by_state: dict[str, list[Capability]] = {state: [] for state in capabilities.STATES}
     for cap in cmap.capabilities:
         by_state[cap.state].append(cap)
-    plan_states = Counter(plan.state for plan in cmap.live_plans)
-    in_wip = wip_count(cmap)
     triage = cmap.triage_items()
     waiting = [(name, t) for name, t in triage if not t.decided]
     backlog = _backlog(root)
@@ -153,22 +107,6 @@ def render(root: Path = ROOT) -> str:
         f"- **Capabilities:** {len(by_state['Working'])} working, "
         f"{len(by_state['Partial'])} partly working, {len(by_state['Demo only'])} demo only, "
         f"{len(by_state['Shelved'])} shelved, {len(by_state['Not started'])} not started.",
-        f"- **Work in progress:** {in_wip} in progress (limit {wip.limit}).",
-    ]
-    out += [f"  - {plan_states[s]} {_PLAIN_PLAN_STATE[s]}" for s in WIP_STATES if plan_states[s]]
-    others = [
-        f"{plan_states[s]} {_PLAIN_PLAN_STATE[s]}"
-        for s in capabilities.LIVE_STATES
-        if s not in WIP_STATES and plan_states[s]
-    ]
-    if others:
-        out.append(f"  - Not counted: {', '.join(others)}.")
-    if wip.ceiling > wip.limit:
-        out.append(
-            f"  - Allowed for now: {wip.ceiling}. This number only goes down, until it "
-            f"reaches {wip.limit}."
-        )
-    out += [
         f"- **Known defects:** {len(cmap.known_defects)}"
         + (" (listed below)." if cmap.known_defects else "."),
         f"- **Decisions waiting for you:** {len(waiting)}.",
@@ -222,14 +160,6 @@ def render(root: Path = ROOT) -> str:
     out += ["", "## Not started", ""]
     out += _bullets(by_state["Not started"], "- **{c.label}** — {c.missing}.")
 
-    out += ["", "## In progress now", ""]
-    in_progress = [p for p in cmap.live_plans if p.state == "In progress"]
-    for plan in in_progress:
-        summary = cmap.plan_summaries[plan.name]
-        out.append(f"- **{summary.title}** — {summary.line}")
-    if not in_progress:
-        out.append("- None.")
-
     out += [
         "",
         "## Waiting for your decision",
@@ -261,8 +191,6 @@ def render(root: Path = ROOT) -> str:
         "",
         "## Housekeeping",
         "",
-        f"- Live plans: {len(cmap.live_plans)}",
-        f"- Archived plans: {_archived(root)}",
         f"- Backlog items: {len(backlog)}",
         f"- Staged refactors: {len(refactors)}",
         "",

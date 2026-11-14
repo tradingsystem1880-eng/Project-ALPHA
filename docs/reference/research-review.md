@@ -2,7 +2,6 @@
 owner: research review
 sources:
   - docs/adr/0019-governed-research-cases-before-strategy-development.md
-  - docs/records/specs/2026-08-06-research-scientist-program-design.md
   - apps/alpha-cli/src/alpha_cli/research_gate_packet.py
 verified: f89aa1bb78af
 ---

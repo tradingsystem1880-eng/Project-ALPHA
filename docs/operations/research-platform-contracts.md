@@ -174,13 +174,13 @@ durable budget/resume, storage admission and production full-page refusal are un
 
 ## Design navigation
 
-- [Baseline architecture](../records/specs/2026-06-14-project-alpha-v1-design.md)
-- [Provider control plane](../records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md)
-- [Daily data and IBKR paper](../records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md)
-- [Research Scientist program](../records/specs/2026-08-06-research-scientist-program-design.md)
-- [Research-first workstation](../records/specs/2026-08-07-research-first-workstation-design.md)
+- [Baseline architecture](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-06-14-project-alpha-v1-design.md)
+- [Provider control plane](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-07-19-provider-control-plane-crypto-paper-design.md)
+- [Daily data and IBKR paper](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-08-03-daily-data-ibkr-paper-hardening.md)
+- [Research Scientist program](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-08-06-research-scientist-program-design.md)
+- [Research-first workstation](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/specs/2026-08-07-research-first-workstation-design.md)
 - [Capability and authority inventory](../governance/capability-authority-matrix.md)
 - [Provider terms and third-party notices](../governance/2026-07-19-dependency-license-matrix.md)
 
 Path-scoped rules retain the CLI/module maps and implementation-specific commands. Dated delivery
-history stays in [BUILD-STATUS.md](../BUILD-STATUS.md); it is not current acceptance evidence.
+history stays in [BUILD-STATUS.md](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/BUILD-STATUS.md); it is not current acceptance evidence.

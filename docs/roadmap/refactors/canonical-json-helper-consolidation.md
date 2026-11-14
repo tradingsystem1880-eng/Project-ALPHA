@@ -52,7 +52,7 @@ ordering) does not reach the others, and reviewers cannot tell which variant a h
 ## Proof required before/after
 
 - Before: golden tests that re-encode existing committed receipts and fixtures (for example
-  `apps/alpha-web/frontend/e2e/fixtures/*.provenance.json`, `tools/alpha-eval/results/**`) with each
+  `apps/alpha-web/frontend/e2e/fixtures/*.provenance.json`) with each
   current helper and assert byte equality, plus a classification table mapping each definition to
   one canonical variant.
 - After: the same golden tests pass unchanged against the shared helper; bias guards, oracles and the

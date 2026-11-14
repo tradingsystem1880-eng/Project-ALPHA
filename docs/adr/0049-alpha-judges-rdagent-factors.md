@@ -15,7 +15,7 @@ which gave every coin the same score every day, so the backtest and the model's 
 were noise. Its conventions are also wrong for crypto: 252 trading days, Chinese costs (0.05% buy,
 0.15% sell), a top-50 portfolio from 15 names, trades at the next day's close, and an unpinned
 10.9 GB Docker image that needs `MLFLOW_ALLOW_FILE_STORE=true`
-([verification](../work/archive/2026-11/2026-11-14-rdagent-first-real-loop/04-verify.md)).
+([verification](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-rdagent-first-real-loop/04-verify.md)).
 RD-Agent's templates must stay unmodified.
 
 What the pinned source offers, read file by file:
@@ -162,4 +162,4 @@ What the pinned source offers, read file by file:
 - `workers/rdagent/alpha_factor_judge.py`: `AlphaFactorScenario`, `AlphaFactorRunner`,
   `AlphaFactorFeedback`, the prefix-invariance check.
 - `apps/alpha-cli/src/alpha_cli/rdagent_factor_eval.py`: panel freezing and evaluation.
-- Task record: [2026-11-14 ALPHA-judged RD-Agent loop](../work/archive/2026-11/2026-11-14-rdagent-alpha-judged-loop/01-brief.md).
+- Task record: [2026-11-14 ALPHA-judged RD-Agent loop](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/094ce61213923cf9b74661013703cd6ebad16ecc/docs/work/archive/2026-11/2026-11-14-rdagent-alpha-judged-loop/01-brief.md).

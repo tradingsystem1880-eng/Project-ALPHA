@@ -1,10 +1,10 @@
-"""Search the tracked documentation: ranked excerpts with path, heading, lines and lifecycle.
+"""Search the tracked documentation: ranked excerpts with path, heading and lines.
 
 Only Git-tracked regular files in the allow-listed documentation families below are read; owner
 stores, data, tests, private suites and anything untracked are never inputs, symlinks are
-refused, and links are returned as text, never followed. Live documents rank ahead of archived
-history (``ARCHIVED_PREFIXES``) and every result names its lifecycle. Results are pointers to
-read, not authority: a match does not prove that anything is implemented.
+refused, and links are returned as text, never followed. History is git log and pull requests,
+not searched here. Results are pointers to read, not authority: a match does not prove that
+anything is implemented.
 """
 
 from __future__ import annotations
@@ -15,49 +15,31 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-KINDS = ("all", "project", "feature", "task", "decision", "history", "reference")
-LIVE, ARCHIVED = "live", "archived"
+KINDS = ("all", "project", "feature", "task", "decision", "reference", "research")
 _ROOT_FILES = {
     "AGENTS.md",
     "CLAUDE.md",
     "CONTEXT.md",
     "STATUS.md",
     "docs/ARCHITECTURE.md",
-    "docs/BUILD-STATUS.md",
 }
 # Workspace routing files: one CONTEXT.md per code area (never under the hidden test suite).
 _ROUTING_NAME = "CONTEXT.md"
 _HIDDEN_TESTS = "tests/holdout/"
 # Reference material (Layer 3): every Markdown file under docs/reference/, at any depth.
 _REFERENCE = "docs/reference/"
+# The owner's research notes, kept as source material (Markdown only, at any depth).
+_RESEARCH_NOTES = "docs/archive/research-notes/"
 _FAMILIES = {
-    "docs/context": "project",
     "docs/adr": "decision",
-    "docs/build-status": "history",
-    "docs/records": "history",
-    "docs/records/audits": "history",
-    "docs/records/investigations": "history",
-    "docs/records/specs": "feature",
     "docs/roadmap/backlog": "feature",
     "docs/roadmap/refactors": "feature",
     "docs/governance": "reference",
     "docs/operations": "reference",
     ".claude/rules": "reference",
 }
-# Task folders (docs/work/<task>/) hold stage outputs; finished ones move to
-# docs/work/archive/YYYY-MM/ as a folder (or a single plan file, for plans archived before
-# 2026-11-14).
-_TASK_FOLDER = re.compile(r"docs/work/(?!archive$)[^/]+")
-_TASK_ARCHIVE = re.compile(r"docs/work/archive/\d{4}-\d{2}(/[^/]+)?")
-# Retired documents: prose only (the folder also holds scripts, images and captured JSON).
-_DOCS_ARCHIVE = "docs/archive/"
-ARCHIVED_PREFIXES = (
-    _DOCS_ARCHIVE,
-    "docs/records/",
-    "docs/build-status/",
-    "docs/work/archive/",
-)
-ARCHIVED_FILES = frozenset({"docs/BUILD-STATUS.md"})
+# A task folder (docs/work/<task>/) holds a build's stage files while its pull request is open.
+_TASK_FOLDER = re.compile(r"docs/work/[^/]+")
 _TOKENS = re.compile(r"[a-z0-9]+")
 _HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 _EXCERPT_LINES = 40
@@ -70,7 +52,6 @@ MAX_FILES = 2_000
 class Source:
     text: str
     kind: str
-    lifecycle: str
 
 
 @dataclass(frozen=True)
@@ -81,7 +62,6 @@ class Section:
     end: int
     text: str
     kind: str
-    lifecycle: str
     score: int = 0
 
     def location(self) -> dict[str, Any]:
@@ -91,19 +71,13 @@ class Section:
             "start": self.start,
             "end": self.end,
             "kind": self.kind,
-            "lifecycle": self.lifecycle,
         }
-
-
-def lifecycle(rel: str) -> str:
-    """``archived`` for history folders and the frozen build log; ``live`` otherwise."""
-    return ARCHIVED if rel in ARCHIVED_FILES or rel.startswith(ARCHIVED_PREFIXES) else LIVE
 
 
 def family(rel: str) -> str | None:
     """The document family of a tracked path, or None when it is not a search source."""
     if rel in _ROOT_FILES:
-        return "history" if rel == "docs/BUILD-STATUS.md" else "project"
+        return "project"
     path = PurePosixPath(rel)
     if rel.startswith(_HIDDEN_TESTS):
         return None
@@ -111,16 +85,12 @@ def family(rel: str) -> str | None:
         return "project"
     if rel.startswith(_REFERENCE):
         return "reference" if path.suffix == ".md" else None
-    if rel.startswith(_DOCS_ARCHIVE):
-        return "history" if path.suffix == ".md" else None
+    if rel.startswith(_RESEARCH_NOTES):
+        return "research" if path.suffix == ".md" else None
     if path.suffix not in {".md", ".txt", ".json"}:
         return None
-    if path.name.startswith("feature-readiness-checklist-") and path.parent == PurePosixPath(
-        "docs/context"
-    ):
-        return "feature"
     parent = path.parent.as_posix()
-    if _TASK_FOLDER.fullmatch(parent) or _TASK_ARCHIVE.fullmatch(parent):
+    if _TASK_FOLDER.fullmatch(parent):
         return "task" if path.suffix == ".md" else None
     return _FAMILIES.get(parent)
 
@@ -153,7 +123,7 @@ def read_sources(root: Path) -> dict[str, Source]:
         total += len(raw)
         if total > MAX_CORPUS_BYTES or len(sources) >= MAX_FILES:
             raise ValueError("document corpus exceeds 32 MB / 2000 files")
-        sources[rel] = Source(raw.decode("utf-8"), name, lifecycle(rel))
+        sources[rel] = Source(raw.decode("utf-8"), name)
     if not sources:
         raise ValueError("no tracked documents found")
     return sources
@@ -173,9 +143,7 @@ def sections(path: str, source: Source) -> list[Section]:
             text = "\n".join(lines[first:last])
             if text.strip():
                 heading = " / ".join(title for _, title in headings)
-                found.append(
-                    Section(path, heading, first + 1, last, text, source.kind, source.lifecycle)
-                )
+                found.append(Section(path, heading, first + 1, last, text, source.kind))
 
     for index, line in enumerate(lines):
         stripped = line.lstrip()
@@ -194,7 +162,7 @@ def sections(path: str, source: Source) -> list[Section]:
 
 
 def search_sections(sources: dict[str, Source], query: str, *, kind: str = "all") -> list[Section]:
-    """Excerpts containing every query word; live first, then heading and text matches."""
+    """Excerpts containing every query word; heading matches rank ahead of text matches."""
     terms = set(_TOKENS.findall(query.lower()))
     if not terms or len(query) > 160 or len(terms) > 12:
         raise ValueError("query must contain 1-12 words and at most 160 characters")
@@ -217,11 +185,10 @@ def search_sections(sources: dict[str, Source], query: str, *, kind: str = "all"
                         row.end,
                         row.text,
                         row.kind,
-                        row.lifecycle,
                         score,
                     )
                 )
-    return sorted(found, key=lambda row: (row.lifecycle != LIVE, -row.score, row.path, row.start))
+    return sorted(found, key=lambda row: (-row.score, row.path, row.start))
 
 
 def search(
@@ -257,13 +224,13 @@ def render_text(payload: dict[str, Any], *, omitted_cap: int = 20) -> str:
     results = payload["results"]
     lines = [
         f'{len(results)} of {payload["matched"]} matches for "{payload["query"]}" '
-        f"(kind {payload['kind']}; live documents first; a match is not proof of implementation)"
+        f"(kind {payload['kind']}; a match is not proof of implementation)"
     ]
     for row in results:
         lines.extend(
             [
                 "",
-                f"== {row['path']}:{row['start']}-{row['end']} [{row['lifecycle']}, {row['kind']}]",
+                f"== {row['path']}:{row['start']}-{row['end']} [{row['kind']}]",
                 f"   {row['heading'] or '(no heading)'}",
                 row["text"],
             ]
@@ -272,7 +239,7 @@ def render_text(payload: dict[str, Any], *, omitted_cap: int = 20) -> str:
     if omitted:
         lines.extend(["", f"Not shown ({len(omitted)}):"])
         lines.extend(
-            f"- {row['path']}:{row['start']}-{row['end']} [{row['lifecycle']}] {row['heading']}"
+            f"- {row['path']}:{row['start']}-{row['end']} {row['heading']}"
             for row in omitted[:omitted_cap]
         )
         if len(omitted) > omitted_cap:

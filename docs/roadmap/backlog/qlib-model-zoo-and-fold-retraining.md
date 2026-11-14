@@ -20,11 +20,11 @@ qualification. W12 asks for a worker-only Qlib 0.9.8 migration and all 25 pinned
 ## Dependencies
 
 W09 (current Qlib routed through the native case), W10 controls, contract/position data. The
-blocked [W11 refit plan](../../work/2026-10-26-qlib-w11-refit/02-plan.md) is the live engineering packet.
+blocked [W11 refit plan](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/2026-10-26-qlib-w11-refit/02-plan.md) is the live engineering packet.
 
 ## Sources
 
-- [Checklist W11](../../context/feature-readiness-checklist-2026-10-27.md#w11-qualify-retraining-and-sizing-risk-experiments) and [W12](../../context/feature-readiness-checklist-2026-10-27.md#w12-migrate-qlib-and-deliver-model-waves)
-- [Checklist: All 25 declared model entries](../../context/feature-readiness-checklist-2026-10-27.md#all-25-declared-model-entries)
+- [Checklist W11](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#w11-qualify-retraining-and-sizing-risk-experiments) and [W12](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#w12-migrate-qlib-and-deliver-model-waves)
+- [Checklist: All 25 declared model entries](../../archive/research-notes/feature-readiness-checklist-2026-10-27.md#all-25-declared-model-entries)
 - [README: Implemented scope and limits](../../../README.md#implemented-scope-and-limits)
 - [Qlib worker README](../../../workers/qlib/README.md)

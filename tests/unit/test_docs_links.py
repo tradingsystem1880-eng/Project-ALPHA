@@ -1,7 +1,7 @@
 """Relative Markdown links in tracked documentation must resolve.
 
 Scope: ``docs/**/*.md``, root ``*.md``, ``.claude/**/*.md``, ``.agents/**/*.md`` and the
-READMEs under ``apps/``, ``packages/``, ``tools/`` and ``workers/``. A link target must exist;
+READMEs under ``apps/``, ``packages/`` and ``workers/``. A link target must exist;
 a ``#fragment`` on a Markdown target must match a heading slug (GitHub rules) or an explicit
 ``<a id/name>`` anchor. External URLs, ``mailto:`` and fenced code blocks are skipped.
 """
@@ -21,48 +21,18 @@ ROOT = Path(__file__).parents[2]
 # Key: (source path, raw link target). Keep this list short and explain each entry.
 ALLOWLIST: dict[tuple[str, str], str] = {
     (
-        "docs/BUILD-STATUS.md",
-        "atlas/system-map.md",
-    ): "frozen delivery history; target removed by ADR-0040",
+        "docs/roadmap/backlog/intraday-equity-timeframe.md",
+        "../../work/2026-09-10-edge-first-phase-b-feed-the-machine/02-plan.md",
+    ): "owner keeps this file untouched; plan removed 2026-11-14 (tag pre-thin-2026-11-14)",
     (
-        "docs/work/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md",
-        "../../../../../tools/alpha-atlas/README.md",
-    ): "archived plan; target removed by ADR-0040",
-    (
-        "docs/work/archive/2026-06/2026-06-16-phase-2b-nautilus-run-harness.md",
-        "../../../../context/alpha-quant-platform.md#native-upstream-first--2026-11-06",
-    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
-    (
-        "docs/work/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md",
-        "../../../../context/software-team.md",
-    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
-    (
-        "docs/work/archive/2026-10/2026-10-16-context-ownership-and-test-layout-pilot.md",
-        "../../../../context/alpha-quant-platform.md",
-    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
-    (
-        "docs/work/archive/2026-10/2026-10-26-qlib-tabular-wave1.md",
-        "../../../../context/software-team.md",
-    ): "archived plan; map moved to docs/archive/2026-11-context-maps/",
-    (
-        "docs/archive/2026-11-context-maps/software-team.md",
-        "../../../.agents/skills/alpha-feature-workflow/SKILL.md",
-    ): "archived map; skill retired 2026-11-14, a copy is archived beside it",
-    (
-        "docs/archive/2026-11-context-maps/software-team.md",
-        "../../../.agents/skills/code-review-and-quality/SKILL.md",
-    ): "archived map; skill retired 2026-11-14, a copy is archived beside it",
-    (
-        "docs/archive/2026-11-context-maps/software-team.md",
-        "../../../.agents/skills/verification-before-completion/SKILL.md",
-    ): "archived map; skill retired 2026-11-14, a copy is archived beside it",
+        "docs/roadmap/backlog/intraday-equity-timeframe.md",
+        "../../context/feature-readiness-checklist-2026-10-27.md#explicit-exclusions-and-boundaries",
+    ): "owner keeps this file untouched; checklist now in docs/archive/research-notes/",
 }
 
-# Archived documents are not edited (docs/README.md, Lifecycle). Their links into the retired
-# docs/superpowers/ folder (plans moved to docs/work/, specs to docs/records/specs/ on 2026-11-14)
-# are left as written; every other link in them must still resolve.
-ARCHIVE_PREFIX = "docs/archive/"
-RETIRED_FOLDER = "/superpowers/"
+# The owner's research notes keep their bytes exactly (docs/archive/research-notes/README.md), so
+# links inside them are not checked; links *to* them are.
+RESEARCH_NOTES = "docs/archive/research-notes/"
 
 _FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
 _INLINE_CODE = re.compile(r"(`+)(?:(?!\1).)+?\1")
@@ -88,7 +58,7 @@ def _tracked(*patterns: str) -> list[str]:
 def documentation_files() -> list[str]:
     files = _tracked("docs/*.md", ".claude/*.md", ".agents/*.md")
     files += [p for p in _tracked("*.md") if "/" not in p]
-    for top in ("apps", "packages", "tools", "workers"):
+    for top in ("apps", "packages", "workers"):
         files += [p for p in _tracked(f"{top}/*README.md") if Path(p).name == "README.md"]
     return sorted(set(files))
 
@@ -150,6 +120,8 @@ def links(text: str) -> list[tuple[int, str]]:
 
 
 def broken_links(rel: str) -> list[str]:
+    if rel.startswith(RESEARCH_NOTES):
+        return []
     source = ROOT / rel
     problems: list[str] = []
     for number, target in links(source.read_text(encoding="utf-8")):
@@ -166,8 +138,6 @@ def broken_links(rel: str) -> list[str]:
         else:
             dest = source.parent / path_part
         if not dest.exists():
-            if rel.startswith(ARCHIVE_PREFIX) and RETIRED_FOLDER in "/" + path_part:
-                continue
             problems.append(f"{rel}:{number}: missing target {target}")
             continue
         is_markdown = dest.is_file() and dest.suffix == ".md"
@@ -191,6 +161,6 @@ def test_allowlist_entries_are_still_needed() -> None:
 
 def test_relative_markdown_links_resolve() -> None:
     files = documentation_files()
-    assert "docs/BUILD-STATUS.md" in files and "README.md" in files
+    assert "docs/README.md" in files and "README.md" in files
     problems = [problem for rel in files for problem in broken_links(rel)]
     assert not problems, f"{len(problems)} broken links:\n" + "\n".join(problems)

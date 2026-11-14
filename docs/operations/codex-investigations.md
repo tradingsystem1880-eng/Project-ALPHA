@@ -1,6 +1,6 @@
 # Codex recorded-run investigations
 
-This is the first CLI increment of the [Codex-first plan](../work/archive/2026-10/2026-10-03-codex-research-runtime.md).
+This is the first CLI increment of the [Codex-first plan](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-10/2026-10-03-codex-research-runtime.md).
 Codex reasons and chooses tools. ALPHA verifies the fixed run, enforces budgets and validates
 receipt references. The output is retrospective advice, not admitted research or proof of edge.
 
@@ -140,7 +140,7 @@ action/provenance files at 1 MiB. The selected daily OHLCV table is capped at 50
 materialization. Every read, including cached receipt reuse, rechecks source integrity and the
 frozen comparison. These limits do not certify broader vendor or machine isolation.
 
-The [comparison delivery plan](../work/archive/2026-10/2026-10-03-codex-comparison-evidence.md)
+The [comparison delivery plan](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-10/2026-10-03-codex-comparison-evidence.md)
 records scope and acceptance evidence. A live Codex test used a labeled synthetic fixture, with
 40% strategy drawdown and 20% comparison decline. It retained the relevant limitations, proposed
 reconciliation, and resumed identical findings without another model turn. This is operational
@@ -241,5 +241,5 @@ live-provider acceptance remains unverified. Private live artifacts are retained
 `/private/tmp/alpha-workstation-investigation-live-20261004`.
 
 Current reconciliation checks and remaining acceptance requirements are recorded in the
-[reconciliation plan](../work/archive/2026-10/2026-10-10-research-runtime-reconciliation.md).
+[reconciliation plan](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-10/2026-10-10-research-runtime-reconciliation.md).
 Historical live evidence above does not attest to the newly combined tree or current CLI.
