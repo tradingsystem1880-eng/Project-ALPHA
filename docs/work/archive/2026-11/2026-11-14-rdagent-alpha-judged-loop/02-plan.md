@@ -1,6 +1,6 @@
 # An RD-Agent loop that ALPHA judges: runtime, launcher, judge and evaluator
 
-**Delivery state:** Completed — filed straight into the archive like the earlier RD-Agent tasks; built across three stacked pull requests (decision record, runtime, loop) and done when the last merges.
+**Delivery state:** Completed — built across three stacked pull requests (decision record, runtime, loop) and run once for real; see `04-verify.md`. Done when the last merges.
 **Build class:** hard — more than eight files and a bias-sensitive evaluation path.
 
 Filed straight into the archive, as the previous RD-Agent tasks were: the work-in-progress ceiling
@@ -32,11 +32,11 @@ admits no new live plan.
     "The run quietly exceeds its model budget: the launcher refuses --run-max-calls above 60 and the gateway enforces it."
   ],
   "slices": [
-    {"title": "Factor runtime profile and setup flag", "files": ["workers/rdagent/install_stock_profile.py", "scripts/setup_rdagent.sh", "tests/unit/test_setup_rdagent.py", "tests/unit/test_native_stock_profile.py"], "verify": "uv run pytest -q -n 0 tests/unit/test_setup_rdagent.py tests/unit/test_native_stock_profile.py", "expected": "pass", "rollback": "revert the files", "status": "pending"},
-    {"title": "Factor loop entry and launcher", "files": ["workers/rdagent/factor_loop_entry.py", "workers/rdagent/factor_loop_launch.py", "tests/unit/test_rdagent_factor_launch.py"], "verify": "uv run pytest -q -n 0 tests/unit/test_rdagent_factor_launch.py", "expected": "pass", "rollback": "delete the files", "status": "pending"},
-    {"title": "ALPHA evaluator: panel freeze and factor evaluation", "files": ["apps/alpha-cli/src/alpha_cli/rdagent_factor_eval.py", "tests/unit/test_rdagent_factor_eval.py"], "verify": "uv run pytest -q -n 0 tests/unit/test_rdagent_factor_eval.py", "expected": "pass", "rollback": "delete the files", "status": "pending"},
-    {"title": "Judge classes, factor data and look-ahead check", "files": ["workers/rdagent/alpha_factor_data.py", "workers/rdagent/alpha_factor_judge.py", "tests/unit/test_rdagent_factor_judge.py"], "verify": "uv run pytest -q -n 0 tests/unit/test_rdagent_factor_judge.py", "expected": "pass (factor-runtime cases skip without ALPHA_FACTOR_PYTHON and ALPHA_RDAGENT_SOURCE)", "rollback": "delete the files", "status": "pending"},
-    {"title": "Gate", "verify": "uv run python scripts/gate.py check", "expected": "All checks passed", "rollback": "revert", "status": "pending"}
+    {"title": "Factor runtime profile and setup flag", "files": ["workers/rdagent/install_stock_profile.py", "scripts/setup_rdagent.sh", "tests/unit/test_setup_rdagent.py", "tests/unit/test_native_stock_profile.py"], "verify": "uv run pytest -q -n 0 tests/unit/test_setup_rdagent.py tests/unit/test_native_stock_profile.py", "expected": "pass", "rollback": "revert the files", "status": "done"},
+    {"title": "Factor loop entry and launcher", "files": ["workers/rdagent/factor_loop_entry.py", "workers/rdagent/factor_loop_launch.py", "tests/unit/test_rdagent_factor_launch.py"], "verify": "uv run pytest -q -n 0 tests/unit/test_rdagent_factor_launch.py", "expected": "pass", "rollback": "delete the files", "status": "done"},
+    {"title": "ALPHA evaluator: panel freeze and factor evaluation", "files": ["apps/alpha-cli/src/alpha_cli/rdagent_factor_eval.py", "tests/unit/test_rdagent_factor_eval.py"], "verify": "uv run pytest -q -n 0 tests/unit/test_rdagent_factor_eval.py", "expected": "pass", "rollback": "delete the files", "status": "done"},
+    {"title": "Judge classes, factor data and look-ahead check", "files": ["workers/rdagent/alpha_factor_data.py", "workers/rdagent/alpha_factor_judge.py", "tests/unit/test_rdagent_factor_judge.py"], "verify": "uv run pytest -q -n 0 tests/unit/test_rdagent_factor_judge.py", "expected": "pass (factor-runtime cases skip without ALPHA_FACTOR_PYTHON and ALPHA_RDAGENT_SOURCE)", "rollback": "delete the files", "status": "done"},
+    {"title": "Gate", "verify": "uv run python scripts/gate.py check", "expected": "All checks passed", "rollback": "revert", "status": "done"}
   ],
   "tier_impact": ["bias", "determinism"],
   "docs_to_update": ["workers/rdagent/README.md", "docs/roadmap/rd-agent-in-alpha.md", "docs/reference/project/components/rd-agent.md"],

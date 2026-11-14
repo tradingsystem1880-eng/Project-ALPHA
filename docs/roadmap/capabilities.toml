@@ -837,12 +837,11 @@ proof_smoke = [
 ]
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = [
-  "the owner's decision whether to accept losing RD-Agent's temperature setting on the Codex route",
-  "an alpha command that starts a model-connected RD-Agent run under ALPHA's controls",
-  "Qlib's runner for the backtest step",
+  "an alpha command that starts the model-connected factor loop under the native job supervisor (backlog: rdagent-factor-loop-supervision)",
+  "an end-to-end smoke check of the factor loop through the installed programs with a scripted model route",
 ]
 state = "Partial"
-missing = "an AI model connection now exists (local gateway to the signed-in Codex program and Ollama, with budget and per-call records; ADR-0044) and RD-Agent's own factor loop got through proposal, experiment design and coding on made-up data, stopping at the Qlib backtest; the fixture and stock loops ALPHA runs still use stand-in steps, no alpha command starts a model-connected run, and restart after a crash is not solved"
+missing = "RD-Agent's own factor loop now runs model-connected on real Binance bars, judged by ALPHA instead of its built-in Qlib backtest (ADR-0049), from one launcher command with a hash-pinned runtime and the gateway's call cap: one run of 3 iterations, 5 factors, no candidate; it is not yet started by alpha or supervised as an ALPHA job, has no end-to-end smoke check with a scripted model, the fixture and stock loops ALPHA runs still use stand-in steps, and restart after a crash is not solved"
 # owner, 2026-11-14: RD-Agent is a key component of how the project works
 triage = { card = "7", recommendation = "KEEP", owner_decision = "KEEP" }
 docs = ["docs/roadmap/rd-agent-in-alpha.md"]

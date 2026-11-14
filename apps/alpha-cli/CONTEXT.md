@@ -42,7 +42,7 @@ did not give, and never route live capital.
 
 ## How to change it
 
-Code is flat in `apps/alpha-cli/src/alpha_cli/` (178 modules; `_name.py` = private helper,
+Code is flat in `apps/alpha-cli/src/alpha_cli/` (179 modules; `_name.py` = private helper,
 `*_cmds.py` = one Typer command group, wired in `main.py`). Where to look:
 
 | Sub-area | Modules (count) | Tests in `tests/unit/` |
@@ -52,6 +52,7 @@ Code is flat in `apps/alpha-cli/src/alpha_cli/` (178 modules; `_name.py` = priva
 | Runs, validation | `_artifacts`, `_identity`, `_seeds`, `_runner`, `_gauntlet`, `_optim`, `run_*`, `_suite*` | `test_run*`, `test_gauntlet*`, `test_suite_*` |
 | Crypto, daily data | `_crypto_*` (15; incl. `_crypto_snapshot_members`), `crypto_*` (4), `data_cmds` | `test_crypto_*`, `test_tiingo_*`, `test_alpaca_*` |
 | Native jobs | `_native_*` (20), `native_*` (6), `daily_*` (3) | `test_native_*`, `test_daily_*` |
+| RD-Agent factor judging | `rdagent_factor_eval` (ADR-0049; run as a subprocess by the worker) | `test_rdagent_factor_eval` |
 | Machine learning | `ml_*` (6), `_ml_*` (2), `_forecast*` (3), `forecast_cmds` | `test_ml_*`, `test_forecast_*` |
 | Paper, providers | `paper_*` (5), `_paper`, `_ibkr_paper`, `ibkr_what_if`, `provider*` (3) | `test_paper_*`, `test_provider_*` |
 | Advisory models | `assistant_*` (6), `codex_*` (5), `investigation_*` (8), `comparison_acquisition*` | `test_assistant_*`, `test_codex_*` |

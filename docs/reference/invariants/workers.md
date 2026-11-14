@@ -96,8 +96,8 @@ acquisition worker and the RD-Agent native-loop probe. The general rule is
 
 ## RD-Agent worker
 
-- A development-only probe of pinned RD-Agent native loops on fixed synthetic inputs. It has no public
-  research command or production route, and no ALPHA package imports it. Every result stays synthetic,
+- A development-only probe of pinned RD-Agent native loops on fixed synthetic inputs, plus the ALPHA-judged factor
+  loop below. It has no public research command or production route, and no ALPHA package imports it. Every result stays synthetic,
   `not_admitted`; no scientific run id or completed D1 attempt is invented.
 - Upstream source stays external at commit `484776c211e4fbbeef03e0ec00d6bbee7362a4f4`; point
   `ALPHA_RDAGENT_SOURCE` at a byte-identical `rdagent/` copy. `source_pin.py` verifies the tree digest before
@@ -125,6 +125,16 @@ acquisition worker and the RD-Agent native-loop probe. The general rule is
   dollar budgets (monthly dollars capped at 50, not raisable) are checked before every attempt and fail closed. There is
   no automatic switch between routes, and the call log holds hashes and lengths, not text. The fixture loops still clear
   all model settings. `tests/unit/test_rdagent_model_gateway.py`.
+- ALPHA-judged factor loop ([ADR-0049](../../adr/0049-alpha-judges-rdagent-factors.md)): the one model-connected
+  real-data route, started by `factor_loop_launch.py` (not yet an `alpha` command). RD-Agent's own factor loop runs
+  unmodified; only the classes named in its `QLIB_FACTOR_*` settings are ALPHA's (`alpha_factor_judge.py`), and they
+  import RD-Agent and pandas, never an ALPHA package: the evaluator `alpha_cli.rdagent_factor_eval` runs as a subprocess
+  in ALPHA's environment. The loop is never given data on or after 2024-01-01; every factor goes to the append-only
+  cross-run trial ledger (a repeat by code hash is not new evidence); `decision` is ALPHA's rule, never the model's;
+  every record is `exploratory, not admitted, not yet confirmed` with all authority flags false and the survivorship
+  disclosure. Its runtime is built only by `--with-factor-runtime` from `factor-requirements.lock` and recorded by
+  `install_stock_profile.py --profile factor`; generated factor code runs without the gateway's address and token.
+  Tests: `tests/unit/test_rdagent_factor_{eval,judge,launch}.py`.
 - There is no gate component or CI job (`scripts/gate_components.py` lists none). Its checks are root tests
   such as `tests/unit/test_native_loop_conformance.py`; the source-dependent ones skip without
   `ALPHA_RDAGENT_SOURCE`, and a skipped run confers no native qualification.
