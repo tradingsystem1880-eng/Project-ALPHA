@@ -4,12 +4,12 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 9 working, 22 partly working, 0 demo only, 5 shelved, 1 not started.
-- **Work in progress:** 28 in progress (limit 3).
+- **Capabilities:** 12 working, 19 partly working, 0 demo only, 5 shelved, 1 not started.
+- **Work in progress:** 23 in progress (limit 3).
   - 3 being worked on
-  - 25 built but not yet checked end to end
+  - 20 built but not yet checked end to end
   - Not counted: 7 blocked, 1 planned, not started.
-  - Allowed for now: 28. This number only goes down, until it reaches 3.
+  - Allowed for now: 23. This number only goes down, until it reaches 3.
 - **Known defects:** 0.
 - **Decisions waiting for you:** 0.
 
@@ -22,9 +22,12 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Workstation web app** — uv run alpha-web, then open http://localhost:8801
 - **Download crypto market data (W05)** — uv run alpha crypto-data catalog (a real run is recorded)
 - **Crypto history download that resumes safely (backfill, Phase B)** — uv run alpha crypto-data backfill bybit <family> --symbols BTCUSDT --quote USDT --start … --end … --ledger <name> --dry-run
+- **"Are my downloaded daily bars complete?" check** — uv run alpha crypto-data quality <manifest-id> --coverage-start … --coverage-end … --as-of …
 - **Freeze crypto data into exact snapshots and check them (W05)** — uv run alpha crypto-data snapshot-create …, then uv run alpha crypto-data snapshot-verify <snapshot-id>
 - **Run a backtest** — uv run alpha backtest run SPY
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
+- **Path-risk simulation (Monte Carlo)** — uv run alpha monte-carlo classical --from-run <run-id> (a real run is recorded)
+- **Risk numbers that state what they are based on (C04)** — uv run alpha risk scenario --from-run <run-id> --json --include-metric-basis (a real run is recorded)
 - **Quick idea screening (Phase C)** — uv run alpha scan hypotheses --as-of <date> (a real run is recorded)
 - **Machine-learning experiments with Qlib** — uv run alpha ml capabilities
 - **Upstream Alpha158 price features** — set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec
@@ -48,11 +51,8 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 Tested piece by piece inside the test suite, but not yet run from start to finish through the installed program:
 
 - **Price charts with indicators and patterns** — tested in-process and in a browser against a test server (a real run is recorded).
-- **"Are my downloaded daily bars complete?" check** — tested in-process and in a browser against a test server.
 - **Write trading rules and scan markets** — tested in-process and in a browser against a test server.
 - **Strategy development workspace** — tested in-process only.
-- **Path-risk simulation (Monte Carlo)** — tested in-process only.
-- **Risk numbers that state what they are based on (C04)** — tested in-process and in a browser against a test server.
 - **Prop-firm challenge check** — tested in-process only.
 - **Ask the AI assistant about a recorded run (Codex)** — tested in a browser against a test server only (a real run is recorded).
 - **Let an AI assistant use ALPHA's tools (MCP)** — tested in-process only.
@@ -98,6 +98,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - A route for new daily-bar research ideas — large (L)
 - Autonomous research agent programme — very large (XL)
 - Catalyst, expectations and fundamentals research (W15) — large (L)
+- Check a coin's whole downloaded daily history in one step — medium (M)
 - ControlStore-owned durable acquisition journal — large (L)
 - Data-directory naming migration — medium (M)
 - Freeze a crypto snapshot by coin and date range — medium (M)
@@ -114,13 +115,14 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Options expression research (W16) — large (L)
 - Overlap-corrected t statistic for the quick screen — small (S)
 - RD-Agent autonomous native research and restart continuation (W08/W13, T07) — very large (XL)
+- Risk stress scenarios that can move the drawdown — small (S)
 - Web-started downloads ignore proxy and certificate settings — small (S)
 
 ## Housekeeping
 
-- Live plans: 36
-- Archived plans: 138
-- Backlog items: 20
+- Live plans: 31
+- Archived plans: 146
+- Backlog items: 22
 - Staged refactors: 6
 
 ## Where things are

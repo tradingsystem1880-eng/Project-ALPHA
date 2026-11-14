@@ -21,7 +21,7 @@ exceed the `ceiling` in [wip-limit.json](wip-limit.json), and the ceiling must b
 lowered each time work closes. Once it reaches the `limit` of 3, at most 3 pieces of
 work may be open.
 
-## Live plans (36)
+## Live plans (31)
 
 | Plan | Title | Delivery state | Month |
 | --- | --- | --- | --- |
@@ -32,7 +32,6 @@ work may be open.
 | [2026-11-07-stock-rdloop-continuation](../work/2026-11-07-stock-rdloop-continuation/02-plan.md) | Stock RDLoop synthetic continuation | Implemented – qualification pending | 2026-11 |
 | [2026-11-07-stock-retained-dispatch](../work/2026-11-07-stock-retained-dispatch/02-plan.md) | Retained stock RDLoop dispatch | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-asset-master-source-provenance](../work/2026-11-08-asset-master-source-provenance/02-plan.md) | Reopen frozen asset-master source evidence at retained-data consumers | Implemented – qualification pending | 2026-11 |
-| [2026-11-08-c04-risk-anchor-disclosure](../work/2026-11-08-c04-risk-anchor-disclosure/02-plan.md) | C04 risk metric-basis JSON, API and visible consumer integration | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-native-cumulative-regression](../work/2026-11-08-native-cumulative-regression/02-plan.md) | Native RD cumulative qualification correction | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-native-job-result-api](../work/2026-11-08-native-job-result-api/02-plan.md) | Server-owned native-job result read contract | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-native-job-result-view](../work/2026-11-08-native-job-result-view/02-plan.md) | Native job result web consumer | Implemented – qualification pending | 2026-11 |
@@ -44,15 +43,11 @@ work may be open.
 | [2026-11-08-native-stock-worker-hardening](../work/2026-11-08-native-stock-worker-hardening/02-plan.md) | Native stock worker boundary hardening | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-retained-bar-production-assembly](../work/2026-11-08-retained-bar-production-assembly/02-plan.md) | Assemble and exercise the retained-coverage production bundle locally | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-retained-bar-quality-ui](../work/2026-11-08-retained-bar-quality-ui/02-plan.md) | Connect retained bar diagnostics to Coverage & Quality | Implemented – qualification pending | 2026-11 |
-| [2026-11-08-retained-daily-bar-grid](../work/2026-11-08-retained-daily-bar-grid/02-plan.md) | Inspect retained native daily bars against an explicit grid | Implemented – qualification pending | 2026-11 |
 | [2026-11-08-retained-project-production-smoke](../work/2026-11-08-retained-project-production-smoke/02-plan.md) | Exercise retained coverage with ready synthetic project context | Implemented – qualification pending | 2026-11 |
-| [2026-11-08-risk-equity-clocks](../work/2026-11-08-risk-equity-clocks/02-plan.md) | Reject invalid recorded-equity clocks before risk metrics | Implemented – qualification pending | 2026-11 |
-| [2026-11-08-risk-strict-json](../work/2026-11-08-risk-strict-json/02-plan.md) | Strict risk JSON serialization of legacy provenance | Implemented – qualification pending | 2026-11 |
 | [2026-11-09-alpha158-versioned-correction](../work/2026-11-09-alpha158-versioned-correction/02-plan.md) | Explicit partial Alpha158 correction | Implemented – qualification pending | 2026-11 |
 | [2026-11-09-selector-error-test-correction](../work/2026-11-09-selector-error-test-correction/02-plan.md) | Correct stale-selector error coverage without changing product behavior | Implemented – qualification pending | 2026-11 |
 | [2026-11-09-web-matplotlib-environment](../work/2026-11-09-web-matplotlib-environment/02-plan.md) | Forward configured Matplotlib configuration and cache placement to CLI children | Implemented – qualification pending | 2026-11 |
 | [2026-11-10-browser-lane-routing](../work/2026-11-10-browser-lane-routing/02-plan.md) | Route mandatory browser tests to their existing fixtures | Implemented – qualification pending | 2026-11 |
-| [2026-11-10-risk-basis-fixture-capture](../work/2026-11-10-risk-basis-fixture-capture/02-plan.md) | Complete deferred synthetic risk-basis fixture | Implemented – qualification pending | 2026-11 |
 | [2026-10-26-native-rule-study-boundary](../work/2026-10-26-native-rule-study-boundary/02-plan.md) | Frozen-rule native study admission prerequisite | Blocked | 2026-10 |
 | [2026-10-26-qlib-w11-refit](../work/2026-10-26-qlib-w11-refit/02-plan.md) | Qlib W11: bounded whole-pipeline refit evidence | Blocked | 2026-10 |
 | [2026-11-07-acquisition-disposable-transactions](../work/2026-11-07-acquisition-disposable-transactions/02-plan.md) | Disposable acquisition transactions | Blocked | 2026-11 |
@@ -62,13 +57,14 @@ work may be open.
 | [2026-11-08-complete-http-response-evidence](../work/2026-11-08-complete-http-response-evidence/02-plan.md) | Strict complete-response evidence before replay | Blocked | 2026-11 |
 | [2026-11-14-approval-by-structure](../work/2026-11-14-approval-by-structure/02-plan.md) | Approvals bind code structure, not bytes | Planned | 2026-11 |
 
-## Backlog (20)
+## Backlog (22)
 
 | Item | Status | Rough size |
 | --- | --- | --- |
 | [Autonomous research agent programme](backlog/agentic-research-programme.md) | Scoped | XL |
 | [Catalyst, expectations and fundamentals research (W15)](backlog/catalyst-research.md) | Scoped | L |
 | [ControlStore-owned durable acquisition journal](backlog/controlstore-durable-acquisition.md) | Idea | L |
+| [Check a coin's whole downloaded daily history in one step](backlog/crypto-history-completeness.md) | Idea | M |
 | [Freeze a crypto snapshot by coin and date range](backlog/crypto-snapshot-by-range.md) | Idea | M |
 | [Generalise D0 screening to every registered producer (Phase E)](backlog/d0-generalisation.md) | Idea | M |
 | [A route for new daily-bar research ideas](backlog/daily-research-operators.md) | Idea | L |
@@ -83,6 +79,7 @@ work may be open.
 | [Options expression research (W16)](backlog/options-research.md) | Scoped | L |
 | [Full Qlib model zoo and fold-by-fold counterfactual retraining (W11/W12)](backlog/qlib-model-zoo-and-fold-retraining.md) | Scoped | XL |
 | [RD-Agent autonomous native research and restart continuation (W08/W13, T07)](backlog/rdagent-autonomous-research.md) | Scoped | XL |
+| [Risk stress scenarios that can move the drawdown](backlog/risk-shock-placement.md) | Idea | S |
 | [Overlap-corrected t statistic for the quick screen](backlog/screen-overlap-corrected-t.md) | Idea | S |
 | [Web-started downloads ignore proxy and certificate settings](backlog/web-downloads-network-settings.md) | Idea | S |
 | [Make the weekly mutation sweep pass on main](backlog/weekly-mutation-sweep.md) | Scoped | S |
@@ -98,7 +95,7 @@ work may be open.
 | [Break up oversized functions](refactors/oversized-functions.md) | M |
 | [Reduce `# type: ignore` suppressions](refactors/type-ignore-reduction.md) | L |
 
-## Archived plans (138)
+## Archived plans (146)
 
 | Month | Plans |
 | --- | --- |
@@ -106,4 +103,4 @@ work may be open.
 | [2026-08](../work/archive/2026-08/) | 10 |
 | [2026-09](../work/archive/2026-09/) | 21 |
 | [2026-10](../work/archive/2026-10/) | 60 |
-| [2026-11](../work/archive/2026-11/) | 34 |
+| [2026-11](../work/archive/2026-11/) | 42 |
