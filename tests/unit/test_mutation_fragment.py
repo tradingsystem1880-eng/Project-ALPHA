@@ -157,6 +157,8 @@ def test_run_fragment_certifies_only_observed_fresh_collection(
                 with monkeypatch.context() as child:
                     child.chdir(tmp_path / "mutants")
                     result = self.test_runner_class().run_stats(tests)
+                # Like the real fork server: the child's tracer hits never reach the parent.
+                observed._stats = set()
                 evidence = tmp_path / "mutation-import-origins.json"
                 if mode == "missing_origins":
                     evidence.unlink(missing_ok=True)

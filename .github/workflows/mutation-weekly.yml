@@ -103,8 +103,9 @@ jobs:
           if-no-files-found: error
 
   aggregate:
+    # A one-module dispatch is not a sweep; workflow_call and schedule leave inputs.module unset.
     needs: [modules, mutate]
-    if: always() && !(github.event_name == 'workflow_dispatch' && inputs.module != '')
+    if: always() && !(github.event_name == 'workflow_dispatch' && (inputs.module || '') != '')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -111,7 +111,9 @@ def run_fragment(module: str, expected: list[str], assigned: list[str], workers:
                             if origin and Path(origin).resolve() == staged_origin
                             else "mismatched"
                         )
-                gate.write_json_atomic(origins_path, origins)
+                # The parent never sees this child's tracer state: report leftover hits too.
+                hits = sorted(state()._stats)
+                gate.write_json_atomic(origins_path, {"origins": origins, "hits": hits})
                 return code
 
         runner.test_runner_class = AuditedTestRunner
@@ -125,18 +127,24 @@ def run_fragment(module: str, expected: list[str], assigned: list[str], workers:
             try:
                 code = original_collect(tests)
                 try:
-                    origins = read_object(origins_path)
+                    evidence = read_object(origins_path)
                 except (OSError, ValueError) as exc:
                     raise ValueError("Missing or malformed child import origins") from exc
-                if not set(origins) <= {target} or any(
-                    value not in ("staged", "mismatched") for value in origins.values()
+                origins, hits = evidence.get("origins"), evidence.get("hits")
+                if (
+                    set(evidence) != {"origins", "hits"}
+                    or not isinstance(origins, dict)
+                    or not set(origins) <= {target}
+                    or any(value not in ("staged", "mismatched") for value in origins.values())
+                    or not isinstance(hits, list)
+                    or any(not isinstance(hit, str) for hit in hits)
                 ):
                     raise ValueError("Malformed child import origins")
             finally:
                 origins_path.unlink(missing_ok=True)
             if type(code) is not int:
                 raise ValueError("Malformed stats collection exit code")
-            if code == 0 and not state().tests_by_mangled_function_name and not state()._stats:
+            if code == 0 and not state().tests_by_mangled_function_name and not hits:
                 proof = {
                     "tool": TOOL,
                     "source_sha256": source_sha,
@@ -145,7 +153,7 @@ def run_fragment(module: str, expected: list[str], assigned: list[str], workers:
                     "collection_exit": code,
                     "durations": dict(state().duration_by_test),
                     "associations": {},
-                    "tracer_hits": [],
+                    "tracer_hits": hits,
                     "import_origins": origins,
                 }
                 if hashlib.sha256(Path("pyproject.toml").read_bytes()).hexdigest() != config_sha:

@@ -567,7 +567,7 @@ def test_dispatch_module_filters_matrix_without_changing_inventory(
         in workflow
     )
     assert (
-        "if: always() && !(github.event_name == 'workflow_dispatch' && inputs.module != '')"
+        "if: always() && !(github.event_name == 'workflow_dispatch' && (inputs.module || '') != '')"
         in workflow
     )
     match = re.search(r"python - <<'PY'\n(.*?)\n          PY", workflow, re.S)
@@ -603,3 +603,24 @@ def test_dispatch_module_filters_matrix_without_changing_inventory(
         assert matrix == [
             {key: value for key, value in job.items() if key != "mutants"} for job in expected
         ]
+
+
+@pytest.mark.parametrize(
+    "report", [None, "broken", {"modules": "broken"}, {"modules": {MODULE: {"excluded_tests": 3}}}]
+)
+def test_fragment_diagnostics_never_mask_the_result(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], report: object
+) -> None:
+    (tmp_path / "bad.log").write_bytes(b"\xff\xfe undecodable \r tail")
+    record = {
+        "state": "error",
+        "module": MODULE,
+        "error": "ValueError: boom",
+        "report": report,
+        "timings": [{"log": "bad.log"}, {"log": "missing.log"}],
+    }
+    sweep.print_fragment_diagnostics(record, tmp_path)
+    err = capsys.readouterr().err
+    assert f"[mutation-sweep] {MODULE}: ValueError: boom" in err
+    assert "fragment" not in err.splitlines()[0]
+    assert "tail" in err and "diagnostics unavailable" in err
