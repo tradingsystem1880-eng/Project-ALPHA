@@ -8,7 +8,7 @@ sources:
   - tests/unit/test_crypto_*.py
   - tests/integration/test_crypto_*.py
   - tests/integration/test_data_*.py
-verified: 8c67bef63ab9
+verified: 841eb50dcc89
 ---
 
 # Command line data invariants
@@ -42,7 +42,8 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
 - Keep each provider's dataset family separate. No provider is a universal crypto price, and no fallback may change
   venue, quote asset, units, frequency or evidence. [ADR-0032](../../adr/0032-governed-crypto-data-house.md)
 - Join assets by network plus contract address or a reviewed native mapping; ticker-only joins fail
-  (`alpha_data.crypto.asset_master`).
+  (`alpha_data.crypto.asset_master`). `asset-master-verify` accepts the built-in reviewed labels exactly as
+  `asset-masters` lists them (no catalog sources); any other version is a stored master whose sources are re-verified.
 - CCXT snapshots and the `ccxt:binance` paper warm-up path are a separate, unchanged lane.
 
 ## Bulk storage
@@ -86,10 +87,14 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
   (`FixtureAccountingBlocked`) stops the run and never splits or retries.
 - One owner at a time: the ledger takes a non-blocking `flock` on a persistent `.lock` sidecar and checks the sidecar
   identity; never delete the sidecar or unlock an inherited descriptor in a child.
+- `--end` is exclusive: the last month planned is the month of the day before `--end`, so `--end 2026-11-01` plans
+  nothing in November.
 - Binance publishes a monthly archive only after the month ends. A Binance backfill never plans a month that has
-  not ended at run time: it lists it under `not_published_yet` and records nothing for it in the ledger. A month
-  that has ended but whose file is missing is still a recorded failure. `backfill-status` names the same months
-  under `not_published_yet`, so a shortened plan is never silent. The current month comes from the bounded REST
+  not ended at run time: it lists it under `not_published_yet` and records nothing for it in the ledger. For
+  `BINANCE_PUBLICATION_GRACE` (14 days) after a month ends, an HTTP 404 for its file is also not published yet
+  (listed under `awaiting_publication` and `not_published_yet`, nothing recorded, retried next run); Binance's
+  measured delay is 1 to 7 days, once 12. Any other error, or a 404 after the grace, is a recorded failure.
+  `backfill-status` names the same months under `not_published_yet`, so a shortened plan is never silent. The current month comes from the bounded REST
   tail (`acquire ... --start/--end`); daily archive files are not read.
 - Backfill has no research, quota or execution authority. Inspection (`_crypto_backfill_inspection.py`) is read-only.
 

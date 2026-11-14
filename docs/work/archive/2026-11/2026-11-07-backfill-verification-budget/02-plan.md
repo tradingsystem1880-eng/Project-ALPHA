@@ -1,6 +1,6 @@
 # Bound explicit resume artifact verification
 
-**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+**Delivery state:** Completed — proven end to end by `tests/smoke/test_crypto_backfill_smoke.py` (2026-11-14, `m8/prove-crypto-backfill`); done when that pull request merges.
 
 Historical delivery state (as first recorded): isolated successor to approved resume tree
 `a20c88091c9951ea98b5202e6b1dfc999e8a79d0`. Focused verification/review receipts are separate.

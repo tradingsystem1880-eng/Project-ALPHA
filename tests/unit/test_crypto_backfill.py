@@ -5,10 +5,13 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
+from email.message import Message
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError
 
 import pytest
+import typer
 
 from alpha_cli._crypto_backfill import (
     BackfillWindow,
@@ -16,6 +19,7 @@ from alpha_cli._crypto_backfill import (
     plan_windows,
     run_backfill,
     split_symbol,
+    unpublished_binance_periods,
 )
 from alpha_core import DataError
 
@@ -75,7 +79,7 @@ def test_binance_market_bars_plan_one_calendar_month_per_window() -> None:
     windows = plan_windows(
         "binance", "market_bars", "1d", start=date(2023, 11, 15), end=date(2024, 2, 1), now=NOW
     )
-    assert [w.period for w in windows] == ["2023-11", "2023-12", "2024-01", "2024-02"]
+    assert [w.period for w in windows] == ["2023-11", "2023-12", "2024-01"]
     assert all(w.start is None and w.end is None for w in windows)
 
 
@@ -354,7 +358,6 @@ def test_binance_unpublished_months_are_not_planned(start: date) -> None:
     assert _crypto_backfill.unpublished_binance_periods(start, date(2026, 11, 1), NOW) == (
         "2026-09",
         "2026-10",
-        "2026-11",
     )
 
 
@@ -389,8 +392,144 @@ def test_binance_publication_boundary_is_next_month_utc() -> None:
     function = getattr(_crypto_backfill, "unpublished_binance_periods", None)
     assert callable(function), "unpublished Binance period reporting is missing"
     start, end = date(2025, 12, 1), date(2026, 1, 1)
-    assert function(start, end, datetime(2026, 1, 1, tzinfo=UTC)) == ("2026-01",)
-    assert function(start, end, datetime.fromisoformat("2026-01-01T01:00:00+02:00")) == (
-        "2025-12",
-        "2026-01",
+    assert function(start, end, datetime(2026, 1, 1, tzinfo=UTC)) == ()
+    assert function(start, end, datetime.fromisoformat("2026-01-01T01:00:00+02:00")) == ("2025-12",)
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "planned", "unpublished"),
+    [
+        (date(2026, 9, 1), date(2026, 11, 1), ["2026-09", "2026-10"], ()),
+        (date(2026, 9, 1), date(2026, 11, 2), ["2026-09", "2026-10"], ("2026-11",)),
+        (date(2026, 9, 1), date(2026, 10, 31), ["2026-09", "2026-10"], ()),
+        (date(2024, 1, 5), date(2024, 1, 20), ["2024-01"], ()),
+    ],
+)
+def test_binance_month_walk_respects_the_exclusive_end(
+    start: date, end: date, planned: list[str], unpublished: tuple[str, ...]
+) -> None:
+    now = datetime(2026, 11, 14, tzinfo=UTC)
+    windows = plan_windows("binance", "market_bars", "1d", start=start, end=end, now=now)
+    assert [window.period for window in windows] == planned
+    assert unpublished_binance_periods(start, end, now) == unpublished
+
+
+def _raise_acquisition_error(code: int | None) -> None:
+    if code is None:
+        raise DataError("checksum mismatch")
+    try:
+        try:
+            try:
+                raise HTTPError(
+                    "https://data.binance.vision/archive.CHECKSUM", code, "missing", Message(), None
+                )
+            except HTTPError as exc:
+                raise DataError(f"checksum fetch failed: HTTP {code}") from exc
+        except DataError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    except typer.BadParameter as exc:
+        raise DataError(str(exc)) from exc
+
+
+@pytest.mark.parametrize(
+    ("now", "code", "awaiting"),
+    [
+        (datetime(2026, 11, 1, tzinfo=UTC), 404, True),
+        (datetime(2026, 11, 14, 23, 59, tzinfo=UTC), 404, True),
+        (datetime(2026, 11, 15, tzinfo=UTC), 404, False),
+        (datetime(2026, 11, 16, tzinfo=UTC), 404, False),
+        (datetime(2026, 11, 5, tzinfo=UTC), 500, False),
+        (datetime(2026, 11, 5, tzinfo=UTC), None, False),
+    ],
+)
+def test_binance_missing_archive_only_awaits_publication_inside_grace(
+    tmp_path: Path, now: datetime, code: int | None, awaiting: bool
+) -> None:
+    calls: list[object] = []
+    messages: list[str] = []
+    path = tmp_path / "ledger.json"
+
+    def acquire(*args: Any, **kwargs: Any) -> dict[str, object]:
+        calls.append(kwargs["period"])
+        _raise_acquisition_error(code)
+        raise AssertionError("acquisition error must propagate")
+
+    for attempt in (1, 2):
+        summary = run_backfill(
+            provider="binance",
+            family="market_bars",
+            symbols=["BTCUSDT"],
+            quote="USDT",
+            category="spot",
+            frequency="1d",
+            start=date(2026, 10, 1),
+            end=date(2026, 11, 1),
+            ledger_path=path,
+            acquire=acquire,
+            now=now,
+            pause_seconds=0,
+            log=messages.append,
+        )
+        assert calls == ["2026-10"] * attempt
+        assert summary["done"] == 0
+        assert summary["awaiting_publication"] == (["2026-10"] if awaiting else [])
+        assert summary["failed"] == (0 if awaiting else 1)
+        ledger = Ledger.open(
+            path, provider="binance", family="market_bars", category="spot", frequency="1d"
+        )
+        key = "BTCUSDT|None|None|2026-10"
+        if awaiting:
+            assert ledger.entry(key) is None
+            assert summary["failures"] == []
+            assert messages[-1] == f"not published yet {key}"
+        else:
+            assert ledger.state(key) == "failed"
+            entry = ledger.entry(key)
+            assert entry is not None
+            assert summary["failures"] == [{"key": key, "error": str(entry["error"])}]
+
+
+def test_cli_not_published_yet_includes_missing_recent_archive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from typer.testing import CliRunner
+
+    from alpha_cli import crypto_data_cmds
+    from alpha_cli.main import app
+
+    monkeypatch.setenv("ALPHA_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr(crypto_data_cmds, "_now", lambda: datetime(2026, 11, 5, tzinfo=UTC))
+
+    def acquire(*args: Any, **kwargs: Any) -> dict[str, object]:
+        _raise_acquisition_error(404)
+        raise AssertionError("acquisition error must propagate")
+
+    monkeypatch.setattr(crypto_data_cmds, "_backfill_acquire", acquire)
+    result = CliRunner().invoke(
+        app,
+        [
+            "crypto-data",
+            "backfill",
+            "binance",
+            "market_bars",
+            "--symbols",
+            "BTCUSDT,ETHUSDT",
+            "--quote",
+            "USDT",
+            "--category",
+            "spot",
+            "--frequency",
+            "1d",
+            "--start",
+            "2026-10-01",
+            "--end",
+            "2026-11-02",
+            "--ledger",
+            "publication",
+            "--json",
+        ],
     )
+    assert result.exit_code == 0, result.output
+    summary = json.loads(result.stdout)
+    assert summary["awaiting_publication"] == ["2026-10", "2026-10"]
+    assert summary["not_published_yet"] == ["2026-10", "2026-11"]
