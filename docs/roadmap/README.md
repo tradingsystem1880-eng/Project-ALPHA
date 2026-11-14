@@ -68,7 +68,7 @@ work may be open.
 | [2026-11-08-complete-http-response-evidence](../work/2026-11-08-complete-http-response-evidence/02-plan.md) | Strict complete-response evidence before replay | Blocked | 2026-11 |
 | [2026-11-14-approval-by-structure](../work/2026-11-14-approval-by-structure/02-plan.md) | Approvals bind code structure, not bytes | Planned | 2026-11 |
 
-## Backlog (17)
+## Backlog (18)
 
 | Item | Status | Rough size |
 | --- | --- | --- |
@@ -88,6 +88,7 @@ work may be open.
 | [Options expression research (W16)](backlog/options-research.md) | Scoped | L |
 | [Full Qlib model zoo and fold-by-fold counterfactual retraining (W11/W12)](backlog/qlib-model-zoo-and-fold-retraining.md) | Scoped | XL |
 | [RD-Agent autonomous native research and restart continuation (W08/W13, T07)](backlog/rdagent-autonomous-research.md) | Scoped | XL |
+| [From an RD-Agent candidate factor to a research case draft](backlog/rdagent-candidate-to-research-case.md) | Scoped | M |
 | [Make the weekly mutation sweep pass on main](backlog/weekly-mutation-sweep.md) | Scoped | S |
 
 ## Staged refactors (6)
