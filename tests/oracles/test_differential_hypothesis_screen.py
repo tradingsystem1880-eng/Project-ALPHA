@@ -8,6 +8,11 @@ turnover between dates one row and one horizon apart, and the cost-adjusted spre
 
 Not covered: the crypto lane, universe memberships and delisting returns (unit tests), and
 corporate actions (the synthetic bars have none; a real-data run is in the task record).
+
+Sources: rank IC is Spearman (1904), DOI 10.2307/1412159, as ``scipy.stats.spearmanr`` computes
+it; the quantile spread is the Fama and French (1992) portfolio sort, DOI
+10.1111/j.1540-6261.1992.tb04398.x; the turnover and cost convention is the Phase-C design in
+docs/work/archive/2026-09/2026-09-11-edge-first-phase-c-screening-lane.md.
 """
 
 from __future__ import annotations
@@ -24,6 +29,7 @@ from alpha_cli._hypothesis_scan import EQUITY_SIGNALS, run_hypotheses
 from alpha_data.snapshot import create_snapshot
 from alpha_data.store import ParquetStore
 from tests.fixtures.cli_fixtures import seed_store
+from tests.oracles._reference.tolerances import DIFFERENTIAL_ABS, FLOAT64_REL
 
 pytestmark = pytest.mark.oracle
 
@@ -107,11 +113,11 @@ def test_screen_rows_match_an_independent_pandas_scipy_recomputation(tmp_path: P
         spread = float(np.mean([top for top, _ in spreads]) - np.mean([low for _, low in spreads]))
         lagged = _turnover(signal, horizon)
         assert row["ic"]["n_dates"] == ic.size
-        assert row["ic"]["mean"] == pytest.approx(ic.mean(), abs=1e-12)
-        assert row["ic"]["t_stat"] == pytest.approx(t_stat, rel=1e-10, abs=1e-12)
-        assert row["quantiles"]["spread"] == pytest.approx(spread, abs=1e-12)
-        assert row["turnover"] == pytest.approx(_turnover(signal, 1), abs=1e-12)
-        assert row["horizon_turnover"] == pytest.approx(lagged, abs=1e-12)
+        assert row["ic"]["mean"] == pytest.approx(ic.mean(), abs=DIFFERENTIAL_ABS)
+        assert row["ic"]["t_stat"] == pytest.approx(t_stat, rel=FLOAT64_REL, abs=DIFFERENTIAL_ABS)
+        assert row["quantiles"]["spread"] == pytest.approx(spread, abs=DIFFERENTIAL_ABS)
+        assert row["turnover"] == pytest.approx(_turnover(signal, 1), abs=DIFFERENTIAL_ABS)
+        assert row["horizon_turnover"] == pytest.approx(lagged, abs=DIFFERENTIAL_ABS)
         assert row["cost_adjusted_spread"] == pytest.approx(
-            spread - 4 * lagged * _COST / 1e4, abs=1e-12
+            spread - 4 * lagged * _COST / 1e4, abs=DIFFERENTIAL_ABS
         )
