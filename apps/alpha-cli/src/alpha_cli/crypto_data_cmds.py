@@ -48,9 +48,6 @@ from alpha_cli._crypto_analysis import (
     manifest_acquisition_scope as _manifest_acquisition_scope,
 )
 from alpha_cli._crypto_analysis import (
-    normalized_member as _normalized_member,
-)
-from alpha_cli._crypto_analysis import (
     parquet_frame as _parquet_frame,
 )
 from alpha_cli._crypto_asset_master_sources import verify_asset_master_sources
@@ -61,6 +58,11 @@ from alpha_cli._crypto_coverage import create_coverage_batch as _create_coverage
 from alpha_cli._crypto_coverage import read_coverage_batch as _read_coverage_batch_at
 from alpha_cli._crypto_coverage import write_batch_json as _write_coverage_batch_json
 from alpha_cli._crypto_persistence import write_immutable_json
+from alpha_cli._crypto_snapshot_members import (
+    check_dataset_ranges,
+    resolve_creation_members,
+    resolve_member,
+)
 from alpha_cli._crypto_yield_catalog import empty_yield_catalog, yield_catalog
 from alpha_cli.control_store import ControlStore, research_case_revision
 from alpha_cli.crypto_snapshot_query import parse_available_by, query_defi_tvl_snapshot
@@ -556,27 +558,12 @@ def _verify_snapshot_members(
         master = _verified_asset_master(store, snapshot.asset_master_version)
         if master.version != snapshot.asset_master_version:
             raise DataError("crypto snapshot asset-master identity is mismatched")
-    retained = tuple(
-        manifest for manifest in store.inventory() if manifest.get("artifact_kind") == "normalized"
-    )
+    retained = store.inventory()
+    raw_by_id = {str(manifest["manifest_id"]): manifest for manifest in retained}
     scope_eligible = True
     reports: dict[str, CryptoQualityReportV1] = {}
     for member in snapshot.members:
-        matches = [
-            manifest
-            for manifest in retained
-            if manifest.get("artifact_key") == member.artifact_key
-            and manifest.get("artifact_sha256") == member.artifact_sha256
-            and manifest.get("dataset") == member.dataset.to_dict()
-        ]
-        if not matches:
-            raise DataError("crypto snapshot member manifest is missing or mismatched")
-        if len(matches) != 1:
-            raise DataError(
-                "crypto snapshot member manifest is ambiguous; "
-                "frozen membership does not identify one retained capture"
-            )
-        manifest = matches[0]
+        manifest = resolve_member(member, retained, raw_by_id)
         if tolerate_legacy_scope:
             try:
                 _manifest_acquisition_scope(manifest, member.dataset)
@@ -585,6 +572,7 @@ def _verify_snapshot_members(
         else:
             _manifest_acquisition_scope(manifest, member.dataset)
         reports[member.artifact_sha256] = CryptoQualityReportV1.from_dict(manifest.get("quality"))
+    check_dataset_ranges((member, reports[member.artifact_sha256]) for member in snapshot.members)
     projection = assess_crypto_snapshot(
         snapshot,
         quality_reports=reports,
@@ -4371,7 +4359,7 @@ def snapshot_create(
     ),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
-    """Freeze exact ordered qualified membership; source and quote identities remain distinct."""
+    """Freeze qualified membership in canonical order; the id is independent of option order."""
     if not manifest_ids or len(set(manifest_ids)) != len(manifest_ids):
         raise typer.BadParameter("--manifest-id must contain unique normalized manifests")
     try:
@@ -4379,7 +4367,7 @@ def snapshot_create(
         with store.admission_lock():
             if asset_master_version not in REVIEWED_NATIVE_LABELS:
                 _verified_asset_master(store, asset_master_version)
-            resolved = tuple(_normalized_member(store, manifest_id) for manifest_id in manifest_ids)
+            resolved = resolve_creation_members(store, manifest_ids)
             snapshot = CryptoSnapshotV1.create(
                 members=tuple(member for member, _ in resolved),
                 asset_master_version=asset_master_version,
@@ -4586,7 +4574,7 @@ def backfill(
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Run many bounded `acquire` pages over symbols x windows, resumably; grants no authority."""
-    from alpha_cli._crypto_backfill import BackfillWindow, run_backfill
+    from alpha_cli._crypto_backfill import BackfillWindow, run_backfill, unpublished_binance_periods
     from alpha_cli._crypto_backfill_evidence import verify_completed_window
     from alpha_data.crypto.verification import ArtifactVerificationBudget
 
@@ -4634,7 +4622,7 @@ def backfill(
             end=end_date,
             ledger_path=ledger_path,
             acquire=_backfill_acquire,
-            now=_now(),
+            now=(started := _now()),
             dry_run=dry_run,
             log=None if json_out else lambda line: typer.echo(line, err=True),
             verify_completed=verify_completed,
@@ -4642,6 +4630,9 @@ def backfill(
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     summary.update(
+        not_published_yet=list(unpublished_binance_periods(start_date, end_date, started))
+        if provider == "binance"
+        else [],
         verification_artifact_byte_limit=max_verify_artifact_bytes,
         verification_artifact_bytes_reserved=None
         if verification_budget is None
@@ -4677,6 +4668,7 @@ def backfill_status(
     json_out: bool = typer.Option(False, "--json", help="emit structured inspection receipt"),
 ) -> None:
     """Inspect retained progress/evidence without writes or provider calls; grants no authority."""
+    from alpha_cli._crypto_backfill import unpublished_binance_periods
     from alpha_cli._crypto_backfill_inspection import inspect_backfill
 
     try:
@@ -4695,12 +4687,17 @@ def backfill_status(
         start=start_date,
         end=end_date,
         ledger_path=AlphaSettings().data_dir / "crypto" / "backfill" / f"{ledger}.json",
-        now=_now(),
+        now=(started := _now()),
         max_ledger_bytes=max_ledger_bytes,
         max_windows=max_windows,
         max_verify_artifact_bytes=max_verify_artifact_bytes,
         max_verify_metadata_bytes=max_verify_metadata_bytes,
         load_store=_bulk_store,
+    )
+    summary["not_published_yet"] = (
+        list(unpublished_binance_periods(start_date, end_date, started))
+        if provider == "binance"
+        else []
     )
     _emit(summary, json_out=json_out)
     if summary["inspection_state"] != "complete":

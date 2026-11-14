@@ -1,7 +1,8 @@
 """Live Stooq smoke test — skipped in CI/offline (run locally with -m network).
 
 Verifies the real HTTP fetch + parser wiring against Stooq's live CSV endpoint. The pure parser is
-covered offline in ``tests/unit/test_stooq_parser.py``.
+covered offline in ``tests/unit/test_stooq_parser.py``. A browser challenge is refused by the
+adapter and skips this test; ALPHA never solves or bypasses the check.
 """
 
 from __future__ import annotations
@@ -16,7 +17,8 @@ from alpha_data.adapters.stooq_adapter import StooqAdapter
 pytestmark = pytest.mark.network
 
 # Substrings the adapter emits when Stooq's *transport* withholds data (anti-bot gate / per-IP
-# "Access denied" quota / no data for the window). These are environmental, not a code bug, so the
+# "Access denied" quota / no data for the window). A challenge is a refusal, never cleared.
+# These are environmental, not a code bug, so the
 # test skips. Parser-level DataErrors ("invalid Stooq row", "missing columns") have none of these
 # tokens and so propagate as real failures — a genuine live-shape regression must not be masked.
 _BLOCKED_TOKENS = ("anti-bot", "Access denied", "returned no data")

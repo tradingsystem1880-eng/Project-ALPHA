@@ -157,7 +157,7 @@ proof_synthetic = [
   "tests/integration/test_crypto_backfill_resume_cli.py::test_cli_reopens_completed_bytes_and_retries_only_unfinished_instrument",
   "tests/integration/test_crypto_backfill_status_cli.py::test_status_verifies_completion_and_pending_without_writes",
 ]
-real_data = "not yet confirmed: on 2026-11-14 a free Binance spot daily backfill of 15 USDT pairs ran on the Dell; Bybit not yet run (docs/reference/project/components/data-layer.md)"
+real_data = "not yet confirmed: on 2026-11-14 a free Binance spot daily backfill of 15 USDT pairs ran on the Dell; the unfinished month is now reported as not published yet rather than failed; Bybit not yet run (docs/reference/project/components/data-layer.md)"
 real_data_needs = "Network access to Bybit and a storage volume for years of data."
 needs = []
 state = "Partial"
@@ -270,7 +270,7 @@ proof_synthetic = [
   "tests/integration/test_crypto_snapshot_query_cli.py::test_snapshot_query_reopens_exact_id_and_preserves_frozen_files",
   "tests/integration/test_asset_master_provenance.py::test_valid_sources_contract_and_snapshot_reopen_without_rebuilding_identity",
 ]
-real_data = "not yet confirmed: on 2026-11-14 one month of real Binance BTCUSDT bars was frozen and verified on the Dell; a repeated download of an already-frozen month makes its snapshot fail verification (docs/work/archive/2026-11/2026-11-14-free-real-data-dell/04-verify.md)"
+real_data = "not yet confirmed: on 2026-11-14 two one-month Binance BTCUSDT snapshots on the Dell verify, including the January 2024 month downloaded twice, and the whole-store check passes; a twelve-month 2024 snapshot verified on a copy of the data folder (docs/work/archive/2026-11/2026-11-14-crypto-snapshot-duplicates/04-verify.md)"
 needs = []
 state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"

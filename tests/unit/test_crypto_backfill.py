@@ -341,3 +341,56 @@ def test_cli_wrapper_turns_usage_errors_into_typed_data_errors(
             start="2024-01-01T00:00:00Z",
             end="2024-02-01T00:00:00Z",
         )
+
+
+@pytest.mark.parametrize("start", [date(2026, 8, 1), date(2026, 9, 1)])
+def test_binance_unpublished_months_are_not_planned(start: date) -> None:
+    from alpha_cli import _crypto_backfill
+
+    windows = plan_windows(
+        "binance", "market_bars", "1d", start=start, end=date(2026, 11, 1), now=NOW
+    )
+    assert [w.period for w in windows] == (["2026-08"] if start.month == 8 else [])
+    assert _crypto_backfill.unpublished_binance_periods(start, date(2026, 11, 1), NOW) == (
+        "2026-09",
+        "2026-10",
+        "2026-11",
+    )
+
+
+def test_binance_unpublished_month_has_no_acquisition_or_failed_ledger_entry(
+    tmp_path: Path,
+) -> None:
+    calls: list[dict[str, Any]] = []
+    summary = run_backfill(
+        provider="binance",
+        family="market_bars",
+        symbols=["BTCUSDT"],
+        quote="USDT",
+        category="spot",
+        frequency="1d",
+        start=date(2026, 8, 1),
+        end=date(2026, 9, 10),
+        ledger_path=tmp_path / "ledger.json",
+        now=NOW,
+        pause_seconds=0.0,
+        acquire=_fake_acquire(calls, fail_windows=frozenset({"BTCUSDT|None|2026-09"})),
+    )
+    assert summary["failed"] == 0
+    assert [call["period"] for call in calls] == ["2026-08"]
+    ledger = json.loads((tmp_path / "ledger.json").read_text())
+    assert len(ledger["windows"]) == 1
+    assert all(entry["state"] == "done" for entry in ledger["windows"].values())
+
+
+def test_binance_publication_boundary_is_next_month_utc() -> None:
+    from alpha_cli import _crypto_backfill
+
+    function = getattr(_crypto_backfill, "unpublished_binance_periods", None)
+    assert callable(function), "unpublished Binance period reporting is missing"
+    start, end = date(2025, 12, 1), date(2026, 1, 1)
+    assert function(start, end, datetime(2026, 1, 1, tzinfo=UTC)) == ("2026-01",)
+    assert function(start, end, datetime.fromisoformat("2026-01-01T01:00:00+02:00")) == (
+        "2025-12",
+        "2026-01",
+    )
