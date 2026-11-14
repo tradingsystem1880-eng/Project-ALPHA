@@ -5,7 +5,7 @@
 "Around 50 usd a month for api credits. That's only if we can't get codex to work in the rd agents
 info structure." And, on RD-Agent's models: prefers the ChatGPT subscription with strong models,
 with a cheap model on an API key as the fallback, "As long as it doesn't drop quality or
-capability" ([owner decisions](../../../reference/project/owner-decisions.md#2026-11-14-rd-agents-ai-models)).
+capability" ([owner decisions](../../../../reference/project/owner-decisions.md#2026-11-14-rd-agents-ai-models)).
 
 In one sentence: RD-Agent's own model calls go, unchanged, to the Codex program already signed in
 with the owner's ChatGPT plan, through a small local connection ALPHA owns, with ALPHA's budget,

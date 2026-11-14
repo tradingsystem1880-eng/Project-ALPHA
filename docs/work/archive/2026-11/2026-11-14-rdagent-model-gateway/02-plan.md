@@ -74,10 +74,10 @@ Filed straight into the archive, as `2026-11-14-project-layer` was: the work-in-
 
 | Read | Section | When |
 |---|---|---|
-| [worker invariants](../../../reference/invariants/workers.md) | Shared rules, RD-Agent worker | always |
-| [research integrity](../../../reference/invariants/research-integrity.md) | Models and isolated workers, Owner authority | always |
-| [RD-Agent component](../../../reference/project/components/rd-agent.md) | — | always |
-| [model routing](../../../reference/model-routing.md) | Task classes | the Codex build |
+| [worker invariants](../../../../reference/invariants/workers.md) | Shared rules, RD-Agent worker | always |
+| [research integrity](../../../../reference/invariants/research-integrity.md) | Models and isolated workers, Owner authority | always |
+| [RD-Agent component](../../../../reference/project/components/rd-agent.md) | — | always |
+| [model routing](../../../../reference/model-routing.md) | Task classes | the Codex build |
 
 ## Slices
 
