@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Literal, get_args, get_origin
@@ -16,15 +17,61 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from alpha_cli.crypto_price_snapshot_query import (
     BinanceDailyPriceSnapshotQueryV1,
+    BinanceDailyPriceSnapshotQueryV2,
     validate_binance_daily_price_identity,
 )
 from alpha_core import DataError
-from alpha_data.crypto.contracts import CryptoDatasetIdentityV1, CryptoRawReceiptV1
+from alpha_data.crypto.contracts import CryptoDatasetIdentityV1, CryptoRawReceiptV1, require_utc
 from alpha_strategies.rules import canonical_json, rule_spec_from_json
 
 
 def _canonical(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def _validate_monthly_members(
+    query: dict[str, object], receipts: tuple[CryptoRawReceiptV1, ...]
+) -> None:
+    members = query.get("members")
+    if not isinstance(members, list) or not 2 <= len(members) <= 100:
+        raise DataError("daily study requires two to 100 named price members")
+    keys = {
+        "normalized_manifest_id",
+        "artifact_key",
+        "artifact_sha256",
+        "quality_method_version",
+        "observed_start",
+        "observed_end",
+        "source_receipt_ids",
+    }
+    seen: set[str] = set()
+    source_ids: list[str] = []
+    previous = None
+    for member in members:
+        if not isinstance(member, dict) or set(member) != keys:
+            raise DataError("daily study price member fields differ")
+        manifest_id = member["normalized_manifest_id"]
+        if (
+            not isinstance(manifest_id, str)
+            or re.fullmatch(r"[0-9a-f]{64}", manifest_id) is None
+            or manifest_id in seen
+        ):
+            raise DataError("daily study price member identity is invalid or repeated")
+        seen.add(manifest_id)
+        try:
+            start = require_utc(datetime.fromisoformat(member["observed_start"]), "observed_start")
+            end = require_utc(datetime.fromisoformat(member["observed_end"]), "observed_end")
+        except (TypeError, ValueError) as error:
+            raise DataError("daily study price member observed range is invalid") from error
+        if start > end or (previous is not None and start <= previous):
+            raise DataError("daily study price member observed ranges are unordered or overlap")
+        previous = end
+        ids = member["source_receipt_ids"]
+        if not isinstance(ids, list) or not ids or any(not isinstance(item, str) for item in ids):
+            raise DataError("daily study price member source receipt ids are invalid")
+        source_ids.extend(ids)
+    if source_ids != [receipt.receipt_id for receipt in receipts]:
+        raise DataError("daily study price member source receipt bindings differ")
 
 
 class _Frozen(BaseModel):
@@ -144,7 +191,8 @@ class DailyRuleStudyV1(_Frozen):
             _canonical(query) != self.query_document
             or hashlib.sha256(self.query_document.encode()).hexdigest() != self.query_sha256
             or not isinstance(query, dict)
-            or query.get("schema") != "BinanceDailyPriceSnapshotQueryV1"
+            or query.get("schema")
+            not in {"BinanceDailyPriceSnapshotQueryV1", "BinanceDailyPriceSnapshotQueryV2"}
             or query.get("start") != self.discovery_start
             or query.get("end_exclusive") != self.discovery_end_exclusive
             or query.get("available_by") != self.discovery_end_exclusive
@@ -170,11 +218,16 @@ class DailyRuleStudyV1(_Frozen):
             receipts = tuple(CryptoRawReceiptV1.from_dict(source) for source in sources)
             if any(
                 receipt.dataset != dataset
-                or receipt.provider_schema != "binance-public-rest-v1"
-                or receipt.parser_version != "binance-archive-rest-v1"
+                or (receipt.provider_schema, receipt.parser_version)
+                not in {
+                    ("binance-public-rest-v1", "binance-archive-rest-v1"),
+                    ("binance-public-archive-v1", "binance-archive-v1"),
+                }
                 for receipt in receipts
             ):
                 raise DataError("daily study query source identity differs")
+            if query["schema"] == "BinanceDailyPriceSnapshotQueryV2":
+                _validate_monthly_members(query, receipts)
         except DataError as error:
             raise ValueError("daily study query source/dataset identity differs") from error
         start = datetime(2020, 1, 1, tzinfo=UTC)
@@ -263,7 +316,7 @@ def daily_rule_terms_proposal() -> tuple[DailyRuleEconomicsV1, DailyRuleResource
 
 
 def bind_daily_study(
-    query: BinanceDailyPriceSnapshotQueryV1,
+    query: BinanceDailyPriceSnapshotQueryV1 | BinanceDailyPriceSnapshotQueryV2,
     *,
     snapshot_sha256: str,
     runtime_profile_sha256: str,
@@ -278,7 +331,7 @@ def bind_daily_study(
     Admission must reopen the exact query before effects; a caller-created object
     or a content hash is not proof of qualified source or consumed owner approval.
     """
-    if type(query) is not BinanceDailyPriceSnapshotQueryV1:
+    if type(query) not in {BinanceDailyPriceSnapshotQueryV1, BinanceDailyPriceSnapshotQueryV2}:
         raise DataError("daily study requires its typed frozen price query")
     if (
         query.start != datetime(2020, 1, 1, tzinfo=UTC)

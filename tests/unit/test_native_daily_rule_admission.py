@@ -138,7 +138,7 @@ def test_actual_snapshot_reopen_rechecks_storage_source_and_query(
     query = query_binance_daily_price_snapshot(
         snapshot,
         store,
-        normalized_manifest_id=manifest_id,
+        normalized_manifest_ids=(manifest_id,),
         start=datetime(2020, 1, 1, tzinfo=UTC),
         end=end,
         available_by=end,
