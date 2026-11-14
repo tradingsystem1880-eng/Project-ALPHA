@@ -159,7 +159,7 @@ def test_public_draft_command_passes_exact_ids_and_config_without_approval(
                 "data_dir": tmp_path,
                 "source_pack_id": "sp_exact",
                 "snapshot_id": "b" * 64,
-                "normalized_manifest_id": "cm_exact",
+                "normalized_manifest_ids": ("cm_exact",),
             },
         )
     ]
@@ -204,7 +204,7 @@ def test_daily_draft_binds_snapshot_source_pack_and_storage_config_without_appro
         data_dir=root,
         source_pack_id=pack_id,
         snapshot_id=snapshot.snapshot_id,
-        normalized_manifest_id=manifest_id,
+        normalized_manifest_ids=(manifest_id,),
     )
     payload = record["payload"]
     assert isinstance(payload, dict)
@@ -237,7 +237,7 @@ def test_daily_draft_rejects_before_recording_contract(
             data_dir=tmp_path,
             source_pack_id=pack_id,
             snapshot_id="bad" if defect == "bad_snapshot_id" else "a" * 64,
-            normalized_manifest_id="cm_does_not_exist",
+            normalized_manifest_ids=("cm_does_not_exist",),
         )
     assert _count(store, "research_contracts") == 0
     assert _count(store, "research_launch_reservations") == 0
