@@ -3,7 +3,7 @@ owner: data layer
 sources:
   - packages/alpha-data/src/**
   - packages/alpha-data/pyproject.toml
-verified: aa600e57932d
+verified: c3cda7679642
 ---
 
 # alpha-data workspace
@@ -36,7 +36,7 @@ import it. It must never let a read see data that was not knowable at the cutoff
 - Code: `packages/alpha-data/src/alpha_data/`; vendor adapters in `adapters/`, the crypto data
   house in `crypto/` and `crypto/providers/`.
 - Tests: `tests/unit/test_pit_*.py`, `test_parquet_store.py`, `test_snapshot.py`, `test_ingest*.py`,
-  `test_corporate_actions.py`, `test_dividends_pit.py`, `test_universe_store.py`, `test_tiingo_*`,
+  `test_corporate_actions.py`, `test_dividends_pit.py`, `test_universe_store.py`, `test_tiingo_*`, `test_alpaca_adapter.py`,
   `test_crypto_*` (all in `tests/unit/`); bias guards `tests/bias_guards/test_pit_*.py`,
   `test_survivorship.py`, `test_candles_pit.py`, `test_crypto_*_future_poison.py`; integration
   `tests/integration/test_data_cli.py` and `tests/integration/test_crypto_*`.

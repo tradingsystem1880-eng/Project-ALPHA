@@ -64,6 +64,10 @@ project-wide rule is [research integrity § Models and isolated workers](researc
   invalidates every existing daily rule approval, so say so in the change description. Rule approvals made before
   ADR-0045 no longer verify and must be re-drafted and re-approved by the owner. See also
   [engineering § Hash-bound source bytes](engineering.md#hash-bound-source-bytes).
+- A rule contract (daily or synthetic) runs only with the owner's review plus one consumed local-confirmation receipt
+  for that exact contract and actor (`_native_rule_protocol.require_rule_confirmation`). Only the Workstation's local
+  confirmation creates that receipt, so a bare `alpha research approve exploration` of a rule contract is refused
+  before any review or phase change (`ControlStore.review_research_contract`); the owner approves it in the Workstation.
 - Symlinked guard files, runtime roots, metadata or packages, and stray bytecode in the runtime, fail closed.
 - The measured runtime also pins the root `uv.lock` and the source bytes of the packages in its profile; changing
   either fails the measurement.
