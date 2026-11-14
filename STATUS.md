@@ -102,6 +102,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - ControlStore-owned durable acquisition journal — large (L)
 - Data-directory naming migration — medium (M)
 - Freeze a crypto snapshot by coin and date range — medium (M)
+- From an RD-Agent candidate factor to a research case draft — medium (M)
 - Full Qlib model zoo and fold-by-fold counterfactual retraining (W11/W12) — very large (XL)
 - Gate coverage for workers/rdagent — small (S)
 - Generalise D0 screening to every registered producer (Phase E) — medium (M)
@@ -121,8 +122,8 @@ Ideas not yet planned (no order recorded, so alphabetical):
 ## Housekeeping
 
 - Live plans: 31
-- Archived plans: 146
-- Backlog items: 22
+- Archived plans: 147
+- Backlog items: 23
 - Staged refactors: 6
 
 ## Where things are
