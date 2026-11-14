@@ -158,16 +158,22 @@ class _Normalizer:
             values[value] = f"<{kind}-{len(values) + 1}>"
         return values[value]
 
+    def _field(self, key: str, value: object) -> object:
+        if key in _WALL_CLOCK_KEYS:
+            return "<elapsed>"
+        if key.endswith(".png") and isinstance(value, dict) and "size_bytes" in value:
+            # PNG bytes depend on in-process Matplotlib state left by earlier tests in the same
+            # worker; the image digest is already a token, so only the size is masked.
+            return self.normalize({**value, "size_bytes": "<png-size>"})
+        return self.normalize(value)
+
     def normalize(self, value: object) -> object:
         if isinstance(value, str):
             text = value.replace(self.path, "<path>").replace(self.repo, "<repo>")
             return _VARIABLE.sub(self._replace, text)
         if isinstance(value, dict):
             return {
-                str(self.normalize(key)): (
-                    "<elapsed>" if key in _WALL_CLOCK_KEYS else self.normalize(value[key])
-                )
-                for key in sorted(value)
+                str(self.normalize(key)): self._field(str(key), value[key]) for key in sorted(value)
             }
         if isinstance(value, list):
             return [self.normalize(item) for item in value]

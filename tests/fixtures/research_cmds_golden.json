@@ -43,12 +43,12 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "d55115f560e6f9dbbf603915d82efc9b3b19dd0621bf3502cdda975a757b1df7"
+      "sha256": "0546b4772b61138bf8cd5f35aae22cc9583e87e0665b01460674dacaf0c747f1"
     },
     {
       "command": "alpha research run deep '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "126db87fa7ee2dbd036d8a74033e8d3f1a626e8038135184e5af1c3e7d0ad112"
+      "sha256": "bbd8b756a0f110c7747d1944cd0bc93813663afb3865dc02615d3d1cace00a8f"
     },
     {
       "command": "alpha research draft-confirmation '<uuid-1>' --json",
@@ -63,7 +63,7 @@
     {
       "command": "alpha research run confirm '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "7c2c29e348a83413b2dce7499e2cf7d099a516d34fa11b9da8023174b410d920"
+      "sha256": "ced2fda82b5727c57098a8decc1281400614d09256bfe791be4ffcc2eccfc818"
     },
     {
       "command": "alpha research decision-view '<uuid-1>' --json",
@@ -135,12 +135,12 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "e81ebd6705547fd1b48285ad4851570c45084b252f3baa67a235e385e8cfc4a2"
+      "sha256": "fb0d5259c5ad96babd6a80fad40bf2da83443f890b7ebe7bd564b56b41147912"
     },
     {
       "command": "alpha research run deep '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "2d5d9f56142f39a6a4c37df42532096a95e2b27a218bc7ba3ec3d9f25585f5fb"
+      "sha256": "7679c3853881d3fdf3293f8374507ac5712d10e07b8637900976c78142adf153"
     },
     {
       "command": "alpha research draft-confirmation '<uuid-1>' --json",
@@ -155,7 +155,7 @@
     {
       "command": "alpha research run confirm '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "d8d9b5bc8f799d3c3c1755ef62bef18b61b820b275d409c3fba71f44f8034183"
+      "sha256": "06100a2819f1a4da9a521485c96fa92e4270750ca27de2257039d8aa09cc2e9c"
     },
     {
       "command": "alpha research decide '<uuid-1>' --outcome SUPPORTED --disposition reject --actor owner --reason 'Real but too small to pursue: the owner rejects despite mechanical support.' --json",
@@ -207,7 +207,7 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "e81ebd6705547fd1b48285ad4851570c45084b252f3baa67a235e385e8cfc4a2"
+      "sha256": "fb0d5259c5ad96babd6a80fad40bf2da83443f890b7ebe7bd564b56b41147912"
     },
     {
       "command": "alpha research decide '<uuid-1>' --outcome SUPPORTED --disposition advance_to_strategy --actor owner --reason 'A premature advance claim must fail before any confirmation ran.' --json",
@@ -293,7 +293,7 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "148731cbcf6d384d51b377ead79501e99a0ee4c547a63a35c2572d41272a5475"
+      "sha256": "004d2531d4e242a649b3c1a8ec269b5354c1904eb18a56f503d930cdcf820b6c"
     },
     {
       "command": "alpha research draft-confirmation '<uuid-1>' --json",
@@ -335,7 +335,7 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "e81ebd6705547fd1b48285ad4851570c45084b252f3baa67a235e385e8cfc4a2"
+      "sha256": "fb0d5259c5ad96babd6a80fad40bf2da83443f890b7ebe7bd564b56b41147912"
     },
     {
       "command": "alpha research draft-confirmation '<uuid-1>' --json",
@@ -377,12 +377,12 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "72cdadd70ce9d5545036657ea8a927cb48cdcc4ff138666a5c204a1e3321704f"
+      "sha256": "be277ded4ad01655e3558484d05e1b3cd775d2306ffe2aba6d1c28e4ec168f69"
     },
     {
       "command": "alpha research run deep '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "accea4fc37ed58d6156655366db656a3bd318e147a0db9c075ed3ea0867a9261"
+      "sha256": "b1b12c789999518f9f2f61203bb3c64d4af1855569bcb595953bca2f044e4c04"
     },
     {
       "command": "alpha research draft-confirmation '<uuid-1>' --json",
