@@ -119,8 +119,9 @@ Project-wide coding rules. Area files add their own detail and link here. The re
   agent can hold any file or function in its head.
 - The offenders of 2026-11-14 (10 files, 98 functions) are capped at their size then in
   `.claude/code-size-baseline.json`. The baseline only shrinks: an entry that is higher than
-  needed, gone or no longer over the limit fails until it is lowered or removed, and it never
-  takes a new entry; split the code instead. Enforced by `tests/unit/test_code_size.py`.
+  needed, gone or no longer over the limit fails until it is lowered or removed, and an entry
+  added or raised since `origin/main` fails; split the code instead. Same-name definitions
+  (a property setter) are measured separately as `name#2`. Enforced by `tests/unit/test_code_size.py`.
 
 ## Working style
 

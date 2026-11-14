@@ -35,7 +35,7 @@ ceiling (34) admits no new live plan, and the work was finished in one sitting.
   ],
   "slices": [
     {"title": "Record the baseline from the tree (Claude, independent script)", "verify": "python3 -c \"import json;d=json.load(open('.claude/code-size-baseline.json'));print(len(d['files']),len(d['functions']))\"", "expected": "10 98", "rollback": "delete the baseline file", "files": [".claude/code-size-baseline.json"], "status": "done"},
-    {"title": "The size test (Codex build)", "verify": "uv run pytest -q tests/unit/test_code_size.py", "expected": "8 passed; fails when an entry is raised, lowered, removed or invented", "rollback": "delete the test", "files": ["tests/unit/test_code_size.py"], "status": "done"},
+    {"title": "The size test (Codex build)", "verify": "uv run pytest -q tests/unit/test_code_size.py", "expected": "11 passed; fails when an entry is raised, lowered, removed, invented, or added or raised since main", "rollback": "delete the test", "files": ["tests/unit/test_code_size.py"], "status": "done"},
     {"title": "The rule and the checks table", "verify": "uv run python scripts/gate.py check --all", "expected": "All checks passed", "rollback": "revert the two document rows", "status": "done"}
   ],
   "tier_impact": ["protected"],
@@ -66,8 +66,8 @@ built by Codex from the same written rules, then the documents.
 
 ## Test plan
 
-Three tree tests (files, functions, exact baseline) and five unit tests of the measurer on small
-sources (nested, method, async, decorators not counted, duplicate names). The tree tests were run
+Four tree tests (new files, new functions, exact baseline, no entry added or raised since `origin/main`) and seven unit tests of the measurer on small
+sources (nested, method, async, decorators not counted, same-name definitions, a file that does not parse, the growth comparison). The tree tests were run
 against a deliberately edited baseline to see each failure message.
 
 ## Look-ahead, determinism and import impact
