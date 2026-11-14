@@ -34,6 +34,7 @@ class InterfaceSnapshot(TypedDict):
     all: list[str]
     module_names_imported_elsewhere: list[str]
     patched_module_attributes: list[str]
+    patched_attribute_readers: dict[str, list[str]]
 
 
 def imported_names(tree: ast.AST) -> set[str]:
@@ -66,6 +67,35 @@ def imported_names(tree: ast.AST) -> set[str]:
         and node.value.id in module_aliases
     )
     return names
+
+
+def patched_attribute_readers() -> dict[str, list[str]]:
+    """For each patched attribute, the functions in control_store.py that read it.
+
+    Pinned in the golden: moving any reader out of control_store.py changes this map, so the
+    tests patching that attribute must be revisited in the same change.
+    """
+    assert control_store.__file__ is not None
+    source = Path(control_store.__file__)
+    tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
+    readers: dict[str, set[str]] = {name: set() for name in PATCHED_MODULE_ATTRIBUTES}
+
+    def visit(node: ast.AST, scope: tuple[str, ...]) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                visit(child, (*scope, child.name))
+                continue
+            if (
+                scope
+                and isinstance(child, ast.Name)
+                and isinstance(child.ctx, ast.Load)
+                and child.id in readers
+            ):
+                readers[child.id].add(".".join(scope))
+            visit(child, scope)
+
+    visit(tree, ())
+    return {name: sorted(functions) for name, functions in sorted(readers.items())}
 
 
 @cache
@@ -101,6 +131,7 @@ def interface_snapshot() -> InterfaceSnapshot:
         "all": sorted(control_store.__all__),
         "module_names_imported_elsewhere": sorted(names),
         "patched_module_attributes": sorted(PATCHED_MODULE_ATTRIBUTES),
+        "patched_attribute_readers": patched_attribute_readers(),
     }
 
 
@@ -126,6 +157,9 @@ def test_control_store_interface_matches_golden() -> None:
     )
     for label in ("all", "module_names_imported_elsewhere", "patched_module_attributes"):
         changes.extend(name_changes(label, set(expected[label]), set(actual[label])))
+    for name, functions in actual["patched_attribute_readers"].items():
+        recorded = expected.get("patched_attribute_readers", {}).get(name, [])
+        changes.extend(name_changes(f"readers of {name}", set(recorded), set(functions)))
     assert actual == expected, "\n".join([*changes, DELIBERATE_CHANGE])
 
 

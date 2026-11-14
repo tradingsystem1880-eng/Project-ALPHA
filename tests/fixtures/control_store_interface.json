@@ -75,6 +75,41 @@
     "parse_timestamp",
     "research_case_revision"
   ],
+  "patched_attribute_readers": {
+    "_SCHEMA_V2": [
+      "ControlStore._open_readonly",
+      "_apply_schema_v2_locked",
+      "_heal_missing_schema_objects"
+    ],
+    "_SCHEMA_V5": [
+      "ControlStore._open_readonly",
+      "_apply_schema_v5_locked",
+      "_migrate_schema_v5"
+    ],
+    "_execute_static_sql_script": [
+      "_apply_schema_v2_locked",
+      "_apply_schema_v5_locked",
+      "_expected_v7_reservation_schema",
+      "_heal_missing_schema_objects",
+      "_migrate_schema_v2",
+      "_migrate_schema_v3",
+      "_migrate_schema_v5",
+      "_migrate_schema_v6",
+      "_rebuild_owner_action_receipts"
+    ],
+    "_logical_database_fingerprint": [
+      "_verified_receipt_backup",
+      "_verified_v1_backup",
+      "_verified_v2_backup",
+      "_verified_v3_backup"
+    ],
+    "_verified_v1_backup": [
+      "_migrate_schema_v1"
+    ],
+    "time": [
+      "_enable_wal"
+    ]
+  },
   "patched_module_attributes": [
     "_SCHEMA_V2",
     "_SCHEMA_V5",
