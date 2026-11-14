@@ -107,8 +107,10 @@ download shows `quality_status: passed`, which means only that the mechanical ch
   trades and can carry a stray print (NVDA 2024-06-10 high 195.95). An Alpaca download never
   replaces Tiingo data and never shares a series with another source, either way (hence its own
   data folder).
-- **Binance monthly archives:** a month's file exists only after the month ends, so a backfill
-  lists the current month as "not published yet" rather than failing; the current month comes from
+- **Binance monthly archives:** a month's file exists only after the month ends, and Binance
+  publishes it 1 to 7 days later (once 12; measured 2026-11-14), so a backfill lists the current
+  month, and a just-ended month whose file is still missing for up to 14 days, as "not published
+  yet" rather than failing; the current month comes from
   the bounded live-service tail. A governed crypto snapshot may hold many months of many coins;
   the daily price reader used by the daily rule lane reads every month named for BTCUSDT
   (one stored copy per month), refusing gaps, overlaps and unnamed months in the range
