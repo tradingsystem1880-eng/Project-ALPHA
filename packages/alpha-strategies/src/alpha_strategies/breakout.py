@@ -33,6 +33,7 @@ class DonchianBreakout(VolTargetStrategy):
         rebalance_every: int = 1,
         periods_per_year: int = 252,
         allow_short: bool = True,
+        sizing: str = "vol_target",
         size_on_equity: bool = False,
         halt_drawdown: float | None = None,
     ) -> None:
@@ -47,6 +48,7 @@ class DonchianBreakout(VolTargetStrategy):
             rebalance_every=rebalance_every,
             periods_per_year=periods_per_year,
             allow_short=allow_short,
+            sizing=sizing,
             size_on_equity=size_on_equity,
             halt_drawdown=halt_drawdown,
         )

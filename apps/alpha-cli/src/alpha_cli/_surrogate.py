@@ -66,8 +66,12 @@ def make_surrogate(
     max_leverage: float = 1.0,
     allow_short: bool = True,
     cost_bps: float = 0.0,
+    unit_weight: bool = False,
 ) -> Surrogate:
     """Build ``f(price_returns) -> strategy_returns`` for any vol-targeted long/flat/short signal.
+
+    ``unit_weight=True`` models plain all-in sizing instead: the weight is exactly 1 while the
+    signal is long and 0 otherwise, with no volatility estimate.
 
     ``warmup`` is the first return index at which both the signal and the vol estimate are defined
     (in 0-based bar terms, matching the engine's ``_min_history`` of warmup+1 closes). On each
@@ -80,7 +84,7 @@ def make_surrogate(
     """
     if rebalance_every < 1:
         raise DataError(f"rebalance_every must be >= 1, got {rebalance_every}")
-    if vol_window < 3:
+    if vol_window < 3 and not unit_weight:
         raise DataError(f"vol_window must be >= 3 for a realized-vol estimate, got {vol_window}")
     cost_rate = cost_bps / 10_000.0
 
@@ -105,6 +109,7 @@ def make_surrogate(
                     periods_per_year=periods_per_year,
                     max_leverage=max_leverage,
                     allow_short=allow_short,
+                    unit_weight=unit_weight,
                 )
                 if target != weight:
                     costs[t] = cost_rate * abs(target - weight)
@@ -168,6 +173,7 @@ def make_ts_momentum_surrogate(
     max_leverage: float = 1.0,
     allow_short: bool = True,
     cost_bps: float = 0.0,
+    unit_weight: bool = False,
 ) -> Surrogate:
     """The Tier-1 surrogate for ``TimeSeriesMomentum`` — a thin wrapper over ``make_surrogate``."""
 
@@ -176,7 +182,7 @@ def make_ts_momentum_surrogate(
 
     return make_surrogate(
         signal_fn=signal_fn,
-        warmup=max(skip + lookback, vol_window),
+        warmup=skip + lookback if unit_weight else max(skip + lookback, vol_window),
         vol_window=vol_window,
         target_vol=target_vol,
         rebalance_every=rebalance_every,
@@ -184,6 +190,7 @@ def make_ts_momentum_surrogate(
         max_leverage=max_leverage,
         allow_short=allow_short,
         cost_bps=cost_bps,
+        unit_weight=unit_weight,
     )
 
 
@@ -196,6 +203,7 @@ def _target_weight(
     periods_per_year: int,
     max_leverage: float,
     allow_short: bool,
+    unit_weight: bool = False,
 ) -> float:
     """Target notional weight at this close: 0 when flat/short-disallowed or vol is degenerate.
 
@@ -206,6 +214,8 @@ def _target_weight(
     signal = signal_fn(closes_prefix)
     if signal == 0 or (signal < 0 and not allow_short):
         return 0.0
+    if unit_weight:
+        return 1.0 if signal > 0 else 0.0
     vol_closes = closes_prefix[-(vol_window + 1) :].tolist()
     vol = realized_volatility(vol_closes, periods_per_year=periods_per_year)
     if vol <= 0.0:

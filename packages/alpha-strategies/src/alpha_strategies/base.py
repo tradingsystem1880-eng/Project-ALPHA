@@ -135,12 +135,21 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         rebalance_every: int = 21,
         periods_per_year: int = 252,
         allow_short: bool = True,
+        sizing: str = "vol_target",
         size_on_equity: bool = False,
         halt_drawdown: float | None = None,
         fixed_quantity: float | None = None,
         fixed_entry_once: bool = False,
     ) -> None:
         super().__init__()
+        if sizing not in ("vol_target", "all_in"):
+            raise DataError(f"unknown sizing {sizing!r}; expected vol_target or all_in")
+        if sizing == "all_in" and allow_short:
+            raise DataError("all_in sizing is incompatible with allow_short=True")
+        if sizing == "all_in" and fixed_quantity is not None:
+            raise DataError("all_in sizing is incompatible with fixed_quantity")
+        self._sizing = sizing
+        self._all_in_cost_factor = 1.0
         if type(fixed_entry_once) is not bool or (fixed_entry_once and fixed_quantity is None):
             raise DataError("single entry attempt requires explicit fixed quantity")
         if fixed_quantity is not None and (
@@ -177,7 +186,9 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         self._peak_equity = capital
         self.halted = False
         self._min_history = (
-            min_history if fixed_quantity is not None else max(min_history, vol_window + 1)
+            min_history
+            if fixed_quantity is not None or sizing == "all_in"
+            else max(min_history, vol_window + 1)
         )
         self._closes: list[float] = []
         self._highs: list[float] = []
@@ -278,6 +289,25 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
         """Configure the backtest-only fee-aware order affordability check."""
         self._cash_fee_rate = bps_rate(fee_bps)
         self._backtest_account_type = account_type
+
+    def configure_sizing_costs(self, *, fee_bps: float, slippage_bps: float) -> None:
+        """Reserve entry frictions in a close-time all-in target."""
+        self._all_in_cost_factor = (1.0 + bps_rate(fee_bps)) * (1.0 + bps_rate(slippage_bps))
+
+    def _all_in_target(self) -> float:
+        """Hold existing units; on entry reserve fees, slippage and a 0.2% gap buffer."""
+        if self.net_units > 0.0:
+            return self.net_units
+        instrument = self.cache.instrument(self._iid)
+        if instrument is None:
+            raise DataError(f"all_in sizing requires instrument {self._iid}")
+        equity = self._net_liq()
+        if not math.isfinite(equity):
+            raise DataError("all_in sizing requires finite net liquidation equity")
+        units = max(0.0, equity) * 0.998 / (self._closes[-1] * self._all_in_cost_factor)
+        increment = Decimal(str(instrument.size_increment))
+        steps = (Decimal(str(units)) / increment).to_integral_value(rounding=ROUND_DOWN)
+        return float(steps * increment)
 
     def configure_paper_risk(self, limits: PaperRiskLimits, *, reconciled: bool = False) -> None:
         """Enable broker-paper controls without changing deterministic backtest defaults."""
@@ -472,6 +502,12 @@ class VolTargetStrategy(Strategy):  # type: ignore[misc]  # nautilus Strategy is
             self._target_units = 0.0  # flat: no signal, or a short we are not permitted to take
             reason = "flat_signal" if signal == 0 else "short_disallowed"
             self._record_decision(bar, signal=signal, target_quantity=0.0, reason=reason)
+            return
+        if self._sizing == "all_in":
+            self._target_units = self._all_in_target()
+            self._record_decision(
+                bar, signal=signal, target_quantity=self._target_units, reason="all_in_target"
+            )
             return
         if self._fixed_quantity is not None:
             complete = self._fixed_entry_once and self._fixed_entry_attempted
