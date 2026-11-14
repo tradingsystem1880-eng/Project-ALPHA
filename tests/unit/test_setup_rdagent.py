@@ -81,3 +81,15 @@ def test_stock_lock_is_exact_hashed_and_follows_upstream_constraints() -> None:
     upstream_imports = {"docker", "rich", "numpy", "openai", "tiktoken", "pydantic-settings"}
     assert upstream_imports <= set(pins)
     assert not {"pandas", "scikit-learn", "torch"} & set(pins)
+
+
+def test_factor_setup_is_opt_in_and_uses_closed_profile() -> None:
+    text = SCRIPT.read_text()
+    assert "--with-factor-runtime) with_factor=1" in text
+    assert "with_factor=0" in text
+    assert "rdagent-factor-py311.incomplete" in text
+    assert "rdagent-factor-py311.built-$stamp" in text
+    assert "-r workers/rdagent/factor-requirements.lock" in text
+    assert 'install_stock_profile.py --profile factor "$bundle"' in text
+    assert 'install_stock_profile.py --profile factor --verify "$bundle"' in text
+    assert "export ALPHA_FACTOR_PYTHON=%q" in text

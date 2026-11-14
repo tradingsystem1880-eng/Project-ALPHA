@@ -1,4 +1,7 @@
-"""Record and re-check the closed stock RDLoop runtime bundle built from stock-requirements.lock.
+"""Record and re-check a closed stock or factor RDLoop runtime bundle.
+
+``--profile factor`` selects factor-requirements.lock and factor-profile.json; the stock
+profile remains the default with its original bytes and identity schema.
 
 The bundle is the layout ``StockFixtureLaunch`` measures: ``<bundle>/venv/bin/python``,
 ``<bundle>/venv/pyvenv.cfg`` and ``<bundle>/dependencies.lock.txt``. This helper never installs or
@@ -64,7 +67,7 @@ def _inventory(site: Path) -> dict[str, str]:
     return result
 
 
-def measure(bundle: Path) -> dict[str, object]:
+def measure(bundle: Path, profile: str = "stock") -> dict[str, object]:
     if bundle.is_symlink() or bundle != bundle.resolve() or not bundle.is_dir():
         raise ValueError("stock runtime bundle must be a canonical directory")
     venv = bundle / "venv"
@@ -75,7 +78,7 @@ def measure(bundle: Path) -> dict[str, object]:
     if version is None or not version[1].startswith(PYTHON + "."):
         raise ValueError(f"stock runtime must be CPython {PYTHON}")
     site = venv / "lib" / f"python{PYTHON}" / "site-packages"
-    lock = LOCK.read_bytes()
+    lock = (LOCK if profile == "stock" else WORKER / "factor-requirements.lock").read_bytes()
     pins = locked_pins(lock.decode())
     installed: dict[str, str] = {}
     for dist in importlib.metadata.distributions(path=[str(site)]):
@@ -90,7 +93,7 @@ def measure(bundle: Path) -> dict[str, object]:
         raise ValueError(f"stock runtime differs from lock: {extra=} {missing=} {changed=}")
     files = _inventory(site)
     return {
-        "schema": SCHEMA,
+        "schema": SCHEMA if profile == "stock" else "AlphaFactorRuntimeProfileV1",
         "python": version[1],
         "lock_sha256": _sha(lock),
         "distributions": len(installed),
@@ -115,19 +118,22 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("bundle", type=Path)
     parser.add_argument("--verify", action="store_true")
+    parser.add_argument("--profile", choices=("stock", "factor"), default="stock")
     args = parser.parse_args(argv)
     bundle = args.bundle.absolute()
     try:
-        profile = measure(bundle)
+        lock = LOCK if args.profile == "stock" else WORKER / "factor-requirements.lock"
+        filename = f"{args.profile}-profile.json"
+        profile = measure(bundle, args.profile)
         rendered = (json.dumps(profile, sort_keys=True, indent=2) + "\n").encode()
         if args.verify:
-            if (bundle / "dependencies.lock.txt").read_bytes() != LOCK.read_bytes():
+            if (bundle / "dependencies.lock.txt").read_bytes() != lock.read_bytes():
                 raise ValueError("bundle dependencies.lock.txt differs from the committed lock")
-            if (bundle / "stock-profile.json").read_bytes() != rendered:
-                raise ValueError("stock runtime changed since its profile was recorded")
+            if (bundle / filename).read_bytes() != rendered:
+                raise ValueError(f"{args.profile} runtime changed since its profile was recorded")
         else:
-            _write_exclusive(bundle / "dependencies.lock.txt", LOCK.read_bytes())
-            _write_exclusive(bundle / "stock-profile.json", rendered)
+            _write_exclusive(bundle / "dependencies.lock.txt", lock.read_bytes())
+            _write_exclusive(bundle / filename, rendered)
     except (OSError, ValueError) as error:
         print(f"install-stock-profile: {error}", file=sys.stderr)
         return 1
