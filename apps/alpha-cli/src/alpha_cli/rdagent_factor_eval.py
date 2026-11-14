@@ -475,6 +475,97 @@ def _inputs(
     )
 
 
+def _deflate(
+    rows: list[dict[str, Any]],
+    history: list[dict[str, Any]],
+    family: dict[str, dict[str, Any]],
+    replay_returns: dict[str, np.ndarray],
+) -> list[float]:
+    """Deflated Sharpe for this request's replays; returns every replayed trial's Sharpe."""
+    trials = [
+        row["replay"]["net"]["per_observation_sharpe"]
+        for row in [*history, *rows]
+        if row["stage"] == "replay" and "net" in row["replay"]
+    ]
+    for row in rows:
+        row["replayed_trials"] = len(trials)
+        if row["code_sha256"] in replay_returns:
+            returns = replay_returns[row["code_sha256"]]
+            row["replay"]["deflated_sharpe"] = asdict(
+                deflated_sharpe(returns, trial_sharpes=trials)
+            )
+            # Replayed factors passed the screen, so the replayed set alone understates the
+            # search. Also deflate against the expected maximum of the whole family's size.
+            if len(trials) >= 2:
+                benchmark = expected_max_sharpe(float(np.var(trials, ddof=1)), len(family))
+                row["replay"]["deflated_sharpe_family"] = {
+                    "n_trials": len(family),
+                    "benchmark_sharpe": benchmark,
+                    "psr": probabilistic_sharpe_ratio(returns, benchmark_sr=benchmark),
+                }
+            else:
+                row["replay"]["deflated_sharpe_family"] = {
+                    "n_trials": len(family),
+                    "psr": None,
+                    "reason": "fewer than two replayed trials: no cross-trial variance",
+                }
+        if row["status"] == "REPEAT":
+            earliest = family[row["code_sha256"]]
+            row["first_trial"] = {
+                k: earliest[k] for k in ("run_id", "iteration", "name", "status", "screen")
+            }
+    return trials
+
+
+def _report(
+    rows: list[dict[str, Any]],
+    history: list[dict[str, Any]],
+    family: dict[str, dict[str, Any]],
+    trials: list[float],
+) -> tuple[dict[str, Any] | None, dict[str, float], dict[str, Any], bool, str]:
+    """Lead factor, RD-Agent's result keys, disclosures, ALPHA's decision and feedback text."""
+    # The lead is the best candidate when there is one, so RD-Agent's stored result matches the
+    # decision; otherwise the lowest q among this request's new factors.
+    candidates = [row for row in rows if row["status"] == "CANDIDATE"]
+    eligible = candidates or [row for row in rows if row["status"] != "REPEAT"]
+    lead = min(eligible, key=lambda r: (r["q"], r["name"])) if eligible else None
+    legacy = {"IC": lead["screen"].get("mean_ic", float("nan")) if lead else float("nan")}
+    for cost, key in (("without", "gross"), ("with", "net")):
+        for metric in ("annualized_return", "max_drawdown"):
+            legacy[f"1day.excess_return_{cost}_cost.{metric}"] = (
+                lead["replay"].get(key, {}).get(metric, float("nan")) if lead else float("nan")
+            )
+    disclosures = {
+        "survivorship": SURVIVORSHIP,
+        "multiple_testing": "screening only, adaptive family, no error rate claimed",
+        "direction": "chosen in-sample",
+        "replay_engine": "ALPHA canonical synchronized replay, not Nautilus",
+        "close_stamp": "origin + 23h; full UTC day bar known at its close",
+        "lookahead_scope": (
+            "prefix invariance at fixed cuts only; not proof against leakage within cuts"
+        ),
+        **CONFIG,
+    }
+    decision = any(row["status"] == "CANDIDATE" for row in rows)
+    feedback = (
+        f"{LABEL}. {SURVIVORSHIP}. Ledger trials: {len(history) + len(rows)}; distinct family: "
+        f"{len(family)}; replayed trials: {len(trials)}. Screening only, adaptive family, no "
+        "error rate claimed. Direction chosen in-sample. Exploration "
+        f"{EXPLORATION[0]}..{EXPLORATION[1]}; history 2017-08-17..2020-12-31; panel ends "
+        f"{PANEL_END}; {RESERVED_START}+ reserved, never evaluated. Decide at close, fill next "
+        "open, exit following open; ALPHA canonical synchronized replay, not Nautilus; 10 bps "
+        "fee + 6 bps slippage per side. Prefix invariance is a fixed-cut check, not proof. "
+    )
+    feedback += " ".join(
+        f"{r['name']}: {r['status']}, mean rank IC {r['screen'].get('mean_ic')}, "
+        f"q={r['q']:.6g}, net annual excess "
+        f"{r['replay'].get('net', {}).get('annualized_return')}."
+        for r in rows
+    )
+    feedback += f" ALPHA decision: {decision}; admitted/evidence/approval/promotion all false."
+    return lead, legacy, disclosures, decision, feedback
+
+
 def _evaluate_locked(
     run: Path,
     request: dict[str, Any],
@@ -567,77 +658,8 @@ def _evaluate_locked(
                 status="CANDIDATE" if metrics["net"]["annualized_return"] > 0 else "REPLAY_FAIL",
             )
             replay_returns[digest] = net
-    trials = [
-        row["replay"]["net"]["per_observation_sharpe"]
-        for row in [*history, *rows]
-        if row["stage"] == "replay" and "net" in row["replay"]
-    ]
-    for row in rows:
-        row["replayed_trials"] = len(trials)
-        if row["code_sha256"] in replay_returns:
-            returns = replay_returns[row["code_sha256"]]
-            row["replay"]["deflated_sharpe"] = asdict(
-                deflated_sharpe(returns, trial_sharpes=trials)
-            )
-            # Replayed factors passed the screen, so the replayed set alone understates the
-            # search. Also deflate against the expected maximum of the whole family's size.
-            if len(trials) >= 2:
-                benchmark = expected_max_sharpe(float(np.var(trials, ddof=1)), len(family))
-                row["replay"]["deflated_sharpe_family"] = {
-                    "n_trials": len(family),
-                    "benchmark_sharpe": benchmark,
-                    "psr": probabilistic_sharpe_ratio(returns, benchmark_sr=benchmark),
-                }
-            else:
-                row["replay"]["deflated_sharpe_family"] = {
-                    "n_trials": len(family),
-                    "psr": None,
-                    "reason": "fewer than two replayed trials: no cross-trial variance",
-                }
-        if row["status"] == "REPEAT":
-            earliest = family[row["code_sha256"]]
-            row["first_trial"] = {
-                k: earliest[k] for k in ("run_id", "iteration", "name", "status", "screen")
-            }
-    # The lead is the best candidate when there is one, so RD-Agent's stored result matches the
-    # decision; otherwise the lowest q among this request's new factors.
-    candidates = [row for row in rows if row["status"] == "CANDIDATE"]
-    eligible = candidates or [row for row in rows if row["status"] != "REPEAT"]
-    lead = min(eligible, key=lambda r: (r["q"], r["name"])) if eligible else None
-    legacy = {"IC": lead["screen"].get("mean_ic", float("nan")) if lead else float("nan")}
-    for cost, key in (("without", "gross"), ("with", "net")):
-        for metric in ("annualized_return", "max_drawdown"):
-            legacy[f"1day.excess_return_{cost}_cost.{metric}"] = (
-                lead["replay"].get(key, {}).get(metric, float("nan")) if lead else float("nan")
-            )
-    disclosures = {
-        "survivorship": SURVIVORSHIP,
-        "multiple_testing": "screening only, adaptive family, no error rate claimed",
-        "direction": "chosen in-sample",
-        "replay_engine": "ALPHA canonical synchronized replay, not Nautilus",
-        "close_stamp": "origin + 23h; full UTC day bar known at its close",
-        "lookahead_scope": (
-            "prefix invariance at fixed cuts only; not proof against leakage within cuts"
-        ),
-        **CONFIG,
-    }
-    decision = any(row["status"] == "CANDIDATE" for row in rows)
-    feedback = (
-        f"{LABEL}. {SURVIVORSHIP}. Ledger trials: {len(history) + len(rows)}; distinct family: "
-        f"{len(family)}; replayed trials: {len(trials)}. Screening only, adaptive family, no "
-        "error rate claimed. Direction chosen in-sample. Exploration "
-        f"{EXPLORATION[0]}..{EXPLORATION[1]}; history 2017-08-17..2020-12-31; panel ends "
-        f"{PANEL_END}; {RESERVED_START}+ reserved, never evaluated. Decide at close, fill next "
-        "open, exit following open; ALPHA canonical synchronized replay, not Nautilus; 10 bps "
-        "fee + 6 bps slippage per side. Prefix invariance is a fixed-cut check, not proof. "
-    )
-    feedback += " ".join(
-        f"{r['name']}: {r['status']}, mean rank IC {r['screen'].get('mean_ic')}, "
-        f"q={r['q']:.6g}, net annual excess "
-        f"{r['replay'].get('net', {}).get('annualized_return')}."
-        for r in rows
-    )
-    feedback += f" ALPHA decision: {decision}; admitted/evidence/approval/promotion all false."
+    trials = _deflate(rows, history, family, replay_returns)
+    lead, legacy, disclosures, decision, feedback = _report(rows, history, family, trials)
     record = {
         "schema": "AlphaRdagentFactorEvaluationV1",
         "iteration": request["iteration"],
@@ -682,7 +704,9 @@ def evaluate(run: Path, request_path: Path, out: Path, ledger: Path) -> dict[str
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description="Exploratory RD-Agent factor screen and ALPHA replay; no admission authority."
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     freezing = sub.add_parser("freeze")
     freezing.add_argument("--data-dir", type=Path, required=True)

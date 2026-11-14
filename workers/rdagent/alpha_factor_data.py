@@ -179,7 +179,9 @@ def check_prefix_invariance(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description="Build RD-Agent's daily frames for the ALPHA-judged factor loop."
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     prepare_parser = sub.add_parser("prepare")
     prepare_parser.add_argument("--panel", type=Path, required=True)

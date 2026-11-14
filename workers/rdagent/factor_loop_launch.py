@@ -396,7 +396,9 @@ def run(args: argparse.Namespace, environ: dict[str, str]) -> int:
 
 
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p = argparse.ArgumentParser(
+        description="Launch one ALPHA-judged RD-Agent factor loop (ADR-0049)."
+    )
     sub = p.add_subparsers(dest="command", required=True)
     r = sub.add_parser("run")
     r.add_argument("--data-dir", type=Path, required=True)

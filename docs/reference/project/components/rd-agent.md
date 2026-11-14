@@ -76,7 +76,8 @@ Being uninstalled somewhere, or having skipped tests, means work is left, not th
   [candidate to research case](../../../roadmap/backlog/rdagent-candidate-to-research-case.md),
   [gate coverage](../../../roadmap/backlog/gate-coverage-rdagent.md).
 - Decision records: [ADR-0044](../../../adr/0044-rdagent-model-gateway.md) (how it reaches its
-  models), [ADR-0049](../../../adr/0049-alpha-judges-rdagent-factors.md) (ALPHA judges its factors). Related: [ADR-0011](../../../adr/0011-evidence-gated-external-integrations.md),
+  models), [ADR-0049](../../../adr/0049-alpha-judges-rdagent-factors.md) (ALPHA judges its factors).
+  Related: [ADR-0011](../../../adr/0011-evidence-gated-external-integrations.md),
   [ADR-0035](../../../adr/0035-generic-study-composition-and-external-capability-adapters.md).
 
 ## Decisions and open questions
