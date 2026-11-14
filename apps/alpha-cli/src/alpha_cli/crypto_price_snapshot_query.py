@@ -132,6 +132,75 @@ class BinanceDailyPriceSnapshotQueryV1:
         return hashlib.sha256(_canonical(self.to_dict()).encode()).hexdigest()
 
 
+@dataclass(frozen=True)
+class BinanceDailyPriceMemberV1:
+    normalized_manifest_id: str
+    artifact_key: str
+    artifact_sha256: str
+    quality_method_version: str
+    observed_start: datetime
+    observed_end: datetime
+    source_receipts: tuple[CryptoRawReceiptV1, ...]
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "normalized_manifest_id": self.normalized_manifest_id,
+            "artifact_key": self.artifact_key,
+            "artifact_sha256": self.artifact_sha256,
+            "quality_method_version": self.quality_method_version,
+            "observed_start": self.observed_start.isoformat(),
+            "observed_end": self.observed_end.isoformat(),
+            "source_receipt_ids": [receipt.receipt_id for receipt in self.source_receipts],
+        }
+
+
+@dataclass(frozen=True)
+class BinanceDailyPriceSnapshotQueryV2:
+    snapshot_id: str
+    dataset: CryptoDatasetIdentityV1
+    members: tuple[BinanceDailyPriceMemberV1, ...]
+    start: datetime
+    end: datetime
+    available_by: datetime
+    rows: tuple[BinanceDailyPriceRowV1, ...]
+
+    @property
+    def source_receipts(self) -> tuple[CryptoRawReceiptV1, ...]:
+        return tuple(receipt for member in self.members for receipt in member.source_receipts)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema": "BinanceDailyPriceSnapshotQueryV2",
+            "snapshot_id": self.snapshot_id,
+            "dataset": self.dataset.to_dict(),
+            "dataset_sha256": self.dataset.content_sha256,
+            "members": [member.to_dict() for member in self.members],
+            "source_receipts": [receipt.to_dict() for receipt in self.source_receipts],
+            "start": self.start.isoformat(),
+            "end_exclusive": self.end.isoformat(),
+            "available_by": self.available_by.isoformat(),
+            "requested_row_count": (self.end - self.start).days,
+            "returned_row_count": len(self.rows),
+            "coverage": "complete_requested_utc_days",
+            "availability_basis": "completed_utc_day_reconstruction",
+            "availability_semantics": (
+                "available_at is next UTC day, not source-stamped historical publication; "
+                "captured revisions may differ from values historically known"
+            ),
+            "raw_capture_after_available_by": any(
+                receipt.fetched_at > self.available_by for receipt in self.source_receipts
+            ),
+            "point_in_time_claim": False,
+            "claim_scope": "exploratory_reconstructed_history",
+            "execution_authority": False,
+            "rows": [row.to_dict() for row in self.rows],
+        }
+
+    @property
+    def content_sha256(self) -> str:
+        return hashlib.sha256(_canonical(self.to_dict()).encode()).hexdigest()
+
+
 def validate_binance_daily_price_identity(dataset: CryptoDatasetIdentityV1) -> None:
     """Shared closed identity check; identity validation grants no source authority."""
     if (
@@ -183,26 +252,45 @@ def _sources(
             or receipt.response_sha256 != raw.get("artifact_sha256")
             or receipt.response_bytes != size
             or raw.get("receipt_id") != receipt.receipt_id
-            or receipt.provider_schema != "binance-public-rest-v1"
-            or receipt.parser_version != "binance-archive-rest-v1"
             or request.get("symbol") != dataset.instrument
             or request.get("interval") != "1d"
         ):
             raise DataError("price query raw source receipt identity/schema differs")
-        for key in ("startTime", "endTime", "limit"):
-            value = request.get(key)
-            if not isinstance(value, str) or re.fullmatch(r"[0-9]{1,16}", value) is None:
-                raise DataError("price query raw source request bounds are invalid")
-        if int(request["startTime"]) > int(request["endTime"]) or not (
-            1 <= int(request["limit"]) <= 1_000
+        _validate_source_request(receipt, request, dataset)
+        raws.append(receipt)
+    return tuple(raws)
+
+
+def _validate_source_request(
+    receipt: CryptoRawReceiptV1, request: dict[str, str], dataset: CryptoDatasetIdentityV1
+) -> None:
+    if (receipt.provider_schema, receipt.parser_version) == (
+        "binance-public-archive-v1",
+        "binance-archive-v1",
+    ):
+        if (
+            set(request) != {"family", "interval", "market", "period", "symbol"}
+            or request.get("family") != "klines"
+            or request.get("market") != "spot"
+            or request.get("interval") != "1d"
+            or request.get("symbol") != dataset.instrument
+            or re.fullmatch(r"[0-9]{4}-(0[1-9]|1[0-2])", request.get("period", "")) is None
         ):
+            raise DataError("price query raw source receipt identity/schema differs")
+        return
+    if (receipt.provider_schema, receipt.parser_version) != (
+        "binance-public-rest-v1",
+        "binance-archive-rest-v1",
+    ):
+        raise DataError("price query raw source receipt identity/schema differs")
+    for key in ("startTime", "endTime", "limit"):
+        value = request.get(key)
+        if not isinstance(value, str) or re.fullmatch(r"[0-9]{1,16}", value) is None:
             raise DataError("price query raw source request bounds are invalid")
-        raws.append((raw_id, raw, receipt))
-    # Complete every size preflight before recursive hashing of any raw payload.
-    for raw_id, raw, _ in raws:
-        if store.verify_manifest(raw_id) != raw:
-            raise DataError("price query raw source changed during verification")
-    return tuple(receipt for _, _, receipt in raws)
+    if int(request["startTime"]) > int(request["endTime"]) or not (
+        1 <= int(request["limit"]) <= 1_000
+    ):
+        raise DataError("price query raw source request bounds are invalid")
 
 
 def _frame(
@@ -231,53 +319,20 @@ def _frame(
     return frame, quality
 
 
-def query_binance_daily_price_snapshot(
-    snapshot: CryptoSnapshotV1,
-    store: CryptoBulkStore,
-    *,
-    normalized_manifest_id: str,
+def _receipt_bounds(receipt: CryptoRawReceiptV1, opened: datetime) -> bool:
+    request = dict(receipt.request)
+    if receipt.provider_schema == "binance-public-archive-v1":
+        return request["period"] == opened.strftime("%Y-%m")
+    return int(request["startTime"]) <= int(opened.timestamp() * 1_000) <= int(request["endTime"])
+
+
+def _rows(
+    frame: pl.DataFrame,
+    receipts: tuple[CryptoRawReceiptV1, ...],
     start: datetime,
     end: datetime,
     available_by: datetime,
-) -> BinanceDailyPriceSnapshotQueryV1:
-    """Return all requested closed UTC days, or fail; never return a partial study input.
-
-    Bounds are inclusive start/exclusive end. The exact retained normalized manifest is
-    mandatory because unchanged recaptures can share a snapshot ID but have new provenance.
-    """
-    if (
-        not isinstance(normalized_manifest_id, str)
-        or re.fullmatch(r"[0-9a-f]{64}", normalized_manifest_id) is None
-    ):
-        raise DataError("price query normalized manifest id must be lowercase SHA-256")
-    start, end = _day(start, "start"), _day(end, "end")
-    available_by = require_utc(available_by, "available_by")
-    if not 1 <= (end - start).days <= _MAX_ROWS or end > available_by:
-        raise DataError("price query requires a bounded complete closed-day range")
-    if len(snapshot.members) != 1:
-        raise DataError("price query requires exactly one frozen price member")
-    member = snapshot.members[0]
-    dataset = member.dataset
-    validate_binance_daily_price_identity(dataset)
-    store.verify_readable()
-    metadata = store.metadata_inventory()
-    matches = [item for item in metadata if item.get("manifest_id") == normalized_manifest_id]
-    if (
-        len(matches) != 1
-        or matches[0].get("artifact_kind") != "normalized"
-        or matches[0].get("dataset") != dataset.to_dict()
-        or matches[0].get("artifact_key") != member.artifact_key
-        or matches[0].get("artifact_sha256") != member.artifact_sha256
-    ):
-        raise DataError("price query exact normalized manifest/member binding differs")
-    manifest = matches[0]
-    receipts = _sources(store, manifest, dataset, metadata)
-    verified, payload = store.read_verified_normalized(normalized_manifest_id, max_bytes=_MAX_BYTES)
-    if verified != manifest:
-        raise DataError("price query normalized manifest changed during verification")
-    frame, quality = _frame(payload, manifest)
-    if quality.method_version not in snapshot.qualification_versions:
-        raise DataError("price query qualification version is not frozen")
+) -> list[BinanceDailyPriceRowV1]:
     rows = []
     previous = None
     for row in frame.iter_rows(named=True):
@@ -304,28 +359,199 @@ def query_binance_daily_price_snapshot(
             raise DataError("price query candle violates OHLCV invariants")
         if any(receipt.fetched_at < opened + _DAY for receipt in receipts):
             raise DataError("price query raw capture predates completed candle")
-        opened_ms = int(opened.timestamp() * 1_000)
-        if not any(
-            int(dict(receipt.request)["startTime"])
-            <= opened_ms
-            <= int(dict(receipt.request)["endTime"])
-            for receipt in receipts
-        ):
+        if not any(_receipt_bounds(receipt, opened) for receipt in receipts):
             raise DataError("price query candle falls outside pinned raw request bounds")
         rows.append(BinanceDailyPriceRowV1(**row))
+    return rows
+
+
+def _named_manifests(
+    snapshot: CryptoSnapshotV1,
+    metadata: tuple[dict[str, object], ...],
+    ids: tuple[str, ...] | list[str],
+) -> tuple[CryptoDatasetIdentityV1, list[dict[str, object]]]:
+    manifests = []
+    seen: set[tuple[str, str]] = set()
+    dataset = None
+    for manifest_id in ids:
+        matches = [
+            item
+            for item in metadata
+            if item.get("manifest_id") == manifest_id and item.get("artifact_kind") == "normalized"
+        ]
+        if len(matches) != 1:
+            raise DataError("price query exact normalized manifest/member binding differs")
+        manifest = matches[0]
+        members = [
+            member
+            for member in snapshot.members
+            if member.artifact_key == manifest.get("artifact_key")
+            and member.artifact_sha256 == manifest.get("artifact_sha256")
+        ]
+        if len(members) != 1:
+            raise DataError("price query exact normalized manifest/member binding differs")
+        member = members[0]
+        validate_binance_daily_price_identity(member.dataset)
+        if manifest.get("dataset") != member.dataset.to_dict():
+            raise DataError("price query exact normalized manifest/member binding differs")
+        identity = (member.artifact_key, member.artifact_sha256)
+        if identity in seen:
+            raise DataError("price query names two normalized manifests for one member")
+        seen.add(identity)
+        if dataset is not None and dataset != member.dataset:
+            raise DataError("price query named members have different datasets")
+        dataset = member.dataset
+        manifests.append(manifest)
+    assert dataset is not None
+    return dataset, manifests
+
+
+def _unnamed_members(
+    snapshot: CryptoSnapshotV1,
+    dataset: CryptoDatasetIdentityV1,
+    named: tuple[BinanceDailyPriceMemberV1, ...],
+    metadata: tuple[dict[str, object], ...],
+    start: datetime,
+    end: datetime,
+) -> None:
+    identities = {(member.artifact_key, member.artifact_sha256) for member in named}
+    for member in snapshot.members:
+        if member.dataset != dataset or (member.artifact_key, member.artifact_sha256) in identities:
+            continue
+        matches = [
+            item
+            for item in metadata
+            if item.get("artifact_kind") == "normalized"
+            and item.get("dataset") == dataset.to_dict()
+            and item.get("artifact_key") == member.artifact_key
+            and item.get("artifact_sha256") == member.artifact_sha256
+        ]
+        ranges = {
+            (quality.observed_start, quality.observed_end)
+            for quality in (
+                CryptoQualityReportV1.from_dict(item.get("quality")) for item in matches
+            )
+        }
+        if len(ranges) != 1:
+            raise DataError("price query unnamed member observed ranges are missing or differ")
+        observed_start, observed_end = ranges.pop()
+        if observed_start is None or observed_end is None:
+            raise DataError("price query unnamed member observed range is missing")
+        if observed_start < end and observed_end >= start:
+            raise DataError("price query overlapping snapshot member is not named")
+
+
+def query_binance_daily_price_snapshot(
+    snapshot: CryptoSnapshotV1,
+    store: CryptoBulkStore,
+    *,
+    normalized_manifest_ids: tuple[str, ...] | list[str],
+    start: datetime,
+    end: datetime,
+    available_by: datetime,
+) -> BinanceDailyPriceSnapshotQueryV1 | BinanceDailyPriceSnapshotQueryV2:
+    """Return every requested closed UTC day from explicitly named retained captures.
+
+    Bounds are inclusive start/exclusive end. Canonical member order does not depend
+    on caller order, and identical recaptures never silently replace named provenance.
+    """
+    if (
+        not isinstance(normalized_manifest_ids, (tuple, list))
+        or not 1 <= len(normalized_manifest_ids) <= 200
+        or any(
+            not isinstance(item, str) or re.fullmatch(r"[0-9a-f]{64}", item) is None
+            for item in normalized_manifest_ids
+        )
+    ):
+        raise DataError("price query requires one to 200 lowercase SHA-256 normalized manifest ids")
+    if len(set(normalized_manifest_ids)) != len(normalized_manifest_ids):
+        raise DataError("price query names a normalized manifest more than once")
+    start, end = _day(start, "start"), _day(end, "end")
+    available_by = require_utc(available_by, "available_by")
+    if not 1 <= (end - start).days <= _MAX_ROWS or end > available_by:
+        raise DataError("price query requires a bounded complete closed-day range")
+    store.verify_readable()
+    metadata = store.metadata_inventory()
+    dataset, manifests = _named_manifests(snapshot, metadata, normalized_manifest_ids)
+    sources = []
+    raw_bytes = normalized_bytes = 0
+    # All members pass aggregate size preflight before any recursive payload hashing.
+    for manifest in manifests:
+        receipts = _sources(store, manifest, dataset, metadata)
+        raw_bytes += sum(receipt.response_bytes for receipt in receipts)
+        if raw_bytes > _MAX_RAW_BYTES:
+            raise DataError("price query raw source exceeds 8 MiB input limit")
+        size = manifest.get("artifact_bytes")
+        if type(size) is not int or size < 1:
+            raise DataError("price query normalized artifact size is invalid")
+        normalized_bytes += size
+        if normalized_bytes > _MAX_BYTES:
+            raise DataError("price query normalized artifacts exceed 32 MiB input limit")
+        sources.append(receipts)
+    loaded = []
+    for manifest, receipts in zip(manifests, sources, strict=True):
+        raw_ids = manifest["input_manifest_ids"]
+        assert isinstance(raw_ids, list)
+        for raw_id in raw_ids:
+            raw = next(item for item in metadata if item.get("manifest_id") == raw_id)
+            if store.verify_manifest(raw_id) != raw:
+                raise DataError("price query raw source changed during verification")
+        manifest_id = str(manifest["manifest_id"])
+        verified, payload = store.read_verified_normalized(manifest_id, max_bytes=_MAX_BYTES)
+        if verified != manifest:
+            raise DataError("price query normalized manifest changed during verification")
+        frame, quality = _frame(payload, manifest)
+        if quality.method_version not in snapshot.qualification_versions:
+            raise DataError("price query qualification version is not frozen")
+        member = BinanceDailyPriceMemberV1(
+            manifest_id,
+            str(manifest["artifact_key"]),
+            str(manifest["artifact_sha256"]),
+            quality.method_version,
+            frame["open_time"][0],
+            frame["open_time"][-1],
+            receipts,
+        )
+        loaded.append((member, frame))
+    loaded.sort(key=lambda pair: pair[0].observed_start)
+    members = tuple(member for member, _ in loaded)
+    if any(
+        left.observed_end >= right.observed_start
+        for left, right in zip(members, members[1:], strict=False)
+    ):
+        raise DataError("price query members overlap")
+    if any(not any(start <= opened < end for opened in frame["open_time"]) for _, frame in loaded):
+        raise DataError("price query named member lies outside the requested range")
+    _unnamed_members(snapshot, dataset, members, metadata, start, end)
+    rows = tuple(
+        row
+        for member, frame in loaded
+        for row in _rows(frame, member.source_receipts, start, end, available_by)
+    )
     if len(rows) != (end - start).days or any(
         row.open_time != start + index * _DAY for index, row in enumerate(rows)
     ):
         raise DataError("price query requested daily coverage is incomplete")
-    return BinanceDailyPriceSnapshotQueryV1(
+    if len(members) == 1:
+        member = members[0]
+        return BinanceDailyPriceSnapshotQueryV1(
+            snapshot.snapshot_id,
+            member.normalized_manifest_id,
+            dataset,
+            member.artifact_sha256,
+            member.quality_method_version,
+            member.source_receipts,
+            start,
+            end,
+            available_by,
+            rows,
+        )
+    return BinanceDailyPriceSnapshotQueryV2(
         snapshot.snapshot_id,
-        normalized_manifest_id,
         dataset,
-        member.artifact_sha256,
-        quality.method_version,
-        receipts,
+        members,
         start,
         end,
         available_by,
-        tuple(rows),
+        rows,
     )

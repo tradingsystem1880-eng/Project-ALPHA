@@ -1369,7 +1369,7 @@ def draft_daily(
     project_id: str,
     source_pack_id: str = typer.Option(...),
     snapshot_id: str = typer.Option(...),
-    normalized_manifest_id: str = typer.Option(...),
+    normalized_manifest_id: list[str] = typer.Option(...),  # noqa: B008
     json_out: bool = typer.Option(False, "--json"),
 ) -> None:
     """Freeze the bounded daily rule/control recipe; existing local approval is still required."""
@@ -1381,7 +1381,7 @@ def draft_daily(
             data_dir=AlphaSettings().data_dir,
             source_pack_id=source_pack_id,
             snapshot_id=snapshot_id,
-            normalized_manifest_id=normalized_manifest_id,
+            normalized_manifest_ids=tuple(normalized_manifest_id),
         )
     except DataError as error:
         raise typer.BadParameter(str(error)) from error

@@ -48,7 +48,7 @@ def make_daily_fixture(
     query = query_binance_daily_price_snapshot(
         snapshot,
         store,
-        normalized_manifest_id=manifest,
+        normalized_manifest_ids=(manifest,),
         start=datetime(2020, 1, 1, tzinfo=UTC),
         end=end,
         available_by=end,

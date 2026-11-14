@@ -1,6 +1,6 @@
 # Bound status metadata before parsing
 
-**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+**Delivery state:** Completed — proven end to end by `tests/smoke/test_crypto_backfill_smoke.py` (2026-11-14, `m8/prove-crypto-backfill`); done when that pull request merges.
 
 Requirement: canonical v9 W05/W02, market-data amendment delivery slice C and its
 bounded status/recovery contract (pages 42–43; Library

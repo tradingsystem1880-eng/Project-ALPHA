@@ -134,10 +134,13 @@ entry_points = [
 proof_synthetic = [
   "tests/integration/test_crypto_data_native_acquisition.py::test_binance_trade_archive_families_acquire_with_exact_native_identity",
 ]
-real_data = "Recorded: on 2026-10-02 live DefiLlama downloads (Aave TVL, stablecoin supply, yield pools) passed their checks, and a Binance spot listing was downloaded on 2026-10-01 (docs/BUILD-STATUS.md, 2026-10-02 entries). On 2026-11-14 the Dell downloaded free Binance spot daily history for 15 USDT pairs and a spot market list; not yet confirmed (docs/reference/project/components/data-layer.md)."
+proof_smoke = [
+  "tests/smoke/test_crypto_data_smoke.py::test_binance_listing_archive_and_tail_download_through_recorded_provider",
+  "tests/smoke/test_crypto_data_smoke.py::test_workstation_serves_the_downloaded_coverage",
+]
+real_data = "Recorded: on 2026-10-02 live DefiLlama downloads (Aave TVL, stablecoin supply, yield pools) passed their checks, and a Binance spot listing was downloaded on 2026-10-01 (docs/BUILD-STATUS.md, 2026-10-02 entries). On 2026-11-14 the Dell downloaded free Binance spot daily history for 15 USDT pairs and a spot market list, and the installed alpha downloaded a live Binance REST tail of November 2026 on a copy of that folder; not yet confirmed (docs/reference/project/components/data-layer.md). The end-to-end check covers Binance only; Bybit, CoinGecko, DefiLlama, GeckoTerminal and Coin Metrics are not run end to end."
 needs = []
-state = "Partial"
-missing = "tested in-process only; no end-to-end smoke check yet"
+state = "Working"
 plans = []
 
 [[capability]]
@@ -157,20 +160,17 @@ proof_synthetic = [
   "tests/integration/test_crypto_backfill_resume_cli.py::test_cli_reopens_completed_bytes_and_retries_only_unfinished_instrument",
   "tests/integration/test_crypto_backfill_status_cli.py::test_status_verifies_completion_and_pending_without_writes",
 ]
-real_data = "not yet confirmed: on 2026-11-14 a free Binance spot daily backfill of 15 USDT pairs ran on the Dell; the unfinished month is now reported as not published yet rather than failed; Bybit not yet run (docs/reference/project/components/data-layer.md)"
+proof_smoke = [
+  "tests/smoke/test_crypto_backfill_smoke.py::test_binance_backfill_resumes_only_unfinished_months_and_refuses_a_second_writer",
+]
+real_data = "not yet confirmed: on 2026-11-14 a free Binance spot daily backfill of 15 USDT pairs ran on the Dell; on a copy of that folder a resume verified all 111 finished BTC months without downloading and a fresh 111-month ETH run downloaded through the installed alpha; Bybit not yet run (docs/reference/project/components/data-layer.md)"
 real_data_needs = "Network access to Bybit and a storage volume for years of data."
 needs = []
-state = "Partial"
-missing = "tested in-process only; no end-to-end smoke check yet"
+state = "Working"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; needs one real download run
 triage = { card = "1", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = [
   "2026-09-10-edge-first-phase-b-feed-the-machine",
-  "2026-11-07-backfill-ledger-exclusion",
-  "2026-11-07-backfill-resume-evidence",
-  "2026-11-07-backfill-verification-budget",
-  "2026-11-08-backfill-metadata-bounds",
-  "2026-11-08-backfill-readonly-status",
 ]
 
 [[capability]]
@@ -270,15 +270,17 @@ proof_synthetic = [
   "tests/integration/test_crypto_snapshot_query_cli.py::test_snapshot_query_reopens_exact_id_and_preserves_frozen_files",
   "tests/integration/test_asset_master_provenance.py::test_valid_sources_contract_and_snapshot_reopen_without_rebuilding_identity",
 ]
-real_data = "not yet confirmed: on 2026-11-14 two one-month Binance BTCUSDT snapshots on the Dell verify, including the January 2024 month downloaded twice, and the whole-store check passes; a twelve-month 2024 snapshot verified on a copy of the data folder (docs/work/archive/2026-11/2026-11-14-crypto-snapshot-duplicates/04-verify.md)"
+proof_smoke = [
+  "tests/smoke/test_crypto_snapshots_smoke.py::test_snapshot_freezes_months_verifies_and_refuses_a_changed_file",
+  "tests/smoke/test_crypto_snapshots_smoke.py::test_workstation_verifies_the_snapshot",
+]
+real_data = "not yet confirmed: on 2026-11-14 two one-month Binance BTCUSDT snapshots on the Dell verify, including the January 2024 month downloaded twice, and the whole-store check passes; a 222-month BTC and ETH full-history snapshot was created and verified on a copy of the data folder (docs/work/archive/2026-11/2026-11-14-prove-crypto-snapshots/04-verify.md). snapshot-query (DefiLlama TVL only) is not run end to end."
 needs = []
-state = "Partial"
-missing = "tested in-process only; no end-to-end smoke check yet"
+state = "Working"
 # owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; small and built into existing commands
 triage = { card = "4", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = [
   "2026-11-08-asset-master-source-provenance",
-  "2026-11-08-snapshot-capture-binding",
 ]
 
 [[capability]]
@@ -892,7 +894,7 @@ name = "AI-run daily trading-rule study"
 codes = ["Packet 3", "W08"]
 what = "Run one complete, rule-governed study of a simple daily momentum rule against a \"do nothing\" control, with locked inputs and a final report."
 see_it = [
-  "uv run alpha research draft-daily <project-id> --source-pack-id … --snapshot-id … --normalized-manifest-id …",
+  "uv run alpha research draft-daily <project-id> --source-pack-id … --snapshot-id … --normalized-manifest-id … (once per month)",
   "Workstation: the daily rule report on a study run",
 ]
 entry_points = [

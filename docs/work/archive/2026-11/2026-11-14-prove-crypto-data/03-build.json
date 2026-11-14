@@ -1,0 +1,166 @@
+{
+  "base": "origin/main",
+  "base_sha": "6072058cb4977495e8e30a6f75abeba4af40bb00",
+  "branch": "m8/prove-crypto-data",
+  "built_by": {
+    "effort": "high",
+    "model": "gpt-6.1-sol",
+    "tool": "codex"
+  },
+  "checks": [
+    {
+      "command": "uv sync --locked",
+      "exit_code": 0,
+      "name": "uv sync",
+      "passed": true,
+      "round": 0,
+      "seconds": 0.0
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base origin/main",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 0,
+      "seconds": 216.6
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base origin/main",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 1,
+      "seconds": 160.5
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base origin/main",
+      "exit_code": 1,
+      "name": "gate check",
+      "passed": false,
+      "round": 2,
+      "seconds": 115.0
+    }
+  ],
+  "class": "standard",
+  "class_reason": "6 files in scope (> 3)",
+  "diffstat": " docs/work/archive/2026-11/2026-11-14-prove-crypto-data/01-brief.md |  34 +++++++++\n docs/work/archive/2026-11/2026-11-14-prove-crypto-data/02-plan.md  | 179 +++++++++++++++++++++++++++++++++++++++++++++\n packages/alpha-data/src/alpha_data/crypto/providers/binance.py     |   4 +-\n tests/smoke/_harness.py                                            |  12 ++-\n tests/smoke/conftest.py                                            |  56 +++++++++++++-\n tests/unit/test_crypto_binance.py                                  |  53 ++++++++++++++\n 6 files changed, 333 insertions(+), 5 deletions(-)\n",
+  "fallback": null,
+  "files_changed": [
+    {
+      "path": "docs/work/archive/2026-11/2026-11-14-prove-crypto-data/01-brief.md",
+      "status": "A"
+    },
+    {
+      "path": "docs/work/archive/2026-11/2026-11-14-prove-crypto-data/02-plan.md",
+      "status": "A"
+    },
+    {
+      "path": "tests/smoke/_recorded_provider.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/smoke/test_crypto_data_smoke.py",
+      "status": "A"
+    },
+    {
+      "path": "packages/alpha-data/src/alpha_data/crypto/providers/binance.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/smoke/_harness.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/smoke/conftest.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/test_crypto_binance.py",
+      "status": "M"
+    }
+  ],
+  "finished_at": "2026-11-14T09:19:41Z",
+  "fix_rounds": 2,
+  "logs": "/home/hunta/alpha-clean-base/tmp/handoff/logs/2026-11-14-prove-crypto-data-20261114-090437-805665",
+  "notes": [],
+  "outside_scope": [
+    "docs/work/archive/2026-11/2026-11-14-prove-crypto-data/01-brief.md",
+    "docs/work/archive/2026-11/2026-11-14-prove-crypto-data/02-plan.md"
+  ],
+  "policy_violations": [],
+  "previous_attempts": [],
+  "rounds": [
+    {
+      "commands": 28,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 6,
+      "kind": "build",
+      "outcome": "ok",
+      "seconds": 363.6,
+      "thread_id": "01a1d94d-3ed4-7c03-a866-e5a01e3c507a",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 1019520,
+        "input_tokens": 1078327,
+        "output_tokens": 12939,
+        "reasoning_output_tokens": 2876
+      }
+    },
+    {
+      "commands": 3,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 0,
+      "kind": "fix",
+      "outcome": "ok",
+      "seconds": 31.6,
+      "thread_id": "01a1d94d-3ed4-7c03-a866-e5a01e3c507a",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 1176576,
+        "input_tokens": 1239892,
+        "output_tokens": 13794,
+        "reasoning_output_tokens": 3352
+      }
+    },
+    {
+      "commands": 0,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 0,
+      "kind": "fix",
+      "outcome": "ok",
+      "seconds": 13.5,
+      "thread_id": "01a1d94d-3ed4-7c03-a866-e5a01e3c507a",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 1259264,
+        "input_tokens": 1323877,
+        "output_tokens": 14070,
+        "reasoning_output_tokens": 3458
+      }
+    }
+  ],
+  "run_id": "2026-11-14-prove-crypto-data-20261114-090437-805665",
+  "schema_version": 1,
+  "source": "docs/work/archive/2026-11/2026-11-14-prove-crypto-data/02-plan.md",
+  "started_at": "2026-11-14T09:04:37Z",
+  "tokens": {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 3455360,
+    "input_tokens": 3642096,
+    "output_tokens": 40803,
+    "reasoning_output_tokens": 9686
+  },
+  "unverified": [
+    "No rerun here: sandbox rules prohibit smoke tests, loopback sockets and web-server execution."
+  ],
+  "verdict": "verification_failed",
+  "wall_seconds": 903.8,
+  "work_order": {
+    "kind": "task",
+    "name": "2026-11-14-prove-crypto-data"
+  },
+  "worktree": "/home/hunta/alpha-clean-base/wt-prove"
+}

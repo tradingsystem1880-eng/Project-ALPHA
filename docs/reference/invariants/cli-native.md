@@ -8,7 +8,7 @@ sources:
   - tests/unit/test_native_*.py
   - tests/unit/test_daily_rule_*.py
   - tests/unit/test_daily_native_*.py
-verified: aa600e57932d
+verified: bdd1a2a989f8
 ---
 
 # Command line native invariants
@@ -58,8 +58,15 @@ project-wide rule is [research integrity § Models and isolated workers](researc
 - For daily studies the `code` hash also covers `DAILY_GUARD_FILES`: every `_native_daily_rule_*` guard,
   `_native_loop_admission.py`, `_native_rule_*` modules, `_native_fixture_store.py`, `native_supervisor.py`,
   `control_store.py`, `_control_json.py`, `owner_auth.py`, `_artifacts.py`, `artifact_contract.py`, `durable_lease.py`,
-  `research_analysis_plan.py`, `crypto_price_snapshot_query.py`, `crypto_bulk_store.py`, `daily_native_cmds.py`, and
-  the worker `daily_container_entry.py`.
+  `research_analysis_plan.py`, `crypto_price_snapshot_query.py`, `crypto_bulk_store.py`, `daily_native_cmds.py`,
+  `_control_schema.py`, `_native_daily_rule_history.py`, `_ml_observation_store.py`, `job_capacity.py`,
+  `paper_resources.py`, `run_store.py`, `run_context.py`, `_native_tearsheet.py`, `research_readiness.py`,
+  `research_runtime.py`, `_native_stock_launch.py`, `native_stock_fixture.py`, the package `__init__.py`, and the
+  worker `daily_container_entry.py` ([ADR-0048](../../adr/0048-daily-rule-lane-binding-and-named-months.md)).
+- Every `alpha_cli` import in a bound file, at module level or inside a function, must reach a bound file or a reviewed
+  exemption whose import never executes on a daily path (`tests/unit/test_daily_guard_boundary.py::REVIEWED_OUTSIDE`);
+  a new import of an unbound module fails that test. `alpha_research`, `alpha_validation` and `research_cmds.py` are not
+  bound by daily approvals (open owner decision).
 - A comment, formatting or unread-docstring edit to those files keeps an approval valid; any change to what they do
   invalidates every existing daily rule approval, so say so in the change description. Rule approvals made before
   ADR-0045 no longer verify and must be re-drafted and re-approved by the owner. See also

@@ -44,6 +44,21 @@ DAILY_GUARD_FILES = (
     "crypto_price_snapshot_query.py",
     "crypto_bulk_store.py",
     "daily_native_cmds.py",
+    "_control_schema.py",
+    "_native_daily_rule_history.py",
+    "_ml_observation_store.py",
+    "_native_rule_economics.py",
+    "_native_rule_study.py",
+    "job_capacity.py",
+    "paper_resources.py",
+    "run_store.py",
+    "run_context.py",
+    "_native_tearsheet.py",
+    "research_readiness.py",
+    "research_runtime.py",
+    "_native_stock_launch.py",
+    "native_stock_fixture.py",
+    "__init__.py",
 )
 
 

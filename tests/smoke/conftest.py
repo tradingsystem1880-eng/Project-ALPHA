@@ -5,12 +5,21 @@ public command line (every ``alpha data pull`` source needs the network), so the
 with the same labelled synthetic bars the integration tests and the Playwright real backend use
 (``tests.fixtures.cli_fixtures.seed_store``). Everything after that goes through the installed
 programs, each step in a new process.
+
+Crypto data is different: ``crypto_home`` plus ``tests.smoke._recorded_provider`` let the installed
+``alpha crypto-data`` commands download synthetic Binance-format answers over real TLS from a
+loopback proxy, so the download step itself is proven.
 """
 
 from __future__ import annotations
 
+import contextlib
 import re
 import shutil
+import subprocess
+import sys
+import tempfile
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,7 +27,7 @@ import pytest
 from run_owned_test import require_test_owner
 
 from tests.fixtures.cli_fixtures import seed_store
-from tests.smoke._harness import alpha
+from tests.smoke._harness import alpha, child_env
 
 SNAPSHOT = "smoke-v1"
 # Small but real strategy parameters: 400 daily bars warm up, trade and give several folds.
@@ -38,6 +47,56 @@ class BacktestHome:
 
 def copy_home(source: Path, tmp_path: Path) -> Path:
     return Path(shutil.copytree(source, tmp_path / "home", symlinks=True))
+
+
+@pytest.fixture
+def crypto_home(owned_test_process: object) -> Iterator[Path]:
+    """Use a unique repo home: /tmp is refused by the bulk store's disposable-root guard."""
+    root = Path(__file__).resolve().parents[2]
+    parent = root / "tmp" / "smoke-crypto"
+    parent.mkdir(parents=True, exist_ok=True)
+    home = Path(tempfile.mkdtemp(prefix="home-", dir=parent))
+    try:
+        bulk = home / "data" / "bulk"
+        bulk.mkdir(parents=True)
+        configured = subprocess.run(
+            [
+                sys.executable,
+                str(root / "scripts" / "storage_settings.py"),
+                "write",
+                "--apply",
+                "--data-dir",
+                str(home / "data"),
+                "--bulk-root",
+                str(bulk),
+                "--durable-hosting-reference",
+                "smoke check home (disposable)",
+                "--reserve-gb",
+                "10",
+                "--decided-by",
+                "owner",
+                "--decided-on",
+                "2026-11-14",
+                "--decision-record",
+                "smoke check: ADR-0043 floor",
+            ],
+            cwd=home,
+            env=child_env(home),
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        if configured.returncode != 0:
+            pytest.fail(
+                f"storage setup exited {configured.returncode}\n"
+                f"{configured.stdout}\n{configured.stderr}"
+            )
+        yield home
+    finally:
+        shutil.rmtree(home)
+        with contextlib.suppress(OSError):  # another worker's home may still be there
+            parent.rmdir()
 
 
 @pytest.fixture(scope="session")
