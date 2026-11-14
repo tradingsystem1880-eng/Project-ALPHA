@@ -661,6 +661,7 @@ _REVIEWED_READERS = {
     "tools/alpha-eval/worlds/investigation_worker.py",
     "workers/rdagent/install_stock_profile.py",
     "workers/rdagent/qualify_daily_container.py",
+    "workers/rdagent/model_gateway.py",  # own module docstring as argparse help; vars(args)
     # vars()/__dict__ of dataclass instances (instance fields, never a class or module docstring).
     "apps/alpha-cli/src/alpha_cli/backtest_cmds.py",
     "apps/alpha-cli/src/alpha_cli/optim_cmds.py",
