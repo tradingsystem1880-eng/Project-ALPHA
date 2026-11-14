@@ -1,6 +1,6 @@
 # Make the weekly mutation sweep measure, not hang
 
-**Delivery state:** In progress — built on branch `m4/mutation-sweep-timeouts`; done when its pull request merges.
+**Delivery state:** Completed — built and checked on branch `m4/mutation-sweep-timeouts`; done when its pull request merges.
 **Build class:** hard — tier protected (`scripts/harness_quant.py`, `.github/workflows/mutation-weekly.yml`).
 
 Filed straight into the archive, as `2026-11-14-shared-helpers` was: the work-in-progress ceiling
@@ -44,9 +44,9 @@ admits no new live plan. The owner approved the clean-up plan covering `scripts/
     "Copying docs/ and scripts/ makes a staged test pass for the wrong reason: they are unmutated copies of the repository, which the root pytest config already puts on the path."
   ],
   "slices": [
-    {"title": "Forkserver isolation and a complete staged copy (harness_quant, mutation_fragment)", "verify": "uv run pytest -q tests/unit/test_mutation_fragment.py tests/unit/test_mutation_public_staging.py tests/unit/test_mutation_legacy.py", "expected": "all pass", "rollback": "revert the slice commit", "status": "pending"},
-    {"title": "A failing fragment prints why; preflight exclusions are printed (mutation_sweep)", "verify": "uv run pytest -q tests/unit/test_mutation_sweep.py", "expected": "all pass", "rollback": "revert the slice commit", "status": "pending"},
-    {"title": "Optional one-module dispatch input (mutation-weekly.yml)", "verify": "uv run pytest -q tests/unit/test_checks_reference.py tests/unit/test_mutation_sweep.py", "expected": "all pass", "rollback": "revert the slice commit", "status": "pending"}
+    {"title": "Forkserver isolation and a complete staged copy (harness_quant, mutation_fragment)", "verify": "uv run pytest -q tests/unit/test_mutation_fragment.py tests/unit/test_mutation_public_staging.py tests/unit/test_mutation_legacy.py", "expected": "all pass", "rollback": "revert the slice commit", "status": "done"},
+    {"title": "A failing fragment prints why; preflight exclusions are printed (mutation_sweep)", "verify": "uv run pytest -q tests/unit/test_mutation_sweep.py", "expected": "all pass", "rollback": "revert the slice commit", "status": "done"},
+    {"title": "Optional one-module dispatch input (mutation-weekly.yml)", "verify": "uv run pytest -q tests/unit/test_checks_reference.py tests/unit/test_mutation_sweep.py", "expected": "all pass", "rollback": "revert the slice commit", "status": "done"}
   ],
   "tier_impact": ["protected"],
   "docs_to_update": ["docs/reference/invariants/testing.md", "docs/reference/checks.md", "docs/roadmap/backlog/weekly-mutation-sweep.md"],
