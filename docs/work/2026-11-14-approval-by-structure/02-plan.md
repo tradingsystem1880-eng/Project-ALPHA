@@ -13,7 +13,7 @@
 - One-off cost: pending fixed-rule and daily-rule approvals made before this change stop verifying
   (the rule lane's own guard file changes); re-draft and re-approve them when you next run one.
 - Lock files, data files and code that reads its own source or line numbers stay byte-exact.
-- Decision record: [ADR-0044](../../adr/0044-approvals-bind-code-structure.md). Nothing for you to
+- Decision record: [ADR-0045](../../adr/0045-approvals-bind-code-structure.md). Nothing for you to
   decide; no approval, promotion or acceptance is made by this work.
 
 ```json
@@ -24,7 +24,7 @@
   "assumptions": [
     {
       "statement": "Only two sites bind owner approvals to source: research_cmds._implementation_hashes and _native_rule_environment.rule_implementation_fingerprints; every other source hash is environment, upstream pin, launch identity or provenance.",
-      "verified_by": "Repository grep for sha256 over source files, __file__, read_bytes, source_sha256, implementation_hash, worker_source and every reader of contract hashes (map in ADR-0044)."
+      "verified_by": "Repository grep for sha256 over source files, __file__, read_bytes, source_sha256, implementation_hash, worker_source and every reader of contract hashes (map in ADR-0045)."
     },
     {
       "statement": "No research-bound file needs to change, so research approvals made before this change keep verifying under scheme 1.",
@@ -88,10 +88,10 @@
     {
       "title": "Decision record and owning document",
       "verify": "uv run python scripts/gate.py check --all",
-      "expected": "ADR-0044 indexed, engineering rules updated, plan and roadmap regenerate cleanly.",
+      "expected": "ADR-0045 indexed, engineering rules updated, plan and roadmap regenerate cleanly.",
       "rollback": "Remove the ADR, its index row and the plan; restore the engineering rules section.",
       "files": [
-        "docs/adr/0044-approvals-bind-code-structure.md",
+        "docs/adr/0045-approvals-bind-code-structure.md",
         "docs/adr/README.md",
         "docs/reference/invariants/engineering.md",
         "docs/work/2026-11-14-approval-by-structure/02-plan.md",
@@ -108,7 +108,7 @@
     "determinism"
   ],
   "docs_to_update": [
-    "docs/adr/0044-approvals-bind-code-structure.md",
+    "docs/adr/0045-approvals-bind-code-structure.md",
     "docs/reference/invariants/engineering.md"
   ],
   "out_of_scope": [
@@ -124,7 +124,7 @@
     "apps/alpha-cli/src/alpha_cli/_native_rule_environment.py",
     "tests/unit/test_structural_digest.py",
     "tests/unit/test_daily_rule_recovery_contracts.py",
-    "docs/adr/0044-approvals-bind-code-structure.md",
+    "docs/adr/0045-approvals-bind-code-structure.md",
     "docs/adr/README.md",
     "docs/reference/invariants/engineering.md",
     "docs/work/2026-11-14-approval-by-structure/02-plan.md",
@@ -139,7 +139,7 @@
 
 | Read | Section | When |
 |---|---|---|
-| [ADR-0044](../../adr/0044-approvals-bind-code-structure.md) | — | always: the map, the design and its hazards |
+| [ADR-0045](../../adr/0045-approvals-bind-code-structure.md) | — | always: the map, the design and its hazards |
 | [engineering rules](../../reference/invariants/engineering.md) | Hash-bound source bytes | always |
 | [research integrity](../../reference/invariants/research-integrity.md) | Owner authority | always |
 | `apps/alpha-cli/src/alpha_cli/research_cmds.py` | `_implementation_hashes`, `_implementation_drifted` | research lane |

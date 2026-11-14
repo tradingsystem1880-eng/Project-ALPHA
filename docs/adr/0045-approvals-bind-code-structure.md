@@ -1,4 +1,4 @@
-# ADR-0044: Research approvals bind what the code does, not its exact bytes
+# ADR-0045: Research approvals bind what the code does, not its exact bytes
 
 **Status:** Accepted
 **Date:** 2026-11-14
@@ -47,17 +47,32 @@ The dangerous failure is "behaviour changed and the approval stayed valid"; the 
   `from __future__`), `__all__`, f-string part, keyword, slice bound, class attribute and statement
   order. The tests show one behaviour edit of each kind changing the digest.
 - **Docstrings.** Only the first statement of a module, class or function body that is a plain
-  `str` literal is a docstring. They are dropped unless the file names any docstring reader
-  (`__doc__`, `getdoc`, `pydoc`, `doctest`, `help`, `typer`, `click`, `pydantic`, `fastapi`, also
-  as a string constant such as `getattr(x, "__doc__")`); such a file keeps its docstrings
-  (`structure-with-docstrings`). Readers in other modules are guarded by a repository scan
+  `str` literal is a docstring. They are dropped unless the file can read them: it names
+  `__doc__`, `getdoc`, `pydoc`, `doctest`, `help`, `typer`, `click`, `pydantic`, `fastapi`,
+  `vars`, `__dict__`, `globals` or `co_consts` (in any name position or as a string constant), has
+  a string containing `__doc__`, or calls `getattr`/`hasattr` with a computed attribute name. Such
+  a file keeps its docstrings (`structure-with-docstrings`). Readers in other modules are guarded
+  by a repository scan
   (`tests/unit/test_structural_digest.py::test_no_unreviewed_code_reads_docstrings_or_source_of_other_modules`):
   every file that reads docstrings or source is listed and reviewed, and none of them is bound.
-- **Layout that is behaviour.** A file that names any source, comment, line-number or frame
-  introspection (`inspect`, `linecache`, `traceback`, `tokenize`, `dis`, `getsource`,
-  `co_firstlineno`, `f_lineno`, `_getframe`, `__code__`, `lineno`, ...) is bound by its exact
-  bytes. Line numbers elsewhere appear only in diagnostics (tracebacks, logs), never in research
-  results.
+- **Layout that is behaviour.** A file is bound by its exact bytes when it can observe its own
+  source, comments, line numbers or frames, or runs code built at run time: it names any of
+  `inspect`, `linecache`, `traceback`, `tokenize`, `dis`, `getsource*`, `co_firstlineno`,
+  `co_lines`, `f_lineno`, `f_back`, `_getframe`, `_current_frames`, `gi_frame`, `cr_frame`,
+  `gi_code`, `__code__`, `__traceback__`, `lineno`, `findCaller`, `stack_info`, `__file__`,
+  `__loader__`, `__spec__`, `get_source`, ... (pinned name by name in the tests); imports
+  `warnings` or `logging` (warning de-duplication and log records depend on the calling line);
+  calls the builtins `eval`, `exec`, `compile`, `__import__` or `breakpoint`; has a string
+  containing `lineno`, `funcName`, `__code__`, `__file__`, `_getframe` or `f_back` (log formats,
+  computed keys); or makes a computed `getattr`/`hasattr` lookup in a file that imports `sys` or
+  `builtins`. Names are found in every position: loads, attributes, imports, keywords, function,
+  class and argument names, `global`, `except ... as`, and match captures.
+- **Boundary.** The scan finds every ordinary way Python exposes layout or docstrings, including
+  the ones independent reviewers constructed (see the pull request). It cannot be complete against
+  code written to hide its intent, for example an attribute name assembled from fragments and
+  looked up on a generator or frame object reached through other computed lookups. Such code in an
+  approval-bound file is a review defect in itself; the reviewer and the owner's approval remain
+  the control for it.
 - **Constant folding and Python versions.** The tree is taken before the compiler's optimiser, so
   `1 + 2` and `3` differ. The node set and serialisation are pinned to Python 3.12: the digest
   records `3.12` and refuses to run on any other minor version (`StructuralDigestError`); the

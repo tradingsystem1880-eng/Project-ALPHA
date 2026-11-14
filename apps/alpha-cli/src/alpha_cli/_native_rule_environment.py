@@ -124,7 +124,7 @@ def rule_implementation_fingerprints(
 ) -> dict[str, str | None]:
     from alpha_cli._native_rule_protocol import study_data_hash
 
-    # Scheme 2 (ADR-0044): the approved code and evaluator are bound by their structure.
+    # Scheme 2 (ADR-0045): the approved code and evaluator are bound by their structure.
     from alpha_cli._structural_digest import StructuralDigestError, binding_digest
 
     files = {

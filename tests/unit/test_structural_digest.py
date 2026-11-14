@@ -1,4 +1,4 @@
-"""Scheme-2 approval binding (ADR-0044): built against the dangerous direction.
+"""Scheme-2 approval binding (ADR-0045): built against the dangerous direction.
 
 The dangerous failure is "behaviour changed and the approval stayed valid". Every behaviour edit
 below must change the digest; only comments, layout and (where nothing reads them) docstrings
@@ -11,6 +11,7 @@ import ast
 import hashlib
 import io
 import keyword
+import re
 import shutil
 import subprocess
 import sys
@@ -647,7 +648,9 @@ def test_an_approval_is_only_valid_for_one_of_the_two_exact_schemes() -> None:
 # --- docstring and source readers elsewhere in the repository must not read bound code --------
 
 _READERS = ("__doc__", "getdoc(", "getsource", "getcomments", "co_firstlineno", "linecache",
-            "model_json_schema", ".command()(")  # fmt: skip
+            "model_json_schema", "vars(", ".__dict__", "co_consts", "gi_frame", "cr_frame",
+            "_current_frames")  # fmt: skip
+_COMMAND_WRAP = re.compile(r"\.(command|callback)\([^)]*\)\(")
 _REVIEWED_READERS = {
     # Each reads only its own module docstring or its own (unbound) models.
     "apps/alpha-cli/src/alpha_cli/codex_investigation.py",
@@ -658,6 +661,15 @@ _REVIEWED_READERS = {
     "tools/alpha-eval/worlds/investigation_worker.py",
     "workers/rdagent/install_stock_profile.py",
     "workers/rdagent/qualify_daily_container.py",
+    # vars()/__dict__ of dataclass instances (instance fields, never a class or module docstring).
+    "apps/alpha-cli/src/alpha_cli/backtest_cmds.py",
+    "apps/alpha-cli/src/alpha_cli/optim_cmds.py",
+    "apps/alpha-cli/src/alpha_cli/propfirm_cmds.py",
+    "apps/alpha-cli/src/alpha_cli/validate_cmds.py",
+    "tools/alpha-eval/src/alpha_eval/probes.py",
+    # Registers typer commands (typer reads their docstrings) from local_pdf_cmds,
+    # native_stock_cmds, validate_cmds and report_cmds; none of them is bound.
+    "apps/alpha-cli/src/alpha_cli/main.py",
     # The digest itself names the readers it guards against.
     "apps/alpha-cli/src/alpha_cli/_structural_digest.py",
 }
@@ -671,10 +683,12 @@ def test_no_unreviewed_code_reads_docstrings_or_source_of_other_modules() -> Non
             if any(part in {"tests", ".venv", "node_modules", "__pycache__"} for part in parts):
                 continue
             text = path.read_text(errors="replace")
-            if any(reader in text for reader in _READERS):
+            if any(reader in text for reader in _READERS) or _COMMAND_WRAP.search(text):
                 found.add(path.relative_to(ROOT).as_posix())
     bound = {path.relative_to(ROOT).as_posix() for path in _bound_files()}
     assert not (found & bound)
+    wrapped = {"local_pdf_cmds.py", "native_stock_cmds.py", "validate_cmds.py", "report_cmds.py"}
+    assert not wrapped & {path.name for path in _bound_files()}
     assert found == _REVIEWED_READERS
 
 
@@ -688,10 +702,13 @@ _EXPECTED_LAYOUT_READERS = (
     "tb_frame", "tb_next", "__code__", "__traceback__", "format_exc", "print_exc",
     "format_exception", "format_tb", "extract_tb", "extract_stack", "format_stack",
     "print_stack", "lineno", "end_lineno", "col_offset", "__loader__", "get_source", "settrace",
-    "setprofile", "monitoring",
+    "setprofile", "monitoring", "gi_frame", "cr_frame", "ag_frame", "gi_code", "cr_code",
+    "ag_code", "_current_frames", "findCaller", "stack_info", "__file__", "__spec__",
+    "__cached__", "get_data",
 )  # fmt: skip
 _EXPECTED_DOCSTRING_READERS = (
     "__doc__", "getdoc", "pydoc", "doctest", "help", "typer", "click", "pydantic", "fastapi",
+    "vars", "__dict__", "globals", "co_consts",
 )  # fmt: skip
 _NOT_PRODUCED_BY_PARSE = {
     # Abstract bases, mode roots other than ``exec``, and classes kept only for compatibility.
@@ -711,7 +728,7 @@ def test_each_layout_reader_name_makes_a_file_byte_bound(name: str) -> None:
 
 @pytest.mark.parametrize("name", _EXPECTED_DOCSTRING_READERS)
 def test_each_docstring_reader_name_keeps_docstrings(name: str) -> None:
-    for source in (f"import {name}\n", f"x = y.{name}\n", f"from {name} import z\n"):
+    for source in (f"x = {name}\n", f"x = y.{name}\n", f"from {name} import z\n"):
         assert _mode(source) == "structure-with-docstrings", (name, source)
     assert set(_EXPECTED_DOCSTRING_READERS) == digest_module._DOCSTRING_READERS
 
@@ -786,3 +803,78 @@ def test_the_canonical_form_is_pinned() -> None:
         "structure",
         "b513f364206f3e364ec24f23afcdd60fcac14f12b7e8084bc051416910b9eccd",
     )
+
+
+# --- review findings: ordinary APIs that expose layout or docstrings (each one was a hole) -----
+
+_LAYOUT_CONSTRUCTS = {
+    "own source via __file__": "from pathlib import Path\nTEXT = Path(__file__).read_text()\n",
+    "loader source": "TEXT = __loader__.get_source(__name__)\n",
+    "generator frame": "def g():\n    yield 1\nX = repr(g().gi_frame)\n",
+    "generator code": "def g():\n    yield 1\nX = str(g().gi_code)\n",
+    "coroutine frame": "async def c():\n    pass\nX = c().cr_frame\n",
+    "all thread frames": "import sys\nX = repr(sys._current_frames())\n",
+    "obscured frame access": "import sys\nX = getattr(sys, '_get' + 'frame')(0)\n",
+    "obscured line number": "X = getattr(f, 'f_' + 'lineno')\n",
+    "computed lookup on builtins": "import builtins\nX = getattr(builtins, NAME)\n",
+    "log format with line": "FORMAT = '%(name)s:%(lineno)d'\n",
+    "log format with function": "FORMAT = '%(funcName)s'\n",
+    "logging module": "import logging\nlogging.warning('x')\n",
+    "warnings module": "import warnings\nwarnings.warn('w')\n",
+    "warn import": "from warnings import warn\nwarn('w')\n",
+    "eval": "X = eval('1')\n",
+    "exec": "exec('x = 1')\n",
+    "compile builtin": "C = compile('1', 'f', 'eval')\n",
+    "dynamic import": "M = __import__('os')\n",
+    "logging caller": "X = logger.findCaller()\n",
+    "stack info": "logger.info('x', stack_info=True)\n",
+}
+_DOCSTRING_CONSTRUCTS = {
+    "vars of a class": "class A:\n    'alpha'\nX = vars(A).get('_' + '_doc__')\n",
+    "class __dict__": "class A:\n    'alpha'\nX = A.__dict__\n",
+    "module globals": "'alpha'\nX = globals()\n",
+    "function constants": "def f():\n    'alpha'\nX = f.co_consts\n",
+    "computed getattr": "class A:\n    'alpha'\nX = getattr(A, NAME)\n",
+    "computed hasattr": "class A:\n    'alpha'\nX = hasattr(A, NAME)\n",
+    "docstring key in a string": "class A:\n    'alpha'\nKEY = 'x__doc__'\n",
+}
+
+
+@pytest.mark.parametrize("name", sorted(_LAYOUT_CONSTRUCTS))
+def test_reviewed_layout_readers_are_byte_bound(name: str) -> None:
+    source = _LAYOUT_CONSTRUCTS[name]
+    assert _mode(source) == "bytes", name
+    assert _digest(source) != _digest("\n" + source)
+
+
+@pytest.mark.parametrize("name", sorted(_DOCSTRING_CONSTRUCTS))
+def test_reviewed_docstring_readers_keep_docstrings(name: str) -> None:
+    source = _DOCSTRING_CONSTRUCTS[name]
+    assert _mode(source) == "structure-with-docstrings", name
+    assert _digest(source) != _digest(source.replace("'alpha'", "'beta'"))
+
+
+def test_ordinary_lookalikes_do_not_force_bytes() -> None:
+    # A variable called ``warnings``, ``re.compile`` and a literal getattr stay structural.
+    assert _mode("warnings = payload.get('warnings')\n") == "structure"
+    assert _mode("import re\nP = re.compile('x')\n") == "structure"
+    assert _mode("X = getattr(a, 'b', None)\n") == "structure"
+    assert _mode("setattr(a, name, 1)\n") == "structure"
+    assert _mode("TIMEFRAME = 'timeframe'\n") == "structure"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def inspect():\n    pass\n",
+        "def f(lineno):\n    pass\n",
+        "class traceback:\n    pass\n",
+        "def f():\n    global monitoring\n",
+        "try:\n    pass\nexcept E as linecache:\n    pass\n",
+        "match x:\n    case [*lineno]:\n        pass\n",
+        "match x:\n    case {**lineno}:\n        pass\n",
+        "match x:\n    case y as lineno:\n        pass\n",
+    ],
+)
+def test_reader_names_are_found_in_binding_positions(source: str) -> None:
+    assert _mode(source) == "bytes"

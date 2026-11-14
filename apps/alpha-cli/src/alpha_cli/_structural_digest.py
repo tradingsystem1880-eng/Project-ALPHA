@@ -1,4 +1,4 @@
-"""Scheme-2 approval binding: a digest of what Python source does, not of its bytes (ADR-0044).
+"""Scheme-2 approval binding: a digest of what Python source does, not of its bytes (ADR-0045).
 
 The digest ignores comments, blank lines, formatting, parenthesisation and (where nothing can
 read them) docstrings; it binds every other part of the parsed tree: names, literals with their
@@ -57,7 +57,8 @@ _KNOWN_NODES: Final = frozenset(
     }
 )  # fmt: skip
 
-# Names that read source text, comments, line numbers or frames: such a file stays byte-bound.
+# Names that read source text, comments, line numbers or frames, or that run code built at run
+# time: such a file stays byte-bound. Matched in every name position and as an exact string.
 _LAYOUT_READERS: Final = frozenset(
     {
         "inspect", "linecache", "traceback", "tokenize", "dis", "getsource", "getsourcelines",
@@ -67,14 +68,34 @@ _LAYOUT_READERS: Final = frozenset(
         "tb_lineno", "tb_frame", "tb_next", "__code__", "__traceback__", "format_exc",
         "print_exc", "format_exception", "format_tb", "extract_tb", "extract_stack",
         "format_stack", "print_stack", "lineno", "end_lineno", "col_offset", "__loader__",
-        "get_source", "settrace", "setprofile", "monitoring",
+        "get_source", "settrace", "setprofile", "monitoring", "gi_frame", "cr_frame",
+        "ag_frame", "gi_code", "cr_code", "ag_code", "_current_frames", "findCaller",
+        "stack_info", "__file__", "__spec__", "__cached__", "get_data",
     }
 )  # fmt: skip
 
+# Modules whose output depends on the calling line (warning de-duplication, log records),
+# matched only when imported, so that a variable called ``warnings`` does not count.
+_LAYOUT_MODULES: Final = frozenset({"warnings", "logging"})
+
+# Builtins that run or import code built at run time; matched only as bare names, so that
+# ``re.compile`` or ``store.exec`` do not count.
+_DYNAMIC_BUILTINS: Final = frozenset({"eval", "exec", "compile", "__import__", "breakpoint"})
+
+# Fragments that mark a string as a log format or a dynamic introspection key.
+_LAYOUT_FRAGMENTS: Final = ("lineno", "funcName", "__code__", "__file__", "_getframe", "f_back")
+
 # Names that can read docstrings at run time: such a file keeps its docstrings in the digest.
 _DOCSTRING_READERS: Final = frozenset(
-    {"__doc__", "getdoc", "pydoc", "doctest", "help", "typer", "click", "pydantic", "fastapi"}
-)
+    {
+        "__doc__", "getdoc", "pydoc", "doctest", "help", "typer", "click", "pydantic", "fastapi",
+        "vars", "__dict__", "globals", "co_consts",
+    }
+)  # fmt: skip
+_DOCSTRING_FRAGMENTS: Final = ("__doc__",)
+
+# A getattr-family call whose attribute name is not a string literal could read ``__doc__``.
+_DYNAMIC_ATTRIBUTE_CALLS: Final = frozenset({"getattr", "hasattr"})
 
 _DOCSTRING_OWNERS: Final = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
 
@@ -163,22 +184,54 @@ def _encode(value: object, *, strip_docstrings: bool) -> object:
 
 
 def _referenced_names(tree: ast.AST) -> set[str]:
+    """Every identifier and string constant in the file, plus markers for dynamic access."""
     names: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Name):
             names.add(node.id)
+            if node.id in _DYNAMIC_BUILTINS:
+                names.add("<dynamic-code>")
         elif isinstance(node, ast.Attribute):
             names.add(node.attr)
         elif isinstance(node, ast.alias):
             names.update(node.name.split("."))
             if node.asname:
                 names.add(node.asname)
+            if node.name.split(".")[0] in _LAYOUT_MODULES:
+                names.add("<layout-module>")
         elif isinstance(node, ast.ImportFrom) and node.module:
             names.update(node.module.split("."))
+            if node.module.split(".")[0] in _LAYOUT_MODULES:
+                names.add("<layout-module>")
         elif isinstance(node, ast.keyword) and node.arg:
             names.add(node.arg)
+        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            names.add(node.name)
+        elif isinstance(node, ast.arg):
+            names.add(node.arg)
+        elif isinstance(node, ast.Global | ast.Nonlocal):
+            names.update(node.names)
+        elif isinstance(node, ast.ExceptHandler | ast.MatchAs | ast.MatchStar) and node.name:
+            names.add(node.name)
+        elif isinstance(node, ast.MatchMapping) and node.rest:
+            names.add(node.rest)
         elif isinstance(node, ast.Constant) and type(node.value) is str:
             names.add(node.value)
+            if any(fragment in node.value for fragment in _LAYOUT_FRAGMENTS):
+                names.add("<layout-string>")
+            if any(fragment in node.value for fragment in _DOCSTRING_FRAGMENTS):
+                names.add("<docstring-string>")
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in _DYNAMIC_ATTRIBUTE_CALLS
+            and (
+                len(node.args) < 2
+                or not isinstance(node.args[1], ast.Constant)
+                or type(node.args[1].value) is not str
+            )
+        ):
+            names.add("<dynamic-attribute>")
     return names
 
 
@@ -194,9 +247,12 @@ def source_binding(source: bytes) -> tuple[Mode, str]:
             warnings.simplefilter("ignore")
             tree = ast.parse(source, mode="exec", type_comments=False)
         names = _referenced_names(tree)
-        if names & _LAYOUT_READERS:
+        if names & (_LAYOUT_READERS | {"<dynamic-code>", "<layout-string>", "<layout-module>"}):
             return "bytes", _sha256(source)
-        mode: Mode = "structure-with-docstrings" if names & _DOCSTRING_READERS else "structure"
+        if "<dynamic-attribute>" in names and names & {"sys", "builtins"}:
+            return "bytes", _sha256(source)  # a computed lookup on the interpreter itself
+        docstring_readers = _DOCSTRING_READERS | {"<docstring-string>", "<dynamic-attribute>"}
+        mode: Mode = "structure-with-docstrings" if names & docstring_readers else "structure"
         encoded = _encode(tree, strip_docstrings=mode == "structure")
         canonical = json.dumps(encoded, ensure_ascii=True, separators=(",", ":"))
     except (SyntaxError, ValueError, UnicodeError, RecursionError, MemoryError, _Unclassifiable):

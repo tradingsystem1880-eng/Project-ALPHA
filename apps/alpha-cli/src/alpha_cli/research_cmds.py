@@ -444,7 +444,7 @@ def _research_code_paths() -> tuple[Path, dict[str, Path]]:
 
 
 def _byte_code_hash() -> str:
-    """Scheme 1, exact bytes: the code hash of every approval made before ADR-0044. Frozen."""
+    """Scheme 1, exact bytes: the code hash of every approval made before ADR-0045. Frozen."""
     research_root, modules = _research_code_paths()
     return _sha_json(
         {
@@ -455,7 +455,7 @@ def _byte_code_hash() -> str:
 
 
 def _structural_code_hash() -> str:
-    """Scheme 2, code structure (ADR-0044): comments, layout and unread docstrings are free."""
+    """Scheme 2, code structure (ADR-0045): comments, layout and unread docstrings are free."""
     from alpha_cli._structural_digest import StructuralDigestError, binding_digest
 
     research_root, modules = _research_code_paths()
@@ -533,7 +533,7 @@ def _implementation_drifted(approved_hashes: object) -> bool:
 
 
 def _approved_code_scheme(approved_code: object, current: Mapping[str, object]) -> int | None:
-    """Which scheme reproduces an approved code hash from the code as it is now (ADR-0044).
+    """Which scheme reproduces an approved code hash from the code as it is now (ADR-0045).
 
     Scheme 2 (structure) is what every new approval freezes. Scheme 1 (exact bytes) is how
     every earlier approval was made, and it stays bound to bytes until the owner re-approves:

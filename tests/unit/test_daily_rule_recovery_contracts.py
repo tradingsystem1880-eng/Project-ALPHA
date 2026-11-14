@@ -439,7 +439,7 @@ def test_completion_rejects_untrusted_or_changed_inputs_without_charging_again(
 
         def changed_bytes(path: Path) -> bytes:
             original = read_bytes(path)
-            # A behaviour change: a comment alone no longer changes the approved code (ADR-0044).
+            # A behaviour change: a comment alone no longer changes the approved code (ADR-0045).
             return original + b"\nCHANGED_APPROVED_GUARD = 1\n" if path == target else original
 
         monkeypatch.setattr(Path, "read_bytes", changed_bytes)

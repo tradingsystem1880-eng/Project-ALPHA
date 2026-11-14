@@ -77,12 +77,12 @@ Project-wide coding rules. Area files add their own detail and link here. The re
   `apps/alpha-cli/src/alpha_cli/research_cmds.py::_implementation_hashes` and checked against
   owner-approved research contracts. The fixed and daily rule lanes bind the rdagent worker files
   and `DAILY_GUARD_FILES` the same way (`_native_rule_environment.py::rule_implementation_fingerprints`).
-- Approvals bind code structure ([ADR-0044](../../adr/0044-approvals-bind-code-structure.md),
-  `apps/alpha-cli/src/alpha_cli/_structural_digest.py`): an approval made since ADR-0044 (scheme 2)
+- Approvals bind code structure ([ADR-0045](../../adr/0045-approvals-bind-code-structure.md),
+  `apps/alpha-cli/src/alpha_cli/_structural_digest.py`): an approval made since ADR-0045 (scheme 2)
   survives comments, blank lines, formatting and unread docstrings, and is invalidated by any change
   to what the code does. Lock files and non-Python files stay bound by bytes, as does a Python file
   that reads source, line numbers or frames.
-- An approval made before ADR-0044 (scheme 1) stays bound to exact bytes until the owner re-approves.
+- An approval made before ADR-0045 (scheme 1) stays bound to exact bytes until the owner re-approves.
   So while such an approval may be live, make no cosmetic edits in those files; change them only when
   the behaviour must change, and say in the pull request that approvals will need renewing. Never
   edit `_structural_digest.py` casually: any edit to it invalidates every scheme-2 approval.
