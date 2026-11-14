@@ -5,8 +5,8 @@
     uv run python scripts/fs.py stale [--strict] [--format text|json]
 
 ``orient`` lists components, module counts and the routing documents to read first. ``search``
-returns ranked excerpts of tracked documentation (path, heading, line range, kind, and whether
-the document is live or archived history), live documents first. ``stale`` lists living documents
+returns ranked excerpts of tracked documentation (path, heading, line range, kind). ``stale``
+lists living documents
 whose ``sources`` changed after their ``verified`` commit; it exits 0 (a report) unless
 ``--strict`` is given or a document's front matter cannot be checked.
 """

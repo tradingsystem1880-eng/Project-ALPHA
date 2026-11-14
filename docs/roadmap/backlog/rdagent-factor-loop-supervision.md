@@ -30,5 +30,5 @@ which other work also changes; coordinate first.
 
 ## Sources
 
-- [Task record](../../work/archive/2026-11/2026-11-14-rdagent-alpha-judged-loop/02-plan.md)
+- [Task record](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/094ce61213923cf9b74661013703cd6ebad16ecc/docs/work/archive/2026-11/2026-11-14-rdagent-alpha-judged-loop/02-plan.md)
 - [Command line native invariants](../../reference/invariants/cli-native.md)

@@ -275,14 +275,14 @@ use. Existing manifest pins stay unchanged.
 | [skfolio](https://github.com/skfolio/skfolio/blob/main/LICENSE) | BSD-3-Clause | Optional portfolio trial only; review solver/dependency terms, chronology, constraints, costs and incremental value on a declared experiment. |
 
 No dependency is installed, upgraded or removed by this review. See the
-[native reuse crosswalk](../archive/2026-11-context-maps/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+[native reuse crosswalk](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/archive/2026-11-context-maps/alpha-quant-platform.md#native-upstream-first--2026-11-06)
 for retained ALPHA controls and NOT RUN parity/migration requirements. Historical inventory rows
 retain their original as-of status; this appendix does not refresh unrelated service approvals.
 
 Additional proposed lanes are statsmodels HAC/regression covariance, ruptures, STUMPY, fredapi,
 NeuralForecast/MLForecast, PaperQA2/GROBID, sdmx1 and selective PyAlex reuse. Their official
 source links and bounded purposes are in the
-[optional-candidate crosswalk](../archive/2026-11-context-maps/alpha-quant-platform.md#further-optional-research-candidates).
+[optional-candidate crosswalk](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/archive/2026-11-context-maps/alpha-quant-platform.md#further-optional-research-candidates).
 No exact revision or complete license/dependency/weights/service review is claimed for those
 lanes here; those checks are required at selection before execution or replacement. Existing
 installation or transitive presence must be inventoried rather than assumed absent. The earlier

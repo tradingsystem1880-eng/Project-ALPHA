@@ -2,7 +2,7 @@
 
 **Status:** [what works today](STATUS.md) · [what the codes mean](docs/reference/glossary.md)
 
-> **Generated-output successor, 2026-11-09 (unqualified):** Two clean local OpenAPI/client/SPA generations are byte-identical. Atlas, installed-worker/runtime acceptance, required exact-tree review and full qualification remain pending. Historical owner/UI results do not qualify this sparse successor. See [build status](docs/BUILD-STATUS.md#2026-11-09--sparse-generated-output-successor-unqualified).
+> **Generated-output successor, 2026-11-09 (unqualified):** Two clean local OpenAPI/client/SPA generations are byte-identical. Atlas, installed-worker/runtime acceptance, required exact-tree review and full qualification remain pending. Historical owner/UI results do not qualify this sparse successor. See [build status](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/BUILD-STATUS.md#2026-11-09--sparse-generated-output-successor-unqualified).
 
 **ALPHA Quant Platform** is a private, local quantitative research workstation for turning a
 market idea into a reproducible test and an auditable decision. It brings point-in-time data,
@@ -15,7 +15,7 @@ explanations. A chart, a model answer, or a profitable backtest alone does not e
 The development direction is to reuse pinned Qlib workflows, RD-Agent native loops and
 NautilusTrader rather than rebuild their internals. ALPHA retains data provenance, trial
 accounting, validation, risk controls and the research UI. The [upstream-first rule](docs/reference/invariants/research-integrity.md#models-and-isolated-workers)
-keeps ALPHA's own acceptance; the dated [native reuse crosswalk](docs/archive/2026-11-context-maps/alpha-quant-platform.md#native-upstream-first--2026-11-06)
+keeps ALPHA's own acceptance; the dated [native reuse crosswalk](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/archive/2026-11-context-maps/alpha-quant-platform.md#native-upstream-first--2026-11-06)
 separates existing integration, supplied synthetic demonstrations and replacements that still
 need parity, migration and rollback evidence.
 
@@ -68,7 +68,7 @@ unfinished or deferred. Paper paths require separate opt-ins and readiness evide
 live-capital route ships**. The [scope and limits](#implemented-scope-and-limits) and
 [authority matrix](docs/governance/capability-authority-matrix.md) explain these boundaries.
 
-The [first daily rule/control route](docs/work/2026-10-31-packet3-daily-rule/02-plan.md)
+The [first daily rule/control route](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/2026-10-31-packet3-daily-rule/02-plan.md)
 connects a frozen momentum rule and control to native execution, accounting, cancellation,
 recovery and the existing reports. Artificial fixtures exercise the actual RD-Agent loop under a
 hard 1 GiB container limit; they establish no market result. The approved real-data demonstration
@@ -184,7 +184,7 @@ regression target are independently fabricated; this is not a tested paper hypot
 of market edge. The command reads only its bundled synthetic fixture and writes an isolated output
 bundle, without adding a canonical run, research history, admission, promotion or live routing.
 FitPlan/resource/release decisions and real-data scientific acceptance remain separate.
-The [delivery record](docs/BUILD-STATUS.md#2026-11-07--joined-native-qlib-to-nautilus-synthetic-pipeline-candidate)
+The [delivery record](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/BUILD-STATUS.md#2026-11-07--joined-native-qlib-to-nautilus-synthetic-pipeline-candidate)
 records this bounded scope. This delivery candidate is not yet merged or deployed.
 
 
@@ -293,14 +293,14 @@ the isolated launcher and closed rule/economics environments, validates their id
 prints the source export for later shells. Existing source must remain pinned and clean;
 failed partial acquisitions are preserved and acquired source is validated before use.
 Foundation-only setup stays non-fetching.
-See the [clean-bootstrap record](docs/work/archive/2026-10/2026-10-31-clean-rdagent-bootstrap.md)
+See the [clean-bootstrap record](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-10/2026-10-31-clean-rdagent-bootstrap.md)
 for fresh-workspace/container evidence and its limits. Provisioning does not grant execution authority.
 On a local development checkout, `bash scripts/setup_rdagent.sh` does only the RD-Agent part
 (no Git hooks, npm or browser download); see [workers/rdagent/README.md](workers/rdagent/README.md#install-on-a-development-machine)
 and the owner's overview [RD-Agent in ALPHA](docs/roadmap/rd-agent-in-alpha.md).
 
 The daily research route additionally uses an explicitly qualified, immutable local Docker image
-for its hard physical-memory boundary. Follow the [daily runtime and storage instructions](docs/work/2026-10-31-packet3-daily-rule/02-plan.md#runtime-and-storage-setup).
+for its hard physical-memory boundary. Follow the [daily runtime and storage instructions](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/2026-10-31-packet3-daily-rule/02-plan.md#runtime-and-storage-setup).
 The older synthetic probes retain their existing process boundary.
 
 Before selecting a different research storage root, inspect the existing authoritative history:
@@ -395,8 +395,8 @@ selected, already-installed native source/runtime assets (`ALPHA_RDAGENT_SOURCE`
 `ALPHA_STOCK_PYTHON`). When neither is set (as in CI) the other three lanes still run and the native
 lane is reported as skipped, which is not native qualification; setting only one fails the command.
 
-CI on the pull request is the merge gate: it runs the backend, frontend, literature, Qlib and
-eval components, and the owner merges once it is green. Locally, run the fast check:
+CI on the pull request is the merge gate: it runs the backend, frontend, literature and Qlib
+components, and the owner merges once it is green. Locally, run the fast check:
 
 ```bash
 uv run python scripts/gate.py check
@@ -421,7 +421,7 @@ Native Qlib parity remains open.
 
 Finding your way: [STATUS.md](STATUS.md) says what works today; the root [CONTEXT.md](CONTEXT.md)
 routes each kind of task to the files to read; the [glossary](docs/reference/glossary.md) explains
-the codes. The frozen [build record](docs/BUILD-STATUS.md) preserves dated delivery evidence.
+the codes. The frozen [build record](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/BUILD-STATUS.md) preserves dated delivery evidence.
 
 The isolated worker also offers an explicit [partial Alpha158 feature-v2 correction](workers/qlib/README.md#opt-in-partial-alpha158-feature-correction):
 40 columns use pinned Qlib operators, while 118 retain the legacy recipe. Feature v1 stays the

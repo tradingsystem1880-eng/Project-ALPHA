@@ -2,9 +2,7 @@
 
 The map is hand-written; this module enforces its schema and checks every claim it can check
 against the repository: entry points exist, each ``proof_synthetic`` and ``proof_smoke`` test file
-and test exists, every listed plan exists, and every live task in ``docs/work/`` (its
-``02-plan.md``) belongs to exactly one capability or is listed under ``[[unassigned_plan]]`` with a
-reason.
+and test exists, and every listed document exists.
 
 "Working" means run end to end: a capability is ``Working`` only with at least one ``proof_smoke``
 node (a check under ``tests/smoke/`` that runs the installed programs) that is not skipped or
@@ -26,8 +24,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-import roadmap_index
-
 ROOT = Path(__file__).parents[1]
 MAP = Path("docs/roadmap/capabilities.toml")
 
@@ -35,7 +31,6 @@ STATES = ("Working", "Partial", "Demo only", "Shelved", "Not started")
 RECOMMENDATIONS = ("KEEP", "SHELVE", "SHELVE (your call)", "DELETE", "YOUR CALL")
 DECISIONS = ("undecided", "KEEP", "SHELVE", "DELETE")
 INTERNAL_ONLY = "nothing to see yet — internal only"
-LIVE_STATES = roadmap_index._LIVE_ORDER
 SMOKE_DIR = "tests/smoke/"
 # A Partial capability whose 'missing' ends with this has in-process tests but no smoke check.
 NO_SMOKE_YET = "no end-to-end smoke check yet"
@@ -57,7 +52,6 @@ _CAPABILITY_KEYS = {
     "real_data": str,
     "needs": list,
     "state": str,
-    "plans": list,
 }
 _OPTIONAL_KEYS = {
     "codes": list,
@@ -101,7 +95,6 @@ class Capability:
     state: str
     missing: str
     triage: Triage | None
-    plans: tuple[str, ...]
     docs: tuple[str, ...] = ()
 
     @property
@@ -132,25 +125,9 @@ class KnownDefect:
 
 
 @dataclass(frozen=True)
-class PlanSummary:
-    title: str
-    line: str
-
-
-@dataclass(frozen=True)
-class LivePlan:
-    name: str
-    state: str
-    title: str
-
-
-@dataclass(frozen=True)
 class CapabilityMap:
     capabilities: tuple[Capability, ...]
     decisions: tuple[Decision, ...]
-    unassigned_plans: dict[str, str]
-    plan_summaries: dict[str, PlanSummary]
-    live_plans: tuple[LivePlan, ...]
     known_defects: tuple[KnownDefect, ...] = ()
 
     def triage_items(self) -> list[tuple[str, Triage]]:
@@ -227,7 +204,6 @@ def _capability(index: int, raw: object) -> Capability:
         state=_text(where, "state", table["state"]),
         missing=str(table.get("missing", "")),
         triage=_triage(f"{where} triage", table["triage"]) if "triage" in table else None,
-        plans=_strings(where, "plans", table["plans"]),
         docs=_strings(where, "docs", table.get("docs", [])),
     )
     if _ID.fullmatch(cap.id) is None:
@@ -436,24 +412,13 @@ def _known_defects(root: Path, raw: object) -> tuple[KnownDefect, ...]:
     return tuple(defects)
 
 
-def _live_plans(root: Path) -> tuple[LivePlan, ...]:
-    live: list[LivePlan] = []
-    for rel in roadmap_index.live_plans(root):
-        text = (root / rel).read_text(encoding="utf-8")
-        state = roadmap_index._plan_state(rel, text)
-        if not state.startswith(roadmap_index._FINISHED):
-            name = roadmap_index.task_name(rel)
-            live.append(LivePlan(name, state, roadmap_index._title(rel, text)))
-    return tuple(live)
-
-
 def load(root: Path = ROOT) -> CapabilityMap:
     """Parse and fully check the capability map against the repository at ``root``."""
     try:
         data = tomllib.loads((root / MAP).read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as exc:
         raise CapabilityError(f"{MAP}: not valid TOML: {exc}") from exc
-    allowed = {"capability", "decision", "unassigned_plan", "plan_summary", "known_defect"}
+    allowed = {"capability", "decision", "known_defect"}
     if set(data) - allowed:
         raise CapabilityError(f"{MAP}: unknown top-level keys {sorted(set(data) - allowed)}")
     raw_caps = data.get("capability", [])
@@ -475,19 +440,6 @@ def load(root: Path = ROOT) -> CapabilityMap:
     if dup_cards:
         raise CapabilityError(f"{MAP}: triage cards listed more than once: {sorted(dup_cards)}")
 
-    unassigned: dict[str, str] = {}
-    for i, raw in enumerate(data.get("unassigned_plan", [])):
-        table = _table(f"unassigned_plan #{i + 1}", raw, {"plan", "reason"})
-        plan = _text(f"unassigned_plan #{i + 1}", "plan", table["plan"])
-        unassigned[plan] = _text(f"unassigned_plan '{plan}'", "reason", table["reason"])
-    summaries: dict[str, PlanSummary] = {}
-    for i, raw in enumerate(data.get("plan_summary", [])):
-        table = _table(f"plan_summary #{i + 1}", raw, {"plan", "title", "line"})
-        plan = _text(f"plan_summary #{i + 1}", "plan", table["plan"])
-        summaries[plan] = PlanSummary(
-            _text(plan, "title", table["title"]), _text(plan, "line", table["line"])
-        )
-
     known = {"cli": _cli_names(root), "api": _api_routes(root), "script": _console_scripts(root)}
     for cap in caps:
         where = f"capability '{cap.id}'"
@@ -501,28 +453,7 @@ def load(root: Path = ROOT) -> CapabilityMap:
                 raise CapabilityError(f"{where}: doc {doc!r} is not a Markdown file in the repo")
     defects = _known_defects(root, data.get("known_defect", []))
 
-    try:
-        live = _live_plans(root)
-    except roadmap_index.RoadmapError as exc:
-        raise CapabilityError(str(exc)) from exc
-    live_names = {p.name for p in live}
-    owners = Counter([p for c in caps for p in c.plans] + list(unassigned))
-    for plan, count in sorted(owners.items()):
-        if plan not in live_names:
-            raise CapabilityError(f"{MAP}: {plan} is not a live task in {roadmap_index.WORK}")
-        if count > 1:
-            raise CapabilityError(f"{MAP}: {plan} is assigned {count} times")
-    orphans = sorted(live_names - set(owners))
-    if orphans:
-        raise CapabilityError(f"{MAP}: live plans assigned to no capability: {orphans}")
-    in_progress = {p.name for p in live if p.state == "In progress"}
-    if set(summaries) != in_progress:
-        raise CapabilityError(
-            f"{MAP}: [[plan_summary]] must cover exactly the In progress plans; "
-            f"missing {sorted(in_progress - set(summaries))}, "
-            f"extra {sorted(set(summaries) - in_progress)}"
-        )
-    return CapabilityMap(caps, tuple(decisions), unassigned, summaries, live, defects)
+    return CapabilityMap(caps, tuple(decisions), defects)
 
 
 def main(argv: list[str] | None = None) -> int:

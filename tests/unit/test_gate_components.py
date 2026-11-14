@@ -78,12 +78,6 @@ def test_components_write_no_state(repo: Path, monkeypatch: pytest.MonkeyPatch) 
     assert not (repo / ".alpha").exists()
 
 
-def test_eval_component_runs_its_own_offline_suite() -> None:
-    commands = gate_components.component_steps(ROOT, "eval")
-    assert all(cwd.name == "alpha-eval" for _, cwd, _ in commands)
-    assert ["uv", "run", "pytest", "-q", "-m", "not network"] in [c for _, _, c in commands]
-
-
 def test_component_cli_accepts_every_registered_component() -> None:
     parser = gate.build_parser()
     for name in gate_components.COMPONENTS:
@@ -257,29 +251,28 @@ def test_shard_spec_rejects_out_of_range(bad: str) -> None:
 @pytest.mark.parametrize(
     ("paths", "expected"),
     [
-        (["docs/notes.md"], {"qlib": False, "literature": False, "eval": True}),
+        (["docs/notes.md"], {"qlib": False, "literature": False}),
         (["apps/alpha-web/frontend/src/App.tsx"], {"qlib": False, "literature": False}),
-        (["workers/literature/src/x.py"], {"qlib": False, "literature": True, "eval": False}),
+        (["workers/literature/src/x.py"], {"qlib": False, "literature": True}),
         (["apps/alpha-cli/src/alpha_cli/x.py"], {"qlib": True, "literature": False}),
-        (["scripts/gate_components.py"], {"qlib": True, "literature": True, "eval": True}),
-        ([".github/workflows/ci.yml"], {"qlib": True, "literature": True, "eval": True}),
-        (["workers/qlib/pyproject.toml"], {"qlib": True, "literature": False, "eval": False}),
-        (["tools/alpha-eval/pyproject.toml"], {"qlib": False, "eval": True}),
-        (None, {"qlib": True, "literature": True, "eval": True, "quant": True}),
-        ([], {"qlib": False, "literature": False, "eval": False, "quant": False}),
+        (["scripts/gate_components.py"], {"qlib": True, "literature": True}),
+        ([".github/workflows/ci.yml"], {"qlib": True, "literature": True}),
+        (["workers/qlib/pyproject.toml"], {"qlib": True, "literature": False}),
+        (None, {"qlib": True, "literature": True, "quant": True}),
+        ([], {"qlib": False, "literature": False, "quant": False}),
     ],
 )
 def test_path_filters_select_conditional_jobs(
     paths: list[str] | None, expected: dict[str, bool]
 ) -> None:
     selected = gate_components.ci_changes(ROOT, {"paths": paths})
-    assert set(selected) == {"qlib", "literature", "eval", "quant"}
+    assert set(selected) == {"qlib", "literature", "quant"}
     assert {name: selected[name] for name in expected} == expected
 
 
 def test_push_runs_every_path_job_but_quant_keeps_its_own_rule() -> None:
     selected = gate_components.ci_changes(ROOT, {"paths": ["README.md"]}, run_all=True)
-    assert selected == {"qlib": True, "literature": True, "eval": True, "quant": False}
+    assert selected == {"qlib": True, "literature": True, "quant": False}
     quant = gate_components.ci_changes(
         ROOT, {"paths": ["packages/alpha-validation/src/alpha_validation/dsr.py"]}
     )
@@ -293,7 +286,7 @@ def test_changes_cli_prints_github_output_lines(
     monkeypatch.setenv("ALPHA_GATE_BASE", "missing-base")
     assert gate.main(["changes"]) == 0
     lines = capsys.readouterr().out.splitlines()
-    assert lines == ["eval=true", "literature=true", "qlib=true", "quant=false"]
+    assert lines == ["literature=true", "qlib=true", "quant=false"]
 
 
 def test_coverage_refuses_missing_shard_data(

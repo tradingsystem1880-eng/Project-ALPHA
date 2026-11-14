@@ -7,7 +7,7 @@ sources:
   - scripts/gate_components.py
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
   - apps/alpha-cli/src/alpha_cli/_structural_digest.py
-verified: ece43e45fa04
+verified: 3a0098cd96e3
 ---
 
 # Engineering rules
@@ -35,7 +35,7 @@ Project-wide coding rules. Area files add their own detail and link here. The re
 - The contracts are the `[tool.importlinter]` section of `pyproject.toml`; check with
   `uv run lint-imports`. Never add an `ignore_imports` exception without an ADR (the one existing
   exception, the owner-auth seam, is ADR-0030).
-- Workers (`workers/*`) and `tools/alpha-eval` are separate uv projects; no root package imports them.
+- Workers (`workers/*`) are separate uv projects; no root package imports them.
 
 ## Subprocess boundary
 
@@ -150,7 +150,7 @@ Project-wide coding rules. Area files add their own detail and link here. The re
   [ADR-0039](../../adr/0039-ci-is-the-merge-gate.md)
 - One CI job locally: `uv run python scripts/gate.py component NAME` (`backend` is the whole
   backend; CI runs it as `backend-static`, `backend-tests --shard I/4` and `backend-quant`;
-  also `frontend`, `frontend-full`, `literature`, `qlib`, `eval`). Every check: [checks](../checks.md).
+  also `frontend`, `frontend-full`, `literature`, `qlib`). Every check: [checks](../checks.md).
 - Step by step, with focused checks and owned test processes: [development loop](../../operations/development-loop.md).
 - CI passing changes no application authority: owner actions, approvals and promotion are unchanged by it.
 - A check result holds only for the exact tree and environment it ran on, with its command, exit and scope.

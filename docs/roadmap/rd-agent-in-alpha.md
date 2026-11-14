@@ -69,7 +69,7 @@ Run on the Dell on 2026-11-14:
   built-in model settings, tuned for about 300 Chinese stocks, gave every coin the same score
   every day, so the profit figures are noise and the "keep it" verdict rests on noise. This run
   was set up by hand outside the repository; no ALPHA job runs it
-  ([verification](../work/archive/2026-11/2026-11-14-rdagent-first-real-loop/04-verify.md)).
+  ([verification](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-rdagent-first-real-loop/04-verify.md)).
 - **A loop that ALPHA judges, three rounds on real data — nothing found yet.** Same RD-Agent factor
   loop, unmodified, but ALPHA now does the judging through RD-Agent's own settings
   ([ADR-0049](../adr/0049-alpha-judges-rdagent-factors.md)): each new factor is first screened by
@@ -81,7 +81,7 @@ Run on the Dell on 2026-11-14:
   and over 28 days) ranked returns strongly (calmer coins did better day by day), but buying the
   calmest third lost money against simply holding all 15 coins, after costs; so no factor became
   a candidate. Everything is labelled exploratory and is about 15 coins that survived to today
-  ([verification](../work/archive/2026-11/2026-11-14-rdagent-alpha-judged-loop/04-verify.md)).
+  ([verification](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/094ce61213923cf9b74661013703cd6ebad16ecc/docs/work/archive/2026-11/2026-11-14-rdagent-alpha-judged-loop/04-verify.md)).
 
 ## What is still made-up
 
@@ -104,7 +104,7 @@ Run on the Dell on 2026-11-14:
    asks it for answers; it passes each request to the Codex program you are signed in to with
    ChatGPT and gets text comparisons from Ollama, keeps a hard budget, and records every call
    without its text. No key is stored. Measured answers:
-   [verification](../work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md). You
+   [verification](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md). You
    accepted, for now, that the Codex route cannot use RD-Agent's "temperature" setting
    ([log](../reference/project/owner-decisions-2.md#2026-11-14-accept-losing-temperature-on-the-codex-route-for-now));
    it is recorded on every call. On 2026-11-14 you allowed DeepSeek through OpenRouter for
@@ -126,7 +126,7 @@ Run on the Dell on 2026-11-14:
    intended design; engineering, overlaps item 6); or, as a calibration only, one run on Qlib's
    public Chinese-stock data (a download). RD-Agent's own settings files stay unmodified. Also
    engineering: pin the extra Python packages, the Qlib image and the launcher this run set up by
-   hand ([handoff](../work/archive/2026-11/2026-11-14-rdagent-first-real-loop/05-handoff.md)).
+   hand ([handoff](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-rdagent-first-real-loop/05-handoff.md)).
 3. **A place to keep the data — your decision is in, one command is left.** You decided on
    2026-11-14 to use the Dell's disk for now. The free-space reserve is now a value you set per
    data folder ([ADR-0043](../adr/0043-storage-reserve-is-owner-set.md)): the old rule (keep

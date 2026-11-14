@@ -61,7 +61,7 @@ download shows `quality_status: passed`, which means only that the mechanical ch
   `alpha crypto-data backfill`; plus one Binance spot market list (`market_membership`). BTC and
   ETH daily bars also went through `alpha data pull --source ccxt --exchange binance` into the
   stock store, so the stock backtest commands can read them. Totals and the exact commands:
-  [verification record](../../../work/archive/2026-11/2026-11-14-free-real-data-dell/04-verify.md).
+  [verification record][free-data].
 - **Binance's terms** (Binance Vision Dataset Terms, version 1.0, last updated 26 August 2026):
   free under CC BY-NC-SA 4.0 for, among other uses, "algorithmic historical backtesting for
   purely personal non-production research"; live trading on the data is not allowed. Raw files
@@ -72,7 +72,7 @@ download shows `quality_status: passed`, which means only that the mechanical ch
   splits and dividends, frozen in snapshot `free-yfinance-stocks-2026-11-14`. These are today's
   large companies, so the set is survivor-biased; use it for plumbing and exploration, not for
   claims about a universe. Totals and commands:
-  [verification record](../../../work/archive/2026-11/2026-11-14-alpaca-stock-data/04-verify.md).
+  [verification record][alpaca-data].
 - **Stocks from Alpaca, 2026-11-14:** `alpha data pull --source alpaca` (Alpaca's free plan,
   consolidated SIP daily history, raw prices plus splits and dividends,
   [ADR-0047](../../../adr/0047-alpaca-interim-stock-source.md)) for the same set minus QQQ,
@@ -151,3 +151,8 @@ Decided: the unused QuantPad code is removed and old records stay readable
 - Never change a snapshot or receipt after it is written.
 - The rules: [data invariants](../../invariants/data.md) and
   [point-in-time reads](../../invariants/research-integrity.md#point-in-time-reads).
+
+[free-data]:
+  https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-free-real-data-dell/04-verify.md
+[alpaca-data]:
+  https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/work/archive/2026-11/2026-11-14-alpaca-stock-data/04-verify.md

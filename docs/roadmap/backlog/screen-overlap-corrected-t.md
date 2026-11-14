@@ -28,5 +28,5 @@ change touches the root `uv.lock`, which is approval-bound while the first real 
 
 ## Sources
 
-- Task record: `docs/work/archive/2026-11/2026-11-14-prove-quick-screening/04-verify.md`
+- Task record: pull request #171 (its `04-verify.md`)
 - Newey and West (1987), Econometrica 55(3), DOI 10.2307/1913610

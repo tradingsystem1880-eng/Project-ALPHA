@@ -1,4 +1,4 @@
-"""Document search reads only tracked, allow-listed documentation and ranks live before history."""
+"""Document search reads only tracked, allow-listed documentation; heading matches rank first."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ def docs_repo(tmp_path: Path) -> Path:
         tmp_path,
         {
             "CLAUDE.md": "# ALPHA\nResearch precedes strategy.\n",
-            "docs/context/features.md": "# Feature scope\n## H26 context filesystem\n"
+            "docs/roadmap/backlog/features.md": "# Feature scope\n## H26 context filesystem\n"
             "Queryable intent and task context. NOT_TESTED; backup is separate.\n",
             "docs/work/2026-11-01-task/02-plan.md": "# Context task\n## Verification\n"
             "Context filesystem implementation remains pending.\n",
@@ -44,13 +44,12 @@ def docs_repo(tmp_path: Path) -> Path:
 def test_search_keeps_line_ranges_headings_and_skips_private_paths(docs_repo: Path) -> None:
     found = search_sections(read_sources(docs_repo), "context filesystem")
     assert len(found) == 3
-    assert {row.kind for row in found} == {"project", "task", "decision"}
+    assert {row.kind for row in found} == {"feature", "task", "decision"}
     feature = next(row for row in found if "H26" in row.heading)
     assert (feature.start, feature.end) == (2, 3)
     assert feature.heading == "Feature scope / H26 context filesystem"
     assert "NOT_TESTED; backup is separate" in feature.text
     assert all("SECRET" not in row.text for row in found)
-    assert {row.lifecycle for row in found} == {"live"}
 
 
 def test_kind_filter_and_query_bounds(docs_repo: Path) -> None:
@@ -65,52 +64,37 @@ def test_kind_filter_and_query_bounds(docs_repo: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("rel", "kind", "lifecycle"),
+    ("rel", "kind"),
     [
-        ("docs/BUILD-STATUS.md", "history", "archived"),
-        ("docs/build-status/2026-Q3.md", "history", "archived"),
-        ("docs/records/2026-10-21-decision.md", "history", "archived"),
-        ("docs/records/audits/2026-07-05-audit.md", "history", "archived"),
-        ("docs/records/investigations/2026-06-23-bias.md", "history", "archived"),
-        ("docs/work/archive/2026-10/2026-10-26-done.md", "task", "archived"),
-        ("docs/work/archive/2026-11/2026-11-02-done/04-verify.md", "task", "archived"),
-        ("docs/records/specs/2026-07-16-design.md", "feature", "archived"),
-        ("docs/archive/README.md", "history", "archived"),
-        ("docs/archive/2026-prompts/old-prompt.md", "history", "archived"),
-        ("docs/work/2026-11-01-live/02-plan.md", "task", "live"),
-        ("workflow/stages/02-plan/CONTEXT.md", "project", "live"),
-        ("docs/roadmap/backlog/options-research.md", "feature", "live"),
-        ("docs/roadmap/refactors/split-models.md", "feature", "live"),
-        ("docs/context/feature-readiness-checklist-2026-10-27.md", "feature", "live"),
-        (".claude/rules/docs.md", "reference", "live"),
-        ("CONTEXT.md", "project", "live"),
-        ("STATUS.md", "project", "live"),
-        ("docs/archive/2026-11-context-maps/software-team.md", "history", "archived"),
-        ("packages/alpha-data/CONTEXT.md", "project", "live"),
-        ("apps/alpha-web/CONTEXT.md", "project", "live"),
-        ("tests/CONTEXT.md", "project", "live"),
-        ("docs/reference/commands.md", "reference", "live"),
-        ("docs/reference/invariants/data.md", "reference", "live"),
+        ("docs/work/2026-11-01-live/02-plan.md", "task"),
+        ("workflow/stages/02-plan/CONTEXT.md", "project"),
+        ("docs/roadmap/backlog/options-research.md", "feature"),
+        ("docs/roadmap/refactors/split-models.md", "feature"),
+        (".claude/rules/docs.md", "reference"),
+        ("CONTEXT.md", "project"),
+        ("STATUS.md", "project"),
+        ("packages/alpha-data/CONTEXT.md", "project"),
+        ("apps/alpha-web/CONTEXT.md", "project"),
+        ("tests/CONTEXT.md", "project"),
+        ("docs/reference/commands.md", "reference"),
+        ("docs/reference/invariants/data.md", "reference"),
+        ("docs/archive/research-notes/2026-06/00-SYNTHESIS.md", "research"),
+        ("docs/archive/research-notes/feature-readiness-checklist-2026-10-27.md", "research"),
     ],
 )
-def test_families_and_lifecycles(rel: str, kind: str, lifecycle: str) -> None:
+def test_families(rel: str, kind: str) -> None:
     assert fs_search.family(rel) == kind
-    assert fs_search.lifecycle(rel) == lifecycle
 
 
 @pytest.mark.parametrize(
     "rel",
     [
-        "docs/build-status/notes/deep.md",
-        "docs/records/other/2026-01-01-x.md",
-        "docs/work/archive/README.md",
-        "docs/work/archive/misc/x.md",
-        "docs/work/archive/2026-10/2026-10-01-x/deep/x.md",
+        "docs/work/2026-11-01-x/deep/x.md",
         "docs/work/2026-11-01-x/data.json",
         "docs/roadmap/README.md",
-        "docs/archive/research-one-offs/x/script.py",
-        "docs/archive/data-hygiene/report.json",
-        "docs/context/image.png",
+        "docs/roadmap/backlog/image.png",
+        "docs/archive/research-notes/mizerxbt-eth/mizerxbt_eth_short_1h.py",
+        "docs/archive/other/x.md",
         "data/private.md",
         "tests/holdout/private.md",
         "tests/holdout/CONTEXT.md",
@@ -123,30 +107,25 @@ def test_paths_outside_the_allow_list_are_not_sources(rel: str) -> None:
     assert fs_search.family(rel) is None
 
 
-def test_live_documents_rank_ahead_of_archived_history(docs_repo: Path) -> None:
+def test_heading_matches_rank_ahead_of_text_matches(docs_repo: Path) -> None:
     _add(
         docs_repo,
         {
-            # The archived plan matches more strongly (heading); live still ranks first.
-            "docs/work/archive/2026-10/2026-10-01-old.md": "# Ledger rotation\n"
-            "Ledger rotation plan, first attempt.\n",
+            "docs/adr/0002-ledger.md": "# Ledger rotation\nLedger rotation plan.\n",
             "docs/work/2026-11-01-new/02-plan.md": "# New plan\nThe ledger rotation plan.\n",
-            "docs/BUILD-STATUS.md": "# Build\n## Ledger rotation\nLedger rotation shipped.\n",
         },
     )
     found = search_sections(read_sources(docs_repo), "ledger rotation")
     assert [row.path for row in found] == [
+        "docs/adr/0002-ledger.md",
         "docs/work/2026-11-01-new/02-plan.md",
-        "docs/BUILD-STATUS.md",
-        "docs/work/archive/2026-10/2026-10-01-old.md",
     ]
-    assert [row.lifecycle for row in found] == ["live", "archived", "archived"]
 
 
 def test_untracked_and_symlinked_documents_are_never_opened(docs_repo: Path) -> None:
-    (docs_repo / "docs/context/untracked.md").write_text("SECRET context")
-    assert "docs/context/untracked.md" not in read_sources(docs_repo)
-    linked = docs_repo / "docs/context/link.md"
+    (docs_repo / "docs/roadmap/backlog/untracked.md").write_text("SECRET context")
+    assert "docs/roadmap/backlog/untracked.md" not in read_sources(docs_repo)
+    linked = docs_repo / "docs/roadmap/backlog/link.md"
     linked.symlink_to(docs_repo / "tests/holdout/private.md")
     subprocess.run(["git", "-C", str(docs_repo), "add", str(linked)], check=True)
     with pytest.raises(ValueError, match="symlink"):
@@ -154,7 +133,7 @@ def test_untracked_and_symlinked_documents_are_never_opened(docs_repo: Path) -> 
 
 
 def test_parent_directory_symlink_is_rejected_before_read(docs_repo: Path) -> None:
-    directory = docs_repo / "docs/context"
+    directory = docs_repo / "docs/roadmap/backlog"
     directory.rename(docs_repo / "saved-context")
     directory.symlink_to(docs_repo / "data", target_is_directory=True)
     with pytest.raises(ValueError, match="symlink"):
@@ -162,7 +141,7 @@ def test_parent_directory_symlink_is_rejected_before_read(docs_repo: Path) -> No
 
 
 def test_missing_tracked_document_fails_loud(docs_repo: Path) -> None:
-    (docs_repo / "docs/context/features.md").unlink()
+    (docs_repo / "docs/roadmap/backlog/features.md").unlink()
     with pytest.raises(FileNotFoundError):
         read_sources(docs_repo)
 
@@ -189,13 +168,11 @@ def test_cli_text_and_json(docs_repo: Path, capsys: pytest.CaptureFixture[str]) 
     assert fs.main([*root, "search", "context filesystem", "--format", "json"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["authority"] == "none" and payload["matched"] == 3
-    assert {"path", "heading", "start", "end", "kind", "lifecycle", "text"} <= set(
-        payload["results"][0]
-    )
+    assert {"path", "heading", "start", "end", "kind", "text"} <= set(payload["results"][0])
     assert fs.main([*root, "search", "context filesystem", "--limit", "2"]) == 0
     rendered = capsys.readouterr().out
     assert "2 of 3 matches" in rendered
-    assert "[live, decision]" in rendered or "[live, project]" in rendered
+    assert "[decision]" in rendered or "[feature]" in rendered
     assert "Not shown (1):" in rendered
     assert fs.main(["--root", str(docs_repo / "data"), "search", "context"]) == 2
     assert "no tracked documents" in capsys.readouterr().err

@@ -28,4 +28,4 @@ and the mutation gate; schedule it after the first real study is approved.
 
 ## Sources
 
-- Task record: `docs/work/archive/2026-11/2026-11-14-prove-risk-numbers/04-verify.md`
+- Task record: pull request #174 (its `04-verify.md`)

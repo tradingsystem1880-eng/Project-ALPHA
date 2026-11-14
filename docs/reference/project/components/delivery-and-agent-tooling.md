@@ -5,7 +5,6 @@ sources:
   - scripts/CONTEXT.md
   - tests/CONTEXT.md
   - docs/CONTEXT.md
-  - tools/alpha-eval/CONTEXT.md
   - docs/reference/model-routing.md
 verified: fbfecd65355d
 ---
@@ -13,7 +12,7 @@ verified: fbfecd65355d
 # Delivery and agent tooling
 
 How ALPHA itself is changed: the five-stage delivery pipeline, the one check (the gate), the test
-suite with its look-ahead guards and statistical oracles, the agent benchmark, and this file
+suite with its look-ahead guards and statistical oracles, and this file
 system that tells every agent what to read.
 
 ## Why it exists
@@ -52,12 +51,12 @@ documents, flaky tests and unfinished work, opens small draft clean-up pull requ
 
 ## Where it lives
 
-- **Workspaces:** `workflow`, `scripts`, `tests`, `docs`, `tools/alpha-eval`
+- **Workspaces:** `workflow`, `scripts`, `tests`, `docs`
 - **Capabilities:** none
-- Code: `scripts/` (gate, file-system tools, hand-off), `tests/`, `tools/alpha-eval/`, `.claude/`.
+- Code: `scripts/` (gate, file-system tools, hand-off), `tests/`, `.claude/`.
 - How to change it: [workflow/CONTEXT.md](../../../../workflow/CONTEXT.md),
   [scripts/CONTEXT.md](../../../../scripts/CONTEXT.md), [tests/CONTEXT.md](../../../../tests/CONTEXT.md),
-  [docs/CONTEXT.md](../../../CONTEXT.md), [tools/alpha-eval/CONTEXT.md](../../../../tools/alpha-eval/CONTEXT.md).
+  [docs/CONTEXT.md](../../../CONTEXT.md).
 - Backlog: [weekly mutation sweep](../../../roadmap/backlog/weekly-mutation-sweep.md).
 - Decision records: [ADR-0034](../../../adr/0034-agent-operating-system-v2.md),
   [ADR-0037](../../../adr/0037-agent-neutral-research-engineering.md),

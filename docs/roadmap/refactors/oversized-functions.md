@@ -4,9 +4,9 @@
 
 ## Scope
 
-`.claude/code-size-baseline.json` caps 98 functions over the 150-line limit (2026-11-14, `def` line
-to last line; `tests/unit/test_code_size.py` enforces it): 55 of 151-200 lines, 32 of 201-300,
-11 over 300, 21,389 lines in all. Largest: `_suite.py::build_suite_plan` 889,
+`.claude/code-size-baseline.json` caps 96 functions over the 150-line limit (2026-11-14, `def` line
+to last line; `tests/unit/test_code_size.py` enforces it): 53 of 151-200 lines, 32 of 201-300,
+11 over 300, 21,056 lines in all. Largest: `_suite.py::build_suite_plan` 889,
 `alpha_qlib_worker/real.py::_fold_model` 394, `tabular_adapters.py::fit_tabular` 329,
 `research_intake.py::draft_exploration_contract` 325, `_artifacts.py::write_execution_trace` 325,
 `portfolio_replay.py::run_weight_replay` 321, `alpha_research/gate_packet.py::build_research_gate_packet`
@@ -16,7 +16,7 @@ to last line; `tests/unit/test_code_size.py` enforces it): 55 of 151-200 lines, 
 |---|---:|---|
 | `control_store.py` | 18 | daily-rule approvals; planned in `control-store-split.md` |
 | other approval-bound files (`research_intake.py`, `alpha_research/gate_packet.py`, `_artifacts.py`, `artifact_contract.py`, `_native_fixture_store.py`, `_native_rule_completion.py`, `daily_native_cmds.py`) | 9 | research or daily-rule approvals; `alpha_research` is also quant tier (mutation gate) |
-| isolated workers (`workers/qlib`, `workers/rdagent`) and `tools/alpha-eval` | 7 | worker tests and CI jobs; no approval for Qlib or eval |
+| isolated workers (`workers/qlib`, `workers/rdagent`) | 5 | worker tests and CI jobs; no approval for Qlib |
 | harness scripts (`scripts/gate*.py`, `harness_quant.py`, `mutation_sweep.py`, browser lanes) | 5 | protected files: reviewed pull request |
 | `alpha_data` | 3 | owned by the data stream while it works there |
 | everything else (`research_cmds.py` 6, `research_gate_packet.py` 4, command modules, `_suite.py`, backtest, strategies, web) | 56 | run fingerprints only |

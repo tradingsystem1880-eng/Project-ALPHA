@@ -13,7 +13,7 @@ from typing import Any
 import gate
 import gate_components
 
-PUBLIC_TRACKED_ROOTS = (".semgrep", ".githooks", ".github/workflows", "tools/alpha-eval")
+PUBLIC_TRACKED_ROOTS = (".semgrep", ".githooks", ".github/workflows")
 EXPECTED_PUBLIC_FILES = (
     ".semgrep/alpha.yml",
     ".semgrep/fixtures/float_contract.py.txt",
@@ -29,8 +29,6 @@ EXPECTED_PUBLIC_FILES = (
     "scripts/gate_components.py",
     "scripts/wheel_smoke.py",
     "tests/unit/test_claude_md_relocation.py",
-    "tools/alpha-eval/pyproject.toml",
-    "tools/alpha-eval/uv.lock",
 )
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]

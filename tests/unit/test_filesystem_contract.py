@@ -5,14 +5,14 @@ The file system (ADR-0040) follows the Interpretable Context Methodology adapted
 * Layer 0: ``CLAUDE.md`` (identity and the non-negotiable rules) and ``AGENTS.md`` (a pointer for
   other agents) are small and send the reader to the root ``CONTEXT.md``.
 * Layer 1: the root ``CONTEXT.md`` routes every kind of task to a workspace.
-* Layer 2: every workspace (each project under ``packages/``, ``apps/``, ``workers/``, ``tools/``,
+* Layer 2: every workspace (each project under ``packages/``, ``apps/``, ``workers/``,
   plus ``scripts/``, ``tests/``, ``docs/``, the delivery pipeline ``workflow/`` and the research
   pipeline ``research/``) has a ``CONTEXT.md`` with the sections Purpose, Read first, How to
   change it, Outputs. Its Read first table names exact files and sections. Each stage of either
   pipeline, ``<pipeline>/stages/NN-name/``, has a ``CONTEXT.md`` with Purpose, Inputs, Read
   first, Process, Outputs, Checkpoint, and the pipeline's ``CONTEXT.md`` links every stage.
-* Outputs: each task folder ``docs/work/<yyyy-mm-dd>-<slug>/`` holds only stage files and always
-  its ``02-plan.md``.
+* Outputs: a task folder ``docs/work/<yyyy-mm-dd>-<slug>/`` exists only on a branch while its
+  pull request is open, and holds only stage files and always its ``02-plan.md``.
 * Layer 3: reference documents under ``docs/reference/``: the rules (``invariants/``) and the
   project layer (``project/``: what each major part is for, and the owner's decisions).
 * Loading: each workspace has a one-line ``CLAUDE.md`` that imports its ``CONTEXT.md``; Claude
@@ -41,7 +41,7 @@ from tests.unit.test_docs_links import _FENCE, _HEADING, anchors, broken_links, 
 
 ROOT = Path(__file__).parents[2]
 CONTEXT = "CONTEXT.md"
-WORKSPACE_PARENTS = ("packages", "apps", "workers", "tools")
+WORKSPACE_PARENTS = ("packages", "apps", "workers")
 EXTRA_WORKSPACES = ("scripts", "tests", "docs", "workflow", "research")
 REFERENCE_DIR = "docs/reference"
 REQUIRED_SECTIONS = ("Purpose", "Read first", "How to change it", "Outputs")
@@ -50,7 +50,6 @@ STAGES = "stages"
 STAGE_SECTIONS = ("Purpose", "Inputs", "Read first", "Process", "Outputs", "Checkpoint")
 _STAGE_NAME = re.compile(r"^\d{2}-[a-z]+$")
 WORK_DIR = "docs/work"
-WORK_ARCHIVE = "archive"
 TASK_PLAN = "02-plan.md"
 BUILD_RECORD = "03-build.json"  # written by scripts/handoff.py, committed with the build
 STAGE_OUTPUTS = frozenset({"01-brief.md", TASK_PLAN, BUILD_RECORD, "04-verify.md", "05-handoff.md"})
@@ -459,19 +458,16 @@ def test_every_pipeline_is_a_routed_workspace() -> None:
 
 
 # ---------------------------------------------------------------------------------------------
-# Outputs: task folders under docs/work/
+# Outputs: task folders under docs/work/ (only while their pull request is open)
 
 
 def _task_folders() -> list[Path]:
     root = ROOT / WORK_DIR
-    live = [p for p in root.iterdir() if p.is_dir() and p.name != WORK_ARCHIVE]
-    archived = [p for p in (root / WORK_ARCHIVE).glob("*/*") if p.is_dir()]
-    return sorted(live + archived)
+    return sorted(p for p in root.iterdir() if p.is_dir()) if root.is_dir() else []
 
 
 def test_task_folders_hold_a_plan_and_only_stage_files() -> None:
     folders = _task_folders()
-    assert folders, f"{WORK_DIR} has no task folders"
     problems = []
     for folder in folders:
         rel = folder.relative_to(ROOT).as_posix()
@@ -487,11 +483,11 @@ def test_task_folders_hold_a_plan_and_only_stage_files() -> None:
     assert not problems, "\n".join(problems)
 
 
-def test_work_folder_holds_only_task_folders_and_the_archive() -> None:
-    stray = [
-        p.relative_to(ROOT).as_posix() for p in sorted((ROOT / WORK_DIR).iterdir()) if p.is_file()
-    ]
-    assert not stray, f"{WORK_DIR} holds only task folders and archive/; move: {stray}"
+def test_work_folder_holds_only_task_folders() -> None:
+    root = ROOT / WORK_DIR
+    files = sorted(root.iterdir()) if root.is_dir() else []
+    stray = [p.relative_to(ROOT).as_posix() for p in files if p.is_file()]
+    assert not stray, f"{WORK_DIR} holds only task folders; move: {stray}"
 
 
 # ---------------------------------------------------------------------------------------------

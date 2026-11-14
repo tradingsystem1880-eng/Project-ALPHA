@@ -3,18 +3,16 @@ owner: delivery pipeline
 sources:
   - .github/pull_request_template.md
   - scripts/handoff.py
-  - scripts/roadmap_index.py
   - scripts/status.py
-  - tests/unit/test_status_page.py
-verified: aa600e57932d
+verified: af0137c5fd74
 ---
 
 # Stage 05 — land: pull request to merged and closed
 
 ## Purpose
 
-Get the verified branch merged by the owner through a green pull request, then close the task so
-the status page and roadmap tell the truth.
+Get the verified branch merged through a green pull request whose description is the lasting
+record of the task.
 
 ## Inputs
 
@@ -31,25 +29,19 @@ the status page and roadmap tell the truth.
 ## Process
 
 1. Check "done" (below). Anything not met goes back to stage 03 or 04, or into the hand-off.
-2. Write `05-handoff.md`, commit it, push the branch and open a **draft** pull request whose body
-   is that file: `gh pr create --draft --body-file docs/work/<task>/05-handoff.md`.
+2. Write `05-handoff.md`, push the branch and open a **draft** pull request whose body is that
+   file: `gh pr create --draft --body-file docs/work/<task>/05-handoff.md`. Then remove the task
+   folder in a last commit (`git rm -r docs/work/<task>`): `main` never holds one.
 3. CI on the pull request is the merge gate ([ADR-0039](../../../docs/adr/0039-ci-is-the-merge-gate.md)).
    Fix every failing job on the branch; mark the pull request ready only when CI is green. Review
    by another model goes on the pull request and is advisory.
 4. The orchestrating session merges once `ci-ok` is green and the branch is up to date:
    `gh pr merge <n> --merge` (a merge commit, never squash or rebase: documents pin `verified:`
    commits). The owner delegated routine merging on 2026-11-14. It grants nothing else: research
-   approvals, branch protection, required checks and credentials stay with the owner. When a second
-   branch merges after another, `git merge origin/main` usually needs `STATUS.md` and `docs/roadmap/README.md`
-   regenerated (`uv run python scripts/status.py`, `uv run python scripts/roadmap_index.py`): both are
-   generated from the task folders.
-5. After the merge, on a new branch: set the plan's line to `**Delivery state:** Completed — PR
-   #<n>`; `git mv docs/work/<task> docs/work/archive/<yyyy-mm>/`; remove the task from
-   `docs/roadmap/capabilities.toml`; lower `ceiling` in `docs/roadmap/wip-limit.json` when the
-   count fell (`tests/unit/test_status_page.py` says to what); run
-   `uv run python scripts/roadmap_index.py` and `uv run python scripts/status.py`; fix links to
-   the moved folder. Land that like any small change.
-6. When CI failed twice or more for this work, add a short dated retrospective with a
+   approvals, branch protection, required checks and credentials stay with the owner. When the
+   change altered what a capability does, update its block in `docs/roadmap/capabilities.toml`
+   and run `uv run python scripts/status.py` on the branch before merging.
+5. When CI failed twice or more for this work, add a short dated retrospective with a
    `## Watch-outs` section to `docs/operations/retrospectives/`.
 
 ## Outputs
@@ -75,4 +67,4 @@ Done means all of these hold:
 ## Checkpoint
 
 The owner reads the pull request (it mirrors `05-handoff.md`) and merges or asks for changes.
-After the close-out lands, the task appears under the archive month on the roadmap index.
+After the merge, the pull request and git log are the task's history.

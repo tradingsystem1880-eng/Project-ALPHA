@@ -27,7 +27,7 @@ with one `git mv`.
   (`scripts/gate_select.py:ALWAYS`). Their test code, file names and `holdout` marker are
   unchanged.
 - The exception passages move, verbatim, to
-  [one historical record](../records/2026-11-hidden-suite-exceptions.md).
+  [one historical record](https://github.com/tradingsystem1880-eng/Project-ALPHA/blob/pre-thin-2026-11-14/docs/records/2026-11-hidden-suite-exceptions.md).
 - The guard rules that deny agent access to `tests/holdout/**` (`.claude/settings.json`,
   `scripts/claude_hooks.py`) are left as they are: the folder does not exist, so they block
   nothing.
