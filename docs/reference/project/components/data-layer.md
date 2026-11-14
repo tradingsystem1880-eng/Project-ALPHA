@@ -91,7 +91,8 @@ stock store: `quality_status: legacy_unqualified`).
   `funding-download`, `retained-coverage`, `crypto-snapshots`, `providers-and-jobs`
 - Code: `packages/alpha-data/src/alpha_data/`; the `alpha data` and `alpha crypto-data` commands in
   `apps/alpha-cli/`.
-- Tests: `tests/smoke/test_data_smoke.py`, and the data tests under `tests/unit/` and `tests/bias_guards/`.
+- Tests: `tests/smoke/test_data_smoke.py`, `tests/smoke/test_crypto_data_smoke.py` (crypto downloads through an
+  offline recorded provider, `tests/smoke/_recorded_provider.py`), and the data tests under `tests/unit/` and `tests/bias_guards/`.
 - How to change it: [packages/alpha-data/CONTEXT.md](../../../../packages/alpha-data/CONTEXT.md).
 - Plans: the `plans` of each capability above in `docs/roadmap/capabilities.toml`.
 - Backlog: [offline price import](../../../roadmap/backlog/offline-data-import.md),

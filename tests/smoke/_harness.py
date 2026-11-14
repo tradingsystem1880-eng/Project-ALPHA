@@ -14,7 +14,7 @@ import subprocess
 import sys
 import time
 import urllib.request
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -78,13 +78,19 @@ class Ran:
             pytest.fail(f"expected JSON output\n{self.report()}")
 
 
-def alpha(home: Path, *args: str, expect: int = 0, timeout: float = 300) -> Ran:
+def alpha(
+    home: Path,
+    *args: str,
+    expect: int = 0,
+    timeout: float = 300,
+    env: Mapping[str, str] | None = None,
+) -> Ran:
     """Run ``alpha ARGS`` in ``home`` (also its working directory, so no stray ``.env`` loads)."""
     try:
         proc = subprocess.run(
             [str(program("alpha")), *args],
             cwd=home,
-            env=child_env(home),
+            env=child_env(home, **(env or {})),
             capture_output=True,
             text=True,
             timeout=timeout,

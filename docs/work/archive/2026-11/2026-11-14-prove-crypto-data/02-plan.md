@@ -40,8 +40,8 @@ work-in-progress ceiling admits no new live plan, and the work is finished in on
     "The certificate authority leaks into other tests: it exists only in the child process environment of this check."
   ],
   "slices": [
-    {"title": "Archive errors name the HTTP status", "verify": "uv run pytest -q tests/unit/test_crypto_binance.py", "expected": "all pass; the new HTTP-status tests fail on main", "rollback": "revert binance.py and its test", "status": "pending"},
-    {"title": "Offline recorded provider and the crypto-data smoke check", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_crypto_data_smoke.py", "expected": "2 passed", "rollback": "delete the new smoke files and revert _harness.py and conftest.py", "status": "pending"}
+    {"title": "Archive errors name the HTTP status", "verify": "uv run pytest -q tests/unit/test_crypto_binance.py", "expected": "all pass; the new HTTP-status tests fail on main", "rollback": "revert binance.py and its test", "status": "done"},
+    {"title": "Offline recorded provider and the crypto-data smoke check", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_crypto_data_smoke.py", "expected": "2 passed", "rollback": "delete the new smoke files and revert _harness.py and conftest.py", "status": "done"}
   ],
   "tier_impact": ["none"],
   "docs_to_update": ["docs/roadmap/capabilities.toml", "STATUS.md", "docs/roadmap/README.md", "docs/reference/checks.md", "docs/reference/project/components/data-layer.md", "tests/CONTEXT.md"],
