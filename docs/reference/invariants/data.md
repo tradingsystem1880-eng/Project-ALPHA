@@ -10,7 +10,7 @@ sources:
   - tests/bias_guards/test_pit_*.py
   - tests/bias_guards/test_source_future_poison.py
   - tests/bias_guards/test_universe_survivorship.py
-verified: aa600e57932d
+verified: c3cda7679642
 ---
 
 # Data layer invariants
@@ -129,6 +129,16 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
   ratios that disagree within a row. Transport failures expose only the exception type, with context
   suppressed; the API key travels only in a header. A bounded read keeps its byte ceiling (1 byte to 32 MiB).
   Enforced by `tests/unit/test_tiingo_adapter.py` and `tests/unit/test_tiingo_bounded_fetch.py`.
+- Alpaca ([ADR-0047](../../adr/0047-alpaca-interim-stock-source.md)) is an interim, non-authoritative stock
+  source: SIP feed only, never a fallback feed; raw bars plus split and cash-dividend actions (no announcement
+  date, so knowledge is the ex-date); a split-adjusted series fetched alongside must agree with every split
+  (relative 1e-3 plus Alpaca's price rounding); a stock dividend, spin-off or unit split in the window, two
+  differing records for one action, or dividends on one ex-date that disagree on record or pay date refuse
+  the symbol. The receipt holds every page byte for byte in a canonical envelope that also proves the
+  request (feed, adjustment, symbol, dates); continuation tokens must chain and end. Keys come only from
+  `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY`, are stripped and must be printable ASCII, and never reach an
+  error, receipt or envelope; retries are bounded (3 attempts, waits capped at 60 s, 0.35 s pacing).
+  Enforced by `tests/unit/test_alpaca_adapter.py`.
 - Stooq never solves, bypasses or works around its "verify your browser" check: it sends one request under a
   generic client name and fails loud on a challenge page, its per-IP "Access denied" and HTML bodies; HTTP
   errors and interrupted reads (`IncompleteRead`, timeouts, connection errors) become a typed `DataError`.

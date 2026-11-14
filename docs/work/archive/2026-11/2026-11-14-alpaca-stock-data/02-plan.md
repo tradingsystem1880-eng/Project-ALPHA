@@ -1,6 +1,6 @@
 # Alpaca stock data, and free stock prices now
 
-**Delivery state:** In progress — being built on branch `m5/alpaca-stock-data`.
+**Delivery state:** Completed — built, reviewed and run live on branch `m5/alpaca-stock-data`; done when its pull request merges.
 **Build class:** hard — eight code and test files across `alpha_data` and `alpha_cli`; the documents are Claude's.
 
 Filed straight into the archive, as `2026-11-14-free-real-data-dell` was: the work-in-progress
@@ -11,9 +11,9 @@ ceiling (34, a ratchet) admits no new live plan, and the work is finished in one
 - Now: real daily prices for 16 US stocks and ETFs (SPY, QQQ, IWM, DIA, TLT, IEF, GLD, AAPL, MSFT,
   AMZN, GOOGL, NVDA, META, JPM, XOM, JNJ) from Yahoo through the existing `yfinance` downloader,
   as you decided after being told Yahoo's terms forbid automated collection. Frozen and checked.
-- Next: a new `alpaca` downloader. It does nothing until you create a free Alpaca account and set
-  two key variables in your own terminal (runbook: `docs/operations/alpaca-stock-data.md`).
-  It never stores or prints the key. Then Alpaca replaces Yahoo for new downloads.
+- Next: a new `alpaca` downloader using the key you set in `~/.config/alpha/alpaca.env`
+  (runbook: `docs/operations/alpaca-stock-data.md`). It never stores or prints the key. Alpaca
+  replaces Yahoo for new downloads; 15 of the 16 symbols came in from Alpaca the same day.
 - Everything stays labelled not yet confirmed: neither is the authoritative source (Tiingo,
   ADR-0017), and an Alpaca download can never overwrite Tiingo data.
 - Nothing to decide now.

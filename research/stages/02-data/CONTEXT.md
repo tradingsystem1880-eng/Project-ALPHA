@@ -4,7 +4,7 @@ sources:
   - apps/alpha-cli/src/alpha_cli/research_cmds.py
   - apps/alpha-cli/src/alpha_cli/research_data_audit.py
   - apps/alpha-cli/src/alpha_cli/data_cmds.py
-verified: 9c40aa259c97
+verified: c3cda7679642
 ---
 
 # Stage 02 — data: case to approved exploration contract
@@ -32,7 +32,9 @@ A synthetic-only bundle needs no dataset and goes straight to the draft.
 ## Process
 
 1. Get bars into the store: `uv run alpha data pull <SYMBOL> --source tiingo --start ... --end
-   ...` (every source needs the network; Tiingo needs the owner's key). Then freeze and check
+   ...` (every source needs the network; Tiingo needs the owner's key). On the Dell the interim
+   stock source is `--source alpaca` with the owner's Alpaca key, into its own data folder
+   ([Alpaca runbook](../../../docs/operations/alpaca-stock-data.md)). Then freeze and check
    them: `uv run alpha data snapshot <snapshot-id> <SYMBOL>` and `uv run alpha data verify
    <snapshot-id>`.
 2. Register the research copy: `uv run alpha research data register <SYMBOL> --kind snapshot
