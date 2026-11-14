@@ -47,3 +47,12 @@ The option text was written by the agent, so it is not quoted as the owner's wor
   that refreshes the status page, lists stale documents, flaky tests and unfinished work, and
   opens small clean-up pull requests. It never merges by itself.
 - **Governs:** [delivery and agent tooling](components/delivery-and-agent-tooling.md).
+
+### 2026-11-14 Accept losing temperature on the Codex route, for now
+
+- **Said:** "Accept temperature on codex route. For now. Will test and compare paid api later"
+- **Context:** the Codex route cannot apply RD-Agent's temperature setting (0.5), so the model
+  gateway refuses it unless started with `--accept-unhonoured temperature`
+  ([ADR-0044](../../adr/0044-rdagent-model-gateway.md)). This is a temporary acceptance: a
+  comparison against the paid route is still owed before it is treated as settled.
+- **Governs:** [RD-Agent](components/rd-agent.md).
