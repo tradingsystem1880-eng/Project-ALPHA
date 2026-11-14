@@ -81,7 +81,7 @@ def _validate(row: Any, index: int) -> None:
     if (
         not isinstance(match, dict)
         or set(match) != {"name_regex", "instruments"}
-        or not isinstance(match["name_regex"], str)
+        or not _text(match["name_regex"])
         or not _texts(match["instruments"])
         or ("*" in match["instruments"] and match["instruments"] != ["*"])
     ):
@@ -127,10 +127,16 @@ def entries_from_bytes(raw: bytes) -> list[dict[str, Any]]:
 def snapshot(ledger: Path) -> tuple[list[dict[str, Any]] | None, bytes | None]:
     """Read once so the returned entries and hash input always describe the same bytes."""
     path = _log_path(ledger)
-    try:
-        raw = path.read_bytes()
-    except FileNotFoundError:
+    if not path.exists():
         return None, None
+    lock_path = Path(str(path) + ".lock")
+    if not lock_path.exists():  # reading never creates files; `add` always creates the lock
+        raw = path.read_bytes()
+        return entries_from_bytes(raw), raw
+    # Shared lock: `add` appends line by line under the exclusive lock on the same file.
+    with lock_path.open("rb") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_SH)
+        raw = path.read_bytes()
     return entries_from_bytes(raw), raw
 
 
@@ -164,11 +170,13 @@ def add(ledger: Path, source: Path) -> list[dict[str, Any]]:
         items = json.loads(source.read_bytes())
     except (ValueError, UnicodeError) as error:
         raise DataError(f"invalid exposure input: {error}") from error
-    if not isinstance(items, list):
-        raise DataError("exposure input must be a list")
+    if not isinstance(items, list) or not items:
+        # An empty log would read as "no exposure" rather than "no exposure log".
+        raise DataError("exposure input must be a non-empty list")
     with Path(str(path) + ".lock").open("a+b") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-        history = read_entries(ledger) or []
+        raw = path.read_bytes() if path.exists() else b""
+        history = entries_from_bytes(raw)
         contents = {canonical({k: v for k, v in r.items() if k != "entry_index"}) for r in history}
         rows: list[dict[str, Any]] = []
         for item in items:

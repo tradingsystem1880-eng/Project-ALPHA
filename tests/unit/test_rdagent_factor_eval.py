@@ -550,3 +550,16 @@ def test_imported_rows_count_in_bh_family(tmp_path: Path, monkeypatch: pytest.Mo
     assert result["factors"][0]["q"] == pytest.approx(0.15)
     assert result["factors"][0]["status"] == "SCREEN_FAIL"
     assert ledger.read_bytes().startswith(before)
+
+
+def test_import_refuses_a_different_reserved_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The exposure label is computed from reserved_start, so it must be the ledger's own.
+    _, item = historical(tmp_path)
+    item["windows"] = {**ev.WINDOWS, "reserved_start": "2030-01-01"}
+    source, ledger = tmp_path / "items.json", tmp_path / "trials.jsonl"
+    source.write_text(json.dumps([item]))
+    with pytest.raises(DataError):
+        import_command(ledger, source, monkeypatch)
+    assert not ledger.exists() or not ledger.read_bytes()

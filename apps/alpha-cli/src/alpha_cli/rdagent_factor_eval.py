@@ -499,6 +499,9 @@ def _historical_item(item: Any) -> dict[str, Any]:
         ):
             raise ValueError("invalid historical window date")
         date.fromisoformat(windows[key])
+    if windows["reserved_start"] != RESERVED_START:
+        # The exposure label is computed from this date; it must be the ledger's protected start.
+        raise ValueError(f"historical reserved_start must be {RESERVED_START}")
     return provenance
 
 

@@ -244,3 +244,30 @@ def test_list_json_and_plain_are_read_only(
     assert "1 RANGE_7d FAILED" in output
     assert "previously exposed" in output
     assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+
+
+def test_add_refuses_an_empty_list_and_writes_no_log(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # An empty log would read as "no exposure" instead of "no exposure log".
+    ledger, source = tmp_path / "trials.jsonl", tmp_path / "entries.json"
+    source.write_text("[]")
+    with pytest.raises(DataError):
+        invoke(monkeypatch, "add", "--ledger", str(ledger), "--file", str(source))
+    assert not ex.exposure_log_path(ledger).exists()
+    assert ex.label_for(trial(), ex.read_entries(ledger))["previously_exposed"] is None
+
+
+def test_empty_name_regex_is_refused(tmp_path: Path) -> None:
+    ledger = tmp_path / "trials.jsonl"
+    row = stored(match={"name_regex": "", "instruments": ["*"]})
+    ex.exposure_log_path(ledger).write_bytes(ev.canonical(row))
+    with pytest.raises(DataError):
+        ex.read_entries(ledger)
+
+
+def test_incomplete_last_line_fails_loud(tmp_path: Path) -> None:
+    ledger = tmp_path / "trials.jsonl"
+    ex.exposure_log_path(ledger).write_bytes(ev.canonical(stored())[:-5])
+    with pytest.raises(DataError):
+        ex.snapshot(ledger)
