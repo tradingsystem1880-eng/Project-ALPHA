@@ -1,4 +1,4 @@
-**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+**Delivery state:** Completed — proven end to end by `tests/smoke/test_risk_smoke.py` (2026-11-14, `m8/prove-risk-numbers`); done when that pull request merges.
 
 ```json
 {

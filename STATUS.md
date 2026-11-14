@@ -4,12 +4,12 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 6 working, 25 partly working, 0 demo only, 5 shelved, 1 not started.
-- **Work in progress:** 34 in progress (limit 3).
+- **Capabilities:** 7 working, 24 partly working, 0 demo only, 5 shelved, 1 not started.
+- **Work in progress:** 30 in progress (limit 3).
   - 3 being worked on
-  - 31 built but not yet checked end to end
+  - 27 built but not yet checked end to end
   - Not counted: 7 blocked, 1 planned, not started.
-  - Allowed for now: 34. This number only goes down, until it reaches 3.
+  - Allowed for now: 30. This number only goes down, until it reaches 3.
 - **Known defects:** 0.
 - **Decisions waiting for you:** 0.
 
@@ -23,6 +23,7 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Download crypto market data (W05)** — uv run alpha crypto-data catalog (a real run is recorded)
 - **Run a backtest** — uv run alpha backtest run SPY
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
+- **Risk numbers that state what they are based on (C04)** — uv run alpha risk scenario --from-run <run-id> --json --include-metric-basis (a real run is recorded)
 - **Machine-learning experiments with Qlib** — uv run alpha ml capabilities
 - **Upstream Alpha158 price features** — set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec
 
@@ -51,7 +52,6 @@ Tested piece by piece inside the test suite, but not yet run from start to finis
 - **Write trading rules and scan markets** — tested in-process and in a browser against a test server.
 - **Strategy development workspace** — tested in-process only.
 - **Path-risk simulation (Monte Carlo)** — tested in-process only.
-- **Risk numbers that state what they are based on (C04)** — tested in-process and in a browser against a test server.
 - **Prop-firm challenge check** — tested in-process only.
 - **Quick idea screening (Phase C)** — tested in-process only.
 - **Ask the AI assistant about a recorded run (Codex)** — tested in a browser against a test server only (a real run is recorded).
@@ -112,13 +112,14 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Offline price import from a local file — medium (M)
 - Options expression research (W16) — large (L)
 - RD-Agent autonomous native research and restart continuation (W08/W13, T07) — very large (XL)
+- Risk stress scenarios that can move the drawdown — small (S)
 - Web-started downloads ignore proxy and certificate settings — small (S)
 
 ## Housekeeping
 
-- Live plans: 42
-- Archived plans: 129
-- Backlog items: 18
+- Live plans: 38
+- Archived plans: 134
+- Backlog items: 19
 - Staged refactors: 6
 
 ## Where things are

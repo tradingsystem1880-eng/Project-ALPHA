@@ -40,8 +40,8 @@ this capability lists are archived with it.
     "Rewriting an immutable run's equity in the smoke home leaks: the tampering happens only in a copied throwaway home, after making the copied file writable."
   ],
   "slices": [
-    {"title": "Snapshot provenance for validation runs; explain the scenarios", "verify": "uv run pytest -q tests/integration/test_risk_cli.py tests/integration/test_c04_risk_anchor_disclosure.py tests/integration/test_risk_strict_json.py tests/integration/test_risk_equity_clocks.py", "expected": "all pass; the new tests fail on main", "rollback": "revert risk_cmds.py and test_risk_cli.py", "status": "pending"},
-    {"title": "Risk smoke check through the installed alpha and alpha-web", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_risk_smoke.py", "expected": "passed", "rollback": "delete tests/smoke/test_risk_smoke.py", "status": "pending"}
+    {"title": "Snapshot provenance for validation runs; explain the scenarios", "verify": "uv run pytest -q tests/integration/test_risk_cli.py tests/integration/test_c04_risk_anchor_disclosure.py tests/integration/test_risk_strict_json.py tests/integration/test_risk_equity_clocks.py", "expected": "all pass; the new tests fail on main", "rollback": "revert risk_cmds.py and test_risk_cli.py", "status": "done"},
+    {"title": "Risk smoke check through the installed alpha and alpha-web", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_risk_smoke.py", "expected": "passed", "rollback": "delete tests/smoke/test_risk_smoke.py", "status": "done"}
   ],
   "tier_impact": ["none"],
   "docs_to_update": ["docs/roadmap/capabilities.toml", "STATUS.md", "docs/roadmap/README.md", "docs/roadmap/wip-limit.json", "docs/roadmap/backlog/risk-shock-placement.md"],
