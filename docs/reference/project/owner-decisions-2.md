@@ -128,9 +128,12 @@ The option text was written by the agent, so it is not quoted as the owner's wor
 
 ### 2026-11-14 Keep the user interface
 
-- **Said:** "And of course the ui. Keep the ui."
-- **Context:** narrows the thinning above: the Workstation web app stays, as the window onto
-  the thinned system.
+- **Said:** "And of course the ui. Keep the ui." And later the same day: "I want the ui kept.
+  I'm not a coder and the only way I understand the project is though the ui. The ui is
+  absolutely key"
+- **Context:** narrows the thinning above: the Workstation web app stays and is the main way
+  the owner sees the project. Whatever is kept or built must be visible there in plain
+  English; a screen is re-pointed or replaced, never simply removed.
 - **Governs:** the Workstation web app (`apps/alpha-web`).
 
 ### 2026-11-14 Never high-frequency trading
