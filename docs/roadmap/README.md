@@ -98,7 +98,7 @@ work may be open.
 | [Consolidate canonical-JSON, hash and strict-validator helpers](refactors/canonical-json-helper-consolidation.md) | H |
 | [Split control_store.py behind the unchanged ControlStore facade](refactors/control-store-split.md) | H |
 | [Wire in or remove the test-only funding modules](refactors/funding-test-only-modules.md) | L |
-| [Break up oversized CLI functions](refactors/oversized-functions.md) | M |
+| [Break up oversized functions](refactors/oversized-functions.md) | M |
 | [Reduce `# type: ignore` suppressions](refactors/type-ignore-reduction.md) | L |
 
 ## Archived plans (122)

@@ -64,3 +64,13 @@ ordering) does not reach the others, and reviewers cannot tell which variant a h
 2. Introduce one shared module per layer (`alpha_core` for pure encoders) with the variants found.
 3. Migrate one package at a time, starting where no identity hash covers the file.
 4. Leave worker copies and identity-bound files for last, each with an explicit owner decision.
+
+## Recommendation (2026-11-14)
+
+Pull request #148 measured identical function bodies across files (32 groups, 235 lines) and
+merged the five groups with one honest home (now 24 groups, 129 lines). It left the canonical-JSON
+wrappers alone: they use four encodings (`ensure_ascii`, trailing newline, `-0.0` folding, size
+caps), each defines a hash, and most sit in approval-bound files, so one shared helper would tie
+unrelated hash formats together for a saving of one line per wrapper. Do slice 1 (the golden
+re-encoding tests) only when an encoder is next changed for behaviour; do not migrate wrappers for
+their own sake.
