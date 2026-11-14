@@ -1,6 +1,6 @@
 # Crypto snapshot faults from the first real data run
 
-**Delivery state:** In progress — building on branch `m5/crypto-snapshot-duplicates`.
+**Delivery state:** Completed — built, reviewed and verified on branch `m5/crypto-snapshot-duplicates`; done when its pull request merges.
 **Build class:** hard — data-integrity code that decides which frozen crypto data research may use (raised from standard with `--class hard`); the Stooq change is a separate small build.
 
 Filed straight into the archive, as `2026-11-14-free-real-data-dell` was: the work-in-progress
@@ -44,10 +44,10 @@ ceiling admits no new live plan, and the work is finished in one sitting.
     "Skipping unfinished months hides a missing file: only months that have not ended are skipped; an ended month without a file is still a recorded failure."
   ],
   "slices": [
-    {"title": "One member rule for create and verify; canonical order; disjoint ranges", "verify": "uv run pytest tests/unit/test_crypto_snapshot_members.py tests/integration/test_crypto_snapshot_duplicates_cli.py -q", "expected": "all pass; the duplicate-download test fails on main", "rollback": "revert the merge of build/crypto-snapshot-members", "status": "pending"},
-    {"title": "Binance backfill skips months that have not ended", "verify": "uv run pytest tests/unit/test_crypto_backfill.py -q", "expected": "all pass; the unpublished-month tests fail on main", "rollback": "revert _crypto_backfill.py", "status": "pending"},
-    {"title": "Stooq refuses its bot check", "verify": "uv run pytest tests/unit/test_stooq_adapter.py tests/unit/test_stooq_parser.py -q", "expected": "all pass; the one-request challenge test fails on main", "rollback": "revert the merge of build/stooq-no-bot-check", "status": "pending"},
-    {"title": "Real data folder verifies; documents", "verify": "ALPHA_DATA_DIR=/home/hunta/alpha-clean-base/data uv run alpha crypto-data storage-verify --json", "expected": "state verified, 2 snapshots", "rollback": "none needed, read-only", "status": "pending"}
+    {"title": "One member rule for create and verify; canonical order; disjoint ranges", "verify": "uv run pytest tests/unit/test_crypto_snapshot_members.py tests/integration/test_crypto_snapshot_duplicates_cli.py -q", "expected": "all pass; the duplicate-download test fails on main", "rollback": "revert the merge of build/crypto-snapshot-members", "status": "done"},
+    {"title": "Binance backfill skips months that have not ended", "verify": "uv run pytest tests/unit/test_crypto_backfill.py -q", "expected": "all pass; the unpublished-month tests fail on main", "rollback": "revert _crypto_backfill.py", "status": "done"},
+    {"title": "Stooq refuses its bot check", "verify": "uv run pytest tests/unit/test_stooq_adapter.py tests/unit/test_stooq_parser.py -q", "expected": "all pass; the one-request challenge test fails on main", "rollback": "revert the merge of build/stooq-no-bot-check", "status": "done"},
+    {"title": "Real data folder verifies; documents", "verify": "ALPHA_DATA_DIR=/home/hunta/alpha-clean-base/data uv run alpha crypto-data storage-verify --json", "expected": "state verified, 2 snapshots", "rollback": "none needed, read-only", "status": "done"}
   ],
   "tier_impact": ["determinism"],
   "docs_to_update": ["docs/adr/0046-crypto-snapshot-members-are-content-addressed.md", "docs/reference/invariants/data.md", "docs/reference/invariants/cli-crypto-data.md", "docs/reference/project/components/data-layer.md", "docs/roadmap/capabilities.toml", "docs/reference/commands.md", "STATUS.md"],

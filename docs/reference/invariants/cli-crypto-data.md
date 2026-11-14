@@ -80,8 +80,9 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
   identity; never delete the sidecar or unlock an inherited descriptor in a child.
 - Binance publishes a monthly archive only after the month ends. A Binance backfill never plans a month that has
   not ended at run time: it lists it under `not_published_yet` and records nothing for it in the ledger. A month
-  that has ended but whose file is missing is still a recorded failure. The current month comes from the bounded
-  REST tail (`acquire ... --start/--end`); daily archive files are not read.
+  that has ended but whose file is missing is still a recorded failure. `backfill-status` names the same months
+  under `not_published_yet`, so a shortened plan is never silent. The current month comes from the bounded REST
+  tail (`acquire ... --start/--end`); daily archive files are not read.
 - Backfill has no research, quota or execution authority. Inspection (`_crypto_backfill_inspection.py`) is read-only.
 
 ## Read-only queries
