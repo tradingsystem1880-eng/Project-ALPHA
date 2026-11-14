@@ -5,6 +5,7 @@ Where each kind of document lives, and how long it stays current. Tasks are rout
 [`reference/invariants/`](reference/invariants/documentation.md) and the command list in [`reference/`](reference/commands.md).
 
 **What works today:** [`STATUS.md`](../STATUS.md) (generated). **What the codes mean:** [glossary](reference/glossary.md).
+**What production ready means, row by row:** the [production-ready scope](roadmap/production-scope.md) checklist.
 
 ## Lifecycle
 
