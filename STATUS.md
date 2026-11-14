@@ -4,7 +4,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 9 working, 22 partly working, 0 demo only, 5 shelved, 1 not started.
+- **Capabilities:** 10 working, 21 partly working, 0 demo only, 5 shelved, 1 not started.
 - **Work in progress:** 27 in progress (limit 3).
   - 3 being worked on
   - 24 built but not yet checked end to end
@@ -26,6 +26,7 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Freeze crypto data into exact snapshots and check them (W05)** — uv run alpha crypto-data snapshot-create …, then uv run alpha crypto-data snapshot-verify <snapshot-id>
 - **Run a backtest** — uv run alpha backtest run SPY
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
+- **Path-risk simulation (Monte Carlo)** — uv run alpha monte-carlo classical --from-run <run-id> (a real run is recorded)
 - **Machine-learning experiments with Qlib** — uv run alpha ml capabilities
 - **Upstream Alpha158 price features** — set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec
 
@@ -50,7 +51,6 @@ Tested piece by piece inside the test suite, but not yet run from start to finis
 - **Price charts with indicators and patterns** — tested in-process and in a browser against a test server (a real run is recorded).
 - **Write trading rules and scan markets** — tested in-process and in a browser against a test server.
 - **Strategy development workspace** — tested in-process only.
-- **Path-risk simulation (Monte Carlo)** — tested in-process only.
 - **Risk numbers that state what they are based on (C04)** — tested in-process and in a browser against a test server.
 - **Prop-firm challenge check** — tested in-process only.
 - **Quick idea screening (Phase C)** — tested in-process only.
@@ -119,7 +119,7 @@ Ideas not yet planned (no order recorded, so alphabetical):
 ## Housekeeping
 
 - Live plans: 35
-- Archived plans: 139
+- Archived plans: 140
 - Backlog items: 20
 - Staged refactors: 6
 

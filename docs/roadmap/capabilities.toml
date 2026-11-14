@@ -433,10 +433,13 @@ entry_points = [
 proof_synthetic = [
   "tests/integration/test_monte_carlo_cli.py::test_classical_monte_carlo_publishes_three_auditable_families",
 ]
-real_data = "not yet confirmed (to check on the Mac later)"
+proof_smoke = [
+  "tests/smoke/test_monte_carlo_smoke.py::test_classical_monte_carlo_is_published_and_recomputes_independently",
+  "tests/smoke/test_monte_carlo_smoke.py::test_monte_carlo_refuses_a_backtest_source",
+]
+real_data = "On 2026-11-14 the installed alpha ran the classical simulation on a validation run over the free Alpaca SPY bars (2016-2026) on the Dell; every summary matched an independent recomputation; not yet confirmed (docs/work/archive/2026-11/2026-11-14-prove-monte-carlo/04-verify.md). The classical families are proven end to end; alpha monte-carlo kronos ran only with the stand-in model and needs the Kronos model files."
 needs = []
-state = "Partial"
-missing = "tested in-process only; no end-to-end smoke check yet"
+state = "Working"
 plans = []
 
 [[capability]]
