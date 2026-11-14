@@ -365,10 +365,10 @@ def test_finish_labels_only_this_run_and_handles_missing_or_bad_files(
     ]
     assert len(rows) == 1 and rows[0]["run_id"] == "test-run"
     assert rows[0]["payload"] == "unchanged" and rows[0]["step"] == "outside-step"
+    # A line cut short by a killed loop is skipped and counted; the other calls stay labelled.
     (job.run / "steps.jsonl").write_text("invalid json\n")
     assert job.finish(0, "test") == 0
-    assert job.receipt["calls_labelled"]["calls"] == 0
-    assert "error" in job.receipt["calls_labelled"]["reason"].lower()
+    assert job.receipt["calls_labelled"] == {"calls": 1, "skipped_lines": 1}
 
 
 @pytest.mark.parametrize("method", ["verify", "prepare", "gateway", "loop"])
@@ -390,3 +390,33 @@ def test_launcher_logs_start_before_work(
         getattr(job, method)(*(["http://unused", "token"] if method == "loop" else []))
     row = json.loads((job.run / "launch.jsonl").read_text().splitlines()[0])
     assert row["step"] == method and row["event"] == "start"
+
+
+def test_step_wrapper_records_a_skipped_step(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+
+    sys.path.insert(0, str(WORKER))
+    try:
+        entry = importlib.import_module("factor_loop_entry")
+    finally:
+        sys.path.remove(str(WORKER))
+
+    class FakeLoop:
+        EXCEPTION_KEY = "_EXCEPTION"
+        step_idx = {0: 0}
+        steps = ["coding"]
+
+        def __init__(self) -> None:
+            self.loop_prev_out: dict[int, dict[str, object]] = {0: {}}
+
+        async def _run_step(self, li: int, force_subproc: bool = False) -> None:
+            # RD-Agent swallows a skip-loop error and stores it instead of raising.
+            self.loop_prev_out[li][self.EXCEPTION_KEY] = KeyError("coder failed")
+
+    monkeypatch.setenv("ALPHA_FACTOR_RUN_DIR", str(tmp_path))
+    entry.record_steps(FakeLoop)
+    asyncio.run(FakeLoop()._run_step(0))
+    rows = [json.loads(line) for line in (tmp_path / "steps.jsonl").read_text().splitlines()]
+    assert rows[1]["status"] == "skipped" and rows[1]["error_type"] == "KeyError"

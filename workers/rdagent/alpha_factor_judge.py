@@ -96,12 +96,23 @@ def record_code(run: Path, digest: str, code: bytes) -> None:
     folder = run / "code"
     folder.mkdir(exist_ok=True)
     path = folder / f"{digest}.py"
+    if path.exists():
+        if path.read_bytes() != code:
+            raise ValueError(f"conflicting factor code archive: {digest}")
+        return
+    # Write a temporary file, then link it into place: a crash never leaves a partial copy.
+    temporary = folder / f".{digest}.{os.getpid()}.tmp"
+    with temporary.open("wb") as stream:
+        stream.write(code)
+        stream.flush()
+        os.fsync(stream.fileno())
     try:
-        with path.open("xb") as stream:
-            stream.write(code)
+        os.link(temporary, path)
     except FileExistsError:
         if path.read_bytes() != code:
             raise ValueError(f"conflicting factor code archive: {digest}") from None
+    finally:
+        temporary.unlink()
 
 
 def record_round(run: Path, exp: Any, feedback: Any, row: dict[str, Any]) -> None:
@@ -125,7 +136,7 @@ def record_round(run: Path, exp: Any, feedback: Any, row: dict[str, Any]) -> Non
                 "name": task.factor_name,
                 **{key: getattr(task, key, None) for key in ("description", "variables")},
                 "formulation": getattr(task, "factor_formulation", None),
-                "code_sha256": hashes[task.factor_name],
+                "code_sha256": hashes.get(task.factor_name),
             }
             for task in exp.sub_tasks
         ],
@@ -338,5 +349,14 @@ class AlphaFactorFeedback(Experiment2Feedback):
         }
         with (Path(os.environ["ALPHA_FACTOR_RUN_DIR"]) / "feedback.jsonl").open("a") as stream:
             stream.write(json.dumps(row, sort_keys=True) + "\n")
-        record_round(Path(os.environ["ALPHA_FACTOR_RUN_DIR"]), exp, feedback, row)
+        try:
+            record_round(Path(os.environ["ALPHA_FACTOR_RUN_DIR"]), exp, feedback, row)
+        except Exception as error:  # noqa: BLE001 - evidence must never abort RD-Agent's step
+            with (Path(os.environ["ALPHA_FACTOR_RUN_DIR"]) / "rounds-errors.jsonl").open(
+                "a"
+            ) as out:
+                out.write(
+                    json.dumps({"iteration": row.get("iteration"), "error": repr(error)[:500]})
+                    + "\n"
+                )
         return feedback
