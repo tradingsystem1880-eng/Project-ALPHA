@@ -50,3 +50,22 @@ the rules for entries are in the first. New entries are appended at the end of t
 - **Context:** the research the owner supplied shapes features, actions and structure. It is
   not a list of studies to run or rules to enforce.
 - **Governs:** the whole project; the [overview](overview.md).
+
+### 2026-11-15 The AI must be a research partner, not an instruction follower
+
+- **Said:** "the ai also needs to know what to suggest. How to interpret data along the way,
+  suggest tests to run, suggest data to look at." And: "It needs to be a partner in the process
+  not just follow word for word instructions." And: "Think and plan what we can do so in any
+  and all situations the ai is smart and understands and always learns and evolves".
+- **Context:** the owner gave two examples and said they are only examples: a sharp drawdown
+  should prompt a check of the one asset against the whole market and the macro data of that
+  time; an edge that appears only in some periods should prompt regime detection. The project
+  must teach a method and supply diagnostics, tools, context data and memory, not a script.
+- **Governs:** the whole project; [AI assistants](components/ai-assistants.md).
+
+### 2026-11-15 Adopt everything RD-Agent has, memory first
+
+- **Said:** "Yes adopt and utilise everything rd agents has especially memory of the past".
+- **Context:** answers an agent's question whether to use all of RD-Agent's own abilities
+  instead of rebuilding them in ALPHA. RD-Agent stays an engine the AI partner calls.
+- **Governs:** [RD-Agent](components/rd-agent.md).
