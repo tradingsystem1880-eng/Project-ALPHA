@@ -30,5 +30,5 @@ which other work also changes; coordinate first.
 
 ## Sources
 
-- [Task record](../../work/archive/2026-11/2026-11-14-rdagent-alpha-judged-loop/05-handoff.md)
+- [Task record](../../work/archive/2026-11/2026-11-14-rdagent-alpha-judged-loop/02-plan.md)
 - [Command line native invariants](../../reference/invariants/cli-native.md)
