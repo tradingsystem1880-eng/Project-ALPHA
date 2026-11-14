@@ -317,7 +317,9 @@ def reopen_daily_study(root: Path, study: DailyRuleStudyV1) -> None:
     actual = query_binance_daily_price_snapshot(
         snapshot,
         configured_crypto_bulk_store(root),
-        normalized_manifest_id=query["normalized_manifest_id"],
+        normalized_manifest_ids=(query["normalized_manifest_id"],)
+        if query["schema"] == "BinanceDailyPriceSnapshotQueryV1"
+        else tuple(member["normalized_manifest_id"] for member in query["members"]),
         start=datetime.fromisoformat(study.discovery_start),
         end=datetime.fromisoformat(study.discovery_end_exclusive),
         available_by=datetime.fromisoformat(study.discovery_end_exclusive),
