@@ -14,13 +14,14 @@ needs a multi-instrument engine and is future work.)
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 
+from alpha_cli._gauntlet import safe_sharpe_statistic
 from alpha_cli._runner import combine_source_fingerprints, load_bars, source_fingerprint
 from alpha_core import DataError
 from alpha_validation import (
@@ -75,21 +76,6 @@ def _close_panel(
         raise DataError(f"cross-sectional needs >= 3 common dates, got {len(common)}")
     panel = np.array([[by_symbol[s][d] for s in symbols] for d in common], dtype=np.float64)
     return common, panel, combine_source_fingerprints(source_by_symbol)
-
-
-def _resample_sharpe(periods_per_year: int) -> Callable[[FloatArray], float]:
-    """Sharpe for bootstrap resamples: a zero-variance block resample scores 0.0, not a crash.
-
-    Mirrors the gauntlet's convention - a sparse/flat resample has no excess return per unit risk,
-    and one degenerate draw must not abort the whole CI.
-    """
-
-    def stat(r: FloatArray) -> float:
-        if r.size >= 2 and float(np.std(r, ddof=1)) > 0.0:
-            return sharpe_ratio(r, periods_per_year=periods_per_year)
-        return 0.0
-
-    return stat
 
 
 def run_cross_sectional(
@@ -176,7 +162,7 @@ def run_cross_sectional(
     dsr_res = deflated_sharpe(returns, threshold=0.95)
     sharpe_ci = block_bootstrap_ci(
         returns,
-        _resample_sharpe(periods_per_year),
+        safe_sharpe_statistic(periods_per_year),
         confidence=confidence,
         n_resamples=n_resamples,
         mean_block=mean_block,

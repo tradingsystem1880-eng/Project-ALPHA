@@ -625,24 +625,6 @@ def run_identity_for(
     )
 
 
-def run_id_for(
-    payload: Mapping[str, object],
-    *,
-    source_fingerprint: str | None = None,
-    snapshot_hash: str | None = None,
-) -> str:
-    """A deterministic 16-hex-char id for a run, from its canonical (sorted-key) JSON payload.
-
-    Same symbol + params + costs + seed → same id → same artifact directory → reproducible
-    (spec §11.4). No wall-clock goes in, so re-running is byte-identical.
-    """
-    return run_identity_for(
-        payload,
-        source_fingerprint=source_fingerprint,
-        snapshot_hash=snapshot_hash,
-    ).run_id
-
-
 def verified_snapshot_hash(data_dir: Path, snapshot_id: str | None) -> str | None:
     """Resolve one frozen snapshot to the exact verified manifest digest used by run identity."""
     if snapshot_id is None:

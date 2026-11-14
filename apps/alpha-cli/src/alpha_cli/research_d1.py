@@ -28,6 +28,12 @@ from pathlib import Path
 from typing import Any, Final, cast
 
 from alpha_cli import _artifacts
+from alpha_cli._research_artifact_io import (
+    estimate_record,
+    publish_bytes,
+    publish_text,
+    read_canonical_json,
+)
 from alpha_cli.paper_resources import validate_paper_resource_resolution_records
 from alpha_cli.research_analysis_plan import (
     ANALYSIS_FAMILIES,
@@ -537,19 +543,6 @@ class _D1Data:
         return events, controls
 
 
-def _estimate_record(estimate: Any) -> dict[str, object]:
-    return {
-        "estimate": float(estimate.estimate),
-        "ci_lower": float(estimate.ci_lower),
-        "ci_upper": float(estimate.ci_upper),
-        "p_value": float(estimate.p_value),
-        "confidence": float(estimate.confidence),
-        "sample_size": int(estimate.sample_size),
-        "effective_event_count": int(estimate.effective_event_count),
-        "low_cluster_count": bool(estimate.low_cluster_count),
-    }
-
-
 def _family_event_study(data: _D1Data, cell: Mapping[str, object]) -> dict[str, object]:
     horizon = _int_param(cell, "horizon_bars", data.embargo)
     events, controls = data.observations(horizon)
@@ -583,8 +576,8 @@ def _family_event_study(data: _D1Data, cell: Mapping[str, object]) -> dict[str, 
             "matched_pairs": len(matched_study.pairs),
             "unmatched_events": len(matched_study.unmatched_event_ids),
         },
-        "unadjusted": _estimate_record(unadjusted),
-        "matched": _estimate_record(matched),
+        "unadjusted": estimate_record(unadjusted),
+        "matched": estimate_record(matched),
     }
 
 
@@ -1088,17 +1081,6 @@ def derive_d1_findings(
     return findings
 
 
-def _publish_text(path: Path, content: str) -> None:
-    _publish_bytes(path, content.encode("utf-8"))
-
-
-def _publish_bytes(path: Path, content: bytes) -> None:
-    def write(target: Path) -> None:
-        target.write_bytes(content)
-
-    _artifacts.publish_artifact(path, write)
-
-
 def run_deep_research(
     data_dir: Path,
     *,
@@ -1271,14 +1253,14 @@ def run_deep_research(
         ],
     }
 
-    _publish_bytes(run_dir / D1_ANALYSES_ARTIFACT, analyses_bytes)
-    _publish_text(run_dir / D1_EVIDENCE_ARTIFACT, _canonical(evidence))
-    _publish_text(
+    publish_bytes(run_dir / D1_ANALYSES_ARTIFACT, analyses_bytes)
+    publish_text(run_dir / D1_EVIDENCE_ARTIFACT, _canonical(evidence))
+    publish_text(
         run_dir / "chart-data.json",
         json.dumps(chart.to_dict(), sort_keys=True, indent=2, allow_nan=False),
     )
-    _publish_bytes(run_dir / "d1-primary-association.png", render_research_line_chart(chart))
-    _publish_text(
+    publish_bytes(run_dir / "d1-primary-association.png", render_research_line_chart(chart))
+    publish_text(
         run_dir / "report.md",
         "# D1 Deep Research\n\n"
         "**EXPLORATORY — DISCOVERY-SHARE EVIDENCE ONLY**\n\n"
@@ -1328,23 +1310,6 @@ def run_deep_research(
     return _artifacts.read_manifest(run_dir)
 
 
-def _read_canonical_json(path: Path, label: str) -> dict[str, Any]:
-    if path.is_symlink() or not path.is_file():
-        raise DataError(f"{label} is not a regular immutable file")
-    raw = path.read_bytes()
-    if len(raw) > _MAX_ARTIFACT_BYTES:
-        raise DataError(f"{label} exceeds the bounded JSON size")
-    try:
-        parsed: object = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise DataError(f"{label} is not valid UTF-8 JSON") from exc
-    if not isinstance(parsed, dict):
-        raise DataError(f"{label} must contain a JSON object")
-    if raw != _canonical(parsed).encode("utf-8"):
-        raise DataError(f"{label} must use canonical JSON bytes")
-    return parsed
-
-
 def _manifest_artifact_sha(manifest: Mapping[str, object], name: str) -> str:
     artifacts = manifest.get("artifacts")
     metadata = None if not isinstance(artifacts, Mapping) else artifacts.get(name)
@@ -1388,8 +1353,12 @@ def validate_d1_evidence_artifacts(
     if hashlib.sha256(evidence_bytes).hexdigest() != evidence_sha:
         raise DataError("D1 evidence artifact does not match its immutable manifest hash")
 
-    analyses = _read_canonical_json(analyses_path, "D1 analyses artifact")
-    evidence = _read_canonical_json(evidence_path, "D1 evidence artifact")
+    analyses = read_canonical_json(
+        analyses_path, "D1 analyses artifact", max_bytes=_MAX_ARTIFACT_BYTES
+    )
+    evidence = read_canonical_json(
+        evidence_path, "D1 evidence artifact", max_bytes=_MAX_ARTIFACT_BYTES
+    )
     if analyses.get("schema") != _D1_ANALYSES_SCHEMA:
         raise DataError("D1 analyses artifact has an unsupported schema")
     measurements = analyses.get("measurements")

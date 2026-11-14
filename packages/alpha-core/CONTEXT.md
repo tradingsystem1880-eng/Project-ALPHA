@@ -11,7 +11,8 @@ verified: 1ac86fc02443
 ## Purpose
 
 The bottom layer: frozen domain values (`Bar`, traces, outcomes), the typed error family, the
-structural protocols, corporate-action types, the shared fee rate and the typed settings
+structural protocols, corporate-action types, the shared fee rate, atomic file publication
+(`atomic.py`, for the packages above core) and the typed settings
 (`AlphaSettings`, `ALPHA_*` environment variables). It imports nothing internal (import-linter
 contract "alpha_core imports nothing internal") and every other package imports it, so a change
 here reaches the whole repository.
@@ -31,8 +32,8 @@ here reaches the whole repository.
 ## How to change it
 
 - Code: `packages/alpha-core/src/alpha_core/` (`types.py`, `errors.py`, `protocols.py`, `config.py`,
-  `corporate.py`, `costs.py`). The package has no tests of its own; they live in the root suite.
-- Tests: `tests/unit/test_core_types.py`, `tests/unit/test_bar_invariants.py`,
+  `corporate.py`, `costs.py`, `atomic.py`). The package has no tests of its own; they live in the root suite.
+- Tests: `tests/unit/test_core_types.py`, `tests/unit/test_core_atomic.py`, `tests/unit/test_bar_invariants.py`,
   `tests/unit/test_corporate_actions.py`, `tests/unit/test_universe_store.py`,
   `tests/bias_guards/test_universe_survivorship.py`.
 - Check: `uv run python scripts/gate.py check`. Because almost every test imports core, a change

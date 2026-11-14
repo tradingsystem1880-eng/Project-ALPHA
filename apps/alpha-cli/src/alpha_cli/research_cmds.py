@@ -20,6 +20,8 @@ from typing import Any, Final, NamedTuple, cast
 
 import typer
 
+from alpha_cli._cli_json import emit as _emit
+from alpha_cli._cli_json import json_object_option as _object
 from alpha_cli._hypothesis_scan import verified_screening_reference
 from alpha_cli.control_store import (
     ControlStore,
@@ -146,13 +148,6 @@ def _store() -> ControlStore:
     return ControlStore(AlphaSettings().data_dir)
 
 
-def _emit(value: object, *, json_out: bool, fallback: str) -> None:
-    if json_out:
-        typer.echo(json.dumps(value, sort_keys=True, allow_nan=False))
-    else:
-        typer.echo(fallback)
-
-
 def _run_literature_worker(argv: list[str], *, timeout_seconds: int = 180) -> dict[str, object]:
     """Run the isolated worker with no inherited credential or shell environment."""
     import subprocess
@@ -218,16 +213,6 @@ def _run_literature_worker(argv: list[str], *, timeout_seconds: int = 180) -> di
             completed.stderr.strip() or completed.stdout.strip() or "literature worker failed"
         )
     return _object(completed.stdout, "literature worker output")
-
-
-def _object(raw: str, label: str) -> dict[str, object]:
-    try:
-        value: object = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise typer.BadParameter(f"{label} must be a valid JSON object") from exc
-    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
-        raise typer.BadParameter(f"{label} must be a valid JSON object")
-    return cast(dict[str, object], value)
 
 
 def _required_candidate_text(candidate: Mapping[str, object], field: str) -> str:
@@ -1001,7 +986,7 @@ def _run_registered_d0_pilot(
 def capture(
     idea: str,
     name: str | None = typer.Option(None, help="owner-facing case name; defaults from the idea"),
-    created_by: str = typer.Option("codex", help="capturing actor"),
+    created_by: str = typer.Option("codex", help="recording actor; codex: the AI assistant role"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Capture exact owner wording and immediately perform bounded deterministic triage."""
@@ -1612,7 +1597,7 @@ def draft(
     expected_case_revision: str | None = typer.Option(
         None, "--expected-case-revision", help="proposal-preflight optimistic revision"
     ),
-    created_by: str = typer.Option("codex"),
+    created_by: str = typer.Option("codex", help="recording actor; codex: the AI assistant role"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Create a complete exploration contract from owner answers and automatic fingerprints."""
@@ -2025,7 +2010,7 @@ def _draft_crypto_confirmation(
 @research_app.command("draft-confirmation")
 def draft_confirmation(
     project_id: str,
-    created_by: str = typer.Option("codex"),
+    created_by: str = typer.Option("codex", help="recording actor; codex: the AI assistant role"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
 ) -> None:
     """Freeze the one-shot D2 confirmation contract mechanically from admitted D1 evidence."""

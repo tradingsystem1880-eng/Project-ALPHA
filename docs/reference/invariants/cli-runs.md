@@ -52,7 +52,7 @@ and how it names and publishes immutable runs. Project-wide rules:
 ## Run identity
 
 - A run id is a deterministic 16-hex digest of the canonical payload plus identity version 3, the execution
-  fingerprint, the strategy fingerprint and the verified snapshot hash (`_runner.run_id_for`, `_identity.py`).
+  fingerprint, the strategy fingerprint and the verified snapshot hash (`_runner.run_identity_for`, `_identity.py`).
   No wall-clock value may enter it. [ADR-0013](../../adr/0013-run-identity-v3-and-causal-artifacts.md)
 - The execution fingerprint hashes every `.py` file in `alpha_core`, `alpha_data`, `alpha_backtest`,
   `alpha_strategies`, `alpha_patterns`, `alpha_validation`, `alpha_forecast` and `alpha_cli`. Any byte edit there,

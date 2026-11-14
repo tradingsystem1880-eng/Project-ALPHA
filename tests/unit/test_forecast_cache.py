@@ -147,8 +147,8 @@ def test_prepare_spec_sets_cache_key(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert prepared.forecast_cache is not None
     assert meta is not None and meta["cache_key"] == prepared.forecast_cache
     # the run id must move with the cache key (bias guard: different forecasts != same run)
-    a = _runner.run_id_for(vars(prepared))
-    b = _runner.run_id_for(vars(replace(prepared, forecast_cache="0" * 16)))
+    a = _runner.run_identity_for(vars(prepared)).run_id
+    b = _runner.run_identity_for(vars(replace(prepared, forecast_cache="0" * 16))).run_id
     assert a != b
 
 

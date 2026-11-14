@@ -124,7 +124,8 @@ when a model is added, or when a class looks wrong in three builds running.
 - Changes to the never paths (`tests/holdout/`, `scripts/codex_bridge.py`, `scripts/claude_hooks.py`,
   `.claude/settings*.json`, credential-shaped files) — refused whatever the plan says.
 - Changes to guarded paths — hash-bound source bytes (`packages/alpha-research/src`,
-  `packages/alpha-validation/src`, the four research CLI modules, `uv.lock`), quant-named modules,
+  `packages/alpha-validation/src`, the four research CLI modules, `uv.lock`), the approval digest
+  rules (`_structural_digest.py`), quant-named modules,
   `tests/oracles/`, `tests/bias_guards/`, `tests/acceptance/`, and the protected harness files
   (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.codex/`, `.github/`, `.agents/`, `scripts/gate*`,
   `scripts/harness_*`, `scripts/handoff.py`, the harness and file-system contract tests) — unless

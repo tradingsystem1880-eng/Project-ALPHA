@@ -15,8 +15,9 @@ from typing import cast
 
 import typer
 
+from alpha_cli._cli_json import emit as _emit
 from alpha_cli.control_store import _MAX_OWNER_PDF_BYTES, ControlStore
-from alpha_cli.research_cmds import _emit, _run_literature_worker, _store
+from alpha_cli.research_cmds import _run_literature_worker, _store
 from alpha_core import DataError
 
 _MAX_PDF_BYTES = _MAX_OWNER_PDF_BYTES

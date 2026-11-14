@@ -6,14 +6,15 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Final, cast
-from uuid import UUID
 
 from alpha_core import DataError
 from alpha_research import ResearchArtifactRef
 from alpha_study._contracts import (
     _artifact_from_dict,
+    _content_id,
     _hash,
     _mapping,
+    _project_id,
     _strict_keys,
     _text,
     canonical_study_sha256,
@@ -140,26 +141,6 @@ _ADVISOR_ACTIONS: Final = frozenset(
         "run_non_empirical_diagnostic",
     }
 )
-
-
-def _project_id(value: object) -> str:
-    text = _text("project_id", value)
-    try:
-        parsed = UUID(text)
-    except ValueError as exc:
-        raise DataError("project_id must be a canonical UUID") from exc
-    if str(parsed) != text:
-        raise DataError("project_id must be a canonical UUID")
-    return text
-
-
-def _content_id(name: str, value: object, prefix: str) -> str:
-    text = _text(name, value)
-    marker = f"{prefix}_"
-    if not text.startswith(marker):
-        raise DataError(f"{name} must be a content-addressed {marker} id")
-    _hash(name, text[len(marker) :])
-    return text
 
 
 def _run_id(value: object) -> str:

@@ -365,6 +365,13 @@ def test_class_is_never_below_the_objective_criteria() -> None:
     assert handoff.effective_class(order(["a.py"], [], "standard"), None)[0] == "standard"
 
 
+def test_approval_digest_rules_and_size_baseline_are_guarded() -> None:
+    digest = handoff.guarded_rule("apps/alpha-cli/src/alpha_cli/_structural_digest.py")
+    assert digest is not None and digest[0] == "quant"
+    baseline = handoff.guarded_rule(".claude/code-size-baseline.json")
+    assert baseline is not None and baseline[0] == "protected"
+
+
 def test_review_route_by_tier_and_builder() -> None:
     ordinary = handoff.review_route(["apps/x.py"], [], "codex")
     assert any("`reviewer` with model sonnet" in s for s in ordinary)

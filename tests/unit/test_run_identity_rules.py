@@ -49,11 +49,15 @@ def _rules(fast: int) -> str:
 
 
 def test_run_id_changes_with_the_rule_bytes_only() -> None:
-    a = _runner.run_id_for({"command": "backtest_run", "symbol": "ZZ", **vars(_spec(_rules(5)))})
-    b = _runner.run_id_for({"command": "backtest_run", "symbol": "ZZ", **vars(_spec(_rules(6)))})
-    again = _runner.run_id_for(
+    a = _runner.run_identity_for(
         {"command": "backtest_run", "symbol": "ZZ", **vars(_spec(_rules(5)))}
-    )
+    ).run_id
+    b = _runner.run_identity_for(
+        {"command": "backtest_run", "symbol": "ZZ", **vars(_spec(_rules(6)))}
+    ).run_id
+    again = _runner.run_identity_for(
+        {"command": "backtest_run", "symbol": "ZZ", **vars(_spec(_rules(5)))}
+    ).run_id
     assert a == again and a != b
     assert "rules_spec" in vars(_spec(_rules(5)))
 

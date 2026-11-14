@@ -197,7 +197,7 @@ def run_gauntlet(
         dsr = _degenerate_dsr(params.dsr_threshold)
         cpcv = _degenerate_cpcv()
     else:
-        safe_sharpe = _safe_sharpe(ppy)
+        safe_sharpe = safe_sharpe_statistic(ppy)
         # Tier 1 — cheap returns-level null: the strategy's surrogate on synthetic return paths.
         # "bootstrap" resamples the observed returns; "student_t"/"garch" draw from a fat-tailed
         # parametric model (heavier-tailed / volatility-clustered → a more adversarial null).
@@ -426,7 +426,7 @@ def _has_variance(returns: FloatArray) -> bool:
     return bool(returns.size >= 2 and float(np.std(returns, ddof=1)) > 0.0)
 
 
-def _safe_sharpe(periods_per_year: int) -> Statistic:
+def safe_sharpe_statistic(periods_per_year: int) -> Statistic:
     """A Sharpe statistic that scores a zero-variance resample as 0.0 instead of raising.
 
     Used for the bootstrap CI + Tier-1 null so a sparse (mostly-flat) OOS — where individual block

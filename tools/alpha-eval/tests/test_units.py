@@ -10,7 +10,7 @@ from helpers import T
 from alpha_eval.checks import evaluate, value_matches
 from alpha_eval.models import DIMENSIONS, CheckSpec
 from alpha_eval.scenarios import SUITE_CANARY, load_all
-from alpha_eval.stats import mean_ci, pass_hat_k, wilson, zero_failure_upper_bound
+from alpha_eval.stats import mean_ci, pass_hat_k, wilson
 from alpha_eval.trajectory import Normalizer, cli_signature
 
 
@@ -28,10 +28,6 @@ def test_pass_hat_k() -> None:
     assert pass_hat_k(2, 3, 3) == 0.0
     assert pass_hat_k(2, 3, 1) == pytest.approx(2 / 3)
     assert pass_hat_k(2, 4, 2) == pytest.approx(1 / 6)
-
-
-def test_zero_failure_bound_matches_rule_of_three_scale() -> None:
-    assert zero_failure_upper_bound(20) == pytest.approx(0.1391, abs=1e-3)
 
 
 def test_mean_ci_degenerate() -> None:

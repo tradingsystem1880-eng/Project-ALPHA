@@ -1,4 +1,4 @@
-"""Package-local atomic file publication helpers."""
+"""Atomic file publication shared by the packages above core."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 def publish(path: Path, writer: Callable[[Path], object]) -> None:
+    """Write to a unique sibling and atomically replace ``path`` on success."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, raw_tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     os.close(fd)
@@ -21,4 +22,5 @@ def publish(path: Path, writer: Callable[[Path], object]) -> None:
 
 
 def write_text(path: Path, content: str) -> None:
+    """Atomically publish UTF-8 text."""
     publish(path, lambda tmp: tmp.write_text(content, encoding="utf-8"))

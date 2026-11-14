@@ -18,7 +18,6 @@ from alpha_backtest.results import BacktestResult, OrderTrace
 from alpha_cli._runner import (
     RunSpec,
     _scope_execution,
-    run_id_for,
     run_identity_for,
     source_fingerprint,
     walk_forward_oos,
@@ -107,10 +106,10 @@ def test_validate_defaults_clear_the_warmup_floor() -> None:
 
 def test_run_id_is_deterministic_and_sensitive() -> None:
     base = {"symbol": "SPY", "seed": 7, "train_size": 300, "fee_bps": 1.0}
-    rid = run_id_for(base)
+    rid = run_identity_for(base).run_id
     assert len(rid) == 16 and all(c in "0123456789abcdef" for c in rid)
-    assert run_id_for(dict(base)) == rid  # order-independent, value-determined
-    assert run_id_for({**base, "seed": 8}) != rid  # any input change moves the id
+    assert run_identity_for(dict(base)).run_id == rid  # order-independent, value-determined
+    assert run_identity_for({**base, "seed": 8}).run_id != rid  # any input change moves the id
 
 
 def test_run_identity_pins_execution_and_selected_strategy_source() -> None:
@@ -122,10 +121,13 @@ def test_run_identity_pins_execution_and_selected_strategy_source() -> None:
         snapshot_hash=snapshot,
     )
     fields = identity.manifest_fields()
-    assert identity.run_id == run_id_for(
-        {"command": "backtest_run", "symbol": "SPY", "strategy_name": "mean_reversion"},
-        source_fingerprint=source,
-        snapshot_hash=snapshot,
+    assert (
+        identity.run_id
+        == run_identity_for(
+            {"command": "backtest_run", "symbol": "SPY", "strategy_name": "mean_reversion"},
+            source_fingerprint=source,
+            snapshot_hash=snapshot,
+        ).run_id
     )
     assert fields["run_identity_version"] == 3
     assert len(fields["execution_fingerprint"]) == 64
@@ -161,25 +163,26 @@ def test_run_identity_changes_with_observed_source_content() -> None:
     revised_source = source_fingerprint([revised])
     assert source != revised_source
     payload = {"command": "backtest_run", "symbol": "SPY"}
-    assert run_id_for(payload, source_fingerprint=source) != run_id_for(
-        payload, source_fingerprint=revised_source
+    assert (
+        run_identity_for(payload, source_fingerprint=source).run_id
+        != run_identity_for(payload, source_fingerprint=revised_source).run_id
     )
 
 
 def test_web_run_context_is_part_of_run_identity(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = {"command": "validate", "symbol": "SPY"}
-    without_context = run_id_for(payload)
+    without_context = run_identity_for(payload).run_id
     monkeypatch.setenv(
         "ALPHA_RUN_CONTEXT_JSON",
         '{"kind":"standalone_sandbox","schema_version":1,"watermark":"STANDALONE_UNQUALIFIED"}',
     )
 
-    assert run_id_for(payload) != without_context
+    assert run_identity_for(payload).run_id != without_context
 
 
 def test_run_id_rejects_non_finite_payloads() -> None:
     with pytest.raises(ValueError, match="JSON compliant"):
-        run_id_for({"value": float("nan")})
+        _ = run_identity_for({"value": float("nan")}).run_id
 
 
 def test_resolve_allow_short_defaults_follow_account_type() -> None:
