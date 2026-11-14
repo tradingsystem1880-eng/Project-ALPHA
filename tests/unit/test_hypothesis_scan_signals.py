@@ -13,6 +13,7 @@ import pytest
 from alpha_cli import _hypothesis_scan as scan
 from alpha_core import DataError, UniverseMembership
 from alpha_data.store import ParquetStore
+from alpha_research import panel
 from tests.fixtures.cli_fixtures import seed_store
 from tests.fixtures.hypothesis_scan_fixtures import frozen_equities
 
@@ -31,6 +32,57 @@ def request() -> dict[str, object]:
         "cost_bps": 2.0,
         "category": "linear",
     }
+
+
+def test_horizon_turnover_known_answer() -> None:
+    signal = np.array([np.arange(5) if t % 2 == 0 else np.arange(4, -1, -1) for t in range(6)])
+    assert scan.horizon_turnover(signal, horizon=1, quantiles=5, min_names=5) == 1.0
+    assert scan.horizon_turnover(signal, horizon=2, quantiles=5, min_names=5) == 0.0
+
+
+def test_horizon_one_turnover_matches_consecutive_pairs_exactly() -> None:
+    signal = np.random.default_rng(42).normal(size=(40, 7))
+    assert scan.horizon_turnover(signal, horizon=1, quantiles=5, min_names=5) == (
+        panel.bucket_turnover(signal, quantiles=5, min_names=5)
+    )
+
+
+def test_horizon_turnover_skips_pairs_without_enough_common_names() -> None:
+    signal = np.array(
+        [np.arange(5) if t % 2 == 0 else np.arange(4, -1, -1) for t in range(6)],
+        dtype=float,
+    )
+    signal[2, :2] = np.nan
+    assert (
+        scan.horizon_turnover(signal, horizon=1, quantiles=5, min_names=5)
+        == (panel.bucket_turnover(signal, quantiles=5, min_names=5))
+        == 1.0
+    )
+    assert scan.horizon_turnover(signal, horizon=2, quantiles=5, min_names=5) == 0.0
+
+
+@pytest.mark.parametrize("horizon", [-1, 0, 6, 7])
+def test_horizon_turnover_rejects_invalid_horizons(horizon: int) -> None:
+    with pytest.raises(DataError, match="horizon"):
+        scan.horizon_turnover(np.ones((6, 5)), horizon=horizon, quantiles=5, min_names=5)
+
+
+def test_screen_costs_use_horizon_turnover_and_explain_price_returns(tmp_path: Path) -> None:
+    frozen_equities(tmp_path)
+    result = scan.run_hypotheses(tmp_path, request())
+    for row in result["results"]:
+        assert row["cost_adjusted_spread"] == (
+            row["quantiles"]["spread"] - 4 * row["horizon_turnover"] * 2e-4
+        )
+        if row["horizon"] == 1:
+            assert row["horizon_turnover"] == row["turnover"]
+    assert (
+        "Cost-adjusted spread charges 4 x horizon_turnover (bucket replacement between dates "
+        "one horizon apart) x the one-way cost against the horizon spread; no portfolio simulation."
+    ) in result["caveats"]
+    assert (
+        "Equity outcomes are split-adjusted price returns; dividends are not included."
+    ) in result["caveats"]
 
 
 @pytest.mark.bias_guard
