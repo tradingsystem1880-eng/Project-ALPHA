@@ -4,7 +4,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 5 working, 26 partly working, 0 demo only, 5 shelved, 1 not started.
+- **Capabilities:** 6 working, 25 partly working, 0 demo only, 5 shelved, 1 not started.
 - **Work in progress:** 34 in progress (limit 3).
   - 3 being worked on
   - 31 built but not yet checked end to end
@@ -22,6 +22,7 @@ Runs on real market data are still to be confirmed on the Mac, except where note
 - **Workstation web app** — uv run alpha-web, then open http://localhost:8801
 - **Run a backtest** — uv run alpha backtest run SPY
 - **Statistical checks on a strategy (gauntlet, DSR, PBO, CPCV)** — uv run alpha validate SPY
+- **Quick idea screening (Phase C)** — uv run alpha scan hypotheses --as-of <date> (a real run is recorded)
 - **Machine-learning experiments with Qlib** — uv run alpha ml capabilities
 - **Upstream Alpha158 price features** — set feature_recipe_version: 3 in an ML stage config, or version 3 in an alpha ml prepare spec
 
@@ -53,7 +54,6 @@ Tested piece by piece inside the test suite, but not yet run from start to finis
 - **Path-risk simulation (Monte Carlo)** — tested in-process only.
 - **Risk numbers that state what they are based on (C04)** — tested in-process and in a browser against a test server.
 - **Prop-firm challenge check** — tested in-process only.
-- **Quick idea screening (Phase C)** — tested in-process only.
 - **Ask the AI assistant about a recorded run (Codex)** — tested in a browser against a test server only (a real run is recorded).
 - **Let an AI assistant use ALPHA's tools (MCP)** — tested in-process only.
 
@@ -111,13 +111,14 @@ Ideas not yet planned (no order recorded, so alphabetical):
 - Multi-agent specialist swarm / PydanticAI migration — large (L)
 - Offline price import from a local file — medium (M)
 - Options expression research (W16) — large (L)
+- Overlap-corrected t statistic for the quick screen — small (S)
 - RD-Agent autonomous native research and restart continuation (W08/W13, T07) — very large (XL)
 
 ## Housekeeping
 
 - Live plans: 42
-- Archived plans: 127
-- Backlog items: 17
+- Archived plans: 128
+- Backlog items: 18
 - Staged refactors: 6
 
 ## Where things are

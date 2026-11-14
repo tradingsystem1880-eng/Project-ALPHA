@@ -416,6 +416,28 @@ def alerts(
             typer.echo("no alerts")
 
 
+def _emit_hypotheses(result: dict[str, Any], json_out: bool, first_line: str) -> None:
+    _emit(result, json_out, first_line)
+    if json_out:
+        return
+    typer.echo("signal      h    IC mean   t (plain)  dates   spread     cost-adj   turnover/h")
+    for row in result["results"]:
+        ic = row["ic"]
+        mean = "n/a" if ic["mean"] is None else f"{ic['mean']:+.4f}"
+        t_stat = "n/a" if ic["t_stat"] is None else f"{ic['t_stat']:+.2f}"
+        typer.echo(
+            f"{row['signal']:<10}  {row['horizon']:<3}  {mean:<8}  {t_stat:<9}  "
+            f"{ic['n_dates']:<6}  {row['quantiles']['spread']:+.5f}   "
+            f"{row['cost_adjusted_spread']:+.5f}   {row['horizon_turnover']:.3f}"
+        )
+    if result["missing"]:
+        typer.echo(f"missing from snapshot: {', '.join(result['missing'])}")
+    typer.echo(
+        "plain t statistics; horizons over 1 overlap and are not corrected; "
+        f"no selection adjustment over {result['trials']} trials"
+    )
+
+
 @scan_app.command("hypotheses")
 def hypotheses(
     as_of: str = typer.Option(
@@ -466,7 +488,7 @@ def hypotheses(
         result = run_hypotheses(AlphaSettings().data_dir, request)
     except DataError as exc:
         raise _bad(exc) from exc
-    _emit(
+    _emit_hypotheses(
         result,
         json_out,
         f"exploratory screen {result['scan_id']}: {result['trials']} trials; authority none",
@@ -485,4 +507,6 @@ def replay_hypotheses_command(
         result = replay_hypotheses(AlphaSettings().data_dir, scan_id)
     except DataError as exc:
         raise _bad(exc) from exc
-    _emit(result, json_out, f"replayed {scan_id}; attempt {result['attempt_id']}; authority none")
+    _emit_hypotheses(
+        result, json_out, f"replayed {scan_id}; attempt {result['attempt_id']}; authority none"
+    )

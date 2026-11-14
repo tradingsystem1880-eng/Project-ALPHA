@@ -41,8 +41,8 @@ ceiling admits no new live plan, and the work is finished in one sitting.
     "Text output changes break a caller that parses it: no code or test parses the text line; JSON output is unchanged apart from the new horizon_turnover field and caveat wording."
   ],
   "slices": [
-    {"title": "Horizon-matched turnover, honest caveats, readable text output", "verify": "uv run pytest -q tests/unit/test_hypothesis_scan_signals.py tests/integration/test_hypothesis_scan_cli.py", "expected": "all pass; the new known-answer and oracle tests fail on main", "rollback": "revert _hypothesis_scan.py, scan_cmds.py and the tests", "status": "pending"},
-    {"title": "Screening smoke check through the installed alpha", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_screening_smoke.py", "expected": "passed", "rollback": "delete tests/smoke/test_screening_smoke.py", "status": "pending"}
+    {"title": "Horizon-matched turnover, honest caveats, readable text output", "verify": "uv run pytest -q tests/unit/test_hypothesis_scan_signals.py tests/integration/test_hypothesis_scan_cli.py", "expected": "all pass; the new known-answer and oracle tests fail on main", "rollback": "revert _hypothesis_scan.py, scan_cmds.py and the tests", "status": "done"},
+    {"title": "Screening smoke check through the installed alpha", "verify": "uv run python scripts/run_owned_test.py --timeout 900 -- uv run pytest -q -m smoke -n 0 tests/smoke/test_screening_smoke.py", "expected": "passed", "rollback": "delete tests/smoke/test_screening_smoke.py", "status": "done"}
   ],
   "tier_impact": ["none"],
   "docs_to_update": ["docs/roadmap/capabilities.toml", "STATUS.md", "docs/roadmap/README.md", "docs/roadmap/backlog/screen-overlap-corrected-t.md"],
