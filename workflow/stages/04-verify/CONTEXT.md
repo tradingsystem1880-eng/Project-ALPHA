@@ -7,7 +7,7 @@ sources:
   - scripts/handoff.py
   - .claude/agents/reviewer.md
   - .claude/agents/quant-verifier.md
-verified: aa600e57932d
+verified: 7fe2520da25e
 ---
 
 # Stage 04 — verify: prove it works
