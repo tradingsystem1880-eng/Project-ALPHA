@@ -8,7 +8,7 @@ sources:
   - tests/unit/test_crypto_*.py
   - tests/integration/test_crypto_*.py
   - tests/integration/test_data_*.py
-verified: c3cda7679642
+verified: 8c67bef63ab9
 ---
 
 # Command line data invariants
@@ -101,6 +101,12 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
 - Its `available_at` filter follows the parser's next-UTC-day convention; it does not prove a publication time.
 - `crypto_price_snapshot_query.py`, `_chart_data.py` and `_crypto_bar_coverage.py` are bounded diagnostics. They never
   write to snapshots or artifacts and grant no admission.
+- The daily price query reads one caller-named normalized manifest per BTCUSDT month member, in observed-start order:
+  one name gives the unchanged `BinanceDailyPriceSnapshotQueryV1`, several give `BinanceDailyPriceSnapshotQueryV2`.
+  Duplicate names, overlapping members, a missing day, a named member outside the range, and an unnamed same-coin member
+  meeting the range fail loud; other coins are ignored. Each member's receipts must postdate each of its candles'
+  completion; a Binance monthly archive receipt bounds only its `period` month. 8 MiB raw and 32 MiB normalized across
+  the query. [ADR-0048](../../adr/0048-daily-rule-lane-binding-and-named-months.md)
 
 ## Crypto research edge
 

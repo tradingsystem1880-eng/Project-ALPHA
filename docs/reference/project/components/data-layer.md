@@ -110,7 +110,9 @@ download shows `quality_status: passed`, which means only that the mechanical ch
 - **Binance monthly archives:** a month's file exists only after the month ends, so a backfill
   lists the current month as "not published yet" rather than failing; the current month comes from
   the bounded live-service tail. A governed crypto snapshot may hold many months of many coins;
-  the daily price reader used by the daily rule lane still reads one month per snapshot.
+  the daily price reader used by the daily rule lane reads every month named for BTCUSDT
+  (one stored copy per month), refusing gaps, overlaps and unnamed months in the range
+  ([ADR-0048](../../../adr/0048-daily-rule-lane-binding-and-named-months.md)).
 
 ## Where it lives
 
@@ -119,7 +121,8 @@ download shows `quality_status: passed`, which means only that the mechanical ch
   `funding-download`, `retained-coverage`, `crypto-snapshots`, `providers-and-jobs`
 - Code: `packages/alpha-data/src/alpha_data/`; the `alpha data` and `alpha crypto-data` commands in
   `apps/alpha-cli/`.
-- Tests: `tests/smoke/test_data_smoke.py`, and the data tests under `tests/unit/` and `tests/bias_guards/`.
+- Tests: `tests/smoke/test_data_smoke.py`, `tests/smoke/test_crypto_data_smoke.py` (crypto downloads through an
+  offline recorded provider, `tests/smoke/_recorded_provider.py`), and the data tests under `tests/unit/` and `tests/bias_guards/`.
 - How to change it: [packages/alpha-data/CONTEXT.md](../../../../packages/alpha-data/CONTEXT.md).
 - Plans: the `plans` of each capability above in `docs/roadmap/capabilities.toml`.
 - Backlog: [offline price import](../../../roadmap/backlog/offline-data-import.md),
@@ -128,7 +131,8 @@ download shows `quality_status: passed`, which means only that the mechanical ch
   [ADR-0005](../../../adr/0005-point-in-time-firewall.md), [ADR-0017](../../../adr/0017-authoritative-daily-data-and-broker-paper-boundary.md),
   [ADR-0032](../../../adr/0032-governed-crypto-data-house.md),
   [ADR-0046](../../../adr/0046-crypto-snapshot-members-are-content-addressed.md),
-  [ADR-0047](../../../adr/0047-alpaca-interim-stock-source.md).
+  [ADR-0047](../../../adr/0047-alpaca-interim-stock-source.md),
+  [ADR-0048](../../../adr/0048-daily-rule-lane-binding-and-named-months.md).
 
 ## Decisions and open questions
 

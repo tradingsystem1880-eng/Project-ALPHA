@@ -134,10 +134,13 @@ entry_points = [
 proof_synthetic = [
   "tests/integration/test_crypto_data_native_acquisition.py::test_binance_trade_archive_families_acquire_with_exact_native_identity",
 ]
-real_data = "Recorded: on 2026-10-02 live DefiLlama downloads (Aave TVL, stablecoin supply, yield pools) passed their checks, and a Binance spot listing was downloaded on 2026-10-01 (docs/BUILD-STATUS.md, 2026-10-02 entries). On 2026-11-14 the Dell downloaded free Binance spot daily history for 15 USDT pairs and a spot market list; not yet confirmed (docs/reference/project/components/data-layer.md)."
+proof_smoke = [
+  "tests/smoke/test_crypto_data_smoke.py::test_binance_listing_archive_and_tail_download_through_recorded_provider",
+  "tests/smoke/test_crypto_data_smoke.py::test_workstation_serves_the_downloaded_coverage",
+]
+real_data = "Recorded: on 2026-10-02 live DefiLlama downloads (Aave TVL, stablecoin supply, yield pools) passed their checks, and a Binance spot listing was downloaded on 2026-10-01 (docs/BUILD-STATUS.md, 2026-10-02 entries). On 2026-11-14 the Dell downloaded free Binance spot daily history for 15 USDT pairs and a spot market list, and the installed alpha downloaded a live Binance REST tail of November 2026 on a copy of that folder; not yet confirmed (docs/reference/project/components/data-layer.md). The end-to-end check covers Binance only; Bybit, CoinGecko, DefiLlama, GeckoTerminal and Coin Metrics are not run end to end."
 needs = []
-state = "Partial"
-missing = "tested in-process only; no end-to-end smoke check yet"
+state = "Working"
 plans = []
 
 [[capability]]
@@ -895,7 +898,7 @@ name = "AI-run daily trading-rule study"
 codes = ["Packet 3", "W08"]
 what = "Run one complete, rule-governed study of a simple daily momentum rule against a \"do nothing\" control, with locked inputs and a final report."
 see_it = [
-  "uv run alpha research draft-daily <project-id> --source-pack-id … --snapshot-id … --normalized-manifest-id …",
+  "uv run alpha research draft-daily <project-id> --source-pack-id … --snapshot-id … --normalized-manifest-id … (once per month)",
   "Workstation: the daily rule report on a study run",
 ]
 entry_points = [

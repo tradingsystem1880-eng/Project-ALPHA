@@ -36,7 +36,8 @@ isolated workers and `tools/alpha-eval` keep their own suites. Tests must never 
 - Layout: `tests/unit/` (pure units; `tests/unit/study/` for alpha-study), `tests/integration/`
   (CLI and engine), `tests/bias_guards/`, `tests/oracles/` (tolerances in `_reference/`),
   `tests/fixtures/` (goldens), `tests/acceptance/` (17 visible acceptance tests, always run), `tests/smoke/` (end-to-end
-  workflows through the installed programs; marker `smoke`, not in the fast tier).
+  workflows through the installed programs; marker `smoke`, not in the fast tier; crypto downloads go through
+  the offline recorded provider `tests/smoke/_recorded_provider.py`, a loopback TLS proxy).
 - A new file's name decides its tier: `tests/_tiers.py` moves files with listed prefixes out of
   the fast local tier. Never add the `platform` marker by hand.
 - Run one file: `uv run pytest -q tests/unit/test_x.py`; the fast check:

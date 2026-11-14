@@ -68,7 +68,7 @@ work may be open.
 | [2026-11-08-complete-http-response-evidence](../work/2026-11-08-complete-http-response-evidence/02-plan.md) | Strict complete-response evidence before replay | Blocked | 2026-11 |
 | [2026-11-14-approval-by-structure](../work/2026-11-14-approval-by-structure/02-plan.md) | Approvals bind code structure, not bytes | Planned | 2026-11 |
 
-## Backlog (18)
+## Backlog (19)
 
 | Item | Status | Rough size |
 | --- | --- | --- |
@@ -89,6 +89,7 @@ work may be open.
 | [Full Qlib model zoo and fold-by-fold counterfactual retraining (W11/W12)](backlog/qlib-model-zoo-and-fold-retraining.md) | Scoped | XL |
 | [RD-Agent autonomous native research and restart continuation (W08/W13, T07)](backlog/rdagent-autonomous-research.md) | Scoped | XL |
 | [Overlap-corrected t statistic for the quick screen](backlog/screen-overlap-corrected-t.md) | Idea | S |
+| [Web-started downloads ignore proxy and certificate settings](backlog/web-downloads-network-settings.md) | Idea | S |
 | [Make the weekly mutation sweep pass on main](backlog/weekly-mutation-sweep.md) | Scoped | S |
 
 ## Staged refactors (6)
@@ -102,7 +103,7 @@ work may be open.
 | [Break up oversized functions](refactors/oversized-functions.md) | M |
 | [Reduce `# type: ignore` suppressions](refactors/type-ignore-reduction.md) | L |
 
-## Archived plans (128)
+## Archived plans (130)
 
 | Month | Plans |
 | --- | --- |
@@ -110,4 +111,4 @@ work may be open.
 | [2026-08](../work/archive/2026-08/) | 10 |
 | [2026-09](../work/archive/2026-09/) | 21 |
 | [2026-10](../work/archive/2026-10/) | 60 |
-| [2026-11](../work/archive/2026-11/) | 24 |
+| [2026-11](../work/archive/2026-11/) | 26 |
