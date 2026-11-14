@@ -25,7 +25,20 @@ def install_source(source: Path) -> str:
     return identity
 
 
+def _step_exception(loop: Any, li: int) -> Any:
+    try:
+        return loop.loop_prev_out[li].get(loop.EXCEPTION_KEY)
+    except (AttributeError, KeyError, TypeError):
+        return None
+
+
 def record_steps(loop_class: Any) -> None:
+    """Wrap the step runner with start/end lines (status ok, skipped or error).
+
+    The start line is written before RD-Agent takes the step's semaphore, so with more than one
+    loop in parallel a queued loop's start can precede the running one's end; ALPHA runs one loop
+    at a time (RD-Agent's default parallelism of 1), where the intervals are exact.
+    """
     run_dir = os.environ.get("ALPHA_FACTOR_RUN_DIR")
     if not run_dir:
         return
@@ -43,21 +56,20 @@ def record_steps(loop_class: Any) -> None:
         si = self.step_idx[li]
         row = {"schema": "AlphaRdagentStepV1", "loop": li, "step_index": si, "step": self.steps[si]}
         append({**row, "event": "start"})
-        error_type = None
+        error_type, status = None, "ok"
+        before = _step_exception(self, li)
         try:
             return await original(self, li, *args, **kwargs)
         except BaseException as error:
-            error_type = type(error).__name__
+            error_type, status = type(error).__name__, "error"
             raise
         finally:
-            append(
-                {
-                    **row,
-                    "event": "end",
-                    "status": "error" if error_type else "ok",
-                    "error_type": error_type,
-                }
-            )
+            # RD-Agent swallows its skip-loop errors (CoderError, FactorEmptyError) and stores
+            # them under EXCEPTION_KEY, then jumps to feedback: record those steps as skipped.
+            after = _step_exception(self, li)
+            if status == "ok" and after is not None and after is not before:
+                error_type, status = type(after).__name__, "skipped"
+            append({**row, "event": "end", "status": status, "error_type": error_type})
 
     loop_class._run_step = wrapped
 

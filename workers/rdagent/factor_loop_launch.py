@@ -435,13 +435,20 @@ class Launch:
             if missing:
                 output.write_bytes(b"")
                 return {"calls": 0, "reason": "missing files: " + ", ".join(missing)}
-            calls, steps = (
-                [json.loads(line) for line in p.read_text().splitlines()] for p in paths
-            )
-            calls = [row for row in calls if row["run_id"] == self.args.run_id]
-            labelled = label_calls(calls, steps)
+            skipped = 0
+            parsed: list[list[dict[str, Any]]] = []
+            for p in paths:
+                rows = []
+                for line in p.read_text().splitlines():
+                    try:
+                        rows.append(json.loads(line))
+                    except ValueError:
+                        skipped += 1  # a line cut short by a killed process
+                parsed.append(rows)
+            calls = [row for row in parsed[0] if row.get("run_id") == self.args.run_id]
+            labelled = label_calls(calls, parsed[1])
             output.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in labelled))
-            return {"calls": len(labelled)}
+            return {"calls": len(labelled), "skipped_lines": skipped}
         except Exception as error:  # noqa: BLE001 - labelling is best effort, with receipt diagnostics
             note = f"{type(error).__name__}: {error}"
             try:
