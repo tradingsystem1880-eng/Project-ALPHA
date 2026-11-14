@@ -6,7 +6,7 @@ sources:
   - apps/alpha-cli/src/alpha_cli/strategy_candidate*.py
   - tests/unit/test_research_*.py
   - tests/integration/test_research_*.py
-verified: 1724a5befe5d
+verified: aa600e57932d
 ---
 
 # Command line research invariants
@@ -52,9 +52,12 @@ this file holds the command-line specifics.
 - Every approved contract freezes `code`, `dependency_lock`, `environment` and `evaluator` fingerprints
   (`research_cmds.py::_implementation_hashes`). Pilot and deep runs refuse to start, and D2 is marked contaminated,
   when any of them differs. Enforced by `tests/integration/test_research_cli.py` (fingerprint drift case).
-- `code` hashes every `.py` file under `packages/alpha-research/src/alpha_research` plus the exact bytes of
+- `code` is the structural digest (scheme 2, [ADR-0045](../../adr/0045-approvals-bind-code-structure.md),
+  `_structural_digest.py`) of every file under `packages/alpha-research/src/alpha_research` plus
   `alpha_cli/research_intake.py`, `research_runtime.py`, `research_crypto_data.py` and `research_crypto_runtime.py`.
-  A cosmetic edit (comment, import order, formatting) to any of them invalidates every existing owner approval.
+  A comment, blank-line, formatting or unread-docstring edit keeps an approval valid; any change to what the code does
+  invalidates it. An approval made before ADR-0045 (scheme 1, exact bytes) still verifies only against identical bytes
+  (`_approved_code_scheme`) until the owner re-approves. Editing `_structural_digest.py` itself invalidates every scheme-2 approval.
 - `dependency_lock` is the repository `uv.lock` bytes, so a lock change has the same effect.
 - Daily native rule contracts use a different fingerprint (`_native_rule_environment.rule_implementation_fingerprints`);
   see [command line native § Approval fingerprints](cli-native.md#approval-fingerprints).
@@ -72,6 +75,9 @@ this file holds the command-line specifics.
 - D2 reads its sealed share exactly once. A successful run consumes D2 and routes to `research_decision`.
 - The D2 classifier cannot yield INVALID from measurements: an under-powered run is NOT_TESTED with an INCONCLUSIVE
   classification. INVALID arises only from contamination.
+- D1 and D2 share one implementation of immutable artifact publication and canonical JSON reads
+  (`_research_artifact_io.py`): a regular non-symlink file, bounded size, canonical bytes, and any NaN or infinity fails
+  as "must contain finite JSON values".
 - D1 runs publish under an EXPLORATORY watermark; D2 runs under REGISTERED CONFIRMATORY. Research runs carry no orders,
   fills, sizing or costs.
 - Statistical method rules: [research integrity § Statistical evidence](research-integrity.md#statistical-evidence).

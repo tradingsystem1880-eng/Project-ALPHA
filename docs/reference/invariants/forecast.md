@@ -5,7 +5,7 @@ sources:
   - tests/unit/test_forecast_*.py
   - tests/bias_guards/test_forecast_fake_causal.py
   - tests/bias_guards/test_kronos_cache_no_lookahead.py
-verified: 1ac86fc02443
+verified: aa600e57932d
 ---
 
 # Forecast invariants

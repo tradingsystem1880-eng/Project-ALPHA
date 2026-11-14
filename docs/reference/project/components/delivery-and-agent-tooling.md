@@ -7,7 +7,7 @@ sources:
   - docs/CONTEXT.md
   - tools/alpha-eval/CONTEXT.md
   - docs/reference/model-routing.md
-verified: a79d832d
+verified: fbfecd65355d
 ---
 
 # Delivery and agent tooling
@@ -44,6 +44,12 @@ file system makes sure an agent knows what each part is for before changing it.
 The gate, the pipeline and the file system are in use; `uv run python scripts/gate.py check` runs
 the local check. This part has no owner-facing capability on [STATUS.md](../../../../STATUS.md).
 
+The weekly health check is a scheduled task named "ALPHA weekly health check". It runs every Monday at 13:23
+(Australia/Brisbane) on the Dell, in a fresh session, so the Dell must be on. It refreshes the status page, lists stale
+documents, flaky tests and unfinished work, opens small draft clean-up pull requests, and saves a report under
+`/home/hunta/alpha-clean-base/health-reports/`. It never merges
+([owner decision](../owner-decisions-2.md#2026-11-14-a-weekly-automatic-health-check)).
+
 ## Where it lives
 
 - **Workspaces:** `workflow`, `scripts`, `tests`, `docs`, `tools/alpha-eval`
@@ -60,6 +66,8 @@ the local check. This part has no owner-facing capability on [STATUS.md](../../.
   [ADR-0041](../../../adr/0041-no-hidden-test-suite.md).
 
 ## Decisions and open questions
+- Decided: a weekly automatic health check that opens small clean-up pull requests and never merges
+  ([log](../owner-decisions-2.md#2026-11-14-a-weekly-automatic-health-check)); described above.
 - Decided: triage card G is replaced by Codex builds, Claude plans
   ([log](../owner-decisions.md#2026-11-14-agents-merge-and-decide-routine-matters)).
 - Triage, 2026-11-14 under the owner's delegation

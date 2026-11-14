@@ -12,7 +12,7 @@ sources:
   - tests/unit/test_owner_auth_api.py
   - tests/unit/test_owner_local_confirmation.py
   - tests/unit/test_run_context_authority.py
-verified: d0fffa796f8e
+verified: aa600e57932d
 ---
 
 # Web API invariants
@@ -93,11 +93,15 @@ as JSON and SSE (server-sent events, a one-way live stream) and serves the built
   `run_projection`). Operational state needs its own governed public seam — do not scan `RUN_DIRS` for it.
 - Read paper state only through `alpha_cli.paper_store` / `paper_readiness`. Starting or stopping a paper node is a CLI
   job, never an in-process call. [ADR-0002](../../adr/0002-cli-sole-composer-subprocess-surfaces.md)
-- The only file the web code writes itself is a named workspace, `data_dir/web/workspaces/<slug>.json` (atomic write,
-  slugified name). It is presentation state with no research or execution authority.
+- The only file the web code writes itself is a named workspace, `data_dir/web/workspaces/<slug>.json` (atomic write through
+  `alpha_core.atomic`, slugified name). It is presentation state with no research or execution authority.
 - Never reconstruct trading evidence or compute metrics in the backend; relay what the CLI and artifacts record.
 - Run labels are server-side: `_runs.display_name` builds `<strategy> D1 — <symbol> · <source> · <first → last> · run
   <8 hex>` from the manifest and omits any part it does not record; `market_of` decides crypto/equities or `unknown`.
+  Identity fields (symbol, symbols, label, snapshot id) are read from the manifest top level first, then its `metadata`.
+- The `/api/ml` models accept the Alpha158 feature recipe v3 (`MlUpstreamAlpha158`, all 158 upstream Qlib columns, processors
+  `qlib_processors_v3`) next to v1 and v2; the API only relays what the Qlib worker recorded.
+  [ADR-0042](../../adr/0042-qlib-worker-delegates-data-layer-to-upstream.md)
 
 ## Chart data
 
