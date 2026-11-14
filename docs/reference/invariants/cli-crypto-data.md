@@ -24,6 +24,10 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
   (`stage_and_promote`). [ADR-0017](../../adr/0017-authoritative-daily-data-and-broker-paper-boundary.md)
 - Once a symbol's canonical source is Tiingo, Yahoo and Stooq pulls are audit-only and must fail rather than replace
   it (`data_cmds.pull`).
+- An Alpaca pull never shares a price series with another source, either way: it refuses a symbol already held
+  from another source or with no source label, and no other source may write into an Alpaca-held symbol
+  (`data_cmds.pull`; [ADR-0047](../../adr/0047-alpaca-interim-stock-source.md)). Enforced by
+  `tests/integration/test_data_alpaca_cli.py`.
 - `data pull` rejects `--end` before `--start`, normalises the symbol (ambiguous input fails with the accepted forms), and
   for CCXT refuses a start before the first listed bar with a "Start there?" hint. Never clamp silently.
 - `data candles` and `data symbols` read through the same point-in-time loader a backtest uses (`_runner.load_bars`).

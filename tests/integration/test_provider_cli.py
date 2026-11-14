@@ -30,6 +30,7 @@ def test_info_providers_json_is_redacted(monkeypatch: pytest.MonkeyPatch) -> Non
         "ccxt",
         "stooq",
         "tiingo",
+        "alpaca",
         "binance",
         "bybit",
         "coingecko",

@@ -107,8 +107,8 @@ proof_synthetic = [
 proof_smoke = [
   "tests/smoke/test_data_smoke.py::test_snapshot_verifies_and_reads_back_as_of_a_date",
 ]
-real_data = "not yet confirmed (to check on the Mac later); on 2026-11-14 no free stock source could be used on the Dell: Yahoo's terms forbid automated collection and Stooq blocks automated requests (docs/reference/project/components/data-layer.md)"
-real_data_needs = "A Tiingo API key (the main stock source), or an owner decision on another free stock source."
+real_data = "not yet confirmed (to check on the Mac later); on 2026-11-14 the Dell holds 16 US stocks and ETFs from Yahoo through the yfinance downloader, by owner decision despite Yahoo's terms, frozen in snapshot free-yfinance-stocks-2026-11-14, and 15 of them from Alpaca's free plan (2016 on) in snapshot alpaca-starter-2026-11-14 under data-alpaca (docs/reference/project/components/data-layer.md)"
+real_data_needs = "A Tiingo key for the authoritative source, and confirmation on the Mac."
 needs = []
 state = "Partial"
 missing = "no offline way to get prices in; snapshot, verify and as-of read are proven end to end"
