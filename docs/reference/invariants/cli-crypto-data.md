@@ -8,7 +8,7 @@ sources:
   - tests/unit/test_crypto_*.py
   - tests/integration/test_crypto_*.py
   - tests/integration/test_data_*.py
-verified: 1e8e00cc9a64
+verified: 841eb50dcc89
 ---
 
 # Command line data invariants
@@ -42,7 +42,8 @@ and [research integrity § Invalid data fails loud](research-integrity.md#invali
 - Keep each provider's dataset family separate. No provider is a universal crypto price, and no fallback may change
   venue, quote asset, units, frequency or evidence. [ADR-0032](../../adr/0032-governed-crypto-data-house.md)
 - Join assets by network plus contract address or a reviewed native mapping; ticker-only joins fail
-  (`alpha_data.crypto.asset_master`).
+  (`alpha_data.crypto.asset_master`). `asset-master-verify` accepts the built-in reviewed labels exactly as
+  `asset-masters` lists them (no catalog sources); any other version is a stored master whose sources are re-verified.
 - CCXT snapshots and the `ccxt:binance` paper warm-up path are a separate, unchanged lane.
 
 ## Bulk storage

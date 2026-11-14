@@ -7,13 +7,20 @@ rights, a new mapping policy, or research/execution authority. Never rebuild map
 from __future__ import annotations
 
 from alpha_core import DataError
-from alpha_data.crypto.asset_master import AssetMaster
+from alpha_data.crypto.asset_master import REVIEWED_NATIVE_LABELS, AssetMaster
 from alpha_data.crypto.contracts import (
     FAMILY_AUTHORITIES,
     CryptoDatasetIdentityV1,
     CryptoQualityReportV1,
 )
 from alpha_data.crypto.storage import CryptoBulkStore
+
+
+def builtin_asset_master(version: str) -> AssetMaster | None:
+    """Resolve only the exact reviewed native labels; custom masters need source checks."""
+    if version in REVIEWED_NATIVE_LABELS:
+        return AssetMaster.with_reviewed_native_assets(version)
+    return None
 
 
 def verify_asset_master_sources(store: CryptoBulkStore, master: AssetMaster) -> None:

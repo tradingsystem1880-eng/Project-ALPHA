@@ -112,6 +112,19 @@ def get_json(url: str, timeout: float = 30) -> Any:
         return json.loads(response.read())
 
 
+def post_json(url: str, body: object, timeout: float = 30) -> Any:
+    # alpha-web answers 127.0.0.1 with a 307 to localhost (WebAuthn origin); urllib will not
+    # resend a POST body across a redirect, so post to the canonical origin directly.
+    request = urllib.request.Request(
+        url.replace("://127.0.0.1", "://localhost", 1),
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return json.loads(response.read())
+
+
 def _free_port() -> int:
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
