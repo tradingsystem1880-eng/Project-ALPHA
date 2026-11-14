@@ -57,7 +57,7 @@
         "packages/alpha-research/src/alpha_research/rendering.py",
         "tests/unit/test_figure_history_determinism.py"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "Tear sheet renders under QuantStats' own style rebuilt from defaults",
@@ -68,18 +68,18 @@
         "packages/alpha-validation/src/alpha_validation/tearsheet.py",
         "tests/unit/test_figure_history_determinism.py"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "Research golden pins PNG bytes instead of masking their size",
       "verify": "uv run pytest -q tests/integration/test_research_cmds_golden.py",
-      "expected": "The golden records each PNG's raw sha256 and size; it passes alone and after a test that made a tear sheet in the same process.",
+      "expected": "The golden keeps each PNG's size raw and pins the sha256 of its image data (IDAT chunks) raw; the file digest stays a token because its text metadata carries run and contract hashes. It passes alone and after a test that made a tear sheet in the same process.",
       "rollback": "Restore the size mask and the previous golden fixture.",
       "files": [
         "tests/integration/test_research_cmds_golden.py",
         "tests/fixtures/research_cmds_golden.json"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "title": "Owning documents",
@@ -96,7 +96,7 @@
         "docs/roadmap/README.md",
         "STATUS.md"
       ],
-      "status": "pending"
+      "status": "done"
     }
   ],
   "tier_impact": [
@@ -172,8 +172,9 @@
    Also: `_quantstats_style()` equals the rcParams a fresh `python -c` process has after
    `import quantstats_lumi` (compared key by key as `repr`), and making a tear sheet leaves the
    test process's rcParams unchanged.
-4. Golden: `_Normalizer._field` keeps a `.png` entry's `sha256` and `size_bytes` raw (not
-   tokenised, not masked) and drops the stale comment; regenerate the fixture with
+4. Golden: the size mask is removed (`size_bytes` is raw); the PNG file digest stays a token,
+   because its text metadata carries run and contract hashes (which move with any bound-code or
+   lock change), and each flow ends with a record pinning the raw sha256 of every PNG's image data; regenerate the fixture with
    `uv run python tests/integration/test_research_cmds_golden.py --write`.
 5. Documents (Claude): the research invariants line for `render_research_line_chart` and a tear
    sheet line in the validation invariants; this task folder.

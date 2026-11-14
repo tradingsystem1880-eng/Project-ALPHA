@@ -24,7 +24,7 @@ sources:
   - tests/unit/test_figure*.py
   - tests/integration/test_validate_*.py
   - tests/integration/test_backtest_*.py
-verified: aa600e57932d
+verified: 330acecce016
 ---
 
 # Command line runs invariants

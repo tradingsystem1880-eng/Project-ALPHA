@@ -20,6 +20,8 @@ and stored evidence must still verify.
 
 Nothing visible: internal. The pull request lists the root cause, the tests and which research
 approvals need renewing because a file under `packages/alpha-research/src` changed.
+Build evidence and sandbox limits are recorded in [verification](04-verify.md); the approval impact
+and remaining orchestrator checks are in [handoff](05-handoff.md).
 
 ## Out of scope
 
