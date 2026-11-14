@@ -34,6 +34,59 @@ from alpha_data.crypto.providers.binance import (
 DAY = timedelta(days=1)
 
 
+def test_checksum_http_error_reports_status_and_cause(monkeypatch: pytest.MonkeyPatch) -> None:
+    url = "https://data.binance.vision/data/file.zip.CHECKSUM"
+    error = urllib.error.HTTPError(url, 404, "Not Found", {}, None)  # type: ignore[arg-type]
+
+    def urlopen(_request: urllib.request.Request, *, timeout: int) -> object:
+        raise error
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    with pytest.raises(DataError) as caught:
+        fetch_binance_checksum(url)
+    assert "HTTP 404" in str(caught.value)
+    assert caught.value.__cause__ is error
+
+
+def test_resumable_archive_http_error_reports_status_and_cause(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = "https://data.binance.vision/data/file.zip"
+    error = urllib.error.HTTPError(url, 404, "Not Found", {}, None)  # type: ignore[arg-type]
+
+    def urlopen(_request: urllib.request.Request, *, timeout: int) -> object:
+        raise error
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    with pytest.raises(DataError) as caught:
+        fetch_binance_archive(url, tmp_path / "staging", hashlib.sha256(b"good").hexdigest())
+    assert "HTTP 404" in str(caught.value)
+    assert caught.value.__cause__ is error
+
+
+def test_resumable_archive_connection_reset_keeps_resume_guidance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    error = ConnectionResetError("connection reset during download")
+
+    def urlopen(_request: urllib.request.Request, *, timeout: int) -> _ArchiveResponse:
+        return _ArchiveResponse(
+            [b"partial", error],
+            status=200,
+            headers={"Content-Type": "application/zip"},
+            url="https://data.binance.vision/data/file.zip",
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    with pytest.raises(DataError, match="rerun to resume") as caught:
+        fetch_binance_archive(
+            "https://data.binance.vision/data/file.zip",
+            tmp_path / "staging",
+            hashlib.sha256(b"good").hexdigest(),
+        )
+    assert caught.value.__cause__ is error
+
+
 def test_exchange_info_parses_active_spot_and_perpetual_membership() -> None:
     fetched_at = datetime(2026, 8, 15, tzinfo=UTC)
     spot = json.dumps(

@@ -14,7 +14,7 @@ import subprocess
 import sys
 import time
 import urllib.request
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -78,13 +78,19 @@ class Ran:
             pytest.fail(f"expected JSON output\n{self.report()}")
 
 
-def alpha(home: Path, *args: str, expect: int = 0, timeout: float = 300) -> Ran:
+def alpha(
+    home: Path,
+    *args: str,
+    expect: int = 0,
+    timeout: float = 300,
+    env: Mapping[str, str] | None = None,
+) -> Ran:
     """Run ``alpha ARGS`` in ``home`` (also its working directory, so no stray ``.env`` loads)."""
     try:
         proc = subprocess.run(
             [str(program("alpha")), *args],
             cwd=home,
-            env=child_env(home),
+            env=child_env(home, **(env or {})),
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -103,6 +109,19 @@ def alpha(home: Path, *args: str, expect: int = 0, timeout: float = 300) -> Ran:
 
 def get_json(url: str, timeout: float = 30) -> Any:
     with urllib.request.urlopen(url, timeout=timeout) as response:
+        return json.loads(response.read())
+
+
+def post_json(url: str, body: object, timeout: float = 30) -> Any:
+    # alpha-web answers 127.0.0.1 with a 307 to localhost (WebAuthn origin); urllib will not
+    # resend a POST body across a redirect, so post to the canonical origin directly.
+    request = urllib.request.Request(
+        url.replace("://127.0.0.1", "://localhost", 1),
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.loads(response.read())
 
 

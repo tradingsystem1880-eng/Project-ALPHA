@@ -22,10 +22,7 @@ import typer
 from alpha_cli._crypto_acquisition import (
     AcquisitionPlan as _AcquisitionPlan,
 )
-from alpha_cli._crypto_acquisition import (
-    bybit_plan,
-    option_quote_frame,
-)
+from alpha_cli._crypto_acquisition import bybit_plan, option_quote_frame
 from alpha_cli._crypto_analysis import (
     LegacyUnscopedEventError as _LegacyUnscopedEventError,
 )
@@ -50,7 +47,10 @@ from alpha_cli._crypto_analysis import (
 from alpha_cli._crypto_analysis import (
     parquet_frame as _parquet_frame,
 )
-from alpha_cli._crypto_asset_master_sources import verify_asset_master_sources
+from alpha_cli._crypto_asset_master_sources import (
+    builtin_asset_master,
+    verify_asset_master_sources,
+)
 from alpha_cli._crypto_backfill_accounting import FixtureAccountingBlocked
 from alpha_cli._crypto_coverage import batch_digest as _coverage_batch_digest
 from alpha_cli._crypto_coverage import batch_directory as _coverage_batch_directory
@@ -4285,7 +4285,7 @@ def asset_master_verify(
 ) -> None:
     """Rederive a frozen asset master's content identity before snapshot use."""
     try:
-        master = _verified_asset_master(_bulk_store(), version)
+        master = builtin_asset_master(version) or _verified_asset_master(_bulk_store(), version)
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit(
@@ -4578,11 +4578,9 @@ def backfill(
     from alpha_cli._crypto_backfill_evidence import verify_completed_window
     from alpha_data.crypto.verification import ArtifactVerificationBudget
 
-    verification_budget = (
-        None
-        if max_verify_artifact_bytes is None
-        else ArtifactVerificationBudget(max_verify_artifact_bytes)
-    )
+    verification_budget = None
+    if max_verify_artifact_bytes is not None:
+        verification_budget = ArtifactVerificationBudget(max_verify_artifact_bytes)
 
     def verify_completed(symbol: str, window: BackfillWindow, entry: Mapping[str, object]) -> None:
         verify_completed_window(
@@ -4600,8 +4598,7 @@ def backfill(
         )
 
     try:
-        start_date = date.fromisoformat(start)
-        end_date = date.fromisoformat(end)
+        start_date, end_date = date.fromisoformat(start), date.fromisoformat(end)
     except ValueError as exc:
         raise typer.BadParameter("backfill --start/--end must be YYYY-MM-DD") from exc
     if not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", ledger):
@@ -4630,7 +4627,10 @@ def backfill(
     except DataError as exc:
         raise typer.BadParameter(str(exc)) from exc
     summary.update(
-        not_published_yet=list(unpublished_binance_periods(start_date, end_date, started))
+        not_published_yet=sorted(
+            set(unpublished_binance_periods(start_date, end_date, started))
+            | set(cast(list[str], summary["awaiting_publication"]))
+        )
         if provider == "binance"
         else [],
         verification_artifact_byte_limit=max_verify_artifact_bytes,

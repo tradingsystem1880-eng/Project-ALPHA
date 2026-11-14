@@ -262,7 +262,7 @@ def test_explicit_restored_cloud_root_reopens_preserved_lineage(
     before = query_binance_daily_price_snapshot(
         snapshot,
         configured_crypto_bulk_store(original / "control"),
-        normalized_manifest_id=manifest,
+        normalized_manifest_ids=(manifest,),
         start=START,
         end=datetime(2023, 1, 1, tzinfo=UTC),
         available_by=datetime(2023, 1, 1, tzinfo=UTC),
@@ -279,7 +279,7 @@ def test_explicit_restored_cloud_root_reopens_preserved_lineage(
     after = query_binance_daily_price_snapshot(
         snapshot,
         configured_crypto_bulk_store(restored / "control"),
-        normalized_manifest_id=manifest,
+        normalized_manifest_ids=(manifest,),
         start=START,
         end=datetime(2023, 1, 1, tzinfo=UTC),
         available_by=datetime(2023, 1, 1, tzinfo=UTC),
@@ -290,7 +290,7 @@ def test_explicit_restored_cloud_root_reopens_preserved_lineage(
         query_binance_daily_price_snapshot(
             snapshot,
             configured_crypto_bulk_store(restored / "control"),
-            normalized_manifest_id=manifest,
+            normalized_manifest_ids=(manifest,),
             start=START,
             end=datetime(2023, 1, 1, tzinfo=UTC),
             available_by=datetime(2023, 1, 1, tzinfo=UTC),
