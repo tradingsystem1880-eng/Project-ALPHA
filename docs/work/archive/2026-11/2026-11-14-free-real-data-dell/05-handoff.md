@@ -47,7 +47,8 @@ Binance archive-versus-live comparison, and `uv run python scripts/gate.py check
 
 - No code was written; every step used existing commands. Claude (Opus) ran the downloads and
   wrote the documents.
-- Review: Codex through `scripts/handoff.py review` (see `04-verify.md`), then CI.
+- Review: Codex (`gpt-6-astra`, effort medium) through `scripts/handoff.py review`: one low
+  finding (the plan named a build class the rules do not allow), fixed. Then CI.
 
 ## The one document updated
 

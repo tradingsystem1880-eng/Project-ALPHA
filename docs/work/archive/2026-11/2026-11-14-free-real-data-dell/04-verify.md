@@ -151,4 +151,7 @@ independent check, but it shows old volume figures can change.
 
 ## Review findings
 
+- Codex (`gpt-6-astra`, medium, via `scripts/handoff.py review`), low: the plan said
+  `Build class: none`, which the plan contract does not allow. Fixed: `small`.
+
 None open.

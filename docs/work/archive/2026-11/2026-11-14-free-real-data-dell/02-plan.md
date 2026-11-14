@@ -1,7 +1,7 @@
 # Free real market data on the Dell
 
 **Delivery state:** Completed — downloads done and checked on branch `m5/free-real-data`; done when its pull request merges.
-**Build class:** none — no code was needed: every download used existing `alpha` commands; the documents are Claude's.
+**Build class:** small — no code was needed: every download used existing `alpha` commands; only documents changed, written by Claude.
 
 Filed straight into the archive, as `2026-11-14-rdagent-model-gateway` was: the work-in-progress
 ceiling (34, a ratchet) admits no new live plan, and the work was finished in one sitting.
