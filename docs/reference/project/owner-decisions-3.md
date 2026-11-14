@@ -69,3 +69,19 @@ the rules for entries are in the first. New entries are appended at the end of t
 - **Context:** answers an agent's question whether to use all of RD-Agent's own abilities
   instead of rebuilding them in ALPHA. RD-Agent stays an engine the AI partner calls.
 - **Governs:** [RD-Agent](components/rd-agent.md).
+
+### 2026-11-15 Build the thin spine clean, then switch over
+
+- **Said:** "Clean spine."
+- **Context:** answers an agent's question: keep carving the old code down piece by piece, or
+  write the small new core fresh in this repository, point the screens at it, and delete the
+  old lanes as each is replaced. The owner chose the second. The owner also agreed to set up
+  private remote access to the Dell so the screens can be opened from a phone.
+- **Governs:** the whole project; the [overview](overview.md#the-target-shape).
+
+### 2026-11-15 The file system is always kept up to date
+
+- **Said:** "Ensure file systsem is always being updated and accounted for".
+- **Context:** said while approving the clean spine. Every change of direction, new part and
+  removed part is written into the project layer in the same piece of work, not afterwards.
+- **Governs:** [delivery and agent tooling](components/delivery-and-agent-tooling.md).
