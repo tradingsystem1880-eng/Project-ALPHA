@@ -59,13 +59,15 @@ request only when its paths (or the workflow and gate files) change, and always 
 | `slow-oracles` job: every `slow_oracle` test | the same as the `quant` job, for statistics not touched by a pull request | Nightly | 1.1 min |
 | `frontend-full` job: browser journeys at all four viewports | layout breaking at the minimum or wide viewports | Nightly | 23.3 min |
 | `mutation-sweep` job: dispatches the weekly sweep on demand | (see the weekly rows) | Nightly (manual) | — |
-| `modules`, `mutate`, `aggregate` jobs: every quant module, every mutant | weak tests anywhere in the quant tier (report only); dispatch with `-f module=<path>` runs one module's fragments and skips `aggregate` | Weekly | ~70 min |
+| `modules`, `mutate`, `aggregate` jobs: every quant module, every mutant | weak tests anywhere in the quant tier (report only) | Weekly | ~70 min |
 | `network` marker | live vendor feeds changed | Local | — |
 | tests that need stored runs or data (`tests/integration/test_figure_builders.py`) | figures over real stored runs | Local (skip on GitHub) | — |
 | native browser lane (`ALPHA_RDAGENT_SOURCE`, `ALPHA_STOCK_PYTHON`) | the native RD-Agent result screen | Local (skip on GitHub) | — |
 
 ## How to change it
 
+- `gh workflow run mutation-weekly.yml --ref <branch> -f module=<path>` runs one module's fragments
+  and skips `aggregate` (a partial sweep is not a sweep).
 - On CI the doctor's machine-readiness section (setup state of a development machine) is listed, never enforced.
 - A new CI job or pytest marker needs a row here; the unit test names what is missing.
 - Re-measure times from `gh run view <id> --json jobs` and update the column in the same change.
