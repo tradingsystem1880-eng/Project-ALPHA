@@ -57,6 +57,11 @@ admits no new live plan.
 
 Do not read the RD-Agent tree beyond the files named below; the facts needed are stated here.
 
+Where this plan leaves a small detail open (a name, a message, a helper's shape, a count in a
+test), choose the simplest option consistent with ADR-0049 and report it under Deviations; stop
+only for a question that would change what a result means. The RD-Agent source for reading is at
+`$ALPHA_RDAGENT_SOURCE` (if unset: `/home/hunta/alpha-clean-base/Project-ALPHA/.alpha/state/runtime/rdagent-source`).
+
 ## What to build
 
 ### 1. Factor runtime (`install_stock_profile.py`, `setup_rdagent.sh`)
