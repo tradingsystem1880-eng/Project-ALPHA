@@ -72,6 +72,9 @@ def test_daily_matches_prechange_fixture(tmp_path: Path) -> None:
     old = ev.screen(signal, opens[2 : len(days) + 2] / opens[1 : len(days) + 1] - 1, digest)
     for key in ("mean_ic", "p", "mean_ci_95", "effective_n", "z"):
         assert daily[key] == old[key]
+    # Pinned numbers: produced by the pre-clock evaluator (commit 3d332156's screen and replay)
+    # on this fixture and cross-checked by an independent reviewer on 2026-11-15, so they catch a
+    # future drift of the daily clock away from the original judge.
     assert daily["mean_ic"] == 0.8978991596638654
     assert daily["p"] == 0.0
     assert daily["mean_ci_95"] == {
@@ -332,3 +335,24 @@ def test_legacy_result_includes_each_factor_clock_and_warning_text(
         assert legacy[prefix + "mean_turnover"] == trial["replay"]["mean_turnover"]
     assert "low_sample: n=10" in result["feedback_text"]
     assert "low_sample: n=10" in result["legacy_result"]["factor.feedback"]
+
+
+@pytest.mark.parametrize("clock", ["daily", "weekly", "monthly"])
+def test_a_missing_open_drops_one_name_not_the_whole_clock(clock: str) -> None:
+    signal, opens, days, open_days = arrays()
+    opens = opens.copy()
+    opens[1:40, 3] = np.nan  # one coin has no bars at the start (listed later)
+    result = ev.screen_at_clock(signal, opens, days, "a" * 64, clock, open_days=open_days)
+    assert result["status"] in {"OK", "DEGENERATE"}
+    assert "mean_ic" in result or result["status"] == "DEGENERATE"
+
+
+def test_any_errored_replay_after_a_screen_pass_is_an_error() -> None:
+    from alpha_cli._rdagent_clocks import overall_status
+
+    clocks = {
+        "daily": {"status": "SCREEN_FAIL", "q": 0.5},
+        "weekly": {"status": "ERROR", "q": 0.01},
+        "monthly": {"status": "REPLAY_FAIL", "q": 0.05},
+    }
+    assert overall_status(clocks)[0] == "ERROR"

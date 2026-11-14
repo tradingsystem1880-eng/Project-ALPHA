@@ -54,9 +54,13 @@ def clock_samples(
     start = [lookup[day + timedelta(days=1)] for day in chosen]
     end = [lookup[day + timedelta(days=1 + h)] for day in chosen]
     used = opens[[*start, *end]]
-    if not np.isfinite(used).all() or (used <= 0).any():
-        raise DataError("forward windows require finite positive opens")
-    return {"days": chosen, "signal": signal[selected], "outcome": opens[end] / opens[start] - 1}
+    if (used <= 0).any():
+        raise DataError("forward windows require positive opens")
+    # A missing open (a coin not yet listed, a gap) leaves that name's outcome NaN; the rank IC
+    # drops it for that day, as the daily screen always did, instead of failing the whole clock.
+    with np.errstate(invalid="ignore"):
+        outcome = opens[end] / opens[start] - 1
+    return {"days": chosen, "signal": signal[selected], "outcome": outcome}
 
 
 def clock_targets(
@@ -93,7 +97,7 @@ def clock_targets(
             rebalances += 1
         else:
             weights = base_weights * (closes[i] / base_closes)
-            if weights.sum() <= 0:
+            if not np.isfinite(weights).all() or weights.sum() <= 0:
                 raise DataError("drifted holdings have no positive weight")
             weights /= weights.sum()
         origin = datetime.combine(day, time(), UTC)
@@ -136,6 +140,8 @@ def overall_status(clocks: dict[str, dict[str, Any]]) -> tuple[str, str]:
         status = "CANDIDATE"
     elif clocks["daily"]["status"] == "PASS":
         status = "FAST_ONLY"
+    elif any(t["q"] < 0.10 and t["status"] == "ERROR" for t in clocks.values()):
+        status = "ERROR"  # a clock passed the screen but its replay failed to run
     elif "REPLAY_FAIL" in statuses or any(t["q"] < 0.10 for t in clocks.values()):
         status = "REPLAY_FAIL"
     elif all(s == "DEGENERATE" for s in statuses):

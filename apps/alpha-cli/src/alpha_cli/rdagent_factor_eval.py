@@ -814,6 +814,13 @@ def _report(
         "multiple_testing": "screening only, adaptive family, no error rate claimed",
         "direction": "chosen in-sample",
         "replay_engine": "ALPHA canonical synchronized replay, not Nautilus",
+        "legacy_result_keys": (
+            "RD-Agent's 1day.* result keys carry the lead clock's metrics, whatever its horizon"
+        ),
+        "turnover_per_rebalance": (
+            "all traded value over the span divided by the number of rebalances, so it includes "
+            "the small residual trades between rebalances"
+        ),
         "close_stamp": "origin + 23h; full UTC day bar known at its close",
         "lookahead_scope": (
             "prefix invariance at fixed cuts only; not proof against leakage within cuts"
