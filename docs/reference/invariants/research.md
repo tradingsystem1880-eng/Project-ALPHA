@@ -7,7 +7,7 @@ sources:
   - tests/bias_guards/test_market_state_future_poison.py
   - tests/bias_guards/test_poison_variants.py
   - tests/unit/test_figure_*.py
-verified: aa600e57932d
+verified: 580c5a0fe478
 ---
 
 # Research primitive invariants
@@ -140,4 +140,7 @@ General rule: [research integrity § Statistical evidence](research-integrity.md
   unreachable rather than stale. Change `FIGURES_CACHE_VERSION` only with `alpha_cli.figure_cache`, kept equal by a drift test.
 - The default theme is `terminal_classic.json`; `alpha_dark.json` remains loadable. The SPA canvas tokens are
   generated from the default theme and drift-guarded by `tests/unit/test_theme_drift.py`.
-- `render_research_line_chart` emits a byte-stable PNG with no creation timestamp.
+- `render_research_line_chart` emits a byte-stable PNG with no creation timestamp. It seeds every
+  rcParam from shipped defaults except `backend`, then applies its style, so process history and local
+  Matplotlib configuration cannot change the bytes. The caller's backend is preserved. Clean-process
+  hashes and all figure writers' history independence are pinned in `tests/unit/test_figure_history_determinism.py`.
