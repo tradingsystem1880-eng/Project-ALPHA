@@ -1,6 +1,6 @@
 # Connect backfill to explicit disposable window-dispatch accounting
 
-**Delivery state:** Implemented – qualification pending — code only in uncommitted candidate a631e8e7; never merged or gated
+**Delivery state:** Blocked — shelved 2026-11-14 (triage card 2, owner's delegation): code merged but not wired into any command; kept for a future download-budget policy and durable acquisition journal. Earlier state: Implemented – qualification pending
 
 Canonical v9 W05/W02 market-data slice C calls for persistent budget use across retries
 and resumes, bounded acquisition and no history/exposure reset. This successor connects

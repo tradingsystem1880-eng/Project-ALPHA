@@ -51,7 +51,7 @@ See the capabilities below on [STATUS.md](../../../../STATUS.md).
 
 ## Decisions and open questions
 
-- Triage card 5 (risk numbers, recommended KEEP) waits for the owner ([triage sheet](../../../roadmap/triage-2026-11.md)).
+- Triage card 5 (risk numbers): KEEP, 2026-11-14 under the owner's delegation ([triage sheet](../../../roadmap/triage-2026-11.md)).
 
 ## Never
 

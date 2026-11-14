@@ -111,6 +111,9 @@ gauntlet and is not promotion-eligible. Single-asset ML equivalence is also not 
 
 ## Inert W09 planning contracts
 
+Shelved (2026-11-14, triage card A): not wired in, kept as the groundwork for running Qlib models
+through RD-Agent research cases (W09) after the daily rule study.
+
 The CLI-owned [planning API](../../apps/alpha-cli/src/alpha_cli/ml_native_plan.py)
 binds declared project/experiment/contract and request/panel/snapshot references to
 `W09ProtocolV1` and an exact `W09ManifestV1` operation graph. V1 describes existing
@@ -190,6 +193,8 @@ public checks, the 93% floor and independent final-tree review remain mandatory.
 
 ## Gate
 
+Shelved (2026-11-14, triage card 10): the W11 refit evidence is not wired into any fit; it is
+kept for Qlib fold retraining once the reviewed statistics modules exist.
 The [W11 engineering packet](../../docs/work/2026-10-26-qlib-w11-refit/02-plan.md)
 adds observed schema3 component provenance: raw fold scopes and label clocks, actual normalization
 inputs/state, and native Linear/DoubleEnsemble fit, selection and reweighting links. Other recipes

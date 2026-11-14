@@ -1,8 +1,19 @@
 # ADR-0018: Split QuantPad discovery from bulk research-data access
 
-**Status:** Accepted
+**Status:** Superseded 2026-11-14 by the owner's decision to stop using QuantPad (see the note below)
 **Date:** 2026-08-04
 **Deciders:** Project ALPHA owner and AI build agents
+
+## Owner supersession — 2026-11-14
+
+The owner no longer uses QuantPad. On 2026-11-14, under the owner's delegated triage
+([card D](../roadmap/triage-2026-11.md#d-quantpad-code)), the QuantPad command (`alpha
+quantpad-data`), adapter, archive code, provider-registry entry, readiness check and launcher
+action were removed from the code. This record no longer describes current behaviour: it is kept
+as the historical reason for that code. Research datasets already registered from a QuantPad
+receipt (dataset kind `quantpad_receipt`) stay readable; no new ones can be registered. Tiingo
+authority and the IBKR Paper boundary are unchanged. Nothing here changes credentials, cancels a
+subscription or authorises acquisition.
 
 ## Context
 

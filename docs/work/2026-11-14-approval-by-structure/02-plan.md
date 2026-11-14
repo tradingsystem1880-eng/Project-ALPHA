@@ -1,6 +1,6 @@
 # Approvals bind code structure, not bytes
 
-**Delivery state:** Planned — built by Claude on `m6/approval-by-structure` (draft pull request); the work-in-progress ceiling (41 of 41) does not allow `In progress`
+**Delivery state:** Planned — built by Claude on `m6/approval-by-structure` (draft pull request); the work-in-progress ceiling (34 of 34) does not allow `In progress`
 **Build class:** hard — guarded and hash-bound paths (`_native_rule_environment.py` is a daily approval guard file), quant/protected tier, owner-authority semantics
 
 ## For the owner

@@ -4,7 +4,7 @@ sources:
   - workers/literature/src/**
   - workers/literature/pyproject.toml
   - workers/literature/uv.lock
-verified: 1ac86fc02443
+verified: 1724a5befe5d
 ---
 
 # Literature worker workspace
@@ -30,8 +30,8 @@ resource limits; its output is advisory evidence, never research authority.
 ## How to change it
 
 - Code: `workers/literature/src/literature_worker/`; tests: `workers/literature/tests/`
-  (add a new unit test there, named `test_<module>.py`). Root test of the launch boundary:
-  `tests/unit/test_literature_worker_pin.py`.
+  (add a new unit test there, named `test_<module>.py`). The launch boundary is tested from the
+  root in `tests/integration/test_research_cli.py`.
 - From `workers/literature`: `uv lock --check`, `uv sync --locked`, `uv run ruff check .`,
   `uv run ruff format --check .`, `uv run mypy`, `uv run pytest -q -m "not network"`.
 - Or CI's job from the repository root: `uv run python scripts/gate.py component literature`.

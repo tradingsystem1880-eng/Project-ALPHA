@@ -25,13 +25,14 @@ scripts/alpha-with-keychain-provider tiingo check
 | Provider | Keychain service | Variable | What it unlocks | Verify |
 |---|---|---|---|---|
 | Tiingo | `project-alpha-tiingo` | `ALPHA_TIINGO_API_KEY` | authoritative stock/ETF EOD — the receipt→candidate→quality→canonical promotion path, and the daily scheduler | `scripts/alpha-with-keychain-provider tiingo check` |
-| QuantPad | `project-alpha-quantpad` | `QUANTPAD_API_KEY` | research-only bulk daily bars (`rd_` dataset registration) and the archive lane | `scripts/alpha-with-keychain-provider quantpad check` |
 | CoinGecko | `project-alpha-coingecko` | `ALPHA_COINGECKO_API_KEY` | crypto reference/catalog acquisition | `scripts/alpha-with-keychain-provider coingecko check` |
 | IBKR | `project-alpha-ibkr-paper-account` | `ALPHA_IBKR_PAPER_ACCOUNT`, `ALPHA_IBKR_GATEWAY_IMAGE`, `TWS_USERNAME`, `TWS_PASSWORD` | native IBKR Paper boundary | `uv run alpha provider check ibkr` |
 
-`alpha provider check` is registered for `tiingo`, `quantpad`, `coingecko`, and `ibkr`, and writes
+`alpha provider check` is registered for `tiingo`, `coingecko`, and `ibkr`, and writes
 a redacted `ProviderCheckReceiptV1` under `data_dir`. Finnhub was retired on 2026-09-10 together
-with `alpha_screener` (edge-first audit F6); the launcher no longer accepts it.
+with `alpha_screener` (edge-first audit F6); the launcher no longer accepts it. QuantPad was
+removed on 2026-11-14 (its command, adapter, archive code and launcher action); its keychain item
+`project-alpha-quantpad` is no longer used, and deleting it is your choice.
 
 `yfinance`, `ccxt`, `stooq`, `binance`, `bybit`, `geckoterminal`, and `coinmetrics` need no
 credential and already report `configured: true`.
@@ -109,7 +110,7 @@ items are also still open in the same receipt and no agent can clear them:
 
 ### Bulk crypto storage — configured and verified
 
-The QuantPad archive and crypto acquisition lanes write to an external volume and fail closed if
+The crypto acquisition lanes write to an external volume and fail closed if
 it is absent, full, or a different disk. Verified 2026-08-19 from the main checkout:
 
 - `/Volumes/Expansion/Project-ALPHA/crypto-data` is mounted, 1.8 TiB free (3% used).
@@ -181,6 +182,5 @@ observations below retain their original inspection date.
   fixed in code), but the legacy `.claude/state/mutation/` directory it left behind — ~329 MB in
   this worktree — is not cleaned automatically. It is git-ignored and safe to delete once when
   you want the disk back; nothing reads it between runs.
-- **`.quantpad/` is git-ignored** (run-log directory for the QuantPad archive/completion lanes).
-  The five ad-hoc `quantpad_*` completion scripts under `scripts/` were retired 2026-08-19; the
-  Content-Length truncation guard in `alpha_data.quantpad_archive` supersedes them.
+- **`.quantpad/` is git-ignored** (old run-log directory of the QuantPad archive lane, which was
+  removed on 2026-11-14). Nothing writes to it any more; delete it when you want the disk back.

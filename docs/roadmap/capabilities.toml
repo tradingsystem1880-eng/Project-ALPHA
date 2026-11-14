@@ -162,7 +162,8 @@ real_data_needs = "Network access to Bybit and a storage volume for years of dat
 needs = []
 state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"
-triage = { card = "1", recommendation = "KEEP", owner_decision = "undecided" }
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; needs one real download run
+triage = { card = "1", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = [
   "2026-09-10-edge-first-phase-b-feed-the-machine",
   "2026-11-07-backfill-ledger-exclusion",
@@ -186,9 +187,10 @@ entry_points = [
 proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
-state = "Partial"
-missing = "not connected to any command; tests only"
-triage = { card = "2", recommendation = "SHELVE", owner_decision = "undecided" }
+state = "Shelved"
+missing = "shelved 2026-11-14: not wired into any command; kept for a future download-budget policy and durable acquisition journal"
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept for a future download-budget policy
+triage = { card = "2", recommendation = "SHELVE", owner_decision = "SHELVE" }
 plans = [
   "2026-11-07-acquisition-disposable-transactions",
   "2026-11-08-accounted-backfill-dispatch",
@@ -210,9 +212,10 @@ entry_points = [
 proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
-state = "Partial"
-missing = "not connected to any command; real downloads refused on purpose"
-triage = { card = "B", recommendation = "SHELVE", owner_decision = "undecided" }
+state = "Shelved"
+missing = "shelved 2026-11-14: not wired into any command (real downloads refused on purpose); kept for funding-event research"
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept for funding-event research
+triage = { card = "B", recommendation = "SHELVE", owner_decision = "SHELVE" }
 plans = []
 
 [[capability]]
@@ -237,7 +240,8 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
-triage = { card = "3", recommendation = "KEEP", owner_decision = "undecided" }
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; needs one real dataset
+triage = { card = "3", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = [
   "2026-11-08-retained-daily-bar-grid",
   "2026-11-08-retained-bar-quality-ui",
@@ -270,7 +274,8 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "tested in-process only; no end-to-end smoke check yet"
-triage = { card = "4", recommendation = "KEEP", owner_decision = "undecided" }
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; small and built into existing commands
+triage = { card = "4", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = [
   "2026-11-08-asset-master-source-provenance",
   "2026-11-08-snapshot-capture-binding",
@@ -454,7 +459,8 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "tested in-process and in a browser against a test server; no end-to-end smoke check yet"
-triage = { card = "5", recommendation = "KEEP", owner_decision = "undecided" }
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; closest to working
+triage = { card = "5", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = [
   "2026-11-08-c04-risk-anchor-disclosure",
   "2026-11-08-risk-equity-clocks",
@@ -592,7 +598,8 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "no test takes one paper all the way to an experiment"
-triage = { card = "6", recommendation = "KEEP", owner_decision = "undecided" }
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; fits how research is done
+triage = { card = "6", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = ["2026-11-07-paper-to-experiment-provenance"]
 
 [[capability]]
@@ -728,7 +735,8 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Partial"
 missing = "no ML run with version 2; superseded by version 3 (kept for stored results)"
-triage = { card = "11", recommendation = "KEEP", owner_decision = "undecided" }
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; opt-in correctness fix
+triage = { card = "11", recommendation = "KEEP", owner_decision = "KEEP" }
 plans = ["2026-11-09-alpha158-versioned-correction"]
 
 [[capability]]
@@ -763,9 +771,10 @@ entry_points = ["cli: alpha ml refit-plan", "cli: alpha ml refit-status"]
 proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = ["reviewed statistics modules that do not exist yet"]
-state = "Partial"
-missing = "blocked on missing statistics modules"
-triage = { card = "10", recommendation = "SHELVE", owner_decision = "undecided" }
+state = "Shelved"
+missing = "shelved 2026-11-14: not wired into any fit; kept for Qlib fold retraining once the reviewed statistics modules exist"
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept for Qlib fold retraining
+triage = { card = "10", recommendation = "SHELVE", owner_decision = "SHELVE" }
 plans = ["2026-10-26-qlib-w11-refit"]
 
 [[capability]]
@@ -781,9 +790,10 @@ entry_points = [
 proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
-state = "Not started"
-missing = "only unused groundwork exists; waits on the daily rule study"
-triage = { card = "A", recommendation = "DELETE", owner_decision = "undecided" }
+state = "Shelved"
+missing = "shelved 2026-11-14: unused groundwork, not wired in; kept for routing Qlib models through RD-Agent research cases after the daily rule study"
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve, not delete: it routes Qlib through RD-Agent, which the owner declared core after the sheet was written
+triage = { card = "A", recommendation = "DELETE", owner_decision = "SHELVE" }
 plans = []
 
 [[capability]]
@@ -801,9 +811,10 @@ entry_points = [
 proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
-state = "Demo only"
-missing = "made-up prices only; not a production path (the pipeline demo re-ran on this computer on 2026-11-14)"
-triage = { card = "F", recommendation = "SHELVE", owner_decision = "undecided" }
+state = "Shelved"
+missing = "shelved 2026-11-14: made-up prices only, not a production path; kept as a demonstration that Qlib and Nautilus connect (it re-ran on this computer on 2026-11-14)"
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept as a made-up-data demonstration
+triage = { card = "F", recommendation = "SHELVE", owner_decision = "SHELVE" }
 plans = []
 
 [[capability]]
@@ -915,9 +926,11 @@ proof_synthetic = []
 real_data = "not yet confirmed (to check on the Mac later)"
 needs = []
 state = "Not started"
-missing = "only a plan; one advisory slice shipped"
-triage = { card = "15", recommendation = "YOUR CALL", owner_decision = "undecided" }
-plans = ["2026-10-02-agentic-research-capability-program"]
+missing = "a backlog item only (moved from a plan 2026-11-14); one advisory slice shipped"
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep as a backlog item; RD-Agent is core
+triage = { card = "15", recommendation = "YOUR CALL", owner_decision = "KEEP" }
+docs = ["docs/roadmap/backlog/agentic-research-programme.md"]
+plans = []
 
 [[capability]]
 id = "mac-real-data"
@@ -930,25 +943,9 @@ real_data = "not yet confirmed (to check on the Mac later)"
 needs = ["your Mac", "access to a real data provider (blocked since 31 August)"]
 state = "Partial"
 missing = "one final review and a run on your Mac"
-triage = { card = "13", recommendation = "KEEP", owner_decision = "undecided" }
-plans = [
-  "2026-08-30-crypto-operational-readiness",
-  "2026-10-26-mac-portability-qualification",
-]
-
-[[capability]]
-id = "quantpad-archive"
-name = "QuantPad data archive"
-what = "Archive and verify data from QuantPad, an old outside research-data source."
-see_it = ["uv run alpha quantpad-data archive …, uv run alpha quantpad-data verify …"]
-entry_points = ["cli: alpha quantpad-data archive", "cli: alpha quantpad-data verify"]
-proof_synthetic = []
-real_data = "not yet confirmed (to check on the Mac later)"
-needs = []
-state = "Shelved"
-missing = "dropped from all data-source plans by your earlier decision (recorded in the README)"
-triage = { card = "D", recommendation = "DELETE", owner_decision = "undecided" }
-plans = []
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; the two plans merged into one
+triage = { card = "13", recommendation = "KEEP", owner_decision = "KEEP" }
+plans = ["2026-10-26-mac-portability-qualification"]
 
 # Triage cards that are not a user-facing workflow of their own.
 [[decision]]
@@ -962,35 +959,38 @@ owner_decision = "KEEP"
 card = "12"
 name = "Test and web plumbing fixes"
 recommendation = "KEEP"
-owner_decision = "undecided"
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): keep; cheap and protects working features
+owner_decision = "KEEP"
 
 [[decision]]
 card = "14"
 name = "Old clean-up programmes (close the plans)"
 recommendation = "DELETE"
-owner_decision = "undecided"
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): delete: both plans archived; the failing weekly mutation sweep moved to the backlog
+owner_decision = "DELETE"
 
 [[decision]]
 card = "E"
 name = "Duplicate copy of the literature download code"
 recommendation = "DELETE"
-owner_decision = "undecided"
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): delete: the worker's copy is now the only one
+owner_decision = "DELETE"
 
 [[decision]]
 card = "G"
 name = "Delivery-task pilot (Claude/Codex hand-off tool)"
 recommendation = "DELETE"
-owner_decision = "undecided"
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): delete: backlog item closed, superseded by docs/reference/model-routing.md and scripts/handoff.py
+owner_decision = "DELETE"
+
+[[decision]]
+card = "D"
+name = "QuantPad code"
+recommendation = "DELETE"
+# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): delete: command, adapter and archive code removed; registered QuantPad datasets stay readable
+owner_decision = "DELETE"
 
 # Live plans that belong to no single workflow.
-[[unassigned_plan]]
-plan = "2026-10-05-clean-reconcile-main"
-reason = "Repository clean-up programme, no product feature (triage card 14)."
-
-[[unassigned_plan]]
-plan = "2026-10-08-repository-hygiene"
-reason = "Repository clean-up programme, no product feature (triage card 14)."
-
 [[unassigned_plan]]
 plan = "2026-11-09-selector-error-test-correction"
 reason = "Test correction only, no change for the owner (triage card 12)."
@@ -1010,19 +1010,9 @@ title = "Get real crypto history into ALPHA"
 line = "Resumable crypto history download is built; the real download of the top 50 Bybit contracts has not been done."
 
 [[plan_summary]]
-plan = "2026-10-05-clean-reconcile-main"
-title = "Clean up and protect the main branch"
-line = "Old programme from October; one hardening step left. The triage recommends closing it."
-
-[[plan_summary]]
-plan = "2026-10-08-repository-hygiene"
-title = "Repository tidy-up programme"
-line = "Old open-ended to-do list; several items shipped. The triage recommends closing it."
-
-[[plan_summary]]
 plan = "2026-10-26-mac-portability-qualification"
-title = "Make ALPHA run on your Mac"
-line = "Five of six steps done; one final independent review is left."
+title = "Make ALPHA run on your Mac with real data providers"
+line = "Five of six Mac steps done; one final review is left, and the real-provider steps (merged in 2026-11-14) wait on provider access."
 
 [[plan_summary]]
 plan = "2026-10-31-packet3-daily-rule"

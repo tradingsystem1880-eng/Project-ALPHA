@@ -1,6 +1,6 @@
 # Agentic research capability program
 
-**Delivery state:** Planned — broad programme not started; advisory teammate slice shipped via PR #56
+**Delivery state:** Superseded by [agentic-research-programme.md](../../../../roadmap/backlog/agentic-research-programme.md) — moved 2026-11-14 (triage card 15, KEEP as a backlog item, owner's delegation); nothing beyond the advisory slice was started. Earlier state: Planned — broad programme not started; advisory teammate slice shipped via PR #56
 
 ```json
 {
@@ -122,7 +122,7 @@ Read-only inspection found two different baselines. The active root is `feat/age
 | Drawdown episode figures | `apps/alpha-cli/src/alpha_cli/figures/_builders.py` | Reuse episode calculation; add exposure, cross-asset, cost and event investigation |
 | Head-and-shoulders, inverse and QM detection | `packages/alpha-patterns/src/alpha_patterns/head_shoulders.py` | Extend operator/search wiring; do not rebuild the detector |
 | Engine-backed optimization and ordered attempt accounting | `apps/alpha-cli/src/alpha_cli/_optim.py`, `_suite.py` | Existing generic fields are narrow; pattern geometry needs an explicit new search contract |
-| Cited, revisioned evidence and point-in-time retrieval | `control_store.py`; [ADR-0015](../../adr/0015-evidence-ledger-not-agent-memory.md) | Reuse canonical evidence, including negative findings and contradictions |
+| Cited, revisioned evidence and point-in-time retrieval | `control_store.py`; [ADR-0015](../../../../adr/0015-evidence-ledger-not-agent-memory.md) | Reuse canonical evidence, including negative findings and contradictions |
 | Research protocol skills | `.agents/skills/alpha-research-protocols/` | Extend routing, triggers and completion; avoid a second set of contradictory protocols |
 | Workstation assistant, provisional in dirty root | `assistant_runtime.py`, `assistant_contracts.py`, `assistant_service.py` | Currently a no-tool explanation/drafting boundary, not an autonomous researcher; its uncommitted presence is not acceptance evidence |
 | Bounded controller, immutable rule inputs, execution digest and fee guard | Separate checkout `73fb2a9`: `research_execution.py`, `research_execution_digest.py`, `research_workflow_contract.py` and fee delivery | Integrate/reuse before extending; typed specialist envelopes do not themselves execute specialists |
@@ -402,7 +402,7 @@ Implementation is isolated in `feat/research-teammate` on the delivered `73fb2a9
 
 ## Synthetic demo implementation — 2026-10-02
 
-[Closed investigation demo](../archive/2026-10/2026-10-02-closed-investigation-demo.md) implements a restricted
+[Closed investigation demo](../2026-10-02-closed-investigation-demo.md) implements a restricted
 four-action development path after the advisory slice. It uses designed synthetic panels, not
 real-data exports or engine backtests. The negative control is specifically a frozen-indicator
 null. Worker enforcement and tools-disabled Codex transport have distinct evidence; no broad
@@ -412,7 +412,7 @@ agent isolation, predictive confirmation, model-team uplift or program completio
 ## Efficiency comparison — 2026-10-02
 
 The closed demo passed review and the full gate in `d5f3cd4`. The next isolated slice is
-[the frozen efficiency comparison](../archive/2026-10/2026-10-02-investigation-efficiency.md): legacy adaptive,
+[the frozen efficiency comparison](../2026-10-02-investigation-efficiency.md): legacy adaptive,
 prechecked adaptive, and fixed-evidence advisory synthesis on the same three designed cases.
 It measures orchestration cost without changing models, actions or isolation. Automatic checks
 are controller behavior, not independent model initiative. Real-data reconciliation, richer
@@ -422,10 +422,10 @@ migration follows merely from completing this comparison.
 
 ## Judgment evidence and next handoff — 2026-10-02
 
-After the efficiency comparison (`77d6e94`), the [judgment slice](../archive/2026-10/2026-10-02-research-judgment-cases.md)
+After the efficiency comparison (`77d6e94`), the [judgment slice](../2026-10-02-research-judgment-cases.md)
 adds six designed cases covering misleading context, benchmark divergence, hindsight labels,
 missing evidence and source failure. Original and recovery cohorts remain separate; the
-[report](../../../tools/alpha-eval/results/research-judgment-20261002/report.md) records limitations.
+[report](../../../../../tools/alpha-eval/results/research-judgment-20261002/report.md) records limitations.
 The next useful owner journey is a verified read-only real-run brief plus execution reconciliation,
 connected to the existing advisory path. Prioritize useful questions and decision-changing evidence;
 neither agent count nor synthetic completion establishes expert trading competence. Repeated

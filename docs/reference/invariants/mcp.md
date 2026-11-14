@@ -6,7 +6,7 @@ sources:
   - tests/integration/test_mcp_server.py
   - tests/integration/test_research_mcp.py
   - tests/unit/test_codex_investigation.py
-verified: 1ac86fc02443
+verified: 1724a5befe5d
 ---
 
 # MCP invariants

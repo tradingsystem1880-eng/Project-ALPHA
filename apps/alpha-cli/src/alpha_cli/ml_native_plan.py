@@ -1,5 +1,8 @@
 """Inert W09 metadata contracts; no registration, records, fits or authority.
 
+Shelved (2026-11-14, triage card A): not wired in, kept because it is the groundwork for
+running Qlib models through RD-Agent research cases (W09), after the daily rule study.
+
 The finite graph describes existing v1/v2 computations. Its parser bounds and
 operation counts are not approved resource units, variants or independent trials.
 """

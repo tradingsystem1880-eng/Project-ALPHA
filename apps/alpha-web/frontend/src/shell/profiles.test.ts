@@ -34,9 +34,9 @@ describe('PROFILES', () => {
     expect(crypto.starterWatchlist).toEqual(['BTC/USDT', 'ETH/USDT', 'XRP/USDT', 'SOL/USDT'])
   })
 
-  it('equities hides crypto-only families and shows the four equity providers', () => {
+  it('equities hides crypto-only families and shows the three equity providers', () => {
     const equities = profile('equities')
-    expect(equities.providers).toEqual(['tiingo', 'yfinance', 'stooq', 'quantpad'])
+    expect(equities.providers).toEqual(['tiingo', 'yfinance', 'stooq'])
     expect(equities.defaultSource).toBe('tiingo')
     for (const hidden of ['funding', 'open-interest', 'onchain', 'dex', 'crowding'] as const) {
       expect(equities.windows).not.toContain(hidden)

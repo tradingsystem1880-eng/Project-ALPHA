@@ -53,8 +53,8 @@ Why, one line each:
   frontier model "for the most demanding work" (`~/.codex/models_cache.json`, 2026-11-14).
 - `medium` for small tasks: both calibration tasks (below) came out correct and clean first time
   at `medium`; the earlier hand-run trial at `high` took 8 minutes for a task of similar size.
-- `high` for standard and `gpt-6-astra` for hard: not yet measured; the conservative choice until
-  builds of those classes say otherwise.
+- `high` for standard and `gpt-6-astra` for hard: first measured 2026-11-14 (tasks F and G below),
+  one build each, so still provisional.
 - Lighter models (`gpt-6-luna`, "fast and affordable") are not used for building: a quiet quality
   loss costs more than the allowance saved. No evidence yet says otherwise.
 - Higher efforts (`xhigh`, `max`, `ultra`) are not used by default: unmeasured, and they spend the
@@ -79,6 +79,20 @@ reviewed by Claude (Opus) before merge:
 The mutation-gate change in the same stream touched guarded harness files (`scripts/gate*`,
 `scripts/harness_*`), which a brief cannot declare, so Claude built it and Codex reviewed it
 (`handoff.py review`: 0 findings) alongside an Opus reviewer (one medium finding, fixed).
+
+First standard and hard builds, 2026-11-14, standard and hard briefs, triage clean-up, reviewed by Claude:
+
+| Task | Class, model, effort | Wall time | Input tokens (cached) | Output | Fix rounds | Result |
+|---|---|---|---|---|---|---|
+| F: one copy of literature acquisition code (6 files) | standard, `gpt-6.1-sol`, `high` | 7m30s | 1,328,298 (1,244,160) | 19,234 | 2, empty | correct; note 1 |
+| G: remove QuantPad code (28 files) | hard, `gpt-6-astra`, `high` | 20m51s | 2,796,814 (2,715,648) | 9,859 | 0 | correct; note 2 |
+
+1. Task F's build round alone was 401,809 in and 6,010 out. Both fix rounds were spent on a brief
+   check that also searched documents the builder was told not to touch (a brief error).
+2. Task G was approved unchanged; the orchestrator rebuilt the SPA bundle, which needs the network.
+
+A fix round resumes the whole thread, so even an empty round costs about the full context again
+(about 40k more input each in task F). A brief's checks must only cover files the builder may change.
 
 Most of Codex's allowance goes on context: a turn's input count adds up what is sent with each
 model call (inferred: 497k input for one turn of 32 commands, 94% cached), so every file read

@@ -44,8 +44,7 @@ ordering) does not reach the others, and reviewers cannot tell which variant a h
   ledger rows, fixture provenance) must stay byte-identical; changing an encoder silently breaks
   verification of stored artifacts.
 - Worker copies (`workers/qlib`, `workers/literature`, `workers/rdagent`) stay separate by design:
-  they are isolated projects with their own locks and may not import `alpha-*` packages; the
-  literature worker's `_acquisition.py` is a byte-pinned copy (`tests/unit/test_literature_worker_pin.py`).
+  they are isolated projects with their own locks and may not import `alpha-*` packages.
 - Every byte of the `alpha_research` tree and several `alpha_data` modules feed runtime identity
   hashes (`research_cmds._implementation_hashes`, `comparison_acquisition._policy_hash`), and all
   execution packages feed `_identity.execution_fingerprint`; touching them changes those identities.

@@ -43,7 +43,7 @@ def test_receipt_is_redacted_content_addressed_and_drives_status(tmp_path: Path)
 
 
 def test_missing_receipt_is_unverified_and_tamper_fails_closed(tmp_path: Path) -> None:
-    assert provider_readiness.last_check_status(tmp_path, "quantpad") == {
+    assert provider_readiness.last_check_status(tmp_path, "tiingo") == {
         "verification_state": "unverified",
         "verified_at": None,
         "last_receipt_id": None,
@@ -53,16 +53,16 @@ def test_missing_receipt_is_unverified_and_tamper_fails_closed(tmp_path: Path) -
 
     receipt = provider_readiness.record_check_receipt(
         tmp_path,
-        provider_id="quantpad",
+        provider_id="tiingo",
         verification_state="authentication_failed",
         granted_capabilities=(),
         checked_at=datetime(2026, 8, 13, tzinfo=UTC),
         recovery_action="Rotate the REST key, reinject it, and run one new explicit check.",
         details={"interface": "rest"},
     )
-    path = tmp_path / "provider-checks" / "quantpad" / f"{receipt['receipt_id']}.json"
+    path = tmp_path / "provider-checks" / "tiingo" / f"{receipt['receipt_id']}.json"
     path.write_text(path.read_text(encoding="utf-8").replace("rest", "oauth"), encoding="utf-8")
-    status = provider_readiness.last_check_status(tmp_path, "quantpad")
+    status = provider_readiness.last_check_status(tmp_path, "tiingo")
     assert status["verification_state"] == "schema_drift"
     assert status["granted_capabilities"] == []
 
@@ -344,10 +344,10 @@ def test_receipt_verifier_rejects_non_objects_and_cross_provider_replay(tmp_path
         recovery_action="none",
         details={},
     )
-    assert verify(receipt, "quantpad") is None
+    assert verify(receipt, "coingecko") is None
 
 
-def test_bounded_tiingo_and_quantpad_checks_grant_only_their_capabilities(
+def test_bounded_tiingo_check_grants_only_its_capabilities(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     class Bars:
@@ -364,13 +364,10 @@ def test_bounded_tiingo_and_quantpad_checks_grant_only_their_capabilities(
             return Result()
 
     monkeypatch.setitem(provider_readiness.__dict__, "TiingoAdapter", Adapter)
-    monkeypatch.setitem(provider_readiness.__dict__, "QuantPadAdapter", Adapter)
 
     tiingo = provider_readiness.run_explicit_check(tmp_path, "tiingo")
-    quantpad = provider_readiness.run_explicit_check(tmp_path, "quantpad")
 
     assert tiingo["granted_capabilities"] == ["corporate_actions", "historical_bars"]
-    assert quantpad["granted_capabilities"] == ["research_bars"]
     assert cast(dict[str, object], tiingo["details"])["row_count"] == 7
 
 

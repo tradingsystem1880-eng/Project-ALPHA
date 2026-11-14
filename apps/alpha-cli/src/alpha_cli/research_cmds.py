@@ -3609,7 +3609,6 @@ def _dataset_origin(
     kind: str,
     symbol: str,
     snapshot_id: str | None,
-    receipt: Path | None,
 ) -> tuple[str, str, dict[str, object]]:
     """Resolve (store kind, provider, origin) fail-closed from on-disk bytes."""
     data_dir = AlphaSettings().data_dir
@@ -3649,34 +3648,16 @@ def _dataset_origin(
             str(provenance.get("source", "unknown")),
             {"provenance_sha256": hashlib.sha256(path.read_bytes()).hexdigest()},
         )
-    if kind == "quantpad":
-        if receipt is None or not receipt.is_file():
-            raise DataError("quantpad registration requires --receipt pointing at a receipt file")
-        payload = json.loads(receipt.read_text(encoding="utf-8"))
-        if not isinstance(payload, dict):
-            raise DataError("quantpad receipt must be a JSON object")
-        receipt_id = payload.get("receipt_id")
-        response_sha = payload.get("response_sha256")
-        if not isinstance(receipt_id, str) or not isinstance(response_sha, str):
-            raise DataError("quantpad receipt must carry receipt_id and response_sha256")
-        return (
-            "quantpad_receipt",
-            "quantpad",
-            {"receipt_id": receipt_id, "response_sha256": response_sha},
-        )
     raise DataError(f"unsupported research dataset kind {kind!r}")
 
 
 @data_app.command("register")
 def data_register(
     symbol: str,
-    kind: str = typer.Option(..., "--kind", help="snapshot | store-slice | quantpad"),
+    kind: str = typer.Option(..., "--kind", help="snapshot | store-slice"),
     start: str = typer.Option(..., "--start", help="range start (ISO date)"),
     end: str = typer.Option(..., "--end", help="range end (ISO date)"),
     snapshot_id: str | None = typer.Option(None, "--snapshot-id", help="snapshot to bind"),
-    receipt: Path | None = typer.Option(  # noqa: B008
-        None, "--receipt", help="quantpad receipt file"
-    ),
     bar_minutes: int | None = typer.Option(None, "--bar-minutes", help="intraday bar minutes"),
     registered_by: str = typer.Option("owner", "--registered-by", help="registering actor"),
     json_out: bool = typer.Option(False, "--json", help="emit JSON"),
@@ -3684,7 +3665,7 @@ def data_register(
     """Register a research dataset against its exact receipt/provenance bytes."""
     try:
         dataset_kind, provider, origin = _dataset_origin(
-            kind=kind, symbol=symbol.upper(), snapshot_id=snapshot_id, receipt=receipt
+            kind=kind, symbol=symbol.upper(), snapshot_id=snapshot_id
         )
         ref = _store().register_research_dataset(
             dataset_kind=dataset_kind,

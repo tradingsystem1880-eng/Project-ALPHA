@@ -4,6 +4,12 @@
 **Date:** 2026-08-07
 **Deciders:** Project ALPHA owner and AI build agents
 
+**Note — 2026-11-14:** the fail-closed acquisition primitives this record names as
+`apps/alpha-cli/src/alpha_cli/research_acquisition.py` now live only in the worker, at
+`workers/literature/src/literature_worker/_acquisition.py`; the unused CLI copy was removed under
+the owner's delegated triage ([card E](../roadmap/triage-2026-11.md#e-duplicate-copy-of-the-literature-download-code)).
+The decision is unchanged.
+
 ## Context
 
 The research-first redesign requires papers and external evidence to be structured research

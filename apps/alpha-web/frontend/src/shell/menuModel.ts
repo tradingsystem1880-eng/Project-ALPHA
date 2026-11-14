@@ -31,7 +31,6 @@ export const GROUP_MENU: Readonly<Record<string, MenuName>> = Object.freeze({
   evidence: 'Insert',
   data: 'Data',
   'crypto-data': 'Data',
-  'quantpad-data': 'Data',
   provider: 'Data',
   research: 'Research',
   assistant: 'Research',
@@ -107,7 +106,6 @@ const COMMAND_HOMES: Readonly<Record<string, CommandHome>> = {
   ml: { kind: 'window', id: 'ml-lab' },
   data: { kind: 'dock', id: 'DataManager' },
   'crypto-data': { kind: 'dock', id: 'DataManager' },
-  'quantpad-data': { kind: 'dock', id: 'DataManager' },
 }
 
 /** Where a menu command is actually performed: the document (or dock) that owns its group,

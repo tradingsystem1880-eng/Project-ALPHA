@@ -10,7 +10,7 @@ sources:
   - tests/bias_guards/test_pit_*.py
   - tests/bias_guards/test_source_future_poison.py
   - tests/bias_guards/test_universe_survivorship.py
-verified: a7e687ae729f
+verified: 1724a5befe5d
 ---
 
 # Data layer invariants
@@ -137,11 +137,10 @@ General rule: [research integrity § Immutable, hash-bound artefacts](research-i
 - `CCXTAdapter.first_bar` is a daily-only listing-date probe, never a history read: it checks `load_markets`,
   scans forward from 2009 in page-sized windows, and fails loud on an unknown market, no history, or a bar
   earlier than requested. It stores nothing.
-- QuantPad is research-only ([ADR-0018](../../adr/0018-quantpad-external-research-data-boundary.md),
-  [ADR-0023](../../adr/0023-research-dataset-registration-and-quantpad-lane.md)). It has no `historical_bars`
-  capability, so it never appears in `data pull` (asserted in `tests/unit/test_provider_registry.py`). Its bytes
-  never enter the canonical store, a validation snapshot, strategy evidence or paper readiness. Archives
-  publish the external artifact before the internal manifest; credentials never enter either identity.
+- QuantPad is no longer a provider: its adapter and archive code were removed on 2026-11-14
+  ([ADR-0018 note](../../adr/0018-quantpad-external-research-data-boundary.md#owner-supersession--2026-11-14)).
+  Datasets registered earlier from a QuantPad receipt stay readable and research-only, and the web app
+  still files old QuantPad runs under equities (`alpha_web._runs._EQUITY_SOURCES`).
 
 ## Crypto storage
 

@@ -1,5 +1,8 @@
 """Versioned synthetic response/window bindings, using existing artifacts and accounting.
 
+Shelved (2026-11-14, triage card 2): not wired in, kept for a future download-budget
+policy and durable acquisition journal (backlog: controlstore-durable-acquisition).
+
 No database opener, migration, live routing, refund, new quota or independent ledger.
 Only a committed final w200 outcome anchors a complete window. Loose files never do.
 """

@@ -52,7 +52,7 @@ the local check. This part has no owner-facing capability on [STATUS.md](../../.
 - How to change it: [workflow/CONTEXT.md](../../../../workflow/CONTEXT.md),
   [scripts/CONTEXT.md](../../../../scripts/CONTEXT.md), [tests/CONTEXT.md](../../../../tests/CONTEXT.md),
   [docs/CONTEXT.md](../../../CONTEXT.md), [tools/alpha-eval/CONTEXT.md](../../../../tools/alpha-eval/CONTEXT.md).
-- Backlog: [delivery-task system](../../../roadmap/backlog/delivery-task-system.md).
+- Backlog: [weekly mutation sweep](../../../roadmap/backlog/weekly-mutation-sweep.md).
 - Decision records: [ADR-0034](../../../adr/0034-agent-operating-system-v2.md),
   [ADR-0037](../../../adr/0037-agent-neutral-research-engineering.md),
   [ADR-0039](../../../adr/0039-ci-is-the-merge-gate.md),
@@ -62,7 +62,9 @@ the local check. This part has no owner-facing capability on [STATUS.md](../../.
 ## Decisions and open questions
 - Decided: triage card G is replaced by Codex builds, Claude plans
   ([log](../owner-decisions.md#2026-11-14-agents-merge-and-decide-routine-matters)).
-- Triage cards 12 and 14 wait for the owner ([triage sheet](../../../roadmap/triage-2026-11.md)).
+- Triage, 2026-11-14 under the owner's delegation
+  ([triage sheet](../../../roadmap/triage-2026-11.md)): card 12 KEEP; card 14 DELETE (both old clean-up plans
+  archived; the failing weekly mutation sweep moved to the backlog).
 
 ## Never
 

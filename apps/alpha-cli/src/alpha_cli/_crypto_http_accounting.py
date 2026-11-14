@@ -1,5 +1,8 @@
 """Inactive per-explicit-HTTP-open accounting over a supplied disposable connection.
 
+Shelved (2026-11-14, triage card 2): not wired in, kept for a future download-budget
+policy and durable acquisition journal (backlog: controlstore-durable-acquisition).
+
 No opener, schema setup, migration, provider policy or live authority. The caller holds
 Ledger exclusion before binding. Transport owns retry decisions; only a known closed
 HTTP 429 response permits its next retry ordinal. Interrupted bodies stay unknown.

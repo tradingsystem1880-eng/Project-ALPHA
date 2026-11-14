@@ -147,7 +147,7 @@ was BLOCK solely on the absent private suite. These receipts remain historical e
 not certify the expanded successor.
 
 The remaining implementation follows the existing [foundation backlog](2026-10-26-native-rule-authority.md#foundation-stage-contract-and-handoff-icm-aligned-alpha-adaptation)
-and [hygiene plan](../../2026-10-08-repository-hygiene/02-plan.md#cloud-visible-ledger-reconciliation-2026-10-30).
+and [hygiene plan](2026-10-08-repository-hygiene/02-plan.md#cloud-visible-ledger-reconciliation-2026-10-30).
 A task-scoped absence-only decision through cleanup/refactor delivery, including necessary fixes,
 has been requested and remains pending. It is not an exact-tree approval or permission to publish.
 Keep private coverage UNVERIFIED and every real failure, gate and review requirement intact.

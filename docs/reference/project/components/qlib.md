@@ -4,7 +4,7 @@ sources:
   - workers/qlib/CONTEXT.md
   - workers/qlib/README.md
   - docs/adr/0016-isolated-qlib-worker.md
-verified: a79d832d
+verified: 00c406280779
 ---
 
 # Qlib
@@ -61,9 +61,9 @@ stand-in on the Dell, where its install is not present.
 
 ## Decisions and open questions
 
-- Triage cards 10 (refit evidence, recommended SHELVE), 11 (corrected features, KEEP), A (groundwork
-  for RD-Agent driving Qlib, recommended DELETE) and F (Qlib-to-Nautilus demo, recommended SHELVE)
-  await the owner ([triage sheet](../../../roadmap/triage-2026-11.md)).
+- Triage, 2026-11-14 under the owner's delegation
+  ([triage sheet](../../../roadmap/triage-2026-11.md)): card 11 KEEP; cards 10, A and F SHELVE, code kept
+  and labelled.
 - Decided: Qlib and Nautilus are engines ALPHA installs and calls, like RD-Agent; their unfinished
   parts are kept or shelved, not deleted. Not every experiment needs Qlib
   ([log](../owner-decisions.md#2026-11-14-the-architecture-in-one-line)).

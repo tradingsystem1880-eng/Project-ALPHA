@@ -4,7 +4,7 @@ set -eu
 set +x
 
 if [ "$#" -lt 2 ]; then
-  echo "usage: alpha-with-keychain-provider <tiingo|quantpad|coingecko> <check|workstation|catalog|reference|archive> [bounded arguments]" >&2
+  echo "usage: alpha-with-keychain-provider <tiingo|coingecko> <check|workstation|catalog|reference>" >&2
   exit 64
 fi
 
@@ -12,14 +12,14 @@ provider=$1
 action=$2
 shift 2
 case "$provider:$action" in
-  tiingo:check|quantpad:check|coingecko:check|tiingo:workstation|quantpad:workstation|coingecko:workstation|coingecko:catalog|coingecko:reference|quantpad:archive)
+  tiingo:check|coingecko:check|tiingo:workstation|coingecko:workstation|coingecko:catalog|coingecko:reference)
     ;;
   *)
     echo "unsupported provider action" >&2
     exit 64
     ;;
 esac
-if [ "$action" != "archive" ] && [ "$#" -ne 0 ]; then
+if [ "$#" -ne 0 ]; then
   echo "unexpected provider launcher arguments" >&2
   exit 64
 fi
@@ -27,10 +27,6 @@ case "$provider" in
   tiingo)
     service=project-alpha-tiingo
     variable=ALPHA_TIINGO_API_KEY
-    ;;
-  quantpad)
-    service=project-alpha-quantpad
-    variable=QUANTPAD_API_KEY
     ;;
   coingecko)
     service=project-alpha-coingecko
@@ -78,13 +74,6 @@ case "$action" in
     fi
     exec uv run alpha crypto-data acquire coingecko market_reference all \
       --base ALL --quote USD --json
-    ;;
-  archive)
-    if [ "$provider" != "quantpad" ] || [ "$#" -lt 2 ]; then
-      echo "archive acquisition requires quantpad plus endpoint and symbol" >&2
-      exit 64
-    fi
-    exec uv run alpha quantpad-data archive "$@"
     ;;
   *)
     echo "unsupported action" >&2

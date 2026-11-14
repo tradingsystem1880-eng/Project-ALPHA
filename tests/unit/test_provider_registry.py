@@ -26,7 +26,6 @@ def test_provider_ids_are_unique_and_historical_sources_come_from_registry() -> 
         "ccxt",
         "stooq",
         "tiingo",
-        "quantpad",
         "binance",
         "bybit",
         "coingecko",
@@ -204,21 +203,6 @@ def test_crypto_reference_providers_have_distinct_family_authority() -> None:
         definitions[provider].research_authority and not definitions[provider].paper_execution
         for provider in ("coingecko", "geckoterminal", "coinmetrics")
     )
-
-
-def test_quantpad_is_registered_as_research_only_without_canonical_pull_authority() -> None:
-    from alpha_cli.providers import historical_adapter_factories, provider_definitions
-
-    definitions = {definition.id: definition for definition in provider_definitions(environ={})}
-    quantpad = definitions["quantpad"]
-    assert quantpad.research_authority is False
-    assert quantpad.paper_execution is False
-    assert "QUANTPAD_API_KEY" in {status.name for status in quantpad.credential_env}
-    assert any("research" in limitation.casefold() for limitation in quantpad.limitations)
-    # Fail-closed pull boundary: quantpad never enters the canonical `data pull` registry;
-    # its capability is `research_bars`, structurally outside the historical_bars invariant.
-    assert quantpad.capabilities == ("research_bars",)
-    assert "quantpad" not in historical_adapter_factories()
 
 
 def test_unknown_provider_option_fails_loud() -> None:
