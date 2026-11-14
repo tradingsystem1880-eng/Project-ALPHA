@@ -26,7 +26,7 @@ Oversized files today:
 Longest functions (all 98 are in `.claude/code-size-baseline.json`): `_suite.py::build_suite_plan`
 889 lines, Qlib `real.py::_fold_model` 394, `tabular_adapters.py::fit_tabular` 329,
 `research_intake.py::draft_exploration_contract` 325, `_artifacts.py::write_execution_trace` 325.
-77 of the 98 are in `apps/alpha-cli`, 22 of them in `control_store.py`.
+77 of the 98 are in `apps/alpha-cli`, 18 of them in `control_store.py`.
 
 ## How to see it
 
