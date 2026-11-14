@@ -43,12 +43,12 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "0546b4772b61138bf8cd5f35aae22cc9583e87e0665b01460674dacaf0c747f1"
+      "sha256": "d55115f560e6f9dbbf603915d82efc9b3b19dd0621bf3502cdda975a757b1df7"
     },
     {
       "command": "alpha research run deep '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "bbd8b756a0f110c7747d1944cd0bc93813663afb3865dc02615d3d1cace00a8f"
+      "sha256": "126db87fa7ee2dbd036d8a74033e8d3f1a626e8038135184e5af1c3e7d0ad112"
     },
     {
       "command": "alpha research draft-confirmation '<uuid-1>' --json",
@@ -63,7 +63,7 @@
     {
       "command": "alpha research run confirm '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "ced2fda82b5727c57098a8decc1281400614d09256bfe791be4ffcc2eccfc818"
+      "sha256": "7c2c29e348a83413b2dce7499e2cf7d099a516d34fa11b9da8023174b410d920"
     },
     {
       "command": "alpha research decision-view '<uuid-1>' --json",
@@ -99,6 +99,11 @@
       "command": "alpha research context show 'cp_<sha-56>' --json",
       "exit_code": 0,
       "sha256": "61bcb7de8cc4ea9de31227dfec5561d77c58b41fa5637e5c03a22cb6fa053dcc"
+    },
+    {
+      "command": "'<png-pixels>'",
+      "exit_code": 0,
+      "sha256": "3a513a7a1fcf7d78d578864ac4cf3982d61e3d8031dc73adf39d1086c64be605"
     }
   ],
   "non_advancing": [
@@ -135,12 +140,12 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "fb0d5259c5ad96babd6a80fad40bf2da83443f890b7ebe7bd564b56b41147912"
+      "sha256": "e81ebd6705547fd1b48285ad4851570c45084b252f3baa67a235e385e8cfc4a2"
     },
     {
       "command": "alpha research run deep '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "7679c3853881d3fdf3293f8374507ac5712d10e07b8637900976c78142adf153"
+      "sha256": "2d5d9f56142f39a6a4c37df42532096a95e2b27a218bc7ba3ec3d9f25585f5fb"
     },
     {
       "command": "alpha research draft-confirmation '<uuid-1>' --json",
@@ -155,7 +160,7 @@
     {
       "command": "alpha research run confirm '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "06100a2819f1a4da9a521485c96fa92e4270750ca27de2257039d8aa09cc2e9c"
+      "sha256": "d8d9b5bc8f799d3c3c1755ef62bef18b61b820b275d409c3fba71f44f8034183"
     },
     {
       "command": "alpha research decide '<uuid-1>' --outcome SUPPORTED --disposition reject --actor owner --reason 'Real but too small to pursue: the owner rejects despite mechanical support.' --json",
@@ -171,6 +176,11 @@
       "command": "alpha research context list '<uuid-1>' --json",
       "exit_code": 0,
       "sha256": "847559baeaaca31993b07ae80145d00f8acf2e93bba3581972a44839078396fa"
+    },
+    {
+      "command": "'<png-pixels>'",
+      "exit_code": 0,
+      "sha256": "3a513a7a1fcf7d78d578864ac4cf3982d61e3d8031dc73adf39d1086c64be605"
     }
   ],
   "parked": [
@@ -207,7 +217,7 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "fb0d5259c5ad96babd6a80fad40bf2da83443f890b7ebe7bd564b56b41147912"
+      "sha256": "e81ebd6705547fd1b48285ad4851570c45084b252f3baa67a235e385e8cfc4a2"
     },
     {
       "command": "alpha research decide '<uuid-1>' --outcome SUPPORTED --disposition advance_to_strategy --actor owner --reason 'A premature advance claim must fail before any confirmation ran.' --json",
@@ -233,6 +243,11 @@
       "command": "alpha research context list '<uuid-1>' --json",
       "exit_code": 0,
       "sha256": "847559baeaaca31993b07ae80145d00f8acf2e93bba3581972a44839078396fa"
+    },
+    {
+      "command": "'<png-pixels>'",
+      "exit_code": 0,
+      "sha256": "c0fe7501b8b9fb1c91ed2d83e5f7d33074bda146c649e37d162ec101054e55e8"
     }
   ],
   "run_gates": [
@@ -250,6 +265,11 @@
       "command": "alpha research run confirm '<uuid-1>' --json",
       "exit_code": 2,
       "sha256": "96ea6651e908ca0c82277a3b4f98c12ca847cf9223c85b99088657868feda5fe"
+    },
+    {
+      "command": "'<png-pixels>'",
+      "exit_code": 0,
+      "sha256": "6232a0b5fb580152d8d7bcc362d6ac13a14466a1e74fac51a366513f761a080c"
     }
   ],
   "unknown_phase": [
@@ -262,6 +282,11 @@
       "command": "alpha research run unknown '<uuid-1>' --json",
       "exit_code": 2,
       "sha256": "252f573ffce758a36d312f476d04d041baeefc6ba89762660e52036b76c8d9d1"
+    },
+    {
+      "command": "'<png-pixels>'",
+      "exit_code": 0,
+      "sha256": "6232a0b5fb580152d8d7bcc362d6ac13a14466a1e74fac51a366513f761a080c"
     }
   ],
   "confirmation_authority": [
@@ -293,12 +318,17 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "004d2531d4e242a649b3c1a8ec269b5354c1904eb18a56f503d930cdcf820b6c"
+      "sha256": "148731cbcf6d384d51b377ead79501e99a0ee4c547a63a35c2572d41272a5475"
     },
     {
       "command": "alpha research draft-confirmation '<uuid-1>' --json",
       "exit_code": 2,
       "sha256": "166bac510f1325913f5d07e44f2cf2b5d9eb113e26198ce20ba484aafe445a6d"
+    },
+    {
+      "command": "'<png-pixels>'",
+      "exit_code": 0,
+      "sha256": "095d4af7d14db58526680f1e4dacf610cd9aa59350ae7447ac99b32289a23e5b"
     }
   ],
   "confirmation_before_deep": [
@@ -335,12 +365,17 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "fb0d5259c5ad96babd6a80fad40bf2da83443f890b7ebe7bd564b56b41147912"
+      "sha256": "e81ebd6705547fd1b48285ad4851570c45084b252f3baa67a235e385e8cfc4a2"
     },
     {
       "command": "alpha research draft-confirmation '<uuid-1>' --json",
       "exit_code": 2,
       "sha256": "4cf84c049bc515bbb12d783c02116fb85097e4fb7535b980e6876bd750fee2c3"
+    },
+    {
+      "command": "'<png-pixels>'",
+      "exit_code": 0,
+      "sha256": "c0fe7501b8b9fb1c91ed2d83e5f7d33074bda146c649e37d162ec101054e55e8"
     }
   ],
   "confirmation_degenerate": [
@@ -377,17 +412,22 @@
     {
       "command": "alpha research run pilot '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "be277ded4ad01655e3558484d05e1b3cd775d2306ffe2aba6d1c28e4ec168f69"
+      "sha256": "72cdadd70ce9d5545036657ea8a927cb48cdcc4ff138666a5c204a1e3321704f"
     },
     {
       "command": "alpha research run deep '<uuid-1>' --json",
       "exit_code": 0,
-      "sha256": "b1b12c789999518f9f2f61203bb3c64d4af1855569bcb595953bca2f044e4c04"
+      "sha256": "accea4fc37ed58d6156655366db656a3bd318e147a0db9c075ed3ea0867a9261"
     },
     {
       "command": "alpha research draft-confirmation '<uuid-1>' --json",
       "exit_code": 2,
       "sha256": "bf67c913b0afe6b7a37a9ca1d5fa26cf65520d60a95e659b7653ba07d617962b"
+    },
+    {
+      "command": "'<png-pixels>'",
+      "exit_code": 0,
+      "sha256": "52df21ef78fd2813142bdba97d39e10a0a889fa51c99dfda65e9cca9dacdd938"
     }
   ],
   "draft_datasets": [
@@ -435,6 +475,11 @@
       "command": "alpha research draft '<uuid-1>' --source-pack-id 'sp_<sha-3>' --answer chart_construction=spy_rth_60m_four_hour_window --answer event_availability=second_trough_confirmable --answer primary_outcome=four_trading_hour_return_25bp --dataset 'rd_<sha-8>' --json",
       "exit_code": 2,
       "sha256": "fe24cf5c15a20536a94b844dca36a9d6552d85ac1bf5f9e15a5ac3297e101b06"
+    },
+    {
+      "command": "'<png-pixels>'",
+      "exit_code": 0,
+      "sha256": "6232a0b5fb580152d8d7bcc362d6ac13a14466a1e74fac51a366513f761a080c"
     }
   ],
   "draft_cross_project": [
@@ -472,6 +517,11 @@
       "command": "alpha research status '<uuid-2>' --json",
       "exit_code": 0,
       "sha256": "1b9bff964ca9ba1db563303b5c6d79aaa281a91403901506352a96159b4457c5"
+    },
+    {
+      "command": "'<png-pixels>'",
+      "exit_code": 0,
+      "sha256": "6232a0b5fb580152d8d7bcc362d6ac13a14466a1e74fac51a366513f761a080c"
     }
   ]
 }
