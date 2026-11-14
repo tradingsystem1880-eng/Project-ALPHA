@@ -51,6 +51,17 @@
         "tests/unit/test_rule_cli_approval_confirmation.py"
       ],
       "status": "pending"
+    },
+    {
+      "title": "Owning documents (written by Claude, not the builder)",
+      "verify": "uv run python scripts/gate.py check",
+      "expected": "cli-native invariants state the rule; research stage 02 names the daily rule lane and its Workstation-only approval; fs.py stale shows nothing for them.",
+      "rollback": "Revert the two document edits.",
+      "files": [
+        "docs/reference/invariants/cli-native.md",
+        "research/stages/02-data/CONTEXT.md"
+      ],
+      "status": "pending"
     }
   ],
   "tier_impact": [
@@ -68,7 +79,9 @@
   "files": [
     "apps/alpha-cli/src/alpha_cli/research_cmds.py",
     "apps/alpha-cli/src/alpha_cli/_research_cmd_parts.py",
-    "tests/unit/test_rule_cli_approval_confirmation.py"
+    "tests/unit/test_rule_cli_approval_confirmation.py",
+    "docs/reference/invariants/cli-native.md",
+    "research/stages/02-data/CONTEXT.md"
   ]
 }
 ```
@@ -109,6 +122,9 @@
    `verify_local_confirmation`, then the CLI approve with `--actor` equal to the receipt actor)
    succeeds and moves to `pilot`; (c) an ordinary non-rule exploration contract is approved from
    the CLI with no receipt, unchanged. Reuse existing fixtures; do not need Docker or RD-Agent.
+
+4. Documents (Claude, after the build): one bullet in `cli-native.md` § Approval fingerprints;
+   a short daily-rule-lane note in `research/stages/02-data/CONTEXT.md`. The builder does not edit them.
 
 ## Test plan
 
