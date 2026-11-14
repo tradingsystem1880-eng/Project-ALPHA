@@ -8,7 +8,7 @@ sources:
   - tests/bias_guards/test_walkforward_no_leak.py
   - tests/bias_guards/test_montecarlo_null_calibration.py
   - tests/integration/test_gauntlet_degenerate.py
-verified: aa600e57932d
+verified: 330acecce016
 ---
 
 # Validation statistics invariants
@@ -120,6 +120,11 @@ General rule: [research integrity § Point-in-time reads](research-integrity.md#
 ## Reports and verdicts
 
 - `report_to_manifest` is byte-stable for identical runs: sorted keys, non-finite floats become `null`.
+- Tear-sheet charts rebuild QuantStats' own import-time style from shipped Matplotlib defaults, excluding
+  `backend`, and contain import-time restyling within `rc_context`. With the locked libraries and fonts,
+  bytes are independent of process history and local Matplotlib configuration; rendering restores caller
+  rcParams (the existing headless Agg backend selection remains). Clean-process bytes and style drift are
+  pinned in `tests/unit/test_figure_history_determinism.py`; the SVG salt and renderer identity are unchanged.
 - `grade_verdict` is an A–F headline summary, not a gate. Thresholds are module constants; NaN inputs score F
   on that dimension. The Workstation mirrors the bands in `apps/alpha-web/frontend/src/explain/bands.ts`
   (drift-guarded) — change both together.

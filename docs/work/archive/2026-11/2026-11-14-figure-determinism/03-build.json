@@ -1,0 +1,167 @@
+{
+  "base": "origin/main",
+  "base_sha": "8d8bcc645199cf462ee6459dd54e1fb6ea2c02ff",
+  "branch": "m4/figure-determinism",
+  "built_by": {
+    "effort": "high",
+    "model": "gpt-6-astra",
+    "tool": "codex"
+  },
+  "checks": [
+    {
+      "command": "uv sync --locked",
+      "exit_code": 0,
+      "name": "uv sync",
+      "passed": true,
+      "round": 0,
+      "seconds": 0.0
+    },
+    {
+      "command": "uv run python scripts/gate.py check --base origin/main",
+      "exit_code": 0,
+      "name": "gate check",
+      "passed": true,
+      "round": 0,
+      "seconds": 85.6
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_figure_history_determinism.py tests/unit/test_research_chart_rendering.py tests/unit/test_figure_render.py",
+      "exit_code": 0,
+      "name": "check 1",
+      "passed": true,
+      "round": 0,
+      "seconds": 21.6
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_figure_history_determinism.py tests/unit/test_tearsheet.py tests/integration/test_tearsheet_html.py",
+      "exit_code": 0,
+      "name": "check 2",
+      "passed": true,
+      "round": 0,
+      "seconds": 29.6
+    },
+    {
+      "command": "uv run pytest -q tests/integration/test_research_cmds_golden.py",
+      "exit_code": 0,
+      "name": "check 3",
+      "passed": true,
+      "round": 0,
+      "seconds": 36.2
+    },
+    {
+      "command": "uv run python scripts/gate.py check --all",
+      "exit_code": 0,
+      "name": "check 4",
+      "passed": true,
+      "round": 0,
+      "seconds": 131.9
+    }
+  ],
+  "class": "hard",
+  "class_reason": "tier quant",
+  "diffstat": " STATUS.md                                                           |   2 +-\n docs/reference/invariants/research.md                               |   7 +-\n docs/reference/invariants/validation.md                             |   7 +-\n docs/roadmap/README.md                                              |   4 +-\n docs/work/archive/2026-11/2026-11-14-figure-determinism/01-brief.md |  30 +++++++\n docs/work/archive/2026-11/2026-11-14-figure-determinism/02-plan.md  | 195 ++++++++++++++++++++++++++++++++++++++++++++\n packages/alpha-research/src/alpha_research/rendering.py             |   6 +-\n packages/alpha-validation/src/alpha_validation/tearsheet.py         |  26 +++++-\n tests/fixtures/research_cmds_golden.json                            |  58 ++++++-------\n tests/integration/test_research_cmds_golden.py                      |   9 +-\n 10 files changed, 302 insertions(+), 42 deletions(-)\n",
+  "fallback": null,
+  "files_changed": [
+    {
+      "path": "docs/work/archive/2026-11/2026-11-14-figure-determinism/01-brief.md",
+      "status": "A"
+    },
+    {
+      "path": "docs/work/archive/2026-11/2026-11-14-figure-determinism/02-plan.md",
+      "status": "A"
+    },
+    {
+      "path": "docs/work/archive/2026-11/2026-11-14-figure-determinism/04-verify.md",
+      "status": "A"
+    },
+    {
+      "path": "docs/work/archive/2026-11/2026-11-14-figure-determinism/05-handoff.md",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/test_figure_history_determinism.py",
+      "status": "A"
+    },
+    {
+      "path": "STATUS.md",
+      "status": "M"
+    },
+    {
+      "path": "docs/reference/invariants/research.md",
+      "status": "M"
+    },
+    {
+      "path": "docs/reference/invariants/validation.md",
+      "status": "M"
+    },
+    {
+      "path": "docs/roadmap/README.md",
+      "status": "M"
+    },
+    {
+      "path": "packages/alpha-research/src/alpha_research/rendering.py",
+      "status": "M"
+    },
+    {
+      "path": "packages/alpha-validation/src/alpha_validation/tearsheet.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/fixtures/research_cmds_golden.json",
+      "status": "M"
+    },
+    {
+      "path": "tests/integration/test_research_cmds_golden.py",
+      "status": "M"
+    }
+  ],
+  "finished_at": "2026-11-14T06:08:18Z",
+  "fix_rounds": 0,
+  "logs": "/home/hunta/alpha-clean-base/tmp/handoff/logs/2026-11-14-figure-determinism-20261114-055515-261368",
+  "notes": [],
+  "outside_scope": [],
+  "policy_violations": [],
+  "previous_attempts": [],
+  "rounds": [
+    {
+      "commands": 66,
+      "errors": [],
+      "exit_code": 0,
+      "file_changes": 9,
+      "kind": "build",
+      "outcome": "ok",
+      "seconds": 478.3,
+      "thread_id": "01a1d89f-d385-78d2-8a41-66abeadb1124",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 1864064,
+        "input_tokens": 1937428,
+        "output_tokens": 14218,
+        "reasoning_output_tokens": 2516
+      }
+    }
+  ],
+  "run_id": "2026-11-14-figure-determinism-20261114-055515-261368",
+  "schema_version": 1,
+  "source": "docs/work/archive/2026-11/2026-11-14-figure-determinism/02-plan.md",
+  "started_at": "2026-11-14T05:55:15Z",
+  "tokens": {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 1864064,
+    "input_tokens": 1937428,
+    "output_tokens": 14218,
+    "reasoning_output_tokens": 2516
+  },
+  "unverified": [
+    "Full-gate checks: uv could not create temporary files in read-only `/home/hunta/.cache/uv`.",
+    "Complete determinism sweep, slow oracles and mutation gate remain for orchestrator/CI.",
+    "Socket, FastAPI TestClient, server, browser and smoke checks were not run, as instructed."
+  ],
+  "verdict": "passed",
+  "wall_seconds": 783.4,
+  "work_order": {
+    "kind": "task",
+    "name": "2026-11-14-figure-determinism"
+  },
+  "worktree": "/home/hunta/alpha-clean-base/wt-det"
+}
