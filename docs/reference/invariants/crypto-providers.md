@@ -9,7 +9,7 @@ sources:
   - tests/unit/test_crypto_defillama*.py
   - tests/bias_guards/test_defillama_availability.py
   - tests/bias_guards/test_crypto_profiles_future_poison.py
-verified: 1724a5befe5d
+verified: 1c2a00531591
 ---
 
 # Crypto provider invariants
