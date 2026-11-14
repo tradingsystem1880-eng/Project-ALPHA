@@ -414,3 +414,42 @@ tests/smoke/test_rdagent_model_gateway_smoke.py` (loopback only; with `ALPHA_RDA
 fake route). Measurements: [the task's verification](../../docs/work/archive/2026-11/2026-11-14-rdagent-model-gateway/04-verify.md).
 It is not part of `scripts/setup.sh` or `gate.py doctor`: it needs no install, and whether Codex is
 signed in is already what `codex login status` reports.
+
+## ALPHA-judged factor loop (2026-11-14)
+
+RD-Agent's own factor loop (`rdagent.app.qlib_rd_loop.factor`, unmodified) with ALPHA as the
+judge ([ADR-0049](../../docs/adr/0049-alpha-judges-rdagent-factors.md)). RD-Agent proposes and
+codes factors; its settings `QLIB_FACTOR_SCEN`, `QLIB_FACTOR_HYPOTHESIS_GEN`, `QLIB_FACTOR_RUNNER`
+and `QLIB_FACTOR_SUMMARIZER` name four classes in `alpha_factor_judge.py`; the runner sends the
+factor values to `alpha_cli.rdagent_factor_eval` in ALPHA's environment, which screens each new
+factor (rank IC against the next-open-to-next-open return, autocorrelation-adjusted inference,
+BH over the cross-run trial ledger) and replays only those that pass through ALPHA's canonical
+synchronized engine with crypto costs. RD-Agent never sees 2024 or later; no Qlib model, Docker
+image, MLflow or conda is involved.
+
+```sh
+bash scripts/setup_rdagent.sh --with-factor-runtime      # once; hash-pinned Python 3.11 runtime
+export ALPHA_RDAGENT_SOURCE=... ALPHA_FACTOR_PYTHON=...   # as printed by the setup script
+.venv/bin/python workers/rdagent/factor_loop_launch.py run \
+  --data-dir /abs/alpha/data --run-dir /abs/runs/<date>-<slug> \
+  --gateway-data-dir /abs/runs/model-gateway-state \
+  --trial-ledger /abs/runs/rdagent-trial-ledger/rdagent-factor-trials.jsonl \
+  --run-id <id> --loop-n 2      # at most 3 loops and 60 model calls; Codex and Ollama routes
+```
+
+- `factor-requirements.lock`: 79 hash-pinned packages (the stock runtime's plus pandas 2.2.3,
+  tables, pyarrow, pandarallel, fire, scipy); recorded by
+  `install_stock_profile.py --profile factor`. `gate.py doctor` names it when missing.
+- `factor_loop_entry.py`: verifies the source pin, imports RD-Agent through a meta-path finder
+  (the source root is never on `sys.path`) and runs the loop.
+- `alpha_factor_data.py`: writes RD-Agent's `daily_pv.h5` folders and the truncated copies the
+  prefix-invariance (look-ahead) check uses.
+- The run folder holds `panel/` (frozen panel and receipt), `factor_data/`, `work/` (RD-Agent's
+  own log and workspaces), `evaluations/` and `evaluations.jsonl` (one ALPHA record per
+  iteration), `feedback.jsonl` (the model's suggestion beside ALPHA's decision), `launch.jsonl`,
+  `logs/` and `receipt.json`. The trial ledger is shared by all runs and append-only.
+- Generated factor code runs with the gateway's address and token removed from its environment.
+- Not yet: supervision by `alpha`'s native job supervisor
+  ([backlog](../../docs/roadmap/backlog/rdagent-factor-loop-supervision.md)); a Nautilus replay;
+  the candidate-to-research-case hand-off
+  ([backlog](../../docs/roadmap/backlog/rdagent-candidate-to-research-case.md)).
