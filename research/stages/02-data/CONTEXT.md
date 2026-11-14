@@ -51,6 +51,12 @@ A synthetic-only bundle needs no dataset and goes straight to the draft.
 6. Write the contract out for the owner: `uv run alpha research export <case> --json`, and check
    it: `uv run alpha research verify <case> --path <dossier path> --json`.
 
+Daily rule lane (Packet 3 only: BTCUSDT 2020-2022, momentum against buy-and-hold): skip steps 2-5.
+Freeze a crypto snapshot of the monthly bars (`alpha crypto-data snapshot-create`, then
+`snapshot-verify`) and run `uv run alpha research draft-daily <case> --source-pack-id <pack>
+--snapshot-id <id> --normalized-manifest-id <id> --json`; `proposal-options` still reports no
+operator for such a case, which is expected.
+
 ## Outputs
 
 - A snapshot under `snapshots/`, the `rd_` registration in the control store, an EXPLORATORY
@@ -61,7 +67,8 @@ A synthetic-only bundle needs no dataset and goes straight to the draft.
 
 The owner reads the contract dossier (claim, event, outcome, data, budget, stop rules) and
 approves or rejects that exact contract in the Workstation, or with `alpha research approve
-exploration ...` / `reject` run by themselves. An agent never runs either. Until then
+exploration ...` / `reject` run by themselves (a daily rule contract: Workstation only, since its
+runs need the local confirmation). An agent never runs either. Until then
 `alpha research run pilot` refuses: "synthetic pilot requires the owner-approved pilot phase".
 
 Not yet possible offline: step 1. No `data pull` source works without the network
