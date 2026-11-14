@@ -892,7 +892,7 @@ name = "AI-run daily trading-rule study"
 codes = ["Packet 3", "W08"]
 what = "Run one complete, rule-governed study of a simple daily momentum rule against a \"do nothing\" control, with locked inputs and a final report."
 see_it = [
-  "uv run alpha research draft-daily <project-id> --source-pack-id … --snapshot-id … --normalized-manifest-id …",
+  "uv run alpha research draft-daily <project-id> --source-pack-id … --snapshot-id … --normalized-manifest-id … (once per month)",
   "Workstation: the daily rule report on a study run",
 ]
 entry_points = [

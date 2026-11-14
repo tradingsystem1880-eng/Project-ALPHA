@@ -105,8 +105,23 @@ def chart_snapshot(
     lineage = {
         "schema": "DailyRuleChartLineageV1",
         "crypto_snapshot_id": study.snapshot_sha256,
-        "normalized_manifest_id": query["normalized_manifest_id"],
-        "normalized_artifact_sha256": query["artifact_sha256"],
+        **(
+            {
+                "normalized_manifest_id": query["normalized_manifest_id"],
+                "normalized_artifact_sha256": query["artifact_sha256"],
+            }
+            if query["schema"] == "BinanceDailyPriceSnapshotQueryV1"
+            else {
+                "schema": "DailyRuleChartLineageV2",
+                "normalized_members": [
+                    {
+                        "normalized_manifest_id": member["normalized_manifest_id"],
+                        "normalized_artifact_sha256": member["artifact_sha256"],
+                    }
+                    for member in query["members"]
+                ],
+            }
+        ),
         "query_sha256": study.query_sha256,
         "source_receipt_ids": [receipt["receipt_id"] for receipt in query["source_receipts"]],
         "chart_snapshot_id": snapshot_id,

@@ -97,7 +97,7 @@ work may be open.
 | [Break up oversized functions](refactors/oversized-functions.md) | M |
 | [Reduce `# type: ignore` suppressions](refactors/type-ignore-reduction.md) | L |
 
-## Archived plans (133)
+## Archived plans (135)
 
 | Month | Plans |
 | --- | --- |
@@ -105,4 +105,4 @@ work may be open.
 | [2026-08](../work/archive/2026-08/) | 10 |
 | [2026-09](../work/archive/2026-09/) | 21 |
 | [2026-10](../work/archive/2026-10/) | 60 |
-| [2026-11](../work/archive/2026-11/) | 29 |
+| [2026-11](../work/archive/2026-11/) | 31 |

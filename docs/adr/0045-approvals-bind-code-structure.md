@@ -22,7 +22,7 @@ The dangerous failure is "behaviour changed and the approval stayed valid"; the 
 | Site | Binds | Class | This ADR |
 |---|---|---|---|
 | `research_cmds.py::_implementation_hashes` → `hashes.code`, checked by `_implementation_drifted` | `alpha_research` tree + 4 research CLI modules | (a) owner approval | scheme 2 for new approvals; scheme 1 still verifies |
-| `_native_rule_environment.py::rule_implementation_fingerprints` → `hashes.code`, `hashes.evaluator` | rdagent worker files, `rule_probe.py`/`costed_probe.py`, and for daily studies the 25 `DAILY_GUARD_FILES` (incl. `crypto_bulk_store.py`, `control_store.py`) | (a) owner approval | scheme 2 only (see Consequences) |
+| `_native_rule_environment.py::rule_implementation_fingerprints` → `hashes.code`, `hashes.evaluator` | rdagent worker files, `rule_probe.py`/`costed_probe.py`, and for daily studies the `DAILY_GUARD_FILES` (25 here, 40 since [ADR-0048](0048-daily-rule-lane-binding-and-named-months.md); incl. `crypto_bulk_store.py`, `control_store.py`) | (a) owner approval | scheme 2 only (see Consequences) |
 | `uv.lock`, worker `uv.lock`, rule/economics requirement locks (`hashes.dependency_lock`) | lock files | (b) environment | unchanged, bytes |
 | `measure_rule_environment` (installed profile `site_files`, `source_files`, Python binary, `pyvenv.cfg`) | what is installed in the qualified rule venvs | (b) environment | unchanged, bytes |
 | `SOURCE_SHA256` (`_native_loop_admission.py`, `workers/rdagent/source_pin.py`), Qlib `_SOURCE_PINS` | pinned upstream RD-Agent / Qlib files | (b) upstream pin | unchanged, bytes |
