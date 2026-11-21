@@ -2146,6 +2146,15 @@ function responseFor(route: Route, options: MockOptions): unknown {
     return ML_DIAGNOSTIC_TEARSHEET
   }
   if (/^\/api\/runs\/[a-f0-9]{16}\/equity$/.test(url.pathname)) return { ts: [], equity: [], drawdown: [] }
+  if (/^\/api\/runs\/[a-f0-9]{16}\/series$/.test(url.pathname)) {
+    const run_id = url.pathname.split('/')[3]
+    return {
+      run_id, ts: [], equity: [], drawdown: [], benchmark: null, exposure: null, trades: [],
+      bands: { tradable: null, scored: null, folds: [] }, price: null,
+      bounds: { points: { original: 0, returned: 0, truncated: false, sampling: 'all' }, trades: { original: 0, returned: 0, truncated: false, cap: 2000 } },
+      provenance: { artifact_sha256: {} },
+    }
+  }
   if (options.chartBundle && url.pathname === `/api/runs/${HEAVY_RUN_ID}/chart-bundle`) {
     return options.chartBundle
   }

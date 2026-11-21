@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 
 from alpha_cli import run_projection
 from alpha_core import DataError
-from alpha_web import _checks, _runs
+from alpha_web import _checks, _run_series, _runs
 from alpha_web._catalog import _run_json
 from alpha_web.api._common import data_dir
 from alpha_web.api.models import (
@@ -31,6 +31,7 @@ from alpha_web.api.models import (
     RuleTestChecks,
     RunDetail,
     RunList,
+    RunSeries,
 )
 
 router = APIRouter(prefix="/api", tags=["runs"])
@@ -119,6 +120,19 @@ def run_equity(run_id: str) -> dict[str, list[float]]:
     """The run's equity curve as ``{ts, equity, drawdown}`` (empty lists when it wrote none)."""
     _ensure_run(run_id)
     return _runs.equity_series(run_id, data_dir=data_dir())
+
+
+@router.get("/runs/{run_id}/series", response_model=RunSeries)
+def run_series(
+    run_id: str,
+    limit: Annotated[int, Query(ge=2, le=_run_series.MAX_SERIES_POINTS)] = 2_000,
+) -> dict[str, Any]:
+    """Stored equity, drawdown, trades, bands and verified price of one run, sampled to limit."""
+    _ensure_run(run_id)
+    try:
+        return _run_series.run_series(run_id, data_dir=data_dir(), limit=limit)
+    except DataError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/runs/{run_id}/native-tearsheet", response_model=NativeTearSheetResponse)

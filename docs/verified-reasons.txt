@@ -2,25 +2,28 @@
 # --reason`, one entry per document (the latest); `git log -p` on this file keeps the rest.
 
 apps/alpha-cli/CONTEXT.md
-  verified 8eb88e836f52fcad on 2026-11-21: home_restore now keeps the restored folder at mode 0700 after a good restore too; this page states nothing that this changes, so its text holds
+  verified 37b35df6dcdb0105 on 2026-11-21: merge of main; this branch adds only the run-price command and the series route, described in the owning pages
 
 apps/alpha-cli/README.md
-  verified 8eb88e836f52fcad on 2026-11-21: home_restore now keeps the restored folder at mode 0700 after a good restore too; this page states nothing that this changes, so its text holds
+  verified 37b35df6dcdb0105 on 2026-11-21: merge of main; this branch adds only the run-price command and the series route, described in the owning pages
 
 apps/alpha-mcp/CONTEXT.md
   verified dbae13496c19ad79 on 2026-11-20: Only argument safety, a write cap and error text changed in the front-door relays; the summary stays true.
 
 apps/alpha-web/CONTEXT.md
-  verified 7aef8a227bb5053f on 2026-11-21: Merge of main (options group) into the nightly alert branch took main's stamps: main verified its options changes against this text; this branch's home group, nightly alert and backup statements were re-read and hold
+  verified 3b61fc50d4488d7a on 2026-11-21: merge of main; this branch adds only the run-price command and the series route, described in the owning pages
 
 apps/alpha-web/README.md
-  verified 7aef8a227bb5053f on 2026-11-21: Merge of main (options group) into the nightly alert branch took main's stamps: main verified its options changes against this text; this branch's home group, nightly alert and backup statements were re-read and hold
+  verified 3b61fc50d4488d7a on 2026-11-21: merge of main; this branch adds only the run-price command and the series route, described in the owning pages
 
 docs/CONTEXT.md
   verified 7a5bda0bea5e0d33 on 2026-11-19: docs README only re-pointed one link; page still correct
 
 docs/reference/invariants/README.md
   verified 8115bbcdee4c05e0 on 2026-11-20: re-read after a cram ceiling in test_filesystem_contract.py was removed and invariants pages were rewrapped; the document's claims still hold
+
+docs/reference/invariants/cli-crypto-data.md
+  verified 6c209c3dd25568b8 on 2026-11-21: merge of main; this branch only adds the run-price command and the series route, described in the owning pages
 
 docs/reference/invariants/cli-follow.md
   verified 8739347cc6883a2a on 2026-11-21: Merged main and fixed the backup (hard links stored in full, disk-room check, unreadable folders refused, modes kept on restore, written files re-read) and the marker (Ctrl-C, unwritable marker); this page's claims were re-read against the code and hold
@@ -44,7 +47,7 @@ docs/reference/invariants/cli-rule-readings.md
   verified 655e0dfacb1217f3 on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
 
 docs/reference/invariants/cli-runs.md
-  verified 401130b0343c2e7c on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
+  verified 33b3b7469ae5bcad on 2026-11-21: merge of main; this branch adds only the run-price command and the series route, described in the owning pages
 
 docs/reference/invariants/cli-setups.md
   verified 0375e4ab3fe2b99a on 2026-11-21: Test narrowed for mypy; rules unchanged
@@ -92,13 +95,13 @@ docs/reference/invariants/validation.md
   verified ab6b046291b29b88 on 2026-11-20: only a pointer to the factor-statistics page; that page carries the new edge labels
 
 docs/reference/invariants/web-api-reads.md
-  verified ce3d3750e6615271 on 2026-11-21: Merged main (setup show, context guard) into the setup context branch; text re-read and still correct
+  verified 8cfe152731a9e4fb on 2026-11-21: merge of main; this branch adds only the run-price command and the series route, described in the owning pages
 
 docs/reference/invariants/web-api.md
-  verified da290d9f3c48e88d on 2026-11-21: Merged main (setup show, context guard) into the setup context branch; text re-read and still correct
+  verified 1d408c8aad75a27a on 2026-11-21: merge of main; this branch adds only the run-price command and the series route, described in the owning pages
 
 docs/reference/invariants/web-frontend.md
-  verified 939a57e5a99340e9 on 2026-11-21: Merge of main (options group) into the nightly alert branch took main's stamps: main verified its options changes against this text; this branch's home group, nightly alert and backup statements were re-read and hold
+  verified c8a2c1338d4a612d on 2026-11-21: merge of main; this branch adds only the run-price command and the series route, described in the owning pages
 
 docs/reference/invariants/web-run-detail.md
   verified 80bd084013111523 on 2026-11-20: Gates cards show small charts of recorded data

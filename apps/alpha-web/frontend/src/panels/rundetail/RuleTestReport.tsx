@@ -1,5 +1,6 @@
 import type { FigureCatalogueItem, RuleTest, RuleTestChecks } from '../../api/types'
 import { FigureCard } from '../../components/FigureCard'
+import { TearSheetStack } from '../../components/tearsheet/TearSheetStack'
 import { ReadingBlock } from '../../components/ReadingBlock'
 import { GLOSSARY } from '../../explain/glossary'
 import { Timestamp } from '../../util/formatTime'
@@ -96,6 +97,7 @@ export function RuleTestReport({ test, manifest, runId, runName, figures, figure
       {checks !== undefined && <Reading checks={checks} manifest={manifest} labels={test.labels} />}
       {health && <p>{health}</p>}
       <small>data from {dateRange(test.first_ts, test.last_ts)}</small>
+      <TearSheetStack runId={runId} />
       {(['tradable', 'scored'] as const).map(period => {
         const row = manifest.spine?.periods?.[period]
         const charts = summaryFigures(figures ?? [], period)

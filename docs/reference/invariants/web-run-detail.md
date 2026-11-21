@@ -3,7 +3,7 @@ owner: web frontend
 sources:
   - apps/alpha-web/frontend/src/panels/**
   - apps/alpha-web/frontend/e2e/**
-verified: b992a2b526e23e5f
+verified: ba84ac5092aebc54
 ---
 
 # Web run detail invariants
@@ -49,6 +49,12 @@ How the run detail, RD-Agent journey and Setup Lab panels bind to the selected r
   Stored figures have value tables. Trade return and initial risk display as percentages beside direction and R. The timeline
   keeps rejected matches grey. Values round only; no curve or total is calculated. Unstored parts say "not recorded". Tests:
   `SetupLabPanel.test.tsx`, `setupLabModel.test.ts`, `e2e/setup-lab.spec.ts`.
+
+## Interactive rule-test chart
+
+- The rule-test Summary opens with the interactive stack (`components/tearsheet/TearSheetStack.tsx`, [rule](web-frontend.md#charts)). The
+  stored matplotlib figures stay below it, and their strip reads “Saved image”. Loading, error and a missing price each say so in words.
+  Covered by `components/tearsheet/tearSheetModel.test.ts` and `e2e/rule-test-summary.spec.ts`.
 
 ## Reading block
 

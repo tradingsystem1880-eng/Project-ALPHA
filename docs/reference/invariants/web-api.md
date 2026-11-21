@@ -12,7 +12,7 @@ sources:
   - tests/unit/test_owner_auth_api.py
   - tests/unit/test_owner_local_confirmation.py
   - tests/unit/test_run_context_authority.py
-verified: ff72ccda229d25ba
+verified: 1d408c8aad75a27a
 ---
 
 # Web API invariants
@@ -90,6 +90,11 @@ Moved to [web-api-reads.md § Reads and writes](web-api-reads.md#reads-and-write
 - Canonical reads are cached on the argv plus the bar file's mtime; `tail` only trims the payload. Archive reads
   (`manifest_id`) are never cached, so every archive chart open re-runs the CLI's manifest and raw-lineage
   verification. See [data § Crypto storage](data.md#crypto-storage).
+- `GET /api/runs/{id}/series?limit=2000` (limit 2 to 5,000) reads stored artefacts only and computes no statistic: `ts`, `equity`, `drawdown`,
+  `benchmark` and `exposure` (or null), `trades` (cap 2,000, cap stated in `bounds.trades`), `bands` (tradable, scored, walk-forward tests from the
+  run record), `price` (`status`, `ts`, `close`), `bounds` and `provenance.artifact_sha256`. Points use `_bounded_rows`: both ends kept.
+  `price.status` is `available`, `bars_changed_since_run`, `price_not_saved_with_run`, `price_unavailable` or a snapshot status; only
+  `available` carries bars ([rule](web-frontend.md#charts)). `chart-bundle` keeps its older status words.
 - `GET /api/chart-datasets` (`alpha data chart-datasets`) is discovery only and returns 409 on a CLI failure.
 
 ## API contract

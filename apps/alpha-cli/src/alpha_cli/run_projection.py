@@ -18,6 +18,7 @@ from typing import Any
 
 import polars as pl
 
+from alpha_cli import run_price
 from alpha_cli.artifact_contract import verify_manifest_artifacts
 from alpha_cli.run_store import find_run_dir, read_manifest, valid_run_id
 from alpha_core import DataError
@@ -183,6 +184,7 @@ def _candle_rows(
 
 
 def _bars(
+    run_id: str,
     manifest: dict[str, Any],
     *,
     data_dir: Path,
@@ -194,6 +196,12 @@ def _bars(
 ) -> tuple[str, list[dict[str, float]], bool]:
     symbol = manifest.get("symbol")
     snapshot = manifest.get("snapshot_id")
+    if not isinstance(snapshot, str) and isinstance(manifest.get("spine"), dict):
+        # A rule test saves no snapshot: its bars show only when they hash to its recorded source.
+        status, rows = run_price.verified_bars(run_id, data_dir=data_dir)
+        if status != "available":
+            return status, [], False
+        return _window_rows(rows, limit, lower, cutoff)
     if not isinstance(symbol, str):
         return "not_applicable", [], False
     if not isinstance(snapshot, str):
@@ -216,11 +224,38 @@ def _bars(
         )
     except DataError:
         return "snapshot_unavailable", [], False
+    return _window_rows(rows, limit, lower, cutoff)
+
+
+def _window_rows(
+    rows: list[dict[str, float]], limit: int, lower: date | None, cutoff: date | None
+) -> tuple[str, list[dict[str, float]], bool]:
     windowed = [
         row for row in rows if _in_window(datetime.fromtimestamp(row["t"], tz=UTC), lower, cutoff)
     ]
     selected = _indices(len(windowed), limit)
     return "available", [windowed[index] for index in selected], len(windowed) > limit
+
+
+def price_series(
+    run_id: str, *, data_dir: Path, limit: int
+) -> tuple[str, list[dict[str, float]], bool]:
+    """The run's bounded price bars and a status; a refusal status carries no bars."""
+    limit = _bound("limit", limit, MAX_CHART_BARS)
+    rdir = _run_dir(run_id, data_dir)
+    manifest = read_manifest(rdir)
+    if manifest.get("schema_version") == 3:
+        verify_manifest_artifacts(rdir, manifest)
+    return _bars(
+        run_id,
+        manifest,
+        data_dir=data_dir,
+        limit=limit,
+        start=None,
+        end=None,
+        lower=None,
+        cutoff=None,
+    )
 
 
 def _equity(
@@ -352,6 +387,7 @@ def chart_bundle(
         verify_manifest_artifacts(rdir, manifest)
 
     bars_status, bars, bars_truncated = _bars(
+        run_id,
         manifest,
         data_dir=data_dir,
         limit=bar_limit,
@@ -360,6 +396,9 @@ def chart_bundle(
         lower=lower,
         cutoff=cutoff,
     )
+    if bars_status not in {"available", "not_applicable"}:
+        # The bundle keeps its published status words; the series route reports the reason.
+        bars_status = "snapshot_unavailable"
     equity, equity_truncated = _equity(rdir, limit, lower, cutoff)
     trades_frame = _frame(rdir, "trades.parquet", "entry_ts")
     if trades_frame is not None:

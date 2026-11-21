@@ -5,7 +5,7 @@ sources:
   - apps/alpha-web/src/alpha_web/api/**
   - tests/unit/test_web_*.py
   - tests/integration/test_web_api_*.py
-verified: 0aee59d54675bd30
+verified: 8cfe152731a9e4fb
 ---
 
 # Web API reads and writes invariants
@@ -77,3 +77,8 @@ What the Workstation backend reads, writes and relays. The other backend rules a
   backend never opens the `forward/` folder ([guard](../../../tests/unit/test_follow_separation.py)). The id must match 4 to 12 lowercase hex characters
   before any command is built. A command failure is a 409 with its text; a timeout is a 504. No route starts, updates or stops a follow.
   Enforced by `tests/unit/test_web_follow_routes.py` and `tests/integration/test_web_api_follow.py`.
+
+## Run series read
+
+- GET `/api/runs/{id}/series` (`_run_series.py`) reads stored equity, trades, benchmark, bands and, through `run_projection.price_series`, verified price bars.
+  It is bounded (`limit` 2 to 5,000; trades capped at 2,000) and computes no statistic. Route shape: [web-api.md](web-api.md#chart-data).

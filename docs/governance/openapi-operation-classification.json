@@ -1221,6 +1221,13 @@
     {
       "method": "GET",
       "mode": "fixture_backed",
+      "operation_id": "run_series_api_runs__run_id__series_get",
+      "path": "/api/runs/{run_id}/series",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
       "operation_id": "run_tearsheet_api_runs__run_id__tearsheet_get",
       "path": "/api/runs/{run_id}/tearsheet",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."

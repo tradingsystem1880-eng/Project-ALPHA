@@ -229,3 +229,9 @@
 .chart-surface .miniline-swatch { display: inline-block; width: 20px; height: 4px; margin-inline: 6px; }
 
 .workflow-shell input::placeholder, .workflow-shell textarea::placeholder { color: var(--muted); opacity: 1; }
+.tear-sheet-stack { display: flex; flex-direction: column; gap: var(--pad-sm); margin: var(--pad-sm) 0; border: 1px solid var(--line); padding: var(--pad-sm); background: var(--panel-2); color: var(--ink); }
+.tear-sheet-head { display: flex; align-items: center; gap: 8px; }
+.tear-sheet-head h3 { margin: 0 auto 0 0; }
+.tear-sheet-host { width: 100%; min-height: 240px; }
+.tear-sheet-readout { margin: 0; min-height: 1.4em; font-size: var(--font-size); }
+.tear-sheet-bands { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; font-size: var(--font-size); }

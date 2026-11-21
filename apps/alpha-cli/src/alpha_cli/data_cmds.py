@@ -17,6 +17,7 @@ from alpha_cli.providers import (
     historical_adapter_factories,
     provider_option_choices,
 )
+from alpha_cli.run_price_cmds import run_run_price
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 from alpha_data.adapters.base import DataAdapter
@@ -868,6 +869,15 @@ def market_overview_command(
 ) -> None:
     """Read-only market overview of stored bars. Market view. Not a test result."""
     run_market_overview(store, window, limit, json_out)
+
+
+@data_app.command("run-price")
+def run_price_command(
+    run_id: str = typer.Argument(..., help="a completed rule-test run id"),
+    json_out: bool = typer.Option(False, "--json", help="emit JSON"),
+) -> None:
+    """Stored price bars of a rule test, only when they hash to the run's recorded source."""
+    run_run_price(run_id, json_out)
 
 
 @data_app.command("chart-datasets")

@@ -6,7 +6,7 @@ sources:
   - apps/alpha-web/frontend/index.html
   - apps/alpha-web/frontend/src/**
   - apps/alpha-web/frontend/package.json
-verified: 7aef8a227bb5053f
+verified: 3b61fc50d4488d7a
 ---
 
 # alpha-web: code map and change loop
@@ -39,6 +39,8 @@ grants authority.
   Field sources and limits: [API](../../docs/reference/invariants/web-api-reads.md#reads-and-writes),
   [journey view](../../docs/reference/invariants/web-run-detail.md#run-detail-binding).
 - The rule-test Summary uses `panels/ruleTestModel.ts` and `panels/rundetail/RuleTestReport.tsx`. Its "Checks run on this test" section reads `GET /api/runs/{id}/checks` (`_checks.py`, which relays `alpha results show`).
+- The rule-test report opens with the interactive stack `components/tearsheet/TearSheetStack.tsx` (pure model `tearSheetModel.ts`, BokehJS mount `tearSheetPlot.ts`).
+  It reads `GET /api/runs/{id}/series` (`_run_series.py`, `api/models/series.py`). Browser spec: `e2e/rule-test-summary.spec.ts`.
 - The reading block (`components/ReadingBlock.tsx`, model `panels/readingModel.ts`) is used by `RuleTestReport.tsx` and `SetupLabPanel.tsx`. The rule-test reading
   and the declared or exploratory word come with `GET /api/runs/{id}/checks` (`_checks.py`); Setup Lab's come from `alpha setup show` (`_setup_runs.py`). Browser spec: `e2e/reading-block.spec.ts`.
 - The other places that show a run's reading (Navigator run list `panels/navigatorModel.ts`, Pipeline, activity feed, toasts, command palette, Gates tab

@@ -25925,6 +25925,119 @@
         "title": "RunMetric",
         "type": "object"
       },
+      "RunSeries": {
+        "additionalProperties": false,
+        "properties": {
+          "bands": {
+            "$ref": "#/components/schemas/SeriesBands"
+          },
+          "benchmark": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark"
+          },
+          "bounds": {
+            "$ref": "#/components/schemas/SeriesBounds"
+          },
+          "drawdown": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Drawdown",
+            "type": "array"
+          },
+          "equity": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Equity",
+            "type": "array"
+          },
+          "exposure": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exposure"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeriesPrice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/SeriesProvenance"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "trades": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesTrade"
+            },
+            "title": "Trades",
+            "type": "array"
+          },
+          "ts": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Ts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "run_id",
+          "ts",
+          "equity",
+          "drawdown",
+          "benchmark",
+          "exposure",
+          "trades",
+          "bands",
+          "price",
+          "bounds",
+          "provenance"
+        ],
+        "title": "RunSeries",
+        "type": "object"
+      },
       "ScanAlert": {
         "additionalProperties": false,
         "properties": {
@@ -26440,6 +26553,249 @@
           "value"
         ],
         "title": "SemanticPointV1",
+        "type": "object"
+      },
+      "SeriesBands": {
+        "additionalProperties": false,
+        "properties": {
+          "folds": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesFold"
+            },
+            "title": "Folds",
+            "type": "array"
+          },
+          "scored": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeriesPeriod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tradable": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeriesPeriod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "tradable",
+          "scored",
+          "folds"
+        ],
+        "title": "SeriesBands",
+        "type": "object"
+      },
+      "SeriesBounds": {
+        "additionalProperties": false,
+        "properties": {
+          "points": {
+            "$ref": "#/components/schemas/SeriesPointBounds"
+          },
+          "trades": {
+            "$ref": "#/components/schemas/SeriesTradeBounds"
+          }
+        },
+        "required": [
+          "points",
+          "trades"
+        ],
+        "title": "SeriesBounds",
+        "type": "object"
+      },
+      "SeriesFold": {
+        "additionalProperties": false,
+        "properties": {
+          "end_ts": {
+            "title": "End Ts",
+            "type": "string"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "start_ts": {
+            "title": "Start Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "start_ts",
+          "end_ts"
+        ],
+        "title": "SeriesFold",
+        "type": "object"
+      },
+      "SeriesPeriod": {
+        "additionalProperties": false,
+        "properties": {
+          "first_ts": {
+            "title": "First Ts",
+            "type": "string"
+          },
+          "last_ts": {
+            "title": "Last Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "first_ts",
+          "last_ts"
+        ],
+        "title": "SeriesPeriod",
+        "type": "object"
+      },
+      "SeriesPointBounds": {
+        "additionalProperties": false,
+        "properties": {
+          "original": {
+            "title": "Original",
+            "type": "integer"
+          },
+          "returned": {
+            "title": "Returned",
+            "type": "integer"
+          },
+          "sampling": {
+            "title": "Sampling",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "original",
+          "returned",
+          "truncated",
+          "sampling"
+        ],
+        "title": "SeriesPointBounds",
+        "type": "object"
+      },
+      "SeriesPrice": {
+        "additionalProperties": false,
+        "properties": {
+          "close": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Close",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "ts": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Ts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status",
+          "ts",
+          "close"
+        ],
+        "title": "SeriesPrice",
+        "type": "object"
+      },
+      "SeriesProvenance": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_sha256": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Artifact Sha256",
+            "type": "object"
+          }
+        },
+        "required": [
+          "artifact_sha256"
+        ],
+        "title": "SeriesProvenance",
+        "type": "object"
+      },
+      "SeriesTrade": {
+        "additionalProperties": false,
+        "properties": {
+          "entry_price": {
+            "title": "Entry Price",
+            "type": "number"
+          },
+          "entry_ts": {
+            "title": "Entry Ts",
+            "type": "number"
+          },
+          "exit_price": {
+            "title": "Exit Price",
+            "type": "number"
+          },
+          "exit_ts": {
+            "title": "Exit Ts",
+            "type": "number"
+          },
+          "realized_return": {
+            "title": "Realized Return",
+            "type": "number"
+          },
+          "side": {
+            "title": "Side",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_ts",
+          "exit_ts",
+          "side",
+          "entry_price",
+          "exit_price",
+          "realized_return"
+        ],
+        "title": "SeriesTrade",
+        "type": "object"
+      },
+      "SeriesTradeBounds": {
+        "additionalProperties": false,
+        "properties": {
+          "cap": {
+            "title": "Cap",
+            "type": "integer"
+          },
+          "original": {
+            "title": "Original",
+            "type": "integer"
+          },
+          "returned": {
+            "title": "Returned",
+            "type": "integer"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "original",
+          "returned",
+          "truncated",
+          "cap"
+        ],
+        "title": "SeriesTradeBounds",
         "type": "object"
       },
       "SetupFigure": {
@@ -37036,6 +37392,61 @@
           }
         },
         "summary": "Run Propfirm Paths",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/series": {
+      "get": {
+        "description": "Stored equity, drawdown, trades, bands and verified price of one run, sampled to limit.",
+        "operationId": "run_series_api_runs__run_id__series_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 2000,
+              "maximum": 5000,
+              "minimum": 2,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSeries"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Run Series",
         "tags": [
           "runs"
         ]

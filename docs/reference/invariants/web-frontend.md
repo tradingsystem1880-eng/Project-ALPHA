@@ -12,7 +12,7 @@ sources:
   - scripts/run_frontend_browser_lanes.py
   - tests/integration/test_web_spa_assets.py
   - tests/unit/test_web_menu_groups.py
-verified: 939a57e5a99340e9
+verified: c8a2c1338d4a612d
 ---
 
 # Web frontend invariants
@@ -111,7 +111,13 @@ bundle](#built-static-bundle), [Tests](#tests), [Adding a panel](#adding-a-panel
 - Archive, run and snapshot contexts never silently fall back to canonical stored bars. A run without a recorded price snapshot cannot borrow current candles.
   The one exception is the small walk-forward chart on the Gates tab: it draws the bars stored now, cut at the run's last date,
   and its legend says the run's own bars were not saved.
+  A rule test records no snapshot, so its price comes from the same exception: the bars stored now, cut at the research cut-off and the run's
+  last date, drawn only when their source fingerprint equals the one the run recorded. Otherwise the pane says why (`bars_changed_since_run`,
+  `price_not_saved_with_run`) and draws nothing. A bar at or after the cut-off is never read.
   Archive charts stay separate from strategy context.
+- `components/tearsheet/TearSheetStack.tsx` draws one BokehJS grid from `GET /api/runs/{id}/series`: price with entry and exit markers,
+  equity against buy and hold (Log toggle), and drawdown, on one x-range with one crosshair and one readout. Tested periods and
+  walk-forward tests are shaded and named. It draws stored values only; the model (`tearSheetModel.ts`) computes no statistic. Colours come from the theme.
 - In `ChartWorkspace` (at most four panels) only the primary panel follows canonical market navigation. Comparison panels stay pinned, and changing a panel's
   source never changes canonical research context.
 - Keep chart creation separate from option, evidence and selection updates; fit/reset happens only on request.
