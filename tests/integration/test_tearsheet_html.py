@@ -108,13 +108,18 @@ def test_renders_html_with_quantstats_body_and_gauntlet_section(tmp_path: Path) 
         "Walk-Forward",
         "Randomized-Price Null",
         "BCa",
-        "PASS",
+        "Level used by the old grade",  # each statistical check shows its number against that level
         "full_engine",
-        "Verdict",  # the A-F grade table
+        "Old grade",  # the A-F table, kept for old records
         "Risk Metrics",  # VaR / expected-shortfall / risk-of-ruin table
         "Risk of Ruin",
     ):
         assert marker in body, marker
+    # readings, not verdicts: the gauntlet section prints no pass/fail word and no overall verdict
+    section = body[body.index("Validation Gauntlet") :]
+    section = section[: section.index("</section>")]
+    for word in ("PASS", "FAIL", "Overall verdict"):
+        assert word not in section, word
 
 
 def test_returns_tearsheet_is_byte_stable_across_fresh_processes(tmp_path: Path) -> None:

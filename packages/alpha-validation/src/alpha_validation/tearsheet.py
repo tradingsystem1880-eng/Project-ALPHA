@@ -295,10 +295,9 @@ def _validation_section_html(report: GauntletReport) -> str:
     """The custom gauntlet section injected into the quantstats tear sheet.
 
     Carries what quantstats does not: the walk-forward fold table, both randomized-null tiers, the
-    block-bootstrap BCa intervals, and the overall PASS/FAIL verdict.
+    block-bootstrap BCa intervals. Each statistical check prints its number beside the level the
+    old grade used and says which side the number is on; the page gives no overall verdict.
     """
-    verdict = "PASS" if report.passed else "FAIL"
-    colour = "#1a7f37" if report.passed else "#cf222e"
 
     fold_rows = "".join(
         f"<tr><td>{f.index}</td><td>{f.test_start}:{f.test_end}</td><td>{f.n_test}</td>"
@@ -308,7 +307,7 @@ def _validation_section_html(report: GauntletReport) -> str:
     null_rows = "".join(
         f"<tr><td>{html.escape(n.tier)}</td><td>{_fmt(n.observed)}</td><td>{_fmt(n.percentile)}</td>"
         f"<td>{_fmt(n.p_value)}</td><td>{_fmt(n.threshold)}</td>"
-        f"<td>{'PASS' if n.passed else 'FAIL'}</td><td>{n.n_paths}</td></tr>"
+        f"<td>{_side(n.passed)}</td><td>{n.n_paths}</td></tr>"
         for n in report.nulls
     )
     ci_rows = "".join(
@@ -319,10 +318,9 @@ def _validation_section_html(report: GauntletReport) -> str:
     return f"""
 <section style="font-family: Arial, sans-serif; margin: 24px; max-width: 960px;">
   <h2>Validation Gauntlet</h2>
-  <p style="font-size: 18px;">Overall verdict:
-     <b style="color: {colour};">{verdict}</b>
-     &nbsp;<span style="color:#57606a;">({html.escape(report.metadata.symbol)},
-     run {html.escape(report.metadata.run_id)}, seed {report.metadata.seed})</span></p>
+  <p style="font-size: 18px;">Readings for {html.escape(report.metadata.symbol)}
+     <span style="color:#57606a;">(run {html.escape(report.metadata.run_id)},
+     seed {report.metadata.seed})</span>. This page gives numbers, not a verdict.</p>
   <h3>Walk-Forward OOS</h3>
   <table border="1" cellpadding="4" cellspacing="0">
     <tr><th>Fold</th><th>Test window</th><th>n</th><th>Return</th><th>Sharpe</th><th>CAGR</th></tr>
@@ -331,7 +329,7 @@ def _validation_section_html(report: GauntletReport) -> str:
   <h3>Randomized-Price Null</h3>
   <table border="1" cellpadding="4" cellspacing="0">
     <tr><th>Tier</th><th>Observed</th><th>Percentile</th><th>p-value</th>
-        <th>Threshold</th><th>Result</th><th>Paths</th></tr>
+        <th>Level used by the old grade</th><th>Against that level</th><th>Paths</th></tr>
     {null_rows}
   </table>
   <h3>Block-Bootstrap BCa Confidence Intervals</h3>
@@ -354,13 +352,18 @@ _RISK_METRIC_LABELS: tuple[tuple[str, str], ...] = (
 )
 
 
+def _side(met: bool) -> str:
+    """Which side of the old grade's level a number is on: a description, not a verdict."""
+    return "at or above" if met else "below"
+
+
 def _verdict_html(report: GauntletReport) -> str:
-    """The A-F Verdict grade table + the tail-risk metrics table (QuantPad-style headline)."""
+    """The old A-F grade table (kept for old records) + the tail-risk metrics table."""
     parts: list[str] = []
     if report.verdict is not None:
         v = report.verdict
         parts.append(
-            "<h3>Verdict</h3>"
+            "<h3>Old grade (kept for old records)</h3>"
             '<table border="1" cellpadding="4" cellspacing="0">'
             "<tr><th>Edge</th><th>Robustness</th><th>Risk</th><th>Sample</th><th>Overall</th></tr>"
             f"<tr><td>{html.escape(v.edge)}</td><td>{html.escape(v.robustness)}</td>"
@@ -391,10 +394,10 @@ def _dsr_cpcv_html(report: GauntletReport) -> str:
             "<h3>Deflated / Probabilistic Sharpe</h3>"
             '<table border="1" cellpadding="4" cellspacing="0">'
             "<tr><th>PSR</th><th>DSR</th><th>E[max SR]</th><th>Trials</th>"
-            "<th>Threshold</th><th>Result</th></tr>"
+            "<th>Level used by the old grade</th><th>Against that level</th></tr>"
             f"<tr><td>{_fmt(d.psr)}</td><td>{_fmt(d.dsr)}</td>"
             f"<td>{_fmt(d.expected_max_sharpe)}</td><td>{d.n_trials}</td>"
-            f"<td>{_fmt(d.threshold)}</td><td>{'PASS' if d.passed else 'FAIL'}</td></tr></table>"
+            f"<td>{_fmt(d.threshold)}</td><td>{_side(d.passed)}</td></tr></table>"
         )
     if report.cpcv is not None:
         c = report.cpcv
@@ -402,10 +405,10 @@ def _dsr_cpcv_html(report: GauntletReport) -> str:
             "<h3>Combinatorial Purged Cross-Validation (OOS Sharpe)</h3>"
             '<table border="1" cellpadding="4" cellspacing="0">'
             "<tr><th>Folds</th><th>Mean Sharpe</th><th>Std Sharpe</th>"
-            "<th>Frac &gt; 0</th><th>Result</th></tr>"
+            "<th>Frac &gt; 0</th><th>Mean against the old grade's level (above 0)</th></tr>"
             f"<tr><td>{c.n_folds}</td><td>{_fmt(c.mean_sharpe)}</td><td>{_fmt(c.std_sharpe)}</td>"
             f"<td>{_fmt(c.frac_positive)}</td>"
-            f"<td>{'PASS' if c.passed else 'FAIL'}</td></tr></table>"
+            f"<td>{'above' if c.passed else 'at or below'}</td></tr></table>"
         )
     return "\n".join(parts)
 

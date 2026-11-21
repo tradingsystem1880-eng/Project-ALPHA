@@ -189,4 +189,5 @@ grades. The stored run files are in [command line runs](cli-runs.md#stored-facts
 - The Workstation walk-forward card counts windows once, in `foldCounts` (`explain/gates.ts`). With a window that has no Sharpe it says
   "N windows. A were above zero, B were at or below zero, and C had no Sharpe recorded"; the manifest stores no cause per fold, so none is
   stated. The chip reads "A of N (C with no Sharpe)". The CLI prints no walk-forward above-zero count.
-- The HTML tear sheet is written by `alpha_validation/tearsheet.py` and still prints the old PASS/FAIL words. It is not changed here.
+- The HTML tear sheet (`alpha_validation/tearsheet.py`) prints each check's number beside the level the old grade used and the side it is on.
+  It gives no overall verdict; the A-F table is headed "Old grade (kept for old records)".
