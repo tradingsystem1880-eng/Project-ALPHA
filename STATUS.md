@@ -4,7 +4,7 @@ _Generated — do not edit; run: `uv run python scripts/status.py`_
 
 ## At a glance
 
-- **Capabilities:** 34 working, 38 partly working, 0 demo only, 4 shelved, 1 not started.
+- **Capabilities:** 34 working, 38 partly working, 0 demo only, 3 shelved, 1 not started.
 - **Known defects:** 0.
 - **Decisions waiting for you:** 5.
 
@@ -105,7 +105,6 @@ Found by running the installed program; each has a check that will fail once it 
 
 ## Shelved
 
-- **Download bookkeeping: receipts and quota** — shelved 2026-11-14: not wired into any command; kept for a future download-budget policy and durable acquisition journal.
 - **Qlib model refit evidence (W11)** — shelved 2026-11-14: not wired into any fit; kept for Qlib fold retraining once the reviewed statistics modules exist.
 - **Qlib models inside research cases (W09)** — shelved 2026-11-14: unused groundwork, not wired in; kept for routing Qlib models through RD-Agent research cases after the daily rule study.
 - **Qlib and Nautilus demonstration views** — shelved 2026-11-14: made-up prices only, not a production path; kept as a demonstration that Qlib and Nautilus connect (it re-ran on this computer on 2026-11-14).

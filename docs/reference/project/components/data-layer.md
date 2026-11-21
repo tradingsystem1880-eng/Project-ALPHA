@@ -71,7 +71,7 @@ Binance publishes monthly files days late, and Stooq no longer answers its bot c
 ## Where it lives
 
 - **Workspaces:** `packages/alpha-data`
-- **Capabilities:** `stock-data`, `intraday-bars`, `crypto-data`, `crypto-backfill`, `download-bookkeeping`,
+- **Capabilities:** `stock-data`, `intraday-bars`, `crypto-data`, `crypto-backfill`,
   `data-health`, `data-health-on-runs`, `retained-coverage`, `crypto-snapshots`, `providers-and-jobs`, `macro-context`,
   `filing-events`, `crypto-derivatives-context`, `positioning-short-volume-context`, `published-factor-reference`
 - Code: `packages/alpha-data/src/alpha_data/`; the `alpha data` and `alpha crypto-data` commands in
@@ -95,7 +95,7 @@ Binance publishes monthly files days late, and Stooq no longer answers its bot c
 - The owner no longer uses QuantPad; the unused QuantPad code is removed and old records stay readable
   ([log](../owner-decisions.md#2026-11-14-quantpad-no-longer-used)).
 - Triage 2026-11-14 ([sheet](../../../roadmap/triage-2026-11.md)): cards 1, 3, 4 KEEP; card 2 (download
-  bookkeeping) SHELVE, kept for a future download-budget policy. Card B (Bybit funding download modules)
+  bookkeeping) was shelved, then deleted 2026-11-21. Card B (Bybit funding download modules)
   was shelved, then deleted 2026-11-18 (PR #261); funding context comes from the Binance importer and Bybit import.
 - [Data health request](../owner-decisions-5.md#2026-11-18-request-one-data-health-report): built for rule tests and setups.
 

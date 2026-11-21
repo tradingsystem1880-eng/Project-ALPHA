@@ -18,7 +18,6 @@ table. A capability may serve several rows; a row may be served by several capab
 | `intraday-bars` | Any bar size from one minute up; the daily-only refusal removed |
 | `crypto-data` | Daily crypto bars: download, resume, freeze into a snapshot, verify |
 | `crypto-backfill` | Daily crypto bars: download, resume, freeze into a snapshot, verify |
-| `download-bookkeeping` | Download receipts and quota bookkeeping |
 | `crypto-derivatives-context` | Crypto context: funding rates, open interest, listings |
 | `filing-events` | Event calendar: central-bank meetings, inflation releases, an earnings-date proxy |
 | `positioning-short-volume-context` | Macro series as first published: rates, inflation, jobs, credit, volatility index |

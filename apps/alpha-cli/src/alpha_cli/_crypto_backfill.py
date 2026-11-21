@@ -26,15 +26,8 @@ from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
 
-from alpha_cli._crypto_backfill_accounting import (
-    FixtureAccountingBlocked,
-    FixtureBackfillAccounting,
-)
 from alpha_cli._crypto_backfill_state import RetainedRanges, progress_identity
-from alpha_cli._crypto_http_accounting import FixtureHttpAccounting
-from alpha_cli._crypto_http_replay import FixtureBoundHttpAccounting
 from alpha_core import DataError
-from alpha_data.crypto.providers._wire import CompleteHttpResponse
 
 # Initial windows are conservative guesses, not historical cadence/coverage guarantees.
 # Funding intervals can change; a full page triggers finite window splitting below.
@@ -429,29 +422,8 @@ def run_backfill(
     dry_run: bool = False,
     log: Callable[[str], None] | None = None,
     verify_completed: Callable[[str, BackfillWindow, Mapping[str, object]], None] | None = None,
-    fixture_accounting: FixtureBackfillAccounting | None = None,
-    fixture_http_accounting: FixtureHttpAccounting | None = None,
-    fixture_http_response_evidence: Callable[[CompleteHttpResponse], None] | None = None,
 ) -> dict[str, object]:
     """Run every (symbol, window) not already done; failures are recorded and do not abort."""
-    if fixture_http_response_evidence is not None and (
-        fixture_http_accounting is None
-        or not callable(fixture_http_response_evidence)
-        or isinstance(fixture_http_accounting, FixtureBoundHttpAccounting)
-    ):
-        raise FixtureAccountingBlocked("EXPLICIT_HTTP_ACCOUNTING_REQUIRED_FOR_RESPONSE_EVIDENCE")
-    if fixture_http_accounting is not None:
-        if (
-            type(fixture_http_accounting) not in (FixtureHttpAccounting, FixtureBoundHttpAccounting)
-            or provider != "bybit"
-            or fixture_accounting is not None
-        ):
-            raise FixtureAccountingBlocked("EXPLICIT_BYBIT_HTTP_ACCOUNTING_REQUIRED")
-        fixture_http_accounting.check_idle_owner()
-    if fixture_accounting is not None and type(fixture_accounting) is not FixtureBackfillAccounting:
-        raise FixtureAccountingBlocked("EXPLICIT_FIXTURE_ACCOUNTING_REQUIRED")
-    if fixture_accounting is not None:
-        fixture_accounting.check_idle_owner()
     windows = plan_windows(provider, family, frequency, start=start, end=end, now=now)
     ledger = Ledger.open(
         ledger_path,
@@ -481,35 +453,6 @@ def run_backfill(
             assert entry is not None
             ledger._check_owner()
             verify_completed(symbol, window, entry)
-            if fixture_http_accounting is not None:
-                fixture_http_accounting.verify_window(
-                    ledger,
-                    (provider, family, symbol),
-                    {
-                        "base": split_symbol(symbol, quote=quote)[0],
-                        "quote": quote,
-                        "category": category,
-                        "frequency": frequency,
-                        "period": window.period,
-                        "start": window.start,
-                        "end": window.end,
-                    },
-                    entry,
-                )
-            if fixture_accounting is not None:
-                fixture_accounting.verify_done(
-                    ledger,
-                    (provider, family, symbol),
-                    {
-                        "base": split_symbol(symbol, quote=quote)[0],
-                        "quote": quote,
-                        "category": category,
-                        "frequency": frequency,
-                        "period": window.period,
-                        "start": window.start,
-                        "end": window.end,
-                    },
-                )
             verified.add(key)
 
         # Verify all requested completed leaves, including split children, before acquisition.
@@ -548,20 +491,7 @@ def run_backfill(
                     "start": window.start,
                     "end": window.end,
                 }
-                if fixture_http_response_evidence is not None:
-                    parameters["http_response_evidence"] = fixture_http_response_evidence
-                if fixture_http_accounting is not None:
-                    result = fixture_http_accounting.dispatch_window(
-                        ledger, acquire, args, parameters
-                    )
-                elif fixture_accounting is not None:
-                    result = fixture_accounting.dispatch(ledger, acquire, args, parameters)
-                else:
-                    result = acquire(*args, **parameters)
-            except FixtureAccountingBlocked:
-                # Fatal accounting uncertainty/refusal must never split, log raw callback
-                # exceptions, or continue into another potentially effectful window.
-                raise
+                result = acquire(*args, **parameters)
             except DataError as exc:
                 if provider == "binance" and _awaits_publication(window, now, exc):
                     assert window.period is not None
@@ -598,11 +528,6 @@ def run_backfill(
                         "manifest_id": str(result.get("normalized_manifest_id")),
                         "quality_state": str(result.get("state")),
                         "at": _iso(now),
-                        **(
-                            fixture_http_accounting.completion_fields(result)
-                            if fixture_http_accounting is not None
-                            else {}
-                        ),
                     },
                 )
                 if log is not None:

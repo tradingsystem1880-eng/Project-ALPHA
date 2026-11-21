@@ -217,25 +217,6 @@ state = "Working"
 triage = { card = "1", recommendation = "KEEP", owner_decision = "KEEP" }
 
 [[capability]]
-id = "download-bookkeeping"
-name = "Download bookkeeping: receipts and quota"
-what = "Keep a receipt for every web request a download makes, so downloads can be audited, replayed and charged to a budget."
-see_it = ["nothing to see yet — internal only"]
-entry_points = [
-  "code: apps/alpha-cli/src/alpha_cli/_market_data_acquisition_accounting.py",
-  "code: apps/alpha-cli/src/alpha_cli/_crypto_backfill_accounting.py",
-  "code: apps/alpha-cli/src/alpha_cli/_crypto_http_accounting.py",
-  "code: apps/alpha-cli/src/alpha_cli/_crypto_http_replay.py",
-]
-proof_synthetic = []
-real_data = "not yet confirmed (to check on the Mac later)"
-needs = []
-state = "Shelved"
-missing = "shelved 2026-11-14: not wired into any command; kept for a future download-budget policy and durable acquisition journal"
-# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept for a future download-budget policy
-triage = { card = "2", recommendation = "SHELVE", owner_decision = "SHELVE" }
-
-[[capability]]
 id = "retained-coverage"
 name = "\"Are my downloaded daily bars complete?\" check"
 what = "Check downloaded daily prices for missing, duplicated or out-of-place days against the calendar you expect."

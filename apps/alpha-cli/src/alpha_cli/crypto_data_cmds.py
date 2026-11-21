@@ -23,6 +23,7 @@ from alpha_cli._crypto_acquisition import (
     AcquisitionPlan as _AcquisitionPlan,
 )
 from alpha_cli._crypto_acquisition import bybit_plan, option_quote_frame
+from alpha_cli._crypto_acquisition_errors import FixtureAccountingBlocked
 from alpha_cli._crypto_analysis import (
     LegacyUnscopedEventError as _LegacyUnscopedEventError,
 )
@@ -51,7 +52,6 @@ from alpha_cli._crypto_asset_master_sources import (
     builtin_asset_master,
     verify_asset_master_sources,
 )
-from alpha_cli._crypto_backfill_accounting import FixtureAccountingBlocked
 from alpha_cli._crypto_coverage import batch_digest as _coverage_batch_digest
 from alpha_cli._crypto_coverage import batch_directory as _coverage_batch_directory
 from alpha_cli._crypto_coverage import create_coverage_batch as _create_coverage_batch_at

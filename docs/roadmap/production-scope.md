@@ -121,7 +121,6 @@ Prices, the universe, and the context a trader needs around them.
 | Options quotes for payoff and expectation work | Missing | backlog | Later | private |
 | Bring in prices or the owner's own trades from a local file | Missing | backlog | Later | [grade] |
 | Provider checks and a job list for long downloads | Unproven | `alpha-cli` | Path 1 | [status] |
-| Download receipts and quota bookkeeping | Unproven | `alpha-data` (shelved) | Later | [triage] |
 | Free positioning data: futures positioning and short interest, dated when published | Missing | [register](../reference/project/outside-projects.md#judged-in-the-november-follow-up-studies) | Later | private |
 | On-chain and sentiment context as research inputs: network value ratios, exchange flows, dominance, a fear index | Missing | `alpha-data` `context/`; [note](backlog/rescued-research-ideas.md) | Later | private |
 | Mechanical data-handling checks: keyed alignment, join counts, time-bin edges, daylight-saving gaps, reshape round trips | Missing | tests; [note](backlog/rescued-test-fixtures.md) | Later | private |

@@ -533,3 +533,35 @@ def test_cli_not_published_yet_includes_missing_recent_archive(
     summary = json.loads(result.stdout)
     assert summary["awaiting_publication"] == ["2026-10", "2026-10"]
     assert summary["not_published_yet"] == ["2026-10", "2026-11"]
+
+
+def test_backfill_without_accounting_arguments_keeps_its_result_and_ledger(
+    tmp_path: Path,
+) -> None:
+    calls: list[dict[str, Any]] = []
+    summary = run_backfill(
+        provider="bybit",
+        family="funding",
+        symbols=["BTCUSDT"],
+        quote="USDT",
+        category="linear",
+        frequency="1h",
+        start=date(2024, 1, 1),
+        end=date(2024, 3, 1),
+        ledger_path=tmp_path / "ledger.json",
+        acquire=_fake_acquire(calls),
+        now=NOW,
+        pause_seconds=0.0,
+    )
+    assert summary["windows_total"] == 1
+    assert summary["done"] == 1
+    assert summary["failed"] == 0
+    assert summary["split"] == 0
+    assert [call["start"] for call in calls] == ["2024-01-01T00:00:00Z"]
+    entries = json.loads((tmp_path / "ledger.json").read_text())["windows"]
+    assert len(entries) == 1
+    (entry,) = entries.values()
+    assert entry["state"] == "done"
+    assert entry["manifest_id"] == "m-1"
+    assert entry["quality_state"] == "qualified"
+    assert set(entry) == {"state", "manifest_id", "quality_state", "at"}
