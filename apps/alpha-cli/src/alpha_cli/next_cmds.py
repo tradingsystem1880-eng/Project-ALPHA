@@ -222,6 +222,8 @@ def _text(facts: dict[str, Any]) -> str:
         f"Idea cards: {ideas['cards']} idea card{plural}, {ideas['without_test']} with no test yet."
         " Write one: alpha idea new. See one: alpha idea file <id>."
     )
+    lines.append("  Link RD-Agent work: alpha idea link <id> --rdagent <run>/<idea>")
+    lines.append('  Keep a note or decision: alpha idea note <id> "<text>" [--decision]')
     paths = facts["paths"]
     lines += [
         "Three ways to start",

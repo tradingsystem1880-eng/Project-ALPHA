@@ -35,6 +35,8 @@ LABELS: dict[str, str] = {
     "edge_lasts": "How long the edge should last",
 }
 LINKS_FILE = "links.jsonl"
+# RD-Agent link rows are kept in the same file. They are not tests: no test count reads them.
+RDAGENT_KINDS = frozenset({"rdagent_journey", "rdagent_unlink"})
 
 
 class IdeaCard(BaseModel):
@@ -170,16 +172,21 @@ def _links(home: Path) -> list[dict[str, str]]:
 
 
 def tested_ids(home: Path) -> set[str]:
-    return {row.get("card", "") for row in _links(home)}
+    return {row.get("card", "") for row in _links(home) if row.get("kind") not in RDAGENT_KINDS}
 
 
 def linked_tests(home: Path, card: str) -> int:
     """How many stored test links name this card (one line per linked run)."""
-    return sum(1 for row in _links(home) if row.get("card") == card)
+    return len(links_of(home, card))
 
 
 def links_of(home: Path, card: str) -> list[dict[str, str]]:
-    """The stored link rows that name this card, in the order they were written."""
+    """The stored test link rows that name this card, in the order they were written."""
+    return [row for row in link_rows(home, card) if row.get("kind") not in RDAGENT_KINDS]
+
+
+def link_rows(home: Path, card: str) -> list[dict[str, str]]:
+    """Every stored link row that names this card, tests and RD-Agent links alike."""
     return [row for row in _links(home) if row.get("card") == card]
 
 

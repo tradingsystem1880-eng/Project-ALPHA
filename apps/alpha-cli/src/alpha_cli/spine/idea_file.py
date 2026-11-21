@@ -11,7 +11,7 @@ from typing import Any
 
 from alpha_cli.run_store import find_run_dir, read_manifest
 from alpha_cli.spine import idea_card as cards
-from alpha_cli.spine import reserve
+from alpha_cli.spine import idea_notes, idea_rdagent, reserve
 from alpha_cli.spine.errors import SpineError
 from alpha_cli.spine.facts import read_json, read_study, tool_outputs
 from alpha_cli.spine.idea_map import DONE, build_map, next_steps
@@ -208,6 +208,10 @@ def build(home: Path, wanted: str) -> dict[str, Any]:
     runs = [e for e in entries if e["kind"] == "rule test"]
     finds = [e for e in entries if e["kind"] == "setup find"]
     steps = build_map(identity, runs, finds)
+    worked = idea_rdagent.entries(home, identity)
+    if worked:
+        steps.insert(1, idea_rdagent.map_line(worked))
+    notes = idea_notes.read(home, identity)
     checks = [c for r in runs for c in r["checks"]]
     assets = {r["tested"]["asset"] for r in runs if r["tested"]["asset"] != UNKNOWN}
     assets |= {a for f in finds for a in f["tested"].get("assets") or [] if a}
@@ -215,7 +219,13 @@ def build(home: Path, wanted: str) -> dict[str, Any]:
     counted = declarations.counts(c["labels"] for c in checks)
     variants = [c for c in [*older, *newer] if c]
     readings = [{k: v for k, v in e.items() if k != "_manifest"} for e in entries]
+    extra: dict[str, Any] = {}
+    if worked:
+        extra["rdagent"] = worked
+    if notes:
+        extra["notes"] = notes
     return {
+        **extra,
         "card": {
             "id": identity,
             **{name: getattr(card, name) or None for name in cards.LABELS},

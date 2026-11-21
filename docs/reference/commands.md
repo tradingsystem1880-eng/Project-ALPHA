@@ -11,7 +11,7 @@ Every `alpha` command, generated from the CLI's own command tree (the catalogue 
 `alpha info commands --all --json` plus each command's help text). Do not edit by hand;
 run `uv run python scripts/commands_reference.py`. Full options: `alpha <group> <command> --help`.
 
-308 commands in 42 groups. Options marked (required) are
+310 commands in 42 groups. Options marked (required) are
 mandatory; `<ARG>` is a positional argument.
 
 ## alpha assistant
@@ -175,8 +175,10 @@ Kronos foundation-model forecasting (probabilistic outcome cones).
 Write an idea card before you test an idea.
 
 - `alpha idea file <CARD_ID>` — One page for one idea: the card, the map, every reading, the counts, the open points. Options: `--json`
+- `alpha idea link <CARD_ID>` — Link a stored RD-Agent journey to a card, or remove the link. Options: `--rdagent (required)`, `--unlink`, `--json`
 - `alpha idea list` — List every card with its idea and whether a test is linked to it. Options: `--json`
-- `alpha idea new` — Save a card. Options: `--claim`, `--mechanism`, `--other-side`, `--disproved-by`, `--baseline`, `--signal-forms`, `--held-for`, +5 more
+- `alpha idea new` — Save a card. Options: `--claim`, `--mechanism`, `--other-side`, `--disproved-by`, `--baseline`, `--signal-forms`, `--held-for`, +6 more
+- `alpha idea note <CARD_ID> <TEXT>` — Add a note to a card. Options: `--decision`, `--json`
 - `alpha idea show <CARD_ID>` — Print one card, and name the fields that are not stated. Options: `--json`
 
 ## alpha info
