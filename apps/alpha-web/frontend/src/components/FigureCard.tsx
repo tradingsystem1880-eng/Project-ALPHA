@@ -17,6 +17,7 @@ import { useSettings } from '../state/settings'
 import { FigureSurface } from './FigureSurface'
 import { FigureOverlay } from './FigureOverlay'
 import { notesVisible } from './figureExport'
+import { type FigureVariant, explanationSentences, otherVariant, toggleLabel } from './figureVariant'
 
 interface Props {
   runId: string
@@ -45,6 +46,7 @@ export function FigureCard({ runId, runName, item }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [showData, setShowData] = useState(false)
   const [maximised, setMaximised] = useState(false)
+  const [variant, setVariant] = useState<FigureVariant>('plain')
   const expandButton = useRef<HTMLButtonElement>(null)
   const restore = useCallback(() => {
     setMaximised(false)
@@ -56,13 +58,13 @@ export function FigureCard({ runId, runName, item }: Props) {
     let live = true
     setError(null)
     api
-      .figureMetadata(runId, item.figure_id)
+      .figureMetadata(runId, item.figure_id, variant)
       .then((value) => live && setMeta(value))
       .catch((cause: unknown) => live && setError(String(cause)))
     return () => {
       live = false
     }
-  }, [runId, item.figure_id, item.available])
+  }, [runId, item.figure_id, item.available, variant])
 
   if (!item.available) {
     return (
@@ -113,6 +115,14 @@ export function FigureCard({ runId, runName, item }: Props) {
         </h3>
         <div className="figure-actions">
           <button
+            type="button"
+            className="btn ghost"
+            aria-pressed={variant === 'annotated'}
+            onClick={() => setVariant(otherVariant(variant))}
+          >
+            {toggleLabel(variant)}
+          </button>
+          <button
             ref={expandButton}
             type="button"
             className="btn ghost"
@@ -120,7 +130,7 @@ export function FigureCard({ runId, runName, item }: Props) {
             aria-expanded={maximised}
             onClick={() => setMaximised(true)}
           >
-            Expand
+            Open full screen
           </button>
           <button
             type="button"
@@ -135,7 +145,15 @@ export function FigureCard({ runId, runName, item }: Props) {
 
       {/* Double-click maximises, like a chart window in a terminal; the Expand button is the
           keyboard route. */}
-      <FigureSurface runId={runId} meta={meta} onExpand={() => setMaximised(true)}/>
+      <div className="figure-body">
+        <FigureSurface runId={runId} meta={meta} variant={variant} onExpand={() => setMaximised(true)} />
+        <aside className="figure-reading" aria-label="How to read this chart">
+          <h4>How to read this chart</h4>
+          {explanationSentences(meta.explanation).map((sentence) => (
+            <p key={sentence}>{sentence}</p>
+          ))}
+        </aside>
+      </div>
 
       {/* Question, uncertainty and caveat are the only accessible copy of the figure's meaning,
           so they stay in the DOM in both modes and are merely hidden from sight outside Notes. */}
@@ -189,7 +207,7 @@ export function FigureCard({ runId, runName, item }: Props) {
         </div>
       ) : null}
 
-      {maximised ? <FigureOverlay runId={runId} runName={runName} meta={meta} onClose={restore} /> : null}
+      {maximised ? <FigureOverlay runId={runId} runName={runName} meta={meta} variant={variant} onClose={restore} /> : null}
     </figure>
   )
 }

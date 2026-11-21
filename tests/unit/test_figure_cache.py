@@ -60,6 +60,7 @@ class TestCacheKey:
             ("dpi", 200),
             ("fmt", "png"),
             ("background", "transparent"),
+            ("variant", "annotated"),
             ("artifact_contract_version", 2),
             ("input_digest", "d" * 64),
             ("input_digest_kind", "mtime_fallback"),

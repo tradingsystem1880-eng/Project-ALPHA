@@ -3,7 +3,7 @@ owner: research pipeline
 sources:
   - apps/alpha-cli/src/alpha_cli/results_cmds.py
   - apps/alpha-cli/src/alpha_cli/spine/*.py
-verified: abbb4da8fbdc5a9d
+verified: ff8acf6e5b75ea90
 ---
 
 # Diagnose and audit

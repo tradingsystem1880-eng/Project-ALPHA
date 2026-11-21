@@ -1,4 +1,4 @@
-"""Display transformations of recorded evidence and its annotated, two-theme PNGs."""
+"""Display transformations of recorded evidence and its annotated white PNGs."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ from typing import Any
 import polars as pl
 
 from alpha_cli.rdagent_journey_words import CLOCK, display, pass_line
-from alpha_cli.spine.setup_trade_figure import _style
 from alpha_cli.toolbox.reserve import RESERVED_DAY
 from alpha_research.figures.theme import Theme, load_theme
 
@@ -194,24 +193,35 @@ def looks_data(row: Data, ledger: list[Data]) -> Data | None:
 
 
 def figure_theme(dark: bool) -> Theme:
-    theme = load_theme("alpha-dark")
-    if dark:
-        return theme
+    """The one white standard look; ``dark`` is accepted for old callers and changes nothing.
+
+    Colours are matplotlib's own defaults (tab blue, orange, green, red) on a white face.
+    """
     return replace(
-        theme,
-        theme_id="alpha-light",
+        load_theme("alpha-dark"),
+        theme_id="plain-notebook",
         bg="#ffffff",
         panel="#ffffff",
-        ink="#1b2230",
-        ink_dim="#4a5466",
-        accent="#316ac5",
-        grid="#e6e9ef",
-        faint="#9aa3b2",
-        muted="#6b7485",
-        gold="#997000",
-        up="#1a7f4b",
-        down="#c0392b",
+        ink="#000000",
+        ink_dim="#444444",
+        accent="#1f77b4",
+        grid="#e0e0e0",
+        faint="#999999",
+        muted="#666666",
+        gold="#ff7f0e",
+        up="#2ca02c",
+        down="#d62728",
     )
+
+
+def _style(theme: Theme) -> dict[Any, Any]:
+    import matplotlib
+
+    return {
+        **dict(matplotlib.rcParamsDefault.items()),
+        "figure.facecolor": theme.bg,
+        "axes.facecolor": theme.panel,
+    }
 
 
 def _note(

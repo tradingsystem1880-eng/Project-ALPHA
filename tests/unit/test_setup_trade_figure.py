@@ -8,7 +8,6 @@ import pytest
 from PIL import Image
 
 from alpha_cli.spine.setup_trade_figure import draw_trades
-from alpha_research.figures.theme import load_theme
 
 
 def test_identical_bytes_and_dimensions() -> None:
@@ -29,13 +28,11 @@ def test_identical_bytes_and_dimensions() -> None:
     first = draw_trades(
         rows=rows,
         primary=primary,
-        theme=load_theme(),
         title="Synthetic: 4 trades from 4 separate occurrences",
     )
     assert first == draw_trades(
         rows=rows,
         primary=primary,
-        theme=load_theme(),
         title="Synthetic: 4 trades from 4 separate occurrences",
     )
     assert Image.open(BytesIO(first)).size == (1600, 900)
@@ -67,8 +64,8 @@ def test_open_at_end_is_shown_separately_from_completed_mean() -> None:
             complete=False,
         )
     ]
-    empty = draw_trades(rows=[], primary=primary, theme=load_theme(), title="Open")
-    assert draw_trades(rows=marked, primary=primary, theme=load_theme(), title="Open") != empty
+    empty = draw_trades(rows=[], primary=primary, title="Open")
+    assert draw_trades(rows=marked, primary=primary, title="Open") != empty
 
 
 def test_direction_and_completed_r_change_figure() -> None:
@@ -87,9 +84,7 @@ def test_direction_and_completed_r_change_figure() -> None:
             net_return=0.01,
             r_multiple=multiple,
         )
-        return draw_trades(
-            rows=[row], primary=primary, title="Synthetic", theme=load_theme(), direction=direction
-        )
+        return draw_trades(rows=[row], primary=primary, title="Synthetic", direction=direction)
 
     assert figure("short", 0.5) != figure("long", 0.5)
     assert figure("short", 0.5) != figure("short", 2.0)
@@ -130,9 +125,7 @@ def test_short_entry_markers_and_histogram_with_one_large_r(
     primary = dict(
         mean=0.03, trades=5, hit_rate=1.0, drift_mean=None, random_date_5=None, random_date_95=None
     )
-    draw_trades(
-        rows=rows, primary=primary, title="Synthetic", theme=load_theme(), direction="short"
-    )
+    draw_trades(rows=rows, primary=primary, title="Synthetic", direction="short")
     assert observed["marker"] == "v"
     assert observed["values"] == multiples
     assert 1 <= observed["bins"] <= 100

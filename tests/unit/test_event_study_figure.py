@@ -3,7 +3,6 @@
 import struct
 
 from alpha_cli.spine.event_study_figure import draw_event_study
-from alpha_research.figures.theme import load_theme
 
 
 def draw() -> bytes:
@@ -16,7 +15,6 @@ def draw() -> bytes:
         horizons=[1, 2],
         primary=2,
         title="Synthetic: 2 separate occurrences (3 matching days)",
-        theme=load_theme(),
     )
 
 

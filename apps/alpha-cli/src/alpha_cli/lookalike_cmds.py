@@ -75,14 +75,15 @@ def _fact(
     }
 
 
-def _publish(rdir: Path, document: dict[str, Any], figure: bytes) -> bool:
+def _publish(rdir: Path, document: dict[str, Any], figure: tuple[bytes, bytes]) -> bool:
     """Write the folder once; an existing folder with the same identity is left untouched."""
     from alpha_core.atomic import publish, write_text
 
     if (rdir / "result.json").exists():
         return False
     rdir.mkdir(parents=True, exist_ok=True)
-    publish(rdir / "figure.png", lambda path: path.write_bytes(figure))
+    publish(rdir / "figure.png", lambda path: path.write_bytes(figure[0]))
+    publish(rdir / "figure_annotated.png", lambda path: path.write_bytes(figure[1]))
     write_text(
         rdir / "result.json",
         json.dumps(document, sort_keys=True, indent=2, allow_nan=False) + "\n",
@@ -90,17 +91,11 @@ def _publish(rdir: Path, document: dict[str, Any], figure: bytes) -> bool:
     return True
 
 
-def _render(spec: Any) -> bytes:
-    from alpha_research.figures import FigureSize, RenderOptions, load_theme, render_figure
+def _render(spec: Any) -> tuple[bytes, bytes]:
+    """The plain chart and the annotated, explained chart, as PNG bytes."""
+    from alpha_cli.figures.variants import render_variant
 
-    return render_figure(
-        spec,
-        RenderOptions(
-            theme=load_theme(),
-            size=FigureSize(width_in=11.0, height_in=7.2),
-            fmt="png",
-        ),
-    )
+    return render_variant(spec, "plain", "png"), render_variant(spec, "annotated", "png")
 
 
 def _iso(epoch_ms: float) -> str:
@@ -328,6 +323,7 @@ def _lookalike_text(
         ),
         f"Labels: {', '.join(labels)}",
         f"Figure: {rdir / 'figure.png'}",
+        f"Annotated figure: {rdir / 'figure_annotated.png'}",
     ]
     return "\n".join(lines)
 
@@ -440,7 +436,12 @@ def lookalike(
         _publish(rdir, document, figure)
     except (ValueError, OSError, DataError) as exc:
         fail(_error(exc, "lookalike"), json_out)
-    output = {**document, "result_dir": str(rdir), "figure": str(rdir / "figure.png")}
+    output = {
+        **document,
+        "result_dir": str(rdir),
+        "figure": str(rdir / "figure.png"),
+        "figure_annotated": str(rdir / "figure_annotated.png"),
+    }
     text = _lookalike_text(
         result,
         summaries,
@@ -547,7 +548,12 @@ def unusual(
         _publish(rdir, document, figure)
     except (ValueError, OSError, DataError) as exc:
         fail(_error(exc, "unusual"), json_out)
-    output = {**document, "result_dir": str(rdir), "figure": str(rdir / "figure.png")}
+    output = {
+        **document,
+        "result_dir": str(rdir),
+        "figure": str(rdir / "figure.png"),
+        "figure_annotated": str(rdir / "figure_annotated.png"),
+    }
     rank = (
         f"higher than {result.percentile:.0f}% of {result.earlier_scores} earlier windows"
         if result.percentile is not None
@@ -560,5 +566,6 @@ def unusual(
         f"{rank}",
         f"Labels: {', '.join(labels)}",
         f"Figure: {rdir / 'figure.png'}",
+        f"Annotated figure: {rdir / 'figure_annotated.png'}",
     ]
     emit(output, json_out=json_out, fallback="\n".join(lines) + held.note())

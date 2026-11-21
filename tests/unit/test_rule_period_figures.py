@@ -141,14 +141,16 @@ def test_buy_and_hold_dividend_cash_matches_invested_engine(fractional_tick: flo
     assert benchmark[-1] == pytest.approx(1.4125, abs=1e-9, rel=0)
 
 
-def test_new_rule_figure_light_and_dark_keys(stored_run: tuple[Path, dict[str, Any]]) -> None:
+def test_new_rule_figure_variants_are_white_and_have_their_own_keys(
+    stored_run: tuple[Path, dict[str, Any]],
+) -> None:
     from PIL import Image
 
     from alpha_cli.figures_cmds import _render_one
 
     rdir, manifest = stored_run
     keys = []
-    for dark in (False, True):
+    for variant in ("plain", "annotated"):
         figure = _render_one(
             "equity_underwater",
             run_id=rdir.name,
@@ -157,16 +159,11 @@ def test_new_rule_figure_light_and_dark_keys(stored_run: tuple[Path, dict[str, A
             data_dir=rdir.parent.parent,
             fmt="png",
             force=False,
-            dark=dark,
+            variant=variant,
         )
         keys.append(figure["cache_key"])
         with Image.open(figure["path"]) as png:
-            colour = png.convert("RGB").getpixel((0, 0))
-            assert isinstance(colour, tuple)
-            if dark:
-                assert max(colour) < 100
-            else:
-                assert colour == (255, 255, 255)
+            assert png.convert("RGB").getpixel((0, 0)) == (255, 255, 255)
     assert keys[0] != keys[1]
 
 

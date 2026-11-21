@@ -1,6 +1,31 @@
 import { api } from '../api/client'
 import type { FigureMetadata } from '../api/types'
-/** One immutable, noninteractive scientific image surface shared by reports and workspaces. */
-export function FigureSurface({ runId, meta, onExpand }: { runId: string; meta: FigureMetadata; onExpand: () => void }) {
-  return <div className="figure-surface"><div className="figure-surface-title"><span>Static figure · noninteractive</span><a className="btn" href={api.figureImageUrl(runId, meta.figure_id, meta.cache_key, 'svg')} download={`${meta.figure_id}.svg`}>SVG</a><a className="btn" href={api.figureImageUrl(runId, meta.figure_id, meta.cache_key, 'png')} download={`${meta.figure_id}.png`}>PNG</a></div><img className="figure-image" src={api.figureImageUrl(runId, meta.figure_id, meta.cache_key, 'svg')} alt={meta.alt_text} loading="lazy" onDoubleClick={onExpand}/><small>stored figure</small>{meta.truncation_note ? <p>{meta.truncation_note}</p> : null}</div>
+import { type FigureVariant, variantFileName } from './figureVariant'
+
+interface Props {
+  runId: string
+  meta: FigureMetadata
+  variant: FigureVariant
+  onExpand: () => void
+}
+
+/** One immutable, noninteractive scientific image surface. The chart is always white, on both screen themes. */
+export function FigureSurface({ runId, meta, variant, onExpand }: Props) {
+  const url = (fmt: 'svg' | 'png') => api.figureImageUrl(runId, meta.figure_id, meta.cache_key, fmt, variant)
+  return (
+    <div className="figure-surface" data-variant={variant}>
+      <div className="figure-surface-title">
+        <span>{variant === 'plain' ? 'Plain chart' : 'Annotated chart'} · static</span>
+        <a className="btn" href={url('svg')} download={variantFileName(meta.figure_id, variant, 'svg')}>
+          SVG
+        </a>
+        <a className="btn" href={url('png')} download={variantFileName(meta.figure_id, variant, 'png')}>
+          PNG
+        </a>
+      </div>
+      <img className="figure-image" src={url('svg')} alt={meta.alt_text} loading="lazy" onDoubleClick={onExpand} />
+      <small>stored figure</small>
+      {meta.truncation_note ? <p>{meta.truncation_note}</p> : null}
+    </div>
+  )
 }

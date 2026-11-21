@@ -3,28 +3,10 @@
 from __future__ import annotations
 
 from io import BytesIO
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+from alpha_cli.figures import direct_notes as notes
 from alpha_cli.spine.setup_reading import owner_lines
-
-if TYPE_CHECKING:
-    from alpha_research.figures.theme import Theme
-
-
-def _style(theme: Theme) -> dict[Any, Any]:
-    import matplotlib
-
-    return {
-        **dict(matplotlib.rcParamsDefault.items()),
-        "font.family": theme.font_family,
-        "figure.facecolor": theme.bg,
-        "axes.facecolor": theme.panel,
-        "axes.edgecolor": theme.grid,
-        "text.color": theme.ink,
-        "axes.labelcolor": theme.ink,
-        "xtick.color": theme.ink,
-        "ytick.color": theme.ink,
-    }
 
 
 def draw_trades(
@@ -32,26 +14,26 @@ def draw_trades(
     rows: list[dict[str, Any]],
     primary: dict[str, Any],
     title: str,
-    theme: Theme,
     direction: str = "long",
+    variant: str = "plain",
 ) -> bytes:
+    """The standard white sheet; ``variant="annotated"`` adds callouts and a reading box."""
     import matplotlib
 
     matplotlib.use("Agg", force=True)
-    from matplotlib import font_manager, rc_context
+    from matplotlib import rc_context
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     from matplotlib.figure import Figure
     from matplotlib.patches import Patch
     from matplotlib.ticker import PercentFormatter
 
-    font_manager.findfont(theme.font_family, fallback_to_default=False)
     # Losses red, gains green: the owner reads the colour before the key.
     palette = {
-        "stop": theme.down,
-        "target": theme.up,
-        "time": theme.series_colour(0),
-        "opposite": theme.series_colour(3),
-        "open-at-end": theme.faint,
+        "stop": "C3",
+        "target": "C2",
+        "time": "C0",
+        "opposite": "C1",
+        "open-at-end": "0.6",
     }
     names = {
         "stop": "Stop exit (incl. gaps through the stop)",
@@ -60,17 +42,20 @@ def draw_trades(
         "opposite": "Opposite-condition exit",
         "open-at-end": "Still open at the end (marked only, not in the mean)",
     }
-    with rc_context(_style(theme)):
-        figure = Figure(figsize=(16, 9), dpi=100)
+    done = sorted(
+        (r for r in rows if r["net_return"] is not None),
+        key=lambda r: (r["entry_ts"], r["asset"], r["candidate_id"]),
+    )
+    sentences = notes.trade_sentences(done, primary, direction)
+    extra = notes.extra_height(variant, sentences)
+    place = notes.layout(extra)
+    with rc_context(dict(matplotlib.rcParamsDefault.items())):
+        figure = Figure(figsize=(16, notes.BASE_HEIGHT_IN + extra), dpi=100, facecolor="white")
         FigureCanvasAgg(figure)
         grid = figure.add_gridspec(2, 2, height_ratios=[3, 2], width_ratios=[3, 2])
         top = figure.add_subplot(grid[0, :])
         bottom = figure.add_subplot(grid[1, 0])
         hist = figure.add_subplot(grid[1, 1])
-        done = sorted(
-            (r for r in rows if r["net_return"] is not None),
-            key=lambda r: (r["entry_ts"], r["asset"], r["candidate_id"]),
-        )
         groups = [
             {"stop-gap": "stop", "max-hold": "time"}.get(r["reason"], r["reason"]) for r in done
         ]
@@ -81,7 +66,7 @@ def draw_trades(
             top.scatter(
                 range(len(done)),
                 [0] * len(done),
-                color=theme.ink,
+                color="black",
                 marker="v" if direction == "short" else "^",
                 s=18,
                 label=f"{direction.title()} entry",
@@ -96,8 +81,6 @@ def draw_trades(
                     ],
                 ],
                 loc="upper left",
-                facecolor=theme.panel,
-                labelcolor=theme.ink,
             )
         ticks = _year_ticks([r["entry_ts"] for r in done])
         if ticks:
@@ -105,26 +88,31 @@ def draw_trades(
         top.set_xlim(-1, max(len(done), 1))
         top.set_xlabel("Each bar is one trade, in entry-date order (year of entry below)")
         top.set_ylabel("Trade return after costs")
-        _controls_panel(bottom, primary, theme)
+        _controls_panel(bottom, primary)
         multiples = [
             r["r_multiple"] for r in done if r["complete"] and r.get("r_multiple") is not None
         ]
         if multiples:
-            hist.hist(multiples, bins="auto", color=theme.series_colour(0))
+            hist.hist(multiples, bins="auto", color="C0")
         else:
             hist.text(0.5, 0.5, "R not recorded", ha="center", transform=hist.transAxes)
         hist.set_xlabel("Net return in initial risk units (R)")
         hist.set_ylabel("Completed trades")
         for axes in (top, bottom):
-            axes.axhline(0, color=theme.faint, linewidth=0.8)
+            axes.axhline(0, color="black", linewidth=0.8)
             axes.yaxis.set_major_formatter(PercentFormatter(1))
-            axes.grid(color=theme.grid, linewidth=0.4)
+            axes.grid(alpha=0.3)
             axes.set_axisbelow(True)
-        figure.subplots_adjust(left=0.09, right=0.97, top=0.88, bottom=0.12, hspace=0.35)
-        figure.text(0.05, 0.96, title, fontsize=16, va="top")
+        figure.subplots_adjust(
+            left=0.09, right=0.97, top=place["top"], bottom=place["bottom"], hspace=0.35
+        )
+        if variant == "annotated":
+            notes.mark_extremes(top, [float(r["net_return"]) for r in done], "trade")
+            notes.add_box(figure, sentences)
+        figure.text(0.05, place["title_y"], title, fontsize=16, va="top")
         figure.text(
             0.05,
-            0.04,
+            place["foot_y"],
             f"{direction.title()} trades after costs. Open-at-end trades excluded from the mean. "
             "One counted exploratory test; not confirmed on reserved data.",
             fontsize=11,
@@ -148,7 +136,7 @@ def _year_ticks(stamps: list[Any]) -> list[tuple[int, str]]:
     return firsts[::step]
 
 
-def _controls_panel(axes: Any, primary: dict[str, Any], theme: Theme) -> None:
+def _controls_panel(axes: Any, primary: dict[str, Any]) -> None:
     low, high, drift, mean = (
         primary[k] for k in ("random_date_5", "random_date_95", "drift_mean", "mean")
     )
@@ -156,14 +144,14 @@ def _controls_panel(axes: Any, primary: dict[str, Any], theme: Theme) -> None:
         axes.axhspan(
             low,
             high,
-            facecolor=theme.substrate,
-            edgecolor=theme.faint,
+            facecolor="0.85",
+            edgecolor="0.6",
             label=f"Random dates, middle 90% of their averages: {low:.2%} to {high:.2%}",
         )
     if drift is not None:
         axes.axhline(
             drift,
-            color=theme.ink,
+            color="black",
             linestyle="--",
             label=f"Same exits started on any day: {drift:.2%}",
         )
@@ -180,7 +168,7 @@ def _controls_panel(axes: Any, primary: dict[str, Any], theme: Theme) -> None:
             [0],
             [mean],
             "o",
-            color=theme.gold,
+            color="C1",
             markersize=12,
             label=f"Average completed trade after this setup: {mean:.2%}",
         )
@@ -189,9 +177,8 @@ def _controls_panel(axes: Any, primary: dict[str, Any], theme: Theme) -> None:
             (0, mean),
             xytext=(18, 14),
             textcoords="offset points",
-            color=theme.ink,
         )
-        axes.legend(loc="upper left", facecolor=theme.panel, labelcolor=theme.ink)
+        axes.legend(loc="upper left")
     values = [v for v in (low, high, drift, mean, 0.0) if v is not None]
     span = max(values) - min(values) or 0.01
     axes.set_ylim(min(values) - 0.15 * span, max(values) + 0.6 * span)

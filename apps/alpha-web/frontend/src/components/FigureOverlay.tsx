@@ -15,12 +15,14 @@ import type { FigureMetadata } from '../api/types'
 import { Icon } from '../shell/icons'
 import { useSettings } from '../state/settings'
 import { copyCapability, exportNames, notesVisible } from './figureExport'
+import type { FigureVariant } from './figureVariant'
 
 interface Props {
   runId: string
   /** The run's display name; the header falls back to the short id. */
   runName?: string
   meta: FigureMetadata
+  variant: FigureVariant
   onClose: () => void
 }
 
@@ -37,7 +39,7 @@ function clipboardEnvironment() {
 
 type CopyState = 'idle' | 'copying' | 'copied' | 'failed'
 
-export function FigureOverlay({ runId, runName, meta, onClose }: Props) {
+export function FigureOverlay({ runId, runName, meta, variant, onClose }: Props) {
   const { explain } = useSettings()
   const box = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(0)
@@ -45,8 +47,8 @@ export function FigureOverlay({ runId, runName, meta, onClose }: Props) {
   const [copyError, setCopyError] = useState<string | null>(null)
   const capability = copyCapability(clipboardEnvironment())
   const names = exportNames(runId, meta.figure_id)
-  const svg = api.figureImageUrl(runId, meta.figure_id, meta.cache_key, 'svg')
-  const png = api.figureImageUrl(runId, meta.figure_id, meta.cache_key, 'png')
+  const svg = api.figureImageUrl(runId, meta.figure_id, meta.cache_key, 'svg', variant)
+  const png = api.figureImageUrl(runId, meta.figure_id, meta.cache_key, 'png', variant)
 
   useEffect(() => {
     const root = box.current

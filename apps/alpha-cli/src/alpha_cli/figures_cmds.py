@@ -7,32 +7,28 @@ path and a 1.5s import tax on every projection would be felt.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Final
+from typing import Annotated, Any, Final
 
 import typer
 
+from alpha_cli.figure_cache import STYLE_ID, VARIANTS, validate_variant
 from alpha_core import DataError
 from alpha_core.config import AlphaSettings
 
-if TYPE_CHECKING:
-    from alpha_research.figures.theme import Theme
-
-
-def _run_theme(manifest: dict[str, Any], dark: bool) -> Theme:
-    from alpha_cli.figures.rdagent_journey_figures import figure_theme
-    from alpha_research.figures import load_theme
-
-    if manifest.get("spine", {}).get("periods") or dark:
-        return figure_theme(dark)
-    return load_theme()
+_STYLE_DIGEST: Final = hashlib.sha256(STYLE_ID.encode("utf-8")).hexdigest()[:16]
+_DARK_NOTE: Final = "Accepted for old callers. Every figure is the same white chart."
 
 
 figures_app = typer.Typer(help="Render publication-quality figures for a stored run.")
 
 _OPT_JSON = Annotated[bool, typer.Option("--json", help="Emit a machine-readable projection.")]
+_OPT_VARIANT = Annotated[
+    str, typer.Option("--variant", help="plain (the standard chart) or annotated (explained).")
+]
 
 
 def _data_dir() -> Path:
@@ -55,7 +51,7 @@ def _render_one(
     data_dir: Path,
     fmt: str,
     force: bool,
-    dark: bool = False,
+    variant: str = "plain",
 ) -> dict[str, Any]:
     """Render one figure into the cache, atomically, and return its projection."""
     import matplotlib
@@ -69,15 +65,11 @@ def _render_one(
     )
     from alpha_cli.figures import build_figure_spec
     from alpha_cli.figures.rule_periods import definition as run_definition
-    from alpha_research.figures import (
-        RENDERER_VERSION,
-        RenderOptions,
-        default_size,
-        render_figure,
-    )
+    from alpha_cli.figures.variants import explanation, fixed_text, render_variant
+    from alpha_research.figures import RENDERER_VERSION, default_size
 
     definition = run_definition(figure_id)
-    theme = _run_theme(manifest, dark)
+    variant = validate_variant(variant)
     size = default_size(definition.panel_count)
     fmt = validate_format(fmt)
     digest, kind = input_digest(
@@ -88,13 +80,14 @@ def _render_one(
         figure_id=figure_id,
         renderer_version=RENDERER_VERSION,
         matplotlib_version=matplotlib.__version__,
-        theme_id=theme.theme_id,
-        theme_digest=theme.digest(),
+        theme_id=STYLE_ID,
+        theme_digest=_STYLE_DIGEST,
         width_in=size.width_in,
         height_in=size.height_in,
         dpi=size.dpi,
         fmt=fmt,
         background="theme",
+        variant=variant,
         artifact_contract_version=manifest.get("artifact_contract_version"),
         input_digest=digest,
         input_digest_kind=kind,
@@ -113,10 +106,7 @@ def _render_one(
     spec = build_figure_spec(
         figure_id, run_id=run_id, rdir=rdir, manifest=manifest, data_dir=data_dir
     )
-    payload = render_figure(
-        spec,
-        RenderOptions(theme=theme, size=size, fmt=fmt),
-    )
+    payload = render_variant(spec, variant, fmt)
     if force and image.is_file():
         # A re-render at the same key must be byte-identical; if it is not, determinism
         # has regressed and silently overwriting would hide that.
@@ -131,7 +121,13 @@ def _render_one(
     _publish(image, payload)
     _publish(
         sidecar,
-        json.dumps(_sidecar(spec, definition, key, fmt, size), sort_keys=True, indent=2).encode(),
+        json.dumps(
+            _sidecar(
+                spec, definition, key, fmt, size, variant, explanation(spec, fixed_text(figure_id))
+            ),
+            sort_keys=True,
+            indent=2,
+        ).encode(),
     )
     return {
         "figure_id": figure_id,
@@ -147,16 +143,18 @@ def store_rule_figures(rdir: Path, manifest: dict[str, Any], data_dir: Path) -> 
     """Populate the ordinary immutable figure cache before exposing the completed rule run."""
     from alpha_cli.figures.rule_periods import CHARTS, TRADABLE
 
-    for figure in (*TRADABLE, *CHARTS):
-        _render_one(
-            figure,
-            run_id=rdir.name,
-            rdir=rdir,
-            manifest=manifest,
-            data_dir=data_dir,
-            fmt="svg",
-            force=False,
-        )
+    for variant in VARIANTS:
+        for figure in (*TRADABLE, *CHARTS):
+            _render_one(
+                figure,
+                run_id=rdir.name,
+                rdir=rdir,
+                manifest=manifest,
+                data_dir=data_dir,
+                fmt="svg",
+                force=False,
+                variant=variant,
+            )
 
 
 def _publish(path: Path, payload: bytes) -> None:
@@ -174,7 +172,15 @@ def _publish(path: Path, payload: bytes) -> None:
         raise
 
 
-def _sidecar(spec: Any, definition: Any, key: str, fmt: str, size: Any) -> dict[str, Any]:
+def _sidecar(
+    spec: Any,
+    definition: Any,
+    key: str,
+    fmt: str,
+    size: Any,
+    variant: str,
+    explanation: list[str],
+) -> dict[str, Any]:
     from alpha_research.figures import RENDERER_VERSION
 
     return {
@@ -182,6 +188,7 @@ def _sidecar(spec: Any, definition: Any, key: str, fmt: str, size: Any) -> dict[
         "cache_key": key,
         "caption": spec.caption,
         "caveat": spec.caveat,
+        "explanation": explanation,
         "figure_id": spec.figure_id,
         "format": fmt,
         "height_in": size.height_in,
@@ -203,6 +210,7 @@ def _sidecar(spec: Any, definition: Any, key: str, fmt: str, size: Any) -> dict[
         "title": spec.title,
         "truncation_note": spec.truncation_note,
         "uncertainty": spec.uncertainty,
+        "variant": variant,
         "width_in": size.width_in,
         "x_label": spec.x_label,
     }
@@ -213,17 +221,10 @@ def _catalogue_envelope() -> dict[str, Any]:
 
     import matplotlib
 
-    from alpha_cli.figures.rdagent_journey_figures import figure_theme
     from alpha_cli.figures.rule_periods import TRADABLE, definition
-    from alpha_research.figures import (
-        RENDERER_VERSION,
-        catalog_document,
-        default_size,
-        load_theme,
-    )
+    from alpha_cli.figures.variants import fixed_text
+    from alpha_research.figures import RENDERER_VERSION, catalog_document, default_size
 
-    theme = load_theme()
-    light = figure_theme(False)
     figures = []
 
     for item in [*catalog_document(), *(asdict(definition(name)) for name in TRADABLE)]:
@@ -233,6 +234,8 @@ def _catalogue_envelope() -> dict[str, Any]:
         figures.append(
             {
                 **item,
+                "variants": list(VARIANTS),
+                "explanation": list(fixed_text(item["figure_id"])),
                 "width_in": size.width_in,
                 "height_in": size.height_in,
                 "dpi": size.dpi,
@@ -241,10 +244,9 @@ def _catalogue_envelope() -> dict[str, Any]:
     return {
         "renderer_version": RENDERER_VERSION,
         "matplotlib_version": matplotlib.__version__,
-        "theme_id": theme.theme_id,
-        "theme_digest": theme.digest(),
-        "rule_theme_id": light.theme_id,
-        "rule_theme_digest": light.digest(),
+        "theme_id": STYLE_ID,
+        "theme_digest": _STYLE_DIGEST,
+        "variants": list(VARIANTS),
         "figures": figures,
     }
 
@@ -309,7 +311,8 @@ def render(
     force: Annotated[
         bool, typer.Option("--force", help="Re-render and assert byte identity.")
     ] = False,
-    dark: bool = typer.Option(False, "--dark", help="Use the dark figure theme."),
+    variant: _OPT_VARIANT = "plain",
+    dark: bool = typer.Option(False, "--dark", help=_DARK_NOTE),
     as_json: _OPT_JSON = False,
 ) -> None:
     """Render figures for a run into the derived cache."""
@@ -346,7 +349,7 @@ def render(
                     data_dir=data_dir,
                     fmt=fmt,
                     force=force,
-                    dark=dark,
+                    variant=variant,
                 )
             )
         except DataError as error:
@@ -380,7 +383,8 @@ def path(
     run_id: Annotated[str, typer.Argument(help="Stored run id.")],
     figure: Annotated[str, typer.Option("--figure", help="Figure id.")],
     fmt: Annotated[str, typer.Option("--format", help="svg or png.")] = "svg",
-    dark: bool = typer.Option(False, "--dark", help="Use the dark figure theme."),
+    variant: _OPT_VARIANT = "plain",
+    dark: bool = typer.Option(False, "--dark", help=_DARK_NOTE),
     as_json: _OPT_JSON = False,
 ) -> None:
     """Print a figure's cache key and path without rendering it."""
@@ -401,7 +405,7 @@ def path(
     rdir, manifest = resolve_run(run_id, data_dir=data_dir)
 
     definition = run_definition(figure)
-    theme = _run_theme(manifest, dark)
+    variant = validate_variant(variant)
     size = default_size(definition.panel_count)
     digest, kind = input_digest(
         manifest, rdir, definition.required_artifacts + definition.optional_artifacts
@@ -411,13 +415,14 @@ def path(
         figure_id=figure,
         renderer_version=RENDERER_VERSION,
         matplotlib_version=matplotlib.__version__,
-        theme_id=theme.theme_id,
-        theme_digest=theme.digest(),
+        theme_id=STYLE_ID,
+        theme_digest=_STYLE_DIGEST,
         width_in=size.width_in,
         height_in=size.height_in,
         dpi=size.dpi,
         fmt=validate_format(fmt),
         background="theme",
+        variant=variant,
         artifact_contract_version=manifest.get("artifact_contract_version"),
         input_digest=digest,
         input_digest_kind=kind,
@@ -508,27 +513,17 @@ def export(
     figure: Annotated[str, typer.Option("--figure", help="Figure id.")],
     out: Annotated[Path, typer.Option("--out", help="Destination file.")],
     fmt: Annotated[str, typer.Option("--format", help="svg or png.")] = "png",
-    dark: bool = typer.Option(False, "--dark", help="Use the dark figure theme."),
+    variant: _OPT_VARIANT = "plain",
+    dark: bool = typer.Option(False, "--dark", help=_DARK_NOTE),
 ) -> None:
     """Write one figure outside the cache, for a paper or a deck."""
     from alpha_cli.figures import build_figure_spec, resolve_run
-    from alpha_research.figures import (
-        RenderOptions,
-        default_size,
-        render_figure,
-    )
+    from alpha_cli.figures.variants import render_variant
 
     data_dir = _data_dir()
     rdir, manifest = resolve_run(run_id, data_dir=data_dir)
     spec = build_figure_spec(figure, run_id=run_id, rdir=rdir, manifest=manifest, data_dir=data_dir)
-    payload = render_figure(
-        spec,
-        RenderOptions(
-            theme=_run_theme(manifest, dark),
-            size=default_size(spec.panel_count),
-            fmt=fmt,  # type: ignore[arg-type]
-        ),
-    )
+    payload = render_variant(spec, variant, fmt)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(payload)
     typer.echo(f"wrote {len(payload):,}B -> {out}")

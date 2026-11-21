@@ -4,7 +4,7 @@ sources:
   - apps/alpha-cli/src/alpha_cli/spine/*.py
   - apps/alpha-cli/src/alpha_cli/results_cmds.py
   - apps/alpha-cli/src/alpha_cli/test_cmds.py
-verified: 68d4b19f3a6545e4
+verified: 18c4f9f54a72ebb1
 ---
 
 # Research playbook: how to work any idea

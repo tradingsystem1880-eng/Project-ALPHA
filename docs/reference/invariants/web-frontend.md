@@ -12,7 +12,7 @@ sources:
   - scripts/run_frontend_browser_lanes.py
   - tests/integration/test_web_spa_assets.py
   - tests/unit/test_web_menu_groups.py
-verified: 477b5bb4e917ed4e
+verified: 757a0ddc71167ed7
 ---
 
 # Web frontend invariants
@@ -125,6 +125,8 @@ bundle](#built-static-bundle), [Tests](#tests), [Adding a panel](#adding-a-panel
 - Bokeh views own standalone documents. Release the views and the document/model registries on cancel, failure and disposal.
 - A canvas is invisible to a screen reader. Every canvas chart needs a real-markup alternative: `panels/ChartDataAlternative.tsx` for price bars, and
   `components/FigureCard.tsx` alt text, caveats and value tables for server figures.
+- A figure card shows the plain chart with a "Show annotated" toggle, the long explanation beside it and an "Open full screen" action. Charts stay white (system
+  `Canvas` under `color-scheme: light`) on every screen theme. The variant is part of the image URL and the cache key; `components/figureVariant.ts` holds the pure choices.
 - Never change timing budgets or aggregate bars to make a performance test pass. The `@perf-budget` specs run only with `ALPHA_PERF_BUDGETS=1` on an idle
   reference machine.
 - Screenshot baselines are kept per platform (`*-darwin.png`, `*-linux.png`). Re-take Linux images in the Playwright Linux container; never copy macOS images

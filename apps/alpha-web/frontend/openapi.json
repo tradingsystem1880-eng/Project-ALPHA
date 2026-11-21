@@ -7640,6 +7640,13 @@
             "title": "Etag",
             "type": "string"
           },
+          "explanation": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Explanation",
+            "type": "array"
+          },
           "figure_id": {
             "title": "Figure Id",
             "type": "string"
@@ -7705,6 +7712,10 @@
             "title": "Uncertainty",
             "type": "string"
           },
+          "variant": {
+            "title": "Variant",
+            "type": "string"
+          },
           "width_in": {
             "title": "Width In",
             "type": "number"
@@ -7725,6 +7736,8 @@
           "plain_language_answer",
           "uncertainty",
           "caveat",
+          "variant",
+          "explanation",
           "truncation_note",
           "source_artifacts",
           "panels",
@@ -36562,6 +36575,22 @@
               "title": "Fmt",
               "type": "string"
             }
+          },
+          {
+            "description": "plain is the standard chart; annotated adds callouts and a long reading.",
+            "in": "query",
+            "name": "variant",
+            "required": false,
+            "schema": {
+              "default": "plain",
+              "description": "plain is the standard chart; annotated adds callouts and a long reading.",
+              "enum": [
+                "plain",
+                "annotated"
+              ],
+              "title": "Variant",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -36628,6 +36657,22 @@
                 "png"
               ],
               "title": "Fmt",
+              "type": "string"
+            }
+          },
+          {
+            "description": "plain is the standard chart; annotated adds callouts and a long reading.",
+            "in": "query",
+            "name": "variant",
+            "required": false,
+            "schema": {
+              "default": "plain",
+              "description": "plain is the standard chart; annotated adds callouts and a long reading.",
+              "enum": [
+                "plain",
+                "annotated"
+              ],
+              "title": "Variant",
               "type": "string"
             }
           },

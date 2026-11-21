@@ -12,7 +12,7 @@ sources:
   - tests/unit/test_owner_auth_api.py
   - tests/unit/test_owner_local_confirmation.py
   - tests/unit/test_run_context_authority.py
-verified: ff72ccda229d25ba
+verified: cf655897d7530f35
 ---
 
 # Web API invariants
@@ -152,7 +152,8 @@ Moved to [web-api-reads.md § Reads and writes](web-api-reads.md#reads-and-write
 
 - Serve server-rendered figures without matplotlib in the web process. Derive the cache key from `alpha_cli.figure_cache`
   plus the key environment the CLI publishes. Serve on a hit; on a miss subprocess `alpha figures render` behind a
-  single-flight lock, so concurrent requests render once.
+  single-flight lock, so concurrent requests render once. The `variant` query (`plain` or `annotated`) is part of the key and the lock token; the old `theme`
+  query is gone. The metadata carries `variant` and the long `explanation` sentences.
 - Bare image URL: strong `ETag` + `must-revalidate`. Pinned `?key=`: `immutable`. A stale pinned key returns 409 with
   the current key — never different bytes at one URL. A traversal-shaped figure id never reaches the filesystem. Enforced by `tests/unit/test_web_figures.py`.
 

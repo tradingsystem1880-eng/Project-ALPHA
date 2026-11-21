@@ -92,7 +92,8 @@ def spawns(monkeypatch: pytest.MonkeyPatch, store: Path) -> list[list[str]]:
         if args[:2] == ["figures", "render"]:
             figure_id = args[args.index("--figure") + 1]
             fmt = args[args.index("--format") + 1]
-            image, sidecar, _ = _figures._cache_entry(_RUN, figure_id, fmt, data_dir)
+            variant = args[args.index("--variant") + 1]
+            image, sidecar, _ = _figures._cache_entry(_RUN, figure_id, fmt, data_dir, variant)
             image.parent.mkdir(parents=True, exist_ok=True)
             image.write_bytes(b"<svg xmlns='http://www.w3.org/2000/svg'/>")
             sidecar.write_text(
@@ -108,6 +109,8 @@ def spawns(monkeypatch: pytest.MonkeyPatch, store: Path) -> list[list[str]]:
                         "plain_language_answer": "It grew.",
                         "uncertainty": "One path.",
                         "caveat": "Fees only.",
+                        "variant": variant,
+                        "explanation": ["The axis is the date.", "The line is equity."],
                         "truncation_note": None,
                         "source_artifacts": ["equity_curve.parquet"],
                         "panels": [
@@ -223,3 +226,17 @@ def test_the_web_process_never_imports_matplotlib_or_the_renderer() -> None:
         [sys.executable, "-c", script], capture_output=True, text=True, check=True
     )
     assert result.stdout.strip() == "[]", result.stdout
+
+
+class TestVariants:
+    def test_the_two_variants_have_two_cache_entries(
+        self, spawns: list[list[str]], store: Path
+    ) -> None:
+        plain = _figures._cache_entry(_RUN, "equity_underwater", "svg", store, "plain")
+        annotated = _figures._cache_entry(_RUN, "equity_underwater", "svg", store, "annotated")
+        assert plain[2] != annotated[2]
+        assert plain[0] != annotated[0]
+
+    def test_an_unknown_variant_is_refused(self, spawns: list[list[str]], store: Path) -> None:
+        with pytest.raises(Exception, match="unsupported figure variant"):
+            _figures._cache_entry(_RUN, "equity_underwater", "svg", store, "dark")

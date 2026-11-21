@@ -223,13 +223,11 @@ def _publish(
     folder: Path, summary: dict[str, Any], rows: list[dict[str, Any]], manifest: dict[str, Any]
 ) -> None:
     from alpha_cli.spine.setup_trade_figure import draw_trades
-    from alpha_research.figures.theme import load_theme
 
     png = draw_trades(
         rows=rows,
         primary=summary["pooled"],
         direction=summary["direction"],
-        theme=load_theme(),
         title=f"{summary['name']}: {summary['pooled']['trades']} trades from "
         f"{summary['occurrences']} separate occurrences",
     )

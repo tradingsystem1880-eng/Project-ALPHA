@@ -32,7 +32,7 @@ sources:
   - tests/unit/test_figure*.py
   - tests/integration/test_validate_*.py
   - tests/integration/test_backtest_*.py
-verified: 401130b0343c2e7c
+verified: c36b70f415f95459
 ---
 
 # Command line runs invariants
@@ -150,7 +150,14 @@ and [deterministic identity](research-integrity.md#deterministic-seeds-and-ident
   key cannot collide (`figure_cache.input_digest`).
 - Write the image first and the JSON sidecar last; the sidecar marks completion. Forced re-renders must be byte-identical.
 - `figure_cache.py` must not import Polars, numpy, matplotlib or the renderer. Enforced by `tests/unit/test_figure_cache.py`.
-- `figures list --json` without `--run` publishes the key environment, so the web computes keys without the renderer.
+- `figures list --json` without `--run` publishes the key environment, so the web computes keys without the renderer. It lists both variants of each figure and carries
+  the four fixed sentences of the long explanation.
+- Every figure is a pair with the same data and axes: `plain` (the standard notebook chart: white face, matplotlib default colours, light grid) and `annotated`
+  (callouts, labelled bands, a hatched held-back band and a "How to read this chart" box of four to seven sentences). `alpha figures render|path|export` take
+  `--variant plain|annotated`; the cache key and the JSON sidecar carry the variant and the sidecar carries the explanation. `--dark` is accepted and changes nothing.
+- The drawing lives in `figures/plain_*.py` (look, marks, layout), `spec_facts.py` (numbers read from the stored marks) and `explanations_*.py` (fixed sentences). The
+  protected renderer in `alpha_research.figures` is no longer used for display. Setup trade and event-study sheets and journey figures use the same white look; stored
+  setup runs keep one PNG each because their manifests hash an exact file set.
 - Builders read declared artifacts only and report an honest unavailability reason instead of guessing.
 - RD-Agent [journeys](../../../research/tools/rdagent-journey.md) publish only under the selected journey folder and exclude reserved-period observations.
 - A run's price figure and chart candles read its snapshot at the run's own bar size: the manifest's `timeframe`, `source_timeframe` and `session` pass to

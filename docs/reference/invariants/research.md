@@ -7,7 +7,7 @@ sources:
   - tests/bias_guards/test_market_state_future_poison.py
   - tests/bias_guards/test_poison_variants.py
   - tests/unit/test_figure_*.py
-verified: 8f8e9618bc0343ee
+verified: b38f33935133c871
 ---
 
 # Research primitive invariants
@@ -137,6 +137,8 @@ General rule: [research integrity § Statistical evidence](research-integrity.md
 - The figure engine draws; it never computes. Every number arrives pre-computed, and each figure ships with
   its catalogued question, uncertainty and caveat text.
 - `FigureSpec` cannot express a secondary y-axis; two scales become two stacked panels.
+- The Workstation and `alpha figures` draw each `FigureSpec` through `alpha_cli.figures.plain_spec` as a white plain chart and an annotated chart; this package's
+  renderer and catalogue text are unchanged.
 - Rendering is pure and byte-stable within the locked environment: Agg/SVG backends only (never `pyplot`),
   rcParams from `rcParamsDefault`, pinned `svg.hashsalt`, date/software metadata stripped, bundled DejaVu fonts
   required, no `tight_layout`, module-placed ticks. Enforced by `tests/unit/test_figure_render.py` and

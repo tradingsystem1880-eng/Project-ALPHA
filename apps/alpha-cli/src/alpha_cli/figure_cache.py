@@ -35,6 +35,12 @@ from alpha_core import DataError
 #: both together.
 FIGURES_CACHE_VERSION: Final = 1
 
+#: Identity of the one standard figure look; part of every cache key, so a change of look
+#: re-renders everything. ``plain`` is the standard notebook chart, ``annotated`` the same
+#: chart with callouts and a long explanation.
+STYLE_ID: Final = "plain-notebook-v1"
+VARIANTS: Final = ("plain", "annotated")
+
 FIGURE_ROOT: Final = "figures"
 FIGURE_ID_RE: Final = re.compile(r"[a-z0-9]+(?:_[a-z0-9]+)*")
 _RUN_ID_RE: Final = re.compile(r"[0-9a-f]{16}")
@@ -59,6 +65,7 @@ class CacheKeyInputs:
     dpi: int
     fmt: FigureFormat
     background: str
+    variant: str = "plain"
     artifact_contract_version: int | None
     input_digest: str
     input_digest_kind: Literal["artifact_sha256", "mtime_fallback"]
@@ -79,6 +86,7 @@ class CacheKeyInputs:
             "run_id": self.run_id,
             "theme_digest": self.theme_digest,
             "theme_id": self.theme_id,
+            "variant": self.variant,
             "width_in": self.width_in,
         }
 
@@ -99,6 +107,12 @@ def validate_run_id(run_id: str) -> str:
     if _RUN_ID_RE.fullmatch(run_id) is None:
         raise DataError(f"invalid run id {run_id!r}; expected 16 lowercase hex characters")
     return run_id
+
+
+def validate_variant(variant: str) -> str:
+    if variant not in VARIANTS:
+        raise DataError(f"unsupported figure variant {variant!r}; expected one of {VARIANTS}")
+    return variant
 
 
 def validate_format(fmt: str) -> FigureFormat:

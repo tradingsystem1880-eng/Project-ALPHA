@@ -50,6 +50,8 @@ class FigureMetadata(StrictModel):
     plain_language_answer: str
     uncertainty: str
     caveat: str
+    variant: str
+    explanation: list[str]
     truncation_note: str | None
     source_artifacts: list[str]
     panels: list[FigurePanelMeta]

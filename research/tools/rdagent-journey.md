@@ -3,7 +3,7 @@ owner: research pipeline
 sources:
   - apps/alpha-cli/src/alpha_cli/rdagent_journey*.py
   - apps/alpha-cli/src/alpha_cli/figures/rdagent_journey_figures.py
-verified: 64627061b152c5e2
+verified: 2d16c5abab942e68
 ---
 
 # Follow one RD-Agent idea
@@ -14,6 +14,8 @@ verified: 64627061b152c5e2
 uv run alpha ledger journey --run-dir <run-dir>
 uv run alpha ledger journey --run-dir <run-dir> --factor <name> --out <directory> --theme dark
 ```
+
+Every journey figure is the same white chart; `--theme dark` is accepted and changes nothing.
 
 The command prints the path to the index. Each entry identifies an iteration, a factor name
 and its full code hash. Selecting a name builds every matching iteration. The index lists

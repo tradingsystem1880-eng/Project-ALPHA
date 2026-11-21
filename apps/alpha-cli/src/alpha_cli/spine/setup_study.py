@@ -204,15 +204,12 @@ def _summarise(
 def _publish(
     folder: Path, summary: dict[str, Any], outcomes: Any, spec: Any, find_manifest: dict[str, Any]
 ) -> None:
-    from alpha_research.figures.theme import load_theme
-
     paths = [r["net_path"] for r in outcomes.to_dicts() if r["horizon"] == spec.study.primary]
     png = draw_event_study(
         paths=[[0.0, *p] for p in paths],
         **summary["curve"],
         horizons=list(spec.study.horizons),
         primary=spec.study.primary,
-        theme=load_theme(),
         title=(
             f"{spec.setup.name}: {summary['occurrences']} separate occurrences "
             f"({summary['matching_days']} matching days)"

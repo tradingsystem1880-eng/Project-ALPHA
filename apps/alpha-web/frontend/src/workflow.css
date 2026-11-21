@@ -123,7 +123,13 @@
 .report-summary-figures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; grid-column: 1 / -1; }
 .workflow-shell .figure-scroll { padding: 4px; }
 .workflow-shell .figure-card { border: 1px solid var(--line-strong); border-radius: 0; margin: 0; padding: 0; }
-.figure-surface { display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--line); padding: var(--pad-sm); background: var(--panel-2); color: var(--ink); }
+.figure-surface { display: flex; flex-direction: column; min-height: 0; border: 1px solid GrayText; padding: var(--pad-sm); color-scheme: light; background: Canvas; color: CanvasText; }
+.figure-surface .btn { color-scheme: light; background: ButtonFace; color: ButtonText; border-color: GrayText; }
+.figure-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr); gap: var(--pad-sm); align-items: start; }
+.figure-reading { display: grid; gap: 6px; padding: var(--pad-sm); border: 1px solid var(--line); }
+.figure-reading h4 { margin: 0; font-size: var(--font-size); }
+.figure-reading p { margin: 0; font-size: var(--font-size); line-height: 1.5; }
+@media (max-width: 1100px) { .figure-body { grid-template-columns: minmax(0, 1fr); } }
 .figure-surface .figure-image { max-width: 100%; }
 .figure-surface-title { padding: 2px 5px; font-size: var(--font-size); display: flex; align-items: center; gap: 6px; }
 .figure-surface-title > span { margin-right: auto; }
