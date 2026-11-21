@@ -28,7 +28,8 @@ The whole path in one place. Other pages link here and do not repeat it.
    it to the builder. Headings: Task, Workspace, Decision, Change, Do not touch, Done when, Tier, Builder, Do NOT load, Report. A planned task uses its `docs/work/<task>/` folder instead. Then you review (stage 04).
 3. **Where the files land.** `brief.md` and the builder's `report.md` go to `docs/work/<yyyy-mm-dd>-<slug>/`, merge with the work and are linked from the pull
    request. The JSON build record stays outside the repository, in the handoff folder ([task folders](../docs/work/CONTEXT.md)).
-4. **Checks.** Locally: `uv run python scripts/gate.py check`. On the pull request the one required check is `ci-ok`. Open the pull request as a draft.
+4. **Checks.** Locally: `uv run python scripts/gate.py check`. On the pull request the one required check is `ci-ok`. Open the pull request as a draft while you build: a draft runs only the quick
+   `static` job, and its `ci-ok` fails on purpose. When the work is done, mark it ready (`gh pr ready <number>`): that starts the full run.
 5. **Who merges.** The orchestrating session merges once `ci-ok` is green and the branch is current: `gh pr merge <n> --merge` (a merge commit). The
 owner keeps
    branch-protection changes ([stage 05](stages/05-land/CONTEXT.md)).

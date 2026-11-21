@@ -7,6 +7,8 @@ on:
   push:
     branches: [main]
   pull_request:
+    # `ready_for_review` starts the full run when a draft is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -57,6 +59,9 @@ jobs:
   tests:
     name: tests (${{ matrix.shard }}/4)
     # Every root test except `network` and `slow_oracle`, split by file into four shards.
+    # A draft pull request runs only `changes` and `static`: the full run starts when it is marked
+    # ready (owner decision 2026-11-21: every push to a draft filled the queue with 20-minute runs).
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -122,7 +127,7 @@ jobs:
   quant:
     # Slow oracles and the mutation gate on the touched quant-tier modules, as before.
     needs: changes
-    if: needs.changes.outputs.quant == 'true'
+    if: needs.changes.outputs.quant == 'true' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -137,6 +142,7 @@ jobs:
 
   frontend:
     # Lint, build, unit tests, API freshness, and the browser journeys at one viewport.
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -164,7 +170,7 @@ jobs:
 
   qlib-worker:
     needs: changes
-    if: needs.changes.outputs.qlib == 'true'
+    if: needs.changes.outputs.qlib == 'true' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -175,7 +181,7 @@ jobs:
 
   literature-worker:
     needs: changes
-    if: needs.changes.outputs.literature == 'true'
+    if: needs.changes.outputs.literature == 'true' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -186,7 +192,7 @@ jobs:
 
   afml-worker:
     needs: changes
-    if: needs.changes.outputs.afml == 'true'
+    if: needs.changes.outputs.afml == 'true' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -203,6 +209,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: A draft never passes (only the quick checks ran)
+        if: github.event.pull_request.draft == true
+        env:
+          STATIC: ${{ needs.static.result }}
+        run: |
+          echo "ci-ok: this pull request is a DRAFT, so only the quick checks ran (static: $STATIC)."
+          echo "ci-ok: mark it ready for review (gh pr ready <number>) to start the full run."
+          echo "ci-ok: a draft cannot merge; this failure is expected and is not a defect in the change."
+          exit 1
       - name: Require every job to succeed (a path-skipped job counts as success)
         env:
           RESULTS: ${{ toJSON(needs) }}

@@ -17,6 +17,8 @@ Every automated check, the breakage it exists to catch, where it runs and how lo
 Pull requests merge on the one required check, `ci-ok`. Times are wall time on GitHub's
 standard runners, measured on pull request #134 (run 43482233439, 2026-11-13) unless marked otherwise.
 `tests/unit/test_checks_reference.py` fails when a CI job or a pytest marker is missing here.
+A DRAFT pull request runs only `changes` and `static`, and its `ci-ok` fails on purpose with a message. The full run starts when the pull
+request is marked ready (`gh pr ready <number>`). Nothing merges without the full green run.
 
 Tiers: **PR** runs on every pull request and every push to main. **PR (paths)** runs on a pull
 request only when its paths (or the workflow and gate files) change, and always on main.
