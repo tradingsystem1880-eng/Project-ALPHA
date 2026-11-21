@@ -11,7 +11,7 @@ Every `alpha` command, generated from the CLI's own command tree (the catalogue 
 `alpha info commands --all --json` plus each command's help text). Do not edit by hand;
 run `uv run python scripts/commands_reference.py`. Full options: `alpha <group> <command> --help`.
 
-308 commands in 42 groups. Options marked (required) are
+311 commands in 42 groups. Options marked (required) are
 mandatory; `<ARG>` is a positional argument.
 
 ## alpha assistant
@@ -348,6 +348,9 @@ Explicit, receipted provider readiness checks.
 
 Start RD-Agent with one command and watch the run.
 
+- `alpha rdagent bench plan` — Print the number of calls and the cost estimate. Options: `--prompts (required)`, `--models (required)`, +4 more
+- `alpha rdagent bench report` — Print readings per model and per pair. Options: `--prompts (required)`, `--models (required)`, `--store (required)`, +4 more
+- `alpha rdagent bench run` — Send each stored prompt to each model. Options: `--prompts (required)`, `--models (required)`, `--prices (required)`, +5 more
 - `alpha rdagent run` — Start the RD-Agent factor loop from rdagent.toml. Options: `--config`, `--dry-run`, `--run-id`
 - `alpha rdagent status` — Say where a run is: working, waiting for you, finished or stopped, and what to type next. Options: `--run-dir`, `--config`, `--json`
 

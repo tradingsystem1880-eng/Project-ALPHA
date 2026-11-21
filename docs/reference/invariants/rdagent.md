@@ -144,6 +144,12 @@ Rules for the pinned RD-Agent worker in `workers/rdagent/`. The other workers ar
 - Optional futures funding is a separate hash-bound panel table; daily timing, identity joins and factor-specific eligibility:
   [README](../../../workers/rdagent/judge-rules.md#futures-funding). Tests: `test_rdagent_funding_columns.py`.
 
+## Model replay bench
+
+- `alpha rdagent bench` replays stored prompts on candidate models and scores them with the worker's own deterministic checks. It adds a
+  measurement only: no prompt, reflection, feedback, memory or context of the loop changes. It never writes the trial ledger or the
+  loop memory, and its caps are the gateway's (60 calls, USD 10 per run, USD 50 per month). Rules: [command line native](cli-native.md#model-replay-bench).
+
 ## Viewer
 
 - Run viewer (`rdagent_viewer.py serve`, `rdagent_ui_entry.py`): RD-Agent's own unmodified Streamlit log viewer on a

@@ -234,6 +234,7 @@ def _text(facts: dict[str, Any]) -> str:
         "  3. Let RD-Agent propose ideas.",
         "     Say: Let RD-Agent propose ideas.",
         f"     First command: {paths['rdagent_idea']['command']} ({paths['rdagent_idea']['note']})",
+        "     Compare models on stored prompts: alpha rdagent bench plan --help",
         NOTICE,
     ]
     return "\n".join(lines)

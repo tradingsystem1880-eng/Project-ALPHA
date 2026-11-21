@@ -16,6 +16,7 @@ from typing import Annotated
 import typer
 
 from alpha_cli._cli_json import emit
+from alpha_cli.rdagent_bench_cmds import bench_app
 from alpha_cli.rdagent_run_config import (
     RdagentConfig,
     RdagentConfigError,
@@ -31,6 +32,7 @@ from alpha_cli.rdagent_run_config import (
 from alpha_cli.rdagent_run_status import NotARunFolder, read_status, status_text
 
 rdagent_app = typer.Typer(help="Start RD-Agent with one command and watch the run.")
+rdagent_app.add_typer(bench_app, name="bench")
 CONFIG = Annotated[Path, typer.Option("--config", help="The rdagent.toml file.")]
 
 
