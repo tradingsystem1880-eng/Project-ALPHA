@@ -77,7 +77,10 @@ def test_rows_are_grouped_in_order_with_readings_and_age(tmp_path: Path) -> None
     new = by[ids["new"]]
     assert new["name"] == "Gaps in quiet stocks close within a week"
     assert new["decision"] == "would buy at the next open" and new["asset"] == "AAA"
-    assert new["readings"] == fx.READINGS and new["session_date"] == "2026-11-19"
+    assert (
+        new["readings"] == {"fast average price": 101.2, "slow average price": 99.8}
+        and new["session_date"] == "2026-11-19"
+    )
     assert new["sessions_ago"] == 0 and new["paper"]["open"] is False
     assert by[ids["open"]]["paper"]["equity_pct"] == 1.5 and by[ids["open"]]["paper"]["open"]
     assert by[ids["late"]]["entry_kind"] == "late"
@@ -94,7 +97,7 @@ def test_the_text_view_has_the_header_groups_and_the_closing_line(tmp_path: Path
     assert "newest closed session" in out.lower() and "XNYS" in out and "2026-11-19" in out
     assert out.index("NEW SIGNAL") < out.index("OPEN PAPER POSITION") < out.index("NOTHING TODAY")
     assert out.index("NOTHING TODAY") < out.index("LATE OR MISSED") < out.index("WAITING")
-    assert "as of the close of 2026-11-19" in out and "fast_sma 101.20" in out
+    assert "as of the close of 2026-11-19" in out and "fast average price 101.20" in out
 
 
 def test_a_follow_with_no_entry_for_the_newest_closed_session_is_behind(tmp_path: Path) -> None:

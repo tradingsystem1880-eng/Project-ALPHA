@@ -34,7 +34,7 @@ RECORD_FILE = "follow.toml"
 SCHEMA = "AlphaFollowV1"
 ID_LENGTH = 12
 DEFAULT_SIZE_PCT = 10.0
-KINDS = {"rule_test": "rule test", "setup_find": "setup find"}
+KINDS = {"rule_test": "rule test", "setup_find": "setup find", "setup_trade": "setup trade"}
 WAITING = "waiting for its first new bar"
 PAPER = "This is a paper follow. It places no order and is not advice."
 
@@ -214,6 +214,8 @@ def _start_locked(
     _write_record(folder, record)
     payload = {"source_id": source.source_id, "kind": source.kind, "version": record.version}
     payload[CALENDAR_KEY] = market_calendar(home, source.assets[0])
+    if source.study is not None:
+        payload["setup"] = source.study
     append_entry(
         folder,
         kind="start",

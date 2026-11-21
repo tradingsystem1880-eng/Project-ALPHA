@@ -66,6 +66,7 @@ ALLOWED: dict[tuple[str, str], str] = {
     ("daily_scheduler.py", "execute_cycle"): "exempt: the daily scheduler is forward paper use",
     ("follow_source.py", "latest_bar_hashes"): "exempt: follow is forward use (follow separation)",
     ("follow_source.py", "forward_bars"): "exempt: follow is forward use; as_of is now",
+    ("follow_source.py", "forward_dividends"): "exempt: follow is forward use; as_of is now",
     ("market_overview_cmds.py", "build_market_overview"): "exempt: a display of the newest bars",
     ("nightly_refresh.py", "_bars"): "exempt: reads only the stored time span to plan a refresh",
     ("chart_cmds.py", "overlays"): "exempt: alpha chart is a display (label only)",

@@ -3,13 +3,19 @@
 Pure arithmetic on plain dicts that go into the journal. Paper size is a percent of a paper
 account (`PAPER_ACCOUNT`); it is a fixed share of that start value, not compounded. Fees are
 `fee_bps` of the notional. Slippage is already in the engine's fill price. Long only, as the
-rule test is today. No dividend or carry is booked. No pass or fail and no advice: readings only.
+rule test is today. A cash dividend is booked for a position held before the ex-dividend day, on
+the same point-in-time basis as the rule test (the engine's: entitled to the units held before the
+open of the ex-date session, cash credited at the pay date, only when known by that session). No
+carry is booked. No pass or fail and no advice: readings only.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from datetime import date
 from typing import Any
+
+from alpha_core import CorporateAction
 
 PAPER_ACCOUNT = 10_000.0
 type Book = dict[str, Any]
@@ -29,6 +35,9 @@ def new_book() -> Book:
         "equity": PAPER_ACCOUNT,
         "equity_pct": 0.0,
         "open_pnl": 0.0,
+        "dividends_cum": 0.0,
+        "dividends_seen": [],
+        "dividends_due": [],
     }
 
 
@@ -90,3 +99,48 @@ def decide(book: Book, *, long: bool, armed: bool, session: date) -> tuple[Book,
         action, words, side = "none", "no signal", None
     pending = {"side": side, "decided": session.isoformat()} if side else None
     return {**book, "pending": pending}, {"action": action, "words": words, "long": long}
+
+
+def dividends(
+    book: Book,
+    actions: Sequence[CorporateAction],
+    *,
+    session: date,
+    units_before: Callable[[date], float],
+) -> tuple[Book, list[dict[str, Any]]]:
+    """Book the cash dividends of one session. Same basis as the rule test's engine.
+
+    A dividend is taken up once, at the first session that is on or after its ex date and on or
+    after the day it was known (`knowledge_time`). The units are those held before the open of
+    the ex-date session (`units_before(ex_date)`: the journal's own book, never a later one). The
+    cash is credited at the first session on or after the pay date (the ex date when none is
+    given). Cash not yet credited is not in the equity. Returns the new book and the credited
+    dividends (each with its ex date, pay date, per-unit amount, units and cash)."""
+    seen = list(book.get("dividends_seen", []))
+    due = [dict(d) for d in book.get("dividends_due", [])]
+    for action in sorted(actions, key=lambda a: (a.ex_date, a.amount or 0.0)):
+        key = f"{action.ex_date.isoformat()}|{action.amount!r}"
+        if key in seen or action.knowledge_time > session or action.ex_date > session:
+            continue
+        seen.append(key)
+        units = units_before(action.ex_date)
+        if units > 0.0 and action.amount is not None:
+            pay = action.pay_date if action.pay_date is not None else action.ex_date
+            due.append(
+                {
+                    "ex_date": action.ex_date.isoformat(),
+                    "pay_date": pay.isoformat(),
+                    "per_unit": action.amount,
+                    "units": units,
+                    "cash": units * action.amount,
+                }
+            )
+    paid = [d for d in due if date.fromisoformat(d["pay_date"]) <= session]
+    cash = float(book["cash"]) + sum(d["cash"] for d in paid)
+    return {
+        **book,
+        "cash": cash,
+        "dividends_cum": float(book.get("dividends_cum", 0.0)) + sum(d["cash"] for d in paid),
+        "dividends_seen": seen,
+        "dividends_due": [d for d in due if d not in paid],
+    }, paid

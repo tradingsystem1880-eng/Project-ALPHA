@@ -41,8 +41,13 @@ def test_show_after_five_sessions_prints_entries_and_the_paper_path(
     code, out = _cli(tmp_path, "show", follow)
     assert code == 0
     print(out)
-    assert "Last entries" in out and "would sell at the next open" in out
-    assert "buy" in out and "fast_sma" in out and "Paper account" in out
+    assert "Entries (newest last)" in out and "ould sell at the next open" in out
+    assert (
+        "buy" in out
+        and "fast average price" in out
+        and "fast_sma" not in out
+        and "Paper account" in out
+    )
     assert "Replay check at the last update: agrees; 4 session(s) compared." in out
     assert "profit" not in out.lower() and "paper follow" in out
     code, listed = _cli(tmp_path, "list")

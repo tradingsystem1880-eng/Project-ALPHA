@@ -269,7 +269,7 @@ def test_a_setup_follow_is_refused_in_plain_words(tmp_path: Path) -> None:
     with pytest.raises(SpineError) as caught:
         _update(world, str(facts["follow_id"]), world.close_of(0))
     assert caught.value.payload["code"] == "FOLLOW_UPDATE_SETUP_NOT_BUILT"
-    assert "not built yet" in str(caught.value)
+    assert "Follow a setup trade instead" in str(caught.value)
 
 
 def _decisions(

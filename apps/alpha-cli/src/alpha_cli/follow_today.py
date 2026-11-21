@@ -14,6 +14,7 @@ from typing import Any
 from alpha_cli import follow_source
 from alpha_cli import follow_store as store
 from alpha_cli.follow_journal import CALENDAR_KEY, Entry, JournalRefusal, session_close
+from alpha_cli.follow_labels import exits_text, plain_readings, readings_text
 from alpha_cli.spine import idea_card
 from alpha_cli.spine.errors import SpineError
 from alpha_data.sessions import sessions_between
@@ -127,6 +128,8 @@ def _row(
             "sessions_ago": None,
             "session_date": None,
             "readings": {},
+            "exits": [],
+            "study_labels": [],
             "paper": {},
             "entry_kind": "broken",
             "as_of_text": "cannot be read",
@@ -157,7 +160,11 @@ def _row(
         "asset": record.assets[0],
         "decision": decision,
         "entry_kind": last.kind if last else "start",
-        "readings": dict(last.payload.get("readings", {})) if last and last.kind == "bar" else {},
+        "readings": plain_readings(last.payload.get("readings", {}))
+        if last and last.kind == "bar"
+        else {},
+        "exits": exits_text(entries[0].payload.get("setup", {}).get("exits", {})),
+        "study_labels": list(entries[0].payload.get("setup", {}).get("labels", [])),
         "paper": paper,
         "session_date": last.session_date.isoformat() if last else None,
         "sessions_ago": ago,
@@ -200,7 +207,9 @@ def _row_text(r: dict[str, Any]) -> list[str]:
         f"    {r['decision'].rstrip('.')}.",
     ]
     if r["readings"]:
-        lines.append("    " + ", ".join(f"{k} {v:.2f}" for k, v in r["readings"].items()))
+        lines.append("    " + readings_text(r["readings"]))
+    if r["exits"]:
+        lines.append("    Exits: " + "; ".join(r["exits"]) + ".")
     p = r["paper"]
     if p:
         held = f"paper position open: {p['units']:.4g} units" if p["open"] else "paper account flat"

@@ -15,7 +15,7 @@ from typing import Any
 
 from alpha_cli.spine.errors import SpineError
 from alpha_cli.spine.spec import IdeaSpec
-from alpha_core import Bar, DataError
+from alpha_core import Bar, CorporateAction, DataError
 from alpha_data.sessions import CalendarRangeError, supported_range
 
 
@@ -26,7 +26,15 @@ def refuse(code: str, message: str, next_step: str) -> SpineError:
 class Source:
     """What a follow is made from: read from the stored test or find, never changed."""
 
-    def __init__(self, kind: str, source_id: str, spec: str, card: str, assets: list[str]) -> None:
+    def __init__(
+        self,
+        kind: str,
+        source_id: str,
+        spec: str,
+        card: str,
+        assets: list[str],
+        study: dict[str, Any] | None = None,
+    ) -> None:
         self.kind, self.source_id, self.spec, self.card, self.assets = (
             kind,
             source_id,
@@ -34,6 +42,7 @@ class Source:
             card,
             assets,
         )
+        self.study = study  # a setup follow: the labels and ids of the study it came from
 
 
 def _manifest(path: Path, what: str, source_id: str) -> dict[str, Any]:
@@ -81,6 +90,79 @@ def setup_find_source(home: Path, find_id: str) -> Source:
     )
 
 
+def _setup_trade(home: Path, trade_id: str) -> tuple[dict[str, Any], Any]:
+    """The stored setup trade manifest and the find's spec it was made from."""
+    from alpha_cli.spine.errors import SpineError as _Error
+    from alpha_cli.spine.setup_find import load_find
+
+    manifest = _manifest(home / "setup-trades" / trade_id, "setup trade", trade_id)
+    try:
+        _, _, spec = load_find(home, str(manifest.get("find_id", "")))
+    except (_Error, OSError, ValueError, KeyError) as exc:
+        raise refuse(
+            "FOLLOW_SOURCE_UNKNOWN",
+            f"The setup find of trade {trade_id!r} cannot be read: {exc}",
+            "Run `alpha setup find` and `alpha setup trade` again.",
+        ) from exc
+    return manifest, spec
+
+
+def setup_trade_source(home: Path, trade_id: str, asset: str) -> Source:
+    """A Setup Lab trade study as a follow source. One asset, long only, no context series.
+    It keeps the study's labels and trial identity (trade id, find id) in the start entry."""
+    manifest, spec = _setup_trade(home, trade_id)
+    named = [r["asset"] for r in manifest.get("assets", []) if r.get("error") is None]
+    if not named or manifest.get("direction") != "long" or spec.exit is None:
+        why = (
+            "A short setup cannot be followed: the paper account is long only."
+            if manifest.get("direction") == "short"
+            else f"There is no usable setup trade with the id {trade_id!r}."
+        )
+        raise refuse("FOLLOW_SETUP_REFUSED", why, "Follow a long setup trade.")
+    if spec.context:
+        raise refuse(
+            "FOLLOW_SETUP_CONTEXT",
+            "A setup that reads outside series (context) cannot be followed yet.",
+            "Follow a setup that reads only price bars.",
+        )
+    if not asset and len(named) == 1:
+        asset = named[0]
+    if asset not in named:
+        raise refuse(
+            "FOLLOW_SETUP_ASSET",
+            f"Name one asset of this trade with --asset. Choices: {', '.join(named)}.",
+            "Example: alpha follow start --trade <trade id> --asset " + named[0],
+        )
+    study = {
+        "trade_id": trade_id,
+        "find_id": manifest["find_id"],
+        "name": spec.setup.name,
+        "idea": spec.setup.idea,
+        "labels": list(manifest.get("labels", [])),
+        "direction": "long",
+        "costs": manifest["costs"][asset],
+        "exits": spec.exit.model_dump(exclude={"direction"}),
+        "trade_rule_version": manifest.get("trade_rule_version", ""),
+    }
+    return Source("setup_trade", trade_id, manifest["spec_sha256"], "", [asset], study)
+
+
+def frozen_setup(
+    home: Path, source_id: str, spec_sha256: str, asset: str
+) -> tuple[Any, dict[str, Any]]:
+    """The stored spec and costs of a followed setup trade. Refused unless the spec still has the
+    frozen hash."""
+    manifest, spec = _setup_trade(home, source_id)
+    if spec.spec_sha256 != spec_sha256 or manifest.get("spec_sha256") != spec_sha256:
+        raise refuse(
+            "FOLLOW_SPEC_CHANGED",
+            f"The stored spec of setup trade {source_id} no longer matches the frozen hash "
+            f"{spec_sha256[:12]}. Its source changed or is gone.",
+            "Do not edit stored setups. Start a new follow from a trade that still verifies.",
+        )
+    return spec, dict(manifest["costs"][asset])
+
+
 def rule_words(rule: object) -> str:
     """A frozen rule in plain words, such as `50/200-day average cross`. Empty when unknown."""
     if not isinstance(rule, dict) or not isinstance(rule.get("kind"), str):
@@ -105,6 +187,10 @@ def source_name(home: Path, kind: str, source_id: str) -> str:
 
             folder = find_run_dir(home, source_id)
             raw = json.loads((folder / "spec.json").read_text(encoding="utf-8")) if folder else {}
+        elif kind == "setup_trade":
+            raw = json.loads(
+                (home / "setup-trades" / source_id / "summary.json").read_text("utf-8")
+            )
         else:
             raw = json.loads((home / "setups" / source_id / "manifest.json").read_text("utf-8"))
     except (OSError, ValueError):
@@ -186,6 +272,24 @@ def forward_bars(home: Path, asset: str, now: datetime) -> tuple[list[Bar], str 
     with calendar_guard(calendar):
         known = [b for b in bars if bar_known_at(b.ts, timeframe=DAILY, calendar=calendar) <= now]
     return known, calendar
+
+
+def forward_dividends(home: Path, asset: str, now: datetime) -> list[CorporateAction]:
+    """The cash dividends of `asset` knowable at `now`: the rule test's own point-in-time read
+    (`load_dividends`, knowledge-gated by announce date). Forward use reads up to the clock on
+    purpose, as `forward_bars` does. A research command never takes this path."""
+    from alpha_cli import _runner
+    from alpha_cli.spine.stores import resolve_asset
+
+    resolved = resolve_asset(asset, data_dir=home)
+    try:
+        return _runner.load_dividends(resolved.symbol, data_dir=resolved.data_dir, as_of=now)
+    except DataError as exc:
+        raise refuse(
+            "FOLLOW_NO_BARS",
+            f"Cannot read stored dividends for {asset}: {exc}",
+            "Store the asset's data again.",
+        ) from exc
 
 
 @contextmanager

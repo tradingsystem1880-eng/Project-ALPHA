@@ -10,48 +10,35 @@ written in time (market calendar, `alpha_data.sessions`; crypto trades every day
 - otherwise a normal `bar` entry. There is one entry per session.
 Each run replays the frozen rule over the stored bars with the rule test's engine step and
 compares the journal with it. The journal is never rewritten: the replay is a check. Reads the
-newest bars only through `follow_source`. Writes only under `forward/<follow id>/`.
+newest bars only through `follow_source`. Writes only under `forward/<follow id>/`. The session
+loop is `follow_session.run_update`; a followed setup trade goes to `follow_setup_update`.
 """
 
 from __future__ import annotations
 
 import bisect
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 from alpha_cli import follow_book as paper
 from alpha_cli import follow_replay as engine
-from alpha_cli import follow_source
+from alpha_cli import follow_session, follow_setup_update, follow_source
 from alpha_cli import follow_store as store
-from alpha_cli.follow_chain import append_entry
-from alpha_cli.follow_journal import (
-    CALENDAR_KEY,
-    MAX_BAR_LATENESS_DAYS,
-    STOPPED,
-    Clock,
-    Entry,
-    JournalRefusal,
-    Kind,
-    session_close,
-)
-from alpha_cli.follow_journal import next_open as _next_open
+from alpha_cli.follow_journal import STOPPED, Clock, Entry, JournalRefusal, Kind
 from alpha_cli.follow_replay import Replay
-from alpha_cli.follow_update_check import Digests, check_replay, digests_of
+from alpha_cli.follow_session import SessionCtx, close_of, next_open
+from alpha_cli.follow_update_check import check_replay
 from alpha_cli.spine.errors import SpineError
 from alpha_core import DataError
-from alpha_data.sessions import sessions_between
+
+__all__ = ["close_of", "next_open", "update_all", "update_follow"]
 
 
-class _Ctx:
+class _Ctx(SessionCtx):
     def __init__(self, home: Path, record: store.FollowRecord, now: datetime) -> None:
-        self.record, self.now, self.asset = record, now, record.assets[0]
         self.idea = follow_source.frozen_idea(home, record.source_id, record.spec_sha256)
-        self.bars, self.calendar = follow_source.forward_bars(home, self.asset, now)
-        self.dates = [b.ts.date() for b in self.bars]
-        self.digests: Digests = digests_of(self.bars)
-        self.first_session = self._first_session()
-        self.first = bisect.bisect_left(self.dates, self.first_session)
+        super().__init__(home, record, now)
         self.engine_sha = engine.engine_code_sha256()
         self.replay: Replay | None = None
         if self.first < len(self.bars):
@@ -64,38 +51,20 @@ class _Ctx:
                     "Store more bars before the follow's start.",
                 ) from exc
 
-    def _first_session(self) -> date:
-        start = self.record.started_at
-        days = [start.date() + timedelta(n) for n in range(15)]
-        if self.calendar is not None:
-            days = _sessions(self.calendar, days[0], days[-1])
-        return next(s for s in days if close_of(self.calendar, s) > start)
+    def entry(
+        self, book: paper.Book, session: date
+    ) -> tuple[Kind, dict[str, Any], dict[str, str], paper.Book]:
+        return _entry(self, book, session)
 
-    def expected(self) -> list[date]:
-        days = [
-            self.first_session + timedelta(n)
-            for n in range((self.now.date() - self.first_session).days + 1)
-        ]
-        if self.calendar is not None:
-            days = _sessions(self.calendar, self.first_session, self.now.date())
-        return [s for s in days if close_of(self.calendar, s) <= self.now]
-
-
-def _sessions(calendar: str, first: date, last: date) -> list[date]:
-    """The sessions of the forward window only, or a plain-words refusal outside the calendar."""
-    with follow_source.calendar_guard(calendar):
-        return sessions_between(calendar, first, last)
-
-
-def close_of(calendar: str | None, session: date) -> datetime:
-    with follow_source.calendar_guard(calendar):
-        return session_close(calendar or "", session)
-
-
-def next_open(calendar: str | None, session: date) -> datetime:
-    # The open after `session` is up to 14 days on: a session at the calendar's end has none.
-    with follow_source.calendar_guard(calendar):
-        return _next_open(calendar or "", session)
+    def check(self, entries: list[Entry]) -> dict[str, Any]:
+        return check_replay(
+            asset=self.asset,
+            dates=self.dates,
+            digests=self.digests,
+            replay=self.replay,
+            engine_sha=self.engine_sha,
+            entries=entries,
+        )
 
 
 def _armed(replay: Replay | None, session: date) -> bool:
@@ -133,15 +102,11 @@ def _entry(
     ctx: _Ctx, book: paper.Book, session: date
 ) -> tuple[Kind, dict[str, Any], dict[str, str], paper.Book]:
     at = ctx.dates.index(session) if session in ctx.dates else None
-    opens = next_open(ctx.calendar, session)
-    past = (
-        (ctx.now.date() - session).days > MAX_BAR_LATENESS_DAYS
-        if ctx.calendar is None
-        else ctx.now > opens
-    )
-    kind: Kind = "missed" if past else ("bar" if at is not None else "late")
+    kind, opens = ctx.kind_of(session)
     book, fills = _settle(ctx, book, session)
+    book, paid = ctx.dividends_for(book, session)
     payload: dict[str, Any] = {"session": session.isoformat(), "paper": True, "fills": fills}
+    payload["dividends"] = paid
     payload["engine_code_sha256"] = ctx.engine_sha
     if kind == "late":
         payload.update(reason="the bar of this session was not stored at run time", book=book)
@@ -167,7 +132,7 @@ def _entry(
     if kind == "bar":
         book = held
         payload["decision"] = decision
-        payload["labels"] = _labels(ctx, session, opens)
+        payload["labels"] = ctx.labels(session, opens)
     else:
         payload.update(
             would_have=decision["words"], reason="written after the next open: no paper order"
@@ -176,26 +141,12 @@ def _entry(
     return kind, payload, {ctx.asset: ctx.digests[at]}, book
 
 
-def _labels(ctx: _Ctx, session: date, opens: datetime) -> list[str]:
-    if ctx.calendar is None:
-        hours = (ctx.now - opens).total_seconds() / 3600.0
-        return [f"written {hours:.1f} h after the fill open"]
-    return ["written late, before the fill"] if ctx.now.date() > session else []
-
-
-def _last_book(entries: list[Entry]) -> paper.Book:
-    for entry in reversed(entries):
-        if "book" in entry.payload:
-            return dict(entry.payload["book"])
-    return paper.new_book()
-
-
 def update_follow(home: Path, follow_id: str, *, clock: Clock) -> dict[str, Any]:
-    """Write one entry per new session of a followed rule test, or say there is nothing to write."""
-    folder = store.folder_of(home, follow_id)
-    record = store.load_record(folder)
-    entries = store.entries_of(home, follow_id)
-    if store.state_of(entries) == "stopped":
+    """Write one entry per new session of a followed rule test or setup trade."""
+    record = store.load_record(store.folder_of(home, follow_id))
+    if record.kind == "setup_trade":
+        return follow_setup_update.update_follow(home, follow_id, clock=clock)
+    if store.state_of(store.entries_of(home, follow_id)) == "stopped":
         raise follow_source.refuse(
             STOPPED,
             f"Follow {follow_id} is stopped.",
@@ -204,68 +155,11 @@ def update_follow(home: Path, follow_id: str, *, clock: Clock) -> dict[str, Any]
     if record.kind != "rule_test":
         raise follow_source.refuse(
             "FOLLOW_UPDATE_SETUP_NOT_BUILT",
-            "Following a setup is not built yet. Only a followed rule test can be updated.",
-            "Follow a rule test (--test).",
+            "A setup find cannot be updated: it holds no exit rules and no trade results. "
+            "Follow a setup trade instead.",
+            "Run `alpha setup trade`, then `alpha follow start --trade <trade id>`.",
         )
-    now = clock()
-    ctx = _Ctx(home, record, now)
-    sealed = entries[0].payload.get(CALENDAR_KEY)
-    if sealed is None or sealed != (ctx.calendar or ""):
-        raise follow_source.refuse(
-            "FOLLOW_CALENDAR_CHANGED",
-            f"The start entry names the market calendar {sealed!r}; the store now names "
-            f"{ctx.calendar or ''!r}. The journal deadlines come only from the start entry.",
-            "Start a new follow with `alpha follow start`.",
-        )
-    last = entries[-1]
-    todo = [s for s in ctx.expected() if last.kind == "start" or s > last.session_date]
-    check = check_replay(
-        asset=ctx.asset,
-        dates=ctx.dates,
-        digests=ctx.digests,
-        replay=ctx.replay,
-        engine_sha=ctx.engine_sha,
-        entries=entries,
-    )
-    if not todo:
-        waiting = last.kind == "start"
-        newest = f"The newest completed session, {last.session_date}, is already in the journal."
-        message = (
-            "No session has closed since the follow started: waiting for its first new bar."
-            if waiting
-            else newest
-        )
-        return {
-            "follow_id": follow_id,
-            "status": "no-op",
-            "written": [],
-            "message": message,
-            "replay": check,
-        }
-    book, written = _last_book(entries), []
-    for session in todo:
-        kind, payload, hashes, book = _entry(ctx, book, session)
-        body = {**payload, "replay": check}
-        entry = append_entry(
-            folder,
-            kind=kind,
-            session_date=session,
-            clock=lambda: now,
-            bar_hashes=hashes,
-            payload=body,
-            follow_id=follow_id,
-        )
-        words = payload.get("decision", {}).get("words") or payload.get("would_have", "no decision")
-        written.append(
-            {"seq": entry.seq, "session": session.isoformat(), "kind": kind, "words": words}
-        )
-    return {
-        "follow_id": follow_id,
-        "status": "written",
-        "written": written,
-        "replay": check,
-        "message": f"Wrote {len(written)} entr{'y' if len(written) == 1 else 'ies'} (paper).",
-    }
+    return follow_session.run_update(home, follow_id, clock=clock, build=_Ctx)
 
 
 def update_all(home: Path, *, clock: Clock) -> list[dict[str, Any]]:
@@ -275,12 +169,12 @@ def update_all(home: Path, *, clock: Clock) -> list[dict[str, Any]]:
             record = store.load_record(store.folder_of(home, follow_id))
             if store.state_of(store.entries_of(home, follow_id)) == "stopped":
                 rows.append({"follow_id": follow_id, "status": "skipped", "message": "stopped"})
-            elif record.kind != "rule_test":
+            elif record.kind == "setup_find":
                 rows.append(
                     {
                         "follow_id": follow_id,
                         "status": "skipped",
-                        "message": "a setup follow is not built yet",
+                        "message": "a setup find has no exit rules: follow a setup trade",
                     }
                 )
             else:

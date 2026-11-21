@@ -7315,6 +7315,11 @@ export interface components {
             decision: string;
             /** Entry Kind */
             entry_kind: string;
+            /**
+             * Exits
+             * @default []
+             */
+            exits: string[];
             /** Follow Id */
             follow_id: string;
             /** Group */
@@ -7334,6 +7339,11 @@ export interface components {
             sessions_ago?: number | null;
             /** Started At */
             started_at?: string | null;
+            /**
+             * Study Labels
+             * @default []
+             */
+            study_labels: string[];
         };
         /** FollowShow */
         FollowShow: {

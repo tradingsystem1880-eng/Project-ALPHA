@@ -156,8 +156,8 @@ Follow a tested idea forward on paper.
 
 - `alpha follow book` — Every active follow as a share of ONE paper account, and the sum per asset. Options: `--json`
 - `alpha follow list` — One row per follow, with its state. Options: `--json`
-- `alpha follow show <FOLLOW_ID>` — The frozen record, the entries by kind and the chain head. Options: `--json`
-- `alpha follow start` — Follow a tested rule or setup forward on paper. Options: `--test`, `--find`, `--factor`, `--card`, `--size-pct`, `--json`
+- `alpha follow show <FOLLOW_ID>` — The frozen record, the entries by kind and the chain head. Options: `--all`, `--last`, `--json`
+- `alpha follow start` — Follow a tested rule or setup forward on paper. Options: `--test`, `--find`, `--trade`, `--asset`, `--factor`, `--card`, +2 more
 - `alpha follow stop <FOLLOW_ID>` — Stop a follow. Options: `--reason`, `--json`
 - `alpha follow today` — What is active today: one row per active follow, grouped. Options: `--json`
 - `alpha follow update <FOLLOW_ID>` — Book the sessions that closed since the last entry of a followed rule test. Options: `--all`, `--json`

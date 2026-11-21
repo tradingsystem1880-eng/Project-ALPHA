@@ -49,6 +49,7 @@ function Card({ row, open, onSelect }: { row: FollowRow; open: boolean; onSelect
           {pairs.map(([label, value]) => <span key={label} className="follow-reading">{`${label}: `}<b className="num">{value}</b></span>)}
         </span>
       ) : null}
+      {row.exits.length ? <span className="muted follow-card-exits">{`Exits: ${row.exits.join('; ')}`}</span> : null}
       <span className="follow-card-paper">{paper.position}</span>
       <span className="follow-card-change" data-dir={paper.dir}>
         <span aria-hidden="true">{`${rankMark(paper.dir)} `}</span>{`${paper.change} since the start`}

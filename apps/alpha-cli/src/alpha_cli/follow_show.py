@@ -7,13 +7,14 @@ from typing import Any
 
 from alpha_cli.follow_book import PAPER_ACCOUNT
 from alpha_cli.follow_journal import Entry
+from alpha_cli.follow_labels import entry_sentence, plain_readings, readings_text
 
-RECENT = 5
+RECENT = 20
 PAPER_TERMS = (
     f"Size is fixed: each paper buy uses the same share of the {PAPER_ACCOUNT:,.0f} start value. "
     "Gains and losses are not compounded, so the size does not grow or shrink.",
-    "Price only: dividends are not booked. A stock held over a dividend date reads lower "
-    "than the rule test, which includes dividends.",
+    "Cash dividends are booked for a position held before the ex-dividend day, on the same "
+    "point-in-time basis as the rule test. Carry is not booked. The paper position is long only.",
     "Forward use; not research. These readings do not go to `alpha results`, the ledger "
     "or RD-Agent.",
 )
@@ -32,8 +33,10 @@ def _row(entry: Entry) -> dict[str, Any]:
         "session": entry.session_date.isoformat(),
         "kind": entry.kind,
         "words": words,
+        "sentence": entry_sentence(entry.kind, p),
         "fills": p.get("fills", []),
-        "readings": p.get("readings", {}),
+        "dividends": p.get("dividends", []),
+        "readings": plain_readings(p.get("readings", {})),
         "equity_pct": book.get("equity_pct"),
         "replay_agrees": p.get("replay", {}).get("agrees"),
     }
@@ -49,8 +52,13 @@ def _paper(entries: list[Entry]) -> dict[str, Any]:
         peak = max(peak, value)
         fall = max(fall, (peak - value) / peak * 100.0)
     last = marked[-1]
+    dividends = float(last.get("dividends_cum", 0.0))
+    total = last["equity"] - PAPER_ACCOUNT
     return {
         "start": PAPER_ACCOUNT,
+        "dividends": dividends,
+        "dividends_pct": dividends / PAPER_ACCOUNT * 100.0,
+        "price_pct": (total - dividends) / PAPER_ACCOUNT * 100.0,
         "equity": last["equity"],
         "equity_pct": last["equity_pct"],
         "highest": max(path),
@@ -65,12 +73,15 @@ def _paper(entries: list[Entry]) -> dict[str, Any]:
     }
 
 
-def extra(entries: list[Entry]) -> dict[str, Any]:
-    """The last entries, the paper equity numbers and the newest replay check."""
+def extra(entries: list[Entry], limit: int | None = RECENT) -> dict[str, Any]:
+    """The last `limit` entries (all when None), the paper equity numbers and the newest replay."""
     sessions = [e for e in entries if e.kind in {"bar", "missed", "late"}]
     replays = [e.payload["replay"] for e in sessions if "replay" in e.payload]
+    shown = sessions if limit is None else sessions[-limit:]
     return {
-        "recent": [_row(e) for e in sessions[-RECENT:]],
+        "recent": [_row(e) for e in shown],
+        "shown": len(shown),
+        "sessions": len(sessions),
         "paper": _paper(entries),
         "replay": replays[-1] if replays else None,
         "reading": reading(entries),
@@ -101,12 +112,15 @@ def text(facts: dict[str, Any]) -> list[str]:
     """Lines for `follow show`, after the record lines."""
     lines: list[str] = []
     if facts["recent"]:
-        lines.append(f"Last entries (newest last, up to {RECENT}):")
+        lines.append(
+            f"Entries (newest last): {facts['shown']} of {facts['sessions']}. "
+            "Use --all to see every one, or --last N."
+        )
     for r in facts["recent"]:
-        pct = "" if r["equity_pct"] is None else f"  equity {r['equity_pct']:+.2f}%"
-        lines.append(f"  {r['session']}  {r['kind']:<6} {r['words']}{_fills_text(r)}{pct}")
+        pct = "" if r["equity_pct"] is None else f"  (account {r['equity_pct']:+.2f}%)"
+        lines.append(f"  {r['session']}  {r['sentence']}{pct}")
         if r["readings"]:
-            lines.append("    " + ", ".join(f"{k} {v:.2f}" for k, v in r["readings"].items()))
+            lines.append("    " + readings_text(r["readings"]))
     p = facts["paper"]
     if p:
         lines += [
@@ -116,6 +130,10 @@ def text(facts: dict[str, Any]) -> list[str]:
             f"  Largest fall from a high: {p['largest_fall_pct']:.2f}%. "
             f"Closed trades: {p['closed_trades']}, fees paid {p['fees']:.2f}.",
         ]
+        lines.append(
+            f"  Since the start: price {p['price_pct']:+.2f}% (after fees), "
+            f"dividends {p['dividends_pct']:+.2f}% ({p['dividends']:,.2f} paid)."
+        )
         if p["units"] > 0:
             lines.append(
                 f"  Open paper position: {p['units']:.4g} units from {p['entry_price']:.2f}."
@@ -132,8 +150,3 @@ def text(facts: dict[str, Any]) -> list[str]:
         )
         lines += [f"  {d['session']}: {d['what']}: {d['detail']}" for d in check["differences"]]
     return lines
-
-
-def _fills_text(row: dict[str, Any]) -> str:
-    done = [f"{f['side']} {f['units']:.4g} at {f['price']:.2f}" for f in row["fills"]]
-    return f"; {', '.join(done)}" if done else ""

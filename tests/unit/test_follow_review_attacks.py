@@ -357,7 +357,7 @@ def test_show_states_the_paper_terms_and_a_rule_long_at_the_start(tmp_path: Path
     entries = store.entries_of(tmp_path, fid)
     assert all(not e.payload.get("fills") for e in entries)
     text = "\n".join(follow_show.text(follow_show.extra(entries)))
-    for words in ("not compounded", "dividends are not booked", "Forward use; not research"):
+    for words in ("not compounded", "Cash dividends are booked", "Forward use; not research"):
         assert words in text
     assert "stays flat until the next entry signal" in text
     assert "profit" not in text.lower() and "Paper account" in text

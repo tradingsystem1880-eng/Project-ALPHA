@@ -7,7 +7,7 @@ function row(id: string, group: string, extra: Partial<FollowRow> = {}): FollowR
   return {
     follow_id: id, group, name: `Idea ${id}`, asset: 'AAA', decision: 'no signal', entry_kind: 'bar', as_of_text: 'as of the close of 2026-11-19; the newest session',
     behind: false, kind: 'rule_test', card_id: '', calendar: 'XNYS', session_date: '2026-11-19', sessions_ago: 0, started_at: '2026-11-09T08:00:00+00:00',
-    readings: { fast_sma: 101.2, slow_sma: 99.8 }, paper: { open: false, units: 0, entry_price: null, equity: 10000, equity_pct: 0 }, ...extra,
+    readings: { 'fast average price': 101.2, 'slow average price': 99.8 }, exits: [], study_labels: [], paper: { open: false, units: 0, entry_price: null, equity: 10000, equity_pct: 0 }, ...extra,
   }
 }
 
@@ -50,6 +50,12 @@ function render(overrides: Partial<FollowTodayViewProps> = {}): string {
 }
 
 describe('Today screen', () => {
+  it('shows the exits of a setup follow in plain words', () => {
+    const exits = ['Stop-loss: 5 %', 'Profit target: 10 %', 'Time limit: 3 trading days']
+    const html = render({ data: { ...data, rows: [row('s1', 'open_position', { kind: 'setup_trade', exits })] } })
+    expect(html).toContain('Exits: Stop-loss: 5 %; Profit target: 10 %; Time limit: 3 trading days')
+    expect(html).not.toContain('fast_sma')
+  })
   it('has the header, the as-of time, the closed session, the behind count and the fixed line', () => {
     const html = render()
     expect(html).toContain('Followed on paper')
@@ -82,7 +88,7 @@ describe('Today screen', () => {
     const html = render()
     expect(html).toContain('Idea a1')
     expect(html).toContain('would enter at the next open')
-    expect(html).toContain('fast_sma')
+    expect(html).toContain('fast average price')
     expect(html).toContain('101.20')
     expect(html).toContain('Paper position open: 12.5 units from 100.00')
     expect(html).toContain('+1.50%')

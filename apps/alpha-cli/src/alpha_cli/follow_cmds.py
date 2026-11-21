@@ -78,6 +78,10 @@ def _show_text(facts: dict[str, Any]) -> str:
 def start(
     test: Annotated[str, typer.Option("--test", help="Run id of a rule test.")] = "",
     find: Annotated[str, typer.Option("--find", help="Find id of a setup find.")] = "",
+    trade: Annotated[str, typer.Option("--trade", help="Trade id of a setup trade.")] = "",
+    asset: Annotated[
+        str, typer.Option("--asset", help="The asset of a setup trade to follow.")
+    ] = "",
     factor: Annotated[str, typer.Option("--factor", help="Not built yet.")] = "",
     card: Annotated[
         str, typer.Option("--card", help="Idea card id (default: the test's own).")
@@ -90,17 +94,17 @@ def start(
     """Follow a tested rule or setup forward on paper. A changed spec starts a new version."""
     home = AlphaSettings().data_dir
     try:
-        if sum(bool(x) for x in (test, find, factor)) != 1:
+        if sum(bool(x) for x in (test, find, trade, factor)) != 1:
             raise SpineError(
                 "FOLLOW_SOURCE_NEEDED",
-                "Name exactly one thing to follow: --test, --find or --factor.",
+                "Name exactly one thing to follow: --test, --trade, --find or --factor.",
                 "Example: alpha follow start --test <run id>",
             )
         if factor:
             raise SpineError(
                 "FOLLOW_FACTOR_NOT_BUILT",
                 "Following a factor is not built yet.",
-                "Follow a rule test (--test) or a setup find (--find).",
+                "Follow a rule test (--test) or a setup trade (--trade).",
             )
         if not 0 < size_pct <= 100:
             raise SpineError(
@@ -108,11 +112,12 @@ def start(
                 "Paper size must be above 0 and at most 100 percent.",
                 "Use --size-pct.",
             )
-        source = (
-            follow_source.rule_test_source(home, test)
-            if test
-            else follow_source.setup_find_source(home, find)
-        )
+        if test:
+            source = follow_source.rule_test_source(home, test)
+        elif trade:
+            source = follow_source.setup_trade_source(home, trade, asset)
+        else:
+            source = follow_source.setup_find_source(home, find)
         facts = store.start_follow(home, source, card=card, size_pct=size_pct, clock=_clock)
     except (SpineError, JournalRefusal) as exc:
         fail(exc, json_out)
@@ -148,15 +153,24 @@ def list_follows(json_out: JSON = False) -> None:
 
 @follow_app.command("show")
 def show(
-    follow_id: Annotated[str, typer.Argument(help="Follow id or prefix.")], json_out: JSON = False
+    follow_id: Annotated[str, typer.Argument(help="Follow id or prefix.")],
+    all_entries: Annotated[bool, typer.Option("--all", help="Show every entry.")] = False,
+    last: Annotated[
+        int, typer.Option("--last", help="Show the newest N entries.")
+    ] = follow_show.RECENT,
+    json_out: JSON = False,
 ) -> None:
-    """The frozen record, the entries by kind and the chain head."""
+    """The frozen record, the entries by kind and the chain head. The newest 20 entries."""
     home = AlphaSettings().data_dir
     try:
+        if last < 1:
+            raise SpineError(
+                "FOLLOW_SHOW_LAST", "--last needs a number of 1 or more.", "Use --last 20."
+            )
         identity = store.resolve(home, follow_id)
         facts = {
             **store.show_facts(home, identity),
-            **follow_show.extra(store.entries_of(home, identity)),
+            **follow_show.extra(store.entries_of(home, identity), None if all_entries else last),
         }
     except (SpineError, JournalRefusal) as exc:
         fail(exc, json_out)

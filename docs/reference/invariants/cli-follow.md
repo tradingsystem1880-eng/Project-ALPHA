@@ -25,12 +25,12 @@ verified: f82b7658d6a7bebe
 Rules for `alpha follow`. A tested idea is followed on paper as new bars arrive. Options are in the
 [command reference](../commands.md#alpha-follow). F1: the frozen record and the journal. F2: `follow update` for a followed
 rule test (below). F3: `follow today` and the nightly steps N4 and N0 (below).
-A followed setup or factor cannot be updated yet. Every screen of text says "paper".
+A followed setup trade is updated like a rule test (Setup follow, below). A setup find or a factor cannot be updated. Every screen of text says "paper".
 
 ## Separation (the integrity rule)
 - `<data_dir>/forward/` is one-way. Research writes nothing there and reads nothing from there.
 - Only the modules on the explicit `READERS` list in `tests/unit/test_follow_separation.py` may name the follow store
-  modules or open a path under `forward/`. Today that is the twelve `follow_*.py` modules, each with a one-line reason in `READER_REASONS`.
+  modules or open a path under `forward/`. Today that is the fifteen `follow_*.py` modules, each with a one-line reason in `READER_REASONS`.
   A new reader (a Today page) is added on purpose, in review.
   The nightly modules and `next_cmds.py` are not readers: they call `alpha follow ...` as child commands, or `follow_counts`.
 - The guard reads source text under `apps/*/src`, `packages/*/src` and `workers/`. It also fails on the store's file names
@@ -39,7 +39,7 @@ A followed setup or factor cannot be updated yet. Every screen of text says "pap
   It proves itself with fixture strings, not an edit of real modules. It is a text guard: a path built at run time from
   other words is not caught.
 - `follow start` and `follow update` write no trial-ledger row, change no research record and write no file outside `forward/`.
-- A follow is not a trial. Choosing what to follow is still a selection; later builds count it where the owner sees it.
+  A follow is not a trial. Choosing what to follow is still a selection; later builds count it where the owner sees it.
 - Forward use reads the newest bars on purpose, as `alpha scan check` does, only through `follow_source`. `start` reads one bar per
   asset, only to record its hash. `update` reads the bars known at the clock. Research commands keep their cut-off. No forward module
   adds a reserved date or bypasses a cut-off helper.
@@ -70,9 +70,8 @@ A followed setup or factor cannot be updated yet. Every screen of text says "pap
   `prev_hash`, `entry_hash`. The hash is SHA-256 of the canonical entry without `entry_hash`. The first `prev_hash` is 64 zeros.
 - `start` and `stop` come from F1. `update` writes `bar` (a normal session entry), `late` and `missed`.
 - The start entry's payload names its `follow_id`. A journal moved into another follow's folder fails every read.
-- Append takes an exclusive lock, checks the whole chain, writes one line and syncs it. Then, under the same lock, it
+- The clock is passed in. Append takes an exclusive lock, checks the whole chain, writes one line and syncs it. Then, under the same lock, it
   replaces `forward/<follow_id>/head.json` (`entries` and `head`, the last entry hash) atomically.
-- The clock is passed in. Nothing in the journal sleeps or reads the wall clock.
 
 ## What the writer refuses
 Each refusal is a typed error with a stable code and plain words.
@@ -102,24 +101,22 @@ Each refusal is a typed error with a stable code and plain words.
 
 ## Verify
 - `alpha follow verify <id>` recomputes the chain and the same rules. It reports the first break by entry number and exits 1.
-- A flipped byte, a removed middle line and a reordered line are each found. An unreadable line is found at its position.
+- A flipped byte, a removed middle line, a reordered line and an unreadable line are each found.
 - The journal is compared with `head.json`. Fewer entries than the head names is `FOLLOW_TRUNCATED` (a removed last line,
   or a shorter valid chain in place of the file). Another hash at the head number is `FOLLOW_CHAIN_BROKEN`. A missing
   `head.json` counts as a head of 0 entries.
 - The head may be one entry behind: a crash after the line was synced and before the head was replaced. That verifies,
   and the next append stores the head again. More than one entry ahead of the head is `FOLLOW_TRUNCATED`.
-- An entry with `written_at` later than the verifier's clock is `FOLLOW_WRITTEN_AHEAD`. A follow folder with a record and
-  no start entry is `FOLLOW_NO_START`. A journal from another follow is `FOLLOW_WRONG_FOLDER`.
-- Not covered by `verify` alone: the journal and `head.json` rewritten together. The third anchor (below) catches it.
-- `verify --entry N` also prints the hash of entry N (`at_entry`). The nightly run uses it.
-- Not covered: this is not an external timestamp. The threat is an accidental back-fill, not a forger.
+- `written_at` later than the verifier's clock is `FOLLOW_WRITTEN_AHEAD`. A record with no start entry is `FOLLOW_NO_START`.
+  A journal from another follow is `FOLLOW_WRONG_FOLDER`.
+- Not covered by `verify` alone: the journal and `head.json` rewritten together (the third anchor, below, catches it), and an
+  external timestamp. The threat is an accidental back-fill, not a forger. `verify --entry N` prints the hash of entry N.
 
 ## Repair
 A last line that was not written to its end (a crash or a full disk during an append) is `FOLLOW_PARTIAL_LINE`. Every read
 and every append fails loud on it. Nothing repairs it on its own, and no data is dropped. The owner repairs it:
 1. Copy the whole follow folder to a safe place. Keep the copy.
-2. Open `journal.jsonl` and remove only the incomplete last line (the text after the last newline).
-3. Run `alpha follow verify <id>`. The head was not replaced for the cut-off line, so the chain verifies.
+2. Remove only the incomplete last line of `journal.jsonl`, then run `alpha follow verify <id>`. The chain verifies.
 
 ## Update (F2)
 - `follow update <id>` or `--all` reads the bars known at the clock. It downloads nothing. It refuses a stopped follow, a setup
@@ -139,8 +136,15 @@ and every append fails loud on it. Nothing repairs it on its own, and no data is
 - Each entry holds `decision` (words), `readings` (the rule's operands), `fills`, `book` (cash, units, pending order, equity,
   percent, fees), `bar_hashes` (hash of all bars up to the session), `latest_bar_ts` (a forward bar only), `engine_code_sha256`, `replay`.
 - Paper size is a percent of a paper account of 10,000, a fixed share, not compounded. Fees are the rule test's `fee_bps`. Slippage
-  is in the engine fill price. Long only. Price only: no dividend or carry is booked, so a stock held over a dividend date reads
-  lower than the rule test. `follow show` states these terms and a rule long at the start in plain words.
+  is in the engine fill price. Long only. A cash dividend is booked for a position held before the ex date, on the engine's basis:
+  units held before the ex-date open, cash at the pay date, only when known (`knowledge_time`). A dividend the store learns late is
+  booked at the first update that sees it, never in an older entry. No carry. `follow show` states these terms and a rule long at the start in plain words.
+
+## Setup follow
+- `follow start --trade <trade id> [--asset A]` follows a Setup Lab trade study: `kind` `setup_trade`, one asset, long only. A short
+  setup and a setup with context series are refused. The start entry keeps the study's `setup`: trade id, find id, labels, costs, exits.
+- `update` runs the study's own code (`find_candidates`, `prepare_exits`, `simulate`) on the bars up to each close. A trigger on the
+  last bar is an order for the next open. Stop and target fill at the study's prices; an opposite signal exits at the next open.
 
 ## Replay check
 - Each run replays the frozen rule over warm-up and forward bars and compares the journal with it: decision, readings, fills,
@@ -192,7 +196,6 @@ and every append fails loud on it. Nothing repairs it on its own, and no data is
 
 ## Commands
 - `follow list`, `show`, `verify` and `today` are safe reads. `follow start`, `update` and `stop` are owner-only in the generic launcher.
-- `follow show` prints the record, the entries by kind, the last five entries with their readings, the paper equity numbers
-  and the newest replay check. It says "waiting for its first new bar" while only `start` exists.
-- `follow list` shows one state per follow: new signal, open paper position, nothing today, or late or missed.
-- Ids may be given as a unique prefix of at least four characters.
+- `follow show` prints the record, the entries by kind, the newest 20 entries (`--all`, `--last N`) as plain sentences, with
+  readings in plain words (`follow_labels.py` is the one label map), the paper equity numbers and the newest replay check.
+- `follow list` shows one state per follow. Ids may be a unique prefix of at least four characters.

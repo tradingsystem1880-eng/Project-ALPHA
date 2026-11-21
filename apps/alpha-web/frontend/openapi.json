@@ -8257,6 +8257,14 @@
             "title": "Entry Kind",
             "type": "string"
           },
+          "exits": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Exits",
+            "type": "array"
+          },
           "follow_id": {
             "title": "Follow Id",
             "type": "string"
@@ -8322,6 +8330,14 @@
               }
             ],
             "title": "Started At"
+          },
+          "study_labels": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Study Labels",
+            "type": "array"
           }
         },
         "required": [

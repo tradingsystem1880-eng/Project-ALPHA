@@ -41,6 +41,8 @@ class FollowRow(_Relayed):
     sessions_ago: int | None = None
     started_at: str | None = None
     readings: dict[str, float]
+    exits: list[str] = []
+    study_labels: list[str] = []
     paper: FollowPaper
 
 
