@@ -55,7 +55,6 @@ See the capability below on [STATUS.md](../../../../STATUS.md).
 
 - Install and call the real package, never copy it: the owner's rule for Qlib applies here too
   ([owner decisions](../owner-decisions.md#2026-11-14-install-and-call-real-qlib)).
-- The Qlib-to-Nautilus demonstration views (triage card F) are listed under [Qlib](qlib.md).
 - Open: no next step for the harness itself is planned; its work follows the parts that feed it.
 - Whether Nautilus and Qlib count as core engines like RD-Agent is asked of the owner under
   [Qlib](qlib.md#decisions-and-open-questions).

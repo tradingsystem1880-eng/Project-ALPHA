@@ -42,14 +42,11 @@ project-wide rule is [research integrity § Models and isolated workers](researc
 - Engineering approval of a synthetic rule never establishes market evidence (`_native_rule_protocol.py`). Real
   discovery through this lane is blocked before any data is read.
 - Synthetic position artifacts (`_native_rule_artifacts.py`) are distinct from statistical research evidence.
-- `native_qlib_pipeline.py`, `ml_native_plan.py` and `ml_refit.py` produce inert diagnostics or metadata with no
+- `ml_native_plan.py` and `ml_refit.py` produce inert diagnostics or metadata with no
   admission, registration or fit authority.
 - A stock RDLoop invocation is consumed once, atomically, in the control store before spawn
   (`_native_stock_launch.consume_before_spawn`); there is no refund or usage ledger, and a stopped, cancelled or
   re-measured owner cannot consume.
-- The synthetic Qlib qrun → `SignalReplay` → Nautilus pipeline (`native_qlib_pipeline.py`) is a labelled demo on fabricated
-  data (no CLI command or web route, machine paths removed from its recorded JSON). Its results are marked
-  `admission: not_admitted`; they are never approved research and it is not ALPHA's Qlib integration (see `cli-ml.md`).
 
 ## Launch identity
 

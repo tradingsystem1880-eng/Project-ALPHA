@@ -274,16 +274,6 @@ versions and source hashes) and fold `normalization.method = "qlib_processors_v3
 is in `config_hash`; switching the default would change the bytes and hash of new default
 requests only.
 
-## Demo: upstream qrun on fabricated data — not a research path
-
-[`apps/alpha-cli/src/alpha_cli/native_qlib_pipeline.py`](../../apps/alpha-cli/src/alpha_cli/native_qlib_pipeline.py)
-runs upstream `qrun` with this environment on the fabricated fixture in
-[`examples/native-synthetic/`](examples/native-synthetic/) (six generated features and a planted
-target, not market data) and replays the scores once through Nautilus. It produces the
-recorded Workstation demo files under `apps/alpha-web/frontend/public/demos/native-qlib*`. It has
-no CLI command or web route, is not admitted research and is not ALPHA's Qlib integration; the
-worker above is. Re-running it on 2026-11-14 reproduced `native_predictions.csv` byte for byte.
-
 ## Legacy recipes v1/v2 (kept to reproduce stored results)
 
 `features.py` (v1) and `native_feature_corrections.py` (v2) stay unchanged so stored exchanges

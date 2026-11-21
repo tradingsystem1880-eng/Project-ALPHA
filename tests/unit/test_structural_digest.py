@@ -654,7 +654,6 @@ _COMMAND_WRAP = re.compile(r"\.(command|callback)\([^)]*\)\(")
 _REVIEWED_READERS = {
     # Each reads only its own module docstring or its own (unbound) models.
     "apps/alpha-cli/src/alpha_cli/codex_investigation.py",
-    "apps/alpha-cli/src/alpha_cli/native_qlib_pipeline.py",
     "apps/alpha-cli/src/alpha_cli/native_stock_inspect.py",
     "workers/rdagent/install_stock_profile.py",
     "workers/rdagent/qualify_daily_container.py",

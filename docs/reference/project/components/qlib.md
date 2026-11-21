@@ -49,8 +49,7 @@ used in any real research path ([order of work](../owner-decisions-4.md#2026-11-
 ## Where it lives
 
 - **Workspaces:** `workers/qlib`
-- **Capabilities:** `ml-lab`, `alpha158-v2`, `alpha158-v3`, `qlib-refit`, `qlib-in-research-cases`,
-  `native-engine-demos`
+- **Capabilities:** `ml-lab`, `alpha158-v2`, `alpha158-v3`, `qlib-refit`, `qlib-in-research-cases`
 - Code: [`workers/qlib/`](../../../../workers/qlib/README.md); the exchange and replay in
   `apps/alpha-cli/src/alpha_cli/` (`ml_*.py`, `_ml_replay.py`).
 - Tests: `workers/qlib/tests/`, `tests/unit/test_qlib_isolation.py`, `tests/unit/test_ml_contract.py`.

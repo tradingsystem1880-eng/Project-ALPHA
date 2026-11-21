@@ -1061,26 +1061,6 @@ missing = "shelved 2026-11-14: unused groundwork, not wired in; kept for routing
 triage = { card = "A", recommendation = "DELETE", owner_decision = "SHELVE" }
 
 [[capability]]
-id = "native-engine-demos"
-name = "Qlib and Nautilus demonstration views"
-what = "Look at saved, made-up-data runs that show real Qlib and NautilusTrader connected to ALPHA."
-see_it = [
-  "Workstation: View → Machine learning → Native Qlib demo, Native Nautilus demo, Qlib → Nautilus pipeline",
-]
-entry_points = [
-  "panel: apps/alpha-web/frontend/src/panels/NativeQlibDemo.tsx",
-  "panel: apps/alpha-web/frontend/src/panels/NativeNautilusDemo.tsx",
-  "code: apps/alpha-cli/src/alpha_cli/native_qlib_pipeline.py",
-]
-proof_synthetic = []
-real_data = "not yet confirmed (to check on the Mac later)"
-needs = []
-state = "Shelved"
-missing = "shelved 2026-11-14: made-up prices only, not a production path; kept as a demonstration that Qlib and Nautilus connect (it re-ran on this computer on 2026-11-14)"
-# owner's delegation, 2026-11-14 ("Build whatever you believe is the right decision"): shelve; kept as a made-up-data demonstration
-triage = { card = "F", recommendation = "SHELVE", owner_decision = "SHELVE" }
-
-[[capability]]
 id = "ai-stock-research"
 name = "AI stock research loop"
 codes = ["RD-Agent", "W02"]

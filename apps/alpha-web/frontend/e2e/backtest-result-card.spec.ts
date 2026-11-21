@@ -135,25 +135,3 @@ test('unsupported UTC time fails safely and preserves the run and known source',
   await expect(card(page)).toContainText(A)
   await expect(card(page)).toContainText(hash)
 })
-
-for (const native of [
-  { pane: 'NativeQlibDemo', label: 'Native Qlib synthetic result', summary: 'Scores and constructed targets · 16 rows', table: 'Native scores and synthetic targets', rows: 17 },
-  { pane: 'NativeNautilusDemo', label: 'Native Nautilus synthetic result', summary: 'All 31 account events · equal timestamps preserved', table: 'Native account balance events', rows: 32 },
-]) {
-  test(`enabled backtest card coexists with ${native.pane} saved results`, async ({ page }) => {
-    await prepare(page)
-    await page.goto(`/#run=${A}`)
-    await expect(card(page)).toContainText('-0.25')
-    await page.evaluate(pane => { window.location.hash = `#page=results&pane=${pane}` }, native.pane)
-    const result = page.locator(`[aria-label="${native.label}"]`)
-    await expect(result).toBeVisible()
-    await expect(result).toContainText('Synthetic')
-    await expect(card(page)).toHaveCount(0)
-    await expect(page.getByText('Summary unavailable', { exact: true })).toHaveCount(0)
-    await result.getByText(native.summary, { exact: true }).click()
-    await expect(result.getByRole('table', { name: native.table }).getByRole('row')).toHaveCount(native.rows)
-    await page.evaluate(id => { window.location.hash = `#run=${id}` }, A)
-    await expect(card(page)).toContainText('-0.25')
-    await expect(card(page)).toContainText('1970-01-01 00:01:00 UTC')
-  })
-}

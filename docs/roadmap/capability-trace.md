@@ -80,7 +80,6 @@ table. A capability may serve several rows; a row may be served by several capab
 | `alpha158-v3` | Qlib's upstream price features (Alpha158) |
 | `qlib-refit` | Qlib's full model list, with retraining fold by fold |
 | `qlib-in-research-cases` | Staged research cases with an approval at each stage (the old lane) |
-| `native-engine-demos` | Chat panels and demo views folded away once their content shows elsewhere |
 | `ai-stock-research` | RD-Agent's factor loop with a real model on real bars, judged by ALPHA |
 | `ai-stock-research` | Trial ledger for RD-Agent's factors, failures kept |
 | `one-trial-ledger` | Every test, tool and variant counted in one ledger; the count printed on each result |

@@ -9,7 +9,7 @@ modules), 87,567 lines (2026-11-14, main at `89c7706c`). By prefix: 30 `*_cmds`,
 20 `research_*`, 19 `crypto_*`/`_crypto_*`, 7 `ml_*`/`_ml_*`, 7 `investigation_*`, 7 paper and
 IBKR, 5 each `native_*`, `assistant_*`, `codex_*`, and about 40 others. `main.py` holds the one
 command registry (`GROUPS`, 23 sub-apps, and `COMMANDS`) as module-path strings; `-m` targets are
-`alpha_cli.main`, `alpha_cli.comparison_acquisition_worker` and `alpha_cli.native_qlib_pipeline`.
+`alpha_cli.main` and `alpha_cli.comparison_acquisition_worker`.
 
 ## Why
 
