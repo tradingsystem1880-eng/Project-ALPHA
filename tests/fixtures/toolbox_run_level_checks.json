@@ -22,7 +22,10 @@
       "cost_share": 0.2,
       "hold_multiple": 3.0,
       "sentence": "The result breaks even at 5 times today's costs. It matches buy and hold at 3 times today's costs.",
-      "zero_multiple": 5.0
+      "zero_multiple": 5.0,
+      "borrow_charge": 0.15,
+      "borrow_note": "The asset class is not recorded, so the highest class rate is assumed. A crypto perpetual short is charged 1095 basis points a year.",
+      "result_after_borrow": -0.06999999999999995
     },
     "version": 1
   },

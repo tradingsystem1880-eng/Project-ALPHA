@@ -158,6 +158,13 @@ def frozen_idea(home: Path, source_id: str, spec_sha256: str) -> IdeaSpec:
             f"{spec_sha256[:12]}. Its source changed or is gone.",
             "Do not edit stored runs. Start a new follow from a rule test that still verifies.",
         )
+    if idea.costs_class_default:
+        raise refuse(
+            "FOLLOW_COSTS_BY_CLASS",
+            f"Rule test {source_id} takes its costs from the asset class. A follow needs costs "
+            "stated in the spec.",
+            "Test the rule again with costs stated, then follow that test.",
+        )
     return idea
 
 

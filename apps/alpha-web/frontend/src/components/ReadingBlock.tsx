@@ -113,6 +113,7 @@ export function ReadingBlock({ reading, oldLetter = null, labels = [] }: Props) 
   return <section aria-label="Reading" className="reading-block">
     <Checks reading={reading} />
     <p className="reading-sentence">{reading.sentence}</p>
+    {(reading.costsLine || reading.periodsLine) && <p className="muted reading-costs">{[reading.costsLine, reading.periodsLine].filter(Boolean).join(' ')}</p>}
     <section aria-label="Evidence strength" className="reading-part">
       <h4>Evidence strength: {reading.evidence.word ?? 'not recorded'}</h4>
       <EvidenceScale word={reading.evidence.word} />

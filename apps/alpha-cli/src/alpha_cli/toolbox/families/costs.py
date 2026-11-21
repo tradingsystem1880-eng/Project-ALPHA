@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from alpha_cli.toolbox.contract import Output, Result, ToolSpec, Value
@@ -65,7 +66,76 @@ def _times(multiple: float) -> str:
     return f"{multiple:.3g} times" if multiple >= 10 else f"{multiple:.2g} times"
 
 
+NO_SHORTS = "No short trades in this run, so no borrow was charged."
+BORROW_BASIS = (
+    "Result after a borrow charge on short trades at the class rate, a plain sum of "
+    "rate x entry value x days held / 365."
+)
+
+
+def _borrow(inputs: Inputs, equity: Any) -> tuple[dict[str, Value], dict[str, str]]:
+    """The borrow fact beside break-even: absent, with a reason, when the run held no short."""
+    from alpha_cli.spine import cost_classes
+    from alpha_cli.spine.stores import resolve_asset
+    from alpha_core import DataError
+
+    keys = ("result_after_borrow", "borrow_charge", "borrow_note")
+    trades = inputs.stored.table(
+        "run_trades", "side", "realized_pnl", "realized_return", "entry_ts", "exit_ts"
+    )
+    sells = trades.filter(trades["side"] == "SELL")
+    if not sells.height:
+        return dict.fromkeys(keys), dict.fromkeys(keys, NO_SHORTS)
+    manifest = inputs.stored.manifest
+    try:
+        resolved = resolve_asset(
+            f"{manifest['metadata']['symbol']}@{manifest['spine']['store']}",
+            data_dir=inputs.data_home,
+        )
+        klass = cost_classes.asset_class(resolved)
+    except DataError:
+        klass = None  # the store no longer names the asset: the class is not known
+    row, assumed = cost_classes.borrow_row(klass)
+    note = (
+        f"A {row.name} short is charged {row.borrow_bps_per_year or 0:g} basis points a year."
+        if row.borrow_bps_per_year is not None
+        else f"No borrow rate for a {row.name}: {row.borrow_reason}."
+    )
+    if assumed:
+        note = f"The asset class is not recorded, so the highest class rate is assumed. {note}"
+    if any(r == 0 for r in sells["realized_return"]):
+        reason = "A short trade has no return, so its entry value cannot be derived."
+        return dict.fromkeys(keys), dict.fromkeys(keys, reason)
+    shorts = [
+        (abs(pnl / ret), (exit_ts - entry_ts).total_seconds() / 86400)
+        for pnl, ret, entry_ts, exit_ts in zip(
+            sells["realized_pnl"],
+            sells["realized_return"],
+            sells["entry_ts"],
+            sells["exit_ts"],
+            strict=True,
+        )
+    ]
+    fact = cost_classes.borrow_fact(row, float(equity[0]), float(equity[-1]), shorts)
+    values: dict[str, Value] = {
+        "result_after_borrow": fact["result_after_borrow"],
+        "borrow_charge": fact["borrow_charge"],
+        "borrow_note": note,
+    }
+    reasons = {key: fact["reason"] for key in keys[:2] if values[key] is None}
+    return values, reasons
+
+
 def break_even(inputs: Inputs, params: dict[str, Any], rng: Generator | None) -> Result:
+    result = _break_even(inputs, params, rng)
+    equity = inputs.stored.table("stored_equity", "equity")["equity"].to_numpy()
+    values, reasons = _borrow(inputs, equity)
+    return replace(
+        result, values={**result.values, **values}, reasons={**result.reasons, **reasons}
+    )
+
+
+def _break_even(inputs: Inputs, params: dict[str, Any], rng: Generator | None) -> Result:
     import numpy as np
 
     from alpha_cli.toolbox.inputs import HOLD_KINDS
@@ -159,6 +229,21 @@ BREAK_EVEN = ToolSpec(
             "Share spent on costs",
             "Total fill costs divided by positive before-cost profit, both in account currency.",
             "fraction",
+        ),
+        Output(
+            "result_after_borrow",
+            "Result after borrow",
+            "Total return after a borrow charge on short trades at the asset-class rate.",
+            "fraction",
+        ),
+        Output(
+            "borrow_charge",
+            "Borrow charge",
+            "Borrow charge on short trades, in account currency.",
+            "currency",
+        ),
+        Output(
+            "borrow_note", "Borrow rate used", "The class rate behind the borrow charge.", "text"
         ),
         Output(
             "sentence", "Cost thresholds", "Plain reading of the two break-even thresholds.", "text"

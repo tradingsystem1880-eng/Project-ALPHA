@@ -1,7 +1,12 @@
 # Per-asset-class cost and annualisation defaults
 
-**Status:** Idea
+**Status:** Scoped
 **Rough size:** S
+
+## Progress
+
+M71 built the class table, the costs line and `costs = "class-default"`. A spec without costs keeps the flat default:
+[cost classes](../../reference/invariants/cli-cost-classes.md).
 
 ## Problem / why
 

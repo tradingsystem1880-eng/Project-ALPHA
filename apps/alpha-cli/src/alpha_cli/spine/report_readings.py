@@ -40,6 +40,19 @@ def _caveat(verdict: Mapping[str, Any]) -> str:
     return f" [{', '.join(labels)}: {verdict.get('sentence')}]" if labels else ""
 
 
+def costs_line(manifest: Mapping[str, Any]) -> str | None:
+    """The costs a rule-test run used, in one plain line; None for any other run.
+
+    A rule-test run from before this line was stored says so instead of guessing.
+    """
+    spine = manifest.get("spine")
+    if not isinstance(spine, Mapping) or "test_id" not in spine:
+        return None
+    costs = spine.get("costs") if isinstance(spine, Mapping) else None
+    line = costs.get("line") if isinstance(costs, Mapping) else None
+    return line if isinstance(line, str) else "Costs: not recorded for this older run."
+
+
 def reading_line(manifest: Mapping[str, Any]) -> str | None:
     """``reading: <word> (old grade: X)`` for a run that stored a gauntlet grade; else None."""
     verdict = manifest.get("verdict")

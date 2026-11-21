@@ -17,6 +17,15 @@ describe('the reading block', () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order)
   })
 
+  it('shows the costs and annualisation lines of a run that stored them, and nothing for an older run', () => {
+    const costs = { line: 'Costs: 2 basis points fee and 5 slippage per side, the default for a US stock.', periods: 'Annualised with 252 periods a year (daily).' }
+    const html = render({ ...SOME, costs })
+    expect(html).toContain(costs.line)
+    expect(html).toContain(costs.periods)
+    expect(render({ ...SOME, costs: { line: null, periods: null, reason: 'x' } })).not.toContain('Costs:')
+    expect(render(SOME)).not.toContain('Costs:')
+  })
+
   it('shows each fact check as an icon and a word', () => {
     const html = render(SOME)
     expect(html).toContain('data-state="sound"')

@@ -68,6 +68,9 @@ grades. The stored run files are in [command line runs](cli-runs.md#stored-facts
 - A run id hashes every `alpha_cli` source byte, so any edit moves it. `tests/unit/test_reading_rule.py` holds that input fixed and
   proves the reading changes no id.
 
+- Each reading also carries `costs`: the one costs line and the annualisation line the run used. Rules and the table:
+  [cost classes](cli-cost-classes.md).
+
 ## Ledger words
 
 - A new rule-test ledger row adds `evidence` (the reading's word, or `fault`) and `aim_relation` (or null) to every field it had.

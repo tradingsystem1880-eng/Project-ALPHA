@@ -21,7 +21,13 @@ import typer
 
 from alpha_cli.artifact_contract import verify_manifest_artifacts
 from alpha_cli.run_store import RUN_DIRS, find_run_dir, read_manifest
-from alpha_cli.spine.report_readings import gate_lines, monte_carlo_lines, null_line, reading_line
+from alpha_cli.spine.report_readings import (
+    costs_line,
+    gate_lines,
+    monte_carlo_lines,
+    null_line,
+    reading_line,
+)
 from alpha_cli.spine.reserve import describe
 from alpha_core.config import AlphaSettings
 
@@ -229,9 +235,9 @@ def report(
     if manifest.get("command") in {"monte_carlo_classical", "monte_carlo_kronos"}:
         for text in monte_carlo_lines(manifest):
             typer.echo(text)
-    line = reading_line(manifest)
-    if line:
-        typer.echo(line)
+    for shown in (reading_line(manifest), costs_line(manifest)):
+        if shown:
+            typer.echo(shown)
     if "oos_metrics" in manifest:
         metrics = ", ".join(f"{k}={_fmt(v)}" for k, v in sorted(manifest["oos_metrics"].items()))
         typer.echo(f"OOS metrics: {metrics}")

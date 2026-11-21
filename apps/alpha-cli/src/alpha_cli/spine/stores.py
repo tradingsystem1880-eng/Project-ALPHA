@@ -52,7 +52,9 @@ def annualisation(
     years = (timestamps[-1] - timestamps[0]).total_seconds() / (365.25 * 86400)
     frequency = len(timestamps) / years
     note = f"elapsed calendar years; {weekend:.0%} of bar dates fall on weekends"
-    for daily in (252, 365):
+    from alpha_cli.spine.cost_classes import CRYPTO_DAYS, STOCK_SESSIONS
+
+    for daily in (STOCK_SESSIONS, CRYPTO_DAYS):
         if abs(frequency - daily) <= daily * 0.03:
             return daily, f"{note}; daily snap to {daily}"
     return round(frequency), note

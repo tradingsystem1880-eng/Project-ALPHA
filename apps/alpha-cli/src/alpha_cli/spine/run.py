@@ -15,7 +15,7 @@ from typing import Any
 
 from alpha_cli import _artifacts, _gauntlet, _runner
 from alpha_cli._identity import RunIdentity
-from alpha_cli.spine import idea_card, reserve
+from alpha_cli.spine import cost_classes, idea_card, reserve
 from alpha_cli.spine.data_health import health_labels, run_health_record, verify_inputs
 from alpha_cli.spine.deflation import (
     TrialFamily,
@@ -71,8 +71,17 @@ def _fields(obj: Any) -> dict[str, Any]:
     return {field.name: getattr(obj, field.name) for field in dataclasses.fields(obj)}
 
 
-def assemble_run_spec(idea: IdeaSpec, symbol: str, ppy: int, n_bars: int) -> _runner.RunSpec:
-    """Use the minimum strategy warm-up and near-annual folds covering almost all history."""
+def assemble_run_spec(
+    idea: IdeaSpec,
+    symbol: str,
+    ppy: int,
+    n_bars: int,
+    costs: cost_classes.CostRow | None = None,
+) -> _runner.RunSpec:
+    """Use the minimum strategy warm-up and near-annual folds covering almost all history.
+
+    `costs` is the class row of a `class-default` spec; any other spec keeps its stated costs.
+    """
     if idea.context is not None:
         raise DataError("the gated engine is not built yet: a context spec cannot run ungated")
     params = idea.rule.params
@@ -85,8 +94,8 @@ def assemble_run_spec(idea: IdeaSpec, symbol: str, ppy: int, n_bars: int) -> _ru
         max_leverage=1.0,
         allow_short=False,
         periods_per_year=ppy,
-        fee_bps=idea.costs.fee_bps,
-        slippage_bps=idea.costs.slippage_bps,
+        fee_bps=costs.fee_bps if costs else idea.costs.fee_bps,
+        slippage_bps=costs.slippage_bps if costs else idea.costs.slippage_bps,
         starting_cash=1_000_000.0,
         account_type="MARGIN" if "/" in symbol else "CASH",
         train_size=1,
@@ -155,7 +164,23 @@ def prepare_asset(
     ppy, basis = annualisation([bar.ts for bar in bars], bar_size=DAILY)
     result["periods_per_year"] = ppy
     result["periods_per_year_basis"] = basis
-    spec = assemble_run_spec(idea, resolved.symbol, ppy, len(bars))
+    klass = cost_classes.asset_class(resolved)
+    row, assumed = cost_classes.class_row(klass)
+    chosen = row if idea.costs_class_default else None
+    if chosen is not None:
+        result["labels"].append(cost_classes.CLASS_DEFAULT_LABEL)
+        if assumed:
+            result["labels"].append(cost_classes.ASSUMED_LABEL)
+    spec = assemble_run_spec(idea, resolved.symbol, ppy, len(bars), chosen)
+    result["costs"] = {
+        "line": cost_classes.cost_line(spec.fee_bps, spec.slippage_bps, chosen, assumed),
+        "fee_bps": spec.fee_bps,
+        "slippage_bps": spec.slippage_bps,
+        "asset_class": klass,
+        "periods": cost_classes.periods_line(
+            ppy, basis, cost_classes.periods_rule_text(klass) if klass else None
+        ),
+    }
     identity = _runner.run_identity_for(
         {
             "command": "validate",
@@ -310,7 +335,11 @@ def write_run(
     stored = report_to_manifest(out.report)
     stored.update(
         data_health=result["data_health"],
-        spine={"labels": result["labels"], "periods": result.get("periods", {})},
+        spine={
+            "labels": result["labels"],
+            "periods": result.get("periods", {}),
+            "costs": result.get("costs"),
+        },
     )
     reading = build_reading(stored, read_json(rdir / "diagnostics.json"))
     # Only a held-back run names its cut-off, so every other run keeps its old identity.
@@ -340,6 +369,7 @@ def write_run(
                 "store": result["store"],
                 "deflation": result.get("deflation"),
                 "labels": list(result["labels"]),
+                "costs": result.get("costs"),
                 "annualisation": {
                     "periods_per_year": prepared.spec.periods_per_year,
                     "basis": result["periods_per_year_basis"],
@@ -474,7 +504,8 @@ def run_idea(
                 **{
                     key: value
                     for key, value in result.items()
-                    if key not in {"asset", "run_dir", "error", "facts", "reading", "executed"}
+                    if key
+                    not in {"asset", "run_dir", "error", "facts", "reading", "executed", "costs"}
                 },
             },
         )

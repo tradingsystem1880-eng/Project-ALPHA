@@ -47,7 +47,7 @@ open pull requests.
 | [Offline price import from a local file](backlog/offline-data-import.md) | Scoped | M |
 | [Options expression research (W16)](backlog/options-research.md) | Scoped | L |
 | [What the research partner borrows from QuantPad](backlog/partner-grounding-from-quantpad.md) | Scoped | M |
-| [Per-asset-class cost and annualisation defaults](backlog/per-asset-cost-and-annualisation-defaults.md) | Idea | S |
+| [Per-asset-class cost and annualisation defaults](backlog/per-asset-cost-and-annualisation-defaults.md) | Scoped | S |
 | [Platform journey check: planted causes the AI partner must find](backlog/platform-journey-check.md) | Scoped | M |
 | [Intraday bars in the multi-asset portfolio replay](backlog/portfolio-replay-intraday.md) | Idea | M |
 | [Research-practice ideas from the owner's private research](backlog/practitioner-research-ideas.md) | Idea | M |

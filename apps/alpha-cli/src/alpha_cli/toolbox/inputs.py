@@ -19,7 +19,7 @@ from alpha_cli import _runner
 from alpha_cli.run_store import find_run_dir, read_manifest
 from alpha_cli.spine.errors import SpineError
 from alpha_cli.spine.run import assemble_run_spec
-from alpha_cli.spine.spec import IdeaSpec
+from alpha_cli.spine.spec import Costs, IdeaSpec
 from alpha_cli.spine.stores import periods_per_year, resolve_asset
 from alpha_cli.toolbox.reference import vintage_fingerprint
 from alpha_cli.toolbox.reserve import RESERVED_DAY
@@ -220,6 +220,12 @@ def load_run(home: Path, target: Target) -> RunSeries:
     if _runner.source_fingerprint(bars, dividends=dividends) != manifest.get("source_fingerprint"):
         raise changed
     idea = IdeaSpec.model_validate({k: v for k, v in stored.items() if k != "spec_sha256"})
+    if idea.costs_class_default:
+        # The class row was chosen when the run was made; replay with the numbers it stored.
+        used = manifest["spine"]["costs"]
+        idea = idea.model_copy(
+            update={"costs": Costs(fee_bps=used["fee_bps"], slippage_bps=used["slippage_bps"])}
+        )
     ppy = periods_per_year([bar.ts for bar in bars])
     spec = assemble_run_spec(idea, resolved.symbol, ppy, len(bars))
     full, dates, equity = full_sample(bars, dividends, spec)

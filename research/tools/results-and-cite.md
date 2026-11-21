@@ -6,8 +6,7 @@ sources:
 verified: 4487a967b258939d
 ---
 # Results and cite
-**Reach for it when** quoting a run or checking what was tried. **Commands** `alpha results show <run_id> --json`, `alpha results cite <run_id> <metric>`,
-`compare <a> <b>`, `check <file>`. **How to read it** Cite copies value, source, basis; `--tool-output <id>` picks one. `verdict` shows the evidence word.
+**Reach for it when** quoting a run. **Commands** `alpha results show <run_id>`, `cite <run_id> <metric>`, `compare <a> <b>`, `check <file>`.
 - `tradable_total_return`, `tradable_cagr`, `tradable_sharpe`, `tradable_max_drawdown`, `tradable_trades`, `tradable_benchmark_total_return`,
   `tradable_benchmark_cagr`, `tradable_benchmark_sharpe`, `tradable_benchmark_max_drawdown`, `scored_total_return`, `scored_cagr`, `scored_sharpe`,
   `scored_max_drawdown`, `scored_trades`, `scored_benchmark_total_return`, `scored_benchmark_cagr`, `scored_benchmark_sharpe`, `scored_benchmark_max_drawdown`,
@@ -31,10 +30,11 @@ verified: 4487a967b258939d
   `market.attribution.alpha_p` (`market_alpha_p`), `market.attribution.r_squared` (`market_r_squared`), `overfit.deflated_sharpe.dsr`,
   `overfit.deflated_sharpe.trials`, `overfit.deflated_sharpe.benchmark`, `resampling.return_interval.point`, `resampling.return_interval.lower`,
   `resampling.return_interval.upper`, `costs.break_even.zero_multiple`, `costs.break_even.hold_multiple`, `costs.break_even.cost_share`,
-  `costs.break_even.sentence`, `resampling.drawdown_distribution.observed`, `resampling.drawdown_distribution.median`, `resampling.drawdown_distribution.q95`,
+  `costs.break_even.sentence`, `costs.break_even.result_after_borrow`, `costs.break_even.borrow_charge`, `costs.break_even.borrow_note`,
+  `resampling.drawdown_distribution.observed`, `resampling.drawdown_distribution.median`, `resampling.drawdown_distribution.q95`,
   `performance.downside_ratios.sortino`, `performance.downside_ratios.calmar`, `performance.downside_ratios.omega`, `performance.downside_ratios.tail_ratio`,
   `performance.downside_ratios.sharpe`, `setup_occurrences`, `setup_mean_net_return`, `setup_median_net_return`, `setup_hit_rate`, `setup_excess_over_drift`,
   `setup_random_date_p`, `resampling.block_bootstrap_paths.low`, `resampling.block_bootstrap_paths.median`, `resampling.block_bootstrap_paths.high`,
   `resampling.block_bootstrap_paths.drop_q95`, `resampling.sharpe_interval.point`, `resampling.sharpe_interval.lower`, `resampling.sharpe_interval.upper`,
-  `context.published_factors.explained_share`, `context.published_factors.sentence`.
-**What it cannot tell you** `cite` never computes (a gap is `null` + reason); no logic check. **Next** No row: say "not tested"; offer a [test](rule-test.md).
+  `context.published_factors.explained_share`, `context.published_factors.sentence`. **What it cannot tell you** `cite` never computes (a gap is `null` +
+  reason). **Next** No row: say "not tested"; offer a [test](rule-test.md).

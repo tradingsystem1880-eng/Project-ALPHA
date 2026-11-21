@@ -22,6 +22,9 @@ export interface AlphaReading {
   aim: { source: AimSource; basis: string | null; rows: AimRow[] }
   counts: ReadingCounts
   sentence: string
+  /** The costs and annualisation lines the run stored; null for an older run. Display only. */
+  costsLine?: string | null
+  periodsLine?: string | null
 }
 
 type Obj = Record<string, unknown>
@@ -86,6 +89,8 @@ export function parseReading(value: unknown): AlphaReading | null {
       best_of: count(counts.best_of), family_id: str(counts.family_id),
     },
     sentence,
+    costsLine: str(obj(root.costs)?.line),
+    periodsLine: str(obj(root.costs)?.periods),
   }
 }
 

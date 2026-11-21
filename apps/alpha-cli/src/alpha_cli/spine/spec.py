@@ -6,7 +6,7 @@ import hashlib
 import json
 import tomllib
 from pathlib import Path
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -83,8 +83,31 @@ class Rule(FrozenModel):
 
 
 class Costs(FrozenModel):
+    """Costs per side. `costs = "class-default"` asks for the default of the asset class.
+
+    The numbers then stay at the flat placeholder; the run takes the class row. `mode` is left
+    out of every dump unless it is set, so no older spec changes its hash.
+    """
+
     fee_bps: float = Field(default=1.0, ge=0)
     slippage_bps: float = Field(default=2.0, ge=0)
+    mode: Literal["class-default"] | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def from_word(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            if value != "class-default":
+                raise ValueError('costs must be a table or the word "class-default"')
+            return {"mode": value}
+        return value
+
+    @model_serializer(mode="wrap")
+    def omit_unset_mode(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        if data.get("mode") is None:
+            data.pop("mode", None)
+        return data
 
 
 class IdeaSpec(FrozenModel):
@@ -100,6 +123,10 @@ class IdeaSpec(FrozenModel):
     when: str | None = None
     # A link to an idea card. Excluded from dumps, so it is in no hash, run id or stored spec.
     idea_card: str = Field(default="", exclude=True)
+
+    @property
+    def costs_class_default(self) -> bool:
+        return self.costs.mode == "class-default"
 
     @model_validator(mode="after")
     def default_name(self) -> Self:
