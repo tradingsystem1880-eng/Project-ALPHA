@@ -12,7 +12,7 @@ import { Timestamp } from '../util/formatTime'
 import { openStoredMarket } from './actions'
 import {
   NOTICE, behindLine, closedSessionLine, detailFacts, equityGeometry, equityPoints, groupSections, paperLine, rankMark, readingPairs,
-  replayLine, rowMarker, sessionLine, tableRows, type Section,
+  barsBehindLine, replayLine, rowMarker, sessionLine, tableRows, type Section,
 } from './followTodayModel'
 import { fmtPct } from './marketModel'
 
@@ -32,9 +32,11 @@ export interface FollowTodayViewProps {
   onSelect(id: string): void
   onRefresh(): void
   onOpenChart(asset: string): void
+  /** Newest stored daily bar per asset (YYYY-MM-DD); empty until known. */
+  barsEnd?: Readonly<Record<string, string>>
 }
 
-function Card({ row, open, onSelect }: { row: FollowRow; open: boolean; onSelect(id: string): void }) {
+function Card({ row, open, onSelect, behind }: { row: FollowRow; open: boolean; onSelect(id: string): void; behind: string | null }) {
   const marker = rowMarker(row)
   const paper = paperLine(row)
   const pairs = readingPairs(row)
@@ -44,6 +46,7 @@ function Card({ row, open, onSelect }: { row: FollowRow; open: boolean; onSelect
       <span className="follow-card-name">{row.name}</span>
       <span className="muted follow-card-meta">{`${row.asset || 'no asset'} · follow ${row.follow_id}`}</span>
       <span className="follow-card-decision">{row.decision}</span>
+      {behind ? <span className="muted follow-card-bars">{behind}</span> : null}
       {pairs.length ? (
         <span className="follow-readings">
           {pairs.map(([label, value]) => <span key={label} className="follow-reading">{`${label}: `}<b className="num">{value}</b></span>)}
@@ -51,7 +54,7 @@ function Card({ row, open, onSelect }: { row: FollowRow; open: boolean; onSelect
       ) : null}
       <span className="follow-card-paper">{paper.position}</span>
       <span className="follow-card-change" data-dir={paper.dir}>
-        <span aria-hidden="true">{`${rankMark(paper.dir)} `}</span>{`${paper.change} since the start`}
+        {rankMark(paper.dir) ? <span aria-hidden="true">{`${rankMark(paper.dir)} `}</span> : null}{`${paper.change} since the start`}
       </span>
       <span className="muted follow-card-session">{sessionLine(row)}</span>
       {marker ? <span className="follow-marker"><span aria-hidden="true">{`${marker.icon} `}</span>{marker.words}</span> : null}
@@ -59,14 +62,14 @@ function Card({ row, open, onSelect }: { row: FollowRow; open: boolean; onSelect
   )
 }
 
-function GroupBlock({ section, selected, onSelect }: { section: Section; selected: string | null; onSelect(id: string): void }) {
+function GroupBlock({ section, selected, onSelect, data, barsEnd }: { section: Section; selected: string | null; onSelect(id: string): void; data: Today; barsEnd: Readonly<Record<string, string>> }) {
   const head = `${section.title} (${section.rows.length})`
   if (!section.rows.length) return <p className="muted follow-group-empty">{`${head}: none`}</p>
   return (
     <section aria-label={head} className="follow-group" data-group={section.key}>
       <h3>{head}</h3>
       <div className="follow-grid">
-        {section.rows.map(row => <Card key={row.follow_id} row={row} open={row.follow_id === selected} onSelect={onSelect} />)}
+        {section.rows.map(row => <Card key={row.follow_id} row={row} open={row.follow_id === selected} onSelect={onSelect} behind={barsBehindLine(row, data.markets, barsEnd)} />)}
       </div>
     </section>
   )
@@ -141,7 +144,7 @@ function Empty() {
 }
 
 export function FollowTodayView(props: FollowTodayViewProps) {
-  const { data, error, loading, selected, detail, detailError, detailLoading, onSelect, onRefresh, onOpenChart } = props
+  const { data, error, loading, selected, detail, detailError, detailLoading, onSelect, onRefresh, onOpenChart, barsEnd } = props
   const row = data?.rows.find(item => item.follow_id === selected) ?? null
   return (
     <div className="follow-today" style={{ background: 'var(--panel)', color: 'var(--ink)', padding: 'var(--pad)' }}>
@@ -159,7 +162,7 @@ export function FollowTodayView(props: FollowTodayViewProps) {
       {data && data.rows.length === 0 ? <Empty /> : null}
       {data && data.rows.length ? (
         <div className="follow-groups">
-          {groupSections(data).map(section => <GroupBlock key={section.key} section={section} selected={selected} onSelect={onSelect} />)}
+          {groupSections(data).map(section => <GroupBlock key={section.key} section={section} selected={selected} onSelect={onSelect} data={data} barsEnd={barsEnd ?? {}} />)}
         </div>
       ) : null}
       {selected ? (
@@ -183,12 +186,21 @@ export function FollowToday() {
   const [shown, setShown] = useState<{ id: string; show: FollowShow } | null>(null)
   const [detailError, setDetailError] = useState<{ id: string; text: string } | null>(null)
   const [round, setRound] = useState(0)
+  const [barsEnd, setBarsEnd] = useState<Record<string, string>>({})
   useEffect(() => {
     let live = true
     setError(null)
     api.followToday().then(
       result => { if (live) setData(result) },
       (cause: unknown) => { if (live) { setData(null); setError(words(cause)) } },
+    )
+    return () => { live = false }
+  }, [round])
+  useEffect(() => {
+    let live = true
+    api.marketOverview('1D', 30, 30).then(
+      overview => { if (live) setBarsEnd(Object.fromEntries(overview.assets.map(item => [item.asset, item.last_bar.slice(0, 10)]))) },
+      () => { /* Without stored-bar dates the card keeps the command's own words. */ },
     )
     return () => { live = false }
   }, [round])
@@ -206,6 +218,6 @@ export function FollowToday() {
   return (
     <FollowTodayView data={data} error={error} loading={!error && data === null} selected={selected} detail={detail} detailError={failed}
       detailLoading={!detail && !failed} onSelect={id => setSelected(current => (current === id ? null : id))}
-      onRefresh={() => setRound(value => value + 1)} onOpenChart={openStoredMarket} />
+      onRefresh={() => setRound(value => value + 1)} onOpenChart={openStoredMarket} barsEnd={barsEnd} />
   )
 }

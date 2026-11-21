@@ -5,7 +5,7 @@ sources:
   - apps/alpha-web/src/alpha_web/api/setup_runs.py
   - apps/alpha-web/frontend/src/panels/SetupLabPanel.tsx
   - packages/alpha-study/src/alpha_study/setup/**/*.py
-verified: 50d5da70210ce0b5
+verified: 9dcec26aaf2f2fc5
 ---
 
 # Setup Lab
@@ -39,6 +39,9 @@ look at it, measure it, then trade it with declared exits. It is a way of workin
 - `alpha setup find <spec>` records every match and counts separate occurrences (days within ten bars of
   each other are one). It draws contact sheets that stop at the entry open: nothing after entry is computed
   or drawn until the outcome is asked for.
+- The detail answer carries only the first match sheet (about 1.5 MB against 4.5 MB before); the others come one at a time from
+  `GET /api/setup/runs/{find_id}/sheets/{kind}/{number}`. The screen shows its heading and coverage before the detail arrives.
+  Study and trade figures are drawn in light colours, to sit on the default light page; older stored figures stay dark.
 - `alpha setup study <find_id>` measures net forward returns after each occurrence against drift and
   against random dates, with one counted exploratory trial, a figure and citable facts.
 - `alpha setup trade <find_id>` trades the occurrences long or short with declared exits (stop, target, time),

@@ -121,8 +121,8 @@ def _sheets(
     context_bars: int,
     max_sheets: int,
 ) -> tuple[list[str], dict[str, Any]]:
+    from alpha_cli.figures.rdagent_journey_figures import figure_theme
     from alpha_cli.spine.setup_find import sheet_panels
-    from alpha_research.figures.theme import load_theme
 
     batches, counts = sheet_panels(spec, frames, rows, context_bars, max_sheets)
     # Only an unfinished find (no manifest) reaches here: drop sheets an interrupted attempt left.
@@ -133,7 +133,7 @@ def _sheets(
         mode = panels[0].mode
         path = folder / "sheets" / f"{mode}-{index if mode == 'accepted' else 1:03d}.png"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(draw_sheet(panels, title=title, footer=FOOTER, theme=load_theme()))
+        path.write_bytes(draw_sheet(panels, title=title, footer=FOOTER, theme=figure_theme(False)))
         paths.append(str(path.relative_to(folder)))
     return paths, counts
 

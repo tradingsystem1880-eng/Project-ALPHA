@@ -11,12 +11,12 @@ import {
   selectionMatchesTrade,
   useChartSelection,
 } from '../../state/chartSelection'
-import { fmtNum } from '../../util/format'
+import { fmtNum, fmtPct } from '../../util/format'
 import { Section } from './common'
 
 const NUM_COLS = ['quantity', 'entry_price', 'exit_price', 'realized_pnl', 'realized_return']
 
-export function TradesTab({ trades, runId }: { trades: TradeRow[]; runId?: string }) {
+export function TradesTab({ trades, runId, caption }: { trades: TradeRow[]; runId?: string; caption?: string }) {
   const [query, setQuery] = useState('')
   const selection = useChartSelection()
 
@@ -33,7 +33,7 @@ export function TradesTab({ trades, runId }: { trades: TradeRow[]; runId?: strin
           const v = c.row.original[key]
           if (typeof v !== 'number') return '—'
           const neg = v < 0 && (key === 'realized_pnl' || key === 'realized_return')
-          return <span className={neg ? 'neg' : ''}>{fmtNum(v, key === 'realized_return' ? 4 : 2)}</span>
+          return <span className={neg ? 'neg' : ''}>{key === 'realized_return' ? fmtPct(v, 2) : fmtNum(v, 2)}</span>
         },
         meta: { className: 'num' },
       })
@@ -78,6 +78,7 @@ export function TradesTab({ trades, runId }: { trades: TradeRow[]; runId?: strin
         />
       }
     >
+      {caption ? <p className="muted trades-caption">{caption}</p> : null}
       <DataTable
         data={trades}
         columns={columns}

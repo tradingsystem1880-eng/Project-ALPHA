@@ -10,7 +10,8 @@ import { useAreaVersion } from '../state/activity'
 import { Placeholder } from '../components/Placeholder'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
-import { groupResearchBacklog } from './researchBacklogModel'
+import type { IdeaCardRow } from '../api/types'
+import { groupResearchBacklog, ideaCardsSummary } from './researchBacklogModel'
 import {
   researchCaseProgress,
   researchPhaseLabel,
@@ -32,6 +33,7 @@ export function ResearchBacklog(props: PanelHandleProps) {
   const [rows, setRows] = useState<ResearchCaseSummary[] | null>(null)
   const researchVersion = useAreaVersion('research')
   const [error, setError] = useState<string | null>(null)
+  const [ideas, setIdeas] = useState<IdeaCardRow[]>([])
 
   useEffect(() => {
     let live = true
@@ -57,6 +59,17 @@ export function ResearchBacklog(props: PanelHandleProps) {
     // A case the CLI or the AI over MCP touches on disk re-lists here without a click.
   }, [researchVersion])
 
+  useEffect(() => {
+    let live = true
+    // Idea cards are the current path: show them even when no research case exists.
+    api.ideaCards().then(
+      (list) => { if (live) setIdeas(list.cards) },
+      () => { if (live) setIdeas([]) },
+    )
+    return () => { live = false }
+  }, [researchVersion])
+
+  const ideaBlock = ideaCardsSummary(ideas)
   const groups = groupResearchBacklog(rows ?? [])
   const selected = panelLink.linked.projectId
 
@@ -74,10 +87,24 @@ export function ResearchBacklog(props: PanelHandleProps) {
             <span>{error}</span>
           </div>
         ) : null}
-        {rows !== null && rows.length === 0 ? (
-          <Placeholder big="NO RESEARCH CASES YET">
-            Use New Idea to capture your first observation — in your exact words, with no
-            trading rules asked.
+        {ideas.length ? (
+          <section className="backlog-bucket" aria-label="Idea cards">
+            <div className="rd-head">{ideaBlock.heading}</div>
+            <ul className="backlog-list">
+              {ideaBlock.shown.map((card) => (
+                <li key={card.id} className="backlog-row">
+                  <span className="backlog-title">{card.line}</span>
+                  <span className="backlog-meta mono">card {card.id}</span>
+                </li>
+              ))}
+            </ul>
+            {ideaBlock.more ? <p className="muted">{`${ideaBlock.more} more: run alpha idea list`}</p> : null}
+          </section>
+        ) : null}
+        {rows !== null && rows.length === 0 && ideas.length === 0 ? (
+          <Placeholder big="NO IDEAS OR RESEARCH CASES YET">
+            Write an idea card with <code className="mono">alpha idea new</code>, or use New Idea to capture an
+            observation in your exact words.
           </Placeholder>
         ) : null}
         {groups.map((group) => (

@@ -5,7 +5,7 @@ sources:
   - apps/alpha-web/src/alpha_web/api/**
   - tests/unit/test_web_*.py
   - tests/integration/test_web_api_*.py
-verified: 408c4aed7b6bb0cf
+verified: 492ffa489529401e
 ---
 
 # Web API reads and writes invariants
@@ -29,7 +29,8 @@ What the Workstation backend reads, writes and relays. The other backend rules a
   The run detail lists journey availability by evaluation number, name and full code hash. Indexed ideas can be unbuilt after a filtered CLI build.
   GET `/api/rdagent/runs/{run_id}/journeys/{idea_id}` returns the stored document or the quoted CLI command for a missing journey.
   Its `/figures/{filename}` GET serves listed PNGs only. Both check identity and refuse symlinks. Source paths are display text. The server never builds.
-- Setup Lab's GET `/api/setup/runs` and `/{find_id}` use `_setup_runs` only: bounded, allowlisted reads, no CLI run. `setups/<id>/` files
+- Setup Lab's GET `/api/setup/runs`, `/{find_id}` and `/{find_id}/sheets/{kind}/{number}` use `_setup_runs` only:
+  bounded, allowlisted reads, no CLI run. `setups/<id>/` files
   (`manifest.json`, `spec.json`, `summary.json`, `candidates.parquet`, `sheets/*.png`) and the linked `setup-studies/`, `setup-trades/`
   manifests, summaries, rows and PNGs, plus `ledger/trials.jsonl`, are shown as stored. Missing files stay null; corrupt, linked or
   oversized files fail with 422. Trade rows pass through direction, initial risk fraction and R when recorded. Older rows keep missing values.
@@ -77,3 +78,7 @@ What the Workstation backend reads, writes and relays. The other backend rules a
   backend never opens the `forward/` folder ([guard](../../../tests/unit/test_follow_separation.py)). The id must match 4 to 12 lowercase hex characters
   before any command is built. A command failure is a 409 with its text; a timeout is a 504. No route starts, updates or stops a follow.
   Enforced by `tests/unit/test_web_follow_routes.py` and `tests/integration/test_web_api_follow.py`.
+- `GET /api/ideas` relays `alpha idea list --json` as a subprocess (`api/ideas.py`, 30 s timeout; 409 on a failure, 504 on a timeout).
+  No route writes a card.
+- `GET /healthz` returns `status`, `code_commit` (the running code), `build_commit` and `build_time`
+  (from the built bundle's `build-info.json`); `unknown` when absent.

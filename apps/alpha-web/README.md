@@ -6,7 +6,7 @@ sources:
   - apps/alpha-web/frontend/index.html
   - apps/alpha-web/frontend/src/**
   - apps/alpha-web/frontend/package.json
-verified: 7c0ac9ab4ea1f384
+verified: 085e6c482d4033a3
 ---
 
 # alpha-web: code map and change loop
@@ -50,6 +50,8 @@ grants authority.
 - The Today screen (Research › Today) is `panels/FollowToday.tsx` with helpers in `panels/followTodayModel.ts`. It reads `GET /api/follow/today` and
   `GET /api/follow/{id}` (`api/follow.py`, `api/models/follow.py`), which relay `alpha follow today|show`. Browser spec: `e2e/follow-today.spec.ts`.
   Rules: [Today screen](../../docs/reference/invariants/web-frontend.md#today-screen), [reads](../../docs/reference/invariants/web-api-reads.md#follow-today-read).
+- Build staleness: `_build_info.py` reads `build-info.json` (written by `frontend/scripts/normalize-build.mjs`) for `/healthz`; the status bar line is in `shell/statusBarModel.ts`.
+  The Data Manager's equities view is `panels/EquitiesDataView.tsx`; the idea-card block of the front screen reads `GET /api/ideas` (`api/ideas.py`).
 - Setup Lab ([component page](../../docs/reference/project/components/setup-lab.md); Research → Setup Lab), Kronos Studio (View → Forecast): [fields](../../docs/reference/invariants/web-api-reads.md#reads-and-writes).
 - Tests: a backend test for every route (including the CLI-failure path), a vitest model test for
   new panel logic, and a browser spec when a page's behaviour changes.

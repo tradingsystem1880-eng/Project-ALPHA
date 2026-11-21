@@ -120,3 +120,13 @@ export function symbolFitsProfile(id: Profile, symbol: string): boolean {
   const pair = symbol.includes('/') || /^[A-Z0-9]+-(USD|USDT|USDC)$/i.test(symbol)
   return profile(id).symbolStyle === 'pair' ? pair : !pair
 }
+
+/**
+ * The profile a fresh load opens: Equities when the store holds equity bars and no crypto,
+ * else the last used profile (the per-browser setting; Equities when none was saved).
+ */
+export function profileForStore(storedSymbols: readonly string[], lastUsed: Profile): Profile {
+  const hasEquities = storedSymbols.some((symbol) => symbolFitsProfile('equities', symbol))
+  const hasCrypto = storedSymbols.some((symbol) => symbolFitsProfile('crypto', symbol))
+  return hasEquities && !hasCrypto ? 'equities' : lastUsed
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { dockOf, documentOf } from './documents'
-import { MARKET_NEUTRAL_WINDOWS, PROFILES, profile, showsWindow, symbolFitsProfile } from './profiles'
+import { MARKET_NEUTRAL_WINDOWS, PROFILES, profile, profileForStore, showsWindow, symbolFitsProfile } from './profiles'
 import { pullDefaults, starterSymbols } from '../panels/dataManagerModel'
 
 function deepFrozen(value: unknown): boolean {
@@ -90,5 +90,22 @@ describe('symbolFitsProfile', () => {
     expect(symbolFitsProfile('crypto', 'BTC-USD')).toBe(true)
     expect(symbolFitsProfile('equities', 'BRK-B')).toBe(true)
     expect(symbolFitsProfile('equities', 'XRP/USDT')).toBe(false)
+  })
+})
+
+describe('profileForStore', () => {
+  it('opens Equities when the store holds equity bars and no crypto', () => {
+    expect(profileForStore(['SPY', 'QQQ'], 'crypto')).toBe('equities')
+  })
+
+  it('keeps the last used profile when the store holds both, or nothing', () => {
+    expect(profileForStore(['SPY', 'BTC/USDT'], 'crypto')).toBe('crypto')
+    expect(profileForStore(['SPY', 'BTC/USDT'], 'equities')).toBe('equities')
+    expect(profileForStore([], 'crypto')).toBe('crypto')
+  })
+
+  it('keeps the last used profile when the store holds only crypto', () => {
+    expect(profileForStore(['BTC-USDT'], 'crypto')).toBe('crypto')
+    expect(profileForStore(['BTC-USDT'], 'equities')).toBe('equities')
   })
 })

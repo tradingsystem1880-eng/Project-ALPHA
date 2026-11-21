@@ -18,7 +18,7 @@ export interface Marker { icon: string; words: string }
 export interface EquityPoint { session: string; pct: number }
 export interface TableRow { session: string; kind: string; words: string; equity: string }
 
-export const rankMark = (dir: Direction): string => (dir === 'up' ? '▲' : dir === 'down' ? '▼' : '•')
+export const rankMark = (dir: Direction): string => (dir === 'up' ? '▲' : dir === 'down' ? '▼' : '')
 
 /** The five groups in the fixed order, counted from the rows. A row in an unknown group is kept under `other`. */
 export function groupSections(data: FollowToday): Section[] {
@@ -36,6 +36,16 @@ export function closedSessionLine(data: FollowToday): string {
   if (!data.markets.length) return 'Newest closed session: none'
   const parts = data.markets.map(m => `${m.calendar === '' ? 'markets that trade every day' : m.calendar} ${m.newest_closed_session}`)
   return `Newest closed session: ${parts.join('; ')}`
+}
+
+/** Why a waiting follow waits, when the stored bars trail the newest closed session of its market; else null. */
+export function barsBehindLine(row: FollowRow, markets: FollowToday['markets'], barsEnd: Readonly<Record<string, string>>): string | null {
+  if (row.group !== 'waiting') return null
+  const end = barsEnd[row.asset]
+  const newest = markets.find(market => market.calendar === (row.calendar ?? ''))?.newest_closed_session
+  if (!end || !newest || end >= newest) return null
+  const days = (Date.parse(`${newest}T00:00:00Z`) - Date.parse(`${end}T00:00:00Z`)) / 86_400_000
+  return `Stored bars end ${end}; the newest closed session is ${newest}: bars are ${days === 1 ? 'one session ' : ''}behind.`
 }
 
 const sessions = (n: number): string => `${n} session${n === 1 ? '' : 's'}`

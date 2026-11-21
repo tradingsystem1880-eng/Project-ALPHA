@@ -189,3 +189,11 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
 export function glossaryEntry(key: string): GlossaryEntry | null {
   return GLOSSARY[key] ?? null
 }
+
+/** A metric as the owner reads it: the glossary name, else the stored snake_case name in plain words. */
+export function metricLabel(name: string): string {
+  const entry = glossaryEntry(name)
+  if (entry) return entry.name
+  const words = name.replace(/_/g, ' ').trim()
+  return words ? words[0].toUpperCase() + words.slice(1) : name
+}

@@ -329,7 +329,7 @@ test('@reference-only keyboard inspection selects exact bars and preserves null 
   await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('PRICE · NATIVE QUOTE UNITS')
   await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('TIME · UTC')
   await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('SNAPSHOT · CURRENT STORE')
-  await expect(page.locator('.price-toolbar')).toContainText('ccxt:binance')
+  await expect(page.locator('.price-toolbar')).toContainText('Binance daily bars')
   await expect(page.locator('.price-toolbar')).toContainText('qualified')
 
   await page.keyboard.press('Escape')
@@ -367,7 +367,7 @@ test('@reference-only touch tap inspects the exact candle and aligned backend st
     await expect(chart.locator('.technical-legend').filter({ hasText: 'MA(50)' }).first()).toContainText(value === null ? '—' : value.toFixed(2))
     await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('TIME · UTC')
     await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('AS OF ')
-    await expect(page.locator('.price-toolbar')).toContainText('ccxt:binance')
+    await expect(page.locator('.price-toolbar')).toContainText('Binance daily bars')
   } finally {
     await context.close()
   }
@@ -399,7 +399,7 @@ test('@reference-only changing a study clears the inspected bar before the new c
   await expect(host.locator('.technical-cursor').first()).not.toBeVisible()
   await expect(chart.locator('.technical-legend').filter({ hasText: 'MA(50)' })).toHaveCount(0)
   await expect(page.locator('.price-chart-frame .chart-foot')).toContainText('TIME · UTC')
-  await expect(page.locator('.price-toolbar')).toContainText('ccxt:binance')
+  await expect(page.locator('.price-toolbar')).toContainText('Binance daily bars')
   await expect(page.locator('.price-toolbar')).toContainText('qualified')
 })
 

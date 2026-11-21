@@ -154,7 +154,7 @@ def web_server(home: Path, ready_timeout: float = 90, **extra: str) -> Iterator[
                 if proc.poll() is not None:
                     pytest.fail(f"alpha-web exited {proc.returncode} before it was ready")
                 try:
-                    if get_json(f"{base}/healthz", timeout=2) == {"status": "ok"}:
+                    if get_json(f"{base}/healthz", timeout=2).get("status") == "ok":
                         break
                 except (OSError, ValueError):
                     pass  # not listening yet

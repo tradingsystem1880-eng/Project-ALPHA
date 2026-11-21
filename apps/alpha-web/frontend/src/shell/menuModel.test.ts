@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { CommandDef } from '../api/types'
 import { GROUP_MENU, MENUS, assignCommands, commandGroup, commandHome, menuBar } from './menuModel'
@@ -78,8 +78,12 @@ describe('menuModel', () => {
     for (const group of CATALOG_GROUPS) expect(GROUP_MENU[group]).toBeDefined()
   })
 
-  it('throws on a command group with no menu instead of dropping it', () => {
-    expect(() => assignCommands([command('quantum thing')])).toThrow(/"quantum" \(quantum thing\) has no menu/)
+  it('puts a command group with no menu under Help and warns instead of throwing', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const menus = assignCommands([command('quantum thing')])
+    expect(menus.Help).toContainEqual({ kind: 'command', id: 'quantum thing', label: 'quantum thing' })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"quantum" (quantum thing) has no menu'))
+    warn.mockRestore()
   })
 
   it('lists the open documents under Window and pins Governance under View', () => {

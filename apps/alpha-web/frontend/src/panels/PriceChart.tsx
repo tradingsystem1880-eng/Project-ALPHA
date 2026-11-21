@@ -27,6 +27,7 @@ import { useSettings } from '../state/settings'
 import { openArchiveMarket, openDevelopmentCenter, openIndicators } from './actions'
 import { ChartDataAlternative } from './ChartDataAlternative'
 import { hasOverlays, overlayLegend, overlayQuery, shortStudy, skippedText, type ShortStudy } from './chartOverlaysModel'
+import { sourceTag } from './sourceTagModel'
 import { TraceEvidencePanel } from './TraceEvidencePanel'
 import {
   buildEvidenceMarkers,
@@ -270,11 +271,10 @@ export function PriceChart(props: PanelHandleProps) {
         ) : null}
         {bundle ? <span className="chip chart-run-provenance">{bundle.provenance.command ?? 'run'} · artifact v{bundle.provenance.artifact_contract_version ?? 'legacy'}</span> : null}
         {!bundle && paperMarkers.length ? <span className="chip kind">{paperMarkers.length} paper events</span> : null}
-        {!bundle && candleProvenance ? (
-          <span className={`chip ${candleProvenance.quality_status === 'legacy_unqualified' ? 'fail' : 'pass'}`}>
-            {candleProvenance.source} · {candleProvenance.venue ?? 'venue n/a'} · {candleProvenance.timeframe} · {candleProvenance.quality_status}
-          </span>
-        ) : null}
+        {!bundle && candleProvenance ? (() => {
+          const tag = sourceTag(candleProvenance)
+          return <span className={`chip ${tag.tone}`} title={tag.title}>{tag.text}</span>
+        })() : null}
         {bundle?.trace_status === 'available' ? (
           <span className="chart-layer-controls" aria-label="Chart evidence layer">
             {(['executions', 'decisions', 'all'] as const).map((layer) => (

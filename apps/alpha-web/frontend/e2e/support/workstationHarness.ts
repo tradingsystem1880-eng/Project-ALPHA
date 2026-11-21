@@ -2251,6 +2251,8 @@ function responseFor(route: Route, options: MockOptions): unknown {
     return FIGURE_META
   }
   if (url.pathname === '/api/chart-datasets') return { datasets: [], authority: 'none', state: 'unavailable' }
+  if (url.pathname === '/api/ideas') return { cards: [] }
+  if (url.pathname === '/healthz') return { status: 'ok', code_commit: 'unknown', build_commit: 'unknown', build_time: 'unknown' }
   if (url.pathname === '/api/symbols') return { symbols: Object.keys(options.candles ?? {}) }
   if (url.pathname === '/api/data/ticker') {
     const symbol = url.searchParams.get('symbol') ?? ''
@@ -2523,7 +2525,7 @@ export async function preparePage(page: Page, options: MockOptions = {}): Promis
         get: async () => new DeterministicPublicKeyCredential(),
       },
     })
-  }, [options.initialSymbol === undefined ? 'XRP/USDT' : options.initialSymbol, options.settings ?? null] as [string | null, Record<string, unknown> | null])
+  }, [options.initialSymbol === undefined ? 'XRP/USDT' : options.initialSymbol, { profile: 'crypto', ...options.settings }] as [string | null, Record<string, unknown> | null])
 
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url())
@@ -4190,6 +4192,13 @@ test('Scanner saves a scan, runs it through the CLI, and Alerts relays checked s
 export async function openTask(page: Page, section: string, task: string): Promise<void> {
   await page.getByRole('menuitem', { name: 'View', exact: true }).click()
   await page.getByRole('menuitem', { name: `${section} › ${task}`, exact: true }).click()
+}
+
+/** Real-backend specs use crypto symbols; a fresh browser now opens Equities unless the store is equity-only. */
+export async function useCryptoProfile(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('alpha.settings')) localStorage.setItem('alpha.settings', JSON.stringify({ profile: 'crypto' }))
+  })
 }
 
 export async function openDeskTool(page: Page, name: string): Promise<void> {

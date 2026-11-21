@@ -6,6 +6,10 @@ import {
   retryStartFrom,
   starterSymbols,
   storageRow,
+  storageNote,
+  firstStoredSymbol,
+  storedRows,
+  STORAGE_SET_COMMAND,
   validateDates,
 } from './dataManagerModel'
 
@@ -130,5 +134,44 @@ describe('listing hint', () => {
 
   it('refuses an invalid window instead of estimating from NaN', () => {
     expect(() => listingHint(xrp, '2020-01-01', '2019-12-31')).toThrow('precedes')
+  })
+})
+
+describe('storage note', () => {
+  const unset = { state: 'blocked', blocker: 'bulk_volume_uuid_not_configured', bulk_root_label: 'bulk', free_bytes: null, total_bytes: null } as const
+
+  it('is a calm note with the exact command when the reserve was never set', () => {
+    const note = storageNote(unset)
+    expect(note?.tone).toBe('calm')
+    expect(note?.text).toContain('Stock bars do not need it')
+    expect(note?.command).toBe(STORAGE_SET_COMMAND)
+    expect(STORAGE_SET_COMMAND).toContain('scripts/storage_settings.py write')
+  })
+
+  it('is a real blocker for a full disk or an unmounted volume, and absent when ready', () => {
+    expect(storageNote({ ...unset, blocker: 'bulk_storage_reserve_blocked' })?.tone).toBe('blocked')
+    expect(storageNote({ ...unset, blocker: 'bulk_volume_not_mounted' })?.tone).toBe('blocked')
+    expect(storageNote({ state: 'ready', blocker: null, bulk_root_label: 'bulk', free_bytes: 1, total_bytes: 2 })).toBeNull()
+    expect(storageNote(null)).toBeNull()
+  })
+})
+
+describe('default pull symbol', () => {
+  it('keeps the default when stored, else the first stored symbol that fits the profile', () => {
+    expect(firstStoredSymbol(['QQQ', 'SPY'], 'equities', 'SPY')).toBe('SPY')
+    expect(firstStoredSymbol(['BTC/USDT', 'QQQ', 'SPY'], 'equities', 'AAPL')).toBe('QQQ')
+    expect(firstStoredSymbol([], 'equities', 'AAPL')).toBe('AAPL')
+    expect(firstStoredSymbol(['QQQ'], 'crypto', 'BTC/USDT')).toBe('BTC/USDT')
+  })
+})
+
+describe('stored rows', () => {
+  const asset = (name: string, bars: number, last: string) => ({ asset: name, bar_count: bars, last_bar: last }) as never
+
+  it('lists symbol, bars, newest bar and how many days it trails today', () => {
+    expect(storedRows([asset('SPY', 8511, '2026-11-19T00:00:00+00:00')], '2026-11-21')).toEqual([
+      { symbol: 'SPY', bars: 8511, newest: '2026-11-19', daysBehind: 2, health: 'newest bar is 2 days old' },
+    ])
+    expect(storedRows([asset('QQQ', 10, '2026-11-21T00:00:00+00:00')], '2026-11-21')[0].health).toBe('up to date')
   })
 })

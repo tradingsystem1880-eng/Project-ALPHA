@@ -319,3 +319,25 @@ def test_a_stored_outcome_reads_as_the_command_lines_evidence_word(tmp_path: Pat
     assert found is not None
     assert (found.evidence, found.old_wording) == ("some evidence", False)
     assert found.family_position is None  # no ledger row of this study; the CLI counts them
+
+
+def test_only_the_first_match_sheet_rides_with_the_detail(tmp_path: Path) -> None:
+    folder = find_fixture(tmp_path)
+    names = ["sheets/accepted-001.png", "sheets/accepted-002.png"]
+    manifest = json.loads((folder / "manifest.json").read_text())
+    manifest["files"]["sheets"] = names
+    write_json(folder / "manifest.json", manifest)
+    for name in names:
+        (folder / name).parent.mkdir(exist_ok=True)
+        (folder / name).write_bytes(b"\x89PNG\r\n\x1a\nsheet")
+    detail = _setup_runs.read_run(tmp_path, FIND)
+    assert detail.sheets is not None
+    assert [(s.name, s.png is not None, s.deferred or False) for s in detail.sheets] == [
+        (names[0], True, False),
+        (names[1], False, True),
+    ]
+    assert _setup_runs.read_sheet(tmp_path, FIND, names[1]).png is not None
+    with pytest.raises(FileNotFoundError):
+        _setup_runs.read_sheet(tmp_path, FIND, "sheets/rejected-009.png")
+    with pytest.raises(ValueError):
+        _setup_runs.read_sheet(tmp_path, FIND, "../summary.json")

@@ -138,7 +138,7 @@ def test_canonical_origin_serves_health_and_owner_enrollment() -> None:
     with TestClient(create_app(), base_url="http://localhost:8801") as client:
         health = client.get("/healthz")
         enrollment = client.get("/owner-auth/enroll")
-    assert health.json() == {"status": "ok"}
+    assert health.json()["status"] == "ok"
     assert enrollment.status_code == 200
     assert "text/html" in enrollment.headers["content-type"]
 

@@ -23,6 +23,8 @@ class SetupRunList(StrictModel):
 class SetupFigure(StrictModel):
     name: str
     png: str | None
+    # true when the picture was left out to keep the detail small; read it from the sheet route
+    deferred: bool | None = None
 
 
 class SetupReading(StrictModel):

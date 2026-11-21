@@ -9781,6 +9781,60 @@
         "title": "HypothesisCardPlanFamily",
         "type": "object"
       },
+      "IdeaCardList": {
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaCardRow"
+            },
+            "title": "Cards",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cards"
+        ],
+        "title": "IdeaCardList",
+        "type": "object"
+      },
+      "IdeaCardRow": {
+        "description": "One idea card: its id, its claim, and whether a test is linked to it.",
+        "properties": {
+          "claim": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "not_stated": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Stated",
+            "type": "array"
+          },
+          "tested": {
+            "title": "Tested",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "tested",
+          "not_stated"
+        ],
+        "title": "IdeaCardRow",
+        "type": "object"
+      },
       "InvestigationCreate": {
         "additionalProperties": false,
         "properties": {
@@ -26445,6 +26499,17 @@
       "SetupFigure": {
         "additionalProperties": false,
         "properties": {
+          "deferred": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deferred"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -30998,6 +31063,38 @@
         "summary": "Show",
         "tags": [
           "follow"
+        ]
+      }
+    },
+    "/api/ideas": {
+      "get": {
+        "description": "Relay ``alpha idea list --json``: every card with its claim and whether a test is linked.",
+        "operationId": "list_cards_api_ideas_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdeaCardList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "List Cards",
+        "tags": [
+          "ideas"
         ]
       }
     },
@@ -37537,6 +37634,71 @@
         ]
       }
     },
+    "/api/setup/runs/{find_id}/sheets/{kind}/{number}": {
+      "get": {
+        "description": "Read one recorded match sheet; the detail carries only the first, to stay small.",
+        "operationId": "sheet_api_setup_runs__find_id__sheets__kind___number__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "find_id",
+            "required": true,
+            "schema": {
+              "maxLength": 16,
+              "pattern": "^[0-9a-f]{16}$",
+              "title": "Find Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "pattern": "^(accepted|rejected)$",
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{3}$",
+              "title": "Number",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupFigure"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Sheet",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
     "/api/stage-links/{link_id}/state": {
       "post": {
         "description": "Append one legal state transition; prior states remain immutable.",
@@ -41030,6 +41192,7 @@
     },
     "/healthz": {
       "get": {
+        "description": "Report health plus the commit of the built screen and of the running code.",
         "operationId": "healthz_healthz_get",
         "responses": {
           "200": {

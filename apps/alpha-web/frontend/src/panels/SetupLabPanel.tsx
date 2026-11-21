@@ -58,6 +58,23 @@ function Table({ caption, columns, rows }: { caption: string; columns: readonly 
   </table></div>
 }
 
+/** A match sheet the detail left out to stay small; it is read when the owner opens the section. */
+function LazySheet({ findId, sheet }: { findId: string; sheet: Schema['SetupFigure'] }) {
+  const [loaded, setLoaded] = useState<Schema['SetupFigure'] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    const [, kind, number] = /^sheets\/(accepted|rejected)-(\d{3})\.png$/.exec(sheet.name) ?? []
+    if (!kind) { setError('The sheet name is not valid.'); return }
+    let live = true
+    getJSON<Schema['SetupFigure']>(`/api/setup/runs/${findId}/sheets/${kind}/${number}`)
+      .then(value => { if (live) setLoaded(value) })
+      .catch((cause: unknown) => { if (live) setError(String(cause)) })
+    return () => { live = false }
+  }, [findId, sheet.name])
+  if (error) return <p role="alert">{error}</p>
+  return loaded ? <Figure figure={loaded} title={`Recorded match sheet · ${sheet.name}`} /> : <p role="status">Loading sheet…</p>
+}
+
 function Figure({ figure, title }: { figure: Schema['SetupFigure']; title: string }) {
   return <figure className="figure-card"><figcaption>{title}</figcaption>
     {figure.png ? <img src={`data:image/png;base64,${figure.png}`} alt={`${title}. Recorded values and limitations appear in the adjacent tables.`} style={{ width: '100%', height: 'auto' }} />
@@ -181,7 +198,7 @@ function Detail({ detail }: { detail: SetupDetail }) {
     {detail.sheets === null ? <p>Sheets: not recorded</p> : <>
       {detail.sheets.slice(0, 1).map(sheet => <Figure key={sheet.name} figure={sheet} title={`Recorded match sheet · ${sheet.name}`} />)}
       {detail.sheets.length > 1 && <details><summary>{detail.sheets.length - 1} more recorded match sheets</summary>
-        {detail.sheets.slice(1).map(sheet => <Figure key={sheet.name} figure={sheet} title={`Recorded match sheet · ${sheet.name}`} />)}</details>}</>}
+        {detail.sheets.slice(1).map(sheet => sheet.deferred ? <LazySheet key={sheet.name} findId={detail.run.find_id} sheet={sheet} /> : <Figure key={sheet.name} figure={sheet} title={`Recorded match sheet · ${sheet.name}`} />)}</details>}</>}
     <details><summary>Stored find counts and specification</summary><Fields value={detail.summary} explanations={detail.label_explanations} /><Fields value={detail.spec} explanations={detail.label_explanations} /></details>
     {!detail.studies.length && <p>Study: not recorded</p>}
     {detail.studies.map(outcome => <Study key={outcome.run_id} outcome={outcome} detail={detail} />)}
@@ -191,6 +208,19 @@ function Detail({ detail }: { detail: SetupDetail }) {
       <h3>What this cannot tell you</h3><p>Limits from Setup find, Setup study and Setup trade:</p>
       {detail.limits.map(limit => <blockquote key={limit}>{limit}</blockquote>)}
     </aside>
+  </>
+}
+
+/** What the list already knows about the selected setup, shown while its full record loads. */
+function Skeleton({ run, selected }: { run: Schema['SetupRun'] | null; selected: string | null }) {
+  if (!run) return <p role="status">{selected ? 'Loading selected setup…' : 'Select a setup run.'}</p>
+  return <>
+    <h2>{run.description ?? 'Setup description: not recorded'}</h2>
+    <p role="status">Loading selected setup… The matches, trades and figures follow.</p>
+    <p>Find identifier: {run.find_id}</p>
+    {run.assets ? <Table caption="Stored data coverage" columns={[
+      ['asset', 'Instrument'], ['first_bar', 'First bar'], ['last_bar', 'Last bar'], ['error', 'Recorded data error'],
+    ]} rows={run.assets} /> : null}
   </>
 }
 
@@ -209,7 +239,7 @@ export function SetupLabView({ list, selected, detail, error, onSelect }: {
         {list.items.map(run => <option key={run.find_id} value={run.find_id}>{run.description ?? 'Description not recorded'} · {run.find_id}</option>)}
       </select></label>
       <div aria-live="polite">{!error && (detail?.run.find_id === selected ? <Detail detail={detail} />
-        : <p role="status">{selected ? 'Loading selected setup…' : 'Select a setup run.'}</p>)}</div>
+        : <Skeleton run={list.items.find(item => item.find_id === selected) ?? null} selected={selected} />)}</div>
     </>}
   </div></div>
 }

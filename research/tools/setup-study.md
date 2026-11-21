@@ -7,7 +7,7 @@ sources:
   - apps/alpha-cli/src/alpha_cli/spine/setup_controls.py
   - apps/alpha-cli/src/alpha_cli/spine/event_study_figure.py
   - apps/alpha-cli/src/alpha_cli/setup_cmds.py
-verified: 2b860a54588506e1
+verified: 871d98b2ad816a81
 ---
 # Setup study
 

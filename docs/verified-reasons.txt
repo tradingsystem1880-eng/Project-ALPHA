@@ -2,19 +2,19 @@
 # --reason`, one entry per document (the latest); `git log -p` on this file keeps the rest.
 
 apps/alpha-cli/CONTEXT.md
-  verified 0a99f556efa007b8 on 2026-11-21: only the audit's hold-back helper was split to keep the function size; the text is still correct
+  verified 7ed8392630bbf74c on 2026-11-21: Display and figure-label changes only; the text still matches its sources (reviewed).
 
 apps/alpha-cli/README.md
-  verified 0a99f556efa007b8 on 2026-11-21: only the audit's hold-back helper was split to keep the function size; the text is still correct
+  verified 7ed8392630bbf74c on 2026-11-21: Display and figure-label changes only; the text still matches its sources (reviewed).
 
 apps/alpha-mcp/CONTEXT.md
   verified dbae13496c19ad79 on 2026-11-20: Only argument safety, a write cap and error text changed in the front-door relays; the summary stays true.
 
 apps/alpha-web/CONTEXT.md
-  verified 66231186fdebe163 on 2026-11-21: Merged main (setup show, context guard) into the setup context branch; text re-read and still correct
+  verified 085e6c482d4033a3 on 2026-11-21: Display and figure-label changes only; the text still matches its sources (reviewed).
 
 apps/alpha-web/README.md
-  verified 66231186fdebe163 on 2026-11-21: Merged main (setup show, context guard) into the setup context branch; text re-read and still correct
+  verified 085e6c482d4033a3 on 2026-11-21: Display and figure-label changes only; the text still matches its sources (reviewed).
 
 docs/CONTEXT.md
   verified 7a5bda0bea5e0d33 on 2026-11-19: docs README only re-pointed one link; page still correct
@@ -77,7 +77,7 @@ docs/reference/invariants/research-integrity.md
   verified 9ac190b6407b526a on 2026-11-21: one new bias guard added for the context-data join; no rule on this page changed
 
 docs/reference/invariants/research.md
-  verified 8f8e9618bc0343ee on 2026-11-21: re-read after merging main and removing the three open guard entries: the reads they named are now cut; this page's statements still hold
+  verified 314548aa19ecf4d0 on 2026-11-21: Display and figure-label changes only; the text still matches its sources (reviewed).
 
 docs/reference/invariants/testing.md
   verified 51ba1e868da16b2f on 2026-11-20: the repeat loop moved into settle_exclusions; behaviour and the four-run cap are unchanged
@@ -89,16 +89,16 @@ docs/reference/invariants/validation.md
   verified ab6b046291b29b88 on 2026-11-20: only a pointer to the factor-statistics page; that page carries the new edge labels
 
 docs/reference/invariants/web-api-reads.md
-  verified ce3d3750e6615271 on 2026-11-21: Merged main (setup show, context guard) into the setup context branch; text re-read and still correct
+  verified 492ffa489529401e on 2026-11-21: Display and figure-label changes only; the text still matches its sources (reviewed).
 
 docs/reference/invariants/web-api.md
-  verified da290d9f3c48e88d on 2026-11-21: Merged main (setup show, context guard) into the setup context branch; text re-read and still correct
+  verified 13bfb6701a33244a on 2026-11-21: Display and figure-label changes only; the text still matches its sources (reviewed).
 
 docs/reference/invariants/web-frontend.md
-  verified f16bfa1eca4431e4 on 2026-11-21: Only the printed wording of the holdout, optim and walk-forward lines changed; this page states none of it.
+  verified 64b259128ecc6301 on 2026-11-21: Display and figure-label changes only; the text still matches its sources (reviewed).
 
 docs/reference/invariants/web-run-detail.md
-  verified 80bd084013111523 on 2026-11-20: Gates cards show small charts of recorded data
+  verified 688d34ac6cbb4901 on 2026-11-21: Display and figure-label changes only; the text still matches its sources (reviewed).
 
 docs/reference/invariants/workers.md
   verified f94d228fdcc45820 on 2026-11-19: m24 adds alpha rdagent run/status; this page's rules are unchanged
@@ -215,7 +215,7 @@ packages/alpha-validation/CONTEXT.md
   verified 01354e66ff89d242 on 2026-11-20: only a pointer to the factor-statistics page; that page carries the new edge labels
 
 research/CONTEXT.md
-  verified 9abcc2bb498785c1 on 2026-11-21: merge of main (rule context plan) with the hold-back group A branch; both sides' pages were verified, routing unchanged
+  verified 0965e0db0190fb52 on 2026-11-21: Display and figure-label changes only; the text still matches its sources (reviewed).
 
 research/PLAYBOOK.md
   verified 68d4b19f3a6545e4 on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CLEAR, FAULT, NO_AIM, SOME } from './__fixtures__/readings'
 import {
-  aimSentence, aimSourceLine, countLines, runWord, MEASURE_HINTS, EVIDENCE_STEPS, evidenceStep, faultText, parseReading, rangePicture,
+  aimSentence, manifestWord, aimSourceLine, countLines, runWord, MEASURE_HINTS, EVIDENCE_STEPS, evidenceStep, faultText, parseReading, rangePicture,
 } from './readingModel'
 
 describe('parseReading', () => {
@@ -105,5 +105,13 @@ describe('words for a run in a list', () => {
   it('has a plain-words hint for every measure the command line names', () => {
     expect(MEASURE_HINTS['deflated Sharpe']).toBe('Sharpe after allowing for the number of ideas tried')
     expect(MEASURE_HINTS['cross-validated mean Sharpe']).toBe('Average over many re-splits of the test period')
+  })
+})
+
+describe('old grade wording stays on old records', () => {
+  it('shows the old letter for an old manifest and nothing for a current-contract run without a reading', () => {
+    const old = { verdict: { overall: 'B' } }
+    expect(manifestWord(old)?.text).toBe('graded B under the old rules')
+    expect(manifestWord({ ...old, labels: ['quick'] })).toBeNull()
   })
 })

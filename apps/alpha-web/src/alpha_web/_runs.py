@@ -481,6 +481,18 @@ def _stored_evidence(reading: Any) -> str | None:
     return "fault" if faulted else None
 
 
+def _listed_verdict(manifest: dict[str, Any]) -> str | None:
+    """The old letter a run list may show, for OLD records only.
+
+    A run made under the current contract records ``labels`` and states its evidence in a
+    ``reading`` (rule tests) or states none (``alpha validate``). Such a run must not read as
+    "graded B under the old rules", so its letter is not listed. The stored field is untouched.
+    """
+    verdict = manifest.get("verdict")
+    letter = verdict.get("overall") if isinstance(verdict, dict) else None
+    return None if "labels" in manifest else letter
+
+
 def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
     """One run's browser record — THE shared shape of ``/api/runs`` index items and the activity
     stream's ``run_added``/``run_updated`` payloads (the SPA consumes both as ``RunListItem``).
@@ -499,7 +511,6 @@ def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
         return cached[1]
     symbols = _manifest_identity_value(manifest, "symbols")
     symbol = _manifest_identity_value(manifest, "symbol")
-    verdict = manifest.get("verdict")
     record = {
         "run_id": run_id,
         "kind": kind,
@@ -515,7 +526,7 @@ def run_record(kind: str, run_id: str, *, data_dir: Path) -> dict[str, Any]:
         "snapshot_id": _manifest_identity_value(manifest, "snapshot_id"),
         "snapshot_hash": manifest.get("snapshot_hash"),
         "passed": manifest.get("passed"),
-        "verdict": verdict.get("overall") if isinstance(verdict, dict) else None,
+        "verdict": _listed_verdict(manifest),
         "evidence": _stored_evidence(manifest.get("reading")),
         # spec §15 / ADR-0026: the permanent EXPLORATORY marker on runs launched under an
         # owner research-gate override; None for every unmarked run.

@@ -1,8 +1,9 @@
-import { openDeskTool } from './support/workstationHarness'
+import { openDeskTool, useCryptoProfile } from './support/workstationHarness'
 import { expect, test } from '@playwright/test'
 
 test('real CLI conditions, scan drilldown and assistant context share recorded inputs', async ({ page, request, baseURL }) => {
   test.setTimeout(120_000)
+  await useCryptoProfile(page)
   const name = `edge-${test.info().project.name}`
   const saved = await request.post('/api/rules', { data: { name, spec: { name, history: 5, long_when: [{ left: { source: 'close' }, op: '>', right: { value: 1 } }], short_when: [] } } })
   expect(saved.ok()).toBe(true)

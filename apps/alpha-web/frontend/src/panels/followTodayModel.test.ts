@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { FollowRow, FollowShow, FollowToday } from '../api/types'
 import {
   GROUP_ORDER, behindLine, closedSessionLine, detailFacts, equityGeometry, equityPoints, groupSections, kindWords,
-  paperLine, rankMark, readingPairs, replayLine, rowMarker, sessionLine, tableRows,
+  barsBehindLine, paperLine, rankMark, readingPairs, replayLine, rowMarker, sessionLine, tableRows,
 } from './followTodayModel'
 
 function row(id: string, group: string, extra: Partial<FollowRow> = {}): FollowRow {
@@ -138,6 +138,24 @@ describe('Today model', () => {
   it('marks direction with a glyph', () => {
     expect(rankMark('up')).toBe('▲')
     expect(rankMark('down')).toBe('▼')
-    expect(rankMark('flat')).toBe('•')
+    expect(rankMark('flat')).toBe('')
+  })
+})
+
+describe('stored bars behind the newest closed session', () => {
+  const waiting = row('e5', 'waiting', { session_date: null, sessions_ago: null, calendar: 'XNYS' })
+  const markets = [{ calendar: 'XNYS', newest_closed_session: '2026-11-20' }]
+
+  it('says plainly that the stored bars end before the newest closed session', () => {
+    expect(barsBehindLine(waiting, markets, { AAA: '2026-11-19' }))
+      .toBe('Stored bars end 2026-11-19; the newest closed session is 2026-11-20: bars are one session behind.')
+    expect(barsBehindLine(waiting, markets, { AAA: '2026-11-16' }))
+      .toBe('Stored bars end 2026-11-16; the newest closed session is 2026-11-20: bars are behind.')
+  })
+
+  it('says nothing when the bars are current, unknown, or the follow is not waiting', () => {
+    expect(barsBehindLine(waiting, markets, { AAA: '2026-11-20' })).toBeNull()
+    expect(barsBehindLine(waiting, markets, {})).toBeNull()
+    expect(barsBehindLine({ ...waiting, group: 'new_signal' }, markets, { AAA: '2026-11-19' })).toBeNull()
   })
 })

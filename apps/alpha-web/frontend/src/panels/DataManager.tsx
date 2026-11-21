@@ -23,13 +23,16 @@ import { useSettings } from '../state/settings'
 import { buildDataPullArgs, historicalProviders, providerOptionDefault } from './controlPlane'
 import type { ListingHint } from './dataManagerModel'
 import {
+  firstStoredSymbol,
   listingHint,
   pullDefaults,
   retryStartFrom,
+  storageNote,
   storageRow,
   validateDates,
 } from './dataManagerModel'
 import { CLI_ONLY } from './researchCockpitModel'
+import { EquitiesDataView, StorageNote } from './EquitiesDataView'
 import { ResearchDataExplorer } from './ResearchDataExplorer'
 
 type Tab = 'Pull' | 'Snapshots' | 'Quality' | 'Storage'
@@ -62,7 +65,7 @@ export function DataManager(props: PanelHandleProps) {
       {tab === 'Quality' ? (
         <>
           <SourceStatusCard />
-          <ResearchDataExplorer {...props} embedded />
+          {profile === 'equities' ? <EquitiesDataView /> : <ResearchDataExplorer {...props} embedded />}
         </>
       ) : tab === 'Snapshots' ? (
         <SnapshotsTab profile={profile} />
@@ -106,6 +109,8 @@ function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' 
   const [assets, setAssets] = useState<Record<string, string> | null>(null)
 
   const loadGeneration = useRef(0)
+  const defaultSymbol = useRef(defaults.symbol)
+  defaultSymbol.current = defaults.symbol
   const load = useCallback(() => {
     const generation = ++loadGeneration.current
     setError(null)
@@ -113,7 +118,10 @@ function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' 
       if (generation === loadGeneration.current) setError(previous => `${previous ? `${previous} · ` : ''}${label}: ${String(cause)}`)
     }
     void api.symbols().then(stored => {
-      if (generation === loadGeneration.current) setSymbols(stored.symbols)
+      if (generation !== loadGeneration.current) return
+      setSymbols(stored.symbols)
+      // The form starts on a symbol that is stored, not on a default the store does not hold.
+      setSym(current => current === defaultSymbol.current ? firstStoredSymbol(stored.symbols, profile, current) : current)
     }).catch(cause => fail('Asset inventory unavailable', cause))
     void api.providers().then(catalog => {
       if (generation !== loadGeneration.current) return
@@ -130,7 +138,7 @@ function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' 
     void api.cryptoCoverage().then(value => {
       if (generation === loadGeneration.current) setCoverage(value)
     }).catch(cause => fail('Research coverage unavailable', cause))
-  }, [])
+  }, [profile])
   useEffect(() => () => { loadGeneration.current += 1 }, [])
 
   const barsVersion = useAreaVersion('bars')
@@ -316,12 +324,13 @@ function PullAndStore({ profile, section }: { profile: Profile; section: 'pull' 
         <>
       <div className="rd-head de-pull">Storage — research datasets</div>
       <div className="lab-row">
-        <span className={`chip ${ssd.tone === 'ok' ? 'pass' : 'warn'}`}>{ssd.label}</span>
+        <span className={`chip ${ssd.tone === 'ok' ? 'pass' : storageNote(storage)?.tone === 'calm' ? 'kind' : 'warn'}`}>{ssd.label}</span>
         <span className="muted mono">{ssd.detail}</span>
         <button className="btn" onClick={load}>
           refresh
         </button>
       </div>
+      <StorageNote storage={storage} />
       {storage?.state === 'ready' && coverage ? (
         coverage.items.length === 0 ? (
           <div className="muted">No qualified datasets yet.</div>

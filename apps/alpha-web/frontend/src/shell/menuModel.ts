@@ -1,7 +1,8 @@
 // Menu bar (spec 2026-09-01 §4.2 item 2): eleven menus in spec order, the discoverable index of
 // every command the CLI-backed API exposes. A command's group is the first word of its id
-// (`backtest run` → `backtest`); every group maps to exactly one menu and an unmapped group throws,
-// so a new CLI group can never silently vanish from the terminal. Governance is pinned under View.
+// (`backtest run` → `backtest`); every group maps to exactly one menu. An unmapped group never
+// blanks the screen: it lands under Help and logs a console warning (the build-time test
+// `tests/unit/test_web_menu_groups.py` still tells developers). Governance is pinned under View.
 
 import type { CommandDef } from '../api/types'
 import type { OpenDocument } from './mdiModel'
@@ -89,7 +90,7 @@ export function commandGroup(id: string): string {
   return id.split(' ', 1)[0]
 }
 
-/** Place every catalog command in exactly one menu; throws on a group with no home. */
+/** Place every catalog command in exactly one menu; a group with no home goes under Help with a warning. */
 export function assignCommands(catalog: readonly CommandDef[]): Record<MenuName, MenuItem[]> {
   const menus = Object.fromEntries(MENUS.map((name) => [name, [] as MenuItem[]])) as Record<
     MenuName,
@@ -97,8 +98,11 @@ export function assignCommands(catalog: readonly CommandDef[]): Record<MenuName,
   >
   for (const command of catalog) {
     const group = commandGroup(command.id)
-    const menu = GROUP_MENU[group]
-    if (!menu) throw new Error(`command group "${group}" (${command.id}) has no menu`)
+    let menu = GROUP_MENU[group]
+    if (!menu) {
+      console.warn(`command group "${group}" (${command.id}) has no menu; showing it under Help`)
+      menu = 'Help'
+    }
     menus[menu].push({ kind: 'command', id: command.id, label: command.id })
   }
   return menus

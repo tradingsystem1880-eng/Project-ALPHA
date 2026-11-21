@@ -1006,6 +1006,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ideas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Cards
+         * @description Relay ``alpha idea list --json``: every card with its claim and whether a test is linked.
+         */
+        get: operations["list_cards_api_ideas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/investigations": {
         parameters: {
             query?: never;
@@ -3291,6 +3311,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/setup/runs/{find_id}/sheets/{kind}/{number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sheet
+         * @description Read one recorded match sheet; the detail carries only the first, to stay small.
+         */
+        get: operations["sheet_api_setup_runs__find_id__sheets__kind___number__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/stage-links/{link_id}/state": {
         parameters: {
             query?: never;
@@ -4556,7 +4596,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Healthz */
+        /**
+         * Healthz
+         * @description Report health plus the commit of the built screen and of the running code.
+         */
         get: operations["healthz_healthz_get"];
         put?: never;
         post?: never;
@@ -7766,6 +7809,25 @@ export interface components {
             family: string;
             /** Multiplicity */
             multiplicity: string;
+        };
+        /** IdeaCardList */
+        IdeaCardList: {
+            /** Cards */
+            cards: components["schemas"]["IdeaCardRow"][];
+        };
+        /**
+         * IdeaCardRow
+         * @description One idea card: its id, its claim, and whether a test is linked to it.
+         */
+        IdeaCardRow: {
+            /** Claim */
+            claim?: string | null;
+            /** Id */
+            id: string;
+            /** Not Stated */
+            not_stated: string[];
+            /** Tested */
+            tested: boolean;
         };
         /** InvestigationCreate */
         InvestigationCreate: {
@@ -13171,6 +13233,8 @@ export interface components {
         };
         /** SetupFigure */
         SetupFigure: {
+            /** Deferred */
+            deferred?: boolean | null;
             /** Name */
             name: string;
             /** Png */
@@ -15647,6 +15711,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FollowShow"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    list_cards_api_ideas_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdeaCardList"];
                 };
             };
             /** @description Stable, redacted Workstation error */
@@ -19810,6 +19903,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SetupRunDetail"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    sheet_api_setup_runs__find_id__sheets__kind___number__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                find_id: string;
+                kind: string;
+                number: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupFigure"];
                 };
             };
             /** @description Stable, redacted Workstation error */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { groupResearchBacklog } from './researchBacklogModel'
+import { groupResearchBacklog, ideaCardsSummary } from './researchBacklogModel'
 import type { ResearchCaseSummary } from './researchCockpitModel'
 
 function row(overrides: Partial<ResearchCaseSummary>): ResearchCaseSummary {
@@ -59,5 +59,22 @@ describe('research backlog grouping', () => {
     ])
     expect(groups).toHaveLength(1)
     expect(groups[0]!.cases.map((item) => item.case_id)).toEqual(['pinned', 'newer', 'a', 'b'])
+  })
+})
+
+describe('idea cards on the front screen', () => {
+  const card = (id: string, claim: string | null, tested: boolean) => ({ id, claim, tested, not_stated: [] })
+
+  it('counts the cards and lists the first few with their test status', () => {
+    const summary = ideaCardsSummary([card('a', 'Gaps close', true), card('b', null, false)])
+    expect(summary.heading).toBe('Idea cards (2)')
+    expect(summary.shown.map((item) => item.line)).toEqual(['Gaps close · test linked', 'Claim not stated · no test yet'])
+  })
+
+  it('shows at most five and says how many more', () => {
+    const many = Array.from({ length: 7 }, (_, index) => card(String(index), `Idea ${index}`, false))
+    const summary = ideaCardsSummary(many)
+    expect(summary.shown).toHaveLength(5)
+    expect(summary.more).toBe(2)
   })
 })

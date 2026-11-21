@@ -29,6 +29,13 @@ export interface ReportTreeInput {
   items: FigureCatalogueItem[]
 }
 
+/** The equity curve with its drawdown windows leads the tab; the other figures keep their order. */
+const EQUITY_FIRST = ['equity_underwater', 'drawdown_episodes']
+function equityLeaf(leaf: ReportLeaf): ReportLeaf {
+  const rank = (id: string) => (EQUITY_FIRST.includes(id) ? EQUITY_FIRST.indexOf(id) : EQUITY_FIRST.length)
+  return { ...leaf, figureIds: [...leaf.figureIds].sort((a, b) => rank(a) - rank(b)) }
+}
+
 export function reportTree(input: ReportTreeInput): ReportGroup[] {
   const bySection = new Map<string, FigureCatalogueItem[]>()
   for (const item of input.items) {
@@ -63,7 +70,7 @@ export function reportTree(input: ReportTreeInput): ReportGroup[] {
   const strategy = [
     fixed('summary', 'Summary', true, ''),
     sectionLeaf('performance', 'Ratios & performance', 'performance'),
-    sectionLeaf('equity', 'Equity, risk & drawdown', 'risk'),
+    equityLeaf(sectionLeaf('equity', 'Equity, risk & drawdown', 'risk')),
     sectionLeaf('signals', 'Signals', 'signals'),
   ]
   const trade = [
@@ -138,6 +145,13 @@ function monteCarloFamilyText(family: Record<string, unknown>): string {
     pct1(loss?.point) && `share of paths ending below zero ${pct1(loss?.point)}${range}`,
   ]
   return parts.filter(Boolean).join(' · ') || 'not recorded'
+}
+
+/** The line under the trades table: the starting capital the P&L refers to, as the run recorded it. */
+export function startingCapitalCaption(manifest: Record<string, unknown>): string {
+  // Backtests record `starting_equity`; rule tests and validate runs record `metadata.starting_cash`.
+  const capital = money(manifest.starting_equity) ?? money(obj(manifest.metadata)?.starting_cash)
+  return capital === null ? 'P&L: starting capital not recorded.' : `P&L is measured from a starting capital of ${capital}.`
 }
 
 /** Key/value rows from what the manifest recorded, in reading order; nothing is derived. */

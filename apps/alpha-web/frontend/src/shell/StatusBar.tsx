@@ -8,15 +8,16 @@ import { api } from '../api/client'
 import type { CryptoStorage, ProviderDefinition } from '../api/types'
 import { useChartHover } from '../context/chartHover'
 import { useNow } from '../context/clock'
-import { storageRow } from '../panels/dataManagerModel'
+import { storageNote, storageRow } from '../panels/dataManagerModel'
 import { useSettings } from '../state/settings'
-import { statusSegments } from './statusBarModel'
+import { statusSegments, type HealthInfo } from './statusBarModel'
 
 export function StatusBar() {
   const { profile } = useSettings()
   const hover = useChartHover()
   const [providers, setProviders] = useState<ProviderDefinition[]>([])
   const [storage, setStorage] = useState<CryptoStorage | null>(null)
+  const [health, setHealth] = useState<HealthInfo | null>(null)
   const now = useNow()
 
   useEffect(() => {
@@ -29,6 +30,10 @@ export function StatusBar() {
       .cryptoStorage()
       .then((status) => live && setStorage(status))
       .catch(() => live && setStorage(null))
+    api
+      .health()
+      .then((info) => live && setHealth(info))
+      .catch(() => live && setHealth(null))
     return () => {
       live = false
     }
@@ -41,6 +46,8 @@ export function StatusBar() {
     now,
     hovered: hover.bar,
     barsLoaded: hover.barsLoaded,
+    health,
+    storageUnset: storageNote(storage)?.tone === 'calm',
   })
 
   return (

@@ -21,6 +21,7 @@ research_gates: research gate packets and decisions.
 figures: figure catalogue and metadata.
 market: the stored-bars Market overview.
 follow: the Today screen's reads of followed ideas.
+ideas: the front screen's read of idea cards.
 """
 
 from __future__ import annotations
@@ -164,6 +165,8 @@ from .follow import FollowReplayDifference as FollowReplayDifference
 from .follow import FollowRow as FollowRow
 from .follow import FollowShow as FollowShow
 from .follow import FollowToday as FollowToday
+from .ideas import IdeaCardList as IdeaCardList
+from .ideas import IdeaCardRow as IdeaCardRow
 from .market import MarketAsset as MarketAsset
 from .market import MarketOverview as MarketOverview
 from .market import MarketTooFewBars as MarketTooFewBars

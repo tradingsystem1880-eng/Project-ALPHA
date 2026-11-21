@@ -31,3 +31,23 @@ export function groupResearchBacklog(rows: ResearchCaseSummary[]): ResearchBackl
     return [{ bucket, label: researchBucketLabel(bucket), cases }]
   })
 }
+
+export interface IdeaCardSummary {
+  heading: string
+  shown: { id: string; line: string }[]
+  more: number
+}
+
+const IDEA_CARDS_SHOWN = 5
+
+/** The front screen's idea-card block: the count, the first few cards with their claim and test status. */
+export function ideaCardsSummary(cards: readonly { id: string; claim?: string | null; tested: boolean }[]): IdeaCardSummary {
+  return {
+    heading: `Idea cards (${cards.length})`,
+    shown: cards.slice(0, IDEA_CARDS_SHOWN).map((card) => ({
+      id: card.id,
+      line: `${card.claim?.trim() || 'Claim not stated'} · ${card.tested ? 'test linked' : 'no test yet'}`,
+    })),
+    more: Math.max(0, cards.length - IDEA_CARDS_SHOWN),
+  }
+}

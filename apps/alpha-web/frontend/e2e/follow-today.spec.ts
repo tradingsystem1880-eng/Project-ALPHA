@@ -40,6 +40,7 @@ const show = {
 
 test('Today shows the groups in order, flags a late card, and opens the detail of a card', async ({ page }) => {
   await preparePage(page)
+  await page.route('**/api/market/overview*', route => route.fulfill({ json: { assets: [] } }))
   await page.route('**/api/follow/today*', route => route.fulfill({ json: today }))
   await page.route('**/api/follow/bbbb11112222*', route => route.fulfill({ json: show }))
   await page.goto('/#page=research&pane=FollowToday')
@@ -72,6 +73,7 @@ test('Today shows the groups in order, flags a late card, and opens the detail o
 
 test('Today says so in words when the read fails', async ({ page }) => {
   await preparePage(page)
+  await page.route('**/api/market/overview*', route => route.fulfill({ json: { assets: [] } }))
   await page.route('**/api/follow/today*', route => route.fulfill({ status: 409, json: { schema_version: 1, code: 'conflict', message: 'alpha follow today could not run', recovery_action: 'Try again.', field_errors: [], request_id: 'test' } }))
   await page.goto('/#page=research&pane=FollowToday')
   await expect(page.getByRole('alert')).toContainText('alpha follow today could not run')

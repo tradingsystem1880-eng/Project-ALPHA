@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { preparePage } from './support/workstationHarness'
+import { preparePage, useCryptoProfile } from './support/workstationHarness'
 
 // Synthetic API responses check presentation only; no market evidence is used.
 function asset(name: string, change: number, volumeRatio: number) {
@@ -60,6 +60,7 @@ test('Market overview says so when the store has no bars, and when the read fail
 })
 
 test('Market overview reads the real backend store of synthetic bars', async ({ page }) => {
+  await useCryptoProfile(page)
   await page.goto('/#page=data&pane=MarketOverview')
   await expect(page.locator('.market-tile')).toHaveCount(2)
   await expect(page.getByText('Data to: 2021-', { exact: false })).toBeVisible()

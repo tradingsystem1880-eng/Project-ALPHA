@@ -39,7 +39,7 @@ const STORAGE_KEY = 'alpha.settings'
 const DEFAULTS: Settings = {
   density: 'comfortable',
   explain: 'narrative',
-  profile: 'crypto',
+  profile: 'equities',
   projectModes: {},
   backtestResultCard: false,
   liveTicker: false,
@@ -65,7 +65,7 @@ export function parseSettings(raw: string | null): Settings {
     return {
       density: parsed.density === 'compact' ? 'compact' : 'comfortable',
       explain: parsed.explain === 'terse' ? 'terse' : 'narrative',
-      profile: parsed.profile === 'equities' ? 'equities' : 'crypto',
+      profile: parsed.profile === 'crypto' ? 'crypto' : 'equities',
       backtestResultCard: parsed.backtestResultCard === true,
       liveTicker: parsed.liveTicker === true,
       overlays: {

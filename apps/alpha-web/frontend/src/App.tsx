@@ -1,7 +1,7 @@
 import { ThemeSwitch } from './theme/ThemeSwitch'
 /** Workflow pages over the existing CLI-backed panels. Only the selected task mounts. */
 import { useCallback, useEffect, useState, useRef, type ReactNode } from 'react'
-import type { ArchiveChartDataset } from './api/client'
+import { api, type ArchiveChartDataset } from './api/client'
 import { createPortal } from 'react-dom'
 import { CommandPalette } from './components/CommandPalette'
 import { IndicatorsDialog } from './components/IndicatorsDialog'
@@ -19,13 +19,13 @@ import { registerNavigator } from './panels/actions'
 import { ContextBar } from './shell/ContextBar'
 import { DOCUMENTS } from './shell/documents'
 import { PanelHost } from './shell/PanelHost'
-import { showsWindow, symbolFitsProfile, type WindowId } from './shell/profiles'
+import { profileForStore, showsWindow, symbolFitsProfile, type WindowId } from './shell/profiles'
 import { StatusChip, WorkspaceModeAttribute } from './shell/Toolbar'
 import { StatusBar } from './shell/StatusBar'
 import { functionEntries } from './shell/terminalModel'
 import { workflowPages, resolveWorkflow, workflowHash, documentRoute, type PageId } from './shell/workflowModel'
 import { initActivity, useActivityField } from './state/activity'
-import { setSettings, useSettings, workspaceModeFor } from './state/settings'
+import { getSettings, setSettings, useSettings, workspaceModeFor } from './state/settings'
 
 const CONTEXT_KEY = 'alpha.workflow.context'
 function restoreContext() {
@@ -77,6 +77,18 @@ function WorkstationApp() {
     window.setTimeout(requestNewIdea, 100)
   }, [go])
   useEffect(() => { initActivity() }, [])
+  useEffect(() => {
+    // A fresh load follows the data: Equities when only equity bars are stored, else the last used profile.
+    let live = true
+    const opened = getSettings().profile
+    api.symbols().then(result => {
+      // A profile the owner picked while the inventory loaded is never overridden.
+      if (!live || getSettings().profile !== opened) return
+      const next = profileForStore(result.symbols, opened)
+      if (next !== opened) setSettings({ profile: next })
+    }).catch(() => { /* Without an inventory the saved profile stays. */ })
+    return () => { live = false }
+  }, [])
   useEffect(() => {
     if (route.pane) setLastTasks(previous => previous[`${profile}:${route.page}`] === route.pane ? previous : { ...previous, [`${profile}:${route.page}`]: route.pane! })
   }, [profile, route.page, route.pane])

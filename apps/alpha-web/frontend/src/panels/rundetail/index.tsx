@@ -18,7 +18,7 @@ import { researchGateWatermark } from '../researchGateModel'
 import { RecordedPanel } from '../RecordedPanel'
 import { FigureCard } from '../../components/FigureCard'
 import { FigureSection } from '../FigureReport'
-import { reportTree, summaryRows, tradesCsv, watermarkChip } from '../reportModel'
+import { reportTree, startingCapitalCaption, summaryRows, tradesCsv, watermarkChip } from '../reportModel'
 import { labelChips, RULE_TEST_TITLE, summaryFigures } from '../ruleTestModel'
 import { RuleTestReport } from './RuleTestReport'
 import { Icon } from '../../shell/icons'
@@ -63,6 +63,9 @@ export function RunDetail(props: PanelHandleProps) {
   const [catalogueState, setCatalogueState] = useState<RunOwned<FigureCatalogue | string> | null>(null)
   const [checksState, setChecksState] = useState<RunOwned<RuleTestChecks | string> | null>(null)
   const [view, setView] = useState('summary')
+  const figureScroll = useRef<HTMLDivElement>(null)
+  // A new tab starts at its top, not where the last tab was scrolled to.
+  useEffect(() => { figureScroll.current?.scrollTo({ top: 0 }) }, [view])
   const [investigating, setInvestigating] = useState(false)
 
   useEffect(() => {
@@ -217,7 +220,7 @@ export function RunDetail(props: PanelHandleProps) {
         if (selectedTradeState.status === 'error') {
           return <Placeholder big="Could not load trades">{selectedTradeState.error}</Placeholder>
         }
-        return <TradesTab trades={trades} runId={runId} />
+        return <TradesTab trades={trades} runId={runId} caption={startingCapitalCaption(manifest)} />
       case 'stress':
         return <Risk manifest={manifest as ValidateManifest} runId={runId} />
       case 'artifacts':
@@ -231,8 +234,8 @@ export function RunDetail(props: PanelHandleProps) {
         )
       default: {
         if (leaf.empty) return <Placeholder big={leaf.label}>{leaf.reason}</Placeholder>
-        const wanted = new Set(leaf.figureIds)
-        const items = (catalogue?.items ?? []).filter((item) => wanted.has(item.figure_id))
+        const available = catalogue?.items ?? []
+        const items = leaf.figureIds.flatMap((id) => available.filter((item) => item.figure_id === id))
         return <FigureSection runId={runId} runName={detail.display_name} title={leaf.label} items={items} reason={leaf.reason} />
       }
     }
@@ -347,7 +350,7 @@ export function RunDetail(props: PanelHandleProps) {
             ))}
           </ul>
         </nav>
-        <div className="figure-scroll" tabIndex={0} role="region" aria-label="Report analytical content">
+        <div className="figure-scroll" ref={figureScroll} tabIndex={0} role="region" aria-label="Report analytical content">
           {investigating ? <RunInvestigation key={runId} runId={runId} /> : body}
           <p className="report-hint muted">Double-click any chart to open it full-screen · Save PNG / SVG / Copy from there</p>
         </div>

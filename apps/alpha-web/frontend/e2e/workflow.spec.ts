@@ -1,7 +1,9 @@
-import { openTask } from './support/workstationHarness'
+import { openTask, useCryptoProfile } from './support/workstationHarness'
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { writeFile } from 'node:fs/promises'
+
+test.beforeEach(async ({ page }) => { await useCryptoProfile(page) })
 
 test('real workflow navigation, asset selection, chart and history', async ({ page }) => {
   test.setTimeout(120_000)

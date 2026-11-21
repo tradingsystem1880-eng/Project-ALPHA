@@ -2,6 +2,7 @@
 
 import type { components } from './generated'
 import type { DailyRuleEvidence, DailyRuleRole } from './dailyRule'
+import type { HealthInfo } from '../shell/statusBarModel'
 
 type Schema = components['schemas']
 
@@ -133,6 +134,7 @@ import type {
   CryptoSnapshotVerifyRequest,
   CryptoStorage,
   CryptoStorageInventory,
+  IdeaCardList,
   CryptoStorageVerify,
   CryptoCacheClean,
   EvidencePage,
@@ -477,6 +479,7 @@ export const api = {
   marketOverview: (store: string, window: number, limit = 15): Promise<MarketOverview> =>
     getJSON(`/api/market/overview?${new URLSearchParams({ store, window: String(window), limit: String(limit) })}`),
   followToday: (): Promise<FollowToday> => getJSON('/api/follow/today'),
+  ideaCards: (): Promise<IdeaCardList> => getJSON('/api/ideas'),
   followShow: (id: string): Promise<FollowShow> => getJSON(`/api/follow/${encodeURIComponent(id)}`),
   firstBar: (symbol: string, exchange: string): Promise<FirstBar> =>
     getJSON(
@@ -491,6 +494,7 @@ export const api = {
   cryptoCapabilities: (): Promise<CryptoCapabilities> =>
     getJSON('/api/crypto-data/capabilities'),
   cryptoStorage: (): Promise<CryptoStorage> => getJSON('/api/crypto-data/storage'),
+  health: (): Promise<HealthInfo> => getJSON('/healthz'),
   cryptoStorageInventory: (): Promise<CryptoStorageInventory> =>
     getJSON('/api/crypto-data/storage/inventory'),
   cryptoStorageVerify: (): Promise<CryptoStorageVerify> =>

@@ -422,6 +422,13 @@
     },
     {
       "method": "GET",
+      "mode": "automatic",
+      "operation_id": "list_cards_api_ideas_get",
+      "path": "/api/ideas",
+      "reason": "Safe read exercised against an isolated temporary store."
+    },
+    {
+      "method": "GET",
       "mode": "fixture_backed",
       "operation_id": "listing_api_investigations_get",
       "path": "/api/investigations",
@@ -1300,6 +1307,13 @@
       "mode": "fixture_backed",
       "operation_id": "run_detail_api_setup_runs__find_id__get",
       "path": "/api/setup/runs/{find_id}",
+      "reason": "Parameterized safe read uses typed identity and boundary fixtures."
+    },
+    {
+      "method": "GET",
+      "mode": "fixture_backed",
+      "operation_id": "sheet_api_setup_runs__find_id__sheets__kind___number__get",
+      "path": "/api/setup/runs/{find_id}/sheets/{kind}/{number}",
       "reason": "Parameterized safe read uses typed identity and boundary fixtures."
     },
     {

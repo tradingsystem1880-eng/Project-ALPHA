@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { FigureCatalogueItem } from '../api/types'
-import { reportTree, summaryRows, tradesCsv, watermarkChip } from './reportModel'
+import { reportTree, startingCapitalCaption, summaryRows, tradesCsv, watermarkChip } from './reportModel'
 
 function figure(id: string, section: string, available = true): FigureCatalogueItem {
   return {
@@ -68,6 +68,23 @@ describe('report tree', () => {
     })
     const performance = tree[0].leaves.find((leaf) => leaf.id === 'performance')
     expect(performance).toMatchObject({ empty: true, figureIds: ['equity'] })
+  })
+})
+
+describe('equity, risk and drawdown tab order', () => {
+  it('lists the equity curve, then drawdown, then the rest', () => {
+    const items = ['return_distribution', 'qq_normal', 'drawdown_episodes', 'exposure_turnover'].map((id) => figure(id, 'risk'))
+    const tree = reportTree({ kind: 'runs', isValidate: false, hasTrades: false, items })
+    const leaf = tree[0].leaves.find((item) => item.id === 'equity')
+    expect(leaf?.figureIds).toEqual(['drawdown_episodes', 'return_distribution', 'qq_normal', 'exposure_turnover'])
+  })
+})
+
+describe('trades caption', () => {
+  it('names the starting capital the P&L refers to, or says it was not recorded', () => {
+    expect(startingCapitalCaption({ starting_equity: 100000 })).toBe('P&L is measured from a starting capital of 100,000.00.')
+    expect(startingCapitalCaption({ metadata: { starting_cash: 250000 } })).toBe('P&L is measured from a starting capital of 250,000.00.')
+    expect(startingCapitalCaption({})).toBe('P&L: starting capital not recorded.')
   })
 })
 

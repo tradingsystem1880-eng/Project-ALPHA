@@ -10,7 +10,7 @@ from polars.exceptions import PolarsError
 
 from alpha_web import _setup_runs
 from alpha_web.api._common import data_dir
-from alpha_web.api.models.setup_runs import SetupRunDetail, SetupRunList
+from alpha_web.api.models.setup_runs import SetupFigure, SetupRunDetail, SetupRunList
 
 router = APIRouter(prefix="/api/setup/runs", tags=["setup"])
 
@@ -38,3 +38,13 @@ def run_detail(
 ) -> SetupRunDetail:
     """Relay one find and all study/trade records linked by its stored identity."""
     return _read(lambda: _setup_runs.read_run(data_dir(), find_id))
+
+
+@router.get("/{find_id}/sheets/{kind}/{number}", response_model=SetupFigure)
+def sheet(
+    find_id: Annotated[str, Path(pattern=r"^[0-9a-f]{16}$", max_length=16)],
+    kind: Annotated[str, Path(pattern=r"^(accepted|rejected)$")],
+    number: Annotated[str, Path(pattern=r"^\d{3}$")],
+) -> SetupFigure:
+    """Read one recorded match sheet; the detail carries only the first, to stay small."""
+    return _read(lambda: _setup_runs.read_sheet(data_dir(), find_id, f"sheets/{kind}-{number}.png"))

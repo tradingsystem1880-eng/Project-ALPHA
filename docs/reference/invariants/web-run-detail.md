@@ -3,7 +3,7 @@ owner: web frontend
 sources:
   - apps/alpha-web/frontend/src/panels/**
   - apps/alpha-web/frontend/e2e/**
-verified: b992a2b526e23e5f
+verified: 688d34ac6cbb4901
 ---
 
 # Web run detail invariants
@@ -143,3 +143,11 @@ failed-deflation candidates read DEFLATION_FAIL (derived); stored deflation is l
 counted)". Absent facts stay null. Counts come from recorded rows, never candidate status; step minutes need two
 timestamps. New factor rows store family and critic status. Older rows can lack both. The panel was opened headless on
 real runs; owner acceptance remains pending.
+
+## Report tabs and Compare (tour fixes)
+
+- `Equity, risk & drawdown` lists the equity curve with its drawdown windows first (`reportModel.equityLeaf`); each tab opens at its top.
+- `List of trades` shows realized return as a percent with two decimals, and a caption with the recorded starting capital
+  or `starting capital not recorded`.
+- Compare heads read short run id, plain kind (`rule test`, `validate`) and asset; metric names use `explain/glossary.ts metricLabel`. Two assets say
+  `different assets`; one asset on two snapshots keeps the snapshot note.

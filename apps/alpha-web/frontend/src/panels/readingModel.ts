@@ -171,7 +171,8 @@ interface RunWords { evidence?: string | null; verdict?: string | null }
 
 /** The evidence word of a stored manifest: its stored reading, else its old letter (muted by the caller). */
 export function manifestWord(manifest: Obj): { text: string; old: boolean } | null {
-  const verdict = obj(manifest.verdict)?.overall ?? manifest.verdict
+  // A run made under the current contract (it records `labels`) never reads as an old grade.
+  const verdict = 'labels' in manifest ? null : (obj(manifest.verdict)?.overall ?? manifest.verdict)
   return runWord(str(obj(obj(manifest.reading)?.evidence)?.word), verdict)
 }
 

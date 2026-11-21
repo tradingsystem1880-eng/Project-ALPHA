@@ -2,8 +2,9 @@
 // defaults, the date guard that mirrors the CLI's own checks, the storage row, and
 // what a venue's first listed bar means for the requested window. No React, no fetch.
 
-import type { CryptoStorage, FirstBar } from '../api/types'
+import type { CryptoStorage, FirstBar, MarketAsset } from '../api/types'
 import { profile as manifest } from '../shell/profiles'
+import { symbolFitsProfile } from '../shell/profiles'
 import type { Profile } from '../state/settings'
 
 export interface PullDefaults {
@@ -65,6 +66,7 @@ type StorageStatus = Pick<
   CryptoStorage,
   'state' | 'blocker' | 'bulk_root_label' | 'free_bytes' | 'total_bytes'
 >
+type StatusStorage = StorageStatus
 
 /** One honest row for storage: mounted with free space, a named blocker, or not loaded. */
 export function storageRow(storage: StorageStatus | null): StorageRow {
@@ -123,4 +125,69 @@ export function listingHint(
       ? 0
       : (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS + 1
   return { listed, bars, retryFrom: start < listed ? listed : null }
+}
+
+/** The once-only step that sets the crypto-data storage reserve (`docs/operations/storage-settings.md`); a dry run that writes nothing. */
+export const STORAGE_SET_COMMAND = [
+  'uv run python scripts/storage_settings.py write --data-dir /home/hunta/alpha-data',
+  '--bulk-root /home/hunta/alpha-data/bulk',
+  '--durable-hosting-reference "Dell internal disk /dev/sda2 (ext4); owner decision 2026-11-14; not backed up"',
+  '--reserve-gb 10 --advisory-gb 20 --decided-by owner --decided-on 2026-11-14',
+  '--decision-record "ADR-0043; owner chat 2026-11-14: use the Dell\'s available disk for now"',
+].join(' ')
+
+export interface StorageNote {
+  tone: 'calm' | 'blocked'
+  text: string
+  command: string | null
+}
+
+/** A note on crypto-data storage: calm and plain when it was never set up; a blocker only when something is really blocked. */
+export function storageNote(storage: StatusStorage | null): StorageNote | null {
+  if (storage === null || storage.state !== 'blocked') return null
+  if (storage.blocker === 'bulk_volume_uuid_not_configured') {
+    return {
+      tone: 'calm',
+      text:
+        'Crypto data storage is not set up yet. Stock bars do not need it. Set it once before you download crypto data. '
+        + 'This command only prints what it would write; add --apply to write it.',
+      command: STORAGE_SET_COMMAND,
+    }
+  }
+  return {
+    tone: 'blocked',
+    text: storage.blocker === 'bulk_volume_not_mounted'
+      ? 'The configured storage volume is not connected. Connect it, then refresh.'
+      : `Storage is blocked: ${storage.blocker ?? 'reason not reported'}.`,
+    command: null,
+  }
+}
+
+/** The symbol the Pull form starts on: the profile default when it is stored, else the first stored symbol that fits the profile. */
+export function firstStoredSymbol(stored: readonly string[], profile: Profile, fallback: string): string {
+  if (stored.includes(fallback)) return fallback
+  return stored.find((symbol) => symbolFitsProfile(profile, symbol)) ?? fallback
+}
+
+export interface StoredRow {
+  symbol: string
+  bars: number
+  newest: string
+  daysBehind: number
+  health: string
+}
+
+/** One row per stored symbol: bar count, newest bar and how old it is against `today` (YYYY-MM-DD). */
+export function storedRows(assets: readonly Pick<MarketAsset, 'asset' | 'bar_count' | 'last_bar'>[], today: string): StoredRow[] {
+  return assets.map((item) => {
+    const newest = item.last_bar.slice(0, 10)
+    const daysBehind = Math.max(0, Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${newest}T00:00:00Z`)) / DAY_MS))
+    return {
+      symbol: item.asset,
+      bars: item.bar_count,
+      newest,
+      daysBehind,
+      health: daysBehind === 0 ? 'up to date' : `newest bar is ${daysBehind} day${daysBehind === 1 ? '' : 's'} old`,
+    }
+  })
 }
