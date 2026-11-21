@@ -5,7 +5,7 @@ sources:
   - apps/alpha-web/src/alpha_web/api/**
   - tests/unit/test_web_*.py
   - tests/integration/test_web_api_*.py
-verified: 408c4aed7b6bb0cf
+verified: 5ef0b8a232eb184a
 ---
 
 # Web API reads and writes invariants
@@ -77,3 +77,14 @@ What the Workstation backend reads, writes and relays. The other backend rules a
   backend never opens the `forward/` folder ([guard](../../../tests/unit/test_follow_separation.py)). The id must match 4 to 12 lowercase hex characters
   before any command is built. A command failure is a 409 with its text; a timeout is a 504. No route starts, updates or stops a follow.
   Enforced by `tests/unit/test_web_follow_routes.py` and `tests/integration/test_web_api_follow.py`.
+
+## Ideas read
+
+- `GET /api/ideas` and `GET /api/ideas/{card}` relay `alpha idea list|file --json` as a subprocess (`api/ideas.py`, 30 s timeout).
+  The web never opens the ideas folder. The id must match 4 to 12 lowercase hex characters. An unknown card is a 404 with the command's words;
+  another failure is a 409; a timeout is a 504.
+- Bounds: the list keeps the newest 500 cards (`total`, `truncated`); the file keeps the newest 200 readings and 100 follows
+  (`readings_total`, `readings_shown_from`). No route writes a card or links a test.
+- The activity stream has an `ideas` area: the ideas folder, `diagnostics`, `setups`, `setup-studies` and the trial ledger. It is walked one level deep
+  (`_activity.SHALLOW_AREAS`): 46 000 entries cost 0.43 s a tick walked in full, 0.02 s this way. A follow change does not move it:
+  the web never opens `forward/`. Enforced by `tests/unit/test_web_ideas_routes.py` and `tests/unit/test_web_activity_areas.py`.

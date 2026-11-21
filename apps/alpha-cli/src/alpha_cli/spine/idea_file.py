@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from alpha_cli.follow_counts import follows_of_card
 from alpha_cli.run_store import find_run_dir, read_manifest
 from alpha_cli.spine import idea_card as cards
 from alpha_cli.spine import reserve
@@ -68,6 +69,16 @@ def _checks(home: Path, run_id: str) -> tuple[list[dict[str, Any]], str | None]:
     ], None
 
 
+def _figure_ids(rdir: Path, manifest: dict[str, Any]) -> list[str]:
+    """The ids of the figures that can be drawn for the run. Ids only; nothing is rendered."""
+    from alpha_cli.figures import available_figures
+
+    try:
+        return [f.definition.figure_id for f in available_figures(rdir, manifest) if f.available]
+    except _READ_ERRORS:
+        return []
+
+
 def _rule_entry(home: Path, run_id: str, ledger: dict[str, Any]) -> dict[str, Any]:
     entry: dict[str, Any] = {
         "kind": "rule test",
@@ -75,6 +86,7 @@ def _rule_entry(home: Path, run_id: str, ledger: dict[str, Any]) -> dict[str, An
         "recorded_at": ledger.get("recorded_at"),
         "tested": {"asset": ledger.get("symbol") or UNKNOWN},
         "reading": None,
+        "figures_available": [],
         "word": None,
         "sentence": None,
         "aim": None,
@@ -92,6 +104,7 @@ def _rule_entry(home: Path, run_id: str, ledger: dict[str, Any]) -> dict[str, An
     except _READ_ERRORS as exc:
         entry["problem"] = f"the stored run could not be read: {exc}"
         return entry
+    entry["figures_available"] = _figure_ids(rdir, manifest)
     spine = manifest.get("spine") or {}
     data, traded = spine.get("data_period") or {}, spine.get("traded_period") or {}
     block = manifest.get("reserve") or spine.get("reserve")
@@ -207,7 +220,8 @@ def build(home: Path, wanted: str) -> dict[str, Any]:
     entries.sort(key=lambda e: str(e.get("recorded_at") or ""))
     runs = [e for e in entries if e["kind"] == "rule test"]
     finds = [e for e in entries if e["kind"] == "setup find"]
-    steps = build_map(identity, runs, finds)
+    follows = follows_of_card(home, identity)
+    steps = build_map(identity, runs, finds, follows)
     checks = [c for r in runs for c in r["checks"]]
     assets = {r["tested"]["asset"] for r in runs if r["tested"]["asset"] != UNKNOWN}
     assets |= {a for f in finds for a in f["tested"].get("assets") or [] if a}
@@ -224,6 +238,7 @@ def build(home: Path, wanted: str) -> dict[str, Any]:
             "superseded_by": newer[0] if newer else None,
         },
         "map": steps,
+        "follows": follows,
         "readings": readings,
         "counts": {
             "tests_linked": len(entries),

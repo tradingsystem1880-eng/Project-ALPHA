@@ -48,7 +48,7 @@ The rule-test capability itself belongs to the [command line](command-line.md); 
 ## Where it lives
 
 - **Workspaces:** `apps/alpha-web`
-- **Capabilities:** `workstation`, `price-charts`, `market-overview`, `follow-today-screen`
+- **Capabilities:** `workstation`, `price-charts`, `market-overview`, `follow-today-screen`, `idea-workspace`
 - Code: `apps/alpha-web/src/alpha_web/` (server), `apps/alpha-web/frontend/` (browser app).
 - Tests: `tests/smoke/test_web_smoke.py`, `apps/alpha-web/frontend/e2e/`.
 - How to change it: [apps/alpha-web/CONTEXT.md](../../../../apps/alpha-web/CONTEXT.md).

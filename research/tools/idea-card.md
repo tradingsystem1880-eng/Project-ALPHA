@@ -4,7 +4,7 @@ sources:
   - apps/alpha-cli/src/alpha_cli/idea_cmds.py
   - apps/alpha-cli/src/alpha_cli/spine/idea_card.py
   - apps/alpha-cli/src/alpha_cli/spine/idea_file.py
-verified: 3f0a08439aa088f3
+verified: 446f25d20fb151e5
 ---
 # Idea card
 
@@ -31,7 +31,7 @@ what would disprove it, the baseline it must beat, and four clocks (signal forms
 - A run first stored with the link names the card in `manifest.json` (`spine.idea_card` for a rule test,
   `idea_card` for a setup find). A card reads "linked to a test" only after a run stored its result.
   An unknown id stops the test, and the error names it.
-- `alpha next` counts the cards. `alpha idea file <id> [--json]` is one read-only page: card, map, readings, counts.
+- `alpha next` counts the cards. `alpha idea file <id> [--json]` is one read-only page: card, map, readings, paper follows, counts.
 
 A card can start from a published idea: `alpha library card <id>` ([library](library.md)); its `source` is not in the id.
 

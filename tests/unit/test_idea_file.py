@@ -127,13 +127,13 @@ def test_map_lines_are_true_or_false_as_the_records_say(tmp_path: Path) -> None:
     assert steps["costs checked"]["evidence"] == [TOOL_FILE]
     assert steps["out-of-sample numbers recorded"]["state"] == "done"
     assert steps["held-back confirmation"]["state"] == "not built yet"
-    assert steps["followed forward on paper"]["state"] == "not built yet"
+    assert steps["followed forward on paper"]["state"] == "not yet"
 
 
 def test_counts_are_named_for_what_they_count(tmp_path: Path) -> None:
     card = synthetic_home(tmp_path)
     facts = json.loads(_file(tmp_path, card, "--json")[1])
-    assert sorted(facts) == ["card", "counts", "map", "open_points", "readings"]
+    assert sorted(facts) == ["card", "counts", "follows", "map", "open_points", "readings"]
     counts = facts["counts"]
     assert counts["tests_linked"] == 2
     assert counts["distinct_assets"] == 1
@@ -325,3 +325,50 @@ def test_one_run_with_default_settings_is_not_yet_for_settings_checked(tmp_path:
     cards.note_link(tmp_path, card, "rule_test", WEAK_RUN)
     steps = {r["step"]: r for r in json.loads(_file(tmp_path, card, "--json")[1])["map"]}
     assert steps["settings checked"]["state"] == "not yet"
+
+
+def _follow_world(home: Path, card: str) -> dict[str, str]:
+    from datetime import date
+
+    from tests.fixtures import follow_today_fixtures as fx
+
+    fx.seed(home)
+    other = fx.card(home, "A different idea about gaps")
+    stopped = fx.start(home, "BBB", run_id="b" * 16, card=card)
+    mine = fx.start(home, "AAA", run_id="a" * 16, card=card)
+    foreign = fx.start(home, "CCC", run_id="c" * 16, card=other)
+    fx.add(home, mine, date(2026, 11, 18))
+    fx.add(home, mine, date(2026, 11, 19))
+    return {"mine": mine, "stopped": stopped, "foreign": foreign}
+
+
+def test_follows_list_only_this_cards_follows_and_the_map_step_turns_true(tmp_path: Path) -> None:
+    card = synthetic_home(tmp_path)
+    ids = _follow_world(tmp_path, card)
+    facts = json.loads(_file(tmp_path, card, "--json")[1])
+    rows = {row["follow_id"]: row for row in facts["follows"]}
+    assert set(rows) == {ids["mine"], ids["stopped"]}
+    assert rows[ids["mine"]]["state"] == "active" and rows[ids["mine"]]["sessions"] == 2
+    assert rows[ids["stopped"]]["state"] == "stopped"
+    assert rows[ids["stopped"]]["stop_reason"] == "replaced by version 2"
+    assert rows[ids["mine"]]["assets"] == ["AAA"] and rows[ids["mine"]]["version"] == 2
+    step = {r["step"]: r for r in facts["map"]}["followed forward on paper"]
+    assert step["state"] == "done" and ids["mine"] in step["evidence"]
+    assert "paper" in _file(tmp_path, card)[1].lower()
+
+
+def test_no_follows_keeps_the_old_step_and_an_empty_list(tmp_path: Path) -> None:
+    card = synthetic_home(tmp_path)
+    facts = json.loads(_file(tmp_path, card, "--json")[1])
+    assert facts["follows"] == []
+    step = {r["step"]: r for r in facts["map"]}["followed forward on paper"]
+    assert step["state"] == "not yet" and step["evidence"] == []
+
+
+def test_each_linked_run_names_its_figures_by_id_only(tmp_path: Path) -> None:
+    card = synthetic_home(tmp_path)
+    facts = json.loads(_file(tmp_path, card, "--json")[1])
+    for row in facts["readings"]:
+        assert isinstance(row["figures_available"], list)
+        assert all(isinstance(name, str) for name in row["figures_available"])
+    assert "image" not in json.dumps(facts) and ".png" not in json.dumps(facts["readings"])

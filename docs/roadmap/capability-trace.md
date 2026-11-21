@@ -56,6 +56,7 @@ table. A capability may serve several rows; a row may be served by several capab
 | `validation-gauntlet` | Bootstrap ranges (block resampling) around results |
 | `validation-gauntlet` | Drawdown episodes listed and dated |
 | `idea-card` | Four clocks on each idea: signal lookback, decision pace, holding period, execution delay |
+| `idea-workspace` | The Workstation opens in a browser |
 | `idea-library` | Verified source library: papers, books and tools checked to exist, grouped by topic, rules of thumb traced to their origin |
 | `published-factor-reference` | Verified source library: papers, books and tools checked to exist, grouped by topic, rules of thumb traced to their origin |
 | `front-door` | Every test, tool and variant counted in one ledger; the count printed on each result |

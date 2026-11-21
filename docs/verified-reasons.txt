@@ -2,19 +2,19 @@
 # --reason`, one entry per document (the latest); `git log -p` on this file keeps the rest.
 
 apps/alpha-cli/CONTEXT.md
-  verified 0a99f556efa007b8 on 2026-11-21: only the audit's hold-back helper was split to keep the function size; the text is still correct
+  verified e51b66c1cc378fb6 on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 apps/alpha-cli/README.md
-  verified 0a99f556efa007b8 on 2026-11-21: only the audit's hold-back helper was split to keep the function size; the text is still correct
+  verified e51b66c1cc378fb6 on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 apps/alpha-mcp/CONTEXT.md
   verified dbae13496c19ad79 on 2026-11-20: Only argument safety, a write cap and error text changed in the front-door relays; the summary stays true.
 
 apps/alpha-web/CONTEXT.md
-  verified 66231186fdebe163 on 2026-11-21: Merged main (setup show, context guard) into the setup context branch; text re-read and still correct
+  verified 278f313a49df9471 on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 apps/alpha-web/README.md
-  verified 66231186fdebe163 on 2026-11-21: Merged main (setup show, context guard) into the setup context branch; text re-read and still correct
+  verified 278f313a49df9471 on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 docs/CONTEXT.md
   verified 7a5bda0bea5e0d33 on 2026-11-19: docs README only re-pointed one link; page still correct
@@ -23,7 +23,7 @@ docs/reference/invariants/README.md
   verified 8115bbcdee4c05e0 on 2026-11-20: re-read after a cram ceiling in test_filesystem_contract.py was removed and invariants pages were rewrapped; the document's claims still hold
 
 docs/reference/invariants/cli-follow.md
-  verified f82b7658d6a7bebe on 2026-11-21: Merged main into the portfolio book branch; adds results correlate, follow book and spine/book.py with dropped-day counts and a net-of-fees label; no existing command, fact or reading changed
+  verified c9f8e501367ee506 on 2026-11-21: updated for the idea workspace
 
 docs/reference/invariants/cli-investigation-tools.md
   verified e86438048ee2bf2e on 2026-11-20: only the applicability rule of one toolbox entry changed; this page's statements are unchanged
@@ -38,10 +38,10 @@ docs/reference/invariants/cli-results-check.md
   verified 7b73bfb411777416 on 2026-11-21: Merged main into the portfolio book branch; adds results correlate, follow book and spine/book.py with dropped-day counts and a net-of-fees label; no existing command, fact or reading changed
 
 docs/reference/invariants/cli-rule-readings.md
-  verified 655e0dfacb1217f3 on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
+  verified 919eb09f67050a4a on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 docs/reference/invariants/cli-runs.md
-  verified 401130b0343c2e7c on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
+  verified 437c8c8604ecf113 on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 docs/reference/invariants/cli-setups.md
   verified 0375e4ab3fe2b99a on 2026-11-21: Test narrowed for mypy; rules unchanged
@@ -89,16 +89,19 @@ docs/reference/invariants/validation.md
   verified ab6b046291b29b88 on 2026-11-20: only a pointer to the factor-statistics page; that page carries the new edge labels
 
 docs/reference/invariants/web-api-reads.md
-  verified ce3d3750e6615271 on 2026-11-21: Merged main (setup show, context guard) into the setup context branch; text re-read and still correct
+  verified 5ef0b8a232eb184a on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 docs/reference/invariants/web-api.md
-  verified da290d9f3c48e88d on 2026-11-21: Merged main (setup show, context guard) into the setup context branch; text re-read and still correct
+  verified 15870b3610a9401d on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 docs/reference/invariants/web-frontend.md
-  verified f16bfa1eca4431e4 on 2026-11-21: Only the printed wording of the holdout, optim and walk-forward lines changed; this page states none of it.
+  verified 086b57d14f6444c2 on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
+
+docs/reference/invariants/web-research.md
+  verified 4778c8b8e3105da1 on 2026-11-21: only the Ideas page, its two read routes and the ideas activity area were added; this page does not describe them
 
 docs/reference/invariants/web-run-detail.md
-  verified 80bd084013111523 on 2026-11-20: Gates cards show small charts of recorded data
+  verified cca6bf82ef3277a8 on 2026-11-21: only the Ideas page, its two read routes and the ideas activity area were added; this page does not describe them
 
 docs/reference/invariants/workers.md
   verified f94d228fdcc45820 on 2026-11-19: m24 adds alpha rdagent run/status; this page's rules are unchanged
@@ -158,7 +161,7 @@ docs/reference/project/components/toolbox.md
   verified a4d03b98723d2851 on 2026-11-20: only the applicability rule of one toolbox entry changed; this page's statements are unchanged
 
 docs/reference/project/components/validation-and-evidence.md
-  verified 200bde8e999e3da7 on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
+  verified 56ac3195ccc6d57a on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 docs/reference/project/components/web-workstation.md
   verified 6a4d2d82a3dd6f31 on 2026-11-19: routing only: the Setup Lab row wording in the web CONTEXT.md changed; this page's claims stand
@@ -215,10 +218,10 @@ packages/alpha-validation/CONTEXT.md
   verified 01354e66ff89d242 on 2026-11-20: only a pointer to the factor-statistics page; that page carries the new edge labels
 
 research/CONTEXT.md
-  verified 9abcc2bb498785c1 on 2026-11-21: merge of main (rule context plan) with the hold-back group A branch; both sides' pages were verified, routing unchanged
+  verified 5ef17560018264ce on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 research/PLAYBOOK.md
-  verified 68d4b19f3a6545e4 on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
+  verified 2c64820cfeb66fc0 on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 research/README.md
   verified 4b2aeb9720445559 on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
@@ -230,13 +233,13 @@ research/library/README.md
   verified 6ca504cc9457bc0d on 2026-11-19: only the line layout of the library module changed; this page's claims are unchanged
 
 research/tools/README.md
-  verified 2fdbb912d7450e3c on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
+  verified f069f9ff4286d851 on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 research/tools/attribution-regimes-changepoints.md
   verified 96231f129d35a504 on 2026-11-19: Only added find, declare, results and result-status code to the toolbox and results commands; this page's claims are unchanged.
 
 research/tools/benchmark-and-drawdowns.md
-  verified 980630856bd2db10 on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
+  verified ced05a638642ae02 on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 research/tools/charts.md
   verified 555f4dee9293a0be on 2026-11-21: Merged main into the portfolio book branch; adds results correlate, follow book and spine/book.py with dropped-day counts and a net-of-fees label; no existing command, fact or reading changed
@@ -245,16 +248,16 @@ research/tools/data-health.md
   verified 4d2e75bfba89e609 on 2026-11-21: Calendar home now keeps the regular close for pre-1993 early closes; these pages name the modules and checks, not that rule, so their text stays correct.
 
 research/tools/deflated-sharpe-and-trials.md
-  verified 78fd8a03c034146a on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
+  verified d9e54f766d222476 on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 research/tools/diagnose-and-audit.md
-  verified abbb4da8fbdc5a9d on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
+  verified b6fe352f51bbc71d on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 research/tools/follow.md
   verified dc6f99f581b1ef4c on 2026-11-21: Merged main (calendar range) into the portfolio book branch; both sides' source changes re-read; text still correct
 
 research/tools/idea-card.md
-  verified 3f0a08439aa088f3 on 2026-11-19: idea file read path and map wording corrected; page text re-read
+  verified 446f25d20fb151e5 on 2026-11-21: updated for the idea workspace
 
 research/tools/inverted-signal-control.md
   verified 1d2269669bfaf71a on 2026-11-19: Re-read: the test key adds store and data content and results show reads the repeat label from the ledger row; this page names no key fields or label source, so it stays correct
@@ -290,13 +293,13 @@ research/tools/results-and-cite.md
   verified 4487a967b258939d on 2026-11-21: Merged main into the portfolio book branch; adds results correlate, follow book and spine/book.py with dropped-day counts and a net-of-fees label; no existing command, fact or reading changed
 
 research/tools/rule-test.md
-  verified daf06adda45c7812 on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
+  verified 379a7af49c1484bc on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 research/tools/run-level-checks.md
   verified 03e5435255680c46 on 2026-11-19: Only test files and the status label changed; this card's claims are unchanged.
 
 research/tools/sensitivity.md
-  verified 78fd8a03c034146a on 2026-11-21: merge of main: this branch adds the rule-test context gate plan; main's text and this page's statements both still hold
+  verified d9e54f766d222476 on 2026-11-21: merge of main: main's own source changes were verified on main; this branch's changes (idea file follows, Ideas page) were checked against this page
 
 research/tools/setup-context.md
   verified ac071062a7a24370 on 2026-11-21: Merged main (calendar range fix) into the setup context branch; text re-read and still correct

@@ -6,7 +6,7 @@ const base: ActivityState = {
   connection: 'live',
   runsVersion: 0,
   jobsVersion: 0,
-  areaVersions: { research: 0, control: 3, bars: 0, paper: 0, workspaces: 0, alerts: 0 },
+  areaVersions: { research: 0, control: 3, bars: 0, paper: 0, workspaces: 0, alerts: 0, ideas: 0 },
   runningJobs: 0,
   feed: [],
 }
@@ -16,7 +16,7 @@ describe('activity store areas', () => {
     const patch = storeChangedPatch(base, { area: 'control', at: 1 })
     expect(patch).toEqual({
       area: 'control',
-      areaVersions: { research: 0, control: 4, bars: 0, paper: 0, workspaces: 0, alerts: 0 },
+      areaVersions: { research: 0, control: 4, bars: 0, paper: 0, workspaces: 0, alerts: 0, ideas: 0 },
     })
   })
 
@@ -28,5 +28,14 @@ describe('activity store areas', () => {
 
   it('has a feed sentence for every area the server watches', () => {
     for (const area of STORE_AREAS) expect(AREA_TEXT[area]).toMatch(/changed/)
+  })
+})
+
+describe('the ideas area', () => {
+  it('is a governed area and bumps only itself', () => {
+    expect(STORE_AREAS).toContain('ideas')
+    const patch = storeChangedPatch(base, { area: 'ideas', at: 1 })
+    expect(patch?.areaVersions.ideas).toBe(1)
+    expect(patch?.areaVersions.control).toBe(3)
   })
 })

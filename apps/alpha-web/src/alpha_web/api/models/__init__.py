@@ -21,6 +21,7 @@ research_gates: research gate packets and decisions.
 figures: figure catalogue and metadata.
 market: the stored-bars Market overview.
 follow: the Today screen's reads of followed ideas.
+ideas: the Ideas page's reads of idea cards and the idea file.
 """
 
 from __future__ import annotations
@@ -164,6 +165,29 @@ from .follow import FollowReplayDifference as FollowReplayDifference
 from .follow import FollowRow as FollowRow
 from .follow import FollowShow as FollowShow
 from .follow import FollowToday as FollowToday
+from .ideas import IdeaAimRow as IdeaAimRow
+from .ideas import IdeaCardFacts as IdeaCardFacts
+from .ideas import IdeaChecksRun as IdeaChecksRun
+from .ideas import IdeaCounts as IdeaCounts
+from .ideas import IdeaEvidence as IdeaEvidence
+from .ideas import IdeaFile as IdeaFile
+from .ideas import IdeaFindTotals as IdeaFindTotals
+from .ideas import IdeaFollow as IdeaFollow
+from .ideas import IdeaList as IdeaList
+from .ideas import IdeaListRow as IdeaListRow
+from .ideas import IdeaMapStep as IdeaMapStep
+from .ideas import IdeaMeasure as IdeaMeasure
+from .ideas import IdeaNextStep as IdeaNextStep
+from .ideas import IdeaOpenPoints as IdeaOpenPoints
+from .ideas import IdeaReading as IdeaReading
+from .ideas import IdeaReadingAim as IdeaReadingAim
+from .ideas import IdeaReadingCheck as IdeaReadingCheck
+from .ideas import IdeaReadingCounts as IdeaReadingCounts
+from .ideas import IdeaStudy as IdeaStudy
+from .ideas import IdeaTest as IdeaTest
+from .ideas import IdeaTested as IdeaTested
+from .ideas import IdeaToolCheck as IdeaToolCheck
+from .ideas import IdeaTrial as IdeaTrial
 from .market import MarketAsset as MarketAsset
 from .market import MarketOverview as MarketOverview
 from .market import MarketTooFewBars as MarketTooFewBars

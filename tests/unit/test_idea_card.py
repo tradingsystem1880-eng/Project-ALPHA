@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -83,6 +84,9 @@ def test_from_file_and_list(tmp_path: Path) -> None:
     listing = json.loads(_cli(tmp_path, "list", "--json")[1])
     assert [c["id"] for c in listing["cards"]] == [json.loads(output)["id"]]
     assert listing["cards"][0]["tested"] is False
+    assert listing["cards"][0]["tests_linked"] == 0
+    saved = datetime.fromisoformat(listing["cards"][0]["saved_at"])
+    assert saved.tzinfo is not None and saved.utcoffset() == timedelta(0)
     text = _cli(tmp_path, "list")[1]
     assert CLAIM in text and "no test yet" in text
     assert "no cards" in _cli(tmp_path / "other", "list")[1].lower()

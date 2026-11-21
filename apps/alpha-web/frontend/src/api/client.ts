@@ -98,6 +98,8 @@ import type {
   MarketOverview,
   FollowToday,
   FollowShow,
+  IdeaFile,
+  IdeaList,
   ChartOverlays,
   RuleList,
   RuleRecord,
@@ -477,6 +479,8 @@ export const api = {
   marketOverview: (store: string, window: number, limit = 15): Promise<MarketOverview> =>
     getJSON(`/api/market/overview?${new URLSearchParams({ store, window: String(window), limit: String(limit) })}`),
   followToday: (): Promise<FollowToday> => getJSON('/api/follow/today'),
+  ideaList: (): Promise<IdeaList> => getJSON('/api/ideas'),
+  ideaFile: (card: string): Promise<IdeaFile> => getJSON(`/api/ideas/${encodeURIComponent(card)}`),
   followShow: (id: string): Promise<FollowShow> => getJSON(`/api/follow/${encodeURIComponent(id)}`),
   firstBar: (symbol: string, exchange: string): Promise<FirstBar> =>
     getJSON(

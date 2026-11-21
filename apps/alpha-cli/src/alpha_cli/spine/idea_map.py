@@ -9,7 +9,10 @@ COSTS_TOOL = "costs.break_even"
 
 
 def build_map(
-    card_id: str, runs: list[dict[str, Any]], finds: list[dict[str, Any]]
+    card_id: str,
+    runs: list[dict[str, Any]],
+    finds: list[dict[str, Any]],
+    follows: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     read = [r for r in runs if r["reading"] is not None and r["word"] != "fault"]
     unread = bool(runs or finds) and not read and not finds
@@ -46,12 +49,11 @@ def build_map(
         line("costs checked", costs, "a stored break-even cost check"),
         line("out-of-sample numbers recorded", oos, "no out-of-sample Sharpe is stored"),
         {"step": "held-back confirmation", "state": NOT_BUILT, "evidence": [], "note": ""},
-        {
-            "step": "followed forward on paper",
-            "state": NOT_BUILT,
-            "evidence": [],
-            "note": "no follow records are read here",
-        },
+        line(
+            "followed forward on paper",
+            [f["follow_id"] for f in follows or []],
+            "no paper follow names this card",
+        ),
     ]
 
 

@@ -12,7 +12,7 @@ sources:
   - scripts/run_frontend_browser_lanes.py
   - tests/integration/test_web_spa_assets.py
   - tests/unit/test_web_menu_groups.py
-verified: ffdba1d4ac6a715e
+verified: 086b57d14f6444c2
 ---
 
 # Web frontend invariants
@@ -90,6 +90,15 @@ bundle](#built-static-bundle), [Tests](#tests), [Adding a panel](#adding-a-panel
   `alpha follow start --test <run id>` and `alpha results list`.
 - The equity chart plots the entries `follow show` returns (newest 5): percent since the start, a dashed zero line,
   and a table below. Enforced by `src/panels/FollowToday.test.tsx`, `followTodayModel.test.ts`, `e2e/follow-today.spec.ts`.
+
+## Ideas page
+
+- Ideas (View › Research › Ideas, pane `IdeaWorkspace`) lists idea cards newest first, then one page per card from `GET /api/ideas/{card}`.
+  It refetches when the `ideas` activity area moves, computes nothing and writes nothing. A left navigator lists 11 steps, each with a state dot and a count.
+- The story column: idea, hypothesis, rule as built (exact spec in a disclosure), data, tests (a click selects a run), charts, checks, tools,
+  RD-Agent (none linked yet), forward follow, open points. Each step has an empty state in words.
+- Charts are the real `FigureCard` figures of the selected run, full width, with their summary and "Expand". Checks reuse `ReadingBlock` and `Gates`.
+  Under "no research cases yet": the card count, newest card and a link. Enforced by `src/panels/idea/*.test.ts(x)`, `e2e/idea-workspace.spec.ts`.
 
 ## Workstation themes and readability
 

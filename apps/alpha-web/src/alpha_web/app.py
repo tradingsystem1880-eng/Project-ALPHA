@@ -37,6 +37,7 @@ from alpha_web.api import crypto_data as crypto_data_api
 from alpha_web.api import development as development_api
 from alpha_web.api import figures as figures_api
 from alpha_web.api import follow as follow_api
+from alpha_web.api import ideas as ideas_api
 from alpha_web.api import investigations as investigations_api
 from alpha_web.api import jobs as jobs_api
 from alpha_web.api import market as market_api
@@ -133,6 +134,7 @@ def create_app() -> FastAPI:
     app.include_router(ml_api.router)
     app.include_router(candles_api.router)
     app.include_router(follow_api.router)
+    app.include_router(ideas_api.router)
     app.include_router(market_api.router)
     app.include_router(figures_api.router)
     app.include_router(workspaces_api.router)

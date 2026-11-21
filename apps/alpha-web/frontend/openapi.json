@@ -9781,6 +9781,1242 @@
         "title": "HypothesisCardPlanFamily",
         "type": "object"
       },
+      "IdeaAimRow": {
+        "properties": {
+          "aim": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aim"
+          },
+          "interval_95": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval 95"
+          },
+          "measure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measure"
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed"
+          },
+          "relation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relation"
+          }
+        },
+        "title": "IdeaAimRow",
+        "type": "object"
+      },
+      "IdeaCardFacts": {
+        "properties": {
+          "baseline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline"
+          },
+          "claim": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim"
+          },
+          "disproved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disproved By"
+          },
+          "edge_lasts": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Lasts"
+          },
+          "held_for": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held For"
+          },
+          "how_often": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "How Often"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mechanism": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanism"
+          },
+          "other_side": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Other Side"
+          },
+          "signal_forms": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signal Forms"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "superseded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Superseded By"
+          },
+          "supersedes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "IdeaCardFacts",
+        "type": "object"
+      },
+      "IdeaChecksRun": {
+        "properties": {
+          "declared": {
+            "default": 0,
+            "title": "Declared",
+            "type": "integer"
+          },
+          "exploratory": {
+            "default": 0,
+            "title": "Exploratory",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "IdeaChecksRun",
+        "type": "object"
+      },
+      "IdeaCounts": {
+        "properties": {
+          "checks_run": {
+            "$ref": "#/components/schemas/IdeaChecksRun",
+            "default": {
+              "declared": 0,
+              "exploratory": 0,
+              "total": 0
+            }
+          },
+          "distinct_assets": {
+            "default": 0,
+            "title": "Distinct Assets",
+            "type": "integer"
+          },
+          "ledger_rows_naming_these_runs": {
+            "default": 0,
+            "title": "Ledger Rows Naming These Runs",
+            "type": "integer"
+          },
+          "rule_tests": {
+            "default": 0,
+            "title": "Rule Tests",
+            "type": "integer"
+          },
+          "setup_finds": {
+            "default": 0,
+            "title": "Setup Finds",
+            "type": "integer"
+          },
+          "tests_linked": {
+            "default": 0,
+            "title": "Tests Linked",
+            "type": "integer"
+          },
+          "trials": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IdeaTrial"
+            },
+            "title": "Trials",
+            "type": "array"
+          },
+          "variants_of_this_idea": {
+            "default": 0,
+            "title": "Variants Of This Idea",
+            "type": "integer"
+          }
+        },
+        "title": "IdeaCounts",
+        "type": "object"
+      },
+      "IdeaEvidence": {
+        "properties": {
+          "because": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Because",
+            "type": "array"
+          },
+          "word": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Word"
+          }
+        },
+        "title": "IdeaEvidence",
+        "type": "object"
+      },
+      "IdeaFile": {
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/IdeaCardFacts"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/IdeaCounts"
+          },
+          "follows": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IdeaFollow"
+            },
+            "title": "Follows",
+            "type": "array"
+          },
+          "map": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaMapStep"
+            },
+            "title": "Map",
+            "type": "array"
+          },
+          "open_points": {
+            "$ref": "#/components/schemas/IdeaOpenPoints"
+          },
+          "readings": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaTest"
+            },
+            "title": "Readings",
+            "type": "array"
+          },
+          "readings_shown_from": {
+            "default": 0,
+            "title": "Readings Shown From",
+            "type": "integer"
+          },
+          "readings_total": {
+            "default": 0,
+            "title": "Readings Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "card",
+          "map",
+          "readings",
+          "counts",
+          "open_points"
+        ],
+        "title": "IdeaFile",
+        "type": "object"
+      },
+      "IdeaFindTotals": {
+        "properties": {
+          "accepted": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "set_aside": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Set Aside"
+          }
+        },
+        "title": "IdeaFindTotals",
+        "type": "object"
+      },
+      "IdeaFollow": {
+        "properties": {
+          "assets": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Assets",
+            "type": "array"
+          },
+          "follow_id": {
+            "title": "Follow Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "paper_account_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paper Account Percent"
+          },
+          "sessions": {
+            "default": 0,
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "stop_reason": {
+            "default": "",
+            "title": "Stop Reason",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "follow_id",
+          "kind",
+          "source_id",
+          "version",
+          "started_at",
+          "state"
+        ],
+        "title": "IdeaFollow",
+        "type": "object"
+      },
+      "IdeaList": {
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaListRow"
+            },
+            "title": "Cards",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "truncated": {
+            "default": false,
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cards",
+          "total"
+        ],
+        "title": "IdeaList",
+        "type": "object"
+      },
+      "IdeaListRow": {
+        "properties": {
+          "claim": {
+            "default": "",
+            "title": "Claim",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "not_stated": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Stated",
+            "type": "array"
+          },
+          "saved_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved At"
+          },
+          "tested": {
+            "default": false,
+            "title": "Tested",
+            "type": "boolean"
+          },
+          "tests_linked": {
+            "default": 0,
+            "title": "Tests Linked",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "IdeaListRow",
+        "type": "object"
+      },
+      "IdeaMapStep": {
+        "properties": {
+          "evidence": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step",
+          "state"
+        ],
+        "title": "IdeaMapStep",
+        "type": "object"
+      },
+      "IdeaMeasure": {
+        "properties": {
+          "basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis"
+          },
+          "interval_95": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval 95"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "not_to_be_read": {
+            "default": false,
+            "title": "Not To Be Read",
+            "type": "boolean"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "IdeaMeasure",
+        "type": "object"
+      },
+      "IdeaNextStep": {
+        "properties": {
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step",
+          "command"
+        ],
+        "title": "IdeaNextStep",
+        "type": "object"
+      },
+      "IdeaOpenPoints": {
+        "properties": {
+          "map_not_yet": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Map Not Yet",
+            "type": "array"
+          },
+          "next_steps": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IdeaNextStep"
+            },
+            "title": "Next Steps",
+            "type": "array"
+          },
+          "not_stated": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Stated",
+            "type": "array"
+          },
+          "too_little_to_read": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Too Little To Read",
+            "type": "array"
+          }
+        },
+        "title": "IdeaOpenPoints",
+        "type": "object"
+      },
+      "IdeaReading": {
+        "properties": {
+          "aim": {
+            "$ref": "#/components/schemas/IdeaReadingAim",
+            "default": {
+              "rows": []
+            }
+          },
+          "checks": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IdeaReadingCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/IdeaReadingCounts",
+            "default": {}
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/IdeaEvidence",
+            "default": {
+              "because": []
+            }
+          },
+          "measures": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IdeaMeasure"
+            },
+            "title": "Measures",
+            "type": "array"
+          },
+          "sentence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentence"
+          }
+        },
+        "title": "IdeaReading",
+        "type": "object"
+      },
+      "IdeaReadingAim": {
+        "properties": {
+          "basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis"
+          },
+          "rows": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IdeaAimRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "title": "IdeaReadingAim",
+        "type": "object"
+      },
+      "IdeaReadingCheck": {
+        "properties": {
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "state"
+        ],
+        "title": "IdeaReadingCheck",
+        "type": "object"
+      },
+      "IdeaReadingCounts": {
+        "properties": {
+          "best_of": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Of"
+          },
+          "family_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family Id"
+          },
+          "family_trials": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family Trials"
+          },
+          "trial_n": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial N"
+          },
+          "variants_tried": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variants Tried"
+          }
+        },
+        "title": "IdeaReadingCounts",
+        "type": "object"
+      },
+      "IdeaStudy": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "labels": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "occurrences": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurrences"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem"
+          },
+          "reading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reading"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "IdeaStudy",
+        "type": "object"
+      },
+      "IdeaTest": {
+        "description": "One linked test: a rule test or a setup find, in the order the file lists them.",
+        "properties": {
+          "aim": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdeaAimRow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checks": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IdeaToolCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "figures_available": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Figures Available",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "labels": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem"
+          },
+          "reading": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdeaReading"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recorded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded At"
+          },
+          "sentence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentence"
+          },
+          "studies": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IdeaStudy"
+            },
+            "title": "Studies",
+            "type": "array"
+          },
+          "tested": {
+            "$ref": "#/components/schemas/IdeaTested",
+            "default": {
+              "assets": []
+            }
+          },
+          "totals": {
+            "$ref": "#/components/schemas/IdeaFindTotals",
+            "default": {}
+          },
+          "word": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Word"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "IdeaTest",
+        "type": "object"
+      },
+      "IdeaTested": {
+        "description": "What a linked test looked at. A rule test fills asset..held_back; a find, idea..assets.",
+        "properties": {
+          "asset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset"
+          },
+          "assets": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Assets",
+            "type": "array"
+          },
+          "context_bars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Bars"
+          },
+          "data_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data From"
+          },
+          "data_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data To"
+          },
+          "held_back": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held Back"
+          },
+          "idea": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idea"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule"
+          },
+          "scored_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scored From"
+          },
+          "scored_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scored To"
+          }
+        },
+        "title": "IdeaTested",
+        "type": "object"
+      },
+      "IdeaToolCheck": {
+        "properties": {
+          "file": {
+            "default": "",
+            "title": "File",
+            "type": "string"
+          },
+          "labels": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "reading": {
+            "default": "",
+            "title": "Reading",
+            "type": "string"
+          },
+          "recorded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded At"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "word"
+        ],
+        "title": "IdeaToolCheck",
+        "type": "object"
+      },
+      "IdeaTrial": {
+        "properties": {
+          "family_trials": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family Trials"
+          },
+          "run": {
+            "title": "Run",
+            "type": "string"
+          },
+          "trial_n": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial N"
+          },
+          "variants_tried": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variants Tried"
+          }
+        },
+        "required": [
+          "run"
+        ],
+        "title": "IdeaTrial",
+        "type": "object"
+      },
       "InvestigationCreate": {
         "additionalProperties": false,
         "properties": {
@@ -30998,6 +32234,82 @@
         "summary": "Show",
         "tags": [
           "follow"
+        ]
+      }
+    },
+    "/api/ideas": {
+      "get": {
+        "description": "Relay ``alpha idea list --json``: every card, newest first, at most ``MAX_CARDS``.",
+        "operationId": "list_ideas_api_ideas_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdeaList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "List Ideas",
+        "tags": [
+          "ideas"
+        ]
+      }
+    },
+    "/api/ideas/{card}": {
+      "get": {
+        "description": "Relay ``alpha idea file <card> --json``; the id is checked as 4 to 12 hex first.",
+        "operationId": "idea_file_api_ideas__card__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "card",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{4,12}$",
+              "title": "Card",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdeaFile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorV1"
+                }
+              }
+            },
+            "description": "Stable, redacted Workstation error"
+          }
+        },
+        "summary": "Idea File",
+        "tags": [
+          "ideas"
         ]
       }
     },

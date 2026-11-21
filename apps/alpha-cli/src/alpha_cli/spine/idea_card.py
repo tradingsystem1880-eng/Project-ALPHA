@@ -13,6 +13,7 @@ import json
 import os
 import re
 import tomllib
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -153,6 +154,15 @@ def load(home: Path, wanted: str) -> IdeaCard:
 
 def all_ids(home: Path) -> list[str]:
     return sorted(p.stem for p in _folder(home).glob("*.toml"))
+
+
+def saved_at(home: Path, identity: str) -> str | None:
+    """When the card file was written (aware UTC ISO text); None when it cannot be read."""
+    try:
+        stamp = (_folder(home) / f"{identity}.toml").stat().st_mtime
+    except OSError:
+        return None
+    return datetime.fromtimestamp(stamp, tz=UTC).isoformat()
 
 
 def _links(home: Path) -> list[dict[str, str]]:

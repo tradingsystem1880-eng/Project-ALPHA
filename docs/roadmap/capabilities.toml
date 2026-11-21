@@ -492,6 +492,29 @@ needs = []
 state = "Working"
 
 [[capability]]
+id = "idea-workspace"
+name = "Idea workspace: one page for one idea (Workstation, Ideas)"
+what = "See the whole story of one idea on one screen: the card, the hypothesis, the rule built from it, the data, every test and setup find in a timeline, the real charts and checks of the selected run, the stored tool results, the paper follow and the open points. A list of cards comes first, newest first. Read only."
+see_it = ["Workstation: View, Research, Ideas (or the link under 'no research cases yet')", "uv run alpha idea file <id> --json"]
+entry_points = [
+  "api: GET /api/ideas",
+  "api: GET /api/ideas/{card}",
+  "panel: apps/alpha-web/frontend/src/panels/idea/IdeaWorkspace.tsx",
+  "cli: alpha idea file",
+]
+proof_synthetic = [
+  "tests/unit/test_web_ideas_routes.py::test_the_real_cli_answers_the_models_end_to_end",
+  "tests/unit/test_idea_file.py::test_follows_list_only_this_cards_follows_and_the_map_step_turns_true",
+  "tests/unit/test_web_activity_areas.py::test_ideas_walk_is_one_level_deep_so_its_cost_is_bounded",
+  "apps/alpha-web/frontend/e2e/idea-workspace.spec.ts::the list opens one page that tells the whole story, and a click on a test changes the charts",
+]
+docs = ["docs/reference/invariants/web-frontend.md", "docs/reference/invariants/web-api-reads.md"]
+real_data = "not yet confirmed (to check on the Mac later)"
+needs = []
+state = "Partial"
+missing = "Proven on synthetic records and a fixture browser run only; no end-to-end smoke check. Step 9 (RD-Agent work) is not linked to an idea yet. A follow change does not refresh the page live. The tear sheet is not mounted yet."
+
+[[capability]]
 id = "forward-follow"
 name = "Follow a tested idea on paper (alpha follow)"
 what = "Follow a rule test or setup find forward on paper. The follow is frozen when it starts. An append-only, hash-chained journal records its sessions. A changed spec starts a new version. For a rule test, `alpha follow update` books one entry per new session: the rule's numbers, a plain decision and a paper fill at the next open, with a replay check against the stored bars."

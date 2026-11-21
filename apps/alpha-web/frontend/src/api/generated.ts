@@ -1006,6 +1006,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ideas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Ideas
+         * @description Relay ``alpha idea list --json``: every card, newest first, at most ``MAX_CARDS``.
+         */
+        get: operations["list_ideas_api_ideas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ideas/{card}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Idea File
+         * @description Relay ``alpha idea file <card> --json``; the id is checked as 4 to 12 hex first.
+         */
+        get: operations["idea_file_api_ideas__card__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/investigations": {
         parameters: {
             query?: never;
@@ -7766,6 +7806,484 @@ export interface components {
             family: string;
             /** Multiplicity */
             multiplicity: string;
+        };
+        /** IdeaAimRow */
+        IdeaAimRow: {
+            /** Aim */
+            aim?: number | null;
+            /** Interval 95 */
+            interval_95?: number[] | null;
+            /** Measure */
+            measure?: string | null;
+            /** Observed */
+            observed?: number | null;
+            /** Relation */
+            relation?: string | null;
+        };
+        /** IdeaCardFacts */
+        IdeaCardFacts: {
+            /** Baseline */
+            baseline?: string | null;
+            /** Claim */
+            claim?: string | null;
+            /** Disproved By */
+            disproved_by?: string | null;
+            /** Edge Lasts */
+            edge_lasts?: string | null;
+            /** Held For */
+            held_for?: string | null;
+            /** How Often */
+            how_often?: string | null;
+            /** Id */
+            id: string;
+            /** Mechanism */
+            mechanism?: string | null;
+            /** Other Side */
+            other_side?: string | null;
+            /** Signal Forms */
+            signal_forms?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Superseded By */
+            superseded_by?: string | null;
+            /** Supersedes */
+            supersedes?: string | null;
+        };
+        /** IdeaChecksRun */
+        IdeaChecksRun: {
+            /**
+             * Declared
+             * @default 0
+             */
+            declared: number;
+            /**
+             * Exploratory
+             * @default 0
+             */
+            exploratory: number;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** IdeaCounts */
+        IdeaCounts: {
+            /**
+             * @default {
+             *       "declared": 0,
+             *       "exploratory": 0,
+             *       "total": 0
+             *     }
+             */
+            checks_run: components["schemas"]["IdeaChecksRun"];
+            /**
+             * Distinct Assets
+             * @default 0
+             */
+            distinct_assets: number;
+            /**
+             * Ledger Rows Naming These Runs
+             * @default 0
+             */
+            ledger_rows_naming_these_runs: number;
+            /**
+             * Rule Tests
+             * @default 0
+             */
+            rule_tests: number;
+            /**
+             * Setup Finds
+             * @default 0
+             */
+            setup_finds: number;
+            /**
+             * Tests Linked
+             * @default 0
+             */
+            tests_linked: number;
+            /**
+             * Trials
+             * @default []
+             */
+            trials: components["schemas"]["IdeaTrial"][];
+            /**
+             * Variants Of This Idea
+             * @default 0
+             */
+            variants_of_this_idea: number;
+        };
+        /** IdeaEvidence */
+        IdeaEvidence: {
+            /**
+             * Because
+             * @default []
+             */
+            because: string[];
+            /** Word */
+            word?: string | null;
+        };
+        /** IdeaFile */
+        IdeaFile: {
+            card: components["schemas"]["IdeaCardFacts"];
+            counts: components["schemas"]["IdeaCounts"];
+            /**
+             * Follows
+             * @default []
+             */
+            follows: components["schemas"]["IdeaFollow"][];
+            /** Map */
+            map: components["schemas"]["IdeaMapStep"][];
+            open_points: components["schemas"]["IdeaOpenPoints"];
+            /** Readings */
+            readings: components["schemas"]["IdeaTest"][];
+            /**
+             * Readings Shown From
+             * @default 0
+             */
+            readings_shown_from: number;
+            /**
+             * Readings Total
+             * @default 0
+             */
+            readings_total: number;
+        };
+        /** IdeaFindTotals */
+        IdeaFindTotals: {
+            /** Accepted */
+            accepted?: number | null;
+            /** Pending */
+            pending?: number | null;
+            /** Set Aside */
+            set_aside?: number | null;
+        };
+        /** IdeaFollow */
+        IdeaFollow: {
+            /**
+             * Assets
+             * @default []
+             */
+            assets: string[];
+            /** Follow Id */
+            follow_id: string;
+            /** Kind */
+            kind: string;
+            /** Paper Account Percent */
+            paper_account_percent?: number | null;
+            /**
+             * Sessions
+             * @default 0
+             */
+            sessions: number;
+            /** Source Id */
+            source_id: string;
+            /** Started At */
+            started_at: string;
+            /** State */
+            state: string;
+            /**
+             * Stop Reason
+             * @default
+             */
+            stop_reason: string;
+            /** Version */
+            version: number;
+        };
+        /** IdeaList */
+        IdeaList: {
+            /** Cards */
+            cards: components["schemas"]["IdeaListRow"][];
+            /** Total */
+            total: number;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
+        };
+        /** IdeaListRow */
+        IdeaListRow: {
+            /**
+             * Claim
+             * @default
+             */
+            claim: string;
+            /** Id */
+            id: string;
+            /**
+             * Not Stated
+             * @default []
+             */
+            not_stated: string[];
+            /** Saved At */
+            saved_at?: string | null;
+            /**
+             * Tested
+             * @default false
+             */
+            tested: boolean;
+            /**
+             * Tests Linked
+             * @default 0
+             */
+            tests_linked: number;
+        };
+        /** IdeaMapStep */
+        IdeaMapStep: {
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: string[];
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** State */
+            state: string;
+            /** Step */
+            step: string;
+        };
+        /** IdeaMeasure */
+        IdeaMeasure: {
+            /** Basis */
+            basis?: string | null;
+            /** Interval 95 */
+            interval_95?: number[] | null;
+            /** Name */
+            name: string;
+            /**
+             * Not To Be Read
+             * @default false
+             */
+            not_to_be_read: boolean;
+            /** Value */
+            value?: number | null;
+        };
+        /** IdeaNextStep */
+        IdeaNextStep: {
+            /** Command */
+            command: string;
+            /** Step */
+            step: string;
+        };
+        /** IdeaOpenPoints */
+        IdeaOpenPoints: {
+            /**
+             * Map Not Yet
+             * @default []
+             */
+            map_not_yet: string[];
+            /**
+             * Next Steps
+             * @default []
+             */
+            next_steps: components["schemas"]["IdeaNextStep"][];
+            /**
+             * Not Stated
+             * @default []
+             */
+            not_stated: string[];
+            /**
+             * Too Little To Read
+             * @default []
+             */
+            too_little_to_read: string[];
+        };
+        /** IdeaReading */
+        IdeaReading: {
+            /**
+             * @default {
+             *       "rows": []
+             *     }
+             */
+            aim: components["schemas"]["IdeaReadingAim"];
+            /**
+             * Checks
+             * @default []
+             */
+            checks: components["schemas"]["IdeaReadingCheck"][];
+            /** @default {} */
+            counts: components["schemas"]["IdeaReadingCounts"];
+            /**
+             * @default {
+             *       "because": []
+             *     }
+             */
+            evidence: components["schemas"]["IdeaEvidence"];
+            /**
+             * Measures
+             * @default []
+             */
+            measures: components["schemas"]["IdeaMeasure"][];
+            /** Sentence */
+            sentence?: string | null;
+        };
+        /** IdeaReadingAim */
+        IdeaReadingAim: {
+            /** Basis */
+            basis?: string | null;
+            /**
+             * Rows
+             * @default []
+             */
+            rows: components["schemas"]["IdeaAimRow"][];
+            /** Source */
+            source?: string | null;
+        };
+        /** IdeaReadingCheck */
+        IdeaReadingCheck: {
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Name */
+            name: string;
+            /** State */
+            state: string;
+        };
+        /** IdeaReadingCounts */
+        IdeaReadingCounts: {
+            /** Best Of */
+            best_of?: number | null;
+            /** Family Id */
+            family_id?: string | null;
+            /** Family Trials */
+            family_trials?: number | null;
+            /** Trial N */
+            trial_n?: number | null;
+            /** Variants Tried */
+            variants_tried?: number | null;
+        };
+        /** IdeaStudy */
+        IdeaStudy: {
+            /** Id */
+            id: string;
+            /**
+             * Labels
+             * @default []
+             */
+            labels: string[];
+            /** Occurrences */
+            occurrences?: number | null;
+            /** Problem */
+            problem?: string | null;
+            /** Reading */
+            reading?: string | null;
+        };
+        /**
+         * IdeaTest
+         * @description One linked test: a rule test or a setup find, in the order the file lists them.
+         */
+        IdeaTest: {
+            aim?: components["schemas"]["IdeaAimRow"] | null;
+            /**
+             * Checks
+             * @default []
+             */
+            checks: components["schemas"]["IdeaToolCheck"][];
+            /**
+             * Figures Available
+             * @default []
+             */
+            figures_available: string[];
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Labels
+             * @default []
+             */
+            labels: string[];
+            /** Problem */
+            problem?: string | null;
+            reading?: components["schemas"]["IdeaReading"] | null;
+            /** Recorded At */
+            recorded_at?: string | null;
+            /** Sentence */
+            sentence?: string | null;
+            /**
+             * Studies
+             * @default []
+             */
+            studies: components["schemas"]["IdeaStudy"][];
+            /**
+             * @default {
+             *       "assets": []
+             *     }
+             */
+            tested: components["schemas"]["IdeaTested"];
+            /** @default {} */
+            totals: components["schemas"]["IdeaFindTotals"];
+            /** Word */
+            word?: string | null;
+        };
+        /**
+         * IdeaTested
+         * @description What a linked test looked at. A rule test fills asset..held_back; a find, idea..assets.
+         */
+        IdeaTested: {
+            /** Asset */
+            asset?: string | null;
+            /**
+             * Assets
+             * @default []
+             */
+            assets: string[];
+            /** Context Bars */
+            context_bars?: number | null;
+            /** Data From */
+            data_from?: string | null;
+            /** Data To */
+            data_to?: string | null;
+            /** Held Back */
+            held_back?: string | null;
+            /** Idea */
+            idea?: string | null;
+            /** Rule */
+            rule?: string | null;
+            /** Scored From */
+            scored_from?: string | null;
+            /** Scored To */
+            scored_to?: string | null;
+        };
+        /** IdeaToolCheck */
+        IdeaToolCheck: {
+            /**
+             * File
+             * @default
+             */
+            file: string;
+            /**
+             * Labels
+             * @default []
+             */
+            labels: string[];
+            /**
+             * Reading
+             * @default
+             */
+            reading: string;
+            /** Recorded At */
+            recorded_at?: string | null;
+            /** Tool */
+            tool: string;
+            /** Word */
+            word: string;
+        };
+        /** IdeaTrial */
+        IdeaTrial: {
+            /** Family Trials */
+            family_trials?: number | null;
+            /** Run */
+            run: string;
+            /** Trial N */
+            trial_n?: number | null;
+            /** Variants Tried */
+            variants_tried?: number | null;
         };
         /** InvestigationCreate */
         InvestigationCreate: {
@@ -15647,6 +16165,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FollowShow"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    list_ideas_api_ideas_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdeaList"];
+                };
+            };
+            /** @description Stable, redacted Workstation error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorV1"];
+                };
+            };
+        };
+    };
+    idea_file_api_ideas__card__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                card: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdeaFile"];
                 };
             };
             /** @description Stable, redacted Workstation error */

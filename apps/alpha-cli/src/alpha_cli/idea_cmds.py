@@ -132,6 +132,8 @@ def list_cards(json_out: JSON = False) -> None:
                 "claim": card.claim,
                 "tested": identity in tested,
                 "not_stated": card.not_stated(),
+                "tests_linked": cards.linked_tests(home, identity),
+                "saved_at": cards.saved_at(home, identity),
             }
         )
     lines = [f"{len(rows)} idea card(s)"] if rows else ["No cards yet. Write one: alpha idea new."]

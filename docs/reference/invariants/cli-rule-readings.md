@@ -28,7 +28,7 @@ sources:
   - apps/alpha-cli/src/alpha_cli/backtest_cmds.py
   - apps/alpha-cli/src/alpha_cli/optim_cmds.py
   - apps/alpha-web/frontend/src/explain/gates.ts
-verified: 655e0dfacb1217f3
+verified: 919eb09f67050a4a
 ---
 
 # Command line rule-test readings invariants
@@ -145,7 +145,11 @@ grades. The stored run files are in [command line runs](cli-runs.md#stored-facts
 - Read-only: no file under the home changes, no ledger row, no network, no model call.
   The ledger is read with `read_trials_readonly`, which never creates the lock file.
   A test compares the home before and after, with no lock file present.
-- Order: the card; the map; readings oldest first; counts; open points. `--json` keys: `card`, `map`, `readings`, `counts`, `open_points`.
+- Order: the card; the map; readings oldest first; paper follows; counts; open points.
+  `--json` keys: `card`, `map`, `follows`, `readings`, `counts`, `open_points`.
+- `follows[]` comes from `follow_counts.follows_of_card`, a listed reader: the file never opens `forward/`. The map line `followed forward on paper`
+  is `done` when a follow record names the card. Each rule test carries `figures_available`: figure ids only; nothing is drawn.
+  `alpha idea list --json` adds `saved_at` and `tests_linked` to each card.
 - Each reading is the one `spine/reading.py` stores or derives, with the evidence word unchanged. A fault prints as a fault.
   Check results print with their declared or exploratory word. No best result is picked.
 - The map is facts, never a gate. A line is `done` with its evidence ids, `not yet`, or `not recorded` when linked runs cannot be read.

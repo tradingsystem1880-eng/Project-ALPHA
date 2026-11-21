@@ -117,6 +117,16 @@ def _readings(entries: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def _follows(rows: list[dict[str, Any]]) -> list[str]:
+    if not rows:
+        return ["  No paper follow names this card."]
+    return [
+        f"  Follow {r['follow_id']} (version {r['version']}, {r['state']}): "
+        f"{', '.join(r['assets'])}; {r['sessions']} session(s) recorded. Paper only."
+        for r in rows
+    ]
+
+
 def _counts(c: dict[str, Any]) -> list[str]:
     k = c["checks_run"]
     lines = [
@@ -156,8 +166,9 @@ def render(facts: dict[str, Any]) -> str:
         ("1. The card", _card(card)),
         ("2. Where it is on the map", _map(facts["map"])),
         ("3. Readings so far, oldest first", _readings(facts["readings"])),
-        ("4. Counts", _counts(facts["counts"])),
-        ("5. Open points", _open(facts["open_points"])),
+        ("4. Followed forward on paper", _follows(facts["follows"])),
+        ("5. Counts", _counts(facts["counts"])),
+        ("6. Open points", _open(facts["open_points"])),
     ]
     out: list[str] = []
     for title, lines in parts:

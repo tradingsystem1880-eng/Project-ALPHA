@@ -10,6 +10,7 @@ import { useAreaVersion } from '../state/activity'
 import { Placeholder } from '../components/Placeholder'
 import type { PanelHandleProps } from '../context/panelHandle'
 import { usePanelLinked } from '../context/usePanelLinked'
+import { IdeaCardsNotice } from './idea/IdeaCardsNotice'
 import { groupResearchBacklog } from './researchBacklogModel'
 import {
   researchCaseProgress,
@@ -80,6 +81,7 @@ export function ResearchBacklog(props: PanelHandleProps) {
             trading rules asked.
           </Placeholder>
         ) : null}
+        {rows !== null && rows.length === 0 ? <IdeaCardsNotice /> : null}
         {groups.map((group) => (
           <section key={group.bucket} className="backlog-bucket" aria-label={group.label}>
             <div className="rd-head">
