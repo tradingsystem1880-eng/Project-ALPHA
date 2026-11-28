@@ -19,7 +19,6 @@ const CATALOG_GROUPS = [
   'ml',
   'monte-carlo',
   'optim',
-  'owner-auth',
   'partner',
   'project',
   'propfirm',
