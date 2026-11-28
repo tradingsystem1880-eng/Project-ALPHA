@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
 
-export { asNum, asStr } from '../../util/format'
+export { asNum, asObj, asStr } from '../../util/format'
 
 export type Dict = Record<string, unknown>
-export const asObj = (v: unknown): Dict | null =>
-  v && typeof v === 'object' && !Array.isArray(v) ? (v as Dict) : null
 
 export function useProjection<T>(enabled: boolean, runId: string, fetcher: () => Promise<T>): T | null {
   const [value, setValue] = useState<T | null>(null)

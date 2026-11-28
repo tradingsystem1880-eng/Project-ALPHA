@@ -1,6 +1,8 @@
+import { asObj } from '../util/format'
+
 /** Display projection only: no metric, missing-value fill or result is computed here. */
 export function object(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {}
+  return asObj(value) ?? {}
 }
 
 export function stored(value: unknown): string {

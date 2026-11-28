@@ -1,14 +1,12 @@
 import type { RunDetail } from '../../api/types'
+import { asObj } from '../../util/format'
 
-const object = (value: unknown): Record<string, unknown> | null =>
-  value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown> : null
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
 const exact = (value: number): string => Object.is(value, -0) ? '-0' : String(value)
 
 /** Legacy runs without a command/verdict use RunDetail's existing plain-backtest convention. */
 export function isBacktestRun(detail: RunDetail): boolean {
-  const manifest = object(detail.manifest)
+  const manifest = asObj(detail.manifest)
   const command = manifest?.command
   return detail.kind === 'runs' && (typeof command === 'string'
     ? command.startsWith('backtest_')
@@ -17,8 +15,8 @@ export function isBacktestRun(detail: RunDetail): boolean {
 
 /** Eligibility only: byte verification is owned by the existing run/equity API, not this UI. */
 export function backtestSource(detail: RunDetail, selectedRun: string): { runId: string; sha256: string } | null {
-  const manifest = object(detail.manifest)
-  const artifact = object(object(manifest?.artifacts)?.['equity_curve.parquet'])
+  const manifest = asObj(detail.manifest)
+  const artifact = asObj(asObj(manifest?.artifacts)?.['equity_curve.parquet'])
   if (detail.run_id !== selectedRun || detail.kind !== 'runs' || detail.has_equity !== true
     || manifest?.run_id !== selectedRun || manifest.command !== 'backtest_run'
     || manifest.schema_version !== 3 || manifest.run_identity_version !== 3
@@ -31,7 +29,7 @@ export function backtestSource(detail: RunDetail, selectedRun: string): { runId:
 export function backtestResult(input: unknown): {
   observations: string; timestampUnixSeconds: string; timestampUtc: string; drawdown: string
 } | null {
-  const series = object(input)
+  const series = asObj(input)
   const ts: unknown = series?.ts
   const equity: unknown = series?.equity
   const drawdown: unknown = series?.drawdown

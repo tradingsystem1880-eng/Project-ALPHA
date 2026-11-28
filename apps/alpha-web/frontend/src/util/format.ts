@@ -14,6 +14,11 @@ export function asStr(v: unknown): string | null {
   return typeof v === 'string' ? v : null
 }
 
+/** The value as a plain object (not null, not an array), else null. */
+export function asObj(v: unknown): Record<string, unknown> | null {
+  return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
+}
+
 /** UTC calendar date of an epoch-seconds bar stamp (`YYYY-MM-DD`). */
 export function fmtUtcDate(epochSeconds: number): string {
   return new Date(epochSeconds * 1000).toISOString().slice(0, 10)

@@ -3,6 +3,8 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
 
+import { asObj } from '../util/format'
+
 export const LINK_GROUPS = ['A', 'B', 'C', 'D'] as const
 export type LinkGroup = (typeof LINK_GROUPS)[number]
 export type Timeframe = '1D'
@@ -46,9 +48,7 @@ const DEFAULT_GROUP: GroupLinkedState = linkedGroup(DEFAULT_LINKED)
 const GROUP_SET = new Set<string>(LINK_GROUPS)
 
 function record(value: unknown): Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {}
+  return asObj(value) ?? {}
 }
 
 function isLinkGroup(value: unknown): value is LinkGroup {
