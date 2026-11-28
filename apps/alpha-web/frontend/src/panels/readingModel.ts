@@ -1,6 +1,8 @@
 // A stored reading (`AlphaReadingV1`) as the screens use it. The command line states every word and
 // number; this module only checks the shape, orders the parts and places the range picture.
 
+import { asObj } from '../util/format'
+
 export const EVIDENCE_STEPS = ['too little to read', 'not clear of chance', 'some evidence', 'clear of chance'] as const
 export type EvidenceWord = (typeof EVIDENCE_STEPS)[number]
 export type CheckState = 'sound' | 'fault' | 'not-checked'
@@ -28,7 +30,6 @@ export interface AlphaReading {
 }
 
 type Obj = Record<string, unknown>
-const obj = (value: unknown): Obj | null => (typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Obj) : null)
 const num = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value : null)
 const count = (value: unknown): number | null => (typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null)
 const str = (value: unknown): string | null => (typeof value === 'string' && value ? value : null)
@@ -43,13 +44,13 @@ function interval(value: unknown): Interval | null {
 const STATES: readonly string[] = ['sound', 'fault', 'not-checked']
 
 function check(value: unknown): ReadingCheck | null {
-  const row = obj(value)
+  const row = asObj(value)
   const [name, state, detail] = [str(row?.name), str(row?.state), str(row?.detail)]
   return name && detail && state && STATES.includes(state) ? { name, state: state as CheckState, detail } : null
 }
 
 function measure(value: unknown): ReadingMeasure | null {
-  const row = obj(value)
+  const row = asObj(value)
   const name = str(row?.name)
   return row && name
     ? { name, value: num(row.value), interval: interval(row.interval_95), basis: str(row.basis), notToBeRead: row.not_to_be_read === true }
@@ -57,7 +58,7 @@ function measure(value: unknown): ReadingMeasure | null {
 }
 
 function aimRow(value: unknown): AimRow | null {
-  const row = obj(value)
+  const row = asObj(value)
   const [name, aim, relation] = [str(row?.measure), num(row?.aim), str(row?.relation)]
   return row && name && aim !== null && relation
     ? { measure: name, aim, observed: num(row.observed), interval: interval(row.interval_95), relation }
@@ -66,14 +67,14 @@ function aimRow(value: unknown): AimRow | null {
 
 /** A stored reading, or null when the value is not one (or names an evidence word this screen does not know). */
 export function parseReading(value: unknown): AlphaReading | null {
-  const root = obj(value)
-  const evidence = obj(root?.evidence)
-  const aim = obj(root?.aim)
+  const root = asObj(value)
+  const evidence = asObj(root?.evidence)
+  const aim = asObj(root?.aim)
   const sentence = str(root?.sentence)
   if (!root || !evidence || !aim || !sentence || !Array.isArray(root.checks)) return null
   const word = evidence.word === null || evidence.word === undefined ? null : str(evidence.word)
   if (word !== null && !(EVIDENCE_STEPS as readonly string[]).includes(word)) return null
-  const counts = obj(root.counts) ?? {}
+  const counts = asObj(root.counts) ?? {}
   const source = str(aim.source)
   return {
     checks: root.checks.map(check).filter((row): row is ReadingCheck => row !== null),
@@ -89,8 +90,8 @@ export function parseReading(value: unknown): AlphaReading | null {
       best_of: count(counts.best_of), family_id: str(counts.family_id),
     },
     sentence,
-    costsLine: str(obj(root.costs)?.line),
-    periodsLine: str(obj(root.costs)?.periods),
+    costsLine: str(asObj(root.costs)?.line),
+    periodsLine: str(asObj(root.costs)?.periods),
   }
 }
 
@@ -176,8 +177,8 @@ interface RunWords { evidence?: string | null; verdict?: string | null }
 
 /** The evidence word of a stored manifest: its stored reading, else its old letter (muted by the caller). */
 export function manifestWord(manifest: Obj): { text: string; old: boolean } | null {
-  const verdict = obj(manifest.verdict)?.overall ?? manifest.verdict
-  return runWord(str(obj(obj(manifest.reading)?.evidence)?.word), verdict)
+  const verdict = asObj(manifest.verdict)?.overall ?? manifest.verdict
+  return runWord(str(asObj(asObj(manifest.reading)?.evidence)?.word), verdict)
 }
 
 /** What a toast says after the run's label: the evidence word, or nothing. Never a gate result. */

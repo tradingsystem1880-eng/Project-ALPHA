@@ -1,3 +1,4 @@
+import { asObj } from '../util/format'
 import {
   DEFAULT_LINKED,
   LINK_GROUPS,
@@ -19,9 +20,7 @@ export interface PanelLinkBinding {
 }
 
 function record(value: unknown): Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {}
+  return asObj(value) ?? {}
 }
 
 function group(value: unknown, fallback: LinkGroup): LinkGroup {
