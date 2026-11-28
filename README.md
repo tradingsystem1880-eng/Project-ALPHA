@@ -35,8 +35,9 @@ real money: there is no live-trading route and no broker connection.
 7. **Runs an AI factor search.** RD-Agent, an open-source research agent, proposes and codes
    market signals ("factors") and ALPHA judges them. See [the RD-Agent loop](#the-rd-agent-factor-loop).
 8. **Keeps its own documents from going stale.** Each reference page names the code it describes
-   in its front matter `sources:` list. A weekly sweep re-reads those pages against that code and
-   fixes drift. See [the document lifecycle](docs/reference/invariants/documentation.md#document-lifecycle).
+   in its front matter `sources:` list. On every change, `scripts/gate_select.py` runs the file
+   system tests: links resolve, routing rows name real files and sections, and pages stay small.
+   See [the document lifecycle](docs/reference/invariants/documentation.md#document-lifecycle).
 
 ## What works today
 
