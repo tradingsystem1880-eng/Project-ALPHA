@@ -96,7 +96,7 @@ workspaces. [ADR-0014](../../adr/0014-cli-owned-development-control-plane.md)
   never through `ControlStore`: same file, same tables, no migration, `user_version` untouched; a fresh home gets only
   the tables a caller declares. The import-linter contract "kept features stand off the old research-case machinery"
   keeps it so.
-- `alpha owner-auth enroll|recover` is a trusted local ceremony; never expose it to MCP or generic jobs.
+- There is no `alpha owner-auth` command: the CLI has no enrollment or recovery ceremony.
 - Owner confirmation grants no broker, order, holdout, paper-entry, risk-override or research-gate-override capability.
 - Owner-auth enrollment is optional: ordinary owner actions need only local confirmation, and a legacy
   biometric enrollment never turns it into verified presence.

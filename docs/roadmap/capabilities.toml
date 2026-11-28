@@ -720,7 +720,6 @@ entry_points = [
   "cli: alpha research capture",
   "cli: alpha research run",
   "cli: alpha research decide",
-  "cli: alpha owner-auth enroll",
 ]
 proof_synthetic = [
 ]

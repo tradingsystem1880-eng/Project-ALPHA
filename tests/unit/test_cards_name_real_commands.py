@@ -135,7 +135,7 @@ def test_new_cards_exist_are_short_and_are_indexed() -> None:
         assert f"({name})" in index, name
 
 
-def test_owner_auth_is_hidden_from_help_but_still_callable() -> None:
+def test_owner_auth_command_group_is_gone() -> None:
     help_text = subprocess.run(
         [sys.executable, "-m", "alpha_cli.main", "--help"],
         check=True,
@@ -146,11 +146,11 @@ def test_owner_auth_is_hidden_from_help_but_still_callable() -> None:
     assert "Touch ID" not in help_text
     called = subprocess.run(
         [sys.executable, "-m", "alpha_cli.main", "owner-auth", "--help"],
-        check=True,
         capture_output=True,
         text=True,
     )
-    assert "enroll" in called.stdout
+    assert called.returncode != 0
+    assert "enroll" not in called.stdout
 
 
 def test_example_setup_spec_loads_and_has_every_section() -> None:
