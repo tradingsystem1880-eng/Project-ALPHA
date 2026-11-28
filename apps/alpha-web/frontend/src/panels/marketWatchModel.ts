@@ -18,6 +18,18 @@ export interface WatchQuote {
   provenance?: { source?: string | null } | null
 }
 
+/** The candles read for a symbol failed: the row says so, never "no data". */
+export interface WatchReadFailure {
+  failed: true
+  reason: string
+}
+
+export type WatchQuoteState = WatchQuote | WatchReadFailure
+
+export function isReadFailure(quote: WatchQuoteState | null | undefined): quote is WatchReadFailure {
+  return Boolean(quote && 'failed' in quote && quote.failed)
+}
+
 export interface WatchRow {
   /** The stored symbol as the store names it (`BTC/USDT`); what the linked context receives. */
   symbol: string
@@ -34,6 +46,8 @@ export interface WatchRow {
   age: string | null
   /** The last bar is older than `STALE_AFTER_DAYS`; the price is history, not a quote. */
   stale: boolean
+  /** Set only when the bars read failed: `SOL/USDT read failed: <reason>`. */
+  failure?: string
 }
 
 export const MARKET_WATCH_TABS = dockOf('MarketWatch').tabs
@@ -107,10 +121,14 @@ export function ageText(barTs: number, nowMs: number): string {
 /** One row from the last two daily bars; anything missing is shown as missing. */
 export function watchRow(
   symbol: string,
-  quote: WatchQuote | null | undefined,
+  quote: WatchQuoteState | null | undefined,
   nowMs: number,
 ): WatchRow {
   const label = displaySymbol(symbol)
+  if (isReadFailure(quote)) {
+    const failure = `${symbol} read failed: ${quote.reason}`
+    return { symbol, label, venue: null, last: 'read failed', change: '—', tone: 'none', asOf: null, age: null, stale: false, failure }
+  }
   const none: WatchRow = {
     symbol,
     label,
@@ -141,7 +159,7 @@ export function watchRow(
 export function watchRows(
   profileId: Profile,
   stored: readonly string[],
-  quotes: Readonly<Record<string, WatchQuote | null | undefined>>,
+  quotes: Readonly<Record<string, WatchQuoteState | null | undefined>>,
   nowMs: number,
 ): WatchRow[] {
   return watchSymbols(profileId, stored).map((symbol) => watchRow(symbol, quotes[symbol], nowMs))
