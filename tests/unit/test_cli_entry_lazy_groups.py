@@ -121,6 +121,7 @@ def test_full_app_keeps_every_command_group() -> None:
             "nightly",
             "optim",
             "options",
+            "owner-auth",
             "partner",
             "project",
             "propfirm",
