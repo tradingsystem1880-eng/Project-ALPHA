@@ -1,0 +1,18 @@
+{
+  "kind": "absence",
+  "removed_symbols": [
+    "test_rdagent_run_story_module",
+    "test_rdagent_run_words_files_split"
+  ],
+  "command_words": [],
+  "removed_paths": [
+    "tests/unit/test_rdagent_run_story_module.py",
+    "tests/unit/test_rdagent_run_words_files_split.py"
+  ],
+  "search_roots": [
+    "apps",
+    "packages",
+    "tests",
+    "docs"
+  ]
+}
