@@ -34,8 +34,10 @@ real money: there is no live-trading route and no broker connection.
    without hindsight.
 7. **Runs an AI factor search.** RD-Agent, an open-source research agent, proposes and codes
    market signals ("factors") and ALPHA judges them. See [the RD-Agent loop](#the-rd-agent-factor-loop).
-8. **Keeps its own documents from going stale.** Reference pages carry a fingerprint of the
-   code they describe; a check fails when the code changes and the page has not been re-read.
+8. **Keeps its own documents from going stale.** Each reference page names the code it describes
+   in its front matter `sources:` list. On every change, `scripts/gate_select.py` runs the file
+   system tests: links resolve, routing rows name real files and sections, and pages stay small.
+   See [the document lifecycle](docs/reference/invariants/documentation.md#document-lifecycle).
 
 ## What works today
 
@@ -121,8 +123,8 @@ instead of trusting RD-Agent's own backtest. The judge:
 - enforces spending caps on model calls (optional paid embeddings are off unless you turn them on).
 
 Status: **Partial**. About 80 factors were judged by 2026-11-16 and none became a candidate. It
-is started by a launcher script, not yet by an `alpha` command, and it is not yet supervised as
-a background job. Start at [RD-Agent in ALPHA](docs/roadmap/rd-agent-in-alpha.md) and the
+starts with `uv run alpha rdagent run`, and `uv run alpha rdagent status` says where a run is and
+what to type next. It is not yet supervised as a background job. Start at [RD-Agent in ALPHA](docs/roadmap/rd-agent-in-alpha.md) and the
 [worker guide](workers/rdagent/README.md).
 
 ## Where things live
