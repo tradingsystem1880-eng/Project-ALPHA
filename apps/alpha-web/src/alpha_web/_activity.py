@@ -5,7 +5,8 @@ shape as ``_invoke.event_stream``. Each tick stats ``manifest.json`` mtimes only
 read (via ``_runs.run_record``, the same record the ``/api/runs`` index serves) exclusively when
 a run appears or changes. This is what lets work done OUTSIDE the browser — the CLI, Claude over
 MCP, another terminal — surface in the UI live: the scan watches the store, not this process's
-job registry.
+job registry. The store and area scans run in a worker thread (``anyio.to_thread``), so one
+connection never blocks the event loop while it walks the disk.
 
 Events: an initial ``snapshot`` (counts), then ``run_added`` / ``run_updated`` (data = run record
 JSON), ``job_started`` / ``job_done`` / ``job_failed`` / ``job_cancelled`` (data = job summary
@@ -24,6 +25,7 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import anyio
+from anyio import to_thread
 
 from alpha_cli.run_store import RUN_DIRS
 from alpha_web import _invoke
@@ -133,16 +135,16 @@ def _job_data(job_id: str) -> str:
 
 async def _diff_events(data_dir: Path, *, poll: float) -> AsyncGenerator[dict[str, str], None]:
     """The unbounded event stream: snapshot, then run/job diffs every ``poll`` seconds."""
-    runs = snapshot_runs(data_dir)
+    runs = await to_thread.run_sync(snapshot_runs, data_dir)
     jobs = job_states()
-    areas = snapshot_areas(data_dir)
+    areas = await to_thread.run_sync(snapshot_areas, data_dir)
     running = sum(1 for s in jobs.values() if s == "running")
     yield {"event": "snapshot", "data": json.dumps({"runs": len(runs), "jobs_running": running})}
 
     while True:
         await anyio.sleep(poll)
 
-        new_runs = snapshot_runs(data_dir)
+        new_runs = await to_thread.run_sync(snapshot_runs, data_dir)
         for key, mtime in list(new_runs.items()):
             old_mtime = runs.get(key)
             if old_mtime is not None and mtime <= old_mtime:
@@ -170,7 +172,7 @@ async def _diff_events(data_dir: Path, *, poll: float) -> AsyncGenerator[dict[st
                 yield {"event": f"job_{status}", "data": _job_data(job_id)}
         jobs = new_jobs
 
-        new_areas = snapshot_areas(data_dir)
+        new_areas = await to_thread.run_sync(snapshot_areas, data_dir)
         for area, stamp in new_areas.items():
             if stamp > areas.get(area, float("-inf")):
                 yield {"event": "store_changed", "data": json.dumps({"area": area, "at": stamp})}
