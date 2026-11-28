@@ -2,7 +2,8 @@
 
 Reading candles through the CLI keeps the point-in-time / split-adjustment firewall in its one
 audited seam (the web layer never imports ``alpha_data``). Results are cached until the symbol's
-stored parquet changes, so repeat chart loads don't re-spawn the CLI.
+stored parquet changes, so repeat chart loads don't re-spawn the CLI. The cache keeps at most
+``_CACHE_LIMIT`` results and drops the oldest first, so a long session cannot grow it without limit.
 """
 
 from __future__ import annotations
@@ -12,7 +13,16 @@ from typing import Any
 
 from alpha_web._catalog import _run_json
 
+_CACHE_LIMIT = 32
 _CACHE: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+
+def _remember(key: tuple[Any, ...], result: dict[str, Any]) -> None:
+    """Store ``result`` under ``key``; drop the oldest entries past ``_CACHE_LIMIT``."""
+    _CACHE.pop(key, None)
+    _CACHE[key] = result
+    while len(_CACHE) > _CACHE_LIMIT:
+        del _CACHE[next(iter(_CACHE))]
 
 
 def candles(
@@ -44,7 +54,7 @@ def candles(
             args += [flag, value]
     result: dict[str, Any] = _run_json(args, data_dir=data_dir)
     if manifest_id is None:
-        _CACHE[key] = result
+        _remember(key, result)
     return result
 
 
@@ -75,5 +85,5 @@ def overlays(
             args += [flag, value]
     result: dict[str, Any] = _run_json(args, data_dir=data_dir)
     if manifest_id is None:
-        _CACHE[key] = result
+        _remember(key, result)
     return result
