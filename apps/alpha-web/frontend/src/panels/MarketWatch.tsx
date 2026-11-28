@@ -5,7 +5,8 @@ import { openArchiveMarket } from './actions'
 // Prices are the last two daily bars of the candles projection (`?tail=2`, so a pair whose
 // history ends months ago still reads its last close) and the Age cell says which day that bar
 // is from; a bar older than two days is dimmed as history. A symbol with no stored bars shows
-// `—`; a failed bars read shows `read failed` with the reason in the row title. Clicking a row sets the linked symbol; `+ click to add…` opens the Data Manager.
+// `—`; a failed bars read is hidden and the status line says the read failed, with the reason.
+// Clicking a row sets the linked symbol; `+ click to add…` opens the Data Manager.
 
 import { useEffect, useState } from 'react'
 
@@ -124,16 +125,16 @@ export function MarketWatch() {
     }
   }, [liveTicker, tickerKey])
 
-  // A failed read stays visible and says so; only rows with no readable bars are hidden.
   const readableRows = storedRows.filter((row) => {
     const quote = quotes[row.symbol]
-    if (isReadFailure(quote)) return true
-    const bars = quote?.bars
+    const bars = isReadFailure(quote) ? undefined : quote?.bars
     const last = bars?.[bars.length - 1]
     return Boolean(last && Number.isFinite(last.t) && Number.isFinite(last.c))
   })
   const quotesReady = storedRows.every((row) => Object.hasOwn(quotes, row.symbol))
-  const unavailableCount = quotesReady ? storedRows.length - readableRows.length : 0
+  // A failed read is hidden from the table but the status line says the read failed, and why.
+  const failedRows = quotesReady ? storedRows.filter((row) => row.failure) : []
+  const unavailableCount = quotesReady ? storedRows.length - readableRows.length - failedRows.length : 0
   const rows = readableRows.map((row) => (liveTicker ? applyTicker(row, live[row.symbol]) : row))
   const selected = linked.symbol ? relatedRows(linked.symbol, rows) : []
   return (
@@ -156,6 +157,11 @@ export function MarketWatch() {
         <>
         {storedRows.length === 0 ? <p className="muted" role="status">No stored markets are available for this profile.</p> : null}
         {storedRows.length > 0 && readableRows.length === 0 ? <p className="muted" role="status">{quotesReady ? 'No stored markets have readable daily bars.' : 'Checking stored daily bars…'}</p> : null}
+        {failedRows.length > 0 ? (
+          <p className="muted" role="status" title={failedRows.map((row) => row.failure).join('\n')}>
+            {failedRows.length} stored market{failedRows.length === 1 ? '' : 's'} hidden because the daily bars read failed. {failedRows[0].failure}
+          </p>
+        ) : null}
         {unavailableCount > 0 ? <p className="muted" role="status">{unavailableCount} stored market{unavailableCount === 1 ? '' : 's'} hidden because daily bars are unavailable.</p> : null}
         <div className="market-watch-scroll"><table className="blotter market-watch-table" aria-label="Market Watch">
           <thead>
@@ -173,9 +179,7 @@ export function MarketWatch() {
                 key={row.symbol}
                 className={`watch-row tone-${row.tone}${linked.symbol === row.symbol ? ' active' : ''}${row.stale ? ' stale' : ''}`}
                 title={
-                  row.failure
-                    ? row.failure
-                    : row.asOf === 'live'
+                  row.asOf === 'live'
                     ? `${row.symbol} on ${row.venue} · public last-trade price, refreshed every 10 s`
                     : row.asOf
                       ? `${row.symbol} on ${row.venue ?? 'an unknown venue'} · last stored bar ${row.asOf}${row.stale ? ' (history, not a quote)' : ''}`
@@ -199,7 +203,7 @@ export function MarketWatch() {
                 <td className="num">{row.change}</td>
                 <td
                   className={`num watch-age${row.asOf === 'live' ? ' live' : ''}`}
-                  title={row.failure ? row.failure : row.asOf === 'live' ?'public last trade, refreshed every 10 s' : row.asOf ? `last stored bar ${row.asOf}` : 'no stored bars'}
+                  title={row.asOf === 'live' ? 'public last trade, refreshed every 10 s' : row.asOf ? `last stored bar ${row.asOf}` : 'no stored bars'}
                 >
                   {row.age ?? '—'}
                 </td>
